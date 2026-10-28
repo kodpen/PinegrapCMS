@@ -202,10 +202,10 @@ foreach ($recurring_commission_profiles as $recurring_commission_profile) {
             <td class="align-middle chart_label">' . h($recurring_commission_profile['affiliate_name']) . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['affiliate_code']) . '</td>
             <td class="align-middle text-center">' . $output_enabled_check_mark . '</td>
-            <td class="align-middle text-end"><span class="badge theme-primary fg-white fw-light">' . pg_format_money($recurring_commission_profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+            <td class="align-middle text-end"><span class="badge theme-primary fw-light">' . pg_format_money($recurring_commission_profile['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
             <td class="align-middle">' . prepare_form_data_for_output($recurring_commission_profile['start_date'], 'date') . '</td>
             <td class="align-middle">' . lang(ucwords($recurring_commission_profile['period'])) . '</td>
-            <td class="align-middle"><span class="badge theme-success fg-white fw-light">' . $recurring_commission_profile['number_of_commissions'] . '</span></td>
+            <td class="align-middle"><span class="badge theme-success fw-light">' . $recurring_commission_profile['number_of_commissions'] . '</span></td>
             <td class="align-middle">' . $recurring_commission_profile['order_number'] . '</td>
             <td class="align-middle">' . h($recurring_commission_profile['product_name']) . h($recurring_commission_profile['product_short_description']) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $recurring_commission_profile['created_timestamp'])) . ' ' . $created_username . '</td>

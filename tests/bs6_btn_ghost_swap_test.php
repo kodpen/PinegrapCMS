@@ -3,10 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Source test for the .btn-ghost to .btn-text.theme-secondary swap in the
- * Workspace and ERP screens, the designer list and the shared list helpers:
- * the converted files carry no .btn-ghost, apart from the buttons of the rich
- * text tool rows (.ws-rich-tools), whose pressed and disabled looks are still
- * written against .btn-ghost.
+ * Workspace and ERP screens (the rich text tool rows included), the designer
+ * list and the shared list helpers: the converted files carry no .btn-ghost.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -59,15 +57,19 @@ function test_bs6_btn_ghost_swap_workspace_and_erp()
 		'includes/erp/waybill_form.php',
 		'includes/erp/invoice_form.php',
 		'includes/erp/account_quick.php',
+		'assets/js/workspace.js',
+		'assets/js/workspace_editor.js',
 	);
 
 	foreach ($files as $path) {
 		pg_assert_same(0, bs6_btn_ghost_test_count($path), $path . ' carries no .btn-ghost');
 	}
 
-	// Only the buttons that end up in a PGWsEditor.toolbar() row keep it.
-	pg_assert_same(12, bs6_btn_ghost_test_count('assets/js/workspace.js'), 'workspace.js: the rich tool rows only');
-	pg_assert_same(1, bs6_btn_ghost_test_count('assets/js/workspace_editor.js'), 'workspace_editor.js: the toolbar\'s own buttons only');
+	// The rich tool rows' pressed and disabled looks follow their buttons.
+	$css = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/css/backend.src.css');
+	pg_assert_same(0, preg_match_all('/\.ws-rich-tools \.btn-ghost/', $css), 'no .ws-rich-tools .btn-ghost rule is left');
+	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary\[aria-pressed="true"\]/', $css), 'pressed tool rule');
+	pg_assert_same(1, preg_match_all('/\.ws-rich-tools \.btn-text\.theme-secondary:disabled/', $css), 'disabled tool rule');
 }
 
 function test_bs6_btn_ghost_swap_designer_and_list_helpers()

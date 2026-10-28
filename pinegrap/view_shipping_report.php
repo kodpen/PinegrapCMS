@@ -414,7 +414,7 @@ print
                         <div class="row justify-content-center md:justify-content-end" >
                             <form id="update_status" method="get" class="search_form disable_shortcut col-auto">
                                  <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1" title="' . lang('Status') . '" for="filter">' . lang('Status') . '</label>
+                                    <label class="input-group-text mt-1 mb-1" title="' . lang('Status') . '" for="status">' . lang('Status') . '</label>
                                     <select id="status" name="status" class="form-control mt-1 mb-1" onchange="document.getElementById(\'update_status\').submit()">
                                         <option value="any"' . $status_any_selected . '>[' . lang('Any') . ']</option>
                                         <option value="unshipped"' . $status_unshipped_selected . '>' . lang('Unshipped') . '</option>

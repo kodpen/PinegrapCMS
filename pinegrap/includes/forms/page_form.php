@@ -2043,7 +2043,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 md:col-12 my-1">
-                                <label for="update_address_book_address_type_page_id" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
+                                <label for="custom_form_quiz_pass_percentage" class="form-label">' . lang('Quiz Pass Percentage') . '</label>
                                 <label class="form-control form-adorn form-adorn-end">
                                     <span class="form-adorn-text" aria-hidden="true">%</span>
                                     <input value="' . h($custom_form_properties['quiz_pass_percentage'] ?? '') . '" type="text" name="custom_form_quiz_pass_percentage" id="custom_form_quiz_pass_percentage" maxlength="3" class="form-ghost" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />

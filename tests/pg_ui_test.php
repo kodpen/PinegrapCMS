@@ -99,10 +99,11 @@ FakeElement.prototype.matches = function (sel) {
     var self = this;
     return sel.split(',').some(function (one) {
         one = one.trim();
-        var m = one.match(/^([a-z]+)?((?:\.[\w-]+)*)(\[open\])?$/);
+        var m = one.match(/^([a-z]+)?((?:\.[\w-]+)*)(\[open\])?(?::not\(\.([\w-]+)\))?$/);
         if (!m) { return false; }
         if (m[1] && self.tagName !== m[1].toUpperCase()) { return false; }
         if (m[3] && !self.open) { return false; }
+        if (m[4] && self.classList.contains(m[4])) { return false; }
         return (m[2] || '').split('.').filter(Boolean).every(function (c) { return self.classList.contains(c); });
     });
 };
@@ -123,7 +124,9 @@ function makeDocument() {
 }
 
 // A component stand-in: one instance per element and name, show/hide flip
-// the open state and fire the version's events.
+// the open state and fire the version's events. A v6 <dialog> opens at once
+// (showModal()) and settles later; its hide() adds .hiding and closes on a
+// later tick, as Bootstrap 6 defers close() to the end of the animation.
 function makeComponent(name, ev, six) {
     function C(el, opts) { this.el = el; this.opts = opts; this.name = name; }
     C.getOrCreateInstance = function (el, opts) {
@@ -133,11 +136,24 @@ function makeComponent(name, ev, six) {
     };
     C.getInstance = function (el) { return (el.instances && el.instances[name]) || null; };
     C.prototype.show = function () {
-        if (this.el.tagName === 'DIALOG') { this.el.open = true; } else { this.el.classList.add('show'); }
-        this.el.fire('shown.bs.' + ev);
+        var el = this.el;
+        if (six && el.tagName === 'DIALOG') {
+            el.open = true;
+            return new Promise(function (resolve) { setTimeout(function () { el.fire('shown.bs.' + ev); resolve('v6-promise'); }, 2); });
+        }
+        if (el.tagName === 'DIALOG') { el.open = true; } else { el.classList.add('show'); }
+        el.fire('shown.bs.' + ev);
         return six ? Promise.resolve('v6-promise') : undefined;
     };
     C.prototype.hide = function () {
+        var el = this.el;
+        if (six && el.tagName === 'DIALOG') {
+            el.fire('hide.bs.' + ev);
+            el.classList.add('hiding');
+            return new Promise(function (resolve) {
+                setTimeout(function () { el.open = false; el.classList.remove('hiding'); el.fire('hidden.bs.' + ev); resolve('v6-promise'); }, 2);
+            });
+        }
         if (this.el.tagName === 'DIALOG') { this.el.open = false; } else { this.el.classList.remove('show'); }
         this.el.fire('hidden.bs.' + ev);
         return six ? Promise.resolve('v6-promise') : undefined;
@@ -226,11 +242,42 @@ async function main() {
     var v6Types = [];
     ui6.on(dlg, 'dialog', 'shown', function (e) { v6Types.push(e.type); });
     await ui6.show('dialog', dlg);
-    out.v6_open = { open: dlg.open, isOpen: ui6.isOpen('dialog', dlg), any: ui6.anyOpen('dialog'), events: v6Types };
+    out.v6_open = { open: dlg.open, isOpen: ui6.isOpen('dialog', dlg), any: ui6.anyOpen('dialog'), events: v6Types.slice() };
     var inside = d6.createElement('span');
     dlg.appendChild(inside);
     out.v6_host = { inside: ui6.overlayHost(inside) === dlg, outside_goes_to_top: ui6.overlayHost(d6.createElement('i')) === dlg };
+    var closing = ui6.hide('dialog', dlg);
+    out.v6_closing = { open: dlg.open, isOpen: ui6.isOpen('dialog', dlg), any: ui6.anyOpen('dialog'), host_outside_is_body: ui6.overlayHost(d6.createElement('i')) === d6.body };
+    await closing;
+    out.v6_closed = { open: dlg.open, isOpen: ui6.isOpen('dialog', dlg), hiding: dlg.classList.contains('hiding') };
+    var opening = ui6.show('dialog', dlg);
+    out.v6_opening = { isOpen: ui6.isOpen('dialog', dlg), any: ui6.anyOpen('dialog'), host_outside: ui6.overlayHost(d6.createElement('i')) === dlg };
+    await opening;
     await ui6.hide('dialog', dlg);
+    var drw = d6.createElement('dialog');
+    drw.className = 'drawer';
+    await ui6.show('drawer', drw);
+    var drawerClosing = ui6.hide('drawer', drw);
+    out.v6_drawer_closing = { isOpen: ui6.isOpen('drawer', drw), any: ui6.anyOpen('drawer') };
+    await drawerClosing;
+    // A toast container follows the top open dialog and goes back to the body
+    // on that dialog's hide event (or a native close).
+    var toasts = d6.createElement('div');
+    d6.body.appendChild(toasts);
+    out.v6_layer_no_dialog = ui6.hostLayer(toasts) === d6.body && toasts.parentNode === d6.body;
+    await ui6.show('dialog', dlg);
+    var lifted = ui6.hostLayer(toasts) === dlg && toasts.parentNode === dlg;
+    var again = ui6.hostLayer(toasts) === dlg && (dlg.listeners['hide.bs.dialog'] || []).length === 1;
+    var hiding = ui6.hide('dialog', dlg);
+    var backOnHide = toasts.parentNode === d6.body;
+    out.v6_layer_closing_skipped = ui6.hostLayer(toasts) === d6.body;
+    await hiding;
+    await ui6.show('dialog', dlg);
+    ui6.hostLayer(toasts);
+    dlg.fire('close');
+    out.v6_layer = { lifted: lifted, once: again, back_on_hide: backOnHide, back_on_close: toasts.parentNode === d6.body, listeners_left: (dlg.listeners['hide.bs.dialog'] || []).length + (dlg.listeners.close || []).length };
+    dlg.open = false;
+    out.v5_layer_body = ui.hostLayer(d5.createElement('div')) === d5.body;
     out.v6_host_after_close_is_body = ui6.overlayHost(inside) === d6.body;
     var parts6 = ui6.dialog.build({ title: 'T', size: 'xl', scrollable: true, centered: true, footer: false });
     out.v6_build = {
@@ -308,6 +355,36 @@ function test_pg_ui_show_hide_and_events()
 	pg_assert_same(1, $r['v5_once'], 'once fires once');
 	pg_assert_same(false, $r['v5_toggle_closes']);
 	pg_assert_same(array('open' => true, 'isOpen' => true, 'any' => true, 'events' => array('shown.bs.dialog')), $r['v6_open']);
+}
+
+// Bootstrap 6 adds .hiding and closes the <dialog> only after its animation:
+// a dialog on its way out counts as closed, one on its way in as open.
+function test_pg_ui_v6_closing_dialog_is_closed()
+{
+	$r = pg_ui_test_result();
+	if (!is_array($r) || isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_same(array('open' => true, 'isOpen' => false, 'any' => false, 'host_outside_is_body' => true), $r['v6_closing'], 'closing dialog: still [open], not counted');
+	pg_assert_same(array('open' => false, 'isOpen' => false, 'hiding' => false), $r['v6_closed']);
+	pg_assert_same(array('isOpen' => true, 'any' => true, 'host_outside' => true), $r['v6_opening'], 'opening dialog counts as open');
+	pg_assert_same(array('isOpen' => false, 'any' => false), $r['v6_drawer_closing'], 'closing drawer: not counted');
+}
+
+// A toast container shown while a modal <dialog> is open sits in that
+// dialog, not under its ::backdrop, and leaves it when the dialog hides.
+function test_pg_ui_host_layer()
+{
+	$r = pg_ui_test_result();
+	if (!is_array($r) || isset($r['error'])) {
+		return;
+	}
+
+	pg_assert_true($r['v6_layer_no_dialog'], 'no dialog open: the body');
+	pg_assert_same(array('lifted' => true, 'once' => true, 'back_on_hide' => true, 'back_on_close' => true, 'listeners_left' => 0), $r['v6_layer']);
+	pg_assert_true($r['v6_layer_closing_skipped'], 'a closing dialog is not a host');
+	pg_assert_true($r['v5_layer_body'], 'Bootstrap 5: the body');
 }
 
 function test_pg_ui_build_dialog()

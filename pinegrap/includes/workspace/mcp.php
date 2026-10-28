@@ -2087,16 +2087,16 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         }
 
         if ($can === 'read') {
-            $badge = '<span class="badge text-bg-success-subtle fg-emphasis-success">' . h(lang('Reads only')) . '</span>';
+            $badge = '<span class="badge bg-subtle-success fg-emphasis-success">' . h(lang('Reads only')) . '</span>';
             $hint = '';
         } elseif ($can === 'declare') {
-            $badge = '<span class="badge text-bg-warning-subtle fg-emphasis-warning">' . h(lang('Not said')) . '</span>';
+            $badge = '<span class="badge bg-subtle-warning fg-emphasis-warning">' . h(lang('Not said')) . '</span>';
             $hint = $approve
                 ? lang('The server does not say whether this tool changes anything. Choose "Reads only" only if you know it does; otherwise each call waits for the approval of the person who asked.')
                 : lang('The server does not say whether this tool changes anything. Turn it on only if you know it only reads.');
             $choice = $approve;
         } else {
-            $badge = '<span class="badge text-bg-danger-subtle fg-emphasis-danger">' . h((($tool['hints']['destructiveHint'] ?? null) === true) ? lang('Can delete') : lang('Writes')) . '</span>';
+            $badge = '<span class="badge bg-subtle-danger fg-emphasis-danger">' . h((($tool['hints']['destructiveHint'] ?? null) === true) ? lang('Can delete') : lang('Writes')) . '</span>';
             $hint = $approve
                 ? lang('It changes things on the other service. Each call waits for the approval of the person who asked and runs with their own account.')
                 : lang('It changes things on the other service. With one connection for everybody it stays off.');
@@ -2130,7 +2130,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
                     <span class="fw-semibold"><code>' . h($name) . '</code></span>
                     ' . (($tool['title'] !== '') ? '<span class="fg-secondary">· ' . h($tool['title']) . '</span>' : '') . '
                     ' . $badge . '
-                    ' . (!empty($on[$name]['approve']) ? '<span class="badge text-bg-primary-subtle fg-emphasis-primary">' . h(lang('Asks first')) . '</span>' : '') . '
+                    ' . (!empty($on[$name]['approve']) ? '<span class="badge bg-subtle-primary fg-emphasis-primary">' . h(lang('Asks first')) . '</span>' : '') . '
                     ' . (($description !== '') ? '<span class="d-block small fg-secondary">' . h(mb_strimwidth($description, 0, 240, '…')) . '</span>' : '') . '
                     ' . (($hint !== '') ? '<span class="d-block small fg-secondary fst-italic">' . h($hint) . '</span>' : '') . '
                 </label>

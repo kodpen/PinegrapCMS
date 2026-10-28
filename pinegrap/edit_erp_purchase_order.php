@@ -271,7 +271,7 @@ if (!empty($linked_invoices) || in_array($status_key, array('partial', 'received
         'issued' => array(lang('Issued'), 'primary'),
         'partially_paid' => array(lang('Partly paid'), 'warning'),
         'paid' => array(lang('Paid'), 'success'),
-        'cancelled' => array(lang('Cancelled'), 'dark'),
+        'cancelled' => array(lang('Cancelled'), 'inverse'),
     );
     $invoice_rows = '';
     foreach ($linked_invoices as $linked) {

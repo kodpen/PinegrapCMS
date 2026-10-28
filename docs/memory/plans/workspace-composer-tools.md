@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1, 2, 6, 7, 8, 9, 11 done, 4, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1, 2, 4, 6, 7, 8, 9, 11 done, 5 partly; answers open): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -21,7 +21,7 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 9, 11 done, 4, 5 partly; answers o
 1. Shared toolbar, no schema: `format()`, composer undo/redo and B/I/S. PR #1554.
 2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
 3. Headings `#`-`###` and `---` after question 1, no schema; the import keeps headings.
-4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Highlight done: server #1972, editor #1999 (workspace-text-highlight.md); autoformat left.
+4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Done: highlight #1972, #1999 (workspace-text-highlight.md), autoformat #2590 (workspace-editor-autoformat.md).
 5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer after question 2; no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
@@ -31,12 +31,12 @@ description: Plan (2026-10-23; 1, 2, 6, 7, 8, 9, 11 done, 4, 5 partly; answers o
 11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
 
-## Open questions (recommendation)
-1. Headings in messages: (a) notes only, (b) both → a; answers question 1 of plans/notes-import-export-sync.md.
-2. Enter in the expanded box: (a) new line, Ctrl+Enter sends, (b) Enter sends → a.
-3. Autoformat: (a) on, off switch per viewer, (b) off → a.
-4. Saved replies: (a) personal and team, (b) personal first → b, then a.
-5. Dictation (Chrome sends audio to Google): (a) offer, privacy line, (b) not now → owner.
+## Which questions are answered? (#2420)
+1. Headings in notes only (a); answers question 1 of plans/notes-import-export-sync.md.
+2. Enter in the expanded box is a new line, Ctrl+Enter sends (a).
+3. Autoformat on, with an off switch per viewer (a).
+4. Saved replies: personal first (b), team as a later slice.
+5. Dictation: not now (b); plans/workspace-voice-messages.md covers recordings and transcripts.
 
 ## Where to start?
 - Steps needing no answer are done. Left: 3 (question 1), the "Aa" box of 5 (question 2), autoformat of 4 (`==x==`, "- " at a line's start; question 3), 10 (question 4, schema).

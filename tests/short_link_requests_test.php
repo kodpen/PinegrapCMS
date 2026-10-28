@@ -90,15 +90,15 @@ function test_short_link_save_refuses_the_bin_but_keeps_its_own()
 	pg_assert_contains('$short_link_read = pg_short_link_read_request($request, $user);', $explorer, 'the wizard\'s create keeps nothing');
 	pg_assert_contains('pg_short_link_read_request($request, null, $row);', short_link_requests_test_source('includes/api/resources/short_links.php'), 'the external API');
 
-	$add = short_link_requests_test_source('add_short_link.php');
+	// The classic screens check through the shared form: nothing is kept on
+	// create, the stored link on edit.
+	$form = short_link_requests_test_function_body(short_link_requests_test_source('includes/forms/short_link_form.php'), 'pg_short_link_form_validate_destination');
 
-	pg_assert_contains("&& pg_catalog_product_binned(\$liveform->get_field_value('product_id'))", $add, 'classic add: product');
-	pg_assert_contains("&& pg_catalog_group_binned(\$liveform->get_field_value('product_group_id'))", $add, 'classic add: product group');
-
-	$edit = short_link_requests_test_source('edit_short_link.php');
-
-	pg_assert_contains("((int) \$liveform->get_field_value('product_id') !== (int) \$short_link['product_id'])", $edit, 'classic edit: its own product stays');
-	pg_assert_contains("((int) \$liveform->get_field_value('product_group_id') !== (int) \$short_link['product_group_id'])", $edit, 'classic edit: its own group stays');
+	pg_assert_contains("return (\$current !== null) && ((int) \$value === (int) \$current[\$column]);", $form, 'classic: kept only when it is the stored one');
+	pg_assert_contains("&& !\$kept(\$liveform->get_field_value('product_id'), 'product_id')\n                    && pg_catalog_product_binned(\$liveform->get_field_value('product_id'))", $form, 'classic: product');
+	pg_assert_contains("&& !\$kept(\$liveform->get_field_value('product_group_id'), 'product_group_id')\n                    && pg_catalog_group_binned(\$liveform->get_field_value('product_group_id'))", $form, 'classic: product group');
+	pg_assert_contains('$page_id = pg_short_link_form_validate_destination($liveform, null);', short_link_requests_test_source('add_short_link.php'), 'classic add keeps nothing');
+	pg_assert_contains('$page_id = pg_short_link_form_validate_destination($liveform, $short_link);', short_link_requests_test_source('edit_short_link.php'), 'classic edit: its own stays');
 }
 
 function test_short_link_wizard_lists_leave_the_bin_out_but_keep_the_links_own()
@@ -139,15 +139,10 @@ function test_short_link_save_refuses_a_binned_page_or_file_but_keeps_its_own()
 	pg_assert_contains('in_array((int)$folder, pg_recycle_bin_folder_ids(), true)', short_link_requests_test_function_body($designer, 'pg_recycle_page_binned'), 'a page is binned by its folder');
 	pg_assert_contains("SELECT folder FROM files WHERE id", short_link_requests_test_function_body($designer, 'pg_recycle_file_binned'), 'a file is binned by its folder');
 
-	$add = short_link_requests_test_source('add_short_link.php');
+	$form = short_link_requests_test_function_body(short_link_requests_test_source('includes/forms/short_link_form.php'), 'pg_short_link_form_validate_destination');
 
-	pg_assert_contains("&& pg_recycle_page_binned(\$page_id)", $add, 'classic add: page');
-	pg_assert_contains("&& pg_recycle_file_binned(\$liveform->get_field_value('file'))", $add, 'classic add: file');
-
-	$edit = short_link_requests_test_source('edit_short_link.php');
-
-	pg_assert_contains("((int) \$page_id !== (int) \$short_link['page_id'])", $edit, 'classic edit: its own page stays');
-	pg_assert_contains("((int) \$liveform->get_field_value('file') !== (int) \$short_link['file_id'])", $edit, 'classic edit: its own file stays');
+	pg_assert_contains("&& !\$kept(\$page_id, 'page_id')\n            && pg_recycle_page_binned(\$page_id)", $form, 'classic: page');
+	pg_assert_contains("&& !\$kept(\$liveform->get_field_value('file'), 'file_id')\n                    && pg_recycle_file_binned(\$liveform->get_field_value('file'))", $form, 'classic: file');
 }
 
 function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_links_own()
@@ -177,11 +172,17 @@ function test_short_link_lists_leave_binned_pages_and_files_out_but_keep_the_lin
 	pg_assert_contains("return !listed(shortLinkOptions.page, item.page_id);", $screen, 'a page link asks again when its page is not on the kept lists');
 	pg_assert_contains("return !listed(shortLinkOptions.file, item.file_id);", $screen, 'a file link asks again when its file is not on the kept lists');
 
+	$form = short_link_requests_test_function_body(short_link_requests_test_source('includes/forms/short_link_form.php'), 'pg_short_link_form_cards');
+
+	pg_assert_contains("get_page_options('', '', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: pages');
+	pg_assert_contains("get_page_options('', 'catalog', 'edit', FALSE, \$keep['page_id'])", $form, 'classic: catalog pages');
+	pg_assert_contains("get_file_options(true, \$keep['file_id'])", $form, 'classic: files');
+	pg_assert_contains("array('page_id' => 0, 'product_group_id' => array(), 'product_id' => 0, 'file_id' => 0)", $form, 'classic add keeps nothing');
+
 	$edit = short_link_requests_test_source('edit_short_link.php');
 
-	pg_assert_contains("get_page_options('', '', 'edit', FALSE, \$short_link['page_id'])", $edit, 'classic edit: pages');
-	pg_assert_contains("get_file_options(\$design=true, \$short_link['file_id'])", $edit, 'classic edit: files');
-	pg_assert_contains("get_page_options('', 'catalog', 'edit', FALSE)", short_link_requests_test_source('add_short_link.php'), 'classic add: pages');
+	pg_assert_contains("'page_id' => \$short_link['page_id'],", $edit, 'classic edit: pages');
+	pg_assert_contains("'file_id' => \$short_link['file_id']", $edit, 'classic edit: files');
 }
 
 // The classic edit screen deleted the row outright while the File Manager and

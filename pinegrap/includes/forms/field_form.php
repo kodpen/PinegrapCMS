@@ -886,8 +886,8 @@ function pg_field_form_cards($liveform, $field, $context)
                                         <div class="col-12 my-1 collapse" id="rows_row">
                                             <h6 class="fg-secondary">' . lang('Amount of Rows and Columns to Display') . '</h6>
                                             <div class="w-100 border-3 border-top border-start position-relative">
-                                                <div style="background: #dee2e6;width: 3px;height: 14px;right: 0px;position: absolute;"></div>
-                                                <div style="background: #dee2e6;width: 14px;height: 3px;bottom: 0px;position: absolute;"></div>
+                                                <div style="background: var(--pg-border-color);width: 3px;height: 14px;right: 0px;position: absolute;"></div>
+                                                <div style="background: var(--pg-border-color);width: 14px;height: 3px;bottom: 0px;position: absolute;"></div>
                                                 <div class="m-5 position-relative"  style="height:150px;">
                                                     <div class="position-absolute end-0 top-0">
                                                         <label for="cols" class="form-label float-end">' . lang('Columns') . '</label>

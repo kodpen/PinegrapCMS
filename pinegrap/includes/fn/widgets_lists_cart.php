@@ -19,6 +19,11 @@
 //               cart widget's gift card part (key ^^__item_id^^).
 //   cart.item_schedule  the payment schedule of a line whose product lets
 //               the customer set it, for the schedule part (same key).
+//   cart.item_forms  a line's product form, a block per unit when the
+//               product asks for one per quantity, for the product form part
+//               (same key); cart.item_form_fields a block's fields (key
+//               ^^__form_key^^), cart.item_form_field_options the choices of a
+//               radio button or check box field (key ^^__field_key^^).
 //
 // The list reads ^^__ship_to_key^^, as the order view's lists do: 0 (the
 // static value) is the whole cart, a recipient's id that recipient's lines.
@@ -100,6 +105,70 @@ function pg_sw_list_cart_sources()
                 array('__schedule_period_options_html', lang('Choices of the frequency (HTML)')),
             ),
         ),
+        // A cart line's product form, a block per unit when the product
+        // asks for one per quantity: the cart widget's product form part
+        // (pg_sw_part_cart_item_form()) draws a box per block.
+        'cart.item_forms' => array(
+            'family'       => 'cart',
+            'key'          => '__item_id',
+            'label'        => lang('Product forms of the item'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__form_key', lang('Form in the order')),
+                array('__form_name', lang('Form name')),
+                array('__form_number', lang('Number of the form')),
+                array('__form_count', lang('Number of forms')),
+                array('__form_has_legend', lang('Has a heading (1 or empty)')),
+            ),
+        ),
+        // The fields of a product form block, in the product's order. The
+        // controls' names, values and whether they are required are the
+        // system's (pg_sw_cart_form_control()); __field_control picks which
+        // control a field shows.
+        'cart.item_form_fields' => array(
+            'family'       => 'cart',
+            'key'          => '__form_key',
+            'label'        => lang('Fields of the product form'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__field_key', lang('Field in the form')),
+                array('__field_label', lang('Label')),
+                array('__field_control', lang('Control of the field (input, textarea, select, choice, file, info)')),
+                array('__field_required', lang('Required (1 or empty)')),
+                array('__field_is_info', lang('Information field (1 or empty)')),
+                array('__field_has_info', lang('Has an information text (1 or empty)')),
+                array('__field_info_html', lang('Information (HTML)')),
+                array('__field_name', lang('Name of the control')),
+                array('__field_id', lang('ID of the control')),
+                array('__field_type', lang('Type of the input')),
+                array('__field_value', lang('Value')),
+                array('__field_maxlength', lang('Maximum length')),
+                array('__field_rows', lang('Rows')),
+                array('__field_cols', lang('Columns')),
+                array('__field_multiple', lang('Several choices (1 or empty)')),
+                array('__field_options_html', lang('Choices of the pick list (HTML)')),
+                array('__field_file', lang('Current file')),
+            ),
+        ),
+        // The choices of a radio button or check box field, each a control.
+        'cart.item_form_field_options' => array(
+            'family'       => 'cart',
+            'key'          => '__field_key',
+            'label'        => lang('Choices of the field'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__option_label', lang('Label')),
+                array('__option_value', lang('Value')),
+                array('__option_id', lang('ID of the control')),
+                array('__option_name', lang('Name of the control')),
+                array('__option_type', lang('Type of the input')),
+                array('__option_checked', lang('Chosen (1 or empty)')),
+                array('__option_required', lang('Required (1 or empty)')),
+            ),
+        ),
     );
 }
 
@@ -130,7 +199,75 @@ function pg_sw_list_cart_rows($items)
         $st = (int)$g('ship_to_id');
         if ($st > 0) $out['cart.items'][$st][] = $row;
     }
-    return $out + pg_sw_list_cart_gift_card_rows($items) + pg_sw_list_cart_schedule_rows($items, pg_cart_schedule_rules());
+    return $out + pg_sw_list_cart_gift_card_rows($items) + pg_sw_list_cart_schedule_rows($items, pg_cart_schedule_rules())
+        + pg_sw_list_cart_form_rows($items);
+}
+
+// The rows of the cart's product form lists: array('cart.item_forms' =>
+// array(item id => rows), 'cart.item_form_fields' => array(form key =>
+// rows), 'cart.item_form_field_options' => array(field key => rows)).
+// $items: the cart widget's items, a line with a product form with 'form'
+// (_pg_cart_item_form_blocks()). A block's key is the item id times 1000
+// plus its number, a field's the block's key and its place in three digits,
+// so keys stay digits. An information field without label or text gives no
+// row. Raw values but the information and a pick list's choices, which are
+// markup: the pass escapes the rest once.
+function pg_sw_list_cart_form_rows($items)
+{
+    $out = array('cart.item_forms' => array(), 'cart.item_form_fields' => array(), 'cart.item_form_field_options' => array());
+    foreach ((array)$items as $item) {
+        if (!is_array($item) || empty($item['form']) || !is_array($item['form'])) continue;
+        $id = isset($item['item_id']) ? (int)$item['item_id'] : 0;
+        if ($id <= 0) continue;
+        foreach ($item['form'] as $b) {
+            $key = (string)($id * 1000 + (int)$b['number']);
+            $out['cart.item_forms'][$id][] = array(
+                '__form_key'        => $key,
+                '__form_name'       => (string)$b['legend'],
+                '__form_number'     => (string)(int)$b['number'],
+                '__form_count'      => (string)(int)$b['count'],
+                '__form_has_legend' => !empty($b['has_legend']) ? '1' : '',
+            );
+            $n = 0;
+            foreach ($b['fields'] as $f) {
+                if ($f['kind'] === 'info' && $f['label'] === '' && $f['info'] === '') continue;
+                $fkey = $key . sprintf('%03d', ++$n);
+                $out['cart.item_form_fields'][$key][] = array(
+                    '__field_key'          => $fkey,
+                    '__field_label'        => $f['label'],
+                    '__field_control'      => $f['kind'],
+                    '__field_required'     => $f['required'] ? '1' : '',
+                    '__field_is_info'      => ($f['kind'] === 'info') ? '1' : '',
+                    '__field_has_info'     => ($f['info'] !== '') ? '1' : '',
+                    '__field_info_html'    => $f['info'],
+                    '__field_name'         => $f['name'],
+                    '__field_id'           => $f['id'],
+                    '__field_type'         => $f['type'],
+                    '__field_value'        => $f['value'],
+                    '__field_maxlength'    => $f['maxlength'] > 0 ? (string)(int)$f['maxlength'] : '',
+                    '__field_rows'         => $f['rows'] > 0 ? (string)(int)$f['rows'] : '',
+                    '__field_cols'         => $f['cols'] > 0 ? (string)(int)$f['cols'] : '',
+                    '__field_multiple'     => $f['multiple'] ? '1' : '',
+                    '__field_options_html' => ($f['kind'] === 'select') ? _pg_cart_item_form_options_html($f) : '',
+                    '__field_file'         => $f['file'],
+                );
+                if ($f['kind'] !== 'choice') continue;
+                foreach ($f['options'] as $opt) {
+                    $out['cart.item_form_field_options'][$fkey][] = array(
+                        '__option_label'    => $opt['label'],
+                        '__option_value'    => $opt['value'],
+                        '__option_id'       => $opt['id'],
+                        '__option_name'     => $f['name'],
+                        '__option_type'     => $f['type'],
+                        '__option_checked'  => $opt['selected'] ? '1' : '',
+                        // A check box group is never required as a whole.
+                        '__option_required' => ($f['required'] && $f['type'] === 'radio') ? '1' : '',
+                    );
+                }
+            }
+        }
+    }
+    return $out;
 }
 
 // The rows of the cart's schedule lists: array('cart.item_schedule' =>

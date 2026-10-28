@@ -234,6 +234,10 @@ function ws_command_turkish($language = null)
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
  *                the usage strip while it is written
+ *   app_id, app  the application that registered it and its name; 0 and ''
+ *                for a built-in command. An application's command
+ *                (ws_app_command_entry(), key app:<name>) comes after the
+ *                built-in ones, listed for a person only
  *
  * @param array|null $viewer leaves out the commands this person may not use
  * @return array[]
@@ -433,7 +437,17 @@ function ws_commands($viewer = null)
             'example'     => $entry['example'],
             'args'        => $entry['args'],
             'live'        => !empty($entry['live']),
+            'app_id'      => 0,
+            'app'         => '',
         );
+    }
+
+    // The commands applications registered, after the built-in ones; only for
+    // a person, so the registry without one touches no table.
+    if (is_array($viewer) && function_exists('ws_app_commands_live')) {
+        foreach (ws_app_commands_live() as $row) {
+            $out[] = ws_app_command_entry($row);
+        }
     }
 
     return $out;
@@ -1195,7 +1209,24 @@ function ws_command_run($viewer, $channel, $body, $options = array())
     if ($split === null) {
         $unknown = ws_command_unknown($body);
 
-        return ($unknown !== '') ? ws_command_unknown_answer($viewer, $unknown) : null;
+        if ($unknown === '') {
+            return null;
+        }
+
+        // An application's command goes to that application alone, where it
+        // may read the channel; anywhere else it is unknown.
+        $app_command = function_exists('ws_app_command_find') ? ws_app_command_find($unknown) : null;
+
+        if ($app_command !== null) {
+            $rest = trim((string) mb_substr(ltrim((string) $body), mb_strlen($unknown, 'UTF-8') + 1, null, 'UTF-8'));
+            $sent = ws_app_command_send($viewer, $channel, $app_command, $rest, (int) ($options['parent_id'] ?? 0));
+
+            if ($sent !== null) {
+                return $sent;
+            }
+        }
+
+        return ws_command_unknown_answer($viewer, $unknown);
     }
 
     $rest = $split['rest'];

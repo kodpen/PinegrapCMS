@@ -349,8 +349,9 @@ function test_workspace_flow_steps_digest_report_checkin_start()
 	pg_assert_same(1, $problems('start_action', array()));
 	pg_assert_same(0, $problems('start_action', array('target_id' => 2)));
 
-	// The action a box starts names no source action.
-	pg_assert_contains("'run_id'          => 0", ws_flow_steps_test_source('ws_step_run'));
+	// The action a box starts names no source action, unless the run is a
+	// converted action's.
+	pg_assert_contains("'run_id'          => ((int) \$row['id'] > 0) ? (int) (\$context['sched_run'] ?? 0) : 0", ws_flow_steps_test_source('ws_step_run'));
 }
 
 // The change box: kept in its shape, a delete changing no fields, what it
@@ -389,8 +390,20 @@ function test_workspace_flow_steps_change_config()
 		ws_step_action('change', ws_step_config_normalize('change', array('record' => 'page', 'action' => 'delete', 'id' => 4))));
 
 	// ws_scheduled_change() reads the channel of the action that runs it: a
-	// box has none, so no decision is posted under a scheduled action's name.
-	pg_assert_contains("'channel_id'  => 0", ws_flow_steps_test_source('ws_step_run'));
+	// box has none, so no decision is posted under a scheduled action's name;
+	// a converted action's run is that action, its card and channel.
+	$run = array('id' => 7);
+	$plain = ws_step_action_row($run, array('flow_name' => 'F'), null);
+
+	pg_assert_same(array('id' => 0, 'message_id' => 0, 'channel_id' => 0, 'name' => 'F', 'run_count' => 6, 'last_run_at' => 0), $plain);
+	pg_assert_same($plain, ws_step_action_row($run, array('flow_name' => 'F', 'anchor_id' => 5), array('id' => 5, 'flow_id' => 2, 'anchor' => 'hidden', 'name' => 'A')));
+	pg_assert_same($plain, ws_step_action_row($run, array('flow_name' => 'F', 'anchor_id' => 6), array('id' => 5, 'flow_id' => 2, 'anchor' => 'converted', 'name' => 'A')));
+
+	$anchor = array('id' => 5, 'flow_id' => 2, 'anchor' => 'converted', 'name' => 'A', 'message_id' => 40, 'channel_id' => 3, 'run_count' => 4, 'last_run_at' => 99);
+
+	pg_assert_same(array('id' => 5, 'message_id' => 40, 'channel_id' => 3, 'name' => 'A', 'run_count' => 3, 'last_run_at' => 99),
+		ws_step_action_row($run, array('flow_name' => 'F', 'anchor_id' => 5), $anchor));
+	pg_assert_contains('ws_step_action_row($run, $context, $anchor)', ws_flow_steps_test_source('ws_step_run'));
 }
 
 // Which record a change box changes, and to what, is read only by whoever

@@ -26,12 +26,12 @@ description: Plan (2026-10-21, step 1 done, answers open): each askable agent ge
    - 5a done (#2112, workspace-mcp-agent-identity.md): one avatar and icon per `mcp:<id>`, server.
    - 5b done (#2130): the @ picker draws the server's avatar/icon, the task's delegate tag its icon (workspace-mcp-agent-identity.md).
 
-## Open questions (recommendation)
-1. Which first: (a) model assistants, `@chatgpt` answers inside the site, (b) outside apps on the webhook, (c) both → step 1, then a.
-2. Licence: (a) model assistants on every site, (b) Premium only, like Pinegrap AI → owner.
-3. A handle equal to a person's name: (a) handles win, the picker shows the kind, (b) refused on save → b.
-4. Default in public channels for a new provider: (a) allowed, like Claude and Pinegrap AI, (b) off until a manager allows → a.
+## Which questions are answered? (#2418)
+1. Step 2 first, then (a) model assistants (`@chatgpt` answers inside the site).
+2. Licence (owner, 2026-10-27): model assistants with the site's own key on every site (a); Pinegrap AI stays Premium-only, separately.
+3. A handle equal to a person's name is refused on save (b).
+4. A new provider is allowed in public channels, like Claude and Pinegrap AI (a).
 5. An OAuth-connected app's messages as "ChatGPT (via Ayşe)": plans/claude-code-channel.md C5.
 
 ## Where to start?
-- Step 2 needs the schema and the owner's answers. Before step 3 recheck each provider's API, tool-call format and data terms.
+- Steps 2 and 3 wait until the new API design the owner is finishing lands and its routes are updated; then they are looked at again (owner, 2026-10-27, #2418). Before step 3 recheck each provider's API, tool-call format and data terms.

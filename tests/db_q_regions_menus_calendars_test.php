@@ -121,9 +121,12 @@ function db_q_regions_menus_calendars_test_files()
 {
 	return array(
 		'save_region_content.php' => 10,
-		'edit_ad_region.php' => 9,
-		'edit_menu.php' => 8,
-		'edit_menu_item.php' => 12,
+		'edit_ad_region.php' => 7,
+		'includes/forms/ad_region_form.php' => 2,
+		'edit_menu.php' => 6,
+		'includes/forms/menu_form.php' => 2,
+		'edit_menu_item.php' => 9,
+		'includes/forms/menu_item_form.php' => 2,
 		'edit_form_list_view.php' => 11,
 		'edit_calendar.php' => 10,
 		'add_calendar_event.php' => 3,

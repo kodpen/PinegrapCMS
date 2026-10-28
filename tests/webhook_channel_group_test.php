@@ -102,7 +102,8 @@ function test_webhook_channel_group_every_workspace_event_names_its_channel()
 
 		foreach ((array) ($sites[$event] ?? array()) as $payload) {
 			pg_assert_true((strpos($payload, "'channel_id'") !== false) || (strpos($payload, 'ws_task_event_payload(') !== false)
-				|| (strpos($payload, 'ws_app_mention_payload(') !== false) || (strpos($payload, 'ws_flow_run_event_body(') !== false), $event . ' names its channel');
+				|| (strpos($payload, 'ws_app_mention_payload(') !== false) || (strpos($payload, 'ws_app_command_payload(') !== false)
+				|| (strpos($payload, 'ws_flow_run_event_body(') !== false), $event . ' names its channel');
 		}
 	}
 
@@ -112,6 +113,7 @@ function test_webhook_channel_group_every_workspace_event_names_its_channel()
 
 	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_task_event_payload'), 'a task event carries its channel');
 	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_app_mention_payload'), 'a mention carries its channel');
+	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_app_command_payload'), 'an app command carries its channel');
 	pg_assert_contains("'channel_id'", webhook_channel_group_test_source('ws_flow_run_event_body'), 'a flow run event carries its channel');
 	pg_assert_contains('ws_group_event_payload($group)', webhook_channel_group_test_source('ws_group_announce'), 'a group event carries its group');
 }

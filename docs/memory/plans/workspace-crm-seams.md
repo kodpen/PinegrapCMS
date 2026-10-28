@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, 6 #2092, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23, 1 #1621, 2 #1622, 3 #1666, 4 #1681, 5 #1790, 6 #2092, 7 #2591, answers 3-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -19,14 +19,14 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 4. PR #1681 (workspace/workspace-customer-history.md): `ws_customer_history()`, union read; route; History on the card. Cart quotes join with quotes slice 5.
 5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md 4).
 6. PR #2092 (workspace/workspace-crm-lead-intake.md): lead step `ws_scheduled_lead()` and box `lead` on `form.submitted`: contact by `forms.contact_id`, else e-mail; reuses a channel from `ws_customer_channels()` or opens one with `builtin:new_customer`; `WS_SCHEDULED_LEAD_HOURLY`; duplicates left to view_contacts.php, `merge_contacts()`.
-7. Merge, behaviour change, ask first: `merge_contacts()` re-points (question 2) by one list (proposed) of every `contact_id` holder, shared with erasure (plans/privacy-data-pack-audit-log.md step 4), with `cart_quotes` (proposed), workflow-table cells.
+7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.
 8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #2246; storefront left.
 9. More tag sources, schema, ask first: `ws_refs.source_type` ENUM to VARCHAR (notes, workflow table rows `wtable_row`); `ws_record_refs()` (reads non-messages as tasks) checks `ws_note_access()` or `ws_wtable_*` (new) access per source, or personal notes and tables leak into "where was this record talked about"; next free Workspace label.
 10. Later, schema: custom fields, pipelines (question 1) [9]. Candidates: calendar visit (`ws_events.kind` visit), "no order in N days", `lead_source` from `referral_sources`.
 
 ## Open questions (recommendation)
 1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
-2. Merge (7): (a) re-point orders, forms, email_recipients, ws_channels, ws_refs, cart quotes, ERP account (`erp_account_link_contact()`; refuse if both have one), keep `consent_log` (proof), (b) warn only, (c) a plus `consent_log` → a.
+2. Merge (7): answered (#2421), (a): re-point every `contact_id` holder by one list shared with erasure, the ERP account refused when both have one, `consent_log` kept (proof).
 3. History (4): (a) union read, (b) activity table → a.
 
 ## Which are answered?
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 7, 9, 10 ask first; 8's storefront writers wait on an owner question (core/audit-trail-contacts.md "not hooked").
+- 7 done; 9, 10 ask first; 8: storefront writers follow 7's list (core/audit-trail-contacts.md "not hooked").
