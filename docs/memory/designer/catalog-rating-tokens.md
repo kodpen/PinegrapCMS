@@ -23,5 +23,5 @@ description: Product rating in the catalog widgets: __rating_avg / __rating_coun
 ## What about columns, variants and structured data?
 - The five SELECTs (listing, three product page queries, variant query) take `_pg_catalog_rating_columns(pg_reviews_ready())`: before the 11.0.14 columns exist they read `0 AS rating_avg`, because a missing column fails the whole query and the listing shows "No products found".
 - `$vproducts` carries bare `rating_avg` / `rating_count`: `pg_civ_variants.js` swaps only fields it is given and switches the flags from `rating_count`.
-- `_pg_build_product_jsonld()` and the RSS columns stay without a rating: designer aggregateRating, the review form and `__reviews` wait for designable-comments slice 20.
+- `_pg_build_product_jsonld()` and the RSS columns stay without a rating: no reviews show on a `standard` page (#2799).
 - Tests: `tests/catalog_rating_tokens_test.php`; `check_bindings.php` counts both tokens and flags.

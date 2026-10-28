@@ -33,4 +33,4 @@ module: comments
 ## Where is it tested?
 - `tests/comments_test.php`: the table page type x widget x item type, the record and item rules, `pg_comment_classic_item_types()`, no query without a page, the `add_comment.php` wiring.
 
-Related: [[account-widget-forms]], [[record-view-filters]], [[designable-comments]], docs/memory/core/fn-module-map.md
+Related: [[account-widget-forms]], [[record-view-filters]], [[comments-widget-decisions]], docs/memory/core/fn-module-map.md
