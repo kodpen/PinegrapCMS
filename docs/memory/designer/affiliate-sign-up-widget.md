@@ -16,7 +16,7 @@ module: widgets_affiliate_sign_up
 
 ## What happens once the application is sent?
 - A next page (the widget's or the row's): the visitor goes there and its content is the e-mail they get, as before.
-- None, on a designed page (since step 5d, PR #2700; decided in #2436 answer 1b): the form posts `pg_widget_id`; `affiliate_sign_up_form.php` reads that widget's settings (`pg_member_widget_cfg()`), leaves the liveform `screen=confirm` and the notice `pg_member_confirmation_notice()` (its `confirmation_message`, else "Thank you. Your affiliate application has been sent.") and returns to `current_page_id`. The widget then keeps its design, drops its controls and draws no form (as forgot password does). The e-mail stays the classic confirmation screen. The legacy page still goes to `affiliate_sign_up_confirmation.php`.
+- None, on a designed page (since step 5d, PR #2697; decided in #2436 answer 1b): the form posts `pg_widget_id`; `affiliate_sign_up_form.php` reads that widget's settings (`pg_member_widget_cfg()`), leaves the liveform `screen=confirm` and the notice `pg_member_confirmation_notice()` (its `confirmation_message`, else "Thank you. Your affiliate application has been sent.") and returns to `current_page_id`. The widget then keeps its design, drops its controls and draws no form (as forgot password does). The e-mail stays the classic confirmation screen. The legacy page still goes to `affiliate_sign_up_confirmation.php`.
 
 ## What is left out?
 - No PHP default tree: only the JS starter. Like the classic page it does not check that the affiliate programme is on.
