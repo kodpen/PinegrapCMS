@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -90,6 +90,9 @@ function test_order_completion_tail_writes_in_order()
 		'ship and delivery dates' => array("delivery_date = '", 'delivery_date = ?'),
 		'stock' => array('UPDATE products SET inventory_quantity = (inventory_quantity - ?)'),
 		'stock announced' => array('pg_product_stock_changed('),
+		'reservation spots' => array('"UPDATE remaining_reservation_spots'),
+		'membership extended' => array('UPDATE contacts SET expiration_date = ? WHERE member_id = ?'),
+		'folder access' => array('"INSERT INTO aclfolder ('),
 		'gift cards issued' => array('"INSERT INTO gift_cards ('),
 		'reward points' => array('UPDATE user SET user_reward_points = ?'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
@@ -259,4 +262,32 @@ function test_order_completion_ship_date_adjustment()
 	pg_assert_same('2026-12-05', pg_order_ship_date_adjusted('2026-12-03', 2, '2026-11-20'), 'later');
 	pg_assert_same('2026-11-20', pg_order_ship_date_adjusted('2026-11-21', -3, '2026-11-20'), 'never before the order date');
 	pg_assert_same('2026-12-03', pg_order_ship_date_adjusted('2026-12-03', 0, '2026-11-20'), 'no adjustment');
+}
+
+function test_order_completion_submit_order_calls_the_line_functions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	foreach (array('pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+	}
+
+	pg_assert_same(0, substr_count($source, 'remaining_reservation_spots'), 'no reservation write of its own');
+	pg_assert_same(0, substr_count($source, 'UPDATE products SET inventory_quantity'), 'no stock write of its own');
+}
+
+function test_order_completion_extended_until()
+{
+	pg_assert_same('2027-01-30', pg_order_extended_until('2026-12-01', 30, 2, '2026-11-10'), 'a future end moves on by days x quantity');
+	pg_assert_same('2026-11-20', pg_order_extended_until('2026-11-01', 10, 1, '2026-11-10'), 'a past end starts from today');
+	pg_assert_same('2026-11-20', pg_order_extended_until('2026-11-10', 10, 1, '2026-11-10'), 'ending today starts from today');
+	pg_assert_same('2026-11-20', pg_order_extended_until('', 10, 1, '2026-11-10'), 'no end yet starts from today');
+}
+
+function test_order_completion_folder_access_extends()
+{
+	pg_assert_true(pg_order_folder_access_extends('', ''), 'no access yet');
+	pg_assert_true(pg_order_folder_access_extends('1', '2026-12-01'), 'access that ends');
+	pg_assert_false(pg_order_folder_access_extends('1', '0000-00-00'), 'access for ever stays');
+	pg_assert_false(pg_order_folder_access_extends('2', '2026-12-01'), 'edit rights stay');
 }
