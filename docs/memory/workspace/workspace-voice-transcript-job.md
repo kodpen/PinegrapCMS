@@ -1,9 +1,9 @@
 ---
 name: workspace-voice-transcript-job
-description: How a voice message is written out (V3b): the queue on upload, ws_voice_kick() and the hourly job, answers and holds, delete for everyone, file.voice in the API
+description: How a voice message is written out (V3b #2696): the queue on upload, ws_voice_kick() and the hourly job, answers and holds, delete for everyone, file.voice in the API
 ---
 
-## How is a recording written out? (V3b)
+## How is a recording written out? (V3b, #2696)
 - Both uploads (`ws_message_send_file_bytes()`, the API's files.create) call `ws_voice_queue()`: only a recorder name (`ws_voice_is_recording()`: `voice-….weba/ogg/m4a…`) gets a row, `queued` when transcripts are on and the channel allows them, else '' (never asked).
 - `ws_voice_carry_on()` runs `ws_voice_kick()` after the answer went back where PHP-FPM can (`fastcgi_finish_request()`, session closed first); elsewhere (IIS, mod_php) `ws_voice_job()` in workspace_recurring_job.php, hourly, until V3c gives the panel a kick.
 - `ws_voice_kick()`: one call at a time (`GET_LOCK('pg_ws_voice_run')`), budget 60 s (job 300 s), watchdog (queued over a day → failed, running over 15 min → queued again or failed after 3 attempts). `ws_voice_run()` re-checks the message, the channel rule and the size (`WS_VOICE_MAX_BYTES` 6 MB), then `ws_voice_call()`: multipart (`ws_voice_multipart()`) through `api_http_request()` (pinned address, no internal hosts), `response_format=json`, 120 s.
