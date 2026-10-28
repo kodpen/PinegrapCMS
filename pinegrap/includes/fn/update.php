@@ -1524,7 +1524,8 @@ function pg_update_permissions_block($user)
         return $block;
     }
 
-    $permissions = pg_write_permission_scan();
+    // Only the folders are listed here, so no file is asked (see there).
+    $permissions = pg_write_permission_scan(false, false);
 
     if ($permissions['directories_count'] == 0) {
         return $block;
