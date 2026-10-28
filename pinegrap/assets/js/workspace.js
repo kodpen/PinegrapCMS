@@ -3076,13 +3076,13 @@
             // checklist. Callers
             // add their own (save, cancel) to the row it answers.
             tools: function (withList) {
-                var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
+                var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
                 mention.addEventListener('click', function () { field.insertTrigger('@'); });
 
-                var tag = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
+                var tag = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
                 tag.addEventListener('click', function () { field.insertTrigger('#'); });
 
-                var emoji = button('btn btn-sm btn-ghost', '', 'bi-emoji-smile', t('insert_emoji'));
+                var emoji = button('btn btn-sm btn-text theme-secondary', '', 'bi-emoji-smile', t('insert_emoji'));
                 emoji.addEventListener('click', function (event) {
                     var box = emoji.getBoundingClientRect();
 
@@ -4188,7 +4188,7 @@
             }
 
             if (note) {
-                var cancel = button('btn btn-sm btn-ghost', t('cancel'));
+                var cancel = button('btn btn-sm btn-text theme-secondary', t('cancel'));
                 cancel.addEventListener('click', function () { self.drawNotes(self.task); });
                 actions.appendChild(cancel);
             }
@@ -11643,7 +11643,7 @@
             var parts = [];
 
             // A file from this device, or one of the file manager's.
-            var attach = button('btn btn-sm btn-ghost', '', 'bi-paperclip', t('attach'));
+            var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
@@ -11660,15 +11660,15 @@
             });
             parts.push(attach);
 
-            var mention = button('btn btn-sm btn-ghost', '', 'bi-at', t('mention'));
+            var mention = button('btn btn-sm btn-text theme-secondary', '', 'bi-at', t('mention'));
             mention.addEventListener('click', function () { self.insertTrigger('@'); });
             parts.push(mention);
 
-            var record = button('btn btn-sm btn-ghost', '', 'bi-hash', t('tag_record'));
+            var record = button('btn btn-sm btn-text theme-secondary', '', 'bi-hash', t('tag_record'));
             record.addEventListener('click', function () { self.insertTrigger('#'); });
             parts.push(record);
 
-            var emoji = button('btn btn-sm btn-ghost', '', 'bi-emoji-smile', t('insert_emoji'));
+            var emoji = button('btn btn-sm btn-text theme-secondary', '', 'bi-emoji-smile', t('insert_emoji'));
             emoji.addEventListener('click', function (event) {
                 var box = emoji.getBoundingClientRect();
 
@@ -11681,7 +11681,7 @@
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
-            var insert = button('btn btn-sm btn-ghost', '', 'bi-plus-circle', t('insert'));
+            var insert = button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert'));
             insert.addEventListener('click', function (event) {
                 var box = insert.getBoundingClientRect();
 
@@ -11711,7 +11711,7 @@
             });
             parts.push(insert);
 
-            var command = button('btn btn-sm btn-ghost', '', 'bi-slash-square', t('commands'));
+            var command = button('btn btn-sm btn-text theme-secondary', '', 'bi-slash-square', t('commands'));
             command.addEventListener('click', function () {
                 // Empty: a / to start a command. Only a / (or its list is
                 // open): the second press takes it back.
@@ -12016,7 +12016,7 @@
             }
 
             var id = 'ws_ai_rewrite_' + (++aiRewriteSeq);
-            var node = button('btn btn-sm btn-ghost pg-ai-write-btn ws-ai-rewrite d-none', '', 'bi-stars', t('tool_ai_rewrite'));
+            var node = button('btn btn-sm btn-text theme-secondary pg-ai-write-btn ws-ai-rewrite d-none', '', 'bi-stars', t('tool_ai_rewrite'));
 
             node.setAttribute('data-pg-ai-write', JSON.stringify({ target: 'ws_message', record: 'message', record_id: 0, field: id, format: 'message' }));
             node.setAttribute('aria-expanded', 'false');
@@ -22682,7 +22682,7 @@
         function toolbar() {
             var rich = field.rich;
             var tool = function (iconName, label, action) {
-                var node = button('btn btn-sm btn-ghost', '', iconName, label);
+                var node = button('btn btn-sm btn-text theme-secondary', '', iconName, label);
                 node.addEventListener('click', action);
                 return node;
             };
