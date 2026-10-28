@@ -278,6 +278,8 @@ if (
 
 $pretty_urls = check_if_pretty_urls_are_enabled($_POST['page_id']);
 
+$collection_kinds = pg_coll_field_kinds(is_string($_POST['page_id'] ?? null) ? (int) $_POST['page_id'] : 0);
+
 // loop through all fields in order to validate fields
 foreach ($fields as $field) {
     // if the field is an office use only field and we need to deal with office use only fields
@@ -399,6 +401,9 @@ foreach ($fields as $field) {
                 $liveform->mark_error($field['id'], $message);
             }
         }
+
+        // A number, an image or a reference of a collection's field.
+        pg_coll_check_field($liveform, $field, $collection_kinds);
 
         // If this field is a title field and there is not already an error for this field,
         // and the visitor entered a value for this field, and pretty URLs are enabled,
