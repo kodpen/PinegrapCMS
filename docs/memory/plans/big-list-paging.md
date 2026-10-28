@@ -16,5 +16,5 @@ description: Steps of refactor-candidates item 3: the big panel lists (users, su
 - 4. Products (`view_products.php`): done, PR #2655 (`ui/product-list-paging.md`).
 - 5. Commissions (`view_commissions.php`, `view_recurring_commission_profiles.php`): done, PR #2675; closes #2038.
 - 6. Audit trail (`view_audit_log.php`): done, PR #2719; changes read when a fold opens (`ui/audit-log-paging.md`).
-- 7. Firewall log (`view_waf_log.php`): it printed the newest 500 rows of the period. Now paged, sorted and searched on the server, period/category/search filters kept in the address and sent nested (`filters`). `includes/fn/waf_log_list.php`, action `waf_log_list_rows` (`ui/waf-log-paging.md`). PR #PRNUM.
+- 7. Firewall log (`view_waf_log.php`): it printed the newest 500 rows of the period. Now paged, sorted and searched on the server, period/category/search filters kept in the address and sent nested (`filters`). `includes/fn/waf_log_list.php`, action `waf_log_list_rows` (`ui/waf-log-paging.md`). PR #2776.
 - 8. `sitemap.xml` built on every request (`get_sitemap.xml.php`): a cache only if its invalidation points are safe. Not started.
