@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, member sign-in code
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run
 ---
 
 ## Why?
@@ -16,7 +16,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 
 ## What remains?
 - Done: provider interface + Netgsm (PR #600), `sms_outbox` queue (PR #610), order and shipping messages (PR #1839, `platform/sms-order-messages.md`), e-mail consent writers (PR #1581, `core/consent-log-writers.md`). Commercial SMS kinds stay refused by `pg_sms_send()` until SMS consent exists.
-3b. Codes by the normal SMS route (#2432). ~~COD code~~ (done, PR #2669, #2670; `platform/sms-codes.md`). Left: the member code as #2672 decided (shape on the issue; `core/two-step-sign-in.md`), a new PR on the same branch restarted from `development`.
+3b. ~~COD code and member sign-in code by the normal SMS route~~ (done, PR #2669 and #PRNUM; #2670, #2672; `platform/sms-codes.md`).
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
@@ -31,4 +31,3 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 
 ## Where to start?
 - First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
-- Step 3b member code: read #2672 and `platform/sms-codes.md`.

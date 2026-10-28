@@ -200,7 +200,7 @@ function pg_sms_code_token_ok($session_token, $posted_token)
  */
 function pg_sms_code_event($purpose)
 {
-    $events = array('cod' => 'cod_code');
+    $events = array('cod' => 'cod_code', 'signin' => 'signin_code');
 
     return isset($events[$purpose]) ? $events[$purpose] : '';
 }
@@ -239,6 +239,68 @@ function pg_sms_code_on($purpose)
 function pg_sms_cod_applies($payment_method, $on_account, $on)
 {
     return $on && !$on_account && ((string) $payment_method === 'Offline Payment');
+}
+
+/**
+ * Whether an account may ask for its second step's code by SMS (pure): a
+ * member (role 3) that already has a second factor (an authenticator key or
+ * a passkey), with a mobile number on its contact, while the event is on.
+ * Staff accounts keep the stronger factor; the SMS code is never a factor of
+ * its own, so an account without one is never offered it.
+ *
+ * @param int    $role       user.user_role
+ * @param bool   $has_factor pg_mfa_has_factor()
+ * @param bool   $on         pg_sms_code_on('signin')
+ * @param string $number     the contact's mobile number, pg_sms_number()
+ * @return bool
+ */
+function pg_sms_signin_offered($role, $has_factor, $on, $number)
+{
+    return $on && $has_factor && ((int) $role === 3) && ((string) $number !== '');
+}
+
+/**
+ * The mobile number an account's sign-in code goes to: the one on the
+ * contact linked to the account, when the account may ask for one
+ * (pg_sms_signin_offered()).
+ *
+ * @param int $user_id
+ * @return string E.164 digits, '' when no code is offered
+ */
+function pg_sms_signin_number($user_id)
+{
+    if (!pg_sms_code_on('signin')) {
+        return '';
+    }
+
+    $row = db_item(
+        "SELECT user.user_role, contacts.mobile_phone
+        FROM user
+        LEFT JOIN contacts ON contacts.id = user.user_contact
+        WHERE user.user_id = '" . (int) $user_id . "'");
+
+    if (!$row) {
+        return '';
+    }
+
+    $number = pg_sms_number((string) $row['mobile_phone']);
+
+    return pg_sms_signin_offered($row['user_role'], pg_mfa_has_factor($user_id), true, $number) ? $number : '';
+}
+
+/**
+ * Whether this session holds a sign-in code sent for the account.
+ *
+ * @param int $user_id
+ * @return bool
+ */
+function pg_sms_signin_sent($user_id)
+{
+    $store = isset($_SESSION['software']['sms_code']['signin']) ? $_SESSION['software']['sms_code']['signin'] : null;
+
+    return is_array($store) && isset($store['subject'], $store['time'])
+        && ($store['subject'] === 'user:' . (int) $user_id)
+        && ((time() - (int) $store['time']) <= pg_sms_code_lifetime());
 }
 
 /**
@@ -391,6 +453,8 @@ function pg_sms_code_sentence($error, $masked = '')
             return lang('Too many codes were asked for. Please wait a few minutes and try again.');
         case 'send':
             return lang('The code could not be sent. Please try again.');
+        case 'no_number':
+            return lang('A code cannot be sent by SMS to this account.');
         case 'code_missing':
             return lang('Enter the confirmation code we texted to you. Use "Send the code" to get one.');
         case 'code_wrong':

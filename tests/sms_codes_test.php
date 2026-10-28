@@ -147,3 +147,39 @@ function test_sms_codes_limits_and_mask()
 	pg_assert_same('•••• 67', pg_sms_code_masked('905321234567'));
 	pg_assert_same('', pg_sms_code_masked('12'));
 }
+
+// The sign-in code is offered to a member with a second factor and a mobile
+// number, while the event is on; never to staff, never as a factor of its own.
+function test_sms_codes_signin_offered()
+{
+	pg_assert_true(pg_sms_signin_offered(3, true, true, '905321234567'));
+	pg_assert_true(pg_sms_signin_offered('3', true, true, '905321234567'), 'role as read from the database');
+	foreach (array(0, 1, 2) as $role) {
+		pg_assert_false(pg_sms_signin_offered($role, true, true, '905321234567'), 'staff role ' . $role);
+	}
+	pg_assert_false(pg_sms_signin_offered(3, false, true, '905321234567'), 'no factor');
+	pg_assert_false(pg_sms_signin_offered(3, true, false, '905321234567'), 'event off');
+	pg_assert_false(pg_sms_signin_offered(3, true, true, ''), 'no mobile number');
+	pg_assert_same('signin_code', pg_sms_code_event('signin'));
+}
+
+// The screen shows the code field only while a code for this account was
+// sent in the session and still works; a sign-in code never checks an order.
+function test_sms_codes_signin_sent()
+{
+	$saved = isset($_SESSION) ? $_SESSION : null;
+	$_SESSION = array('software' => array());
+
+	pg_assert_false(pg_sms_signin_sent(5), 'none');
+	pg_sms_code_keep($_SESSION['software']['sms_code']['signin'], 'signin', 'user:5', '905321234567', '123456', time());
+	pg_assert_true(pg_sms_signin_sent(5));
+	pg_assert_false(pg_sms_signin_sent(6), 'another account');
+	pg_assert_same('code_expired', pg_sms_code_verify('cod', 'user:5', '0532 123 45 67', '123456'), 'another purpose');
+	pg_assert_same('', pg_sms_code_verify('signin', 'user:5', '0532 123 45 67', '123456'));
+	pg_assert_false(pg_sms_signin_sent(5), 'used');
+
+	pg_sms_code_keep($_SESSION['software']['sms_code']['signin'], 'signin', 'user:5', '905321234567', '123456', time() - pg_sms_code_lifetime() - 1);
+	pg_assert_false(pg_sms_signin_sent(5), 'too old');
+
+	$_SESSION = $saved;
+}
