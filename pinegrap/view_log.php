@@ -518,22 +518,22 @@ if (!$_POST) {
                     <div class="col-12">
                         <h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('Start') . '</label>
-                        <select class="form-control my-1" name="start_month">' . select_month($saved_start_month) . '</select>
+                    <fieldset class="col-12" data-pg-date-selects>
+                        <legend class="form-label">' . lang('Start') . '</legend>
+                        <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month($saved_start_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-control my-1" name="start_day">' . select_day($saved_start_day) . '</select>
-                            <select class="form-control my-1" name="start_year">' . $year_options . '</select>
+                            <select class="form-control my-1" name="start_day" aria-label="' . h(lang('Day')) . '">' . select_day($saved_start_day) . '</select>
+                            <select class="form-control my-1" name="start_year" aria-label="' . h(lang('Year')) . '">' . $year_options . '</select>
                         </div>
-                    </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('End') . '</label>
-                        <select class="form-control my-1" name="stop_month">' . select_month($saved_stop_month) . '</select>
+                    </fieldset>
+                    <fieldset class="col-12" data-pg-date-selects>
+                        <legend class="form-label">' . lang('End') . '</legend>
+                        <select class="form-control my-1" name="stop_month" aria-label="' . h(lang('Month')) . '">' . select_month($saved_stop_month) . '</select>
                         <div class="input-group input-group-sm">
-                            <select class="form-control my-1" name="stop_day">' . select_day($saved_stop_day) . '</select>
-                            <select class="form-control my-1" name="stop_year">' . $year_options . '</select>
+                            <select class="form-control my-1" name="stop_day" aria-label="' . h(lang('Day')) . '">' . select_day($saved_stop_day) . '</select>
+                            <select class="form-control my-1" name="stop_year" aria-label="' . h(lang('Year')) . '">' . $year_options . '</select>
                         </div>
-                    </div>
+                    </fieldset>
                     <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
                         <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1">
                             <i class="material-icons me-3">sync</i>' . lang('Update') . '
@@ -550,6 +550,7 @@ if (!$_POST) {
                     document.form.stop_day.value = "' . escape_javascript($stop_day) . '";
                     document.form.stop_year.value = "' . escape_javascript($stop_year) . '";
                 </script>
+                ' . get_date_picker_format() . pg_fields_script() . '
             </form>
         </div>';
 

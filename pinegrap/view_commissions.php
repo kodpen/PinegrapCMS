@@ -157,7 +157,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
         <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_commissions.php" method="get" name="form">
             <div class="row">
                 <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
-                <fieldset class="col-12">
+                <fieldset class="col-12" data-pg-date-selects>
                     <legend class="form-label">' . lang('Start') . '</legend>
                     <select class="form-control my-1" name="start_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['start_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
@@ -165,7 +165,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                         <select class="form-control my-1" name="start_year" aria-label="' . h(lang('Year')) . '">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['start_year'] ?? '')) . '</select>
                     </div>
                 </fieldset>
-                <fieldset class="col-12">
+                <fieldset class="col-12" data-pg-date-selects>
                     <legend class="form-label">' . lang('End') . '</legend>
                     <select class="form-control my-1" name="stop_month" aria-label="' . h(lang('Month')) . '">' . select_month(($_SESSION['software']['ecommerce']['view_commissions']['stop_month'] ?? '')) . '</select>
                     <div class="input-group input-group-sm">
@@ -173,6 +173,7 @@ if (($_SESSION['software']['ecommerce']['view_commissions']['advanced_filters'] 
                         <select class="form-control my-1" name="stop_year" aria-label="' . h(lang('Year')) . '">' . select_year($years, ($_SESSION['software']['ecommerce']['view_commissions']['stop_year'] ?? '')) . '</select>
                     </div>
                 </fieldset>
+                ' . get_date_picker_format() . pg_fields_script() . '
                 <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
                     <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
                 </div>
