@@ -119,52 +119,11 @@ $current_month['stop_year'] = $current_month['new_year'];
 
 $increase_month = $month_steps['next'];
 
-$decrease_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
-// if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
-if (date('l', $decrease_week['start_date_timestamp']) == 'Sunday') {
-    $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['start_date_timestamp']);
-
-// else start date is not a Sunday, so we need to do last sunday twice (add 12:00:00 to prevent a bug that results in Saturday being returned)
-} else {
-    $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['start_date_timestamp']);
-    $decrease_week['new_time_start'] = strtotime('last sunday 12:00:00', $decrease_week['new_time_start']);
-}
-$decrease_week['new_time_stop'] = strtotime('Saturday', $decrease_week['new_time_start']);
-$decrease_week['start_month'] = date('m', $decrease_week['new_time_start']);
-$decrease_week['start_day'] = date('d', $decrease_week['new_time_start']);
-$decrease_week['start_year'] = date('Y', $decrease_week['new_time_start']);
-$decrease_week['stop_month'] = date('m', $decrease_week['new_time_stop']);
-$decrease_week['stop_day'] = date('d', $decrease_week['new_time_stop']);
-$decrease_week['stop_year'] = date('Y', $decrease_week['new_time_stop']);
-
-// if today is Sunday
-if (date('l') == 'Sunday') {
-    $current_week['new_time_start'] = strtotime('Sunday');
-} else {
-    $current_week['new_time_start'] = strtotime('last Sunday');
-}
-$current_week['new_time_stop'] = strtotime('Saturday', $current_week['new_time_start']);
-$current_week['start_month'] = date('m', $current_week['new_time_start']);
-$current_week['start_day'] = date('d', $current_week['new_time_start']);
-$current_week['start_year'] = date('Y', $current_week['new_time_start']);
-$current_week['stop_month'] = date('m', $current_week['new_time_stop']);
-$current_week['stop_day'] = date('d', $current_week['new_time_stop']);
-$current_week['stop_year'] = date('Y', $current_week['new_time_stop']);
-
-$increase_week['start_date_timestamp'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
-// if start date is a Sunday
-if (date('l', $increase_week['start_date_timestamp']) == 'Sunday') {
-    $increase_week['new_time_start'] = strtotime('2 Sunday', $increase_week['start_date_timestamp']);
-} else {
-    $increase_week['new_time_start'] = strtotime('Sunday', $increase_week['start_date_timestamp']);
-}
-$increase_week['new_time_stop'] = strtotime('Saturday', $increase_week['new_time_start']);
-$increase_week['start_month'] = date('m', $increase_week['new_time_start']);
-$increase_week['start_day'] = date('d', $increase_week['new_time_start']);
-$increase_week['start_year'] = date('Y', $increase_week['new_time_start']);
-$increase_week['stop_month'] = date('m', $increase_week['new_time_stop']);
-$increase_week['stop_day'] = date('d', $increase_week['new_time_stop']);
-$increase_week['stop_year'] = date('Y', $increase_week['new_time_stop']);
+// The week starts on the panel language's first day (Monday in Turkish).
+$week_steps = pg_list_period_week_steps($_SESSION['software']['forms']['view_submitted_forms'] ?? array());
+$decrease_week = $week_steps['previous'];
+$current_week = $week_steps['current'];
+$increase_week = $week_steps['next'];
 
 $decrease_day['new_time'] = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '') - 1, ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $decrease_day['new_month'] = date('m', $decrease_day['new_time']);

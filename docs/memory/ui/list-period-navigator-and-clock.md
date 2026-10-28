@@ -6,7 +6,7 @@ module: list_period
 
 ## Where do the ‹ Month › arrows go?
 - `pg_list_period_month_steps($range)` gives the whole month before and after the LAST month of the range on screen; the orders, contacts and visitor report screens read `previous` / `next` from it. Before (#2039) each screen computed start month ± 1 on its own: from the default "26 September – 27 October" Previous showed August and the contacts' all-time range (from 2020) stepped to April 2020. A missing or impossible stop month counts as the current month.
-- The submitted forms list and the order report read it too since #2039's second part; the order report's Next month link also keeps the report's `id` now (it dropped it and opened the default report). `pg_period_unit()`'s Sunday-first week (`includes/fn/output.php`) and the screens' Sunday-to-Saturday week steps are unchanged.
+- The submitted forms list and the order report read it too since #2039's second part; the order report's Next month link also keeps the report's `id` now (it dropped it and opened the default report). The week arrows: `list-period-week.md`.
 
 ## How is the range heading written?
 - `pg_list_period_heading($range)` prints both dates in the site's date order with the month name in the panel language: "26 Eylül 2026 – 27 Ekim 2026" on a day/month site, "September 26, 2026 – October 27, 2026" otherwise; a one-day range once. The orders, contacts, visitor report and submitted forms headings use it (they printed "Eylül 26, 2026"). The order report's range badge comes from `get_absolute_time()` and is `fg-body` (it was `fg-black`, unreadable in the dark theme, #2058).
