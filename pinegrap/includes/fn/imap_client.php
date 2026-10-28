@@ -831,7 +831,8 @@ function pg_imap_utf7_encode($name)
 {
     $out = '';
     $run = '';
-    $chars = preg_split('//u', (string) $name, -1, PREG_SPLIT_NO_EMPTY);
+    // Checked first: older PCRE builds split broken UTF-8 instead of failing.
+    $chars = preg_match('//u', (string) $name) ? preg_split('//u', (string) $name, -1, PREG_SPLIT_NO_EMPTY) : false;
 
     if ($chars === false) {
         // Not UTF-8: only its ASCII part can be named.
