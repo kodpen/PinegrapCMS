@@ -91,7 +91,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-cloudflare-email-obfuscation.md: Panel body wrapped in <!--email_off--> so Cloudflare Email Obfuscation does not show staff "[email protected]"; which functions, what stays protected, the Cloudflare-side rule
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-css-tokens.md: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rules read, the alias block on :root and [data-bs-theme], color-mix() instead of -rgb, what is converted
-- panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B11
+- panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
 - panel-help-links.md: Where a panel screen's help goes: get_help_url.php maps script names (and list filters) to page#anchor on pinegrap.com; the 'help' property, language prefix, private label, F1, adding a new screen.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.

@@ -1,6 +1,6 @@
 ---
 name: panel-focus-ring
-description: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B11
+description: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
 ---
 
 ## Which tokens draw the panel's focus ring?
@@ -15,6 +15,6 @@ description: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k
 - The ring colour was declared twice: the v5 `rgba()` in the layered first `:root` block and the `color-mix()` in the unlayered bridge, which always won. The layered one went.
 - Checked in Chromium with the old and new stylesheets: 46 elements (links, buttons, fields, `.form-adorn`, pagination, `.btn-close`, `.pg-sale-ig`, role card, designer home cards, template palette, skip link), light and dark plus a nested opposite theme, at rest and `:focus-visible`, transitions off. Computed styles (colours compared as 8-bit RGBA, since `color-mix()` serialises as `color(srgb …)`) and element screenshots were equal. A unit test cannot render CSS; `tests/bs6_focus_ring_test.php` guards the source.
 
-## Which rings wait for B11?
-- Their size differs from v6's 3px outline with 1px offset, so moving them changes pixels: the global WCAG rule (2px outline, 2px offset, 0.2rem shadow), `.no-popover` links, the skip link (3px, 2px), `.pg-role-card` (0.25rem shadow) and the designer home's `.sdh-start`, `.sdh-card`, `.sdh-page` (0.2rem shadow). Their colour is already on the token.
+## Which rings wait for B10?
+- Their size differs from v6's 3px outline with 1px offset, so moving them changes pixels; that is B10 token tuning, which needs the owner's visual approval: the global WCAG rule (2px outline, 2px offset, 0.2rem shadow), `.no-popover` links, the skip link (3px, 2px), `.pg-role-card` (0.25rem shadow) and the designer home's `.sdh-start`, `.sdh-card`, `.sdh-page` (0.2rem shadow). Their colour is already on the token.
 - Workspace rings use the Workspace accent (`--ws-accent`), not the panel ring (`workspace/workspace-ui-scale.md`).
