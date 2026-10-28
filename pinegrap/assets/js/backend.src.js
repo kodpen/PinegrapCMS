@@ -6419,11 +6419,19 @@ function editBarcodeTemplate(opts) {
 /* ════════════════════════════════════════════════════════════════════════
    PRODUCT BARCODE PRINT  (view_products.php)
    Fetches the first barcode for a product and opens a print window.
-   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate, productMap }.
+   Page must set window._pgViewBarcodeOpts = { apiUrl, token, labelTemplate };
+   the button carries what the label prints in data-pg-barcode-product (JSON:
+   sku, short_description, price, productImageSrc).
 ════════════════════════════════════════════════════════════════════════ */
-function pgPrintProductBarcode(productId) {
+function pgPrintProductBarcode(productId, button) {
     var opts = window._pgViewBarcodeOpts || {};
-    var p = (opts.productMap || {})[productId] || {};
+    var p = {};
+
+    try {
+        p = JSON.parse((button && button.getAttribute('data-pg-barcode-product')) || '{}') || {};
+    } catch (e) {
+        p = {};
+    }
 
     /*
      * The print window has to be opened synchronously, while the click that started
