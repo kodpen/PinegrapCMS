@@ -208,7 +208,7 @@ pg_page_shell([
                     </div>
                     <div class="form-text px-5 pb-5">' . h(lang(array('string' => '{var:1} product(s) on the count; {var:2} piece(s) of difference in all. Products not on the count are left as they are.', 'vars' => array(count($items), $total_diff)))) . '</div>
                 </div>
-                ' . ($open ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                ' . ($open ? '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="erp_action" value="save" class="btn my-1 btn-outline theme-secondary"' . (empty($items) ? ' disabled' : '') . '><i class="bi bi-save me-3" aria-hidden="true"></i>' . lang('Save the counts') . '</button>

@@ -1,6 +1,6 @@
 ---
 name: product-review-photos
-description: Photo reviews (11.0.57; #2426, #2818): config.review_photos, which switch lets a thread take a file, the image check, forms, thumbnails in the classic list and moderation
+description: Photo reviews (11.0.57; #2426, #2818): config.review_photos, which switch lets a thread take a file, the image check, forms, thumbnails in the classic list, moderation and the comments widget
 module: reviews
 ---
 
@@ -21,10 +21,11 @@ module: reviews
 ## Where does a photo show?
 - Classic list, review threads only (`$comments_read['review']`): a thumbnail above the file link.
 - Comment Moderation: a 50 px thumbnail beside the message in the list (`view_comments.php`), a larger one above the link on the edit screen (`edit_comment.php`), for any image attachment.
-- Comments widget: still the file link only. Plan step 2c3b: a row flag (an image file) and an image in the default layout (PHP tree, JS starter, server fallback), canvas sample.
+- Comments widget (2c3b): row flag `comment_has_image` (`pg_comment_file_is_image()` on the file name, any thread; off in a recent list and in an e-mail without the site's address). The default layout (PHP tree, JS starter, so the server fallback too) draws a "Photo" node above the Attachment line: an `img-thumbnail` image, `src` bound to `__comment_file_url`, max 160 px by the Sizing props. Canvas: the card shows it, the rated sample (photo.jpg) has the flag on.
 
 ## How was the step checked?
 - Sandbox MariaDB (`tools/setup_sandbox.sh`), CLI upgrade `php install/index.php automated_upgrade` from `2026.4.10` twice (column dropped first, then kept with value 1): added, then left as it was.
 
 ## Where is it tested?
 - `tests/review_photos_test.php`: file names, the switch table, the content check on a real PNG and a renamed text file, the wiring.
+- Widget: `comments_widget_test.php` (row flag, default tree), `comments_widget_email_test.php`, `comments_recent_test.php`, `comments_widget_designer_test.php` (sample).

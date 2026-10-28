@@ -14,6 +14,8 @@ description: How the ERP reads typed quantities, amounts and rates and writes fi
 - Separators follow the panel language, not the store's country: `erp_number_separators()` → `pg_number_separators()`, read from the language file (tr 1.234,56 · en 1,234.56 · fr 1 234,56 with a no-break space).
 - Amount `erp_money_out_currency($kurus, $code)` (`erp_money_out()` for the home currency), rate `erp_fx_rate_text()`, quantity `erp_quantity_text()`, percentage `erp_percent_text()` (Turkish `%20`, other languages `20%`, up to three decimals).
 - Never `number_format(..., '.', ',')` for an amount and never `'%' . $rate`: both print one language's shape in every language.
+- A count (movements, documents, badges) is `pg_format_number($n, 0)`, never `number_format($n)`: its comma reads as a decimal in Turkish.
+- `erp_invoice_editor.js` writes a rate with `percentText()`: the `{var:1}%` template (`data-text-percent`) and the display decimal mark (`data-decimal-mark`, from `erp_number_separators()`) on `invoice_form.php`. `data-decimal-comma` is the input rule, not the display mark (#2874, pinned by `tests/erp_panel_language_test.php`).
 
 ## What stays in machine format?
 - A value put into a form field: an amount as two decimals with a point (`number_format($kurus / 100, 2, '.', '')`), a rate as `erp_fx_rate_out()` (point, at least four decimals). The readers above take both back.

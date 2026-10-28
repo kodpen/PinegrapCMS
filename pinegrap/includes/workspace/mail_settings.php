@@ -36,27 +36,28 @@ function ws_mail_ready()
 }
 
 /**
- * Mail services a box can be read from: the IMAP server, and the server
+ * Mail services a box can be read from: the IMAP server, the server
  * whose Authentication-Results verdict is believed when it always writes
  * under one name (left empty where it writes under each host's own name;
- * "Test connection" reads it from the newest mail then).
+ * "Test connection" reads it from the newest mail then), and the SMTP
+ * server answers leave through.
  *
- * @return array[] key => label, host, port, auth_server, hint
+ * @return array[] key => label, host, port, auth_server, smtp_host, smtp_port, hint
  */
 function ws_mail_providers()
 {
     return array(
-        'gmail'  => array('label' => lang('Gmail or Google Workspace'), 'host' => 'imap.gmail.com', 'port' => 993, 'auth_server' => 'mx.google.com',
+        'gmail'  => array('label' => lang('Gmail or Google Workspace'), 'host' => 'imap.gmail.com', 'port' => 993, 'smtp_host' => 'smtp.gmail.com', 'smtp_port' => 465, 'auth_server' => 'mx.google.com',
             'hint' => lang('Turn on 2-Step Verification for the account and use an app password; Google refuses the account\'s own password.')),
-        'yandex' => array('label' => 'Yandex', 'host' => 'imap.yandex.com', 'port' => 993, 'auth_server' => '',
+        'yandex' => array('label' => 'Yandex', 'host' => 'imap.yandex.com', 'port' => 993, 'smtp_host' => 'smtp.yandex.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Allow access by mail programs in the Yandex mail settings and use an app password.')),
-        'icloud' => array('label' => 'iCloud', 'host' => 'imap.mail.me.com', 'port' => 993, 'auth_server' => '',
+        'icloud' => array('label' => 'iCloud', 'host' => 'imap.mail.me.com', 'port' => 993, 'smtp_host' => 'smtp.mail.me.com', 'smtp_port' => 587, 'auth_server' => '',
             'hint' => lang('Use an app-specific password made at account.apple.com; the user is the address before @icloud.com.')),
-        'zoho'   => array('label' => 'Zoho Mail', 'host' => 'imap.zoho.com', 'port' => 993, 'auth_server' => 'mx.zohomail.com',
+        'zoho'   => array('label' => 'Zoho Mail', 'host' => 'imap.zoho.com', 'port' => 993, 'smtp_host' => 'smtp.zoho.com', 'smtp_port' => 465, 'auth_server' => 'mx.zohomail.com',
             'hint' => lang('Turn on IMAP access in the Zoho Mail settings; with two-factor sign-in use an app password.')),
-        'yahoo'  => array('label' => 'Yahoo', 'host' => 'imap.mail.yahoo.com', 'port' => 993, 'auth_server' => '',
+        'yahoo'  => array('label' => 'Yahoo', 'host' => 'imap.mail.yahoo.com', 'port' => 993, 'smtp_host' => 'smtp.mail.yahoo.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Use an app password made in the Yahoo account security settings.')),
-        'other'  => array('label' => lang('Another server'), 'host' => '', 'port' => 993, 'auth_server' => '',
+        'other'  => array('label' => lang('Another server'), 'host' => '', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 587, 'auth_server' => '',
             'hint' => lang('The server must accept IMAP over TLS (usually port 993). Microsoft 365 and Outlook.com accept no password for IMAP; they are read through a connected account later.')),
     );
 }
@@ -68,7 +69,8 @@ function ws_mail_providers()
  *
  * @param array $input name, address, channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
- *                     after_fetch, move_folder
+ *                     after_fetch, move_folder, smtp_host, smtp_port,
+ *                     reply_via
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -83,11 +85,13 @@ function ws_mail_box_input($input)
     };
     $providers = ws_mail_providers();
     $provider = isset($providers[(string) ($input['provider'] ?? '')]) ? (string) $input['provider'] : '';
-    $preset = ($provider !== '') ? $providers[$provider] : array('host' => '', 'port' => 993, 'auth_server' => '');
+    $preset = ($provider !== '') ? $providers[$provider] : array('host' => '', 'port' => 993, 'auth_server' => '', 'smtp_host' => '', 'smtp_port' => 587);
     $host = strtolower($line('host', $preset['host']));
     $auth_server = strtolower($line('auth_server', $preset['auth_server']));
     $port = (int) $line('port', (string) $preset['port']);
     $after_fetch = (($input['after_fetch'] ?? '') === 'move') ? 'move' : 'seen';
+    $reply_via = (($input['reply_via'] ?? '') === 'site') ? 'site' : 'box';
+    $smtp_host = ($reply_via === 'box') ? strtolower($line('smtp_host', $preset['smtp_host'])) : '';
     $values = array(
         'name'        => $line('name'),
         'address'     => strtolower($line('address')),
@@ -102,6 +106,9 @@ function ws_mail_box_input($input)
         'folder'      => $line('folder', 'INBOX'),
         'after_fetch' => $after_fetch,
         'move_folder' => ($after_fetch === 'move') ? $line('move_folder') : '',
+        'reply_via'   => $reply_via,
+        'smtp_host'   => $smtp_host,
+        'smtp_port'   => ($smtp_host !== '') ? (int) $line('smtp_port', (string) $preset['smtp_port']) : 0,
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -123,12 +130,16 @@ function ws_mail_box_input($input)
         return $fail(lang('The checking server is a host name such as mx.google.com.'));
     }
 
-    // No server: the box takes only .eml files brought in by hand.
-    if ($host === '') {
+    if (($smtp_host !== '') && (!pg_imap_host_valid($smtp_host) || ($values['smtp_port'] < 1) || ($values['smtp_port'] > 65535))) {
+        return $fail(lang('The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.'));
+    }
+
+    // Neither server: the box takes only .eml files brought in by hand.
+    if (($host === '') && ($smtp_host === '')) {
         return array('ok' => true, 'error' => '', 'values' => $values);
     }
 
-    if (!pg_imap_host_valid($host) || ($port < 1) || ($port > 65535)) {
+    if (($host !== '') && (!pg_imap_host_valid($host) || ($port < 1) || ($port > 65535))) {
         return $fail(lang('The IMAP server is a host name such as imap.gmail.com, with a port from 1 to 65535.'));
     }
 
@@ -476,16 +487,21 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         $settings['secret'] = pg_connect_seal(array('password' => $values['password']));
     }
 
-    if (($values['host'] !== '') && (empty($settings['secret']) || (($settings['host'] ?? '') !== $values['host']) || (($settings['user'] ?? '') !== $values['user'])) && ($values['password'] === '')) {
+    $signs_in = ($values['host'] !== '') || ($values['smtp_host'] !== '');
+
+    // The kept password goes only to the servers it was typed for: a new
+    // server, sending or reading, or a new user asks for it again.
+    if ($signs_in && (empty($settings['secret']) || (($settings['host'] ?? '') !== $values['host']) || (($settings['user'] ?? '') !== $values['user'])
+        || (($values['smtp_host'] !== '') && (($settings['smtp_host'] ?? '') !== $values['smtp_host']))) && ($values['password'] === '')) {
         $liveform->add_error(lang('Enter the password for this server and user.'));
         return;
     }
 
-    if ($values['host'] === '') {
+    if (!$signs_in) {
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -493,6 +509,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
 
     $set = "name = '" . e($values['name']) . "', address = '" . e($values['address']) . "', channel_id = '" . (int) $values['channel_id'] . "',
         settings = '" . e(json_encode($settings)) . "', folder = '" . e($values['folder']) . "', after_fetch = '" . e($values['after_fetch']) . "',
+        reply_via = '" . e($values['reply_via']) . "',
         enabled = '" . (int) $values['enabled'] . "', updated_at = '" . $now . "'";
 
     if ($box) {
@@ -568,9 +585,9 @@ function ws_mail_box_form($self_url, $box, $channels)
 }
 
 /**
- * The reading half of a mailbox's form: provider, IMAP server, user,
- * password (drawn empty, an empty box keeps the kept one), folder and what
- * happens to mail once read.
+ * The server half of a mailbox's form: provider, IMAP server, user,
+ * password (drawn empty, an empty box keeps the kept one), folder, what
+ * happens to mail once read, and how answers are sent.
  *
  * @param string     $prefix
  * @param array|null $box
@@ -590,10 +607,11 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
 
     $kept = !empty($settings['secret']);
     $move = $box && ((string) $box['after_fetch'] === 'move');
+    $site = $box && ((string) ($box['reply_via'] ?? 'box') === 'site');
 
     return '
                 <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Reading the mailbox')) . '</h3>
-                    <div class="form-text">' . h(lang('Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server and checking server.')) . '</div>
+                    <div class="form-text">' . h(lang('Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server, checking server and sending server.')) . '</div>
                 </div>
                 <div class="md:col-4">
                     <label class="form-label" for="' . $prefix . 'provider">' . h(lang('Mail service')) . '</label>
@@ -629,6 +647,24 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-4">
                     <label class="form-label" for="' . $prefix . 'move">' . h(lang('Folder to move to')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="move_folder" id="' . $prefix . 'move" maxlength="255" value="' . h((string) ($settings['move_folder'] ?? '')) . '" placeholder="' . h(lang('Processed')) . '">
+                </div>
+                <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Sending answers')) . '</h3>
+                    <div class="form-text">' . h(lang('Answers leave from the mailbox\'s address. Its own sending server signs in with the user name and password above; the site\'s mail settings send only for an address on the site\'s own mail domain.')) . '</div>
+                </div>
+                <div class="md:col-4">
+                    <label class="form-label" for="' . $prefix . 'reply_via">' . h(lang('Send through')) . '</label>
+                    <select class="form-control form-control-sm" name="reply_via" id="' . $prefix . 'reply_via">
+                        <option value="box"' . ($site ? '' : ' selected') . '>' . h(lang('The mailbox\'s sending server')) . '</option>
+                        <option value="site"' . ($site ? ' selected' : '') . '>' . h(lang('The site\'s mail settings')) . '</option>
+                    </select>
+                </div>
+                <div class="md:col-5">
+                    <label class="form-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
+                    <input class="form-control form-control-sm font-monospace" type="text" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
+                </div>
+                <div class="md:col-3">
+                    <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
+                    <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . (int) ($settings['smtp_port'] ?? 587) . '">
                 </div>
                 <div class="md:col-12">
                     <details class="small fg-secondary"><summary>' . h(lang('What each service needs')) . '</summary><ul class="mb-0 mt-2">' . $hints . '</ul></details>

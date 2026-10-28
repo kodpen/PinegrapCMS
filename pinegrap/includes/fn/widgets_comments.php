@@ -651,6 +651,7 @@ function _pg_comments_row_text($row, $key)
  * - comment_is_root / comment_is_reply: drawn at depth 0, or deeper ($place
  *   'depth', a whole number from 0; anything else reads 0). In the flat
  *   layout every comment is drawn at depth 0.
+ * - comment_has_image: the attached file is a photo (pg_comment_file_is_image()).
  * - comment_has_quote: it quotes the comment it answers ($place 'quoted').
  * - comment_has_replies: replies answer it ($place 'replies' above 0).
  *
@@ -662,7 +663,7 @@ function _pg_comments_row_text($row, $key)
  * @param mixed $featured pg_comments_widget_order()'s 'featured'
  * @param mixed $state
  * @param mixed $place    'depth', 'quoted', 'replies' (the order's entry)
- * @return array the 14 row flags
+ * @return array the 15 row flags
  */
 function pg_comments_widget_row_flags($row, $featured, $state, $place = null)
 {
@@ -698,6 +699,7 @@ function pg_comments_widget_row_flags($row, $featured, $state, $place = null)
         'comment_is_scheduled' => !empty($state['sees_pending']) && $pending && $dated,
         'comment_has_rating' => !empty($state['rating_on']) && ($rating >= 1) && ($rating <= 5),
         'comment_has_file' => (_pg_comments_row_text($row, 'file_name') !== ''),
+        'comment_has_image' => pg_comment_file_is_image(_pg_comments_row_text($row, 'file_name')),
         'comment_has_badge' => (_pg_comments_row_text($row, 'user_badge') === '1')
             && ((_pg_comments_row_text($row, 'user_badge_label') !== '') || ($badge_label !== '')),
         'comment_is_verified' => ((int) _pg_comments_row_text($row, 'verified_order_id') > 0),
@@ -3054,6 +3056,11 @@ function pg_comments_default_tree()
                 )),
                 $sem('div', array('cssClass' => 'mt-2', 'customName' => lang('Message'), 'text' => lang('Comment text'),
                     '_bindings' => array('text' => '__comment_message_html'))),
+                $sem('div', array('cssClass' => 'mt-3', 'customName' => lang('Photo'),
+                    '_bindings' => array('eo_visible_if' => 'comment_has_image')), array(
+                    $content('image', array('src' => '', 'alt' => lang('Photo'), 'loading' => 'lazy', 'cssClass' => 'img-thumbnail',
+                        'maxWidth' => '160px', 'maxHeight' => '160px', '_bindings' => array('src' => '__comment_file_url'))),
+                )),
                 $sem('div', array('cssClass' => 'small mt-3 d-flex align-items-center gap-2', 'customName' => lang('Attachment'),
                     '_bindings' => array('eo_visible_if' => 'comment_has_file')), array(
                     $content('link', array('text' => 'file.pdf', 'href' => '#', 'cssClass' => '', 'target' => '_blank', 'rel' => 'noopener',
@@ -3919,6 +3926,10 @@ function pg_comments_email_draw_data($comment, $parent, $page, $cfg, $env)
     $row_flags = pg_comments_widget_row_flags($comment, $entry['featured'],
         array('is_staff' => false, 'sees_pending' => false, 'own_ids' => array(), 'rating_on' => $settings['rating'], 'badge_label' => $badge_label),
         array('depth' => 0, 'quoted' => $entry['quoted'], 'replies' => 0));
+    // A photo needs the site's absolute address: a mail reader has no other.
+    if (empty($env['site'])) {
+        $row_flags['comment_has_image'] = false;
+    }
     $created = (int) _pg_comments_row_text($comment, 'created_timestamp');
     $label_lower = mb_strtolower(get_comment_label(array('label' => $settings['label'])));
 

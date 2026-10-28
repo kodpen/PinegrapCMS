@@ -385,6 +385,8 @@ function erp_invoice_form_cards($liveform, $options = array())
          data-text-avg-cost="' . h(lang('Average cost: {var:1}')) . '"
          data-text-account-price="' . h(lang('The account\'s own price (list price {var:1})')) . '"
          data-text-account-discount="' . h(lang('The account\'s discount: {var:1}')) . '"
+         data-text-percent="' . h(lang('{var:1}%')) . '"
+         data-decimal-mark="' . h(erp_number_separators()['decimal']) . '"
          data-text-max-lines="' . lang(array('string' => 'An invoice can carry at most {var:1} lines.', 'vars' => ERP_MANUAL_MAX_LINES)) . '">
     <div class="card my-7">
         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
