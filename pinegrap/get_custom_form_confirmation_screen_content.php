@@ -153,7 +153,7 @@ function get_custom_form_confirmation_screen_content($properties)
         
         $output_data .=
             '<tr>
-                <td style="vertical-align: top">' . $field['label'] . '</td>
+                <td style="vertical-align: top">' . h($field['label']) . '</td>
                 <td style="vertical-align: top">' . $data . '</td>
              </tr>';
     }

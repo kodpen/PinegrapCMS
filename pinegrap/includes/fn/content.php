@@ -1130,7 +1130,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td>' . $liveform->output_field(array(
                                 'type' => $type,
@@ -1162,7 +1162,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
 
                             <td colspan="2">
 
-                                <div style="margin-bottom: .5em">' . $field['label'] . '</div>
+                                <div style="margin-bottom: .5em">' . h($field['label']) . '</div>
 
                                 <div>' . $liveform->output_field(array(
                                     'type' => 'textarea',
@@ -1184,7 +1184,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 } else {
                     $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                            <td style="vertical-align: top; ' . $output_label_column_width . '">' . $field['label'] . '</td>
+                            <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                             <td style="vertical-align: top">' . $liveform->output_field(array(
                                     'type' => 'textarea',
@@ -1217,7 +1217,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $liveform->output_field(array(
                                 'type' => 'select',
@@ -1253,7 +1253,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $output_options . '</td>
 
@@ -1284,7 +1284,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="vertical-align: top; ' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $output_options . '</td>
 
@@ -1293,7 +1293,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             case 'file upload':
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $liveform->output_field(array(
                                 'type' => 'file',
@@ -1322,7 +1322,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">
 
@@ -1358,7 +1358,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">
 
@@ -1397,7 +1397,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             case 'time':
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top">' . $liveform->output_field(array(
                                 'type' => 'text',
@@ -1414,7 +1414,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             default:
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
-                        <td style="' . $output_label_column_width . '">' . $field['label'] . '</td>
+                        <td style="' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                         <td style="vertical-align: top"></td>
 
@@ -1565,7 +1565,7 @@ function get_submitted_product_form_content_with_form_fields($order_item_id, $qu
             }
             $content .= '<tr>
 
-                    <td style="vertical-align: top' . $output_label_column_width . '">' . $form_field['label'] . '</td>
+                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($form_field['label']) . '</td>
 
                     <td style="vertical-align: top">' . $data . '</td>
 
@@ -1855,7 +1855,7 @@ function get_submitted_form_content_with_form_fields($properties)
             }
             $output_rows .= '<tr>
 
-                    <td style="vertical-align: top' . $output_label_column_width . '">' . $field['label'] . '</td>
+                    <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
 
                     <td style="vertical-align: top">' . $data . '</td>
 
