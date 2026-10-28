@@ -30,13 +30,25 @@
  *                                         in the site's date order and clock; its calendar
  *                                         has the time row under the dates
  *   <input data-pg-time>                  time only: the same box with the time row alone
+ *     data-pg-time="hh:mm"                a text time kept on the 24-hour clock ('17:05')
+ *   <input type="date|datetime-local|time" data-pg-date|data-pg-datetime|data-pg-time>
+ *                                         a native input stays the hidden store and keeps
+ *                                         posting ISO ('2026-10-26', '2026-10-26T17:05',
+ *                                         '17:05'); its min and max bound the calendar;
+ *                                         without JavaScript it is the native input
+ *   <div data-pg-date-selects>            a wrapper of month, day and year selects
+ *                                         (start_month, start_day, start_year): the selects
+ *                                         stay posted and are hidden, one box writes them,
+ *                                         the calendar bounded by the year list
  *
  * The named input or the native <select> is always what the form posts, in
  * the text the server reads today. Values cross this interface as ISO text
  * ('2026-10-26', '17:00', '2026-10-26 17:00'), parsed and formatted here from
  * the site date format, never by Date() parsing.
  *
- *   pgFields.init(scope)                  every hooked field in scope, once
+ *   pgFields.init(scope)                  every hooked field in scope, once; a field a
+ *                                         script builds is drawn by passing it, or a
+ *                                         node around it, after it is in the document
  *   pgChips.get(el) / set(el, list)       array of strings
  *   pgCombobox.get(el) / set(el, value)   string, array for a multiple select
  *   pgDatePicker.get(el) / set(el, iso)
@@ -71,7 +83,8 @@
         combobox: 'data-pg-combobox',
         date: 'data-pg-date',
         datetime: 'data-pg-datetime',
-        time: 'data-pg-time'
+        time: 'data-pg-time',
+        dateselects: 'data-pg-date-selects'
     };
 
     function jq() {
@@ -157,10 +170,21 @@
                 ready: calendarReady,
                 wait: calendarWait,
                 init: drawDate,
-                // The field's own change listener already moved the calendar
-                // to the written date.
-                redraw: function () {},
+                // A typed date box: its own change listener already moved the
+                // calendar to the written date.
+                redraw: function (el) {
+                    if (el.pgParts) {
+                        showParts(el);
+                    }
+                },
                 destroy: removeDate
+            },
+            dateselects: {
+                ready: calendarReady,
+                wait: calendarWait,
+                init: drawSelects,
+                redraw: showSelects,
+                destroy: removeSelects
             },
             datetime: {
                 ready: calendarReady,
@@ -765,7 +789,7 @@
     // date and time or a time. read() gives what the box shows as
     // {iso, time}, our own parse of its text; onPick(iso, time) writes a
     // pick. In a drawer the calendar is drawn open after the box.
-    function makeCalendar(el, box, mode, read, onPick) {
+    function makeCalendar(el, box, mode, read, onPick, bounds) {
         // "plain" keeps the screens that never passed the translated names:
         // English, Sunday first.
         var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale(), now = read();
@@ -775,8 +799,12 @@
             time: now.time,
             locale: lang,
             firstWeekday: plain ? 0 : firstWeekday(lang),
+            dateMin: bounds ? bounds.min : '',
+            dateMax: bounds ? bounds.max : '',
             inline: inlineIn(el),
-            host: window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost : null,
+            host: function (b) {
+                return window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost(b) : null;
+            },
             onPick: onPick
         });
         // Typed text moves the calendar to it when the box is left; text
@@ -815,7 +843,13 @@
         }
     }
 
+    // A date in the site's text is typed in the posted field itself; a
+    // native <input type="date"> is the hidden store of a box (drawParts).
     function drawDate(el) {
+        if (storeOf(el) === 'iso') {
+            drawParts(el, 'date');
+            return;
+        }
         makeCalendar(el, el, 'date', function () {
             return { iso: parseDate(el.value), time: '' };
         }, function (iso) {
@@ -825,6 +859,10 @@
     }
 
     function removeDate(el) {
+        if (el.pgParts) {
+            removeParts(el);
+            return;
+        }
         disposeCalendar(el);
     }
 
@@ -853,12 +891,61 @@
         }
     }
 
-    // What a box of a date and time ('26/10/2026 17:05', '26/10/2026
-    // 5:05 PM', '26/10/2026') or of a time ('17:05', '5:05 PM') says, as
-    // {iso, time}; empty parts when it says nothing we can read.
+    // ------------------------------------------------------------ stores
+
+    // How a field keeps its value, which never changes: 'site', the text the
+    // server reads today ('26/10/2026', '26/10/2026 5:00 PM', '5:00 PM');
+    // 'iso', a native <input type="date">, "datetime-local" or "time"
+    // ('2026-10-26', '2026-10-26T17:00', '17:00'), which also stays the field
+    // a page without JavaScript shows; 'hhmm', a text time on the 24-hour
+    // clock (data-pg-time="hh:mm", '17:00'). ISO never reaches a field that
+    // keeps the site's text: '2026-10-26 17:00' is stored as
+    // '0026-10-2026 17:00' there.
+    function storeOf(el) {
+        var type = String(el.getAttribute('type') || '').toLowerCase();
+        if (el.tagName === 'INPUT' && (type === 'date' || type === 'datetime-local' || type === 'time')) {
+            return 'iso';
+        }
+        return el.getAttribute(HOOKS.time) === 'hh:mm' ? 'hhmm' : 'site';
+    }
+
+    // A field's value as {iso, time} ('2026-10-26', '17:00'), read in its
+    // own store; empty parts when it holds nothing we can read.
+    function readStore(el, mode) {
+        var v = String(el.value || '').trim(), store = storeOf(el), m;
+        if (store === 'iso') {
+            m = /^(\d{4}-\d{2}-\d{2})?(?:[T ]?(\d{2}:\d{2}))?/.exec(v) || [];
+            return {
+                iso: (mode !== 'time' && m[1] && formatDate(m[1])) ? m[1] : '',
+                time: (mode !== 'date' && m[2] && parseTime(m[2])) ? m[2] : (mode === 'datetime' && m[1] ? '00:00' : '')
+            };
+        }
+        return readParts(v, mode);
+    }
+
+    // {iso, time} in a field's own store; '' without a date (or a time).
+    function storeText(store, mode, iso, time) {
+        if (mode === 'time') {
+            return !time ? '' : (store === 'site' ? formatTime(time) : time);
+        }
+        if (!iso) {
+            return '';
+        }
+        if (mode === 'date') {
+            return store === 'iso' ? iso : formatDate(iso);
+        }
+        return store === 'iso' ? (iso + 'T' + (time || '00:00')) : (formatDate(iso) + ' ' + formatTime(time || '00:00'));
+    }
+
+    // What a typed box says ('26/10/2026', '26/10/2026 17:05', '26/10/2026
+    // 5:05 PM', '17:05', '5:05 PM'), as {iso, time}; empty parts when it says
+    // nothing we can read.
     function readParts(text, mode) {
         if (mode === 'time') {
             return { iso: '', time: parseTime(text) };
+        }
+        if (mode === 'date') {
+            return { iso: parseDate(text), time: '' };
         }
         var v = parseDateTime(text);
         return v ? { iso: v.slice(0, 10), time: v.slice(11) } : { iso: '', time: '' };
@@ -866,40 +953,50 @@
 
     // The box's text: the site's date order and the site's clock.
     function shownParts(iso, time, mode) {
-        return mode === 'time' ? DT.clockTime(time) : (formatDate(iso) + ' ' + DT.clockTime(time));
+        if (mode === 'time') {
+            return DT.clockTime(time);
+        }
+        return mode === 'date' ? formatDate(iso) : (formatDate(iso) + ' ' + DT.clockTime(time));
     }
 
-    // The hidden field gets the text the server reads, whatever the clock:
-    // '26/10/2026 5:00 PM' or '5:00 PM'. An empty box empties it, a date
-    // without a time is midnight, and text that says no date or time posts
-    // as typed, for the server to refuse as it always did.
+    // The hidden field gets the box in its own store, whatever the clock.
+    // An empty box empties it, a date without a time is midnight. Text that
+    // says no date or time posts as typed, for the server to refuse as it
+    // always did; a native input cannot hold it and is left empty.
     function writeParts(el, box, mode) {
-        var text = String(box.value).trim(), r = readParts(text, mode);
+        var text = String(box.value).trim(), r = readParts(text, mode), store = storeOf(el);
+        var ok = mode === 'time' ? r.time : r.iso;
         if (text === '') {
             el.value = '';
-        } else if (mode === 'time') {
-            el.value = r.time ? formatTime(r.time) : text;
+        } else if (ok) {
+            el.value = storeText(store, mode, r.iso, r.time);
         } else {
-            el.value = r.iso ? (formatDate(r.iso) + ' ' + formatTime(r.time)) : text;
+            el.value = store === 'iso' ? '' : text;
         }
         fireChange(el);
     }
 
-    // The box shows the hidden field: our own reading of its text, or the
-    // text itself when it is none we can read.
+    // The box shows the hidden field: our own reading of it, or its text
+    // when it is none we can read.
     function fillParts(el) {
-        var p = el.pgParts, r = readParts(el.value, p.mode), ok = p.mode === 'time' ? r.time : r.iso;
-        p.box.value = ok ? shownParts(r.iso, r.time, p.mode) : String(el.value || '');
+        var p = el.pgParts, r = readStore(el, p.mode), ok = p.mode === 'time' ? r.time : r.iso;
+        p.box.value = ok ? shownParts(r.iso, r.time, p.mode) : (storeOf(el) === 'iso' ? '' : String(el.value || ''));
     }
 
-    // Date and time (mode 'datetime') or time only ('time'): one box after
-    // the hidden field, typed in, whose calendar holds the time row under
-    // the dates, or the time row alone. A time moved before any date is
-    // picked waits for the date.
+    // A native input's min and max as the calendar's first and last day.
+    function boundsOf(el) {
+        var day = function (v) { var m = /^(\d{4}-\d{2}-\d{2})/.exec(String(v || '')); return m ? m[1] : ''; };
+        return storeOf(el) === 'iso' ? { min: day(el.getAttribute('min')), max: day(el.getAttribute('max')) } : null;
+    }
+
+    // Date and time (mode 'datetime'), time only ('time') or a native date
+    // input ('date'): one box after the hidden field, typed in, whose
+    // calendar holds the time row under the dates, the time row alone, or
+    // the dates. A time moved before any date is picked waits for the date.
     function drawParts(el, mode) {
         var box = document.createElement('input');
         box.type = 'text';
-        box.className = partClasses(el, [mode === 'time' ? 'pg-time-box' : 'pg-datetime-box']);
+        box.className = partClasses(el, [mode === 'time' ? 'pg-time-box' : (mode === 'date' ? 'pg-date-box' : 'pg-datetime-box')]);
         box.setAttribute('autocomplete', 'off');
         box.disabled = !!el.disabled;
         el.parentNode.insertBefore(box, el.nextSibling);
@@ -914,7 +1011,7 @@
             }
             box.value = shownParts(iso, time || '00:00', mode);
             writeParts(el, box, mode);
-        });
+        }, boundsOf(el));
         box.addEventListener('change', function () { writeParts(el, box, mode); });
     }
 
@@ -954,6 +1051,164 @@
             el.setAttribute('tabindex', el.pgTabindex);
         }
         el.pgParts = null;
+    }
+
+    // ------------------------------------------------------------ select triplets
+
+    function pad2(n) {
+        return ('0' + n).slice(-2);
+    }
+
+    // The month, day and year selects inside a data-pg-date-selects wrapper,
+    // found by their names as select_month(), select_day() and
+    // select_year() are printed (start_month, stop_day...) or by
+    // data-pg-part="month|day|year"; also its first <label>.
+    function triplet(el) {
+        var found = { label: null };
+        (function walk(n) {
+            for (var i = 0; i < (n.children || []).length; i++) {
+                var c = n.children[i], part;
+                if (c.tagName === 'SELECT') {
+                    part = c.getAttribute('data-pg-part') || ((/(?:^|_)(month|day|year)$/.exec(c.getAttribute('name') || '') || [])[1]);
+                    if (part && !found[part]) {
+                        found[part] = c;
+                    }
+                } else if (c.tagName === 'LABEL' && !found.label) {
+                    found.label = c;
+                }
+                walk(c);
+            }
+        })(el);
+        return (found.month && found.day && found.year) ? found : null;
+    }
+
+    function optionNumber(select, n) {
+        for (var i = 0; i < select.options.length; i++) {
+            if (parseInt(select.options[i].value, 10) === n) {
+                return select.options[i];
+            }
+        }
+        return null;
+    }
+
+    // The date the three selects hold, '' when they hold no real date.
+    function readSelects(t) {
+        var iso = parseInt(t.year.value, 10) + '-' + pad2(parseInt(t.month.value, 10)) + '-' + pad2(parseInt(t.day.value, 10));
+        return /^\d{4}-\d{2}-\d{2}$/.test(iso) && formatDate(iso) ? iso : '';
+    }
+
+    // Writes a date into the selects, which stay what the form posts, and
+    // fires a change on each that moved; false when a select has no option
+    // for it (a year outside its list), and nothing is written then.
+    function writeSelects(t, iso) {
+        var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ''));
+        var parts = m ? [[t.year, +m[1]], [t.month, +m[2]], [t.day, +m[3]]] : [];
+        var options = parts.map(function (p) { return optionNumber(p[0], p[1]); });
+        if (!m || options.indexOf(null) !== -1) {
+            return false;
+        }
+        parts.forEach(function (p, i) {
+            if (!options[i].selected) {
+                p[0].value = options[i].value;
+                fireChange(p[0]);
+            }
+        });
+        return true;
+    }
+
+    // The calendar's first and last day: from 1 January of the year list's
+    // first year to 31 December of its last.
+    function yearBounds(t) {
+        var years = [];
+        for (var i = 0; i < t.year.options.length; i++) {
+            var y = parseInt(t.year.options[i].value, 10);
+            if (y) {
+                years.push(y);
+            }
+        }
+        if (!years.length) {
+            return null;
+        }
+        return { min: Math.min.apply(null, years) + '-01-01', max: Math.max.apply(null, years) + '-12-31' };
+    }
+
+    // A date range's month, day and year selects (data-pg-date-selects on
+    // the wrapper around them): the selects stay what the form posts
+    // (start_month, start_day, start_year) and are hidden; one typed box
+    // before them shows the date in the site's order and opens the
+    // calendar, which writes the three selects. A typed date the selects
+    // cannot hold is taken back.
+    function drawSelects(el) {
+        var t = triplet(el);
+        // A wrapper whose selects a script has not put in yet stays undrawn:
+        // pgFields.init() draws it once they are there.
+        if (!t) {
+            el.pgFieldKind = '';
+            el.pgFieldEngine = '';
+            return;
+        }
+        var box = document.createElement('input');
+        box.type = 'text';
+        box.className = partClasses(t.month, ['pg-date-box']);
+        box.setAttribute('autocomplete', 'off');
+        box.disabled = !!t.month.disabled;
+        t.month.parentNode.insertBefore(box, t.month);
+        [t.month, t.day, t.year].forEach(function (select) {
+            select.classList.add('pg-field-native');
+            select.pgTabindex = select.getAttribute('tabindex');
+            select.setAttribute('tabindex', '-1');
+        });
+        if (t.label) {
+            t.label.id = t.label.id || ((t.month.getAttribute('name') || 'pg_date') + '_label');
+            box.setAttribute('aria-labelledby', t.label.id);
+        }
+        box.value = formatDate(readSelects(t));
+        el.pgSelects = { box: box, t: t };
+        makeCalendar(el, box, 'date', function () {
+            return { iso: parseDate(box.value), time: '' };
+        }, function (iso) {
+            if (writeSelects(t, iso)) {
+                box.value = formatDate(iso);
+            }
+        }, yearBounds(t));
+        box.addEventListener('change', function () {
+            var iso = parseDate(box.value);
+            if (!iso || !writeSelects(t, iso)) {
+                showSelects(el);
+            }
+        });
+    }
+
+    // The box and the calendar show what the selects hold.
+    function showSelects(el) {
+        var s = el.pgSelects;
+        if (s) {
+            var iso = readSelects(s.t);
+            s.box.value = formatDate(iso);
+            if (s.box.pgCalendar) {
+                s.box.pgCalendar.control.set(iso, '');
+            }
+        }
+    }
+
+    function removeSelects(el) {
+        var s = el.pgSelects;
+        if (!s) {
+            return;
+        }
+        disposeCalendar(s.box);
+        if (s.box.parentNode) {
+            s.box.parentNode.removeChild(s.box);
+        }
+        [s.t.month, s.t.day, s.t.year].forEach(function (select) {
+            select.classList.remove('pg-field-native');
+            if (select.pgTabindex === null || select.pgTabindex === undefined) {
+                select.removeAttribute('tabindex');
+            } else {
+                select.setAttribute('tabindex', select.pgTabindex);
+            }
+        });
+        el.pgSelects = null;
     }
 
     // The engine of a kind. A combobox that searches the server
@@ -1157,10 +1412,39 @@
         }
     };
 
+    // A date field (data-pg-date) or a wrapper of month, day and year
+    // selects (data-pg-date-selects); get() and set() exchange ISO dates
+    // whatever the field keeps.
     var pgDatePicker = {
-        init: function (el) { return initField(el, 'date'); },
-        get: function (el) { el = element(el); return el ? parseDate(el.value) : ''; },
-        set: function (el, iso) { write(el, 'date', formatDate(iso)); },
+        init: function (el) {
+            el = element(el);
+            return initField(el, el && el.hasAttribute && el.hasAttribute(HOOKS.dateselects) ? 'dateselects' : 'date');
+        },
+        get: function (el) {
+            el = element(el);
+            if (!el) {
+                return '';
+            }
+            if (el.hasAttribute(HOOKS.dateselects)) {
+                var t = triplet(el);
+                return t ? readSelects(t) : '';
+            }
+            return readStore(el, 'date').iso;
+        },
+        set: function (el, iso) {
+            el = element(el);
+            if (!el) {
+                return;
+            }
+            if (el.hasAttribute(HOOKS.dateselects)) {
+                var t = triplet(el);
+                if (t && writeSelects(t, iso) && el.pgFieldKind) {
+                    showSelects(el);
+                }
+                return;
+            }
+            write(el, 'date', storeText(storeOf(el), 'date', /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) && formatDate(iso) ? iso : '', ''));
+        },
         parse: parseDate,
         format: formatDate,
         order: dateOrder
@@ -1178,15 +1462,26 @@
             if (!el) {
                 return '';
             }
-            return el.hasAttribute(HOOKS.time) ? parseTime(el.value) : parseDateTime(el.value);
+            if (el.hasAttribute(HOOKS.time)) {
+                return readStore(el, 'time').time;
+            }
+            var r = readStore(el, 'datetime');
+            return r.iso ? (r.iso + ' ' + r.time) : '';
         },
         set: function (el, iso) {
             el = element(el);
             if (!el) {
                 return;
             }
-            var time = el.hasAttribute(HOOKS.time);
-            write(el, time ? 'time' : 'datetime', time ? formatTime(iso) : formatDateTime(iso));
+            var store = storeOf(el);
+            if (el.hasAttribute(HOOKS.time)) {
+                var t = parseTime(iso);
+                write(el, 'time', storeText(store, 'time', '', /^\d{1,2}:\d{2}$/.test(String(iso || '')) ? t : ''));
+                return;
+            }
+            var m = /^(\d{4}-\d{2}-\d{2})[ T](\d{1,2}:\d{2})/.exec(String(iso || ''));
+            var day = m && formatDate(m[1]) ? m[1] : '', time = m ? parseTime(m[2]) : '';
+            write(el, 'datetime', (day && time) ? storeText(store, 'datetime', day, time) : '');
         },
         parse: parseDateTime,
         format: formatDateTime,
