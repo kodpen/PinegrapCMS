@@ -1601,9 +1601,11 @@ function log_activity($description, $user = '')
     if (($user == '') && defined('USER_USERNAME')) {
         $user = USER_USERNAME;
     }
-    // No remote address when the software runs from the command line, which is
-    // how the scheduled jobs reach this function.
-    $ip = isset($_SERVER['REMOTE_ADDR']) ? $_SERVER['REMOTE_ADDR'] : '';
+    // The address the session rows carry (includes/authentication.php): the
+    // visitor behind a trusted proxy as the firewall resolves it, else the
+    // peer. Empty when the software runs from the command line, which is how
+    // the scheduled jobs reach this function.
+    $ip = pg_auth_request_address();
 
     $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) VALUES (?, ?, ?, UNIX_TIMESTAMP())";
     $result = db_q($query, array((string) $description, (string) $ip, (string) $user)) or output_error(lang('Query failed.'));
