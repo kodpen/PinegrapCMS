@@ -2537,7 +2537,7 @@ function pg_designer_pick_page_modal()
         <dialog class="dialog dialog-scrollable" id="sdPickPageModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body p-0">
                         <div class="p-5 pb-3">
@@ -2564,7 +2564,7 @@ function pg_designer_import_modal()
         <dialog class="dialog" id="sdImportModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</h5>
-                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog"></button>
+                        <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
                         <div class="mb-5">
