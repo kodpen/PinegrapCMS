@@ -1329,6 +1329,16 @@
         }
     }
 
+    // Puts the focus where people type: the box after a hidden store or a
+    // select triplet (its calendar opens on focus), else the field itself.
+    function focus(el) {
+        el = element(el);
+        var target = el && el.pgParts ? el.pgParts.box : (el && el.pgSelects ? el.pgSelects.box : el);
+        if (target && target.focus) {
+            target.focus();
+        }
+    }
+
     function onChange(el, fn) {
         el = element(el);
         var $ = jq();
@@ -1494,6 +1504,7 @@
         onChange: onChange,
         destroy: destroy,
         switchKind: switchKind,
+        focus: focus,
         // 'v6' or 'v5': the engine that draws a kind (a field's, if given).
         engine: engineName,
         hooks: HOOKS

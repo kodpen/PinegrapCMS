@@ -6117,9 +6117,11 @@ function init_edit_comment_publish() {
         if (publish.val() == 'schedule') {
             publish_schedule.fadeIn();
 
-            // Place the focus in the date & time field,
-            // so that the date/time picker automatically appears.
-            publish_date_and_time.focus();
+            // Focus the box of the date and time field, which opens its
+            // calendar; the field itself is the hidden store.
+            if (window.pgFields) {
+                window.pgFields.focus(publish_date_and_time[0]);
+            }
 
             // Otherwise the schedule option is not selected, so hide its fields.
         } else {
@@ -6285,7 +6287,7 @@ function create_shipping_cutoff(properties) {
 
     // prepare content for date and time cell
     var td_2 = document.createElement('td');
-    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + properties['date_and_time'] + '" size="20" maxlength="22" data-pg-datetime />';
+    td_2.innerHTML = '<input id="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" name="shipping_cutoff_' + shipping_cutoff_number + '_date_and_time" class="form-control" type="text" value="' + prepare_content_for_html(String(properties['date_and_time'] || '')) + '" size="20" maxlength="22" data-pg-datetime />';
 
     // prepare content for delete cell
     var td_3 = document.createElement('td');
