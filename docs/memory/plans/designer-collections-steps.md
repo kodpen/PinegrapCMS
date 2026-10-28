@@ -34,8 +34,8 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns unless the owner wants them (Q4).
 
 ## Which schema changes are approved?
-- Approved in #2393 (step 11.0.43): Q1 `custom_form_pages.collection` TINYINT UNSIGNED DEFAULT 0 (pickers and lists find collections without loading every design tree); Q2 `form_fields.collection_kind` VARCHAR(32) DEFAULT '' and `form_fields.reference_page_id` INT UNSIGNED DEFAULT 0 (list, feed, filter and API read the kind and target without the tree; VARCHAR, not ENUM, so a new kind needs no migration); Q3 table `record_revisions` at C7 is asked when that step comes.
+- Approved in #2393 and done at C2 (step 11.0.43): Q1 `custom_form_pages.collection`, Q2 `form_fields.collection_kind` and `reference_page_id` (`designer/collection-fields.md`); Q3 table `record_revisions` is asked when C7 comes.
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1 needs no schema: start there once this file lands; C2 follows it with Q1 and Q2.
+- C1–C4a are merged. C3c (product and page kinds) and C4b both edit `assets/js/style_designer.js` (the `_CF_KINDS` twin; the `ref` default); claim C3c first once no open PR holds that file. C4b's product/page tokens follow C3c; C5 does not depend on them.
