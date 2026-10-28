@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace
-description: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), whose rights a flow's change box writes with, bulk product card size and events, where the Workspace list of channels and places sits.
+description: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, where the Workspace list of channels and places sits
 ---
 
 ## Does a typed @name in /task assign?
