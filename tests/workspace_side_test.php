@@ -235,3 +235,12 @@ function test_workspace_side_data_is_read_only_where_it_is_drawn()
 	pg_assert_same('pg_panel_ws', $row['handler'], 'the workspace door, with its session and member checks');
 	pg_assert_true($row['token'], 'the form token is checked');
 }
+
+// The channel screen draws the list again only when what ws_sync answers
+// differs from the last answer; discussions with the same last message
+// second came back in either order, and the list was drawn again on every
+// poll (the open tour step lost its ring with it).
+function test_workspace_side_discussions_come_in_one_order()
+{
+	pg_assert_contains('ORDER BY c.last_message_at DESC, c.id DESC', pg_test_function_source('ws_threads_for'), 'a tie keeps its order');
+}

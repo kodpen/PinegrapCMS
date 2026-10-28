@@ -438,6 +438,12 @@
             var node = document.querySelector(String(selector).replace(/^last:/, ''));
 
             if (node && (typeof node.scrollIntoView === 'function')) {
+                // An entry out of the menu's view is rung once the scroll
+                // has brought it in.
+                if (!onScreen(node)) {
+                    waited = Math.max(waited, 350);
+                }
+
                 node.scrollIntoView({ block: 'center' });
                 return true;
             }
@@ -482,7 +488,17 @@
                 }
 
                 window.setTimeout(function () {
-                    step.target = narrow() ? null : locate(item.target);
+                    // The list in the menu is drawn again when it changes
+                    // (workspace_side.js): its entry is looked up on every
+                    // paint, never held.
+                    if (narrow()) {
+                        step.target = null;
+                    } else if (inMenuList(item.target)) {
+                        step.target = function () { return locate(item.target); };
+                    } else {
+                        step.target = locate(item.target);
+                    }
+
                     done();
                 }, waited);
             };
