@@ -9,6 +9,13 @@ description: Incoming e-mail into Workspace channels (not started): options IMAP
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
 
+## How is G1 cut?
+G1 is larger than one PR, so it lands in slices of about 1,000 product lines, each after the previous one merges.
+- G1a: MIME parser as pure functions in `includes/fn/mail_parse.php` (`pg_mail_parse()`): headers with RFC 2047 words, RFC 2231 parameters, multipart trees, quoted-printable and base64, charsets to UTF-8, text and HTML bodies, attachment metadata, size / depth / part limits, broken input never fatal. No schema, not loaded by `functions.php` yet. Tests: `tests/mail_parse_test.php`.
+- G1b: schema step (`ws_mail_boxes`, `ws_mail_conversations`, `ws_mail_items`, `ws_messages.sender_kind` + `'mail'`) and the module's line in `functions.php`. The owner's answers in #2444 approve the feature, not these tables: an `architect` issue first (Fixed rules 5).
+- G1c: `ws_mail_ingest()`: de-duplication, loop gate, threading by In-Reply-To / References, card message and thread, attachments into the channel folder, `.eml` kept 30 days and its cleanup.
+- G1d: the mail card in the channel and the `.eml` upload with a minimal box form in Workspace settings.
+
 ## Which transport options were compared?
 - A, IMAP pull (recommended): the site reads the customer's existing mailbox every minute with its own small IMAP client over `stream_socket_client()` (the PHP `imap` extension left core in 8.4). Mail stays in the box (no loss, provider spam filter). Costs: ~1 min delay, needs cron and outbound port 993; Microsoft 365 needs OAuth (no password IMAP), Google Workspace closed password IMAP on 2025-05-01 (app passwords a narrow exception), personal Gmail uses an app password.
 - B, the site's Cloudflare Email Routing + Worker POSTing raw mail: seconds, but Cloudflare DNS required (else a subdomain), no copy kept, no spam score, 25 MiB, per-site setup.
