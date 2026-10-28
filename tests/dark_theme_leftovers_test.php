@@ -83,3 +83,65 @@ function test_dark_theme_fixed_fills_follow_tokens()
 	pg_assert_contains('<div style="background: var(--pg-border-color);width: 14px;height: 3px;', $form);
 	pg_assert_false(strpos($form, '#dee2e6') !== false, 'field form corner ticks');
 }
+
+// var(--bs-orange) is not defined in the panel, so the 30-54 band drew nothing.
+function test_dark_theme_seo_orange_band_is_a_literal()
+{
+	$seo = dark_theme_leftovers_source('seo.php');
+	pg_assert_false(strpos($seo, '--bs-orange') !== false, 'seo.php reads no undefined --bs-orange');
+	pg_assert_contains("return array('class' => '', 'style' => '#fd7e14');", $seo);
+	pg_assert_contains(
+		'<span class="badge" style="background-color:\' . $color[\'style\'] . \';color:var(--pg-on-accent)" title="',
+		$seo,
+		'the orange badge carries dark ink');
+}
+
+// A black 6% track vanishes on the dark card; the panel's second background shows in both themes.
+function test_dark_theme_dashboard_tracks_use_tokens()
+{
+	foreach (array(18, 21, 22, 23) as $id) {
+		$widget = dark_theme_leftovers_source('includes/dashboard/widgets/widget_' . $id . '.php');
+		pg_assert_false(strpos($widget, 'rgba(0,0,0,.06)') !== false, 'widget ' . $id . ' has no black 6% fill');
+		pg_assert_contains('style="height:4px;background:var(--pg-bg-2)', $widget, 'widget ' . $id . ' track');
+	}
+
+	pg_assert_contains(
+		'style="background:var(--pg-bg-2);color:inherit;font-size:10px"',
+		dark_theme_leftovers_source('includes/dashboard/widgets/widget_21.php'),
+		'firewall widget hit count pill');
+}
+
+// The AI row's presence dot is built with border-white; its ring follows the window background.
+function test_dark_theme_chat_dot_ring_follows_background()
+{
+	pg_assert_contains(
+		'#pg-chat-root .pg-chat-dot { border-color: var(--pg-bg-body); }',
+		dark_theme_leftovers_source('chat.php'));
+}
+
+// Theme badges set their own text colour: fg-white on a pastel fill reads at about 2:1.
+function test_dark_theme_badges_keep_their_ink()
+{
+	pg_assert_contains(
+		'translate-middle badge rounded-pill badge-subtle theme-success">',
+		dark_theme_leftovers_source('view_orders.php'),
+		'tracking count badge');
+
+	$profiles = dark_theme_leftovers_source('view_recurring_commission_profiles.php');
+	pg_assert_false(strpos($profiles, 'fg-white') !== false, 'recurring commission badges');
+	pg_assert_contains(
+		'<span class="badge theme-primary fw-light">\' . pg_format_money($recurring_commission_profile[\'amount\'] / 100, BASE_CURRENCY_SYMBOL) . \'</span></td>',
+		$profiles,
+		'the amount badge is closed');
+
+	pg_assert_contains(
+		'<span class="badge fw-light theme-secondary">',
+		dark_theme_leftovers_source('includes/templates/view_key_codes.php'));
+
+	$offer = dark_theme_leftovers_source('assets/js/offer_editor.js');
+	pg_assert_contains('<a href="#" class="fg-reset text-decoration-none" data-on="', $offer, 'offer tag remove link');
+
+	// A black fill needs white ink; the badge's default text is dark in the light theme.
+	pg_assert_contains("'ban'         => array('bg-black fg-white', lang('Banned')),", dark_theme_leftovers_source('view_waf_log.php'));
+	pg_assert_contains("'deleted'      => ['bg-black fg-white',", dark_theme_leftovers_source('view_parasut_inbox.php'));
+}
