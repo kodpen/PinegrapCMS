@@ -1,6 +1,6 @@
 ---
 name: order-completion
-description: pg_order_complete() (#2638) and its stage functions (#2687, #2713): the session-free completion of an incomplete order, the once-only lock, what each writes, what submit_order() still does itself
+description: pg_order_complete() (#2638) and its stage functions (#2687): the session-free completion of an incomplete order, the once-only lock, what each writes
 module: order_completion
 ---
 
@@ -21,13 +21,13 @@ module: order_completion
 - `submit_order()` calls them where the code stood, so the order of writes is unchanged; the plan's last A2 step makes `pg_order_complete()` call them.
 - `pg_order_complete_receipt($order_id, $number, $receipt, $customer_email, $new_account)`: `$receipt` is the checkout page's receipt settings (email, subject, format, header, footer, page_id). BCC from the order's lines (`pg_order_receipt_bcc_list()`, pure: store address first, each valid product address once). The renderers still read the session for a new account's link; a request without a visitor has none.
 - `pg_order_complete_ship_dates($order_id, $order_date, $auto_registration, $user_id)`: address book entries (`new`/`existing`), ship and delivery dates (`pg_order_transit_date()`, `pg_order_ship_date_adjusted()`, pure).
-- Per order line, in `submit_order()`'s product loop (#2713): `pg_order_complete_line_stock($line, &$stock_left, $actor)`, `_line_reservation($line, $contact_id)`, `_line_membership($line, $contact_id, $reference_code)` (true → the caller adds the membership contact group), `_line_folder_access($line, $user_id)`. Pure: `pg_order_extended_until()`, `pg_order_folder_access_extends()`.
+- Per order line, in `submit_order()`'s product loop: `commerce/order-completion-lines.md`.
 
 ## What stays in submit_order()?
-- Everything not moved yet (gift card error mail, auto e-mail campaigns, the rest of the per-product loop, rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
+- Everything not moved yet (gift card error mail, auto e-mail campaigns, the rest of the per-product loop (variable fields, product forms, comments, e-mailed page, line campaigns), rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
 
 ## How is it tested?
 - `tests/order_completion_test.php`: the tail of `submit_order()` with each function's body spliced in at its call, as one ordered list of writes; one number, `order.created`, SMS; the query; the pure helpers.
 - Not run against a database or a real checkout here.
 
-Related: commerce/payment-callback.md, commerce/order-status-moves.md, plans/order-completion-function.md
+Related: commerce/order-completion-lines.md, commerce/payment-callback.md, commerce/order-status-moves.md, plans/order-completion-function.md
