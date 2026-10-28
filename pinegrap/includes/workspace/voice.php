@@ -1267,3 +1267,99 @@ function ws_voice_with_transcript($text, $transcript, $limit = 0)
 
     return ((trim((string) $text) !== '') ? $text . ' ' : '') . '[voice message, machine transcript: ' . $heard . ']';
 }
+
+/**
+ * A message in one short line for a bell row or a device banner
+ * (ws_inbox_describe()): a voice message reads its transcript once written
+ * out, "Voice message" before that, so a recording sent without words is
+ * never an empty banner. Read when the banner is drawn, after its wait, so a
+ * transcript written out meanwhile is already in it.
+ *
+ * @param array $viewer
+ * @param array $message ws_messages row
+ * @param int   $length  characters
+ * @return string
+ */
+function ws_voice_excerpt($viewer, $message, $length = 140)
+{
+    $text = ws_plain_excerpt($viewer, (string) $message['body'], $length);
+    $transcript = ws_voice_transcript_of($message);
+    $recording = ws_voice_is_recording((string) ($message['file_name'] ?? ''));
+
+    return ws_voice_excerpt_text($text, $recording, $transcript, $length, lang('Voice message'));
+}
+
+/**
+ * The line ws_voice_excerpt() gives, from its parts: the words as they are
+ * for any other message; for a recording the words, then the label and the
+ * transcript, cut at $length characters.
+ *
+ * @param string $text       the message's words in one line
+ * @param bool   $recording  is its file a recording
+ * @param string $transcript ws_voice.transcript, '' for none (yet)
+ * @param int    $length     characters
+ * @param string $label      "Voice message" in the reader's language
+ * @return string
+ */
+function ws_voice_excerpt_text($text, $recording, $transcript, $length, $label)
+{
+    $text = trim((string) $text);
+    $heard = ws_voice_transcript_clean($transcript);
+
+    if (!$recording && ($heard === '')) {
+        return $text;
+    }
+
+    if ($heard === '') {
+        return ($text !== '') ? $text : (string) $label;
+    }
+
+    $line = (($text !== '') ? $text . ' · ' : '') . $label . ': ' . $heard;
+
+    if (($length > 1) && (mb_strlen($line) > $length)) {
+        $line = rtrim(mb_substr($line, 0, $length - 1)) . '…';
+    }
+
+    return $line;
+}
+
+/**
+ * The condition that finds a message by its recording's transcript, to be
+ * joined with OR to a search on the body: '' while transcripts have no
+ * table. The reach rules of the search stay as they are: a transcript is
+ * found as its message is.
+ *
+ * @param string $like the search words, already through e(escape_like())
+ * @param string $alias the ws_messages alias, '' for none
+ * @return string
+ */
+function ws_voice_search_or($like, $alias = '')
+{
+    if (!ws_voice_schema_ready()) {
+        return '';
+    }
+
+    return ' OR ' . (($alias !== '') ? $alias . '.' : '') . "file_id IN (SELECT v.file_id FROM ws_voice v WHERE v.status = 'done' AND v.transcript LIKE '%" . $like . "%')";
+}
+
+/**
+ * Was a message found by its transcript rather than by its words? The
+ * transcript in one line when the search words are in it and not in the
+ * words, '' otherwise: the search's answer shows where the words were found.
+ *
+ * @param string $text       the message's words
+ * @param string $transcript ws_voice.transcript, '' for none
+ * @param string $query      the search words
+ * @return string
+ */
+function ws_voice_found_in_transcript($text, $transcript, $query)
+{
+    $query = trim((string) $query);
+    $heard = ws_voice_transcript_clean($transcript);
+
+    if (($query === '') || ($heard === '') || (mb_stripos($heard, $query) === false)) {
+        return '';
+    }
+
+    return (mb_stripos((string) $text, $query) === false) ? $heard : '';
+}

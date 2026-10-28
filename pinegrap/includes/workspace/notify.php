@@ -264,7 +264,7 @@ function ws_inbox_describe($viewer, $row)
 
             return array(
                 'title' => lang(array('string' => '{var:1} mentioned you in {var:2}', 'vars' => array($actor, $channel_name))),
-                'body'  => $message ? ws_plain_excerpt($viewer, $message['body'], 140) : '',
+                'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-at',
             );
@@ -461,7 +461,7 @@ function ws_inbox_describe($viewer, $row)
 
             return array(
                 'title' => lang(array('string' => '{var:1} asked you to say you read a message in {var:2}', 'vars' => array($actor, $channel_name))),
-                'body'  => $message ? ws_plain_excerpt($viewer, $message['body'], 140) : '',
+                'body'  => $message ? ws_voice_excerpt($viewer, $message, 140) : '',
                 'url'   => $base . 'workspace.php?channel=' . (int) $row['channel_id'] . '&message=' . (int) $row['message_id'],
                 'icon'  => 'bi-eye',
             );
