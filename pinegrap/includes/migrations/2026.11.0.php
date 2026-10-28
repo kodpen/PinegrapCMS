@@ -1926,15 +1926,18 @@ function upgrade_2026_11_0_workspace_flows() {
 // history and news; '' is a scheduled action of its own. Every row that
 // starts a flow today is a hidden anchor, so the UPDATE marks them; it only
 // touches rows still unmarked and runs again harmlessly. The column comes
-// after the flows step that added flow_id and before scheduled actions are
-// converted into flows. A VARCHAR, so a later value needs no MODIFY.
+// after the flows step that added flow_id. The actions themselves are
+// converted into flows by the Workspace's scheduled-actions driver right
+// after the upgrade (includes/workspace/scheduled_convert.php): the upgrade
+// does not load the Workspace code the drawing needs. A VARCHAR, so a later
+// value needs no MODIFY.
 function upgrade_2026_11_0_workspace_scheduled_anchor() {
 
 	install_add_column('ws_scheduled_actions', 'anchor', "VARCHAR(12) NOT NULL DEFAULT ''");
 
 	db("UPDATE ws_scheduled_actions SET anchor = 'hidden' WHERE flow_id <> 0 AND anchor = ''");
 
-	install_note('Workspace: the scheduled actions that start a flow are marked as such, so they stay out of the list of scheduled actions. Nothing changes in the Workspace with this update.');
+	install_note('Workspace: every scheduled action of the staff becomes a flow in the first minutes after this update, keeping its card, its history and its state; it is then changed on the flow canvas. Scheduled messages stay as they are.');
 
 }
 

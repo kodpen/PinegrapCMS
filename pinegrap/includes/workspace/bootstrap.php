@@ -88,6 +88,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_versions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_convert.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/timeline.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/home.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes.php');

@@ -17459,9 +17459,16 @@
             }
         };
 
+        // A converted action is changed on its flow's canvas, where its
+        // conditions, step and follow-ups are boxes.
         if (item.can_edit) {
             var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
+                if (item.flow) {
+                    window.location.href = 'workspace_flows.php?flow=' + encodeURIComponent(item.flow.id);
+                    return;
+                }
+
                 scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
             });
             tools.appendChild(edit);
@@ -17491,19 +17498,23 @@
             tools.appendChild(run);
         }
 
-        // A copy to start a new one from.
-        var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
-        copy.addEventListener('click', function () {
-            var data = JSON.parse(JSON.stringify(item.data || {}));
+        // A copy to start a new one from; a converted action's form data is
+        // its flow's boxes, which its flow keeps.
+        if (!item.flow) {
+            var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
+            copy.addEventListener('click', function () {
+                var data = JSON.parse(JSON.stringify(item.data || {}));
 
-            data.name = t('sa_copy_of', data.name || item.name);
-            scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
-        });
-        tools.appendChild(copy);
+                data.name = t('sa_copy_of', data.name || item.name);
+                scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
+            });
+            tools.appendChild(copy);
+        }
 
         // The action drawn read-only on the flow canvas: in the Scheduled
-        // actions section of Flows, where workspace_flow.js is loaded.
-        if ((CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
+        // actions section of Flows, where workspace_flow.js is loaded. A
+        // converted one opens as its flow (Edit).
+        if (!item.flow && (CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
             var canvas = button('btn btn-sm btn-text theme-secondary', t('sa_show_canvas'), 'bi-diagram-3');
             canvas.addEventListener('click', function () {
                 scheduledGraph(item.id);
