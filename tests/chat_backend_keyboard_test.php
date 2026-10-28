@@ -64,7 +64,7 @@ function test_chat_window_takes_and_returns_focus()
 
 	$source = chat_backend_keyboard_source();
 	pg_assert_true(
-		preg_match("/panel\\.addEventListener\\('keydown'[\\s\\S]{0,600}event\\.key === 'Escape'[\\s\\S]{0,600}togglePanel\\(\\)/", $source) === 1,
+		preg_match("/panel\\.addEventListener\\('keydown'[\\s\\S]{0,600}event\\.key [!=]== 'Escape'[\\s\\S]{0,600}togglePanel\\(\\)/", $source) === 1,
 		'Escape inside the window closes it');
 }
 

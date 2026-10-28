@@ -45,6 +45,9 @@
         view: 'list',           // 'list' | 'conversation'
         conversation: null,     // { id, title, peer, status, sinceId, gone }
         unread: 0,
+        listBody: null,         // the list view's row container, kept between ticks
+        listTab: '',            // the tab listBody was drawn for
+        focusAfterList: '',     // focus key to take once the list rows arrive
         timers: { badge: null, list: null, conversation: null },
         originalTitle: document.title
     };
@@ -59,6 +62,27 @@
         if (typeof text === 'string' && text !== '') {
             node.textContent = text;
         }
+        return node;
+    }
+
+    // A div row that behaves as a button: in the tab order, opened by Enter
+    // and Space as well as a click. The key names the row across redraws.
+    function activatable(node, key, onActivate) {
+        node.setAttribute('role', 'button');
+        node.setAttribute('tabindex', '0');
+        node.setAttribute('data-pg-chat-key', key);
+        node.addEventListener('click', onActivate);
+        node.addEventListener('keydown', function (event) {
+            if (event.target !== node) {
+                return;
+            }
+
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                onActivate(event);
+            }
+        });
+
         return node;
     }
 
@@ -409,8 +433,43 @@
 
     var panel = el('div', 'pg-chat-panel card shadow');
 
+    launcher.setAttribute('aria-expanded', 'false');
+
     root.appendChild(launcher);
     root.appendChild(panel);
+
+    // Focus survives redraws: every control the list view draws carries a
+    // data-pg-chat-key, and after a redraw the control with the same key
+    // takes focus again.
+    function focusedKey() {
+        var active = document.activeElement;
+
+        if (!active || !panel.contains(active)) {
+            return '';
+        }
+
+        return active.getAttribute('data-pg-chat-key') || '';
+    }
+
+    function focusKey(key) {
+        var nodes;
+        var index;
+
+        if (!key) {
+            return false;
+        }
+
+        nodes = panel.querySelectorAll('[data-pg-chat-key]');
+
+        for (index = 0; index < nodes.length; index++) {
+            if (nodes[index].getAttribute('data-pg-chat-key') === key) {
+                nodes[index].focus();
+                return true;
+            }
+        }
+
+        return false;
+    }
 
     // ── List view ───────────────────────────────────────────────────────
 
@@ -427,10 +486,12 @@
         var onlineTab = el('li', 'nav-item');
         var onlineLink = el('a', 'nav-link' + (state.tab === 'online' ? ' active' : ''), STR.tab_users);
         onlineLink.href = 'javascript:void(0)';
+        onlineLink.setAttribute('data-pg-chat-key', 'tab:online');
         onlineTab.appendChild(onlineLink);
         var conversationsTab = el('li', 'nav-item');
         var conversationsLink = el('a', 'nav-link' + (state.tab === 'conversations' ? ' active' : ''), STR.tab_conversations);
         conversationsLink.href = 'javascript:void(0)';
+        conversationsLink.setAttribute('data-pg-chat-key', 'tab:conversations');
         conversationsTab.appendChild(conversationsLink);
         // Conversations first (and the active tab when the panel opens).
         tabsWrap.appendChild(conversationsTab);
@@ -451,6 +512,7 @@
         var soundButton = el('button', 'btn btn-sm btn-link fg-secondary p-0');
         soundButton.type = 'button';
         soundButton.title = STR.sound;
+        soundButton.setAttribute('data-pg-chat-key', 'sound');
         soundButton.appendChild(el('i', soundEnabled() ? 'bi bi-bell' : 'bi bi-bell-slash'));
         soundButton.addEventListener('click', function () {
             setSoundEnabled(!soundEnabled());
@@ -461,6 +523,7 @@
         var closeButton = el('button', 'btn-close');
         closeButton.type = 'button';
         closeButton.setAttribute('aria-label', STR.close);
+        closeButton.setAttribute('data-pg-chat-key', 'close');
         closeButton.addEventListener('click', togglePanel);
 
         headerActions.appendChild(soundButton);
@@ -471,6 +534,8 @@
 
         var body = el('div', 'pg-chat-body bg-1');
         panel.appendChild(body);
+        state.listBody = body;
+        state.listTab = state.tab;
 
         if (!data) {
             body.appendChild(el('div', 'text-center fg-secondary small py-7', STR.loading + '...'));
@@ -593,9 +658,8 @@
         main.appendChild(presence);
 
         row.appendChild(main);
-        row.addEventListener('click', onClick);
 
-        return row;
+        return activatable(row, 'user:' + user.id, onClick);
     }
 
     // ── AI Chat (Cloudflare AutoRAG snippet) ────────────────────────────
@@ -651,9 +715,8 @@
 
         row.appendChild(avatarWrap);
         row.appendChild(main);
-        row.addEventListener('click', openAiView);
 
-        return row;
+        return activatable(row, 'ai', openAiView);
     }
 
     function openAiView() {
@@ -663,6 +726,7 @@
         stopTimer('conversation');
         ensureAiScript();
 
+        state.listBody = null;
         panel.textContent = '';
 
         var header = el('div', 'card-header border-0 d-flex align-items-center py-3');
@@ -722,7 +786,9 @@
 
     function leaveAiView() {
         state.view = 'list';
+        state.focusAfterList = 'ai';
         renderListView(null);
+        focusKey('tab:' + state.tab);
         refreshLists();
 
         stopTimer('list');
@@ -764,6 +830,7 @@
             startButton.textContent = STR.start_chat;
             startButton.addEventListener('click', function () {
                 state.tab = 'online';
+                state.focusAfterList = 'tab:online';
                 refreshLists();
             });
 
@@ -808,7 +875,7 @@
 
             row.appendChild(side);
 
-            row.addEventListener('click', function () {
+            activatable(row, 'conversation:' + conversation.id, function () {
                 openConversationView({
                     id: conversation.id,
                     title: conversation.title,
@@ -831,7 +898,17 @@
             return;
         }
 
-        var body = renderListView(null);
+        // A tick keeps the drawn list until the new rows arrive; only a
+        // first draw or a tab change shows the loading state. The header
+        // is rebuilt then, so the focused tab or button is taken again.
+        var body = state.listBody;
+
+        if (!body || !panel.contains(body) || state.listTab !== state.tab) {
+            var headerKey = focusedKey();
+
+            body = renderListView(null);
+            focusKey(headerKey);
+        }
 
         api('chat_bootstrap', {}, function (response) {
             if (response.status !== 'success' || !state.open || state.view !== 'list') {
@@ -848,10 +925,26 @@
 
             setBadge(unread);
 
+            if (body !== state.listBody || !panel.contains(body)) {
+                return;
+            }
+
+            var rowKey = focusedKey();
+
             if (state.tab === 'online') {
                 renderOnlineUsers(body, response.data.online_users || []);
             } else {
                 renderConversations(body, response.data.conversations || []);
+            }
+
+            // Back from a conversation: its row, else the active tab.
+            if (state.focusAfterList) {
+                if (!focusKey(state.focusAfterList) && !focusedKey()) {
+                    focusKey('tab:' + state.tab);
+                }
+                state.focusAfterList = '';
+            } else {
+                focusKey(rowKey);
             }
         });
     }
@@ -905,6 +998,7 @@
         };
 
         stopTimer('list');
+        state.listBody = null;
         panel.textContent = '';
 
         // Header: back + name/presence + manage buttons (flat header, no
@@ -1250,6 +1344,15 @@
         emojiButton.addEventListener('click', function () {
             toggleEmoji();
         });
+
+        state.conversation._closeEmoji = function () {
+            if (!emojiPanel.classList.contains('pg-chat-emoji-on')) {
+                return false;
+            }
+
+            toggleEmoji(false);
+            return true;
+        };
 
         // ── Upload ──────────────────────────────────────────────────────
         // One path for a picked file and for a finished recording: a File is
@@ -1767,9 +1870,11 @@
 
     function leaveConversationView() {
         stopTimer('conversation');
+        state.focusAfterList = state.conversation && state.conversation.id ? 'conversation:' + state.conversation.id : '';
         state.conversation = null;
         state.tab = 'conversations';
         renderListView(null);
+        focusKey('tab:' + state.tab);
         refreshLists();
 
         stopTimer('list');
@@ -1860,20 +1965,32 @@
             pinPanelToViewport();
             state.tab = 'conversations';
             renderListView(null);
+            focusKey('tab:' + state.tab);
             refreshLists();
             stopTimer('badge');
             stopTimer('list');
             state.timers.list = setInterval(refreshLists, POLL.list * 1000);
         } else {
+            // The window hides under the focused control (its close button,
+            // or wherever Escape was pressed): focus goes back to the
+            // launcher instead of dropping to the page.
+            var hadFocus = panel.contains(document.activeElement);
+
             panel.classList.remove('pg-chat-open');
             releasePanelViewport();
             stopTimer('list');
             stopTimer('conversation');
             state.view = 'list';
             state.conversation = null;
+            state.listBody = null;
             startBadgeLoop();
+
+            if (hadFocus) {
+                launcher.focus();
+            }
         }
 
+        launcher.setAttribute('aria-expanded', state.open ? 'true' : 'false');
         updateTitle();
     }
 
@@ -1899,6 +2016,22 @@
     }
 
     launcher.addEventListener('click', togglePanel);
+
+    // Escape closes an open emoji palette first, then the window. The
+    // window stays non-modal: Tab leaves it like any other part of the page.
+    panel.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape' || event.defaultPrevented || !state.open) {
+            return;
+        }
+
+        event.preventDefault();
+
+        if (state.conversation && state.conversation._closeEmoji && state.conversation._closeEmoji()) {
+            return;
+        }
+
+        togglePanel();
+    });
 
     // No timer runs while the tab is hidden; everything resumes where it
     // left off when visible again.
