@@ -68,7 +68,7 @@ function test_submitted_form_list_filter_binds_every_value()
 	pg_assert_contains('(forms.last_modified_timestamp >= ?) AND (forms.last_modified_timestamp <= ?)', $filter['where']);
 	pg_assert_contains('(forms.page_id = ?)', $filter['where']);
 	pg_assert_contains('LIKE ?)', $filter['where']);
-	pg_assert_same(array(mktime(0, 0, 0, 1, 2, 2026), mktime(23, 59, 59, 3, 4, 2026), "7' OR '1", '%abc%%'), $filter['params']);
+	pg_assert_same(array(mktime(0, 0, 0, 1, 2, 2026), mktime(23, 59, 59, 3, 4, 2026), "7' OR '1", '%abc\\%%'), $filter['params']);
 	pg_assert_same(substr_count($filter['from'] . $filter['where'], '?'), count($filter['params']), 'one value per placeholder');
 	pg_assert_false(strpos($filter['where'], "7'") !== false, 'no value in the SQL text');
 	pg_assert_false(strpos($filter['where'], 'page.page_folder') !== false, 'a manager sees every folder');
