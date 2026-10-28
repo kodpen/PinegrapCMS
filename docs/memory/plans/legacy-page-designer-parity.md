@@ -1,18 +1,21 @@
 ---
 name: legacy-page-designer-parity
-description: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, with a build-or-drop proposal and files per item; waits for the owner
+description: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
 ---
 
-## What does the page designer have that the visual designer lacks? (proposal; owner to decide)
-- P1 Live-site browsing: the preview iframe follows any site link and the tools pane re-targets to that page's style, layout, regions and files (`init_preview_check()`, `get_page`, `get_items_in_style`). The designer edits one design; its Preview plays open tabs and opens other links in a new tab (`_sdPreviewPlayHarness()`). Drop: the toolbar's Ctrl+G on each page reaches its design.
+## What was decided? (#2484, 2026-10-27)
+- P1, P4, P5, P6 (both create actions), P8, P10 dropped: running sites lose only an editor convenience, the site output does not change. P7 built (`designer/classic-style-design-files.md`). P2, P3, P9 are parity already. L4's build list is P7 only.
+
+## What does the page designer have that the visual designer lacks?
+- P1 Live-site browsing (`init_preview_check()`, `get_page`, `get_items_in_style`): dropped; the toolbar's Ctrl+G on each page reaches its design.
 - P2 Jump to the page's style: done for designed pages (`page_designer_button` branch, `includes/fn/output.php` ~5310: `edit_system_style.php?id=&page=`, layout tab per Y6). Only the classic `else` branch opens `page_designer.php`. Drop it in L5; a page left classic (`style_file`, not converted) keeps "Edit Page Style" (`edit_custom_style.php`).
 - P3 Ctrl+G back to the browsed page (`close()`): parity, `_sdExitDesigner()` (`style_designer.js` ~7350) returns to `send_to`.
-- P4 Ctrl+D (hide the toolbar in the preview) and Ctrl+E (classic grid toggle `#grid_toggle`): they drive the front-end toolbar inside the preview, which the canvas has not. Drop.
-- P5 Console pane: an early interceptor in `page_designer.php` plus `pdConsoleAdd/Clear/Toggle()` collect `console.*`, `error` and `unhandledrejection` of the previewed page, with a count badge. `style_designer.js` has no such hook. Drop (browser devtools); if wanted, build it in the Preview window: `_sdPreviewHarness()` posts to the opener, a pane in `style_designer.js`, `node --check`.
-- P6 Region editors: designer region (R3 done), dynamic region code (R4 done), common region (R2 open). Left: "Create Designer Region" (`create_design_region`, HTML into a new `cregion` and insert the tag) is a new shared component in the designer: drop. "Create Dynamic Region" (`create_dynamic_region`, administrators, `DYNAMIC_REGIONS`): the designer only reads/saves (`pg_panel_dynamic_region_code()` sub-actions `read`/`save`). Drop (rare; `add_dynamic_region.php` then pick it on the region node) or build a `create` sub-action plus a button on the region node panel (`includes/panel/designer.php`, `style_designer.js` ~44646).
-- P7 Design files of the style (custom CSS/JS linked in `style_code`, from `get_items_in_style`) open as editable tabs. The designer opens the design's own managed files (`designer_file/read|save`, `style_designer.js` ~48933); the classic theme file is listed locked (~49688), edited in the theme screens. Build in L1: the converter turns the style's `<link>`/`<script>` design files into the design's managed file entries (`includes/designer_import.php`).
-- P8 Site-wide search of styles, custom design files, designer and dynamic regions (`get_styles`, `get_design_files`, `get_designer_regions`, `get_dynamic_regions`; query kept in `$_SESSION['software']['page_designer']['query']` by `update_page_designer_properties`). The designer searches its open code tabs only (`code-view-tab-search.md`). Drop. The panel palette's style result links `page_designer.php?style_id=` (`assets/js/backend.src.js` ~2005), which the page ignored: done in #2013, it opens `edit_<style_type>_style.php?id=`, `view_styles.php` without a type.
+- P4 Ctrl+D (hide the toolbar in the preview) and Ctrl+E (`#grid_toggle`): dropped.
+- P5 Console pane (`pdConsoleAdd/Clear/Toggle()`: `console.*`, `error`, `unhandledrejection` of the preview): dropped; browser devtools.
+- P6 Region editors: designer region (R3), dynamic region code (R4), common region (R2). "Create Designer Region" (`create_design_region`) and "Create Dynamic Region" (`create_dynamic_region`): dropped; a new shared component, and `add_dynamic_region.php` then the region node.
+- P7 Design files of the style (custom CSS/JS linked in `style_code`, from `get_items_in_style`) open as editable tabs. The designer opens the design's own managed files (`designer_file/read|save`, `style_designer.js` ~48933); the classic theme file is listed locked (~49688), edited in the theme screens. Built: the conversion makes them managed file entries (`pg_classic_style_managed_files()`).
+- P8 Site-wide search of styles, design files and regions (`get_styles`, `get_design_files`, `get_designer_regions`, `get_dynamic_regions`, `update_page_designer_properties`): dropped. The panel palette's style result links `page_designer.php?style_id=` (`assets/js/backend.src.js` ~2005), which the page ignored: done in #2013, it opens `edit_<style_type>_style.php?id=`, `view_styles.php` without a type.
 - P9 Device presets (six sizes, scaled frame, size badge, `localStorage` `deviceType`/`previewWidth`): parity, the designer's responsive preview with breakpoints.
-- P10 System style shown read-only and the "System Tags" help modal (`#editor_region_modal`): the designer's code view and palette region nodes cover them. Drop.
+- P10 System style read-only and the "System Tags" modal (`#editor_region_modal`): dropped; the code view and the palette's region nodes cover them.
 
 Related: docs/memory/plans/legacy-page-designer-l5-list.md, docs/memory/plans/legacy-page-designer-retirement.md, docs/memory/designer/layout-code-tab.md, docs/memory/designer/classic-regions-in-designer.md
