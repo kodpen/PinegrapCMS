@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -290,4 +290,37 @@ function test_order_completion_folder_access_extends()
 	pg_assert_true(pg_order_folder_access_extends('1', '2026-12-01'), 'access that ends');
 	pg_assert_false(pg_order_folder_access_extends('1', '0000-00-00'), 'access for ever stays');
 	pg_assert_false(pg_order_folder_access_extends('2', '2026-12-01'), 'edit rights stay');
+}
+
+function test_order_completion_submit_order_issues_gift_cards_through_the_function()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_same(1, substr_count($source, 'pg_order_complete_line_gift_cards('), 'one call in the product loop');
+	pg_assert_same(0, substr_count($source, 'INSERT INTO gift_cards'), 'no gift card write of its own');
+	pg_assert_same(0, substr_count($source, "'gift_card_ordered'"), 'no gift card e-mail of its own');
+}
+
+function test_order_completion_gift_card_count()
+{
+	pg_assert_same(3, pg_order_gift_card_count(3), 'one card per unit');
+	pg_assert_same(100, pg_order_gift_card_count(100), 'up to 100');
+	pg_assert_same(100, pg_order_gift_card_count(250), 'never more than 100');
+	pg_assert_same(0, pg_order_gift_card_count(0), 'none');
+}
+
+function test_order_completion_gift_card_expiration()
+{
+	$today = mktime(10, 0, 0, 11, 10, 2026);
+
+	pg_assert_same('', pg_order_gift_card_expiration('0000-00-00', 0, $today), 'no validity days: no end');
+	pg_assert_same('', pg_order_gift_card_expiration('2026-12-01', 0, $today), 'no validity days, a delivery date: no end');
+	pg_assert_same('2026-12-10', pg_order_gift_card_expiration('0000-00-00', 30, $today), 'sent now: from today');
+	pg_assert_same('2026-12-31', pg_order_gift_card_expiration('2026-12-01', 30, $today), 'sent later: from the delivery date');
+}
+
+function test_order_completion_gift_card_send_time()
+{
+	pg_assert_same('', pg_order_gift_card_send_time('0000-00-00'), 'no delivery date: sent at once');
+	pg_assert_same('2026-12-01 12:00:00', pg_order_gift_card_send_time('2026-12-01'), 'noon of the delivery date');
 }
