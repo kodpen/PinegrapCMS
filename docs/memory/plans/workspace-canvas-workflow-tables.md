@@ -17,7 +17,12 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): 
 ## Slices
 1. S1 Scheduled actions API: list, get, pause, cancel — done, #1708; removed before release with S2 in #2107 (workspace/workspace-scheduled-actions-api.md).
 2. S2 Create, edit, resume — done, #1858 (workspace/workspace-scheduled-actions-api.md). S2b change card for connected apps — done, #1987 (workspace/workspace-scheduled-draft-proposals.md).
-3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API.
+3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API. Cut:
+   - T1a types and store core: pure part first (types, options, cell checks, limits, cells JSON), schema in its decision issue; then step `upgrade_2026_11_0_workspace_wtables()` (11.0.110), `get_tables()`, `ws_wtable_access()` after `ws_note_access()` (#2424), create/rename/delete of tables and columns, memory file of the columns; bootstrap.php require after #2738.
+   - T1b rows: add, change, delete, reorder; 409 `changed_meanwhile` on the row's revision; formula values on read (`ws_calc_evaluate()`).
+   - T1c shares (person view/edit, channel view), `ws_notify()`, `ws_inbox_reach_lost()`/`_regained()`, owner deleted or excluded hides the table, privacy export and erasure of person cells.
+   - T1d API and MCP (`ws_openapi_objects()`, dry_run through `*_check()`), `workspace.wtable.*` webhooks on a public channel card.
+   - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
@@ -27,4 +32,4 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): 
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1 needs the owner's schema approval first.
+- T1a: branch `feature/wtables-t1a` waits on its schema decision.
