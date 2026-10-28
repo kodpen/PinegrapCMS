@@ -280,6 +280,7 @@
     "Scheduled action “{var:1}” was skipped: {var:2}": "“{var:1}” programlanmış işlemi atlandı: {var:2}",
     "Scheduled actions": "Programlanmış işler",
     "Scheduled actions Pinegrap AI drafts": "Pinegrap AI'ın hazırladığı programlanmış işlem taslakları",
+    "Scheduled flow": "Zamanlanmış akış",
     "Scheduled for {var:1}. Only you see it until then.": "{var:1} için zamanlandı. O zamana kadar yalnız siz görürsünüz.",
     "Scheduled for {var:1}: “{var:2}”. Only you see it until it is posted.": "{var:1} için zamanlandı: “{var:2}”. Gönderilene kadar yalnızca siz görürsünüz.",
     "Scheduled job": "Zamanlanmış görev",

@@ -9907,28 +9907,7 @@
                         open.disabled = true;
 
                         api('ws_flow_from_draft', { change_id: change.id }).then(function (result) {
-                            var go = function () {
-                                window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
-                            };
-
-                            if (!result.left || !result.left.length) {
-                                go();
-                                return;
-                            }
-
-                            var list = el('ul', 'mb-0');
-
-                            result.left.forEach(function (line) {
-                                list.appendChild(el('li', '', line));
-                            });
-
-                            ask(t('sa_draft_flow_left'), t('sa_draft_flow_see'), false, list).then(function (yes) {
-                                if (yes) {
-                                    go();
-                                } else {
-                                    self.sync();
-                                }
-                            });
+                            flowOpened(result, function () { self.sync(); });
                         }).catch(function (error) {
                             open.disabled = false;
                             fail(error);
@@ -11277,8 +11256,12 @@
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
-                    (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_new'), action: function () {
-                        scheduledForm({ channel_id: self.channel.id }, null, function () { self.sync(true); });
+                    // A scheduled job is a flow with a time start: a new one
+                    // posting here, opened on the canvas.
+                    (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_flow_new'), action: function () {
+                        api('ws_flow_scheduled_new', { channel_id: self.channel.id }).then(function (result) {
+                            flowOpened(result);
+                        }).catch(fail);
                     } } : null
                 ], true);
             });
@@ -17056,15 +17039,18 @@
             tools.appendChild(run);
         }
 
-        // A copy to start a new one from; a converted action's form data is
-        // its flow's boxes, which its flow keeps.
-        if (!item.flow) {
+        // A copy to start a new one from: a new flow of one's own, opened on
+        // the canvas.
+        if (CFG.scheduled) {
             var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
             copy.addEventListener('click', function () {
-                var data = JSON.parse(JSON.stringify(item.data || {}));
-
-                data.name = t('sa_copy_of', data.name || item.name);
-                scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
+                copy.disabled = true;
+                api('ws_flow_scheduled_copy', { id: item.id }).then(function (result) {
+                    flowOpened(result, function () { copy.disabled = false; });
+                }).catch(function (error) {
+                    copy.disabled = false;
+                    fail(error);
+                });
             });
             tools.appendChild(copy);
         }
@@ -17124,6 +17110,34 @@
         card.appendChild(historyBox);
 
         return card;
+    }
+
+    // A new flow made from a draft, a scheduled action or Add › Scheduled
+    // flow, opened on the canvas; what the flow keeps otherwise (left) is
+    // told first, and stay runs when the person stays where they are.
+    function flowOpened(result, stay) {
+        var go = function () {
+            window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
+        };
+
+        if (!result.left || !result.left.length) {
+            go();
+            return;
+        }
+
+        var list = el('ul', 'mb-0');
+
+        result.left.forEach(function (line) {
+            list.appendChild(el('li', '', line));
+        });
+
+        ask(t('sa_draft_flow_left'), t('sa_draft_flow_see'), false, list).then(function (yes) {
+            if (yes) {
+                go();
+            } else if (stay) {
+                stay();
+            }
+        });
     }
 
     // A scheduled action on the flow canvas (ws_scheduled_get answers its
@@ -22282,13 +22296,6 @@
 
             if (BOOT.claude || BOOT.ai) {
                 tags.push(tool(BOOT.claude ? 'bi-stars' : 'bi-cpu', t(BOOT.claude ? 'notes_claude' : 'notes_ai'), function () { field.insertTrigger('@'); }));
-            }
-
-            // A scheduled action written in the note (staff).
-            if (CFG.scheduled && current && current.id && editable()) {
-                tags.push(tool('bi-alarm', t('sa_new'), function () {
-                    scheduledForm({ note_id: current.id }, null, function () { refreshScheduled(); });
-                }));
             }
 
             var picker = el('input');
