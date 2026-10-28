@@ -3991,6 +3991,7 @@
     "This adds things where you are standing. Inside a folder it offers a folder, a page and a file; in a view across everything it offers only what belongs there. You can also drop files, and whole folders, straight onto the screen.": "Bulunduğunuz yere ekler. Bir klasörün içindeyken klasör, sayfa ve dosya önerir; her şeyi listeleyen görünümlerde yalnızca oraya ait olanı. Ayrıca dosyaları, hatta klasörlerin tamamını, doğrudan ekranın üstüne bırakabilirsiniz.",
     "This amount is not stored; it only works out the change.": "Bu tutar kaydedilmez; yalnız para üstünü hesaplar.",
     "This and the following copies": "Bu ve sonraki kopyalar",
+    "This application belongs to an account above yours, so only that account or one above it can change it.": "Bu uygulama sizden üst bir hesaba ait; yalnızca o hesap veya ondan üstteki bir hesap değiştirebilir.",
     "This application does not hold the {var:1} permission.": "Bu uygulama {var:1} yetkisine sahip değil.",
     "This application has been turned off on this site and cannot connect. Ask the site's administrator if you need it.": "Bu uygulama bu sitede kapatılmış, bağlanamaz. Gerekiyorsa site yöneticisine başvurun.",
     "This application has made {var:1} proposals for this person in the last hour. Try again in {var:2} seconds.": "Bu uygulama son bir saatte bu kişi için {var:1} öneride bulundu. {var:2} saniye sonra tekrar deneyin.",

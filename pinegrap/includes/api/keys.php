@@ -152,6 +152,25 @@ function api_app_secret_can_rotate(array $app) {
 
 }
 
+// Whether Application Access refuses an application row to this editor. The
+// screen is open to roles 0-2, and a key calls the API with its owner's
+// rights as the cap, so an editor may not save, rotate, delete or touch the
+// webhooks and devices of a row whose owner outranks them (a lower user_role
+// number: administrator 0, Designer 1, Manager 2). Equal rank is allowed. A
+// row whose owner was deleted (NULL from the LEFT JOIN) is not locked: its
+// key answers owner_unavailable, so it carries no rights and may be cleared.
+function api_app_row_locked($owner_role, $editor_role) {
+
+	if ($owner_role === null || (string)$owner_role === '') {
+
+		return false;
+
+	}
+
+	return (int)$owner_role < (int)$editor_role;
+
+}
+
 // The kind an application row is made as, from a posted value: a team devices
 // application ('device', includes/api/devices.php) or an OAuth application
 // ('oauth', includes/oauth/), anything else the column's default, 'server'.
