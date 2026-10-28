@@ -486,7 +486,7 @@ function pg_user_list_names_cell($names, $icon)
     $items = '';
 
     foreach ($names as $name) {
-        $items .= '<li><span class="menu-text badge fg-black fw-light py-3" >' . $name . '</span></li>';
+        $items .= '<li><span class="menu-text badge fg-body fw-light py-3" >' . $name . '</span></li>';
     }
 
     return pg_list_cell(

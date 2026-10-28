@@ -284,7 +284,7 @@ $(document).ready(function () {
                 if (value == 'Export Orders For Parasut') {
                     pgUI.dialog.hide('#xlsl_setup_modal');
                     //reload this page to show user exported orders.
-                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: #e3e3e3ab;position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
+                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
                     $('body').attr('style', 'overflow:hidden');
                     setTimeout(function () {
                         window.location.reload();
@@ -7670,7 +7670,7 @@ function bindPageRenameRedirect(ids) {
 
             // Element-specific properties
             const props = document.createElement('div');
-            props.style.cssText = 'background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:10px;font-size:13px;';
+            props.style.cssText = 'background:var(--pg-bg-1);border:1px solid var(--pg-border-color);border-radius:6px;padding:10px;font-size:13px;';
 
             const title = document.createElement('div');
             title.style.cssText = 'font-weight:600;margin-bottom:8px;text-transform:capitalize;';
@@ -7726,7 +7726,7 @@ function bindPageRenameRedirect(ids) {
                 // Product image field: src is resolved dynamically per product — no URL editing
                 if (el.field === 'product_image') {
                     const note = document.createElement('div');
-                    note.style.cssText = 'margin-top:6px;font-size:12px;color:#6c757d;padding:4px 0;';
+                    note.style.cssText = 'margin-top:6px;font-size:12px;color:var(--pg-fg-2);padding:4px 0;';
                     note.innerHTML = `<i class="bi bi-image me-1"></i>${pgLang('Product Image')} <span class="fg-secondary fst-italic">(${pgLang('Dynamic (changes per product)')})</span>`;
                     props.appendChild(note);
                     this.panel.appendChild(props);
@@ -7789,7 +7789,7 @@ function bindPageRenameRedirect(ids) {
         _buildLabelSizePanel() {
             const lbl = this.template.label;
             const div = document.createElement('div');
-            div.style.cssText = 'background:#f8f9fa;border:1px solid #dee2e6;border-radius:6px;padding:10px;font-size:13px;';
+            div.style.cssText = 'background:var(--pg-bg-1);border:1px solid var(--pg-border-color);border-radius:6px;padding:10px;font-size:13px;';
             div.innerHTML = `<div style="font-weight:600;margin-bottom:8px;">${pgLang('Label Size')}</div>`;
             div.appendChild(this._fieldRow(pgLang('Width (mm)'), 'number', lbl.width, v => { lbl.width = +v; this._applyCanvasSize(); this.render(); this._fireChange(); }, 1));
             div.appendChild(this._fieldRow(pgLang('Height (mm)'), 'number', lbl.height, v => { lbl.height = +v; this._applyCanvasSize(); this.render(); this._fireChange(); }, 1));
@@ -7817,7 +7817,7 @@ function bindPageRenameRedirect(ids) {
             lbl.textContent = label;
             const inp = document.createElement('input');
             inp.type = type; inp.value = value;
-            inp.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid #ced4da;border-radius:4px;padding:0 4px;font-size:12px;';
+            inp.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid var(--pg-border-color);border-radius:4px;padding:0 4px;font-size:12px;background:var(--pg-bg-body);color:var(--pg-fg-body);';
             if (step) inp.step = step;
             inp.addEventListener('input', () => onChange(inp.value));
             if (type === 'color') inp.addEventListener('change', () => onChange(inp.value));
@@ -7832,7 +7832,7 @@ function bindPageRenameRedirect(ids) {
             lbl.style.cssText = 'flex:0 0 90px;font-size:12px;';
             lbl.textContent = label;
             const sel = document.createElement('select');
-            sel.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid #ced4da;border-radius:4px;padding:0 4px;font-size:12px;';
+            sel.style.cssText = 'flex:1;min-width:0;height:24px;border:1px solid var(--pg-border-color);border-radius:4px;padding:0 4px;font-size:12px;background:var(--pg-bg-body);color:var(--pg-fg-body);';
             options.forEach(o => {
                 const opt = document.createElement('option');
                 opt.value = o; opt.textContent = o;
