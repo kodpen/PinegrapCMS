@@ -1592,6 +1592,40 @@ function ws_api_message_or_404($viewer, $id)
 }
 
 /**
+ * GET /workspace/messages/{id}/preamble: the preamble an MCP agent is sent
+ * (ws_ai_agent_preamble()), for an outside application that answers the
+ * message with a model of its own. The message stays out: the application
+ * has it from the event and frames it itself.
+ *
+ * @param array $params
+ */
+function ws_api_message_preamble($params)
+{
+    $viewer = ws_api_viewer();
+    $message = ws_api_message_or_404($viewer, $params['id']);
+    $channel = ws_channel((int) $message['channel_id']);
+    $parent = ($channel && ws_channel_is_thread($channel)) ? ws_thread_parent_channel($channel) : null;
+    $app = api_current_app();
+    $name = trim((string) ($app['name'] ?? ''));
+    $asker = array('name' => ws_mcp_agent_author($message));
+
+    $text = ws_ai_agent_preamble(
+        ws_ai_briefing_head($asker, 'agent', ($name !== '') ? $name : lang('Application')),
+        $parent ? ws_ai_agent_place('thread', (string) $parent['name']) : ws_ai_agent_place('channel', $channel ? (string) $channel['name'] : ''),
+        '',
+        ws_ai_request_language((string) $message['body'])
+    );
+
+    api_ok(array('message_id' => (int) $message['id'], 'text' => $text));
+}
+
+// What ws_api_message_preamble() returns.
+function ws_api_message_preamble_schema()
+{
+    return array('message_id' => 'integer', 'text' => 'string');
+}
+
+/**
  * A refusal of ws_message_edit() or ws_message_delete() as the API answers it.
  *
  * @param string      $error

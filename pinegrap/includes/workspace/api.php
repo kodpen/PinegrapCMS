@@ -153,6 +153,7 @@ function ws_openapi_objects()
         'WorkspaceTaskNote'   => 'ws_api_task_note_schema',
         'WorkspaceClaudeRequest'  => 'ws_api_claude_request_schema',
         'WorkspaceClaudeBrief'    => 'ws_api_claude_brief_schema',
+        'WorkspaceAgentPreamble'  => 'ws_api_message_preamble_schema',
         'WorkspaceClaudeInstructions' => 'ws_api_claude_instructions_schema',
         'WorkspaceChannelContext' => 'ws_api_channel_context_schema',
         'WorkspaceContextThread'  => 'ws_api_context_thread_schema',
@@ -900,6 +901,21 @@ function ws_api_routes()
             'params'      => array(
                 array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
                 array('name' => 'on', 'in' => 'body', 'type' => 'bool', 'default' => true, 'description' => 'true (the default) asks for read receipts, false stops asking.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.messages.preamble',
+            'method'      => 'GET',
+            'path'        => '/workspace/messages/{id}/preamble',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_message_preamble',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceAgentPreamble',
+            'summary'     => 'What the site tells an agent about a message that asks it',
+            'description' => 'For an application that answers messages (workspace.app.mentioned) with a model of its own. text is the short preamble the site sends an MCP agent whose server has it turned on: the application\'s name and this site, now, who wrote the message, the channel or the discussion by name, the language to answer in and the rules Pinegrap AI follows. The message itself is not in it (the event carries it): put it after text inside a data block of your own. Nothing else written in the channel is in it. 404 for a message the owner of the application may not read.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
