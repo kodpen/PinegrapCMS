@@ -386,6 +386,14 @@ if ($_POST) {
             $anchor = '#ws-voice';
             break;
 
+        // Mailboxes and an .eml brought in by hand
+        // (includes/workspace/mail_settings.php).
+        case 'mail_box_save':
+        case 'mail_eml':
+            ws_mail_settings_post($viewer, $action, $liveform);
+            $anchor = '#ws-mail';
+            break;
+
         // Other services' MCP servers under an alias
         // (includes/workspace/mcp.php).
         case 'mcp_save':
@@ -651,6 +659,8 @@ pg_page_shell([
             ' . (function_exists('ws_ai_settings_card') ? ws_ai_settings_card($self_url, $viewer) : '') . '
 
             ' . ws_voice_settings_card($self_url, $viewer) . '
+
+            ' . ws_mail_settings_card($self_url, $viewer) . '
 
             ' . ws_mcp_settings_card($self_url, $viewer, $liveform) . '
         </div>

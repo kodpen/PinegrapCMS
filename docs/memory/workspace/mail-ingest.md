@@ -5,7 +5,7 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 
 ## What does ws_mail_ingest($raw, $box) do?
 - Parses with `pg_mail_parse(..., with_content)` (`mail-parse.md`), then answers `status`: `stored` (item, conversation, message ids), `duplicate`, `loop` (reason own | auto | bulk), `held`, `refused` (reason too_large | no_sender | no_channel | not_saved). Only `stored` keeps anything; a reader (G2) leaves held mail in the mailbox for a later run.
-- Callers: the `.eml` upload (G1d), the IMAP read (G2).
+- Callers: the `.eml` upload on the Mailboxes card (`mail-card.md`); the IMAP read (G2) next.
 
 ## How is a mail kept once?
 - `rfc_message_hash` = SHA-256 of `id:<Message-ID>`, else of `raw:<whole mail>` (`ws_mail_hash()`); `UNIQUE (box_id, rfc_message_hash)`. A failed item INSERT is read back as `duplicate` (two readers).
@@ -23,7 +23,7 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 ## What is written in the channel?
 - Channel: the conversation's, else the box's; missing or archived is `refused` / `no_channel`.
 - New conversation: a top-level message, `sender_kind 'mail'`, `sender_id` the item, kind `message`; its id goes into `ws_mail_conversations.message_id` (the card). An answer: a message with `parent_id` = the card (the card touched), or a new card when the old one was deleted. A new mail sets the conversation `open` again (`closed_at` 0).
-- Message body: the text (plain body, else HTML as text by `ws_mail_html_text()`), `<@user:1>`-style tags taken out of their brackets so they name and notify nobody, cut to `WS_MESSAGE_MAX` with `…`. The whole text (up to 1 MB) is `ws_mail_items.body_text`. Written by `ws_mail_message_write()`, not `ws_message_send()`: no mentions, webhooks or assistants. G1d must draw `'mail'` messages as plain text, not with `ws_render_body()`.
+- Message body: the text (plain body, else HTML as text by `ws_mail_html_text()`), `<@user:1>`-style tags taken out of their brackets so they name and notify nobody, cut to `WS_MESSAGE_MAX` with `…`. The whole text (up to 1 MB) is `ws_mail_items.body_text`. Written by `ws_mail_message_write()`, not `ws_message_send()`: no mentions, webhooks or assistants. Drawn by `ws_mail_card_html()` (`mail-card.md`).
 - No Workspace event or bell yet: the "E-mail received" event and the assignee's notice come with G5.
 
 ## What happens to attachments?

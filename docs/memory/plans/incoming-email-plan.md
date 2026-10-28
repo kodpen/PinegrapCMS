@@ -1,10 +1,11 @@
 ---
 name: incoming-email-plan
-description: Incoming e-mail into Workspace channels (starting, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+description: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 ---
 
 ## What is it and where does it stand?
-- Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Plan only, no code (research note `notes/workspace-arastirma.md` §4, item 2.3).
+- Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
+- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is next; it fills each box's `settings.auth_server` per provider.
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
