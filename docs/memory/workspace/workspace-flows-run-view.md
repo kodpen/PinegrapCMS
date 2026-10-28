@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-run-view
-description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
+description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 ---
 
 ## How is a run started?
@@ -15,6 +15,10 @@ description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run,
 - A run picked: its button disabled meanwhile, only the last pick shown (`openSeq`). Its version's graph read-only; draft, selection, view wait in `state.stash`, saves keep sending the draft (`draftOf()`).
 - Each box: `wsf-run-<state>` tone, mark and word (none = not reached), result, a waiting task's link (`?task=`, `K.openTask()`, then `ws_tick`). Taken arrows marked; outline in words.
 - Cancel (`can_cancel`) asks. Close and "All runs" bring the flow back as it was.
+
+## What did a box receive? (T4)
+- `runReads()` under the box's result: per field, each thread into it (`dataThreads()` of the run's graph) with `runValue()`: `text`, `outcome`, `status` from the step's result, outcome, status, else `steps[].outputs`; a constants box's row; empty for a box skipped or not reached, "not given yet" while it runs. A `{{trigger.*}}` value is not in the run's answer: named, never guessed.
+- Once the box ran, the field as filled (`runFilled()`); "Show the template" (`state.runTemplates`) the field as written. The outline's reads (`drawReads()`) add the value. Test `test_workspace_flows_canvas_run_lists_the_values_received`.
 
 ## How is it read again?
 - `ws_flow_run_get` after 2 s, ×1.5 up to 30 s while nothing changes; stops when ended or hidden, looks at once when shown. `poll.busy` is a run id: a slow look at the run before froze the next. `due` sends `ws_tick`. Polite live region.

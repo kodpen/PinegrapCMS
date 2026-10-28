@@ -1229,3 +1229,89 @@ JS
 	pg_assert_same($result['post'], $result['condition'], 'the same to the first box');
 	pg_assert_same(array(), $result['itself'], 'a box reads nothing of itself, and the start gives nothing');
 }
+
+// The run view (Flows T4) lists what each box received: every thread into
+// a field with the value it brought in the run (a box's kept value, its
+// sentence, a constants row; empty for a box skipped or not reached, not
+// yet for one still going; what started the run named, never guessed), the
+// field as filled once the box ran, and the field as written on request.
+function test_workspace_flows_canvas_run_lists_the_values_received()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'VALUE_FIELDS', 'THREAD_TONES') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+			'fieldTexts', 'dataThreads', 'toneClass', 'stepOf', 'runValue', 'runFilled', 'runReads'),
+		$constants . <<<'JS'
+var KINDS = {
+    manual: { name: 'Manual', into: false, out: ['next'] },
+    web_check: { name: 'Check', into: true, out: ['done', 'failed'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    email: { name: 'Email', into: true, out: ['done', 'failed'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    task: { name: 'Task', into: true, out: ['done'] },
+    constants: { name: 'Constants', into: false, out: [], pure: true }
+};
+var FL = {
+    outputs: { web_check: [{ key: 'status_code', type: 'number', label: 'Status code' }], email: [{ key: 'sent', type: 'number', label: 'Sent' }], post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [], task: [] },
+    trigger_outputs: { kinds: { manual: [{ key: 'who', type: 'text', label: 'Who' }] }, events: {} },
+    steps: {}
+};
+var redrawn = 0;
+function drawSettings() { redrawn++; }
+function refocus() {}
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('manual_1', 'manual', {}, 0),
+    box('web_check_1', 'web_check', {}, 1),
+    box('condition_1', 'condition', {}, 2),
+    box('email_1', 'email', { subject: 'Hi', body: '{{node.web_check_1.outcome}}' }, 3),
+    box('post_1', 'post', { body: 'Code {{node.web_check_1.status_code}}: {{node.web_check_1.text}} {{node.constants_1.sign}} {{node.email_1.sent}} {{trigger.who}}' }, 4),
+    box('task_1', 'task', { title: '{{node.post_1.message_id}}' }, 5),
+    box('constants_1', 'constants', { rows: [{ key: 'sign', type: 'text', value: 'Bye' }] }, 6)
+], edges: [
+    { from: 'manual_1', to: 'web_check_1', on: 'next' },
+    { from: 'web_check_1', to: 'condition_1', on: 'done' },
+    { from: 'condition_1', to: 'email_1', on: 'yes' },
+    { from: 'condition_1', to: 'post_1', on: 'no' },
+    { from: 'email_1', to: 'post_1', on: 'done' },
+    { from: 'post_1', to: 'task_1', on: 'done' }
+] }, run: { id: 4, steps: [
+    { node_id: 'manual_1', status: 'done', outcome: 'next', result: '', outputs: {} },
+    { node_id: 'web_check_1', status: 'done', outcome: 'done', result: 'Reached the address', outputs: { status_code: 200 } },
+    { node_id: 'condition_1', status: 'done', outcome: 'no', result: '', outputs: {} },
+    { node_id: 'email_1', status: 'skipped', outcome: '', result: '', outputs: {} },
+    { node_id: 'post_1', status: 'running', outcome: null, result: '', outputs: {} }
+] } };
+var post = runReads(nodeById('post_1'));
+var before = textOf(post);
+buttonsOf(post)[0].click();
+console.log(JSON.stringify({
+    post: before,
+    toggled: [redrawn, textOf(runReads(nodeById('post_1')))],
+    email: textOf(runReads(nodeById('email_1'))),
+    task: textOf(runReads(nodeById('task_1'))),
+    nothing: runReads(nodeById('web_check_1'))
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$post = 'fl_run_values fl_post_body Check › Status code: 200 Check › fl_values_text: Reached the address Constants › sign: Bye Email › Sent: fl_run_value_skipped Manual › Who: fl_run_value_trigger '
+		. 'fl_run_filled Code 200: Reached the address Bye [Manual › Who] fl_run_template_show';
+	pg_assert_same($post, $result['post'], 'each thread with its value, the field as filled');
+	pg_assert_same(array(1, str_replace('fl_run_template_show', 'fl_run_template_hide', $post) . ' ' . 'Code {{node.web_check_1.status_code}}: {{node.web_check_1.text}} {{node.constants_1.sign}} {{node.email_1.sent}} {{trigger.who}}'),
+		$result['toggled'], 'the template on request');
+	pg_assert_same('fl_run_values fl_email_body Check › fl_values_outcome: done fl_run_template_show', $result['email'], 'a skipped box: its values, no filled field');
+	pg_assert_same('fl_run_values fl_title Post › Message: fl_run_value_pending fl_run_template_show', $result['task'], 'a box not reached: no filled field');
+	pg_assert_same(null, $result['nothing'], 'a box that reads nothing lists nothing');
+}
