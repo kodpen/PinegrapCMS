@@ -108,3 +108,50 @@ function test_workspace_scheduled_convert_wiring()
 	pg_assert_false(strpos($due, "'cancelled'") !== false, 'a cancelled action is not converted');
 	pg_assert_contains('ws_scheduled_convert_due();', ws_scheduled_convert_test_source('ws_scheduled_run'));
 }
+
+// Add › Scheduled flow: tomorrow at 09:00, once, on the site's calendar,
+// then a post box into the channel, its text still to write; a draft that
+// holds no problem but the missing text.
+function test_workspace_scheduled_flow_graph()
+{
+	$graph = ws_scheduled_flow_graph(14, '2026-10-31');
+
+	pg_assert_same(array('start', 'post'), array_column($graph['nodes'], 'id'));
+	pg_assert_same('schedule', $graph['nodes'][0]['kind']);
+	pg_assert_same('2026-11-01', $graph['nodes'][0]['config']['date'], 'the next day, across a month');
+	pg_assert_same('09:00', $graph['nodes'][0]['config']['time']);
+	pg_assert_same('none', $graph['nodes'][0]['config']['repeat']);
+	pg_assert_same('post', $graph['nodes'][1]['kind']);
+	pg_assert_same(14, (int) $graph['nodes'][1]['config']['channel_id']);
+	pg_assert_same(array(array('from' => 'start', 'to' => 'post', 'on' => 'next')), array_map(function ($edge) {
+		return array('from' => $edge['from'], 'to' => $edge['to'], 'on' => $edge['on']);
+	}, $graph['edges']));
+	pg_assert_same(0, (int) ws_scheduled_flow_graph(-3, 'bad')['nodes'][1]['config']['channel_id'], 'no channel below 0');
+
+	$fields = array_values(array_unique(array_map(function ($problem) {
+		return (string) ($problem['code'] ?? '');
+	}, array_filter(ws_flow_graph_check($graph), function ($problem) {
+		return empty($problem['warning']);
+	}))));
+
+	pg_assert_true(count($fields) <= 1, 'at most the missing text: ' . implode(', ', $fields));
+}
+
+// The ways in open the canvas: Duplicate copies a converted action's flow
+// and draws any other as conversion does, its own retry kept; neither
+// opens the form, and a note gets no new one.
+function test_workspace_scheduled_flow_copy_wiring()
+{
+	$copy = ws_scheduled_convert_test_source('ws_scheduled_flow_copy');
+
+	pg_assert_contains('ws_flow_graph_of($flow)', $copy);
+	pg_assert_contains("ws_flow_graph_from_scheduled(ws_scheduled_form_data(\$viewer, \$row), ws_scheduled_money_metrics(), (int) \$row['id'])", $copy);
+	pg_assert_contains('ws_scheduled_flow_home(', $copy);
+	pg_assert_false(strpos($copy, 'note_id') !== false, 'a note keeps no new ones');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("api('ws_flow_scheduled_new', { channel_id: self.channel.id })", $js);
+	pg_assert_contains("api('ws_flow_scheduled_copy', { id: item.id })", $js);
+	pg_assert_false(strpos($js, 'scheduledForm({ note_id') !== false, 'the note toolbar has no entry');
+}

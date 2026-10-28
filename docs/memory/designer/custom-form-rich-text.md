@@ -16,7 +16,7 @@ description: Rich-text text areas on designed forms: three-state _cf.wysiwyg, on
 
 ## What happens to `required` and pre-filled values?
 - A rich textarea loses `required` and gets `aria-required="true"`: TinyMCE syncs only on submit, so `pg_cf_validation_script()` blocked it. The server's required check (`custom_form.php`) stays.
-- The starting value (from any source) goes through `pg_sanitize_rich_text()` before it becomes the textarea text, because the editor parses it as HTML.
+- The starting value (from any source) goes through `pg_sanitize_rich_text()` (visitor profile, `rich-text-profiles.md`) before it becomes the textarea text, because the editor parses it as HTML.
 
 ## How is a rich value stored and printed?
 - The classic handler stores it as `form_data.type = 'html'`, filtered. Output keys on the field flag (legacy parity): `pg_sw_apply_tokens()` and the order-form values in `widgets_catalog.php` print `pg_defuse_php_tags(pg_sanitize_rich_text(...))`. Host element is a `div` (`wysiwyg-text-binding.md`).
@@ -24,9 +24,7 @@ description: Rich-text text areas on designed forms: three-state _cf.wysiwyg, on
 - Template sample records (`_pg_cf_seed_given_records()`, the `blog` path's `content`): a rich text area gets `pg_cf_seed_rich_value()` (blank line = `<p>`, single newline = `<br>`, markup filtered) stored as `html`. Symptom fixed: "sample articles were one run of text".
 
 ## What is open?
-- Visitor input profile (owner question, `plans/security-findings-2026-10.md`): visitor HTML keeps `class`/`style` (overlays), links get no `ugc`, external images allowed. Interim: filter record views on a staff-only status.
 - Owner question: CKEditor `oembed` loads unpinned jQuery 1.x from ajax.googleapis.com on visitor pages with a rich field (no global `jQuery` there; classic forms alike). Drop it for visitors or self-host jQuery?
 - CKEditor 4.20 is end-of-life; plain-text e-mail bodies show rich fields as raw HTML (#1097 area); the API writes rich fields as `standard`; the same widget twice on a page duplicates ids (neither textarea gets the editor).
-- `edit_submitted_form.php` loads unfiltered `standard` rows (pre-switch answers, API writes) raw into the staff editor; `pg_sanitize_rich_text()` there is an owner question.
 
-Related: docs/memory/designer/custom-form-render.md
+Related: docs/memory/designer/custom-form-render.md, docs/memory/designer/rich-text-profiles.md

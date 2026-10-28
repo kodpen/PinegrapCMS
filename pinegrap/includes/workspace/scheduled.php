@@ -5069,7 +5069,7 @@ function ws_scheduled_js_strings()
 {
     return array(
         'sa_title'          => lang('Scheduled actions'),
-        'sa_new'            => lang('Scheduled action'),
+        'sa_flow_new'       => lang('Scheduled flow'),
         'sa_new_long'       => lang('New scheduled action'),
         'sa_edit'           => lang('Change the scheduled action'),
         'sa_name'           => lang('Name'),
@@ -5273,6 +5273,5 @@ function ws_scheduled_js_strings()
         'sa_tpl_morning_subject' => lang('Good morning: what you missed'),
         'sa_next_runs'      => lang('Next runs'),
         'sa_duplicate'      => lang('Duplicate'),
-        'sa_copy_of'        => ws_js_template('Copy of {var:1}', 1),
     );
 }

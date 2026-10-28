@@ -168,3 +168,100 @@ function ws_scheduled_convert($id)
 
     return true;
 }
+
+/**
+ * The flow Add › Scheduled flow in a channel starts from (pure): a time
+ * start tomorrow at 09:00, once, and a post box into that channel with no
+ * text yet. Laid out as the templates are.
+ *
+ * @param int    $channel_id the channel the composer is in
+ * @param string $today      the site's date, Y-m-d
+ * @return array the graph (ws_flow_graph_normalize())
+ */
+function ws_scheduled_flow_graph($channel_id, $today)
+{
+    $utc = new DateTimeZone('UTC');
+    $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) === 1) ? date_create_immutable($today . ' 12:00:00', $utc) : false;
+    $day = $day ? $day : date_create_immutable(date('Y-m-d') . ' 12:00:00', $utc);
+
+    return ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+        array('id' => 'start', 'kind' => 'schedule', 'label' => '', 'x' => 0, 'y' => 0,
+            'config' => array('date' => $day->modify('+1 day')->format('Y-m-d'), 'time' => '09:00', 'repeat' => 'none', 'every' => 1, 'days' => array(), 'until' => '')),
+        array('id' => 'post', 'kind' => 'post', 'label' => '', 'x' => 256, 'y' => 0,
+            'config' => array('channel_id' => max(0, (int) $channel_id), 'body' => '')),
+    ), 'edges' => array(
+        array('from' => 'start', 'to' => 'post', 'on' => 'next'),
+    ), 'notes' => array()));
+}
+
+/**
+ * The home of a flow opened from a channel: that channel when a flow may
+ * live there (public or private) and the person reads it, else none.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @return int
+ */
+function ws_scheduled_flow_home($viewer, $channel_id)
+{
+    $channel = ((int) $channel_id > 0) ? ws_channel((int) $channel_id) : null;
+
+    return ($channel && in_array((string) $channel['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $channel)) ? (int) $channel['id'] : 0;
+}
+
+/**
+ * Add › Scheduled flow in a channel: a new draft flow of the person's own,
+ * its home that channel where a flow may live there, which they then build
+ * and publish on the canvas. Only where they may post, with the right to
+ * build flows; ws_flow_save() checks it all again.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @return array ok, error, flow_id
+ */
+function ws_scheduled_flow_new($viewer, $channel_id)
+{
+    $channel = ws_channel((int) $channel_id);
+
+    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+        return array('ok' => false, 'error' => lang('That channel could not be found.'), 'flow_id' => 0);
+    }
+
+    $saved = ws_flow_save($viewer, array(
+        'name'       => lang('Scheduled flow'),
+        'channel_id' => ws_scheduled_flow_home($viewer, $channel['id']),
+        'graph'      => ws_scheduled_flow_graph($channel['id'], date('Y-m-d')),
+    ));
+
+    return array('ok' => $saved['ok'], 'error' => $saved['error'], 'flow_id' => (int) $saved['flow_id']);
+}
+
+/**
+ * Duplicate on a scheduled action's card: a new draft flow of the person's
+ * own, named as a copy, opened on the canvas. A converted action's copy is
+ * its flow's draft; any other is drawn from the action as conversion draws
+ * it, a retry of itself becoming the copy's own retry. Its home is the
+ * action's channel where a flow may live there; a note keeps no new ones.
+ *
+ * @param array $viewer
+ * @param array $row    ws_scheduled_action()
+ * @return array ok, error, flow_id, left (what the flow keeps otherwise, in sentences)
+ */
+function ws_scheduled_flow_copy($viewer, $row)
+{
+    $flow = ((int) ($row['flow_id'] ?? 0) > 0) ? ws_flow((int) $row['flow_id']) : null;
+
+    if ($flow) {
+        $made = array('graph' => ws_flow_graph_of($flow), 'left' => array());
+    } else {
+        $made = ws_flow_graph_from_scheduled(ws_scheduled_form_data($viewer, $row), ws_scheduled_money_metrics(), (int) $row['id']);
+    }
+
+    $saved = ws_flow_save($viewer, array(
+        'name'       => mb_substr(lang(array('string' => 'Copy of {var:1}', 'vars' => (string) $row['name'])), 0, 160),
+        'channel_id' => ws_scheduled_flow_home($viewer, (int) $row['channel_id']),
+        'graph'      => $made['graph'],
+    ));
+
+    return array('ok' => $saved['ok'], 'error' => $saved['error'], 'flow_id' => (int) $saved['flow_id'], 'left' => $saved['ok'] ? $made['left'] : array());
+}

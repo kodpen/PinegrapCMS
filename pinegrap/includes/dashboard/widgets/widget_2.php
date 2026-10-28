@@ -376,17 +376,19 @@ function pg_dashboard_widget_2($request, $user)
                 // The popover is the only place the full
                 // explanation fits, and welcome.php binds it by
                 // delegation from document, so it survives the
-                // markup being injected after page load.
+                // markup being injected after page load. A chip
+                // without a link is a button so the keyboard can
+                // focus it, which is what opens the popover.
                 $check_open = ($health_check['href'] !== '')
                     ? '<a href="' . h($health_check['href']) . '"'
-                    : '<div';
+                    : '<button type="button"';
 
                 $output_checks .= $check_open . ' class="pg-check pg-check-' . $check_tone . ' status-popover"'
                     . ' title="' . h($health_check['title']) . '"'
                     . ' data-bs-toggle="popover"'
                     . ' data-bs-trigger="hover focus"'
                     . ' data-bs-content="' . h($health_check['message']) . '">' . $check_body
-                    . (($health_check['href'] !== '') ? '</a>' : '</div>');
+                    . (($health_check['href'] !== '') ? '</a>' : '</button>');
             }
         }
 
@@ -1093,12 +1095,18 @@ function pg_dashboard_widget_2($request, $user)
                 . ' stroke-dashoffset="-' . $health_dash . '"></circle>'
             : '';
 
+        // The big score keeps its small % sign, on the side the
+        // language's '{var:1}%' wording puts it (Turkish: %87).
+        $health_score_html = (strpos(lang('{var:1}%'), '%') === 0)
+            ? '<span>%</span>' . (int) $health_score
+            : (int) $health_score . '<span>%</span>';
+
         $output_data = '
         <div class="card-body p-0 pg-split">
             <div class="pg-split-half pg-split-pinned">
                 <div class="pg-health" style="' . $health_vars . '">
                     <div class="pg-health-dial">
-                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . (int) $health_score . '%">
+                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $health_score))) . '">
                             <defs>
                                 <!--
                                     userSpaceOnUse so the axis can sit
@@ -1235,7 +1243,7 @@ function pg_dashboard_widget_2($request, $user)
                                     stroke-dasharray="' . round(131.95 * $health_score / 100, 2) . ' 263.89"></circle>
                         </svg>
                         <div class="pg-health-readout">
-                            <div class="pg-health-score">' . (int) $health_score . '<span>%</span></div>
+                            <div class="pg-health-score">' . $health_score_html . '</div>
                             <div class="pg-health-label">' . lang('Overall System Health') . '</div>
                         </div>
                     </div>

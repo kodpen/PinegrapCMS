@@ -125,7 +125,7 @@ if (count($changelog_sections) > 0) {
         }
 
         $output_changelog_head .= '
-        <div class="d-flex flex-wrap gap-y-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
+        <div class="d-flex flex-wrap row-gap-1 pb-5 mb-5 border-bottom">' . $output_changelog_legend . '</div>';
     }
 
     $output_changelog_versions = '';
@@ -887,7 +887,7 @@ $output_status_popover_script = '
     pgUI.ready(function () {
         pgUI.popover.get(document.body, {
             selector: \'.status-popover\',
-            trigger: "hover"
+            trigger: "hover focus"
         });
     });
 </script>';
@@ -1054,6 +1054,32 @@ $output_header_includes .
         });
     }
 
+    // The control that has focus inside a card, by its data-pg-focus-key,
+    // so a keyboard user does not lose their place when the refresh
+    // replaces the card body. A control without a key is not restored.
+    function pg_widget_focus_save(card) {
+        var active = document.activeElement;
+        if (!active || !card.contains(active)) {
+            return "";
+        }
+        return active.getAttribute("data-pg-focus-key") || "";
+    }
+
+    function pg_widget_focus_restore(card, key) {
+        if (key === "") {
+            return;
+        }
+        var found = null;
+        card.querySelectorAll("[data-pg-focus-key]").forEach(function(el){
+            if (!found && (el.getAttribute("data-pg-focus-key") === key)) {
+                found = el;
+            }
+        });
+        if (found) {
+            found.focus({preventScroll: true});
+        }
+    }
+
     function pg_widget_apply(widget_id, response) {
         if (widget_id === "clock") {
             pg_clock_apply(response);
@@ -1072,6 +1098,7 @@ $output_header_includes .
         }
         pg_widgets.html[widget_id] = html;
         var scroll = pg_widget_scroll_save($widget[0]);
+        var focus_key = pg_widget_focus_save($widget[0]);
         destroy_widget_charts($widget);
         $widget.find(".card-body-placeholder,.card-body,.card-footer").remove();
         $widget.append(html);
@@ -1079,6 +1106,7 @@ $output_header_includes .
         // not show), so the scroll goes back onto the list as it will stay.
         $widget.trigger("pg:widget-drawn", [widget_id]);
         pg_widget_scroll_restore($widget[0], scroll);
+        pg_widget_focus_restore($widget[0], focus_key);
     }
 
     // One card at a time, the way the dashboard always asked. Used when the

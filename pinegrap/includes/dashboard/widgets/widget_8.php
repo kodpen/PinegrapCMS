@@ -112,7 +112,7 @@ function pg_dashboard_widget_8($request, $user)
                 ));
             }
         } else {
-            $output_order_rows = pg_widget_empty('bi-cart4', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Order'))));
+            $output_order_rows = pg_widget_empty('bi-cart4', lang('No orders yet.'));
         }
 
         $carts = array();
@@ -197,7 +197,7 @@ function pg_dashboard_widget_8($request, $user)
                 ));
             }
         } else {
-            $output_cart_rows = pg_widget_empty('bi-basket', lang(array('string' => 'There is no {var:1} right now.', 'vars' => lang('Shopping Cart'))));
+            $output_cart_rows = pg_widget_empty('bi-basket', lang('No open shopping carts.'));
         }
 
         // Orders per day for the last eight -- the figure the

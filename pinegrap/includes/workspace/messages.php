@@ -230,6 +230,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         // The proposals of applications whose words these are
         // (proposals.php).
         'proposals'  => function_exists('ws_proposals_by_reply') ? ws_proposals_by_reply($ids) : array(),
+        // The mails behind messages a mailbox wrote (mail.php).
+        'mail'       => function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array(),
     );
 
     // The people the reader mentioned in their own messages who are not in
@@ -286,6 +288,13 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         $sender = ws_guest_sender((int) $row['sender_id']);
     }
 
+    // A mail of a mailbox (mail.php): its sender as the mail names them.
+    $mail = (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender'));
+
+    if ($mail) {
+        $sender = ws_mail_sender($extra['mail'][(int) $row['sender_id']] ?? null);
+    }
+
     // An MCP agent's answer is kept in the name of the person who asked
     // (mcp_agent.php) and drawn under the agent's own: to them too it is an
     // answer that came, not a message of theirs.
@@ -332,9 +341,10 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'mine'        => $mine,
         // What a guest wrote is drawn with the few marks a guest may use
         // (guests.php), here as on their own page: a guest adds no table.
-        'html'        => $deleted ? '' : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
+        // A mail is plain text from outside, never Workspace markup.
+        'html'        => $deleted ? '' : ($mail ? ws_mail_card_html($row, $extra['mail'][(int) $row['sender_id']] ?? null) : ((($row['sender_kind'] === 'guest') && function_exists('ws_guest_render'))
             ? ws_guest_render($row['body'])
-            : (($tag_card !== '') ? $tag_card : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready(), null, $item_tasks))),
+            : (($tag_card !== '') ? $tag_card : ws_render_body($agent ? $agent['text'] : $row['body'], $refs, $extra['checks'][$id] ?? array(), $can_post && ws_interact_ready(), null, $item_tasks)))),
         'raw'         => ($mine && !$deleted) ? (string) $row['body'] : '',
         'labels'      => ($mine && !$deleted) ? $labels : array(),
         'deleted'     => $deleted,

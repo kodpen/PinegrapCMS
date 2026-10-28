@@ -20,5 +20,4 @@ description: Panel text on the page background is fg-body, never fg-black (black
 - The none/read/write control of the API applications drawer (`api_settings.php`, `.api-seg`) printed `#fff` on `--pg-primary`, a light tone in the dark theme: the checked position now reads `--pg-on-accent`, and the read position that write implies is a `--pg-primary-bg-subtle` tint with `--pg-primary-fg-emphasis` ink and the primary border instead of the fill at 45% opacity, which faded the ink too. `tests/api_settings_theme_test.php`.
 
 ## What is left?
-- `view_order_report.php` (period badge) still carries `fg-black`; it was held by another PR at the time.
 - Inline light fills are in `dark-theme-fixed-fills.md`.

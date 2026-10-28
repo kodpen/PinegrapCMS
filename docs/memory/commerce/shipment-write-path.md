@@ -13,7 +13,7 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 
 ## What does a row get?
 - New row: `status` created, `status_at`/`created_at` now, `shipped_at` now (or `$opts['shipped_at']`), `source`, `tracking_url` only when an absolute http(s) address (`pg_shipment_tracking_url_clean()`).
-- `carrier` only when named: `$opts['carrier']` (key or name, `pg_shipping_method_carrier()`), else the row's own (skipped with `carrier_chosen`, Automatic), else `shipping_methods.carrier`, else a carrier the method code spells. Site default and number shape are not stored: a fixed default fixes old parcels at read time.
+- `carrier` only when named: `$opts['carrier']` (key or name; with `carrier_chosen` an unknown name is kept as typed, #2715; others' unknown text is dropped), else the row's own (skipped with `carrier_chosen`, Automatic), else `shipping_methods.carrier`, else a carrier the method code spells. Site default and number shape are not stored: a fixed default fixes old parcels at read time.
 - An old row with `shipped_at` 0 takes the address's `ship_date` (noon) once that day has come.
 - `format_warning` is recomputed on every write against the carrier the customer is shown (named, else `pg_shipping_carrier()` with the default).
 
@@ -26,5 +26,5 @@ description: The single shipment write path (includes/fn/shipping.php): pg_shipm
 - An address with no numbered row uses `$opts['first']` (the caller's own transition), so there a correction past → past day announces again, and a number added after such a delivery can announce a second time.
 - `notify` false (API `notify` false, marketplace) skips the customer e-mail and SMS, not the event. The marketplace import calls it per address on every delivered poll; `first` is its "delivery_date was empty" update.
 
-## What is still open?
-- Phases 5b and 7b of `plans/shipping-management.md`; e-mail: `shipment-mail-fields.md`; API: `shipment-api-fields.md`; screen: `order-screen-shipments.md`.
+## Where else?
+- `plans/shipping-management.md`, `shipment-api-fields.md`, `order-screen-shipments.md`.

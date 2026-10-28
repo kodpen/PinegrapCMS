@@ -136,9 +136,25 @@ function test_list_period_date_filters_say_start_and_end()
 {
 	// "From" / "To" also name e-mail senders and recipients; one Turkish
 	// value cannot fit both.
-	foreach (array('view_orders.php', 'view_log.php', 'view_audit_log.php', 'erp_profit.php', 'erp_expenses.php', 'erp_accountant.php', 'erp_export.php') as $screen) {
+	foreach (array('view_orders.php', 'view_log.php', 'view_audit_log.php', 'erp_profit.php', 'erp_expenses.php', 'erp_accountant.php', 'erp_export.php', 'view_submitted_forms.php', 'view_contacts.php', 'view_commissions.php') as $screen) {
 		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen);
 
 		pg_assert_false(strpos($source, "lang('From')") !== false || strpos($source, "lang('To')") !== false, $screen . ' labels its date range Start / End');
+	}
+}
+
+function test_list_period_date_filter_selects_are_named()
+{
+	// A label without for= names nothing; the month/day/year selects of each
+	// date sit in a fieldset named Start / End and carry their own name.
+	foreach (array('view_orders.php', 'view_submitted_forms.php', 'view_contacts.php', 'view_commissions.php') as $screen) {
+		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $screen);
+
+		pg_assert_contains("<legend class=\"form-label\">' . lang('Start') . '</legend>", $source, $screen . ' names the start date');
+		pg_assert_contains("<legend class=\"form-label\">' . lang('End') . '</legend>", $source, $screen . ' names the end date');
+
+		foreach (array('start_month' => 'Month', 'start_day' => 'Day', 'start_year' => 'Year', 'stop_month' => 'Month', 'stop_day' => 'Day', 'stop_year' => 'Year') as $field => $name) {
+			pg_assert_contains('name="' . $field . "\" aria-label=\"' . h(lang('" . $name . "')) . '\"", $source, $screen . ' names ' . $field);
+		}
 	}
 }

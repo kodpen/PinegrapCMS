@@ -23,6 +23,7 @@ description: Generated from the module field of the memory files: each includes/
 - `core`: [[error-screen-language-and-status]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
+- `editor`: [[rich-text-profiles]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `lang_files`: [[lang-files]]

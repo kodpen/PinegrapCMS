@@ -335,9 +335,13 @@ const StyleDesigner = (function () {
     // ========================= TOAST =========================
     // type: 'success'|'error'|'warning'|'info'
     // duration: ms until auto-dismiss (0 = permanent; only dismissable by click)
+    // msg is HTML the caller has already escaped. Bootstrap 6's Toast through
+    // pgUI shows and hides it and pauses the timer while it is hovered or
+    // focused; the element is removed once hidden. Returns the toast element.
     function sdToast(msg, type, duration) {
         type = type || 'info';
         var dur = (duration !== undefined) ? duration : (type === 'error' ? 0 : 4500);
+        var tones = { success: 'success', error: 'danger', warning: 'warning', info: 'info' };
         var container = document.getElementById('sd-toast-container');
         if (!container) {
             container = document.createElement('div');
@@ -345,26 +349,50 @@ const StyleDesigner = (function () {
             container.className = 'sd-toast-container';
             document.body.appendChild(container);
         }
+        // An open dialog's backdrop would cover a body-level toast: the
+        // container goes into the top dialog until it hides.
+        if (window.pgUI && pgUI.hostLayer) pgUI.hostLayer(container);
         var toast = document.createElement('div');
-        toast.className = 'sd-toast sd-toast-' + type;
-        // Error toasts get a dismiss button; others auto-dismiss
-        if (dur === 0) {
-            toast.innerHTML = '<span class="sd-toast-dismiss" title="' + esc(_sdT('Close')) + '">✕</span>' + msg;
-            toast.querySelector('.sd-toast-dismiss').addEventListener('click', function () { _dismissToast(toast); });
-        } else {
-            toast.innerHTML = msg;
-        }
+        toast.className = 'toast sd-toast theme-' + (tones[type] || 'info');
+        toast.setAttribute('role', type === 'error' ? 'alert' : 'status');
+        toast.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+        toast.setAttribute('aria-atomic', 'true');
+        var row = document.createElement('div');
+        row.className = 'd-flex align-items-start';
+        var body = document.createElement('div');
+        body.className = 'toast-body flex-grow-1';
+        body.innerHTML = msg;
+        var close = document.createElement('button');
+        close.type = 'button';
+        close.className = 'btn-close flex-shrink-0 mt-4 me-4';
+        close.setAttribute('aria-label', _sdT('Close'));
+        // Its own handler rather than data-bs-dismiss: a clickable toast
+        // (a note's route) must not take the close click as its own.
+        close.addEventListener('click', function (e) {
+            e.stopPropagation();
+            _dismissToast(toast);
+        });
+        row.appendChild(body);
+        row.appendChild(close);
+        toast.appendChild(row);
         container.appendChild(toast);
-        void toast.offsetWidth; // force reflow before transition
-        toast.classList.add('sd-toast-visible');
-        if (dur > 0) {
-            setTimeout(function () { _dismissToast(toast); }, dur);
+        var t = window.pgUI ? pgUI.toast.get(toast, { autohide: dur > 0, delay: dur > 0 ? dur : 5000 }) : null;
+        if (t) {
+            pgUI.toast.on(toast, 'hidden', function () {
+                if (toast.parentNode) toast.parentNode.removeChild(toast);
+            }, { once: true });
+            t.show();
+        } else {
+            // No Bootstrap on the page yet: shown and removed by hand.
+            toast.classList.add('show');
+            if (dur > 0) setTimeout(function () { _dismissToast(toast); }, dur);
         }
         return toast;
     }
     function _dismissToast(toast) {
-        toast.classList.remove('sd-toast-visible');
-        setTimeout(function () { if (toast.parentNode) toast.parentNode.removeChild(toast); }, 260);
+        var t = window.pgUI ? pgUI.toast.find(toast) : null;
+        if (t) { t.hide(); return; }
+        if (toast.parentNode) toast.parentNode.removeChild(toast);
     }
 
     // ========================= TREE SAFETY HELPERS =========================

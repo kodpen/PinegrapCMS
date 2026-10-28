@@ -680,7 +680,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     if ($err_count > 0) {
                         $pg_messages_html .=
                             '<div class="software_error alert alert-danger alert-dismissible show" role="alert">' .
-                                '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
                                 '<h5 class="alert-heading description">' . (function_exists('lang') ? lang('An error occurred') : 'An error occurred') . ':</h5>' .
                                 $err_lines .
                             '</div>';
@@ -694,7 +694,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         if ($ntc_lines !== '') {
                             $pg_messages_html .=
                                 '<div class="software_notice alert alert-success alert-dismissible show" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
                                     $ntc_lines .
                                 '</div>';
                         }
@@ -707,7 +707,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         if ($wrn_lines !== '') {
                             $pg_messages_html .=
                                 '<div class="software_warning alert alert-warning alert-dismissible show" role="alert">' .
-                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="Close"></button>' .
+                                    '<button type="button" style="display:none;" class="btn-close no-popover" data-bs-dismiss="alert" aria-label="' . (function_exists('lang') ? h(lang('Close')) : 'Close') . '"></button>' .
                                     $wrn_lines .
                                 '</div>';
                         }

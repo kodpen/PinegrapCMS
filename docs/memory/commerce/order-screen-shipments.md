@@ -9,9 +9,9 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 - The tag field for adding and removing numbers stays; its id is `ship_to_id_tracking_numbers_<ship_to_id>`, so each address gets its own `tagin` (the shared id left the second one a plain text box).
 
 ## How does the carrier select work?
-- Name `ship_to_id_<ship_to_id>_carrier_<row id>`; options `pg_shipment_carrier_options()`: "Automatic (<carrier it resolves to>)" with value '', then every carrier key. Selected: the row's own carrier, else Automatic.
+- Name `ship_to_id_<ship_to_id>_carrier_<row id>`; options `pg_shipment_carrier_options()`: "Automatic (<carrier it resolves to>)" with value '', then every carrier key, then a name the row keeps as typed (value escaped like the label, #2715). Selected: the row's own carrier, else Automatic.
 - "Automatic" resolves to `shipping_methods.carrier` when the method has one, else to the read-time guess (method code, site default, number shape).
-- Save sends each listed number as `array('number', 'carrier')` when its select was posted; `update_order()` passes that to `pg_shipment_record()` with `carrier_chosen`, so Automatic ('') drops the row's own carrier and the method's carrier, if any, is stored again. A number typed in the same save has no select yet and takes the automatic carrier. API, marketplace and Workspace send plain strings: their rows keep whatever carrier they have.
+- Save sends each listed number as `array('number', 'carrier')` when its select was posted; `update_order()` passes that to `pg_shipment_record()` with `carrier_chosen`, so Automatic ('') drops the row's own carrier and the method's carrier, if any, is stored again. A number typed in the same save has no select yet and takes the automatic carrier. Marketplace and Workspace send plain strings, the API too unless the call names a carrier: their rows keep whatever carrier they have.
 
 ## What does Save write?
 - Only addresses whose tracking field was posted (`array_key_exists` on `$_POST`). An address without order lines is not drawn; before, Save sent it as "no tracking numbers" and `pg_shipment_prune()` deleted its parcels (reproduced on a sandbox: the first address of a two-address order lost its number on every save).

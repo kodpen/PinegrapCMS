@@ -473,10 +473,7 @@ function pg_dashboard_ops_stock()
     }
 
     if ($output_rows === '') {
-        $output_rows = pg_widget_empty('bi-check2-circle', lang(array(
-            'string' => 'There is no {var:1} right now.',
-            'vars' => lang('Out of Stock Product'),
-        )), 'good');
+        $output_rows = pg_widget_empty('bi-check2-circle', lang('Every product is in stock.'), 'good');
     }
 
     $sub = ($low_count > 0)
