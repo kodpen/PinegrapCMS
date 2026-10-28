@@ -46,6 +46,22 @@ function test_site_toolbar_script_leaves_scheme_alone()
 		'backend.src.js does not force color-scheme on the toolbar document');
 }
 
+// The iframe element carries the same light scheme as the bar's root: a
+// frame whose element and document differ in scheme is painted on an opaque
+// canvas, which hid a dark site's page under a grey-white layer.
+function test_site_toolbar_iframe_matches_the_light_root()
+{
+	$page = site_toolbar_theme_source('get_page.php');
+	$iframe = (preg_match('/<iframe id="software_toolbar"[^>]*>/', $page, $m) === 1) ? $m[0] : '';
+
+	pg_assert_true($iframe !== '', 'get_page.php draws the toolbar iframe');
+	pg_assert_true(strpos($iframe, 'color-scheme: light;') !== false, 'the iframe element is light like the bar root');
+	$script = site_toolbar_theme_source('frontend.src.js');
+	pg_assert_true(strpos($script, 'function send_toolbar_state(enabled)') !== false, 'the state is sent when it changes');
+	pg_assert_true(strpos($script, '// Update toolbar properties when visitor leaves this page.') === false, 'no beforeunload request for the toolbar state');
+	pg_assert_same(3, substr_count($script, 'send_toolbar_state('), 'the function and its two callers: collapse and expand');
+}
+
 // Bootstrap 5 names Bootstrap 6 dropped turn the SEO panel's colours invalid.
 function test_site_toolbar_reads_no_dropped_v5_variables()
 {
