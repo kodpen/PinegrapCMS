@@ -19,6 +19,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Give a new `workspace.*` webhook event `channel_id` (or `task.channel_id`), or subscriptions narrowed to a channel group never hear it (`workspace-webhook-channel-groups.md`).
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 - Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
+- Put a new place of the workspace in `ws_nav_groups()` under the gate of its screen: the main menu's Workspace list draws only what the server sends and hides nothing itself (`workspace-menu-list.md`).
 <!-- key-rules:end -->
 
 ## Files
@@ -108,6 +109,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card
 - workspace-mcp-servers-card.md: Workspace "MCP servers" card (mcp.php, mcp_catalogue.php): ready-made connectors, adding by address, read-only tools on at first read, the form kept after an error, Pinegrap AI failing
+- workspace-menu-list.md: The Workspace list in the main menu (#2545): workspace_side.js draws ws_side_payload() on every panel page; who sees what, inline data vs ws_side, the channel screen's hooks, pill, tour
 - workspace-message-meter.md: The Workspace composer's length meter near WS_MESSAGE_MAX: what is counted, the limit's source, 90 % and over, the send refused early, commands, screen readers, boxes
 - workspace-module-decisions.md: Binding decisions of the Workspace module (channels, tasks, plan board): rights not roles, private channel audit, chat bubble kept apart, multiple assignees, customer context, API scope ceiling
 - workspace-new-sales-quote.md: "New sales quote" in a Workspace channel's menu: the quote editor opened on the current account the channel's customer is or is tied to; who sees it, how the account is found, what is never done
@@ -140,7 +142,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-task-command.md: The /task (/görev) command in the composer: Enter on its preview card creates the task (same text, card on screen, no leave clash), the / picker finds every Turkish and English name, /help is listed
 - workspace-text-highlight.md: ==x== as a highlight (<mark>): the pair rule, old shapes that stay text, server and editor twins, plain text, guest page, notes import, sums, table cells
 - workspace-text-lists.md: Lists and quotes in Workspace texts drawn by the server (#1725): which shapes become a list, which stay text so old messages look the same, plain text, guest page, approval mail
-- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, Turkish initials in the rail, what a closed sidebar section lists, cosmetic leftovers
+- workspace-ui-notes.md: Where the Workspace screens are drawn and styled, its tokens, colour picker vs plan board legend class names, what a closed section of the channel list shows, cosmetic leftovers
 - workspace-ui-scale.md: The Workspace's CSS scale (radii, spaces, avatar sizes, shadows as --ws-* tokens), the keyboard-only focus rings, the dark tones of the nav icons, where the block ends in backend.src.css
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message

@@ -4,12 +4,12 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 ---
 
 ## What is there?
-- Screen `workspace_flows.php` (mode `flows`, rail key `flows`). `ws_flows_nav_visible()` shows it to staff, live flows' home readers and sharees; the sidebar reads `CFG.flows.nav`.
+- Screen `workspace_flows.php` (mode `flows`, list key `flows`). `ws_flows_nav_visible()` shows it to staff, live flows' home readers and sharees (`ws_nav_groups()`).
 - `workspace.js` calls `window.PGWsFlow.start(root, BOOT)` and lends `PGWsKit` (`api` with `{keepalive}`, `ask`, `toast`, `select`, `peoplePicker`, `openTask`). Bundle `workspace_flow.min.js`, mode `flows` only.
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
 ## Where are staff's scheduled actions?
-- `ws_flows_scheduled($viewer)` (staff, flow tables there; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the rail has no Scheduled actions entry then, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
+- `ws_flows_scheduled($viewer)` (staff, flow tables there; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the Workspace list then has Scheduled messages, not Scheduled actions, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
 - "Show on canvas" on a card there: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()` of the staff card: when, conditions, step, follow-ups by outcome; chips: starters, started, self-retry); `showAction()` draws it read-only on a scrolling stage; Edit opens the form.
 
 ## Which panel actions?

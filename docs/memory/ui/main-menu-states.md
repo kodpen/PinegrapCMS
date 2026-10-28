@@ -5,7 +5,7 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 
 ## What are the states?
 - lg and up (Bootstrap 6's lg, 1024px; the menu's media queries in `backend.src.css`): `expanded` (icons and labels, `--pg-rail-w-expanded`), `collapsed` (the icon rail, the default) and `hidden` (no column, the content takes the width). Below lg the menu is a drawer of its own (`.drawer-open`, not Bootstrap's `.drawer`), open or shut; the drawer never writes the wide-screen state. `backend.src.js` decides drawer mode with `MENU_DRAWER_BREAKPOINT` (1024, the stylesheet's width; keep the two equal).
-- A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`).
+- A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`). With the menu hidden, `pgMenu.openPanel()` slides it in the same way (the channel screen's Channels pill, `main-menu-panel-scripts.md`).
 
 ## Which control does what?
 - One button, at the left end of the bar (`pg_menu_mode_button()`, `#menu_mode_toggle`, `includes/fn/output.php`). Above lg each click moves on to the next state: mini (collapsed) → open (expanded) → hidden → mini. Below lg it opens and shuts the drawer.
