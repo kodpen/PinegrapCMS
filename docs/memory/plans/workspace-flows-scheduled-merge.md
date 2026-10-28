@@ -26,8 +26,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
    - 4b. The other ways in (composer insert menu, note toolbar, Duplicate): open the canvas instead of the form. Waits on questions 7 and 8.
    - 4c. Done: AI drafts on the canvas (F8): 4c1 #2306 `ws_flow_graph_from_scheduled()`; 4c2 #2323 a draft card opens as a new flow.
 5. Conversion (answer 2): in the 2026.11.0 upgrade every row becomes a converted anchor, its id and every parity row kept. Schema `ws_scheduled_actions.anchor` approved (#2396).
-   - 5a. Done (#2558). Anchor column 11.0.88, hidden/converted filters, converted starts and write-back (workspace/workspace-flows-converted-anchor.md).
-   - 5b. The upgrade conversion of every row; the edit path for any staff.
+   - 5a done (#2558): workspace/workspace-flows-converted-anchor.md. 5b: convert every row; edit path for any staff.
 
 ## Which questions are answered? (owner, 2026-10-24: 1 no, 2 c, 3 a; 4-8 open)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
