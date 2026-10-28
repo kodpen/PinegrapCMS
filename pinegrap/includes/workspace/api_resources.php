@@ -860,7 +860,8 @@ function ws_api_message_file_schema()
     return array('name' => 'string', 'kind' => 'string', 'size' => 'integer', 'url' => 'string', 'api_url' => 'string', 'voice' => 'WorkspaceMessageVoice?');
 }
 
-// What ws_voice_api_present() returns.
+// The transcript of a voice message inside its file (ws_voice_api_present(),
+// voice.php): status always, the rest once it is done.
 function ws_api_message_voice_schema()
 {
     return array(
