@@ -134,7 +134,9 @@ function db_q_order_screens_test_files()
 		'view_order.php' => 13,
 		'print_order.php' => 13,
 		'view_order_report.php' => 10,
-		'view_products.php' => 1,
+		// Its row queries moved to includes/fn/product_list.php with the
+		// server paging; the screen keeps only value-free counts.
+		'view_products.php' => 0,
 		'edit_product_group.php' => 14,
 		'includes/forms/product_group_form.php' => 1,
 		'duplicate_products.php' => 8,

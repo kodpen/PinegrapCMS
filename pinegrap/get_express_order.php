@@ -6244,7 +6244,7 @@ function get_express_order($properties) {
                             '<script>
                                 software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
                                     dateFormat: date_picker_format,
-                                    timeFormat: "h:mm TT"
+                                    timeFormat: "' . pg_picker_time_format() . '"
                                 });
                             </script>';
                     }

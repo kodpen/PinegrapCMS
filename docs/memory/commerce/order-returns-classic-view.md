@@ -22,7 +22,7 @@ description: Returns in the classic My Account order view: listed for the owner 
 
 ## What is known not to work?
 - A `view order` page that also carries an order view widget draws two order views. `get_page_content()` expands system widgets before the `<system>` region, so the widget's messages node always prints and clears the `order_receipt` answer; the classic block never shows it, even for its own forms.
-- `order_history_view_order.php` without a `view order` page ends in a missing template (older bug).
+- `order_history_view_order.php` without a `view order` page answers 404 ("Page cannot be found.") instead of drawing the legacy screen, which ended in a missing template (`core/error-screen-language-and-status.md`).
 
 ## Tests?
 - `tests/returns_test.php` (`test_returns_classic_*`, the wrapper by source, `test_returns_block_html`), `tests/order_view_screen_test.php` (`test_order_view_screen_returns`: the gate, source order). Sandbox (Bootstrap 3 turkish_default, both layouts): request, repeat, withdraw, sent, a refusal, another account's order, a guest, switch off, e-mail render, no tables; the widget's output for the same orders unchanged.

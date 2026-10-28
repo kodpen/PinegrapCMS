@@ -18,7 +18,7 @@ description: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex,
 - On the owner's Windows dev site (IIS, OneDrive folder), confirm the notes import now takes .md files (the is_writable() fix, PR #1497) and the folder checks of PR #1557: both were shown by a Linux emulation only.
 
 ## What is still open?
-1. Headings and lists: imports flatten them (headings bold lines, every item `- `); whether `ws_render_body()` later draws them for notes only.
+1. Headings and lists: answered in #2420 (headings in notes only); headings drawn and kept by the import since #2649 (workspace/workspace-text-headings.md); lists stay one level (every item `- `).
 2. A read-only token feed like the calendar's (default: no; sync clients use OAuth 2.1 + REST).
 3. Whether the Workspace's other upload doors (channel attachments sent one by one as base64, note attachments sent in parallel) take the import's upload steps (picked list, progress, cancel): not asked yet.
 

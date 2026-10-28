@@ -25,6 +25,22 @@ $api_enabled_checked        = ($api_enabled == 1) ? ' checked="checked"' : '';
 $api_require_https_checked  = ($api_require_https == 1) ? ' checked="checked"' : '';
 $api_openapi_public_checked = ($api_openapi_public == 1) ? ' checked="checked"' : '';
 
+// The Team devices switch (includes/api/device_switch.php) needs the kind
+// column of api_apps (2026.4.5); without it the switch is not drawn and the
+// save leaves the applications alone.
+$api_device_switch_ready = $api_settings_ready && waf_table_has_column('api_apps', 'kind');
+
+if ($api_device_switch_ready) {
+
+    if (!defined('PG_API_PANEL')) {
+        define('PG_API_PANEL', true);
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/device_switch.php');
+}
+
+$api_device_switch_checked = ($api_device_switch_ready && api_device_switch_state()) ? ' checked="checked"' : '';
+
 $output_api_not_ready = '
                     <div class="col-12">
                         <div class="alert theme-secondary mb-0 py-3 small">' . lang('These settings arrive with the 2026.4.4 upgrade, which this site has not run yet.') . '</div>
@@ -52,7 +68,14 @@ $output_api_switches = '
                             <label class="" for="api_openapi_public">' . lang('Publish the API description without credentials') . '</label>
                             <div class="form-text">' . lang('The description at /openapi.json names every endpoint and parameter. It is served to anyone only while this is on; otherwise it needs a valid application key like every other call.') . '</div>
                         </div>
-                    </div>';
+                    </div>' . ($api_device_switch_ready ? '
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $api_device_switch_checked . ' class="" type="checkbox" id="api_team_devices" name="api_team_devices"/></div>
+                            <label class="" for="api_team_devices">' . lang('Team devices') . '</label>
+                            <div class="form-text">' . lang('Staff sign in on the team app with their own user name and password, and each gets at most what their own account may do. While this is on, saving adds the Workspace, tasks, orders, contacts and products to the Team devices application; off, it is disabled and its devices are kept.') . '</div>
+                        </div>
+                    </div>' : '');
 
 $pg_settings_cards[] = '
     <div id="pgset-api" class="pg-set-card">

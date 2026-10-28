@@ -18,6 +18,9 @@
 
 require('init.php');
 
+// A job also when a signed-in manager opens it: its contact lines name no one.
+pg_audit_as_job(true);
+
 // if credit/debit card payment method is enabled and payment gateway is PayPal Payments Pro, then check status of recurring profiles
 if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayPal Payments Pro')) {
     // if cURL is not installed, then output error
@@ -170,8 +173,10 @@ if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayP
                         || ($recurring_profile['expiration_date'] >= $current_date)
                     )
                 ) {
+                    $audit_before = pg_audit_fetch('contacts', (int) $recurring_profile['contact_id']);
                     $query = "UPDATE contacts SET expiration_date = ? WHERE id = ?";
                     $result = db_q($query, array((string) $previous_date, (string) $recurring_profile['contact_id'])) or exit(mysqli_error(db::$con));
+                    pg_audit_record('update', 'contacts', (int) $recurring_profile['contact_id'], $audit_before);
                     
                     // update number of expired memberships
                     $number_of_expired_memberships++;

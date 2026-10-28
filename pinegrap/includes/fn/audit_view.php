@@ -68,7 +68,7 @@ function pg_audit_view_filters(array $input)
     $filters = array(
         'from'    => $date('from'),
         'to'      => $date('to'),
-        'source'  => in_array($source, array('panel', 'api', 'job'), true) ? $source : '',
+        'source'  => in_array($source, pg_audit_sources(), true) ? $source : '',
         'user'    => $text('user', 100),
         'action'  => $word('action', 64),
         'type'    => $word('type', 32),
@@ -348,6 +348,75 @@ function pg_audit_view_record_url($type, $id)
 }
 
 /**
+ * The table and key column each record type with an edit screen is read
+ * from, to tell whether the record still exists.
+ *
+ * @return array type => array(table, id column)
+ */
+function pg_audit_view_record_tables()
+{
+    return array(
+        'product' => array('products', 'id'),
+        'page'    => array('page', 'page_id'),
+        'file'    => array('files', 'id'),
+        'user'    => array('user', 'user_id'),
+        'order'   => array('orders', 'id'),
+        'offer'   => array('offers', 'id'),
+        'contact' => array('contacts', 'id'),
+    );
+}
+
+/**
+ * The ids of a page of audit lines grouped by record type, for the types
+ * pg_audit_view_record_tables() knows: one lookup per type instead of one
+ * per line.
+ *
+ * @param array $rows audit_log rows (entity_type, entity_id)
+ * @return array type => list of distinct ids above 0
+ */
+function pg_audit_view_record_ids(array $rows)
+{
+    $tables = pg_audit_view_record_tables();
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $type = (string) ($row['entity_type'] ?? '');
+        $id = (int) ($row['entity_id'] ?? 0);
+
+        if (isset($tables[$type]) && ($id > 0)) {
+            $ids[$type][$id] = $id;
+        }
+    }
+
+    return array_map('array_values', $ids);
+}
+
+/**
+ * Which records of a page of audit lines still exist, so the "Open" link
+ * is drawn only for them: a deleted page or file opened its edit screen's
+ * "not found" error (#2521). The record's history link stays either way.
+ *
+ * @param array $rows audit_log rows (entity_type, entity_id)
+ * @return array type => array(id => true)
+ */
+function pg_audit_view_live_records(array $rows)
+{
+    $tables = pg_audit_view_record_tables();
+    $live = array();
+
+    foreach (pg_audit_view_record_ids($rows) as $type => $ids) {
+        list($table, $column) = $tables[$type];
+        $found = db_values("SELECT `$column` FROM `$table` WHERE `$column` IN (" . implode(',', array_map('intval', $ids)) . ")");
+
+        foreach ((array) $found as $id) {
+            $live[$type][(int) $id] = true;
+        }
+    }
+
+    return $live;
+}
+
+/**
  * The name a record type or an action is shown under; the stored word for
  * one written later than this list.
  *
@@ -387,11 +456,13 @@ function pg_audit_view_label($kind, $word)
             'refund'  => lang('Refunded'),
             'export'  => lang('Exported'),
             'erase'   => lang('Erased'),
+            'merge'   => lang('Merged'),
         ),
         'source' => array(
             'panel' => lang('Panel'),
             'api'   => lang('API'),
             'job'   => lang('Scheduled job'),
+            'site'  => lang('Site visitor'),
         ),
     );
 

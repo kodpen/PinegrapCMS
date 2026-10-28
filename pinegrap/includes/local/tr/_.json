@@ -1447,7 +1447,7 @@
     "{var} · written to the form on save": "{var} · kaydedince forma yazılır",
     "{var} — added to this page with its ready-made layout.": "{var} — bu sayfaya hazır düzeniyle eklenir.",
     "{var} — loading its widgets…": "{var} — bileşenleri yükleniyor…",
-    "{var} — one row shown (repeated for every row at runtime)": "{var} — 1 satır gösteriliyor (runtime'da her satır için tekrarlanır)",
+    "{var} — one row shown (repeated for every row at runtime)": "{var} — 1 satır gösteriliyor (yayında her satır için yinelenir)",
     "{var} — the page's comments": "{var} — sayfanın yorumları",
     "{var}, festival director": "{var}, festival direktörü",
     "{var}: choose the field it lists": "{var}: listeleyeceği alanı seçin",

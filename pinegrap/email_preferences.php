@@ -54,10 +54,12 @@ if (!$_POST) {
         }
 
         // Every contact with the address, as the preferences form does.
+        $audit_same_address = pg_audit_fetch_by('contacts', 'email_address', $one_click_address);
         db(
             "UPDATE contacts
             SET opt_in = '0', timestamp = UNIX_TIMESTAMP()
             WHERE email_address = '" . e($one_click_address) . "'");
+        pg_audit_site_record_many('update', 'contacts', $audit_same_address);
 
         // The person behind the address: the account that uses it and that
         // account's contact, else the first contact with the address (as the
@@ -235,6 +237,7 @@ if (!$_POST) {
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
             $contact_created = true;
+            pg_audit_site_record('create', 'contacts', (int) $contact_id);
 
             // A visitor who set their e-mail preferences without having a
             // contact record has one now.
@@ -427,6 +430,7 @@ if (!$_POST) {
     // loop through all contacts in order to update them
     foreach ($contacts as $contact) {
         // update contact
+        $audit_before = pg_audit_fetch('contacts', (int) $contact['id']);
         $query =
             "UPDATE contacts
             SET
@@ -439,6 +443,7 @@ if (!$_POST) {
             array((string) $liveform->get_field_value('email_address')),
             $opt_in_posted ? array((string) $liveform->get_field_value('opt_in')) : array(),
             array((string) $contact['id']))) or output_error('Query failed.');
+        pg_audit_site_record('update', 'contacts', (int) $contact['id'], $audit_before);
         
         // loop through contact groups in order to opt-in or opt-out contact
         foreach ($contact_groups as $contact_group) {
