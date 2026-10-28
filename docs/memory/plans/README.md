@@ -44,6 +44,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
+- incoming-email-g2.md: G2 of incoming e-mail (IMAP read) cut into three PRs: G2a client (pure, tested), G2b box card and Test connection, G2c fetch run, inline job, System status row; the read rules decided for G2c
 - incoming-email-plan.md: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
@@ -83,7 +84,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, question 2 open): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-composer-tools.md: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-crm-seams.md: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-channels.md: Plan (owner request 2026-10-27, draft): flows started from a channel's Add menu, a Completed flag with the run's result, scheduled work only as flows, no menu or form of its own

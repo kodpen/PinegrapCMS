@@ -92,6 +92,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_bundles();        // 11.0.54
 	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 	upgrade_2026_11_0_workspace_mail();          // 11.0.82
+	upgrade_2026_11_0_workspace_wtables();      // 11.0.110
 
 }
 
@@ -2010,6 +2011,87 @@ function upgrade_2026_11_0_workspace_flow_shares() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the table that keeps whom a flow is shared with is added. A flow\'s owner may share it with colleagues, to look at, to run or to change, and with a channel whose readers may look at it; nothing is shared until they do.');
+
+}
+
+// Workflow tables (2026.11.0, 11.0.110; includes/workspace/wtables.php).
+//
+// ws_wtables is one table a person keeps: its owner, name and description,
+// row_count (the 5000-row limit is checked without a COUNT(*)) and revision,
+// bumped on every change of its columns so that a row written against an
+// older set of columns is answered 409. idx_owner lists "my tables", the
+// latest changed first, and counts them for the 500-table limit.
+//
+// ws_wtable_columns holds a table's typed columns in order: type is one of
+// ws_wtable_column_types() and options a JSON object of what that type takes
+// (decimals, currency, choices, kinds, expression).
+//
+// ws_wtable_rows holds the rows in order, their cells one JSON object by
+// column id (money in integer minor units), so that a row is written with a
+// single UPDATE checked against its own revision. Filtering and sorting are
+// done in PHP: MariaDB and MySQL 5.7 read JSON differently.
+//
+// ws_wtable_shares repeats ws_flow_shares column for column: a person
+// (view or edit) or a channel (view) a table is shared with, one row each.
+//
+// type, target_type and level are VARCHAR rather than ENUM, for the reason
+// the flows step gives. There are no foreign keys, as elsewhere: a table's
+// columns, rows and shares go with it in its delete path.
+function upgrade_2026_11_0_workspace_wtables() {
+
+	install_create_table('ws_wtables', "CREATE TABLE ws_wtables (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		name         VARCHAR(255) NOT NULL DEFAULT '',
+		description  TEXT NULL,
+		row_count    INT UNSIGNED NOT NULL DEFAULT 0,
+		revision     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_owner (user_id, updated_at)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_wtable_columns', "CREATE TABLE ws_wtable_columns (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		table_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		name         VARCHAR(255) NOT NULL DEFAULT '',
+		type         VARCHAR(16) NOT NULL DEFAULT 'text',
+		options      TEXT NULL,
+		position     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_table (table_id, position)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_wtable_rows', "CREATE TABLE ws_wtable_rows (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		table_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		position     INT UNSIGNED NOT NULL DEFAULT 0,
+		cells        MEDIUMTEXT NULL,
+		revision     INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_table (table_id, position)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('ws_wtable_shares', "CREATE TABLE ws_wtable_shares (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		table_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		target_type  VARCHAR(16) NOT NULL DEFAULT '',
+		target_id    INT UNSIGNED NOT NULL DEFAULT 0,
+		level        VARCHAR(16) NOT NULL DEFAULT 'view',
+		created_by   INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_target (table_id, target_type, target_id),
+		KEY idx_target (target_type, target_id, table_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the tables for workflow tables are added: a person\'s own tables of typed columns and rows, and whom each is shared with. They stay empty until somebody makes a table.');
 
 }
 
