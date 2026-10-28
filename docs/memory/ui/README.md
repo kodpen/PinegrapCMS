@@ -55,7 +55,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; what each screen keeps
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 - dark-theme-fixed-fills.md: Inline light colours in panel markup and scripts (label designer, dashboard tracks, Chart.js ink, SEO orange band, chat dot ring) moved onto --pg-* tokens; what stays white and what is left
-- dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black table-head text in the dark theme), what stays fixed and why
+- dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
 - dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
@@ -103,6 +103,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it
+- panel-validation-state.md: Invalid and valid fields in the panel on Bootstrap 6: why v6's own state was invisible, the panel rules on --pg-danger/--pg-success, focus ring, what stays on the bridge
 - password-strength-js.md: pg_password_strength.js, the panel copy of validate_password_strength() and the Bootstrap 6 Strength meter it drives (#1698, #2211, installer #2274): scoring on and off, where it shows, tests
 - pg-chips.md: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208): the box drawn after the hidden input, silent fill, change back into the input, the translated Remove label, init timing
 - pg-combobox-server-search.md: data-pg-source combobox (google_product_category) on Bootstrap 6 Combobox with our own server search (#2362): engine, search box, debounce, free text, keys
