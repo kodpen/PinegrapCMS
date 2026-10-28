@@ -155,6 +155,8 @@ echo '<!DOCTYPE html>
   .body .ws-chip i { display: none; }
   .body .ws-list { margin: .5rem 0; padding-left: 1.5rem; }
   .body .ws-quote { margin: .5rem 0; padding-left: .8rem; border-left: 3px solid #d0d7de; color: #57606a; }
+  .body .ws-heading { margin: 1rem 0 .4rem; line-height: 1.3; }
+  .body .ws-rule { border: 0; border-top: 1px solid #d0d7de; margin: 1rem 0; }
   .body .ws-checklist { list-style: none; padding-left: 0; margin: .5rem 0; }
   .body .ws-check label { display: inline-flex; gap: .45em; align-items: baseline; }
   .body .ws-checked .ws-check-text { text-decoration: line-through; color: #6b7280; }
@@ -174,7 +176,7 @@ echo '<!DOCTYPE html>
 <div class="tools"><button type="button" onclick="window.print()">' . h(lang('Print')) . '</button></div>
 <h1>' . h($title) . '</h1>
 <div class="meta">' . h(implode(' · ', $meta)) . '</div>
-<div class="body ws-body">' . ws_render_body((string) $note['body'], $refs) . '</div>
+<div class="body ws-body">' . ws_render_body((string) $note['body'], $refs, null, false, null, null, true) . '</div>
 <script>window.addEventListener("load", function () { window.print(); });</script>
 </body>
 </html>';

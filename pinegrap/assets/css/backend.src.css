@@ -12631,6 +12631,31 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-2);
 }
+/* A note's headings and rules (ws_heading_line(), ws_rule_line()), drawn
+   and in the note's writing box alike. */
+.ws-heading {
+  margin: .6rem 0 .2rem;
+  font-weight: 600;
+  line-height: 1.3;
+}
+h2.ws-heading {
+  font-size: 1.35rem;
+}
+h3.ws-heading {
+  font-size: 1.15rem;
+}
+h4.ws-heading {
+  font-size: 1rem;
+}
+.ws-rule,
+.ws-rich-block.ws-rich-block-rule {
+  display: block;
+  height: 0;
+  margin: .6rem 0;
+  border: 0;
+  border-top: 1px solid var(--pg-border-color);
+  opacity: 1;
+}
 .ws-check {
   display: flex;
   flex-wrap: wrap;

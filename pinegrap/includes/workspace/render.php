@@ -335,6 +335,34 @@ function ws_list_line($line)
 }
 
 /**
+ * One line of a note as a heading: "# ", "## " or "### " and words. Notes
+ * only (ws_render_body()'s $headings); in a message "#" starts a record tag
+ * or a hashtag. Four signs or more, or no space after them, are no heading.
+ *
+ * @param string $line
+ * @return array|null level (1-3), text (the words after the signs)
+ */
+function ws_heading_line($line)
+{
+    if (!preg_match('/^(#{1,3})[ \t]+(\S.*)$/u', (string) $line, $match)) {
+        return null;
+    }
+
+    return array('level' => strlen($match[1]), 'text' => rtrim($match[2]));
+}
+
+/**
+ * Whether a line of a note is a rule: three hyphens or more alone on it.
+ *
+ * @param string $line
+ * @return bool
+ */
+function ws_rule_line($line)
+{
+    return (bool) preg_match('/^[ \t]*-{3,}[ \t]*$/', (string) $line);
+}
+
+/**
  * The lines of a piece of running text grouped into text, bulleted lists,
  * numbered lists and quotes.
  *
@@ -632,9 +660,11 @@ function ws_check_task_html($item, $refs, $item_tasks)
  *                              => task id, its tag drawn beside the item; the
  *                              id's task:N must be in $refs) and make (the
  *                              reader may make a task of an item without one)
+ * @param bool       $headings  a note's text: "#" to "###" lines are headings,
+ *                              "---" a rule (ws_heading_line(), ws_rule_line())
  * @return string
  */
-function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null)
+function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null, $headings = false)
 {
     $body = (string) $body;
 
@@ -644,7 +674,8 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
 
     // Running text only - nearly every message - is drawn in one piece,
     // unless it holds a list or a quote (ws_text_blocks()).
-    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)) {
+    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)
+        && !($headings && preg_match('/^(#{1,3}[ \t]+\S|[ \t]*-{3,}[ \t]*$)/m', $body))) {
         $listed = false;
 
         if (preg_match('/^[ \t]*([-*][ \t]+\S|[1-9][0-9]{0,2}\.[ \t]+\S|>)/m', $body)) {
@@ -739,6 +770,20 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
                 ? ws_calc_block_html($code, $scope['seeds'][$i] ?? array(), ws_code_fence_info($line))
                 : ws_code_block_html(implode("\n", $code), $language));
             $i = $j;
+            continue;
+        }
+
+        // A note's heading or rule stands on its line of its own.
+        if ($headings && (($found = ws_heading_line($line)) !== null)) {
+            $flush();
+            $tag = 'h' . ($found['level'] + 1);
+            $html .= '<' . $tag . ' class="ws-heading">' . ws_render_text($found['text'], $refs) . '</' . $tag . '>';
+            continue;
+        }
+
+        if ($headings && ws_rule_line($line)) {
+            $flush();
+            $html .= '<hr class="ws-rule">';
             continue;
         }
 

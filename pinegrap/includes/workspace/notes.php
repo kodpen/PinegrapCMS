@@ -688,7 +688,7 @@ function ws_note_body_view($viewer, $body)
         }
     }
 
-    return array('body' => $body, 'labels' => $labels, 'html' => ws_render_body($body, $refs));
+    return array('body' => $body, 'labels' => $labels, 'html' => ws_render_body($body, $refs, null, false, null, null, true));
 }
 
 /**
@@ -1665,7 +1665,7 @@ function ws_note_cards_map($viewer, $message_ids)
             'id'         => (int) $note['id'],
             'name'       => $card['name'],
             'excerpt'    => $card['excerpt'],
-            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body))),
+            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body)), null, false, null, null, true),
             'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],

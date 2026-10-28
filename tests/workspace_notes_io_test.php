@@ -155,14 +155,17 @@ function test_workspace_notes_io_import_markdown_written_the_workspace_way()
 		'\\# not a heading \\[x\\]',
 		'| a<br>b | c |',
 		'#tag line',
+		'#### Deep',
+		'Under',
+		'---',
 	));
 
 	$out = explode("\n", ws_note_import_convert($in));
 
-	pg_assert_same('**Agenda**', $out[0], 'a heading is a bold line');
+	pg_assert_same('## Agenda', $out[0], 'a heading keeps its level');
 	pg_assert_same('- one _two_ **three** ==four== `*five*`', $out[1], 'list marker, italic, bold; a highlight kept; code untouched');
 	pg_assert_same('- [ ] todo', $out[2], 'a checklist item marked +');
-	pg_assert_same('**Setext**', $out[3], 'an underlined heading');
+	pg_assert_same('# Setext', $out[3], 'an underlined heading');
 	pg_assert_same('---', $out[5], 'a rule stays a rule');
 	pg_assert_same('```latex', $out[6], 'a math block is not a calculation here');
 	pg_assert_same('x = *y*', $out[7], 'code is kept as written');
@@ -170,9 +173,11 @@ function test_workspace_notes_io_import_markdown_written_the_workspace_way()
 	pg_assert_same('```', $out[11], 'and closes the same way');
 	pg_assert_same('Inline ```code``` stays', $out[12], 'backticks closed on the line open no block');
 	pg_assert_same('[a b.png](img/a%20b.png) [logo](pics/x%20y.png)', $out[13], 'pictures become links; a title and angle brackets go');
-	pg_assert_same('# not a heading [x]', $out[14], 'escapes of characters that mean nothing here undone');
+	pg_assert_same('\\# not a heading [x]', $out[14], 'escapes undone, but an escaped heading sign stays escaped');
 	pg_assert_same('| a b | c |', $out[15], 'a line break in a table cell keeps the row whole');
 	pg_assert_same('#tag line', $out[16], 'a #tag is not a heading');
+	pg_assert_same('**Deep**', $out[17], 'a heading below the third level is a bold line');
+	pg_assert_same('## Under', $out[18], 'words underlined with --- are a second-level heading');
 }
 
 function test_workspace_notes_io_import_parse_title_tags_dates()
