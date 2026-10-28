@@ -280,3 +280,30 @@ function test_bs6_form_adorn_offer_tier_fields_have_names()
 		pg_assert_contains('aria-label="\' + esc(L.' . $key . ')', $js, 'offer_editor.js: ' . $key);
 	}
 }
+
+/**
+ * The offer editor's condition and action fields: their captions are sibling
+ * text, not labels, so each field carries an aria-label from the labels the
+ * screen already hands to the script.
+ */
+function test_bs6_form_adorn_offer_condition_and_action_fields_have_names()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$offer = (string) file_get_contents($root . 'edit_offer.php');
+	$js = (string) file_get_contents($root . 'assets/js/offer_editor.js');
+
+	foreach (array('quantity', 'usageTotalLabel', 'usageCustomerLabel', 'days', 'discount', 'addGroup', 'selectGroupPlaceholder', 'addMethod') as $key) {
+		pg_assert_contains("'" . $key . "'", $offer, 'edit_offer.php: ' . $key);
+		pg_assert_contains('aria-label="\' + esc(L.' . $key . ')', $js, 'offer_editor.js: ' . $key);
+	}
+	pg_assert_contains('aria-label="\' + esc(t.label) + \'" data-on="cond-amount"', $js, 'offer_editor.js: subtotal amount');
+	pg_assert_contains('aria-label="\' + esc(t.label) + \'" data-on="cond-mode"', $js, 'offer_editor.js: new customer mode');
+	pg_assert_contains('aria-label="\' + esc(placeholder) + \'" data-on="\' + esc(onchange)', $js, 'offer_editor.js: product picker');
+
+	// Every text, number and select field the rows draw has a name.
+	preg_match_all('/<(input|select)\b[^>]*data-on="(cond-|act-|tier-)[^>]*>/', $js, $m);
+	pg_assert_true(count($m[0]) >= 14, 'offer_editor.js: row fields found');
+	foreach ($m[0] as $tag) {
+		pg_assert_contains('aria-label=', $tag, 'offer_editor.js: ' . $tag);
+	}
+}
