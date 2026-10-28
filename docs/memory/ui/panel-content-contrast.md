@@ -1,6 +1,6 @@
 ---
 name: panel-content-contrast
-description: Panel text and icon contrast (#2530): off and secondary states on --pg-fg-2 not opacity, palette tones pulled toward the text colour, dashboard card icons at 3:1, what is still open
+description: Panel and visual editor text and icon contrast (#2530): secondary states on a solid colour not opacity, tones pulled toward the text colour, the editor's --sd-* mixes
 ---
 
 ## What is the target?
@@ -22,5 +22,13 @@ description: Panel text and icon contrast (#2530): off and secondary states on -
 - Workspace part icons (home, inbox, tasks, notes, scheduled, archived, flows/mcp) reach 3:1 on the active row's tint `#ded6ef`, not only on the sidebar ground.
 - `tests/panel_contrast_test.php` computes the ratios from the stylesheet, so a new card or part colour is checked too.
 
-## What is still open?
-- The Key Codes badge (`view_key_codes.php`) and the visual editor's right panel (`add_system_style.php`, style_designer): later PRs.
+## What about the Key Codes badge?
+- `view_key_codes.php` prints `badge fw-light theme-secondary` without `fg-white` since #2863, so it takes the accent ink `--pg-on-accent` on `#90a4ae`: 6.6:1 in both themes.
+
+## How is the visual editor's dark chrome made readable?
+- `assets/css/style_designer.css` colours the always-dark editor with its own `--sd-*` tokens; the fixes mix those, no token value changed.
+- Soft text (page tabs, the "Legacy" palette badge): `color-mix(in srgb, var(--sd-text-muted) 70%, var(--sd-text))`, 5.6:1 on a lit tab; the muted colour alone was 4.2:1 there. A draft badge inherits the tab's colour.
+- Tree id labels: `color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text))`, 5.0:1 on a selected row (was the accent at opacity .7, 2.5:1).
+- Publish and every `.sd-icon-btn-primary`: the accent mixed 85% with `--sd-panel-border`, white label 5.0:1 (3.98:1 on the plain accent).
+- Lock and link icons: the plain accent without opacity, 3.8:1. "No selection" (`.sd-breadcrumb-empty`) and a switched-off file's name: `--sd-text-muted`, 4.9:1; the "off" badge on `--sd-text`.
+- `tests/designer_chrome_contrast_test.php` computes these from the `--sd-*` values and refuses an opacity coming back on them.

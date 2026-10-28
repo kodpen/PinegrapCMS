@@ -85,7 +85,9 @@
     border-right: 1px solid var(--sd-panel-border);
     border-bottom: 2px solid transparent;
     background: transparent;
-    color: var(--sd-text-muted, #8b949e);
+    /* The muted text colour alone reads 4.2:1 on a hovered or active
+       tab; a third of the body text colour keeps the page names 4.5:1. */
+    color: color-mix(in srgb, var(--sd-text-muted) 70%, var(--sd-text));
     font-size: .76rem;
     white-space: nowrap;
     cursor: pointer;
@@ -126,7 +128,7 @@
     border-radius: 3px;
     font-size: .95rem;
     line-height: 1;
-    opacity: .55;
+    opacity: .8;
 }
 .sd-tab-close:hover { opacity: 1; background: rgba(255,255,255,.08); }
 .sd-tab-menu {
@@ -135,7 +137,7 @@
     border-radius: 3px;
     font-size: .8rem;
     line-height: 1;
-    opacity: .55;
+    opacity: .8;
 }
 .sd-tab-menu:hover { opacity: 1; background: rgba(255,255,255,.08); }
 .sd-tab-popmenu {
@@ -634,7 +636,6 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-sys-attr-name .bi-lock-fill {
     font-size: .6rem;
     color: var(--sd-accent);
-    opacity: .7;
     flex-shrink: 0;
 }
 .sd-sys-attr-val {
@@ -1272,7 +1273,9 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 /* ── Tree item badges ── */
 .sd-tree-id {
     font-size: .62rem; font-family: monospace;
-    color: var(--sd-accent); opacity: .7;
+    /* The accent alone reads 3.8:1 on the panel; mixed with the text
+       colour it stays blue and reads 4.5:1 on a selected row too. */
+    color: color-mix(in srgb, var(--sd-accent) 55%, var(--sd-text));
     margin-left: 4px;
 }
 .sd-tree-note {
@@ -2880,7 +2883,6 @@ body.sd-resizing * { cursor: col-resize !important; }
 .sd-ht-lock-icon {
     font-size: .55rem;
     color: var(--sd-accent);
-    opacity: .65;
     margin-right: 4px;
     flex-shrink: 0;
 }
@@ -3556,7 +3558,13 @@ body.sd-resizing * { cursor: col-resize !important; }
     flex-shrink: 0;
 }
 .sd-icon-btn:hover { background: rgba(255,255,255,.1); color: var(--sd-text); text-decoration: none; }
-.sd-icon-btn-primary { background: var(--sd-accent); color: #fff !important; border-color: var(--sd-accent); }
+/* White on the accent itself is 3.98:1; a touch of the panel's darkest
+   tone takes the label past 4.5:1. */
+.sd-icon-btn-primary {
+    background: color-mix(in srgb, var(--sd-accent) 85%, var(--sd-panel-border));
+    color: #fff !important;
+    border-color: color-mix(in srgb, var(--sd-accent) 85%, var(--sd-panel-border));
+}
 .sd-icon-btn-primary:hover { background: #3a5bd9; }
 .sd-icon-btn-danger { color: #e74c3c !important; }
 .sd-icon-btn-danger:hover { background: rgba(231,76,60,.15); }
@@ -4949,7 +4957,9 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
     color: #c9d1d9;
     border-left-color: rgba(255,255,255,.1);
 }
-.sd-as-item.sd-as-item-disabled { opacity: .45; }
+/* A switched-off file: italic name on the muted colour and the "off"
+   badge, not an opacity, which took the badge to 1.6:1. */
+.sd-as-item.sd-as-item-disabled .sd-as-item-name { color: var(--sd-text-muted); font-style: italic; }
 .sd-as-item-icon { font-size: .78rem; flex-shrink: 0; }
 .sd-as-item-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-as-item-wts { font-size: .62rem; color: #6e7681; flex-shrink: 0; }
@@ -4960,7 +4970,7 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
 }
 .sd-as-badge-off {
     font-size: .58rem; padding: 0 3px; border-radius: 2px;
-    background: rgba(255,255,255,.08); color: #6e7681; flex-shrink: 0;
+    background: rgba(255,255,255,.08); color: var(--sd-text); flex-shrink: 0;
     text-transform: uppercase; letter-spacing: .3px;
 }
 .sd-as-badge-lock {
@@ -4972,6 +4982,13 @@ body.sd-resizing-v { cursor: ns-resize !important; -webkit-user-select: none; us
     font-size: .58rem; padding: 0 3px; border-radius: 2px; flex-shrink: 0;
     background: rgba(63,185,80,.18); color: #3fb950;
     display: inline-flex; align-items: center; gap: 2px;
+}
+/* A legacy region in the palette: the muted colour on a line, no fill
+   (grey on a grey tint read 2.8:1). */
+.sd-legacy-badge {
+    margin-left: auto; padding: 0 5px; border: 1px solid currentColor; border-radius: 3px;
+    font-size: .62rem; line-height: 1.4; white-space: nowrap;
+    color: color-mix(in srgb, var(--sd-text-muted) 70%, var(--sd-text));
 }
 .sd-as-item-locked { cursor: default; }
 .sd-as-item-locked:hover { background: transparent; border-left-color: transparent; }
@@ -5254,6 +5271,9 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Breadcrumb hover ── */
 #sd-statusbar-breadcrumb span { border-radius: 3px; }
+/* "No selection": the muted colour of the bar, not a faded one (1.9:1). */
+#sd-statusbar-breadcrumb .sd-breadcrumb-empty { cursor: default; font-style: italic; }
+#sd-statusbar-breadcrumb .sd-breadcrumb-empty:hover { background: none; }
 
 /* ── Tooltip-style size badge ── */
 .sd-canvas-size-badge {
@@ -6241,13 +6261,12 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-tab-draft-badge {
     flex: 0 0 auto;
     padding: 0 .35rem;
-    border: 1px dashed var(--sd-text-muted, #8b949e);
+    border: 1px dashed currentColor;
     border-radius: 999px;
-    color: var(--sd-text-muted, #8b949e);
+    color: inherit;
     font-size: .6rem;
     line-height: 1.45;
 }
-.sd-tab.active .sd-tab-draft-badge { color: var(--sd-text, #c9d1d9); border-color: var(--sd-text, #c9d1d9); }
 /* A page that goes on the site or comes off it at a set time: a clock in
    the same pill, solid rather than dashed; the time is its title. */
 .sd-tab-sched-badge { border-style: solid; padding: 0 .3rem; }
