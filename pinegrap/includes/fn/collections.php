@@ -470,7 +470,8 @@ function pg_coll_reference_ok($value, $codes)
 
 /**
  * The attributes a control of a field's kind is drawn with: a number field
- * takes decimal numbers, an image field offers pg_coll_image_types(). A
+ * takes decimal numbers, an image field offers pg_coll_image_types() and
+ * shows the chosen picture (pg_cf_validation_script()). A
  * reference is drawn by its choices instead (pg_coll_reference_options()).
  *
  * @param string $kind
@@ -484,7 +485,7 @@ function pg_coll_input_attrs($kind, $type)
         return array('type' => 'number', 'step' => 'any', 'inputmode' => 'decimal');
     }
     if ($kind === 'image') {
-        return array('accept' => implode(',', array_values(array_unique(pg_coll_image_types()))));
+        return array('accept' => implode(',', array_values(array_unique(pg_coll_image_types()))), 'data-pg-image-preview' => '');
     }
     return array();
 }
@@ -579,8 +580,8 @@ function pg_coll_field_kinds($page_id)
  * Marks the kind errors of one posted field: a number that is not one (a
  * valid one is stored as pg_coll_number_value() writes it), an image field
  * given another file, a reference to a record the form it points into does
- * not have (a text box or pick list). Run after the field's own checks; a
- * field already marked is left alone.
+ * not have. Run after the field's own checks; a field already marked is
+ * left alone.
  *
  * @param liveform $liveform
  * @param array    $field  form_fields row: id, label, type
@@ -613,11 +614,8 @@ function pg_coll_check_field($liveform, $field, $kinds)
         return;
     }
 
-    // A reference whose form is gone points nowhere and is not checked. A
-    // radio button or check box group is still drawn with the designer's
-    // own choices on the site, so it is not held to the records yet.
+    // A reference whose form is gone points nowhere and is not checked.
     if ($kind === 'reference' && $kinds[$id]['reference_page_id'] > 0
-        && in_array((string)$field['type'], array('text box', 'pick list'), true)
         && !pg_coll_reference_ok($value, pg_coll_reference_options($kinds[$id]['reference_page_id']))) {
         $liveform->mark_error($field['id'], lang(array('string' => 'Please choose one of the listed items for {var:1}', 'vars' => $label)));
     }

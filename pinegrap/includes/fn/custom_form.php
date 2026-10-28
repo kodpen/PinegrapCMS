@@ -1719,7 +1719,8 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             if ($input_type === 'checkbox' && array_key_exists('required', $attrs)) {
                 static $cf_option_count = array();
                 if (!isset($cf_option_count[$field_id])) {
-                    $cf_option_count[$field_id] = (int)db_value(
+                    $cf_ref_boxes = pg_cf_reference_choices_for($row);
+                    $cf_option_count[$field_id] = ($cf_ref_boxes !== null) ? count($cf_ref_boxes) : (int)db_value(
                         "SELECT COUNT(*) FROM form_field_options WHERE form_field_id = '$field_id'");
                 }
                 if ($cf_option_count[$field_id] > 1) $set_attr($tree['props']['_attrs'], 'required', null);
@@ -1737,22 +1738,16 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
             // lists the records of the form it points into, below the
             // designer's empty-valued prompt row (one whose form is gone
             // keeps its drawn choices). The server checks them again
-            // (pg_coll_check_field()). The row's reference_options, when
-            // given, stand for that read.
+            // (pg_coll_check_field()). A reference radio button or check box
+            // group was drawn from the records one level up
+            // (pg_cf_reference_choice_nodes()).
             $cf_kind = pg_coll_field_kind(isset($row['collection_kind']) ? $row['collection_kind'] : '', (string)$row['type']);
             if ($tag_lc === 'input') {
                 foreach (pg_coll_input_attrs($cf_kind, (string)$row['type']) as $attr => $value) {
                     $set_attr($tree['props']['_attrs'], $attr, $value);
                 }
             }
-            $cf_ref_options = null;
-            if ($cf_kind === 'reference' && $tag_lc === 'select') {
-                if (isset($row['reference_options']) && is_array($row['reference_options'])) {
-                    $cf_ref_options = $row['reference_options'];
-                } elseif (!empty($row['reference_page_id'])) {
-                    $cf_ref_options = pg_coll_reference_options((int)$row['reference_page_id']);
-                }
-            }
+            $cf_ref_options = ($tag_lc === 'select') ? pg_cf_reference_choices_for($row) : null;
 
             // A <select> shows the FIELD's choices. They were written from
             // this very markup on save, so normally the two are identical -
@@ -1829,6 +1824,8 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
     }
 
     if (isset($tree['children']) && is_array($tree['children'])) {
+        $tree['children'] = pg_cf_reference_choice_nodes($tree['children'], $map);
+
         // Office-use-only fields never appear on the public form. Dropping
         // just the input would leave its label and an empty Bootstrap block
         // behind, so the label pointing at it goes too, and a wrapper left
@@ -1879,6 +1876,189 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
 }
 
 /**
+ * The records a reference field's control offers (pg_coll_reference_options()),
+ * or null when its choices stay the drawn ones: the field is not a
+ * reference, or the form it points into is gone. The row's
+ * reference_options, when given, stand for that read.
+ *
+ * @param array $row form_fields row (pg_cf_field_map())
+ * @return array|null reference code => label
+ */
+function pg_cf_reference_choices_for($row)
+{
+    $kind = pg_coll_field_kind(isset($row['collection_kind']) ? $row['collection_kind'] : '', isset($row['type']) ? (string)$row['type'] : '');
+    if ($kind !== 'reference') return null;
+    if (isset($row['reference_options']) && is_array($row['reference_options'])) return $row['reference_options'];
+    if (!empty($row['reference_page_id'])) return pg_coll_reference_options((int)$row['reference_page_id']);
+    return null;
+}
+
+/**
+ * The children of one element with each reference radio button or check
+ * box group drawn from the records it may point at: the group's first
+ * option (the box, or the wrapper holding only the box and its label, or
+ * the box and the label right after it) is repeated once per record, in
+ * place of every option the designer drew; the box carries the record's
+ * code, its label the record's label, and each box an id of its own the
+ * label points at. A group whose form has no records keeps no option: a
+ * drawn value is not a record and the server refuses it
+ * (pg_coll_check_field()). Name, checked state and the rest are settled
+ * by pg_cf_apply_field_bindings() afterwards.
+ *
+ * @param array $children
+ * @param array $map pg_cf_field_map()
+ * @return array
+ */
+function pg_cf_reference_choice_nodes($children, $map)
+{
+    $any = false;
+    foreach ((array)$map as $row) {
+        if (in_array(isset($row['type']) ? (string)$row['type'] : '', array('radio button', 'check box'), true)
+            && pg_coll_field_kind(isset($row['collection_kind']) ? $row['collection_kind'] : '', (string)$row['type']) === 'reference') {
+            $any = true;
+            break;
+        }
+    }
+    if (!$any) return $children;
+
+    $tag_of = function ($n) {
+        return (is_array($n) && isset($n['type']) && $n['type'] === 'semantic' && isset($n['props']['tag']))
+            ? strtolower((string)$n['props']['tag']) : '';
+    };
+    // The field key of a reference radio button or check box, else ''. A box
+    // already drawn from a record is not drawn again one level down.
+    $box_key = function ($n) use ($tag_of, $map) {
+        if ($tag_of($n) !== 'input' || !empty($n['props']['_pg_cf_ref_drawn'])) return '';
+        $a = _pg_cf_node_attrs($n);
+        $t = isset($a['type']) ? strtolower($a['type']) : '';
+        if ($t !== 'radio' && $t !== 'checkbox') return '';
+        $key = mb_strtolower(pg_cf_clean_field_name(isset($a['name']) ? $a['name'] : ''), 'UTF-8');
+        return ($key !== '' && isset($map[$key])) ? $key : '';
+    };
+    $controls = function ($n) use (&$controls, $tag_of) {
+        $count = in_array($tag_of($n), array('input', 'select', 'textarea'), true) ? 1 : 0;
+        if (is_array($n) && !empty($n['children']) && is_array($n['children'])) {
+            foreach ($n['children'] as $c) $count += $controls($c);
+        }
+        return $count;
+    };
+
+    // Every option of a group: field key => list of (first index, last
+    // index, kind of unit); the box sits at the unit's 'box' path.
+    $units = array();
+    $count = count($children);
+    $list  = array_values($children);
+    for ($i = 0; $i < $count; $i++) {
+        $child = $list[$i];
+        $key = $box_key($child);
+        if ($key !== '') {
+            $last = ($i + 1 < $count && $tag_of($list[$i + 1]) === 'label' && $controls($list[$i + 1]) === 0) ? $i + 1 : $i;
+            $units[$key][] = array('from' => $i, 'to' => $last, 'wrapped' => false);
+            $i = $last;
+            continue;
+        }
+        // A wrapper holds the box and one label, beside inline text only
+        // (div.form-check); one holding a legend or the question's own
+        // label too is looked into instead.
+        if (!is_array($child) || empty($child['children']) || !is_array($child['children']) || $controls($child) !== 1) continue;
+        $key = '';
+        $labels = 0;
+        $plain = true;
+        foreach ($child['children'] as $inner) {
+            $inner_key = $box_key($inner);
+            if ($inner_key !== '') { $key = $inner_key; continue; }
+            $inner_tag = $tag_of($inner);
+            if ($inner_tag === 'label') $labels++;
+            elseif (!in_array($inner_tag, array('span', 'small', 'strong', 'em', 'b', 'i'), true)) $plain = false;
+        }
+        if ($key !== '' && $plain && $labels <= 1) $units[$key][] = array('from' => $i, 'to' => $i, 'wrapped' => true);
+    }
+
+    $replace = array();
+    $skip    = array();
+    foreach ($units as $key => $found) {
+        $choices = pg_cf_reference_choices_for($map[$key]);
+        if ($choices === null) continue;
+        $first = $found[0];
+        $template = array_slice($list, $first['from'], $first['to'] - $first['from'] + 1);
+        $new = array();
+        $k = 0;
+        foreach ($choices as $code => $label) {
+            foreach (pg_cf_reference_choice_unit($template, $first['wrapped'], (string)$code, (string)$label, (int)$map[$key]['id'], $k++, $box_key) as $node) {
+                $new[] = $node;
+            }
+        }
+        $replace[$first['from']] = $new;
+        foreach ($found as $unit) {
+            for ($j = $unit['from']; $j <= $unit['to']; $j++) $skip[$j] = true;
+        }
+    }
+    if (!$replace) return $children;
+
+    $out = array();
+    foreach ($list as $i => $child) {
+        if (isset($replace[$i])) foreach ($replace[$i] as $node) $out[] = $node;
+        if (!isset($skip[$i])) $out[] = $child;
+    }
+    return $out;
+}
+
+/**
+ * One option of a reference group (pg_cf_reference_choice_nodes()) for one
+ * record: the template's box takes the code and an id of its own, without
+ * the designer's checked state; its label takes the record's label and
+ * points at the box.
+ *
+ * @param array    $template the option's nodes: the box and its label, or the wrapper
+ * @param bool     $wrapped  the template is one wrapper holding both
+ * @param string   $code
+ * @param string   $label
+ * @param int      $field_id
+ * @param int      $k        the record's place in the group, from 0
+ * @param callable $box_key  the field key of a reference box, else ''
+ * @return array
+ */
+function pg_cf_reference_choice_unit($template, $wrapped, $code, $label, $field_id, $k, $box_key)
+{
+    $without = function ($attrs, $names) {
+        return array_values(array_filter(is_array($attrs) ? $attrs : array(), function ($a) use ($names) {
+            return !(is_array($a) && isset($a['name']) && in_array(strtolower((string)$a['name']), $names, true));
+        }));
+    };
+    $nodes = $wrapped ? $template[0]['children'] : $template;
+
+    $id = '';
+    foreach ($nodes as $n) {
+        if ($box_key($n) === '') continue;
+        $a  = _pg_cf_node_attrs($n);
+        $id = isset($a['id']) ? trim($a['id']) : '';
+        break;
+    }
+    $id = (($id !== '') ? $id : 'cf_' . $field_id) . ($k > 0 ? '_r' . $k : '');
+
+    foreach ($nodes as &$n) {
+        if ($box_key($n) !== '') {
+            $n['props']['id'] = $id;
+            $n['props']['_attrs'] = $without(isset($n['props']['_attrs']) ? $n['props']['_attrs'] : array(), array('id', 'value', 'checked'));
+            $n['props']['_attrs'][] = array('name' => 'value', 'value' => $code);
+            $n['props']['_pg_cf_ref_drawn'] = true;
+        } elseif (isset($n['props']['tag']) && strtolower((string)$n['props']['tag']) === 'label') {
+            $n['props']['text'] = $label;
+            unset($n['props']['html']);
+            $n['children'] = array();
+            $n['props']['_attrs'] = $without(isset($n['props']['_attrs']) ? $n['props']['_attrs'] : array(), array('for'));
+            $n['props']['_attrs'][] = array('name' => 'for', 'value' => $id);
+        }
+    }
+    unset($n);
+
+    if (!$wrapped) return $nodes;
+    $wrapper = $template[0];
+    $wrapper['children'] = $nodes;
+    return array($wrapper);
+}
+
+/**
  * Bootstrap's validation switch-on, once per page.
  *
  * Bootstrap ships the CSS for :invalid feedback but leaves the "only after
@@ -1908,7 +2088,17 @@ function pg_cf_validation_script()
          . 'if(e.submitter&&e.submitter.hasAttribute("formnovalidate"))return;'
          . 'if(!form.checkValidity()){e.preventDefault();e.stopPropagation();'
          . 'var bad=form.querySelector(":invalid");if(bad&&bad.focus)bad.focus();}'
-         . 'form.classList.add("was-validated");},false);});};'
+         . 'form.classList.add("was-validated");},false);'
+         // An image field (data-pg-image-preview) shows the chosen picture
+         // below itself before the form is sent.
+         . 'Array.prototype.forEach.call(form.querySelectorAll("input[type=file][data-pg-image-preview]"),function(input){'
+         . 'var img=null,url="";input.addEventListener("change",function(){'
+         . 'if(url){URL.revokeObjectURL(url);url="";}'
+         . 'var file=input.files&&input.files[0];'
+         . 'if(!file||!/^image\\//.test(file.type)||!window.URL){if(img)img.hidden=true;return;}'
+         . 'if(!img){img=document.createElement("img");img.className="img-thumbnail d-block mt-2";img.alt="";'
+         . 'img.style.maxHeight="12rem";input.insertAdjacentElement("afterend",img);}'
+         . 'url=URL.createObjectURL(file);img.src=url;img.hidden=false;});});});};'
          . 'if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",bind);}else{bind();}'
          . '})();</script>';
 }

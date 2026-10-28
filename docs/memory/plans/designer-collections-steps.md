@@ -17,7 +17,9 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C3 — typed inputs. Done, #2601:** number (`type=number`, normalised server check), image (`accept`, extension check), reference pick list filled from the target's records (server accepts only a code of the target), on the site form and Add / Edit Submitted Form (`designer/collection-inputs.md`).
 
-- **C3b — remaining inputs.** Radio button and check box references drawn from the target's records, then held to them by `pg_coll_check_field()`; image preview on the form; product and page pickers (new kinds, VARCHAR needs no migration). `pg_img_responsive_html()` on image output goes with C4.
+- **C3b — radio and check box references, image preview. Done, #2694** (`designer/collection-inputs.md`).
+
+- **C3c — product and page pickers.** New kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
 
 - **C4 — list/detail by kind.** C1's `ref` defaults from the field; numeric sort for number; taxonomy filter "references" valued from the address (`?category=news` by address name, `form-list-url-filters.md` rules); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image).
 
