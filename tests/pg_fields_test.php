@@ -789,6 +789,21 @@ function main() {
     md.win.pgFields.init(built);
     out.built = [built.pgFieldKind, md.calls.map(function (c) { return c[0] + ':' + c[1]; })];
 
+    // A list screen's range end: a fieldset named by its legend around the
+    // selects as select_month(), select_day() and select_year() print them.
+    var fs = md.doc.create('fieldset', { 'class': 'col-12', 'data-pg-date-selects': '' }), legend = md.doc.create('legend', { 'class': 'form-label', text: 'End' });
+    var fsGroup = md.doc.create('div', { 'class': 'input-group input-group-sm' });
+    var em = sel('stop_month', nums(12), '10'), ed = sel('stop_day', nums(31), '28'), ey = sel('stop_year', ['2019', '2026'], '2026');
+    fs.appendChild(legend);
+    fs.appendChild(em);
+    fsGroup.appendChild(ed);
+    fsGroup.appendChild(ey);
+    fs.appendChild(fsGroup);
+    md.doc.all.filter(function (n) { return n.tagName === 'FORM'; })[0].appendChild(fs);
+    md.win.pgFields.init(fs);
+    var fsBox = fs.children[1];
+    out.fieldset = [fsBox.className, fsBox.value, fsBox.getAttribute('aria-labelledby'), legend.id, fsBox.instance.opts.dateMin, fsBox.instance.opts.dateMax, em.getAttribute('tabindex')];
+
     // pgFields.focus() puts the focus where people type: the box after a
     // hidden store, the field itself for a site-text date.
     md.win.pgFields.focus(ndt);
@@ -1376,6 +1391,11 @@ function test_pg_fields_date_selects_and_built_fields()
 		'month, day and year selects stay posted and hidden behind one box named by the wrapper\'s label; the year list bounds the calendar; a pick writes the three selects with a change each; a year outside the list is taken back'
 	);
 	pg_assert_same(array('date', array('calendar:built')), $r['built'], 'a field a script builds is drawn by pgFields.init(field)');
+	pg_assert_same(
+		array('form-control pg-date-box my-1', '28/10/2026', 'stop_month_label', 'stop_month_label', '2019-01-01', '2026-12-31', '-1'),
+		$r['fieldset'],
+		'a list screen\'s range end, a fieldset of stop_* selects, gets one box named by its legend and bounded by its year list'
+	);
 }
 
 function test_pg_fields_focus_goes_to_the_box_people_type_in()

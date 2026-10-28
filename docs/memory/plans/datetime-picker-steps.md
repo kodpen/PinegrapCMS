@@ -18,7 +18,7 @@ description: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, 
 
 - P6 (S) done (#2853): Cloudflare, API expiry (`pgDatePicker.set` on open), Paraşüt inbox, Workspace holidays, maintenance end (`Y-m-d\TH:i` kept), folder access expiry (script-built, wrapper toggled). Test: `other_date_fields_test.php`.
 
-- P7 (M) List-screen select triplets: `view_commissions`, `view_contacts`, `view_log`, `view_orders`, `view_submitted_forms`. Year lists bound the calendar (dateMin/dateMax from the select). Last panel slice before P11. After P3.
+- P7 (M) done (#2862). List-screen select triplets: `view_commissions`, `view_contacts`, `view_log`, `view_orders`, `view_submitted_forms`. Year lists bound the calendar (dateMin/dateMax from the select). Last panel slice before P11. After P3.
 
 - P8 (S) done (#2832). `backend.src.js`/`.css`: the comment publish schedule focuses the box through `pgFields.focus()`, the shipping cut-off row escapes its value, the `.pg-datetime`/`.pg-time` rules are gone; P2's CSS stays in `pg_datetime.css` (every screen printing `pg_fields_script()` gets it, the designer included). Also the ERP overdue hour-of-day select (`erp_overdue_notify_hour`, options in `settings/prep.php` 705-708): labels from `date(pg_time_format_code())`, values unchanged. And `get_date_picker_format() . pg_fields_script()` beside "Add Filter" on `view_order_report.php` and `view_visitor_report.php` (held by #2807 at P4), so their filter boxes are drawn.
 
