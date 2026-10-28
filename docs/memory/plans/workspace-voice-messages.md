@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-messages
-description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2674 #2696 #2744 #PRNUM): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
+description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2674 #2696 #2744 #2775): voice messages in the Workspace, a quick voice reply, transcripts the assistants read
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -16,7 +16,7 @@ description: Plan (2026-10-23; V1-V2 done, answers #2417, V3 transcripts done #2
    - V3a (#2674): schema 11.0.89 (`ws_voice`, `ws_channels.voice_access`, two config columns, texts in `config_text`), the settings card, `ws_voice_channel_allowed()`: workspace/workspace-voice-transcripts.md.
    - V3b (#2696): the row on a voice upload, `ws_voice_kick()`/`ws_voice_job()` (pinned HTTPS call, size cap, holds), delete for everyone, `file.voice` in the API and MCP. Server side only.
    - Done: V3c1 (#2744): server side of V3c (`channel.voice`, `ws_voice_channel_set()`, `file.voice` in the panel payload, the recorder's measure stored, `workspace.message.transcribed`): workspace/workspace-voice-transcript-job.md.
-   - Done: V3c2 (#PRNUM): the channel menu switch, the panel kick, the recorder's waveform and length, the transcript under the player: workspace/workspace-voice-screen.md.
+   - Done: V3c2 (#2775): the channel menu switch, the panel kick, the recorder's waveform and length, the transcript under the player: workspace/workspace-voice-screen.md.
    - The event is not a Flows trigger: that would need `ws_events_catalog()`, a `ws_event()` call and its `workspace_flows_parity_table()` line (tests/workspace_flows_parity_test.php); left for a later step.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
