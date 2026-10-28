@@ -67,13 +67,13 @@ if (!$_POST) {
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 lg:col-4 my-3">
-                                <label for="from_id" class="form-label">' . lang('From') . '</label>
+                                <label for="from_id" class="form-label">' . lang('From till') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'from_id', 'name' => 'from_id',
                                     'class' => 'form-control', 'options' => $till_options)) . '
                             </div>
                             <div class="col-12 lg:col-4 my-3">
-                                <label for="to_id" class="form-label">' . lang('To') . '</label>
+                                <label for="to_id" class="form-label">' . lang('To till') . '</label>
                                 ' . $liveform->output_field(array(
                                     'type' => 'select', 'id' => 'to_id', 'name' => 'to_id',
                                     'class' => 'form-control', 'options' => $till_options)) . '
