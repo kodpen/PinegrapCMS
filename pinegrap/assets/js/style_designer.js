@@ -34689,6 +34689,15 @@ const StyleDesigner = (function () {
                 );
             }
 
+            // The message a sign-up widget shows on its own page once the
+            // form is sent and no next page is set (registration, membership,
+            // affiliate sign-up); empty keeps the default sentence.
+            var _swConfirmRow = function (sid, cfg, fallback) {
+                return row(_sdT('Confirmation message'),
+                    '<textarea class="form-control form-control-sm" rows="3" data-sw-id="' + sid + '" data-sw-cfg="confirmation_message" data-sw-cfg-max="2000" placeholder="' + esc(fallback) + '">' + esc(cfg.confirmation_message || '') + '</textarea>' +
+                    '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Shown on this page once the form is sent, when no next page is chosen. Empty: the sentence shown in grey.')) + '</div>');
+            };
+
             // ── affiliate_sign_up_form settings ──────────────────────────────
             // Written into the page's affiliate_sign_up_form_pages row, which
             // the handler reads; a setting never touched leaves the row as
@@ -34709,6 +34718,7 @@ const StyleDesigner = (function () {
                         _sdT('With a terms page the visitor must tick the terms box before the form is sent.'))) +
                     row(_sdT('Next page'), _afPage('next_page_id',
                         _sdT('Where the visitor goes once the application is sent; its content is also the e-mail they get.'))) +
+                    _swConfirmRow(sid, _cfg, _sdT('Thank you. Your affiliate application has been sent.')) +
                     row(_sdT('Controls'),
                         _afHint(_sdT('The form reads its controls by name: {var}.', '<code>first_name, last_name, address_1, address_2, city, state, zip_code, country, phone_number, fax_number, email_address, affiliate_name, affiliate_website, affiliate_code, terms_and_conditions, submit</code>')))
                 );
@@ -34806,6 +34816,7 @@ const StyleDesigner = (function () {
                 );
             }
 
+
             // ── registration settings ─────────────────────────────────────────
             if (_isRegistration) {
                 var _rgShowRememberMe = (_cfg.show_remember_me !== false);
@@ -34827,6 +34838,7 @@ const StyleDesigner = (function () {
                         '<select class="form-control form-control-sm" id="sd-sw-rg-redirect-page" data-sw-id="' + sid + '">' + _rgPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your registration is complete" notice.')) + '</div>'
                     ) +
+                    _swConfirmRow(sid, _cfg, _sdT('Thank you for registering. You are now signed in.')) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-control form-control-sm" id="sd-sw-rg-login-page" data-sw-id="' + sid + '">' + _rgLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('registration', '__login_url')) + '</div>'
@@ -35289,6 +35301,7 @@ const StyleDesigner = (function () {
                         '<select class="form-control form-control-sm" id="sd-sw-mb-redirect-page" data-sw-id="' + sid + '">' + _mbPageOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('When empty, the ?send_to= on the link is used; failing that the visitor stays on this page and sees the "your membership is active" notice.')) + '</div>'
                     ) +
+                    _swConfirmRow(sid, _cfg, _sdT('Your membership is active. You are now signed in.')) +
                     row(_sdT('Sign-in page'),
                         '<select class="form-control form-control-sm" id="sd-sw-mb-login-page" data-sw-id="' + sid + '">' + _mbLoginOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_swLinkHint('membership', '__login_url')) + '</div>'
@@ -37280,6 +37293,7 @@ const StyleDesigner = (function () {
         //   data-sw-cfg-list="key" checkboxes that together write an id list
         //   data-sw-cfg-repaint   the panel is redrawn once saved (a hint
         //                         under the control depends on the value)
+        //   data-sw-cfg-max       a text's length (255 when not given)
         document.querySelectorAll('#sd-properties [data-sw-cfg]').forEach(function (el) {
             el.addEventListener('change', function () {
                 var sid = parseInt(this.dataset.swId, 10);
@@ -37306,7 +37320,7 @@ const StyleDesigner = (function () {
                     v = _swUrlParamName(this.value);
                     this.value = v;
                 } else {
-                    v = ('' + this.value).slice(0, 255);
+                    v = ('' + this.value).slice(0, parseInt(this.dataset.swCfgMax || '255', 10) || 255);
                 }
                 // A choice that changes which rows the panel shows (scope,
                 // default view) repaints it once the config is saved.
