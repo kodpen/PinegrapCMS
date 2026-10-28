@@ -5001,8 +5001,7 @@
             var picked = lists.metrics.filter(function (item) { return item.key === metric.value; })[0];
 
             rule.metric = metric.value;
-            // A number to measure against starts at 5, as on the scheduled
-            // form (saMetricPicker() in workspace.js).
+            // A number to measure against starts at 5.
             rule.param = (picked && (picked.scope === 'threshold')) ? 5 : 0;
             refreshNode(node);
             drawSettings();

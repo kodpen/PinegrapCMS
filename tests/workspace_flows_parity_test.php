@@ -2539,7 +2539,7 @@ function workspace_flows_parity_table()
 		'routes' => array(
 			array(array('route ws_scheduled_list', 'panel ws_scheduled_list', 'api ws_scheduled_list'), 1, 'Scheduled actions section in Flows: the list, by state'),
 			array(array('route ws_scheduled_get', 'panel ws_scheduled_get', 'api ws_scheduled_get', 'route ws_scheduled_status', 'panel ws_scheduled_status', 'api ws_scheduled_status', 'route ws_scheduled_run_now', 'panel ws_scheduled_run_now', 'api ws_scheduled_run_now'), 1, 'card buttons: History, Pause/Resume and Cancel, Run now'),
-			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets', 'api ws_scheduled_targets'), 1, 'the form\'s step editor: what it can start'),
+			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets'), 1, 'the retired form\'s step editor asked what it can start: no screen asks it, the route goes with ws_scheduled_save()'),
 			array(array('route ws_scheduled_preview', 'panel ws_scheduled_preview', 'route ws_scheduled_draft', 'panel ws_scheduled_draft', 'route ws_scheduled_save', 'panel ws_scheduled_save'), 1, 'the retired form\'s sentence and next runs, AI sentence and Save: no screen asks them, the routes go with ws_scheduled_save()'),
 			array(array('route ws_scheduled_messages', 'panel ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'panel ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'panel ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'panel ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
 		),

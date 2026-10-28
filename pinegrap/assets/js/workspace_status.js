@@ -356,33 +356,10 @@
         });
     }
 
-    // The box of a scheduled action that asks for a check-in in a channel.
-    // Fills `detail` and returns what the action reads as.
-    function scheduledEditor(detail, data, h) {
-        var config = h.cfg.status || {};
-
-        data = data || { channel_id: null, question: config.question || '' };
-
-        var channel = h.saChannelSelect(data.channel_id, '');
-        var question = h.saText(data.question, config.question || '', config.question_max || 255);
-
-        detail.appendChild(h.saLabelled(h.t('sa_channel'), channel));
-        detail.appendChild(h.saLabelled(h.t('ci_sa_question'), question, h.t('ci_sa_help')));
-
-        return function () {
-            return {
-                type: 'checkin',
-                channel_id: parseInt(channel.value, 10) || 0,
-                question: question.value
-            };
-        };
-    }
-
     window.PGWsStatus = {
         pill: pill,
         card: card,
         form: form,
-        checkinForm: checkinForm,
-        scheduledEditor: scheduledEditor
+        checkinForm: checkinForm
     };
 })();
