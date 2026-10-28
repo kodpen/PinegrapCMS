@@ -124,7 +124,7 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
                     <div class="card-header bg-reset border-0">' . lang(array('string'=>'Add to Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
                             <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
@@ -138,7 +138,7 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
                     <div class="card-header bg-reset  border-0">' . lang(array('string'=>'Remove from Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
                             <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>

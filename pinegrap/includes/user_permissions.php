@@ -127,7 +127,7 @@ function pg_user_permission_list($scope, $heading, $items, $checker_id)
 					<div class="card multiselect-checkbox-container pg-perm-list" data-pg-count="' . h($scope) . '">
 						<div class="card-header border-0 bg-reset">
 							<div class="form-field mb-0">
-								<div class="switch"><input id="' . h($checker_id) . '" class="multiselect-checkbox-checker" title="' . h(lang('Select/Deselect All')) . '" type="checkbox"></div>
+								<div class="switch"><input id="' . h($checker_id) . '" class="multiselect-checkbox-checker" type="checkbox"></div>
 								<label for="' . h($checker_id) . '" class="">' . h(lang('Select All')) . '</label>
 							</div>
 							<span class="pg-perm-list-count" data-pg-list-count="' . h(lang(array('string' => '{var:1} of {var:2} selected', 'vars' => array('{n}', '{m}')))) . '"></span>
