@@ -117,19 +117,20 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="row">
 			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
 				<div class="form-floating mt-1 mb-3">
+					<label for="enabled" class="form-label"><?=lang(array('string'=>'Status' ))?></label>
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'enabled',
 						'name' => 'enabled',
 						'class'=>'form-control',
 						'options' => $enabled_options))?>
-					<label for="enabled" class="form-label"><?=lang(array('string'=>'Status' ))?></label>
 				</div>
 			</div>
 		</div>
 		<div class="row mt-1 mb-3">
 			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">
 				<div class="form-floating  mt-1 mb-3">
+					<label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'change_price_method',
@@ -138,7 +139,6 @@ if (!defined('PG_INIT_LOADED')) {
 						'data-bs-target'=>'#increase_price_row',
 						'options' => $price_change_method_options,
 						'onchange'=>'change_price_methodfunc()'))?>
-					<label for="change_price_method" class="form-label"><?=lang(array('string'=>'Price Change Method' ))?></label>
 				</div>
 				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_price_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
@@ -160,13 +160,13 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="row mt-1 mb-3">
 			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
 				<div class="form-floating mt-1 mb-3">
+					<label for="tax_rate_method" class="form-label"><?=lang(array('string'=>'Tax Rate' ))?></label>
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'tax_rate_method',
 						'name' => 'tax_rate_method',
 						'class'=>'form-control',
 						'options' => $tax_rate_method_options))?>
-					<label for="tax_rate_method" class="form-label"><?=lang(array('string'=>'Tax Rate' ))?></label>
 				</div>
 			</div>
 			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
@@ -188,17 +188,18 @@ if (!defined('PG_INIT_LOADED')) {
 		<div class="row mt-1 mb-3">
 			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
 				<div class="form-floating  mt-1 mb-3">
+					<label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'inventory',
 						'name' => 'inventory',
 						'class'=>'form-control',
 						'options' => $inventory_options))?>
-					<label for="inventory" class="form-label"><?=lang(array('string'=>'Track Inventory' ))?></label>
 				</div>
 			</div>
 			<div class="col-12 sm:col-6 md:col-auto">
 				<div class="form-floating  mt-1 mb-3">
+					<label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
 					<?=$liveform->output_field(array(
 						'type' => 'select',
 						'id' => 'inventory_quantity_process',
@@ -206,7 +207,6 @@ if (!defined('PG_INIT_LOADED')) {
 						'class'=>'form-control collapse-if-selected',
 						'data-bs-target'=>'#increase_quantity_row',
 						'options' => $inventory_quantity_process_options))?>
-					<label for="inventory_quantity_process" class="form-label"><?=lang(array('string'=>'Inventory Quantity Process' ))?></label>
 				</div>
 				<div class="popover fade bs-popover-bottom p-0 mb-3 w-100 collapse" id="increase_quantity_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>

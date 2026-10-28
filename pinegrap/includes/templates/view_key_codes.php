@@ -97,7 +97,7 @@ if (!defined('PG_INIT_LOADED')) {
 										<?php endif ?>
 									</td>
 									<td class="align-middle">
-										<span class="badge fw-light fg-white theme-secondary">
+										<span class="badge fw-light theme-secondary">
 											<?php if ($key_code['report'] == 'key_code'): ?>
 											<?=lang('Key Code')?>
 											<?php else: ?>

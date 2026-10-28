@@ -6,7 +6,7 @@ description: GET /workspace/commands (PR #1991): the command registry for the ke
 ## What does GET /workspace/commands answer?
 - Route `workspace.commands.list` in includes/workspace/api.php; handler and presenters in includes/workspace/api_commands.php. workspace:read, no params.
 - `ws_commands($viewer)` of the key's owner in registry order (workspace-command-registry.md): a command the owner may not use is left out (/price, /stock, /product without the product rights; /claude, /ai until set up; /schedule, /timer as `ws_command_offered()` says).
-- Each row is a `WorkspaceCommand`: key, names, name, label, description, usage, example, args, live. Each arg a `WorkspaceCommandArgument`: name, kind, label, optional, suggest, multiple, anywhere; an empty `suggest` is `null`. Texts in the site's language (`ws_command_turkish()`).
+- Each row is a `WorkspaceCommand`: key, names, name, label, description, usage, example, args, live, app_id (0 built-in), app (null built-in). Applications' registered commands come last (workspace-app-commands.md). Each arg a `WorkspaceCommandArgument`: name, kind, label, optional, suggest, multiple, anywhere; an empty `suggest` is `null`. Texts in the site's language (`ws_command_turkish()`).
 
 ## Why no MCP tool?
 - `'mcp' => false`: a model gains nothing from the picker's list; it calls the endpoints a command would (tasks, plan items, scheduled messages, changes).

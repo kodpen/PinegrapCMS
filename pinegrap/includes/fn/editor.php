@@ -652,6 +652,7 @@ function get_image_editor_includes()
     // falls back to the English key, so the map only needs the translations.
     $labels = array(
         'Animated GIF — new file only.' => lang('Animated GIF — new file only.'),
+        'Close' => lang('Close'),
         'Exit full screen' => lang('Exit full screen'),
         'Full screen' => lang('Full screen'),
         'Keeps the original file and points this page at the copy.' => lang('Keeps the original file and points this page at the copy.'),

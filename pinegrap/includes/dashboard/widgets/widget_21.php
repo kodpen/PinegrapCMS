@@ -141,9 +141,9 @@ function pg_dashboard_widget_21($request, $user)
             'block'       => array('danger',            lang('Blocked')),
             'rate'        => array('danger',            lang('Rate limited')),
             'ban'         => array('dark',              lang('Banned')),
-            'would-block' => array('warning text-dark', lang('Would block')),
-            'would-rate'  => array('warning text-dark', lang('Would rate limit')),
-            'would-ban'   => array('warning text-dark', lang('Would ban')),
+            'would-block' => array('warning',           lang('Would block')),
+            'would-rate'  => array('warning',           lang('Would rate limit')),
+            'would-ban'   => array('warning',           lang('Would ban')),
             'log'         => array('secondary',         lang('Recorded')),
         );
 
@@ -219,11 +219,11 @@ function pg_dashboard_widget_21($request, $user)
                     <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                         <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
                         <span class="text-truncate fg-secondary" style="font-size:11px" title="' . h($waf_event['rule_id']) . '">' . $waf_identity . '</span>
-                        <span class="badge rounded-pill flex-shrink-0" style="background:rgba(0,0,0,.06);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . pg_format_number($waf_event_hits, 0) . '</span>
+                        <span class="badge rounded-pill flex-shrink-0" style="background:var(--pg-bg-2);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . pg_format_number($waf_event_hits, 0) . '</span>
                     </div>
                     <div class="d-flex align-items-center mt-1" style="gap:6px">
                         <span class="text-truncate fg-secondary flex-shrink-0" style="font-size:10px;max-width:45%" title="' . h($waf_event['target']) . '">' . h($waf_evidence) . '</span>
-                        <div class="progress flex-fill" style="height:4px;background:rgba(0,0,0,.06)" title="' . lang('Score') . ': ' . $waf_event_score . ' / ' . (int) $waf_threshold_value . '">
+                        <div class="progress flex-fill" style="height:4px;background:var(--pg-bg-2)" title="' . lang('Score') . ': ' . $waf_event_score . ' / ' . (int) $waf_threshold_value . '">
                             <div class="progress-bar ' . $waf_bar_class . '" style="width:' . $waf_score_percent . '%"></div>
                         </div>
                         <span class="fg-secondary flex-shrink-0" style="font-size:10px;min-width:1.4rem;text-align:right">' . $waf_event_score . '</span>

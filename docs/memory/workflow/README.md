@@ -19,26 +19,31 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 
 ## Files
 
-- architect.md: Decision questions (2026-10-27): an issue labelled architect; the architect session analyses it, decides it with the owner (label erdal), records it, brings it to the PR, never decides alone
+- architect-asking.md: How a session asks a decision question (2026-10-27): search the architect issues first, one issue per decision, the body with a Türkçe özet block, the PR back to draft, then the session ends
+- architect.md: Decision questions (2026-10-27): an architect issue; the architect analyses it, decides technical ones, asks the owner schema and product-behaviour ones as a selectable list (erdal), records it
 - branch-guards.md: tools/check_pr.php (#1878): CI and pre-push fail a commit trailer, an author or committer other than Erdal Güral, a changelog.txt edit; warn above 1,000 product lines
 - ci-workflows.md: GitHub Actions workflows: what each runs and when, the PHP versions the checks run on (8.3, 7.1), action versions (major tags, node24) and how to bump them, the Node line, runner labels
+- coordinator-limits.md: Coordinator rules (2026-10-27): quota guard before a worker starts, worker cap per account shared by its coordinators, a card for a draft PR whose decision came after its session ended
 - coordinator-todo-list.md: Coordinator's to-do list (2026-10-27): one item per worker PR in the list shown in its own window, added when the draft is on GitHub, struck through once the PR is merged
 - coordinator.md: Coordinator session (pilot, 2026-10-26): one per account, keeps its cloud workers on free plan steps, looks at them every 10 minutes, writes no code, merges nothing; questions go to the architect
 - decisions-made-access.md: Decisions list, access part: public pi.php/si.php and test_secure_mode.php, guest order linking, backup, dashboard and role 3 gates, secrets shown on screen, the TLS escape flag, escape_url().
+- decisions-made-customers.md: Decisions list, customer data part (owner, 2026-10-28): marketing boxes stay ticked, İYS never narrows sending beyond refusals, review order and photos, merge re-points all but consent_log
 - decisions-made-data.md: Decisions list, data part: starter dumps, orders.notes, tracking_company, secret_key*, order_items.tax, tracking_code, fixing a released migration, MySQL 5.7, ERP schema approval.
-- decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback to the folder's permission).
+- decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback); the RSS media field counts as shown with the record.
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS.
 - decisions-made-panel.md: Part of the decisions list: the control panel's Bootstrap 6 breakpoints (own media queries on 1024/1280, xxl to 2xl), kept as they are on purpose
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
+- decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
+- decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type and author source; settings whose defaults keep running sites
 - decisions-made-waf.md: Decisions list, firewall part: thresholds stay, a concurrent refusal is no offence, a rate ban stays off the ladder, the global limit counts before the session, no address-lock release action.
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
-- decisions-made-workspace.md: Decisions list, workspace part: how the channel commands read what is typed (a typed @username in /task), whose rights a flow's change box writes with, bulk product card size and events.
+- decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, whose rights a flow's change box writes with, bulk product card size and events, model assistants not licence-gated.
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files
 - install-check-filter.md: When install-check.yml runs its six-database matrix (#1985): the changes job, the paths it reads, always on merge trains and pushes, why plain git, a skipped job blocks nothing
 - memory-index-key-rules.md: The hand-written key-rules block of each memory folder README, what tools/memory_index.php keeps and regenerates, when it stops with exit 1 and how a merge conflict in a README is settled
-- merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, leaves minor ones (no follow-up issue), digs deeper only for access, payments, SQL, schema
+- merge-review.md: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 - merge-train-landing.md: How a green merge train lands (2026-10-25): one fast-forward push, GitHub marks the PRs merged and wakes their sessions, no push to PR branches; why not a squash per PR; a red train; the merge queue
 - merge-train-tool.md: tools/merge_train.php (#2002): --start (the lock), --list (train order), --build (merge, settle, changelog, push), --land (fast-forward); what it leaves to the merging session
 - merge-train.md: Working rule (2026-10-25) for the merging session: one merger, one train at a time, 30-minute windows, rules-only PRs alone, the ready label, one merge commit per PR, one CI run

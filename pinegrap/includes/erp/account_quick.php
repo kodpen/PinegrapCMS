@@ -198,8 +198,9 @@ function erp_account_quick_modal()
                         ' . ($lookup ? '<div class="input-group">' : '') . '
                         <input type="text" class="form-control" id="erp_quick_acc_tax" name="tax_number"' . ($is_tr ? ' inputmode="numeric" maxlength="11"' : ' maxlength="' . (int) erp_tax_number_width() . '"') . ' autocomplete="off">
                         ' . ($lookup ? '<button type="button" class="btn btn-outline theme-secondary no-submit" data-erp-quick-lookup title="' . h(lang('Asks GİB whether the number is an e-Invoice user and under which name it is registered.')) . '"><i class="bi bi-search me-1" aria-hidden="true"></i>' . lang('Query') . '</button>' : '') . '
+                        ' . ($lookup ? '</div>' : '') . '
                         <div class="invalid-feedback" data-erp-quick-error="tax_number"></div>
-                        ' . ($lookup ? '</div><div class="form-text text-break" data-erp-quick-answer aria-live="polite"></div>' : '') . '
+                        ' . ($lookup ? '<div class="form-text text-break" data-erp-quick-answer aria-live="polite"></div>' : '') . '
                     </div>
                 </div>
                 <div class="dialog-footer">

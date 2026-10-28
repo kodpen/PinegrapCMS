@@ -20,7 +20,7 @@ description: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7a done, phase 1 wa
 4. Panel - done (#931): one card per address, per-number carrier select, status badge, format warning; Save no longer empties undrawn addresses.
 5. Customer side (M), two PRs: (a) done (#1964; `commerce/shipment-mail-fields.md`) e-mail: tracking mail-merge fields, `order_delivered` in the campaign profile screens, and the step widening `email_campaigns.action` (owner approved 2026-10-20). (b) widget `__tracking_*` tokens read the row first - done (#2102); guest tracking by order number + billing e-mail - done (#2116; `commerce/guest-shipment-lookup.md`).
 6. Bulk - done (#1877; `commerce/shipping-bulk-import.md`).
-7. API (S–M), two PRs: (a) done (#2004; `commerce/shipment-api-fields.md`): `parcels` (carrier, name, URL, status, dates) in shipments and the `order.shipped` / `order.delivered` payloads, a recognised `carrier` of `api_orders_ship()` kept on each parcel, n11 import city = district, state = province for new imports only. (b) refuse an unknown `carrier` in `api_orders_ship()` with 422: waits on the owner.
+7. API (S–M), two PRs: (a) done (#2004; `commerce/shipment-api-fields.md`): `parcels` (carrier, name, URL, status, dates) in shipments and the `order.shipped` / `order.delivered` payloads, a recognised `carrier` of `api_orders_ship()` kept on each parcel, n11 import city = district, state = province for new imports only. (b) decided (#2433): an unknown `carrier` is accepted and kept on the parcel; the answer gives `carrier: null`, `carrier_name` and a warning, no 422.
 8. Optional: `ship_tos.district`, `states.plate_code`, postcode-province check in warning mode; no district data set (licence decision).
 
 ## What must the owner check by hand?

@@ -41,7 +41,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - catalog-search-term.md: Which search term a legacy catalog page uses (Clear button, page query, general ?query=, custom layouts) and why its RSS link asks the same helper
 - catalog-variant-set-writer.md: pg_catalog_variant_set_create(): input array, shared check, prices in minor units, callers (product screen, POST /product-groups/variant-sets), what it skips
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
-- checkout-kvkk-notice.md: KVKK notice link and optional explicit consent box at checkout (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
+- checkout-kvkk-notice.md: KVKK notice link and optional explicit consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
@@ -111,8 +111,10 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
 - payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alert only, never the order), status codes, firewall entry
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
+- payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id, no webhook yet
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
+- payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept
 - payment-refunds.md: Money back through payment drivers (PRs #873, #903): the order's driver for the order screen's refund and the cancellation's void, log_name, the outcome lines
@@ -132,6 +134,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-reference-price-decisions.md: Reference price decisions: rule setting, coverage, compare-at only under manual, offers, POS, window end while a reduction runs (2026-10-27)
 - product-reference-price-storefront.md: Reference price on the storefront: __reference_price / __reference_label tokens, variant payload, legacy catalog print, one page read by pg_price_reference_page()
 - product-reference-price.md: Reference price ("price before the discount"): pg_price_history_reference(), the window query (PR #1803), the rule setting pg_price_reference_rule() (11.0.49), coverage, labels
+- product-review-order.md: How a product's review thread is read (2026.11.0, decided in #2426): verified purchases only, newest first, no featured count, filter or pinning; what it hides
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating

@@ -18,6 +18,7 @@ module: widgets_attrs
 - Attributes (`pg_sw_attr_name_ok()`): `id`, `class`, `style` (the element's own props), every `on*` handler, and those a browser reads as an address or markup (`href`, `src`, `srcset`, `srcdoc`, `action`, `formaction`, `poster`, `data`, `content`, `http-equiv` …: `pg_sw_attr_denied_names()`): a record's text could become a `javascript:` address. A link's address has its href binding and the page link.
 - Tokens (`pg_sw_attr_token_ok()`): those a condition refuses and those whose value is markup (`pg_sw_raw_token_keys()`).
 - A refused token prints nothing (fail closed); the words around it stay.
+- A switch or limit (`pg_sw_attr_dropped_when_empty()`: required, multiple, checked, maxlength …) whose whole value is one empty token is left out, so a row decides whether a control has it.
 
 ## What does the editor offer?
 - Code view: `{{` in any attribute `_sdAttrBindNameOk()` passes, on an element inside a widget, offers `_swBindTokenOptions()` minus `_sdAttrTokenOk()`; href/src/alt/value keep their binding completion ([[designer-code-view-bindings]]). The Attributes panel takes the token as typed.

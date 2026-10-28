@@ -36,9 +36,9 @@ none
 
 - 
 
-## Questions for the owner
+## Decision question
 
-<!-- A decision only the owner can make, one per line; leave "none". Ask it in your reply too and turn the PR back to draft until the answer comes; the coordinator asks the owner and answers with a comment on this PR. -->
+<!-- A schema or product-behaviour question, or one this PR cannot settle: open an architect issue (docs/memory/workflow/architect-asking.md), write "Decision: #<issue>" here, turn the PR back to draft and end the session; the architect answers on the issue and comments on this PR. Never ask the owner here or in your reply. Leave "none" otherwise. -->
 
 none
 

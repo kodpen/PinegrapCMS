@@ -1,0 +1,28 @@
+{
+  "id": "1JU08902781691411",
+  "amount": {
+    "value": "20.00",
+    "currency_code": "EUR"
+  },
+  "seller_payable_breakdown": {
+    "gross_amount": {"value": "20.00", "currency_code": "EUR"},
+    "paypal_fee": {"value": "0.00", "currency_code": "EUR"},
+    "net_amount": {"value": "20.00", "currency_code": "EUR"},
+    "total_refunded_amount": {"value": "20.00", "currency_code": "EUR"}
+  },
+  "status": "COMPLETED",
+  "create_time": "2026-10-26T12:00:00Z",
+  "update_time": "2026-10-26T12:00:00Z",
+  "links": [
+    {
+      "href": "https://api-m.paypal.com/v2/payments/refunds/1JU08902781691411",
+      "rel": "self",
+      "method": "GET"
+    },
+    {
+      "href": "https://api-m.paypal.com/v2/payments/captures/3C679366HH908993F",
+      "rel": "up",
+      "method": "GET"
+    }
+  ]
+}

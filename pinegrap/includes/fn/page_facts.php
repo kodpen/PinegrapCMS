@@ -25,6 +25,10 @@
 // A page answer a cache may keep is drawn for a visitor who is signed out
 // with an empty cart (page_cache.php bypasses a signed-in session and one
 // holding an order), so a kept copy is right for everyone it is served to.
+//
+// A value of the page's record bound to an element outside a widget is
+// printed: the stored body keeps a placeholder (pg_page_record_bind_props())
+// that every request fills, escaped, once the widgets are drawn.
 
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
@@ -113,6 +117,62 @@ function pg_page_record_values()
         }
     }
     return $out;
+}
+
+// The record values an element outside a widget may print: every record
+// token but __record_found (W17). A yes/no value prints '1'; the editor
+// offers it as a condition only.
+function pg_page_record_value_tokens()
+{
+    return array_values(array_diff(pg_page_record_tokens(), array('__record_found')));
+}
+
+// $props of a node drawn outside any widget with each binding that names a
+// value of the page's record (a text, a link's address, a picture's address
+// or its alt text) turned into a placeholder the stored body keeps:
+// {pg-rv:TOKEN} for a text, {pg-ru:TOKEN} for an address. Every request
+// fills it (pg_page_record_fill()); the binding is taken off, so the
+// widget's own binding pass never sees it. Plain characters, so they pass
+// h() in an attribute as they are. $rich: the node prints its text as
+// written, and the value takes the place of the words its markup wraps
+// (pg_binding_text_slot()).
+function pg_page_record_bind_props($props, $rich = false)
+{
+    if (empty($props['_bindings']) || !is_array($props['_bindings'])) return $props;
+    static $slots = array('text' => 'rv', 'alt' => 'rv', 'href' => 'ru', 'src' => 'ru');
+    $tokens = null;
+    foreach ($props['_bindings'] as $prop => $token) {
+        if (!isset($slots[$prop]) || !is_string($token) || strpos($token, '__record__') !== 0) continue;
+        if ($tokens === null) $tokens = pg_page_record_value_tokens();
+        $token = strtolower($token);
+        if (!in_array($token, $tokens, true)) continue;
+        $slot = '{pg-' . $slots[$prop] . ':' . $token . '}';
+        $props[$prop] = ($rich && $prop === 'text' && isset($props['text'])) ? pg_binding_text_slot($props['text'], $slot) : $slot;
+        unset($props['_bindings'][$prop]);
+        if (isset($props['_bindFormats'][$prop])) unset($props['_bindFormats'][$prop]);
+        if (isset($props['_bindParams'][$prop])) unset($props['_bindParams'][$prop]);
+    }
+    if (empty($props['_bindings'])) unset($props['_bindings']);
+
+    return $props;
+}
+
+// $html with every record value placeholder filled from $values
+// (pg_page_record_values()), escaped once: a text as it is, an address only
+// when it is an http(s) or site address, else empty. A placeholder of a
+// token not in $values is emptied.
+function pg_page_record_fill($html, $values)
+{
+    if (strpos($html, '{pg-r') === false) return $html;
+    if (!preg_match_all('/\{pg-r([vu]):(__record__[a-z0-9_]+)\}/', $html, $m, PREG_SET_ORDER)) return $html;
+    $map = array();
+    foreach ($m as $hit) {
+        $value = isset($values[$hit[2]]) ? (string)$values[$hit[2]] : '';
+        if ($hit[1] === 'u' && !preg_match('#^(https?://|/)#i', $value)) $value = '';
+        $map[$hit[0]] = h($value);
+    }
+
+    return strtr($html, $map);
 }
 
 // Whether every condition of $cond (pg_sw_cond_specs()) reads a fact of
@@ -215,10 +275,11 @@ function pg_page_fact_values($email = false)
     ) + pg_page_record_values();
 }
 
-// The page conditions of a drawn page decided for this visit; the facts are
-// read only when the page holds one.
+// The page conditions of a drawn page decided for this visit, then the
+// record's values filled in; the facts are read only when the page holds a
+// condition.
 function pg_page_facts_apply($html, $email = false)
 {
-    if (strpos($html, '<!--pg-pf:') === false) return $html;
-    return pg_page_facts_resolve($html, pg_page_fact_values($email));
+    if (strpos($html, '<!--pg-pf:') !== false) $html = pg_page_facts_resolve($html, pg_page_fact_values($email));
+    return pg_page_record_fill($html, pg_page_record_values());
 }

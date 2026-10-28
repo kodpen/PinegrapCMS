@@ -25,15 +25,15 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 - Run view: each box lists the threads it received with their values and the filled field, the template on request.
 
 ## Which steps? (after D1-D4 of workspace-flows-data-passing.md)
-- T1 threads drawn from references (read only), the toggle, dimming.
+- T1 threads drawn from references (read only), the toggle, dimming. Done (PR #2515, `workspace/workspace-flows-thread-drawing.md`).
 
-- T2 drag from an output dot to a field chip; the fork by double-click and its equivalents.
+- T2 drag from an output dot to a field chip; the fork by double-click and its equivalents. Done (PR #2540, `workspace/workspace-flows-thread-drawing.md`).
 
-- T3 the constants box, then the derived value box with its allowlist.
+- T3 the constants box, then the derived value box with its allowlist. The constants box done (PR #2550, `workspace/workspace-flows-value-boxes.md`); next: the derived value box, a step of its own.
 
 - T4 the run view lists threads and values per box.
 
-## Open questions
-1. Pure boxes: computed lazily when read (as drawn), or ordinary steps the publisher places on the arrows?
-2. The "when empty" fallback: per thread or per field?
-3. Does the visual designer's data binding reuse the same chip and thread component (graph-canvas-core.md)?
+## Which questions are answered? (#2415)
+1. Pure boxes are computed when a thread reads them, cached per run, with no run row (as drawn).
+2. The "when empty" fallback is per thread.
+3. The visual designer reuses the chip and thread component through graph-canvas-core.md when that plan starts.

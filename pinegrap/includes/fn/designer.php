@@ -985,7 +985,9 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // while signed in.
             if ($region_type === 'registration') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
-                return _render_system_widget_registration($tree_json, $sid, $cfg, $mode);
+                // The store's KVKK lines go in front of the sign-up button.
+                $kvkk_values = pg_legal_documents_form_values('register');
+                return pg_legal_kvkk_signup_inject(_render_system_widget_registration($tree_json, $sid, $cfg, $mode), $kvkk_values);
             }
 
             // 'shopping_cart' — renders the active session cart with loop_area per item.
@@ -1038,7 +1040,8 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             // while signed in.
             if ($region_type === 'membership') {
                 if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
-                return _render_system_widget_membership($tree_json, $sid, $cfg, $mode);
+                $kvkk_values = pg_legal_documents_form_values('membership_entrance');
+                return pg_legal_kvkk_signup_inject(_render_system_widget_membership($tree_json, $sid, $cfg, $mode), $kvkk_values);
             }
 
             // 'custom_form' — a form drawn in the editor; its controls are its
@@ -4755,6 +4758,13 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     // door, so one hook covers them all (includes/fn/translate.php).
     if (defined('FRONTEND_LANGUAGE')) {
         $props = pg_tr_props($props, $type);
+    }
+
+    // Outside a widget, a binding to a value of the page's record prints
+    // that value, filled in on every request (page_facts.php).
+    if (!pg_sw_finish_active() && !empty($props['_bindings'])) {
+        $props = pg_page_record_bind_props($props, $type === 'content'
+            && in_array(isset($props['contentType']) ? $props['contentType'] : '', array('heading', 'link', 'paragraph', 'span', 'text'), true));
     }
 
     // A stretched link covers the nearest positioned element around it; when

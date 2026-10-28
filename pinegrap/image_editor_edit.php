@@ -129,7 +129,7 @@ if (!$_POST)
             </span>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
-                    <button class="nav-link nav-link-sm position-relative pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
+                    <button class="nav-link nav-link-sm position-relative pg-menu-caret" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button" aria-label="' . h(lang('Software Theme')) . '"><span class="bi bi-circle-half"></span></button>
                     <ul aria-labelledby="bd-theme" class="menu shadow pg-menu-end p-1 bg-body backdrop mt-nav-link-sm border-dropdown-menu" data-bs-popper="static" style="--bs-menu-min-width: 8rem;">
                         <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center" data-bs-theme-value="light" type="button"><i class="bi bi-sun-fill m-3"></i>' . lang('Light') . '</button></li>
                         <li><button class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center active" data-bs-theme-value="dark" type="button"><i class="bi bi-moon-stars-fill m-3"></i>' . lang('Dark') . '</button></li>

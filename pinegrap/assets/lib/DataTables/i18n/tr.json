@@ -1,0 +1,40 @@
+{
+    "aria": {
+        "orderable": "Bu sütuna göre sırala",
+        "orderableReverse": "Bu sütuna göre ters sırala",
+        "orderableRemove": "Sıralamayı kaldır",
+        "paginate": {
+            "first": "İlk",
+            "last": "Son",
+            "next": "Sonraki",
+            "previous": "Önceki",
+            "number": ""
+        }
+    },
+    "decimal": ",",
+    "emptyTable": "Tabloda veri yok",
+    "info": "_TOTAL_ kayıttan _START_ - _END_ arası gösteriliyor",
+    "infoEmpty": "Kayıt yok",
+    "infoFiltered": "(_MAX_ kayıt içinden bulunan)",
+    "infoPostFix": "",
+    "thousands": ".",
+    "lengthMenu": "Sayfada _MENU_ kayıt göster",
+    "lengthLabels": {
+        "-1": "Tümü"
+    },
+    "loadingRecords": "Yükleniyor...",
+    "processing": "İşleniyor...",
+    "search": "Ara:",
+    "searchPlaceholder": "",
+    "zeroRecords": "Eşleşen kayıt bulunamadı",
+    "paginate": {
+        "first": "İlk",
+        "last": "Son",
+        "next": "Sonraki",
+        "previous": "Önceki"
+    },
+    "entries": {
+        "_": "kayıt",
+        "1": "kayıt"
+    }
+}
