@@ -263,10 +263,10 @@ $pg_settings_cards[] = '
                                                                    <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_gift_card_validity_days" class="form-label">' . lang('Validity Length') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-control" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
-                                                                                <span class="input-group-text">' . lang('day(s)') . '</span>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                                                <input type="text" name="ecommerce_gift_card_validity_days" id="ecommerce_gift_card_validity_days" class="form-ghost" value="' . $ecommerce_gift_card_validity_days . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                                                            </label>
                                                                             <div class="text-end form-text">' . lang('leave blank for no expiration') . '</div>
                                                                         </div>
                                                                         <div class="col-12 ">
@@ -314,10 +314,10 @@ $pg_settings_cards[] = '
                                                                    <div class="row gy-5">
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_reward_program_points" class="form-label">' . lang('Goal') . '</label>
-                                                                            <div class="input-group">
-                                                                                <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-control" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
-                                                                                <label for="ecommerce_reward_program_points"  class="input-group-text">' . lang('point(s)') . '</label>
-                                                                            </div>
+                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('point(s)') . '</span>
+                                                                                <input value="' . $ecommerce_reward_program_points . '" type="text" name="ecommerce_reward_program_points" id="ecommerce_reward_program_points" class="form-ghost" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                            </label>
                                                                         </div>
                                                                         <div class="col-12 ">
                                                                             <div class="form-field">
@@ -330,10 +330,10 @@ $pg_settings_cards[] = '
                                                                                    <div class="row gy-5">
                                                                                         <div class="pg-f-xs">
                                                                                             <label for="ecommerce_reward_program_membership_days" class="form-label">' . lang('Membership Length') . '</label>
-                                                                                            <div class="input-group">
-                                                                                                <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-control" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
-                                                                                                <label for="ecommerce_reward_program_membership_days"  class="input-group-text">' . lang('day(s)') . '</label>
-                                                                                            </div>
+                                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                                                                <input value="' . $ecommerce_reward_program_membership_days . '" type="text" name="ecommerce_reward_program_membership_days" id="ecommerce_reward_program_membership_days" class="form-ghost" size="5" maxlength="5" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                            </label>
                                                                                             <div class="form-text text-end">(' . lang('leave blank for lifetime membership') . ')</div>
                                                                                         </div>
                                                                                     </div>
@@ -942,15 +942,15 @@ $pg_settings_cards[] = '
                                                                                             <input class="form-control" type="password" id="ecommerce_iyzipay_secret_key" name="ecommerce_iyzipay_secret_key" value="' . h($ecommerce_iyzipay_secret_key) . '" size="40" maxlength="100" />
                                                                                         </div>
                                                                                         <div class="pg-f-lg" id="ecommerce_iyzipay_installment_row" style="' . $ecommerce_iyzipay_installment_row_style . '">
-                                                                                            <label class="form-label" for="ecommerce_iyzipay_secret_key">'. lang('Installment') . '</label>
+                                                                                            <label class="form-label" for="ecommerce_iyzipay_installment">'. lang('Installment') . '</label>
                                                                                             <select class="form-control" id="ecommerce_iyzipay_installment" name="ecommerce_iyzipay_installment">'.$ecommerce_iyzipay_installment_options.'</select>
                                                                                         </div>
                                                                                         <div class="pg-f-xs" id="ecommerce_surcharge_percentage_row" style="' . $ecommerce_surcharge_percentage_row_style . '">
                                                                                             <label for="ecommerce_surcharge_percentage" class="form-label">' . lang('Surcharge') . '</label>
-                                                                                            <div class="input-group">
-                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-control" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
-                                                                                                <label for="affiliate_default_commission_rate"  class="input-group-text">%</label>
-                                                                                            </div>
+                                                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
+                                                                                                <input value="' . $ecommerce_surcharge_percentage . '" type="text" name="ecommerce_surcharge_percentage" id="ecommerce_surcharge_percentage" class="form-ghost" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                                                            </label>
                                                                                         </div>
                                                                                         <div class="col-12 " id="ecommerce_iyzipay_threeds_row" style="' . $ecommerce_iyzipay_3ds_row_style . '">
                                                                                             <div class="form-field">
@@ -1251,10 +1251,10 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="affiliate_default_commission_rate" class="form-label">' . lang('Default Commission Rate') . '</label>
-                                                            <div class="input-group">
-                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-control" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
-                                                                <label for="affiliate_default_commission_rate"  class="input-group-text">%</label>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">%</span>
+                                                                <input value="' . $affiliate_default_commission_rate . '" type="text" name="affiliate_default_commission_rate" id="affiliate_default_commission_rate" class="form-ghost" size="6" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;" />
+                                                            </label>
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label class="form-label" for="affiliate_contact_group_id">'. lang('Affiliate Contact Group') . '</label>
