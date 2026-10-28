@@ -408,12 +408,13 @@ function pg_session_token_binding_broken()
         }
     }
 
-    // Asked through db_q() rather than db_item(): a failed query is the
+    // Asked directly rather than through db_item(): a failed query is the
     // upgrade bridge (no auth_tokens table yet, or a database restored from
     // before it), where there is nothing to verify against and the session is
     // left alone the way the previous release treated it, not a fatal error.
-    // db_q() returns false there without a warning, as the @ call did.
-    $result = db_q("SELECT user_id, expires_at FROM auth_tokens WHERE selector = ?", array($selector));
+    // Not db_q(): get_file.php loads this file without functions.php, so only
+    // the helpers named at the top of this file exist on both paths.
+    $result = @mysqli_query(db::$con, "SELECT user_id, expires_at FROM auth_tokens WHERE selector = '" . escape($selector) . "'");
 
     if (!$result) {
         return '';

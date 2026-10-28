@@ -2,12 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Static checks on the installer, the session token check in
- * includes/authentication.php, the designer panel actions and the TinyMCE
- * image and link upload pickers: their queries with values run through
- * db_q() placeholders, not escape() / e() concatenated into the SQL text,
- * every db_q() call passes one value per '?', and the raw mysqli_query()
- * calls left (none of them with a value) do not grow in number.
+ * Static checks on the installer, the designer panel actions and the
+ * TinyMCE image and link upload pickers: their queries with values run
+ * through db_q() placeholders, not escape() / e() concatenated into the SQL
+ * text, every db_q() call passes one value per '?', and the raw
+ * mysqli_query() calls left (none of them with a value) do not grow in
+ * number. includes/authentication.php is also loaded by get_file.php, which
+ * has no db_q(), so it must not call it.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,7 +26,6 @@ function db_q_tail_test_files()
 {
 	return array(
 		'install/index.php' => array(22, 83),
-		'includes/authentication.php' => array(1, 1),
 		'includes/panel/designer.php' => array(2, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advimage/add_file.php' => array(4, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php' => array(4, 0),
@@ -156,12 +156,6 @@ function test_db_q_tail_value_queries_use_db_q()
 
 			$raw++;
 
-			// The column probe of authentication.php stays raw: it is the
-			// fallback for a request where pg_schema_has() is not loaded yet.
-			if ($path === 'includes/authentication.php' && strpos($call['text'], 'information_schema.COLUMNS') !== false) {
-				continue;
-			}
-
 			pg_assert_false(
 				(bool) preg_match('/(?<![\w>$])(escape|e|mysqli_real_escape_string)\s*\(|\'"\s*\.|\'\$[a-z_]|=\s*"\s*\.\s*\$/i', $call['text']),
 				$path . ' line ' . $call['line'] . ' writes a value into a raw query');
@@ -176,6 +170,16 @@ function test_db_q_tail_value_queries_use_db_q()
 		pg_assert_false(
 			(bool) preg_match('/"\s*\.\s*escape\(\$(file_name|_POST|file_extension|file_size)/', file_get_contents(PG_FUNCTIONS_DIR . '/' . $path)),
 			$path . ' escapes an upload value for SQL text');
+	}
+}
+
+// get_file.php loads includes/authentication.php without functions.php and
+// defines only db(), db_value(), db_item(), db_items() and escape(), so a
+// db_q() call there would end every signed-in download.
+function test_db_q_tail_authentication_has_no_db_q()
+{
+	foreach (db_q_tail_test_calls('includes/authentication.php') as $call) {
+		pg_assert_true($call['call'] !== 'db_q', 'includes/authentication.php line ' . $call['line'] . ' calls db_q(), which get_file.php does not define');
 	}
 }
 
@@ -240,10 +244,6 @@ function test_db_q_tail_binds_as_before()
 		return addcslashes($value, "\\'\"");
 	};
 
-	// The session token lookup: the selector quoted.
-	pg_assert_same(
-		"SELECT user_id, expires_at FROM auth_tokens WHERE selector = 'a\\'b'",
-		pg_db_bind('SELECT user_id, expires_at FROM auth_tokens WHERE selector = ?', array("a'b"), $escape));
 	// The designer region: the user id bare, as before.
 	pg_assert_same(
 		"INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) VALUES ('n', 'c?', 'yes', 4, UNIX_TIMESTAMP())",
