@@ -164,3 +164,18 @@ function test_contact_holders_scope_entries_are_reached_by_the_erasure()
 		}
 	}
 }
+
+function test_contact_holders_one_row_per_contact_keeps_its_mirror()
+{
+	$schema = contact_holders_test_schema();
+
+	foreach (pg_contact_holders() as $key => $holder) {
+		if ($holder['merge'] === 'one') {
+			pg_assert_true(isset($holder['mirror']), $key . ' names the contacts column that points back');
+		}
+
+		if (isset($holder['mirror'])) {
+			pg_assert_true(isset($schema['contacts'][$holder['mirror']]), $key . ': contacts.' . $holder['mirror'] . ' exists');
+		}
+	}
+}
