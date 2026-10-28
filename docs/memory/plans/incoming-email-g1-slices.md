@@ -15,4 +15,4 @@ description: Incoming e-mail slice G1 (core) cut into G1a-G1d of about 1,000 pro
 ## Where does it stand?
 - G1a: #2586.
 - G1b: #2676 (schema step 11.0.82 approved in #2677, the parser's `require_once`; `workspace/mail-tables.md`).
-- G1c: `ws_mail_ingest()` in `includes/workspace/mail.php` (`workspace/mail-ingest.md`), PR named in its draft.
+- G1c: `ws_mail_ingest()` in `includes/workspace/mail.php` (`workspace/mail-ingest.md`), #2710.
