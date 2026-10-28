@@ -13,4 +13,4 @@ description: Incoming e-mail slice G1 (core) cut into G1a-G1d of about 1,000 pro
 - G1d: the mail card in the channel; the `.eml` upload with a minimal box form in Workspace settings.
 
 ## Where does it stand?
-- G1a: in progress.
+- G1a: #2586.
