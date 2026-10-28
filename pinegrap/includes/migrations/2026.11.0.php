@@ -93,6 +93,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_voice();        // 11.0.89
 	upgrade_2026_11_0_workspace_mail();          // 11.0.82
 	upgrade_2026_11_0_workspace_wtables();      // 11.0.110
+	upgrade_2026_11_0_card_security_codes();   // 11.0.56
 
 }
 
@@ -3114,5 +3115,21 @@ function upgrade_2026_11_0_workspace_voice() {
 	install_add_column('config', 'ws_voice_hold_until', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Workspace: voice messages can be written out as text by a transcription service with the site\'s own key, once an administrator switches it on in the Workspace settings; private channels only where their manager allows it.');
+
+}
+
+// Card security codes are never stored (2026.11.0, 11.0.56). The checkout
+// kept the code in clear on an order placed without a payment gateway, and a
+// masked one on a gateway order; both are emptied here. Data only, no schema
+// change; WHERE <> '' makes a second run change nothing. Card numbers of
+// processed orders are masked by the general job (pg_order_card_data_sweep()),
+// which decrypts each one.
+function upgrade_2026_11_0_card_security_codes() {
+
+	db("UPDATE orders SET card_verification_number = '' WHERE card_verification_number <> ''");
+
+	$cleared = max(0, (int) mysqli_affected_rows(db::$con));
+
+	install_note('Orders: card security codes are no longer stored; ' . $cleared . ' stored code(s) were removed. Card numbers of exported and cancelled orders are masked to their last four digits by the general job.');
 
 }

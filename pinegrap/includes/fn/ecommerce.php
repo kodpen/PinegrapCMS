@@ -1441,6 +1441,160 @@ function protect_card_verification_number($card_verification_number)
     return $protected_card_verification_number;
 }
 
+// Orders cleared per batch by the general job's card data sweep, and the
+// batches one pass may run.
+if (!defined('PG_CARD_DATA_SWEEP_ROWS')) {
+    define('PG_CARD_DATA_SWEEP_ROWS', 200);
+}
+
+if (!defined('PG_CARD_DATA_SWEEP_BATCHES')) {
+    define('PG_CARD_DATA_SWEEP_BATCHES', 10);
+}
+
+/**
+ * Whether an order row still holds card data that clearing would change: a
+ * card number that is not masked yet, or any stored security code (a masked
+ * one included: the code is never kept, not even its length).
+ *
+ * @param string|null $card_number              orders.card_number
+ * @param string|null $card_verification_number orders.card_verification_number
+ * @return bool
+ */
+function pg_card_data_needs_clearing($card_number, $card_verification_number): bool
+{
+    $card_number = (string) $card_number;
+
+    return (($card_number !== '') && (mb_substr($card_number, 0, 1) !== '*'))
+        || ((string) $card_verification_number !== '');
+}
+
+/**
+ * The card number an order keeps once its card data is cleared: the last four
+ * digits behind asterisks, or '' when the stored value cannot be read (no key,
+ * no openssl, a wrong key, a legacy mcrypt value).
+ *
+ * @param string|null $stored orders.card_number as stored: masked, plain digits or encrypted
+ * @param string|null $key    encryption key; null reads ENCRYPTION_KEY when encryption is available
+ * @return string
+ */
+function pg_card_number_cleared($stored, $key = null): string
+{
+    $stored = (string) $stored;
+
+    if (($stored === '') || (mb_substr($stored, 0, 1) === '*')) {
+        return $stored;
+    }
+
+    if (ctype_digit($stored)) {
+        return protect_credit_card_number($stored);
+    }
+
+    if ($key === null) {
+        $key = credit_card_encryption_is_available() ? (string) ENCRYPTION_KEY : '';
+    }
+
+    if (((string) $key === '') || !function_exists('openssl_decrypt')) {
+        return '';
+    }
+
+    $number = (string) decrypt_credit_card_number($stored, (string) $key);
+
+    return ctype_digit($number) ? protect_credit_card_number($number) : '';
+}
+
+/**
+ * Clear an order's card data: the number masked to its last four digits, the
+ * security code emptied. Used once the order is processed (exported, cancelled,
+ * or the panel's Remove Card Data).
+ *
+ * @param int $order_id
+ * @return bool true when the row changed
+ */
+function pg_order_card_data_clear($order_id): bool
+{
+    $order_id = (int) $order_id;
+
+    $row = db_item("SELECT card_number, card_verification_number FROM orders WHERE id = '" . $order_id . "'");
+
+    if (!is_array($row) || !pg_card_data_needs_clearing($row['card_number'], $row['card_verification_number'])) {
+        return false;
+    }
+
+    $audit_before = function_exists('pg_audit_fetch') ? pg_audit_fetch('orders', $order_id) : null;
+
+    db("UPDATE orders
+        SET
+            card_number = '" . e(pg_card_number_cleared($row['card_number'])) . "',
+            card_verification_number = ''
+        WHERE id = '" . $order_id . "'");
+
+    if (function_exists('pg_audit_record')) {
+        pg_audit_record('update', 'orders', $order_id, $audit_before);
+    }
+
+    return true;
+}
+
+/**
+ * The orders the card data sweep clears: any stored security code, and the
+ * card number of an order that has left complete (exported or cancelled,
+ * whichever path moved it there).
+ *
+ * @return string SQL condition on orders
+ */
+function pg_order_card_data_sweep_where(): string
+{
+    return "(card_verification_number <> '')
+        OR (
+            (status NOT IN ('incomplete', 'complete'))
+            AND (card_number <> '')
+            AND (card_number NOT LIKE '*%')
+        )";
+}
+
+/**
+ * The general job's card data sweep, at most once an hour (a tick between
+ * passes reads one small file under data/temp). The export and Remove Card
+ * Data clear at once; this catches every other path that processes an order
+ * (status edits in the list, the external API, Workspace, ShipWorks).
+ *
+ * @return int orders cleared
+ */
+function pg_order_card_data_sweep(): int
+{
+    if (!defined('ECOMMERCE') || !ECOMMERCE) {
+        return 0;
+    }
+
+    $path = PG_FUNCTIONS_DIR . '/data/temp/card_data_swept.txt';
+    $last = is_file($path) ? (int) @file_get_contents($path) : 0;
+    $now = time();
+
+    if (($now - $last) < 3600) {
+        return 0;
+    }
+
+    @file_put_contents($path, (string) $now, LOCK_EX);
+
+    $cleared = 0;
+
+    for ($batch = 0; $batch < PG_CARD_DATA_SWEEP_BATCHES; $batch++) {
+        $ids = db_values("SELECT id FROM orders WHERE " . pg_order_card_data_sweep_where() . " ORDER BY id LIMIT " . PG_CARD_DATA_SWEEP_ROWS);
+
+        foreach ($ids as $id) {
+            if (pg_order_card_data_clear($id)) {
+                $cleared++;
+            }
+        }
+
+        if (count($ids) < PG_CARD_DATA_SWEEP_ROWS) {
+            break;
+        }
+    }
+
+    return $cleared;
+}
+
 
 function get_valid_zones($ship_to_id, $country_code, $state_code)
 {

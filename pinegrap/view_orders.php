@@ -864,6 +864,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
             }
         }
+
+        // An exported order is processed: the card data the file carried
+        // leaves the order (the number masked, the security code emptied).
+        if (pg_card_data_needs_clearing($order['card_number'], $order['card_verification_number'])) {
+            pg_order_card_data_clear($order['id']);
+        }
     }
     
     // get all custom shipping form data in database
@@ -2250,6 +2256,12 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             if (function_exists('pg_audit') && (mysqli_affected_rows(db::$con) > 0)) {
                 pg_audit('update', 'order', (int) $order['id'], array('status' => 'complete'), array('status' => 'exported'), pg_audit_label_of('orders', $order));
             }
+        }
+
+        // An exported order is processed: the card data the file carried
+        // leaves the order (the number masked, the security code emptied).
+        if (pg_card_data_needs_clearing($order['card_number'], $order['card_verification_number'])) {
+            pg_order_card_data_clear($order['id']);
         }
     }
 

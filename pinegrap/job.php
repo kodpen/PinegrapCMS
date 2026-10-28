@@ -155,6 +155,17 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Card data of processed orders (includes/fn/ecommerce.php): an order that
+// left complete through any path loses its card number, and no security code
+// stays stored. Once an hour; a tick between passes reads one small file.
+$card_data_cleared = pg_order_card_data_sweep();
+
+if ($card_data_cleared > 0) {
+
+    log_activity(lang(array('string' => 'Card data was removed from {var:1} order(s).', 'vars' => array(pg_format_number($card_data_cleared, 0)))), 'UNKNOWN');
+
+}
+
 // If commerce is enabled and there is at least one enabled campaign profile
 // that creates auto campaigns for abandoned orders, then check if any orders
 // have been abandoned.
