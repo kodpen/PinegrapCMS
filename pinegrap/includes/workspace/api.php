@@ -112,6 +112,7 @@ function ws_webhook_events()
         'workspace.task.status_changed' => 'A workspace task moved to another status (previous_status says from where)',
         'workspace.task.completed'      => 'A workspace task was marked done',
         'workspace.message.created'     => 'A message was written in a public workspace channel. Private channels are never announced',
+        'workspace.message.transcribed' => 'A voice message in a public workspace channel was transcribed: the message (id, channel_id, sender_id or app_id), its file (file_id, file_name, duration_ms) and the machine text (transcript, language, provider, model). Private channels and discussions are never announced',
         'workspace.task.note_added'     => 'A note was added to a workspace task (text is null for a task of a private channel)',
         'workspace.poll.closed'         => 'A poll in a public workspace channel closed, by hand or when its time ran out: the counts, and the winner or a tie',
         'workspace.template.applied'    => 'A channel template was applied to a channel, when the channel was made from it or later: the template, the tasks made and how many could not be assigned',

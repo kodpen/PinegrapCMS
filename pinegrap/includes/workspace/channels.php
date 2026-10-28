@@ -152,6 +152,10 @@ function ws_channel_detail($viewer, $channel)
     $brief['claude'] = function_exists('ws_claude_channel_state') ? ws_claude_channel_state($channel) : null;
     $brief['ai'] = function_exists('ws_ai_channel_state') ? ws_ai_channel_state($channel) : null;
 
+    // Whether its voice messages are transcribed, for the menu's switch
+    // (voice.php); null where it cannot be switched.
+    $brief['voice'] = function_exists('ws_voice_channel_state') ? ws_voice_channel_state($channel) : null;
+
     // The outside applications a mention here reaches, for the @ picker
     // (app_handles.php).
     $brief['apps'] = function_exists('ws_channel_app_picker') ? ws_channel_app_picker($channel) : array();

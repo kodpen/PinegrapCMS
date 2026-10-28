@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-transcript-job
-description: How a voice message is written out (V3b #2696): the queue on upload, ws_voice_kick() and the hourly job, answers and holds, delete for everyone, file.voice in the API
+description: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, ws_voice_kick(), answers and holds, delete for everyone, file.voice, channel switch, workspace.message.transcribed
 ---
 
 ## How is a recording written out? (V3b, #2696)
@@ -14,5 +14,15 @@ description: How a voice message is written out (V3b #2696): the queue on upload
 
 ## How does the API show it?
 - `file.voice` (`WorkspaceMessageVoice`, `ws_voice_api_present()`) on audio files with a row: `status` (none, queued, running, done, failed, skipped), and once done `transcript`, `language`, `provider`, `model`, `transcribed_at`; MCP reads the same message answer. Same read rules as the file.
+
+## What does the panel get? (V3c1)
+- `file.voice` in the message payload (messages.php) for `audio` files with a row: `ws_voice_panel_present()` (status, `duration_ms`, `peaks`, and once done transcript, language, provider, model).
+- `channel.voice` in `ws_channel_detail()`: `ws_voice_channel_state()` (allowed, provider), null while transcripts are off, in a guest room, a channel shared with guests or a discussion (`ws_voice_channel_switchable()`).
+- `ws_voice_channel_set()` as `ws_ai_channel_set()`: a manager (`ws_can_manage_channel()`), `voice_access` 1 or 2, a system line. Transcripts already written stay.
+- What the recorder measured: `$options['voice']` of `ws_message_send_file_bytes()` → `ws_voice_queue(..., $measure)`, cleaned by `ws_voice_measure_clean()` (length within the cap + 1 s, at most `WS_VOICE_PEAKS` 120 digits 0-9, anything else dropped).
+
+## Which event says it was written out?
+- `workspace.message.transcribed` (`ws_voice_announce()`, from `ws_voice_run()` once done): public channels only, never a private channel or a discussion, as `workspace.message.created`. Carries id, `channel_id` (narrowed subscriptions), sender_id or app_id, file_id, file_name, duration_ms, transcript, language, provider, model.
+- A webhook event only (`pg_announce()`), not a Flows trigger: no `ws_event()` call, so no line in `workspace_flows_parity_table()`.
 
 Schema, settings and the channel rule: workspace-voice-transcripts.md.
