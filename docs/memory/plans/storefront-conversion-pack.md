@@ -24,13 +24,13 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 
 ## What remains?
 2c. Review form, `__reviews` (M): the comments widget is the list and form on a `catalog detail` page (#2678, #2799). Templates' product pages are `standard` pages with a catalog_item_view widget: page comments, ungated. Cut:
-- 2c1. Server: such a page (top level, no record view) reads as catalog detail for comments: thread, `add_comment.php`, links, e-mails, recent list.
+- 2c1. (PR #2817) Done: `designer/comments-widget-product-page.md`.
 - 2c2. Canvas twin; a reviews section on the store, boutique and bookshop product page; `aggregateRating` there.
-- 2c3. Photo reviews (#2426 1a): a `config` column, asked first.
+- 2c3. Photo reviews (#2426 1a): a `config` column, asked in #2818.
 6. Bundles: `storefront-bundles-design.md`; owner review (#2425).
 
 ## Which questions are answered? (#2426)
 - Photo reviews by a site setting, off by default, images only. Review order: step 2d.
 
 ## Where to start?
-- Step 6 after #2425; 2c1, then 2c2; 2c3 after its schema answer.
+- Step 6 after #2425; 2c2; 2c3 after #2818.

@@ -2722,6 +2722,15 @@ function get_query_string_for_page_url($page_type, $item_id, $item_type)
                 $row = mysqli_fetch_assoc($result);
                 $query_string = '?r=' . $row['reference_code'];
                 break;
+            default:
+                // A designed page that shows one product (a catalog_item_view
+                // widget, pg_comment_thread_page_type()) holds the comments
+                // of the product or group in its address, as catalog detail.
+                if (($item_type === 'product') || ($item_type === 'product_group')) {
+                    $address_name = get_catalog_item_address_name_from_id($item_id, $item_type);
+                    $query_string = ($address_name != '') ? '/' . $address_name : '';
+                }
+                break;
         }
     }
     return $query_string;

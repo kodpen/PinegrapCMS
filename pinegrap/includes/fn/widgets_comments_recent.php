@@ -1118,7 +1118,9 @@ function pg_comments_recent_sources($ids, $show, $viewer, $fetch = 'db_items', $
             'view' => $live ? (check_view_access($folder) == true) : (get_access_control_type($folder) === 'public'),
             'sign_in_page' => $sign_in_page,
             'comments_on' => $settings['enabled'],
-            'page_type' => $page_type,
+            // A designed page showing one product holds item threads, as
+            // a catalog detail page does: refused as a page source.
+            'page_type' => ($widget === null) ? pg_comment_thread_page_type($page_id, $page_type) : $page_type,
             'record' => ($widget !== null),
             'form_id' => $form_id,
             'viewer_filter' => ($widget !== null) && pg_sw_filters_compare_viewer(array_merge(pg_sw_record_view_filters($view_cfg), $list_filters)),
