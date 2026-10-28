@@ -40363,6 +40363,7 @@ const StyleDesigner = (function () {
             ['__order_invoice_pdf_url', _sdT('Printable invoice URL')],
             ['__legal_preinfo_url',     _sdT('Pre-Information Form copy URL (kept with the order)')],
             ['__legal_contract_url',    _sdT('Distance Sales Contract copy URL (kept with the order)')],
+            ['__legal_kvkk_url',        _sdT('Personal Data Notice copy URL (kept with the order)')],
             ['__withdrawal_deadline',   _sdT('Last day of the right of withdrawal')],
             ['__withdrawal_text',       _sdT('The right of withdrawal line (last day, estimate or end)')]
         ]},
@@ -40476,7 +40477,9 @@ const StyleDesigner = (function () {
         // for the links beside the legal_preinfo / legal_contract boxes.
         { label: _sdT('Checkout documents'), tokens: [
             ['__legal_preinfo_url',               _sdT('Pre-Information Form page URL')],
-            ['__legal_contract_url',              _sdT('Distance Sales Contract page URL')]
+            ['__legal_contract_url',              _sdT('Distance Sales Contract page URL')],
+            ['__legal_kvkk_notice_url',           _sdT('Personal Data Notice page URL')],
+            ['__legal_kvkk_consent_html',         _sdT('Explicit consent sentence (KVKK)')]
         ]},
         // The recipient loop had no entry here at all, so every one of its
         // tokens had to be typed by hand through "Custom".
@@ -40568,7 +40571,8 @@ const StyleDesigner = (function () {
         { label: _sdT('Checkout approvals'), tokens: [
             ['agree_terms',     _sdT('Order terms accepted (checkbox)')],
             ['legal_preinfo',   _sdT('Pre-Information Form approved (checkbox)')],
-            ['legal_contract',  _sdT('Distance Sales Contract accepted (checkbox)')]
+            ['legal_contract',  _sdT('Distance Sales Contract accepted (checkbox)')],
+            ['legal_kvkk',      _sdT('Explicit consent given (KVKK checkbox, optional)')]
         ]},
         { label: _sdT('Other'), tokens: [
             ['custom_field_1',  _sdT('Custom field 1 (defined in express_order_pages)')],
@@ -41074,7 +41078,8 @@ const StyleDesigner = (function () {
     var SW_DEFAULT_TAILS = {
         order_view: [
             [['__return_form', '__returns', 'order.returns', 'order.return_deliveries'], function (cfg, tree) { return _sdPartOrderReturns(); }],
-            [['__legal_preinfo_url', '__legal_contract_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }]
+            [['__legal_preinfo_url', '__legal_contract_url', '__legal_kvkk_url'], function (cfg, tree) { return _sdPartOrderLegal(tree); }],
+            [['__legal_kvkk_url'], function (cfg, tree) { return _sdPartOrderLegalKvkk(tree); }]
         ]
     };
 
@@ -41659,16 +41664,20 @@ const StyleDesigner = (function () {
         ])];
     }
 
+    // One line of the legal documents card (pg_sw_part_order_legal_link()).
+    function _sdPartOrderLegalLink(label, token, flag) {
+        return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
+            _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
+        ]);
+    }
+
     // The legal documents card (pg_sw_part_order_legal_documents()).
     function _sdPartOrderLegal(tree) {
-        var link = function (label, token, flag) {
-            return _sdPartEl('li', '', label, { _bindings: { eo_visible_if: flag } }, [
-                _sdPartEl('a', '', label, { text: label, href: '#', target: '_blank', rel: 'noopener', _bindings: { href: token } })
-            ]);
-        };
+        var link = _sdPartOrderLegalLink;
         var body = [_sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
             link(_sdT('Pre-Information Form'), '__legal_preinfo_url', 'has_legal_preinfo'),
-            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract')
+            link(_sdT('Distance Sales Contract'), '__legal_contract_url', 'has_legal_contract'),
+            link(_sdT('Personal Data Notice'), '__legal_kvkk_url', 'has_legal_kvkk')
         ])];
         if (!_sdPartPlaced(tree, ['__withdrawal_deadline', '__withdrawal_text'])) {
             var line = function (name, text, flag) {
@@ -41681,6 +41690,17 @@ const StyleDesigner = (function () {
             );
         }
         return [_sdPartOrderCard('pg-ov-legal-documents', _sdT('Legal Documents'), 'has_legal_documents', _sdT('Legal Documents'), body)];
+    }
+
+    // The KVKK copy's card for a layout that links the documents but not the
+    // copy (pg_sw_part_order_legal_kvkk()).
+    function _sdPartOrderLegalKvkk(tree) {
+        if (!_sdPartPlaced(tree, ['__legal_preinfo_url', '__legal_contract_url'])) return [];
+        return [_sdPartOrderCard('pg-ov-legal-kvkk', _sdT('Personal Data Notice'), 'has_legal_kvkk', _sdT('Personal Data Notice'), [
+            _sdPartEl('ul', 'list-unstyled mb-0', _sdT('Links'), {}, [
+                _sdPartOrderLegalLink(_sdT('Personal Data Notice'), '__legal_kvkk_url', 'has_legal_kvkk')
+            ])
+        ])];
     }
 
     // One-time migration for trees saved before the "bind content, not layout"
@@ -41844,6 +41864,7 @@ const StyleDesigner = (function () {
             ['has_legal_documents',     _sdT('Legal documents are kept with the order')],
             ['has_legal_preinfo',       _sdT('The pre-information form is kept with the order')],
             ['has_legal_contract',      _sdT('The distance sales contract is kept with the order')],
+            ['has_legal_kvkk',          _sdT('The personal data notice copy is kept with the order')],
             ['has_withdrawal_deadline', _sdT('The last day of the right of withdrawal is known')],
             ['withdrawal_deadline_firm', _sdT('The withdrawal deadline is firm and still ahead')],
             ['withdrawal_deadline_estimated', _sdT('The withdrawal deadline is an estimate')],
@@ -41868,6 +41889,9 @@ const StyleDesigner = (function () {
             ['has_upsell',           _sdT('There are upsell offers')],
             ['has_terms',            _sdT('Terms are shown')],
             ['has_legal_documents',  _sdT('Checkout documents are switched on')],
+            ['has_legal_kvkk',       _sdT('A KVKK notice page or consent sentence is set')],
+            ['has_legal_kvkk_notice', _sdT('A KVKK notice page is set')],
+            ['has_legal_kvkk_consent', _sdT('A KVKK consent sentence is set')],
             ['tax_exempt_allowed',   _sdT('Tax exemption is allowed')],
             ['has_discount',         _sdT('There is a discount')],
             ['has_tax',              _sdT('There is tax')],
@@ -58251,6 +58275,40 @@ const StyleDesigner = (function () {
                     { attrs: [{ name: 'for', value: field }] })
             ]);
         }
+        // KVKK lines — see _eo_default_designer_tree's $kvkk_block: the
+        // notice link and the optional consent box, each under its own flag;
+        // the pg-legal-kvkk class keeps the server from adding a second set.
+        function kvkkBlock() {
+            var around = _eoSentenceAround(_sdT('How your personal data is processed is explained in {var:1}'));
+            var notice = [];
+            if (around[0]) notice.push(sem('span', '', around[0]));
+            notice.push(sem('a', '', _sdT('the Personal Data Notice'), {
+                attrs: [
+                    { name: 'href',   value: '#' },
+                    { name: 'target', value: '_blank' },
+                    { name: 'rel',    value: 'noopener' }
+                ],
+                bindings: { href: '__legal_kvkk_notice_url' }
+            }));
+            if (around[1]) notice.push(sem('span', '', around[1]));
+            return sem('div', 'pg-legal-kvkk mb-2', [
+                sem('p', 'pg-legal-kvkk-notice small mb-2', notice,
+                    { bindings: { eo_visible_if: 'has_legal_kvkk_notice' } }),
+                sem('div', 'form-check mb-2', [
+                    sem('input', 'form-check-input', null, {
+                        attrs: [
+                            { name: 'type',  value: 'checkbox' },
+                            { name: 'value', value: '1' }
+                        ],
+                        bindings: { eo_field: 'legal_kvkk' }
+                    }),
+                    sem('label', 'form-check-label small', _sdT('I consent to the processing of my personal data'), {
+                        attrs: [{ name: 'for', value: 'legal_kvkk' }],
+                        bindings: { text: '__legal_kvkk_consent_html' }
+                    })
+                ], { bindings: { eo_visible_if: 'has_legal_kvkk_consent' } })
+            ], { bindings: { eo_visible_if: 'has_legal_kvkk' } });
+        }
         function textarea(eoField, rows, placeholder) {
             return sem('textarea', 'form-control', null, {
                 attrs: [
@@ -58642,6 +58700,8 @@ const StyleDesigner = (function () {
                                     legalRow('preinfo',  _sdT('I have read and approve {var:1}'), _sdT('the Pre-Information Form')),
                                     legalRow('contract', _sdT('I have read and accept {var:1}'),  _sdT('the Distance Sales Contract'))
                                 ], { bindings: { eo_visible_if: 'has_legal_documents' } }),
+                                // KVKK notice link and optional consent box.
+                                kvkkBlock(),
                                 // ── TERMS CHECKBOX (real form-check) ─────────
                                 // Real checkbox + label + modal trigger link.
                                 // The modal itself is a real Bootstrap modal
@@ -60546,7 +60606,7 @@ const StyleDesigner = (function () {
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_preinfo_url' } })
                                         ]),
-                                        createNode('semantic', { tag: 'div',
+                                        createNode('semantic', { tag: 'div', cssClass: 'mb-1',
                                             customName: _sdT('Distance Sales Contract'),
                                             _bindings: { eo_visible_if: 'has_legal_contract' } }, [
                                             createNode('content', { contentType: 'link',
@@ -60554,6 +60614,15 @@ const StyleDesigner = (function () {
                                                 customName: _sdT('Distance Sales Contract Link'),
                                                 _attrs: [{ name: 'rel', value: 'noopener' }],
                                                 _bindings: { href: '__legal_contract_url' } })
+                                        ]),
+                                        createNode('semantic', { tag: 'div',
+                                            customName: _sdT('Personal Data Notice'),
+                                            _bindings: { eo_visible_if: 'has_legal_kvkk' } }, [
+                                            createNode('content', { contentType: 'link',
+                                                text: _sdT('Personal Data Notice'), href: '#', target: '_blank',
+                                                customName: _sdT('Personal Data Notice Link'),
+                                                _attrs: [{ name: 'rel', value: 'noopener' }],
+                                                _bindings: { href: '__legal_kvkk_url' } })
                                         ]),
                                         // Last day of the right of withdrawal: 14 days
                                         // from the last delivery. One sentence per

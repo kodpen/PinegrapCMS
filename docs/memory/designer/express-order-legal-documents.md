@@ -1,6 +1,6 @@
 ---
 name: express-order-legal-documents
-description: Checkout document boxes in the designer's express order tree: legal_preinfo/legal_contract field bindings, has_legal_documents flag, __legal_*_url href tokens, sentence split of the label
+description: Checkout document boxes and KVKK lines in the designer's express order tree: legal_* field bindings, has_legal_documents / has_legal_kvkk* flags, __legal_* tokens, sentence split of the label
 ---
 
 ## What does the designer's express order tree carry?
@@ -20,5 +20,9 @@ description: Checkout document boxes in the designer's express order tree: legal
 
 ## What did the field list gain?
 - `SW_EXPRESS_ORDER_FIELD_GROUPS` "Checkout approvals": `agree_terms` (the starter tree's terms box, which showed as Custom before), `legal_preinfo`, `legal_contract`. `_eo_known_input_names()` prefills both legal fields by name too.
+
+## Where are the KVKK lines?
+- Since PR #2648 both starter trees put a `pg-legal-kvkk` block after the documents container, under `has_legal_kvkk` (a notice page or a consent sentence is set): a `p` with the notice link (`__legal_kvkk_notice_url`, sentence `How your personal data is processed is explained in {var:1}` without its period) under `has_legal_kvkk_notice`, and a box `eo_field` = `legal_kvkk`, never `required`, its label bound to `__legal_kvkk_consent_html` (the store's sentence, escaped, line breaks as `<br>`), under `has_legal_kvkk_consent`.
+- The values come from `_eo_legal_kvkk_tokens()`, fed `pg_legal_kvkk_settings()` through the renderer's state; the flags from the same settings. The class keeps `pg_legal_documents_inject()` from adding its own lines (commerce/checkout-kvkk-notice.md). `legal_kvkk` is in "Checkout approvals". Test `test_designer_legal_documents_starter_tree_carries_the_kvkk_lines`.
 
 Related: docs/memory/commerce/order-legal-documents.md

@@ -215,7 +215,7 @@ function test_designer_link_target_starter_trees()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
 
 	$trees = array(
-		'order_view' => array("case 'order_view': {", "case 'express_order': {", array('__order_invoice_pdf_url', '__tracking_link', '__legal_preinfo_url', '__legal_contract_url')),
+		'order_view' => array("case 'order_view': {", "case 'express_order': {", array('__order_invoice_pdf_url', '__tracking_link', '__legal_preinfo_url', '__legal_contract_url', '__legal_kvkk_url')),
 		'account_invoices' => array("case 'account_invoices': {", "\n            case '", array('__invoice_pdf_url')),
 	);
 

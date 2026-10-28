@@ -24,11 +24,6 @@ description: Legal documents (pre-information form, distance sales contract): se
 ## How does the API read them?
 - `GET /orders/{id}/documents` (`orders:read`, `api_orders_documents()`, object `OrderDocument`): one page, every `order_documents` row of the order in id order, each with `type`, `label` (`pg_legal_document_labels()`, `kvkk` included), `accepted` + `accepted_at`, `ip`, `user_agent`, `created_at` and the stored `html`. Missing table or no rows → empty list, never an error; the switch being off does not hide kept copies. `?fields=` drops the HTML. The MCP tool comes with the route.
 
-## Where is the checkout side?
-- docs/memory/commerce/checkout-legal-checkboxes.md
-
-## Where does the customer find them later?
-- The order view widget (My Account, thank-you page) links each kept copy: docs/memory/commerce/order-view-legal-documents.md.
-
-## What is left?
-- KVKK at checkout: checkout-kvkk-notice.md; plans/checkout-legal-documents.md; order-withdrawal-deadline.md.
+## Why, and what next?
+- Turkish distance-selling rules (Mesafeli Sözleşmeler Yönetmeliği, 1 Jan 2026 text) require both documents. HTML only; a PDF (dompdf is vendored for ERP) when customers ask.
+- Checkout: checkout-legal-checkboxes.md, checkout-kvkk-notice.md; order view links: order-view-legal-documents.md; withdrawal: order-withdrawal-deadline.md.

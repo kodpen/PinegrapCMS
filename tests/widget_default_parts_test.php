@@ -116,6 +116,7 @@ function test_widget_parts_apply_leaves_other_trees()
 		_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__order_no'))),
 		_parts_node('loop_area', array('source' => 'order.return_deliveries'), array()),
 		_parts_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_contract_url'))),
+		_parts_node('semantic', array('tag' => 'a', '_bindings' => array('href' => '__legal_kvkk_url'))),
 	)));
 	pg_assert_same($tree, pg_sw_default_parts_apply($tree, 'order_view'), 'no old token, the cards placed: as it is');
 	$timeline = json_encode(_parts_tree(array(_parts_node('semantic', array('tag' => 'div', '_bindings' => array('text' => '__timeline'))))));
@@ -214,7 +215,7 @@ function test_widget_parts_editor_twin()
 		. $cut("\n    var SW_DEFAULT_TAILS = {", "\n    };\n")
 		. $cut("\n    var SD_RETURN_BADGE_CLASSES = {", "\n    };\n");
 	foreach (array('_sdDefaultParts', '_sdPartTokenOf', '_sdPartHost', '_sdPartEl', '_sdPartWhen', '_sdPartOrderTimeline', '_sdPartOrderStatusBadge',
-		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegal') as $fn) {
+		'_sdPartPlaced', '_sdPartValue', '_sdDefaultTails', '_sdPartOrderCard', '_sdPartOrderReturns', '_sdPartOrderReturnMoves', '_sdPartOrderReturnMoveSubmit', '_sdPartOrderReturnForm', '_sdPartSentence', '_sdPartOrderReturnQtyCell', '_sdPartOrderReturnReason', '_sdPartOrderReturnSubmit', '_sdPartOrderCancelForm', '_sdPartOrderCancelSubmit', '_sdPartOrderReturnsList', '_sdPartOrderLegalLink', '_sdPartOrderLegal', '_sdPartOrderLegalKvkk') as $fn) {
 		$src .= $cut("\n    function " . $fn . '(', "\n    }\n");
 	}
 	$tree = _parts_tree(array(
@@ -378,8 +379,9 @@ function test_widget_parts_order_tail_cards_placed_beats_pushed()
 
 	$own_link = _parts_tree(array(_parts_node('semantic', array('tag' => 'a', 'text' => 'Contract', '_bindings' => array('href' => '__legal_contract_url')))));
 	$tree = json_decode(pg_sw_default_parts_apply(json_encode($own_link), 'order_view'), true);
-	pg_assert_same(2, count($tree['children']), 'the layout and the returns card');
+	pg_assert_same(3, count($tree['children']), 'the layout, the returns card and the KVKK card');
 	pg_assert_contains('pg-ov-returns-block', json_encode($tree), 'the returns card');
+	pg_assert_contains('pg-ov-legal-kvkk', $tree['children'][2]['props']['cssClass'], 'the KVKK copy in a card of its own');
 
 	$again = pg_sw_default_parts_apply(json_encode($tree), 'order_view');
 	pg_assert_same(json_encode($tree), $again, 'a tree with its cards is left as it is');
@@ -387,4 +389,36 @@ function test_widget_parts_order_tail_cards_placed_beats_pushed()
 	// A template's placeholder, left for the editor's starter, gets nothing.
 	$placeholder = json_encode(array('type' => 'root', 'props' => array(), 'children' => array(array('type' => 'loop_area', 'props' => array(), 'children' => array()))));
 	pg_assert_same($placeholder, pg_sw_default_parts_apply($placeholder, 'order_view'), 'the placeholder as it is');
+}
+
+// The KVKK copy kept with the order: a line of the legal documents card for a
+// layout that links nothing, a card of its own for one that links the
+// documents but not the KVKK copy, nothing for one that links it itself.
+function test_widget_parts_order_legal_kvkk_line()
+{
+	$url = '/p/legal_document.php?order_id=7&type=kvkk';
+	$static = array('__legal_contract_url' => '/c', '__legal_kvkk_url' => h($url));
+	$flags = array('has_legal_documents' => true, 'has_legal_contract' => true, 'has_legal_kvkk' => true);
+
+	$layout = _parts_tree(array(_parts_node('semantic', array('tag' => 'p', 'cssClass' => 'lead', 'text' => 'Thanks'))));
+	$tree = json_decode(pg_sw_default_parts_apply(json_encode($layout), 'order_view'), true);
+	pg_assert_same(3, count($tree['children']), 'the layout, returns and legal documents: no second KVKK card');
+	pg_assert_false(strpos(json_encode($tree), 'pg-ov-legal-kvkk') !== false, 'no KVKK card');
+	$html = _parts_render($layout, $static, array(), false, $flags);
+	pg_assert_same(array(array('/c', '_blank', 'noopener'), array(h($url), '_blank', 'noopener')), _parts_links($html), 'the contract, then the KVKK copy');
+	pg_assert_contains('>' . h(lang('Personal Data Notice')) . '</a>', $html, 'named as the kept-copy page names it');
+	pg_assert_same(1, count(_parts_links(_parts_render($layout, $static, array(), false, array('has_legal_documents' => true, 'has_legal_contract' => true)))), 'no KVKK copy kept: no line');
+
+	$own_link = _parts_tree(array(_parts_node('semantic', array('tag' => 'a', 'text' => 'Contract', 'href' => '#', '_bindings' => array('href' => '__legal_contract_url')))));
+	$html = _parts_render($own_link, $static, array(), false, $flags);
+	pg_assert_contains('pg-ov-legal-kvkk', $html, 'an older layout: the KVKK card');
+	pg_assert_same(h($url), _parts_links($html)[0][0] ?? '', 'its link');
+	pg_assert_false(strpos(_parts_render($own_link, $static, array(), false, array('has_legal_contract' => true)), 'pg-ov-legal-kvkk') !== false, 'no copy kept: no card');
+
+	$own_kvkk = _parts_tree(array(
+		_parts_node('semantic', array('tag' => 'a', 'href' => '#', '_bindings' => array('href' => '__legal_contract_url'))),
+		_parts_node('semantic', array('tag' => 'a', 'href' => '#', '_bindings' => array('href' => '__legal_kvkk_url'))),
+	));
+	$tree = json_decode(pg_sw_default_parts_apply(json_encode($own_kvkk), 'order_view'), true);
+	pg_assert_same(3, count($tree['children']), 'the layout\'s two links and the returns card');
 }

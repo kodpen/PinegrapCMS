@@ -2263,6 +2263,9 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
     // ['pending_offers' => [...], 'upsell_offers' => [...]] — see
     // get_express_order.php:111-114 for the canonical contract.
     $_eo_offers = function_exists('apply_offers_to_cart') ? apply_offers_to_cart() : array();
+    // The KVKK notice page and consent sentence ('' while not set or the
+    // checkout documents are off), for the flags of the KVKK lines.
+    $_eo_kvkk = pg_legal_kvkk_settings();
     if (!is_array($_eo_offers)) $_eo_offers = array();
 
     $order_id = isset($_SESSION['ecommerce']['order_id']) ? (int)($_SESSION['ecommerce']['order_id'] ?? '') : 0;
@@ -2815,6 +2818,12 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // switched on: their required acceptance boxes show. Off, the
             // boxes would block a checkout the server does not ask them for.
             'has_legal_documents' => pg_legal_documents_enabled(),
+            // The KVKK lines: the sentence linking the notice page and the
+            // optional consent box, each while the store has set it; the
+            // block while either shows. Explicit consent is never required.
+            'has_legal_kvkk'         => ($_eo_kvkk['url'] !== '') || ($_eo_kvkk['consent'] !== ''),
+            'has_legal_kvkk_notice'  => $_eo_kvkk['url'] !== '',
+            'has_legal_kvkk_consent' => $_eo_kvkk['consent'] !== '',
             // Site-level tax-exempt switch. Both flags must be ON: tax
             // calculation must be enabled AND the operator must have
             // explicitly opened the exemption option. When false, the
@@ -3001,6 +3010,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             // no method picked yet). Digital orders don\'t pass this branch
             // because the entire row is hidden via has_shipping_cost=false.
             'needs_shipping'             => (bool)$needs_shipping,
+            'legal_kvkk'                 => $_eo_kvkk,
         ));
         // A list of the cart, the offers, the gift cards or the recipients
         // outside a recipient row lists the whole order.

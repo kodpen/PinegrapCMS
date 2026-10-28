@@ -131,7 +131,8 @@ function pg_sw_default_tail_parts()
     return array(
         'order_view' => array(
             array(array('__return_form', '__returns', 'order.returns', 'order.return_deliveries'), 'pg_sw_part_order_returns'),
-            array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents'),
+            array(array('__legal_preinfo_url', '__legal_contract_url', '__legal_kvkk_url'), 'pg_sw_part_order_legal_documents'),
+            array(array('__legal_kvkk_url'), 'pg_sw_part_order_legal_kvkk'),
         ),
     );
 }
@@ -939,23 +940,29 @@ function pg_sw_part_order_returns_list($cfg = array())
     )));
 }
 
-// The legal documents card: a link to each copy kept with the order, in a
-// new window, and the last day of the right of withdrawal under them (as a
-// sentence: firm, estimated or ended) unless the layout shows that day itself.
+// One line of the legal documents card: the link to the copy of $type kept
+// with the order, in a new window, shown while that copy is kept ($flag).
+function pg_sw_part_order_legal_link($type, $token, $flag)
+{
+    $types = pg_legal_document_labels();
+    return pg_sw_part_el('li', '', $types[$type], array('_bindings' => array('eo_visible_if' => $flag)), array(
+        pg_sw_part_el('a', '', $types[$type], array(
+            'text' => $types[$type], 'href' => '#', 'target' => '_blank', 'rel' => 'noopener',
+            '_bindings' => array('href' => $token),
+        )),
+    ));
+}
+
+// The legal documents card: a link to each copy kept with the order (the
+// KVKK copy last), and the last day of the right of withdrawal under them
+// (as a sentence: firm, estimated or ended) unless the layout shows that
+// day itself.
 function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
 {
-    $types = pg_legal_document_types();
-    $link = function ($type, $token, $flag) use ($types) {
-        return pg_sw_part_el('li', '', $types[$type], array('_bindings' => array('eo_visible_if' => $flag)), array(
-            pg_sw_part_el('a', '', $types[$type], array(
-                'text' => $types[$type], 'href' => '#', 'target' => '_blank', 'rel' => 'noopener',
-                '_bindings' => array('href' => $token),
-            )),
-        ));
-    };
     $body = array(pg_sw_part_el('ul', 'list-unstyled mb-0', 'Links', array(), array(
-        $link('preinfo', '__legal_preinfo_url', 'has_legal_preinfo'),
-        $link('contract', '__legal_contract_url', 'has_legal_contract'),
+        pg_sw_part_order_legal_link('preinfo', '__legal_preinfo_url', 'has_legal_preinfo'),
+        pg_sw_part_order_legal_link('contract', '__legal_contract_url', 'has_legal_contract'),
+        pg_sw_part_order_legal_link('kvkk', '__legal_kvkk_url', 'has_legal_kvkk'),
     )));
     if (!pg_sw_placed($tree, array('__withdrawal_deadline', '__withdrawal_text'))) {
         // One sentence per state, the day where the language puts it: the
@@ -968,6 +975,19 @@ function pg_sw_part_order_legal_documents($cfg = array(), $tree = array())
         $body[] = $line('Ended Right of Withdrawal', lang('The right of withdrawal ended on {var:1}.'), 'withdrawal_ended');
     }
     return array(pg_sw_part_order_card('pg-ov-legal-documents', 'Legal Documents', 'has_legal_documents', lang('Legal Documents'), $body));
+}
+
+// The KVKK copy's card, for a layout that links the documents but was made
+// before the KVKK copy had a link. A layout that links neither document gets
+// the line inside the legal documents card instead.
+function pg_sw_part_order_legal_kvkk($cfg = array(), $tree = array())
+{
+    if (!pg_sw_placed($tree, array('__legal_preinfo_url', '__legal_contract_url'))) return array();
+    return array(pg_sw_part_order_card('pg-ov-legal-kvkk', 'Personal Data Notice', 'has_legal_kvkk', lang('Personal Data Notice'), array(
+        pg_sw_part_el('ul', 'list-unstyled mb-0', 'Links', array(), array(
+            pg_sw_part_order_legal_link('kvkk', '__legal_kvkk_url', 'has_legal_kvkk'),
+        )),
+    )));
 }
 
 // A comment's stars: five drawings in a span said once as "Rated N out of

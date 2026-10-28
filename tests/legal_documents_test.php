@@ -696,21 +696,22 @@ function test_legal_documents_copy_url()
 	pg_assert_same('/p/legal_document.php?order_id=0&type=a%26b', pg_legal_document_copy_url('x', 'a&b', '/p/legal_document.php'), 'id cast, type encoded');
 }
 
-// The order view gets an address for each document the order has a copy
-// of, '' for the others, in the documents' order; a stored type the
-// documents do not name (kvkk) gets none.
+// The order view gets an address for each kept type the order has a copy
+// of (the KVKK copy too), '' for the others, in the labels' order; a stored
+// type nothing names gets none.
 function test_legal_documents_copy_urls()
 {
 	$kept = array(
 		'kvkk'     => array('type' => 'kvkk', 'html' => '<p>K</p>'),
 		'contract' => array('type' => 'contract', 'html' => '<p>C</p>'),
+		'other'    => array('type' => 'other', 'html' => '<p>O</p>'),
 	);
 
 	pg_assert_same(
-		array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract'),
+		array('preinfo' => '', 'contract' => '/p/legal_document.php?order_id=7&type=contract', 'kvkk' => '/p/legal_document.php?order_id=7&type=kvkk'),
 		pg_legal_document_copy_urls($kept, 7, '/p/legal_document.php')
 	);
-	pg_assert_same(array('preinfo' => '', 'contract' => ''), pg_legal_document_copy_urls(array(), 7, '/p/legal_document.php'), 'nothing kept');
+	pg_assert_same(array('preinfo' => '', 'contract' => '', 'kvkk' => ''), pg_legal_document_copy_urls(array(), 7, '/p/legal_document.php'), 'nothing kept');
 }
 
 // The order view links the kept copies, never in the receipt e-mail (it
@@ -723,7 +724,9 @@ function test_legal_documents_order_view_links()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_documents_of_order((int)\$order['id']) : array()", $section, 'no copies in the e-mail');
 	pg_assert_contains("'__legal_preinfo_url'       => h(\$legal_urls['preinfo'])", $section, 'the pre-information form link');
 	pg_assert_contains("'__legal_contract_url'      => h(\$legal_urls['contract'])", $section, 'the contract link');
-	pg_assert_contains("array(array('__legal_preinfo_url', '__legal_contract_url'), 'pg_sw_part_order_legal_documents')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound link keeps the card away');
+	pg_assert_contains("'__legal_kvkk_url'          => h(\$legal_urls['kvkk'])", $section, 'the KVKK copy link');
+	pg_assert_contains("'has_legal_kvkk'           => \$legal_urls['kvkk'] !== ''", $section, 'shown while the KVKK copy is kept');
+	pg_assert_contains("array(array('__legal_preinfo_url', '__legal_contract_url', '__legal_kvkk_url'), 'pg_sw_part_order_legal_documents')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound link keeps the card away');
 }
 
 // Deleting an order deletes the copies kept with it: they hold the buyer's

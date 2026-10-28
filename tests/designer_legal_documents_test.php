@@ -123,3 +123,58 @@ function test_designer_legal_documents_fields_are_prefilled_by_name()
 	pg_assert_true(_eo_is_known_input_name('legal_preinfo'), 'preinfo');
 	pg_assert_true(_eo_is_known_input_name('legal_contract'), 'contract');
 }
+
+// The KVKK lines' values for a designer tree: the notice page's address and
+// the consent sentence, each escaped once, the sentence's line breaks kept;
+// empty while the page did not pass the store's settings.
+function test_designer_legal_documents_kvkk_tokens()
+{
+	$tokens = _eo_legal_kvkk_tokens(array('url' => '/kvkk?a=1&b=2', 'consent' => "I consent <b>\nto marketing"));
+
+	pg_assert_same('/kvkk?a=1&amp;b=2', $tokens['^^__legal_kvkk_notice_url^^'], 'the address');
+	pg_assert_same("I consent &lt;b&gt;<br>\nto marketing", $tokens['^^__legal_kvkk_consent_html^^'], 'the sentence');
+
+	$none = _eo_legal_kvkk_tokens(null);
+	pg_assert_same('', $none['^^__legal_kvkk_notice_url^^'], 'no address');
+	pg_assert_same('', $none['^^__legal_kvkk_consent_html^^'], 'no sentence');
+}
+
+// The starter tree's KVKK lines: one pg-legal-kvkk block under has_legal_kvkk
+// (the class keeps pg_legal_documents_inject() from adding a second set),
+// the notice link under its own flag, the consent box never required and
+// labelled by the store's sentence; the editor's starter tree builds the same.
+function test_designer_legal_documents_starter_tree_carries_the_kvkk_lines()
+{
+	$tree = _eo_default_designer_tree();
+
+	$blocks = array();
+	designer_legal_documents_test_find($tree, 'eo_visible_if', 'has_legal_kvkk', $blocks);
+	pg_assert_same(1, count($blocks), 'one flagged block');
+	pg_assert_contains('pg-legal-kvkk', $blocks[0]['props']['cssClass'] ?? '', 'the marker class');
+
+	$links = array();
+	designer_legal_documents_test_find($blocks[0] ?? array(), 'href', '__legal_kvkk_notice_url', $links);
+	pg_assert_same(1, count($links), 'the notice link');
+	pg_assert_same('_blank', designer_legal_documents_test_attr($links[0] ?? array(), 'target'), 'in a new window');
+
+	$boxes = array();
+	designer_legal_documents_test_find($blocks[0] ?? array(), 'eo_field', 'legal_kvkk', $boxes);
+	pg_assert_same(1, count($boxes), 'the consent box');
+	pg_assert_same(null, designer_legal_documents_test_attr($boxes[0] ?? array(), 'required'), 'never required');
+
+	$labels = array();
+	designer_legal_documents_test_find($blocks[0] ?? array(), 'text', '__legal_kvkk_consent_html', $labels);
+	pg_assert_same(1, count($labels), 'labelled by the store\'s sentence');
+
+	$tree = _eo_default_designer_tree();
+	_eo_apply_visibility_bindings($tree, array('has_terms' => true, 'has_legal_documents' => true, 'has_legal_kvkk' => true, 'has_legal_kvkk_notice' => true));
+	$boxes = array();
+	designer_legal_documents_test_find($tree, 'eo_field', 'legal_kvkk', $boxes);
+	pg_assert_same(0, count($boxes), 'no sentence: no box');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	foreach (array("sem('div', 'pg-legal-kvkk mb-2'", "bindings: { href: '__legal_kvkk_notice_url' }", "bindings: { eo_field: 'legal_kvkk' }",
+		"bindings: { text: '__legal_kvkk_consent_html' }", "{ bindings: { eo_visible_if: 'has_legal_kvkk_consent' } }", "kvkkBlock(),") as $needle) {
+		pg_assert_contains($needle, $js, 'editor twin: ' . $needle);
+	}
+}
