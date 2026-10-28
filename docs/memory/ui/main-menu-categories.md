@@ -4,7 +4,7 @@ description: Main menu rows in categories (pg_menu_categories(), pg_menu_layout(
 ---
 
 ## Which categories are there?
-- `pg_menu_categories()` (`includes/fn/output.php`), drawn in this order: untitled (Dashboard 0, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Visual Page Editor 21, Page Styles 17); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, My Campaigns 9, Ads 16); System (Users 8, Site Settings 20, last). Owner's choice of the headings layout over one row per category: no store screen costs an extra click.
+- `pg_menu_categories()` (`includes/fn/output.php`, #2811), drawn in this order: untitled (Dashboard 0, Workspace 23, pinned My Notes 24); Content (Pages 2, File Manager 1, Calendars 4, Forms 5); Design (Visual Page Editor 21, Page Styles 17); Ecommerce (Orders 10, Products 11, Catalog Manager 12, Offers 14, Shipping 15); Accounting (ERP 22: its own switch and rights, it runs without the store); Marketing (Visitors 6, Contacts 7, My Campaigns 9, Ads 16); System (Users 8, Site Settings 20, last). Owner's choice of the headings layout over one row per category: no store screen costs an extra click.
 - The table sets the order; the rows are still built in id order, each under its gate. The old reorder loop ("moved rows") is gone. A new row needs a place in the table, or it is drawn last without a heading. `tests/menu_category_test.php` reads the built slots from `output_menu()` and wants each listed once.
 
 ## When is a heading drawn?
