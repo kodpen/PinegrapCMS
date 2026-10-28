@@ -21677,7 +21677,9 @@
         function voiceLinks(text) {
             var found = [];
             var seen = {};
-            var pattern = /\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g;
+            // Built from a string: tests/workspace_flows_parity_test.php
+            // reads this file's brackets and skips strings, not regex literals.
+            var pattern = new RegExp('\\[([^\\]\\n]+)\\]\\((https?://[^)\\s]+)\\)', 'g');
             var match;
 
             if (!window.PGWsVoice) {
