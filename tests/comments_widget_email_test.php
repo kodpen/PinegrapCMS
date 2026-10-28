@@ -548,6 +548,12 @@ function test_comments_widget_email_draw_data()
 	pg_assert_same('', $closed['rows'][0]['values']['__comment_reply_url'], 'no reply link when it may not be answered');
 	pg_assert_false($closed['controls']['can_reply'], 'the reply control is dropped');
 
+	$photo = comments_widget_email_test_data(array('comment' => array('file_name' => 'a.jpg', 'file_size' => '1200')));
+	pg_assert_true($photo['rows'][0]['flags']['comment_has_image'], 'a photo');
+	pg_assert_same('https://example.com/a.jpg', $photo['rows'][0]['values']['__comment_file_url'], 'on the site\'s address');
+	$no_site = comments_widget_email_test_data(array('comment' => array('file_name' => 'a.jpg', 'file_size' => '1200')), array('site' => ''));
+	pg_assert_false($no_site['rows'][0]['flags']['comment_has_image'], 'no photo without the site\'s address');
+
 	$alone = comments_widget_email_test_data(array('parent' => null));
 	pg_assert_false($alone['rows'][0]['flags']['comment_has_quote'], 'no parent, no quote');
 

@@ -17,7 +17,7 @@ module: widgets_comments
 
 ## Which tokens and flags does it give?
 - Thread: `__comments_title|count|label|label_plural|intro|closed_message|show_all_url|show_featured_url`, `__login_url`, `__comment_author_name`, `__reply_to_name`, `__watcher_count_text`, `__comments_item_name`. Row: `__comment_id|anchor|name|staff_name|message_html|excerpt|date|datetime|rating|rating_label|stars_text|badge|status|file_name|file_url|file_size|seller_reply_html|seller_reply_date|edit_url|url|reply_url|parent_id|parent_name|parent_url|quote|depth|reply_count`.
-- Flags: 25 thread (`pg_comments_widget_thread_flags()`; `is_email` [[comments-widget-email]], `is_item|review_thread` [[comments-widget-item-threads]]), 14 row (`pg_comments_widget_row_flags()`); the loop gets both. Watch box, watcher list, staff form: [[comments-widget-watch-staff]].
+- Flags: 25 thread (`pg_comments_widget_thread_flags()`; `is_email` [[comments-widget-email]], `is_item|review_thread` [[comments-widget-item-threads]]), 15 row (`pg_comments_widget_row_flags()`; `comment_has_image`: `commerce/product-review-photos.md`); the loop gets both. Watch box, watcher list, staff form: [[comments-widget-watch-staff]].
 
 ## How is it escaped?
 - Once: `pg_comments_widget_escape()` = `pg_sw_escape_token_values()` (raw: `__comment_message_html|seller_reply_html`, defused) then every `^` as `&#94;`; filled in one `strtr()` pass. `__comment_datetime` is formatted before visitor text goes in (`pg_sw_apply_tokens()`; e-mail: `pg_comments_email_fill_datetime()`).

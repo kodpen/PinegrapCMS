@@ -1086,6 +1086,8 @@ JS;
 
 	$rated = $res['flat']['rated'];
 	pg_assert_true($rated['flags']['comment_has_file'], 'a file');
+	pg_assert_true($rated['flags']['comment_has_image'], 'a photo');
+	pg_assert_false($pending['flags']['comment_has_image'], 'no photo without a file');
 	pg_assert_true($rated['flags']['comment_has_rating'], 'stars while the page has them');
 	pg_assert_false($res['no_stars']['rated']['flags']['comment_has_rating'], 'no stars while the page has none');
 	pg_assert_same('photo.jpg', $rated['values']['__comment_file_name'], 'the file name');
