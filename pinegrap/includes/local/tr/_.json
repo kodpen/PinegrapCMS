@@ -238,6 +238,7 @@
     "<strong>Title</strong> is the submission's name, address and RSS title; <strong>Description</strong> is the meta description; <strong>Media</strong> is the image (og:image). Each role belongs to one field in the form.": "<strong>Başlık</strong> gönderimin adı, adresi ve RSS başlığı; <strong>Açıklama</strong> meta açıklama; <strong>Medya</strong> görsel (og:image). Her rol formda bir alanda olur.",
     "<strong>{var:1}</strong> is used in these places too: {var:2}.": "<strong>{var:1}</strong> şu yerlerde de kullanılıyor: {var:2}.",
     "<strong>{var}</strong> was opened as a tab. When you save, it moves into this design and starts using this design's styles, scripts and fonts.": "<strong>{var}</strong> sekmeye alındı. Kaydettiğinizde bu tasarıma taşınır ve bu tasarımın stil / betik / yazı tiplerini kullanır.",
+    "==words== becomes a highlight; \"- \", \"1. \" or \"> \" at the start of a line becomes a list or a quote. Ctrl+Z gives back what you typed.": "==sözcükler== vurgulanır; satır başındaki \"- \", \"1. \" ya da \"> \" liste ya da alıntı olur. Ctrl+Z yazdığınızı geri getirir.",
     "@ someone · # a record · / a command · Shift+Enter for a new line": "@ kişi · # kayıt · / komut · yeni satır için Shift+Enter",
     "@people": "@kişiler",
     "@person": "@kişi",
