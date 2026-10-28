@@ -30,9 +30,8 @@
  * Beside them, templates a scheduled action has no form for: tasks that
  * wait for each other, a wait between boxes, approvals and their outcomes.
  *
- * Templates whose counts the person may not read, or whose texts a flow
- * cannot fill yet (a newcomer, an event's record, a count "since the last
- * run"), are not offered.
+ * Templates whose counts or events the person may not read, or whose texts
+ * a flow cannot fill yet (a count "since the last run"), are not offered.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -77,7 +76,9 @@ function ws_flow_template_setting_types()
  *                    none), site (the site's address), email (the person's),
  *                    today (YYYY-MM-DD), metrics (keys of the counts the
  *                    person may read), recap_ai (Pinegrap AI may sum up what
- *                    was missed)
+ *                    was missed), join (a flow may start when somebody
+ *                    joins a channel), events (keys of the events the
+ *                    person may wait for)
  * @return array[] see the file's docblock
  */
 function ws_flow_templates($fill)
@@ -258,6 +259,77 @@ function ws_flow_templates($fill)
                 'channel_id' => $channel, 'due_in' => 5, 'priority' => 'high'), 'setting' => array('person', 'assignees')),
         ),
         'edges' => array(array('start', 'task', 'next')));
+
+    // A channel greets the people who join it and asks who they are: any
+    // public channel, the greeting posted in the one joined.
+    if (!empty($fill['join'])) {
+        $out[] = array('key' => 'welcome', 'category' => 'team', 'icon' => 'bi-person-plus',
+            'title' => lang('Welcome message'),
+            'help' => lang('Greets the people who join a channel and asks them to say a few words about themselves.'),
+            'boxes' => array(
+                'start' => array('kind' => 'join', 'config' => array('channel_id' => 0)),
+                'greet' => array('kind' => 'post', 'config' => array('channel_id' => -1,
+                    'body' => lang('Welcome to {{channel}}, {{newcomer}}! 👋 Could you tell us a little about yourself: who you are and what you work on?'))),
+            ),
+            'edges' => array(array('start', 'greet', 'next')));
+    }
+
+    // Started by something happening on the site: only the events the
+    // person may wait for (ws_events_js_config()).
+    $events = (array) ($fill['events'] ?? array());
+    $on = function ($event, $filter = array()) {
+        return array('kind' => 'event', 'config' => $filter + array('event' => $event, 'page_id' => 0, 'status' => '', 'channel_id' => 0));
+    };
+    $task = function ($title, $priority) use ($channel, $me) {
+        return array('kind' => 'task_open', 'config' => array('title' => $title, 'description' => '{{record}}' . "\n" . '{{record_link}}',
+            'assignees' => array($me), 'channel_id' => $channel, 'due_in' => 2, 'priority' => $priority), 'setting' => array('person', 'assignees'));
+    };
+
+    // The tag alone: each reader sees of the order what their rights show.
+    if (in_array('order.created', $events, true)) {
+        $out[] = array('key' => 'order_event', 'category' => 'sales', 'icon' => 'bi-bag-plus',
+            'title' => lang('New order to the channel'),
+            'help' => lang('Every new order is written in the channel as it comes in.'),
+            'boxes' => array('start' => $on('order.created'), 'tell' => $tell(lang('New order {{record}}'))),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    // The fields are drawn by the form's card for the readers who may open
+    // the submission; the text only tags it.
+    if (in_array('form.submitted', $events, true)) {
+        $out[] = array('key' => 'form_event', 'category' => 'site', 'icon' => 'bi-ui-checks',
+            'title' => lang('Web form to the channel'),
+            'help' => lang('Every submitted form is written in the channel with its fields; “Make a task of it” on the message makes it a task.'),
+            'boxes' => array('start' => $on('form.submitted'), 'tell' => $tell('{{record}}')),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    if (in_array('stock.low', $events, true)) {
+        $out[] = array('key' => 'stock_event', 'category' => 'sales', 'icon' => 'bi-box-seam',
+            'title' => lang('Task when stock runs low'),
+            'help' => lang('A product that falls to the site\'s low-stock threshold becomes a task to restock it.'),
+            'boxes' => array('start' => $on('stock.low'), 'task' => $task(lang('Restock {{record_title}}'), 'high')),
+            'edges' => array(array('start', 'task', 'next')));
+    }
+
+    // A line for each task that goes past its due date.
+    if (in_array('workspace.task.overdue', $events, true)) {
+        $out[] = array('key' => 'overdue_event', 'category' => 'team', 'icon' => 'bi-alarm',
+            'title' => lang('Overdue tasks to the channel'),
+            'help' => lang('A line in the channel for each of its tasks that goes past its due date.'),
+            'boxes' => array('start' => $on('workspace.task.overdue', array('channel_id' => $channel)), 'tell' => $tell(lang('Overdue: {{record}}'))),
+            'edges' => array(array('start', 'tell', 'next')));
+    }
+
+    // An approval request approved: the next step as a task.
+    if (in_array('workspace.approval.decided', $events, true)) {
+        $out[] = array('key' => 'approval_event', 'category' => 'team', 'icon' => 'bi-patch-check',
+            'title' => lang('Next task when approved'),
+            'help' => lang('When an approval request of the channel is approved, a task for the next step is opened for you.'),
+            'boxes' => array('start' => $on('workspace.approval.decided', array('status' => 'approved', 'channel_id' => $channel)),
+                'task' => $task(lang('Next step: {{record_title}}'), 'normal')),
+            'edges' => array(array('start', 'task', 'next')));
+    }
 
     // The templates a scheduled action has no form for: tasks that wait for
     // each other, a wait between them, approvals and their outcomes.
@@ -611,6 +683,8 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         'today'    => date('Y-m-d'),
         'metrics'  => array_keys((array) $scheduled['metrics']),
         'recap_ai' => !empty($scheduled['recap_ai']),
+        'join'     => !empty($scheduled['join']),
+        'events'   => array_keys((array) ($scheduled['events']['list'] ?? array())),
     ));
 }
 

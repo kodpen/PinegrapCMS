@@ -1,11 +1,11 @@
 ---
 name: workspace-flows-template-format
-description: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format, the scheduled templates that came over or wait, the flow-only ones, the gallery
+description: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 ---
 
 ## Where is it?
 - `includes/workspace/flow_templates.php`: `ws_flow_templates($fill)` (pure), `ws_flow_template_build()`, `ws_flow_template_categories()` (team, site, sales), `ws_flow_template_setting_types()`. Tests `tests/workspace_flow_templates_test.php`.
-- Served in `ws_flow_js_config()` (mode flows, builders only) as `templates` and `template_categories`, filled for the viewer: me, channel 0, site and e-mail of `ws_scheduled_js_config()`, the counts they may read, recap_ai. No API route (open question 1 of the plan).
+- Served in `ws_flow_js_config()` (mode flows, builders only) as `templates` and `template_categories`, filled for the viewer: me, channel 0, site and e-mail of `ws_scheduled_js_config()`, the counts they may read, recap_ai, join, events (`ws_flow_templates_for()`); the API lists them too (`workspace-flows-api-templates.md`).
 
 ## What is a template?
 - key (the scheduled template's, or its own), category, title, help (one line), icon, start (kind of the first box), graph (`ws_flow_graph_normalize()` shape, boxes in columns of 256, follow-ups stacked 112 apart), boxes, threads (count of `{{node.ID.FIELD}}` in its configs), settings `[{type, targets: [[node, key], …]}]` (a box spec gives `setting` [type, key] or `settings`, a list, as the approval box: channel and people).
@@ -16,19 +16,16 @@ description: Flow templates (G1 #2161, G3 flow-only, flow_templates.php): format
 - "when" → a schedule box, each condition → a condition box (yes arrow), the step → its step box (task → `task_open`), a follow-up → a box on the failed arrow. Text sent to the channel open, else a notify to the person (the gallery has no channel: notify).
 - A follow-up's `{{result}}` becomes `{{node.check.text}}`: a flow fills no `{{result}}`, the box's sentence is the same text.
 - A template needing a count the person cannot read is left out (digest needs one of its counts, overdue, stock, invoices theirs).
+- welcome and the event ones of workspace_events.js (merge plan R1): a `join` start (0: any public channel) posting in the channel joined (-1), only with `join`; order_event, form_event, stock_event, overdue_event, approval_event an `event` start, each only when its event is in `events` (`ws_events_js_config()` list); titles as `ws_events_js_strings()`.
 
 ## Which day does a start box get?
 - A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #2230); tested in five zones.
 
-## Which are a flow's own? (G3)
-- Started by hand, offered to everyone: `new_customer` (sales: welcome task → done → 3-day delay → follow-up task with a 48 h timeout → notify on timeout), `quote_approval` (sales: approval, 48 h, arrows on approved/rejected/expired/withdrawn to two task_open, a notify and an end box), `text_review` (team: writing task → done → approval reading `{{node.write.task_id}}` → task_open on approved, notify on rejected).
-- One person setting fills every assignee, approver and person told; the approval asks for a channel (0 in the gallery, so the setup panel requires one).
-- Manual subject is '' (`ws_flow_problems()` needs the database for record types; the tests use `ws_flow_graph_check()`). Tested in `test_workspace_flow_templates_flow_only_*`.
+## Which are a flow's own?
+- new_customer, quote_approval, text_review (G3): `workspace-flows-template-flow-only.md`.
 
 ## Which wait, and why?
-- welcome and the event ones: no longer wait (tokens filled since #2205); merge plan step R1.
-- forms, orders: their counts are "since the last run", which a flow's condition and text read as the last day.
-- chain: started by another action; a flow has no such start. These three: #2753.
+- forms, orders (counts "since the last run", a flow reads the last day) and chain (started by another action): #2753, merge plan R1b.
 
 ## How does the canvas use it?
 - "New flow" with templates opens `showGallery(null)` in place of the canvas: Empty canvas, then the cards by category; Use creates a flow named after the template with its graph.
