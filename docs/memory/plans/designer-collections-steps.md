@@ -13,7 +13,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 ## Which steps?
 - **C1 — reference resolution in record widgets (no schema). Done, #1981:** the `__ref` binding in `form_list_view`/`form_item_view` (`designer/collection-references.md`).
 
-- **C2 — collection flag and field kinds (Q1, Q2).** Migration step, `pg_collections_ready()`; form settings switch "Use as a collection"; Form Field panel "Kind" (number, image, reference + target, slug); `_pg_cf_controls()` / `pg_cf_sync_page_form()` write the columns; `list_form_fields` returns them.
+- **C2 — collection flag and field kinds (Q1, Q2). Done, #1997:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
 
 - **C3 — typed inputs.** Number (`type=number`, server numeric check), image (`accept`, preview, `pg_img_responsive_html()` on output), reference picker (select filled at render from the target's records; server accepts only a live code of the target), product/page pickers; `edit_submitted_form.php` shows the same.
 
@@ -28,7 +28,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns unless the owner wants them (Q4).
 
 ## Which schema changes are approved?
-- Approved 2026-10-26 by the merging session, to which the owner left schema additions after evaluation: Q1 `custom_form_pages.collection` TINYINT UNSIGNED DEFAULT 0 (pickers and lists find collections without loading every design tree); Q2 `form_fields.collection_kind` VARCHAR(32) DEFAULT '' and `form_fields.reference_page_id` INT UNSIGNED DEFAULT 0 (list, feed, filter and API read the kind and target without the tree; VARCHAR, not ENUM, so a new kind needs no migration); Q3 table `record_revisions` at C7.
+- Approved in #2393 (step 11.0.43): Q1 `custom_form_pages.collection` TINYINT UNSIGNED DEFAULT 0 (pickers and lists find collections without loading every design tree); Q2 `form_fields.collection_kind` VARCHAR(32) DEFAULT '' and `form_fields.reference_page_id` INT UNSIGNED DEFAULT 0 (list, feed, filter and API read the kind and target without the tree; VARCHAR, not ENUM, so a new kind needs no migration); Q3 table `record_revisions` at C7 is asked when that step comes.
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?

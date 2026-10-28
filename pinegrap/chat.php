@@ -1794,6 +1794,7 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-dot-online { background: #10b981; }
             #pg-chat-root .pg-chat-dot-away { background: #f59e0b; }
             #pg-chat-root .pg-chat-dot-offline { background: #a1a1a1; }
+            #pg-chat-root .pg-chat-dot { border-color: var(--pg-bg-body); }
             #pg-chat-root .pg-chat-bubble { max-width: 80%; white-space: pre-wrap; overflow-wrap: break-word; border-radius: 16px; padding: 7px 11px; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
             #pg-chat-root .pg-chat-bubble-me { background: linear-gradient(135deg, var(--pg-primary), #6f42c1); color: #fff; border-bottom-right-radius: 5px; }
             #pg-chat-root .pg-chat-tick { display: inline-block; margin-left: 7px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.65); letter-spacing: -2px; white-space: nowrap; vertical-align: baseline; }

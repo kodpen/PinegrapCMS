@@ -133,6 +133,41 @@ input.btn-check {
   clip: rect(0, 0, 0, 0);
   pointer-events: none;
 }
+/* v6 styles only a label.btn-check that wraps its input; the v5 sibling
+   label takes the checked, focus and disabled looks from its input, and the
+   first label of a group keeps its start corners. */
+input.btn-check:checked + .btn {
+  color: var(--bs-btn-active-color);
+  background-color: var(--bs-btn-active-bg, var(--bs-bg-3));
+  background-image: none;
+  border-color: var(--bs-btn-active-border-color);
+  box-shadow: var(--bs-btn-active-shadow);
+}
+input.btn-check:focus-visible + .btn {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+input.btn-check:disabled + .btn {
+  color: var(--bs-btn-disabled-color);
+  pointer-events: none;
+  background-color: var(--bs-btn-disabled-bg, var(--bs-bg-1));
+  background-image: none;
+  border-color: var(--bs-btn-disabled-border-color);
+  opacity: var(--bs-btn-disabled-opacity, 0.65);
+  box-shadow: none;
+}
+.btn-group > input.btn-check:checked + .btn {
+  z-index: 2;
+}
+.btn-group > input.btn-check:focus-visible + .btn {
+  z-index: 3;
+}
+.btn-group > input.btn-check:first-child + .btn {
+  margin-inline-start: 0;
+  border-start-start-radius: var(--bs-btn-border-radius);
+  border-end-start-radius: var(--bs-btn-border-radius);
+}
 /* v5's headings: its sizes (min() is v5's responsive size, fixed from
    1200 px), weight and line height. */
 :where(h1, h2, h3, h4, h5, h6, .h1, .h2, .h3, .h4, .h5, .h6) {
@@ -422,6 +457,39 @@ input.btn-check {
 .dialog.dialog-fullscreen {
   margin-top: auto;
 }
+/* A full-screen dialog has no corners or border: the radius rules below
+   sit above Bootstrap's components layer and would keep them. */
+.dialog.dialog-fullscreen,
+.dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+  border-radius: 0;
+}
+@media (max-width: 575.98px) {
+  .dialog.sm-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .sm-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
+}
+@media (max-width: 767.98px) {
+  .dialog.md-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .md-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
+}
+@media (max-width: 1023.98px) {
+  .dialog.lg-down\:dialog-fullscreen {
+    border-width: 0;
+    border-radius: 0;
+  }
+  .lg-down\:dialog-fullscreen :is(.dialog-header, .dialog-footer) {
+    border-radius: 0;
+  }
+}
 /* A closed .dialog keeps display: flex (Bootstrap 6 hides it with visibility),
    so the UA's absolute position would let a tall one stretch the page. */
 .dialog:not(:modal) {
@@ -452,12 +520,15 @@ input.btn-check {
 .pg-fg-emphasis {
   color: var(--pg-fg-emphasis) !important;
 }
+/* The light theme keeps v5's .table-light (#f8f9fa, black text, #c6c7c8
+   lines); the dark theme takes the raised surface, text and line of the
+   panel instead of a light band. */
 .pg-table-light {
-  --bs-table-color: #000;
-  --bs-table-bg: #f8f9fa;
-  --bs-table-border-color: #c6c7c8;
-  color: #000;
-  border-color: #c6c7c8;
+  --bs-table-color: var(--pg-fg-emphasis);
+  --bs-table-bg: var(--pg-bg-1);
+  --bs-table-border-color: light-dark(#c6c7c8, var(--pg-border-color));
+  color: var(--pg-fg-emphasis);
+  border-color: light-dark(#c6c7c8, var(--pg-border-color));
 }
 .pg-lead {
   font-size: 1.25rem;
@@ -728,18 +799,11 @@ input.btn-check {
   --bs-info-bg-subtle: var(--pg-info-subtle);
   --bs-info-border-subtle: var(--pg-info-line);
 
-  /* Links and validation take the readable ink, never the pastel fill. */
+  /* Links take the readable ink, never the pastel fill. */
   --bs-link-color: var(--pg-primary-ink);
   --bs-link-color-rgb: var(--pg-primary-ink-rgb);
   --bs-link-hover-color: var(--pg-primary-ink-hover);
   --bs-link-hover-color-rgb: var(--pg-primary-ink-hover-rgb);
-  --bs-form-valid-color: var(--pg-success-ink);
-  --bs-form-valid-border-color: var(--pg-success);
-  --bs-form-invalid-color: var(--pg-danger-ink);
-  --bs-form-invalid-border-color: var(--pg-danger);
-  /* A pastel ring at Bootstrap's 0.25 alpha is close to invisible on white. */
-  --bs-focus-ring-color: rgba(var(--pg-primary-rgb), 0.35);
-  
 }
 
 :root,
@@ -956,11 +1020,16 @@ input.btn-check {
    so a nested light or dark subtree must resolve the aliases again or it
    would carry the outer theme's colours. A rule that changes a Bootstrap
    variable on a subtree (the navbar's border colour below) does not reach
-   these tokens; set the --pg-* token there. The focus ring colour is left
-   out on purpose: Bootstrap's .focus-ring-* classes set it per element. */
+   these tokens; set the --pg-* token there. The focus ring colour is the
+   panel's own value, which the bridge hands to Bootstrap, never an alias of
+   --bs-focus-ring-color: an alias resolves on :root and would miss a value
+   set on one element. */
 :root,
 [data-bs-theme] {
   --pg-bg-body: var(--bs-bg-body);
+  /* A pastel ring at Bootstrap's 0.25 alpha is close to invisible on white. */
+  --pg-focus-ring-color: color-mix(in srgb, var(--pg-primary) 35%, transparent);
+  --pg-focus-ring-width: var(--bs-focus-ring-width);
   --pg-bg-1: var(--bs-bg-1);
   --pg-bg-2: var(--bs-bg-2);
   --pg-fg-body: var(--bs-fg-body);
@@ -1416,6 +1485,15 @@ input.btn-check {
   --bs-table-hover-color: var(--pg-info-ink);
   --bs-table-hover-bg: rgba(var(--pg-info-rgb), 0.18);
 }
+/* The card fill on every cell (.table > :not(caption) > * > * above) beats
+   Bootstrap's cell rule, which paints --bs-table-bg, so a tone row or cell
+   showed only its text colour on card grey; it paints its own band here. */
+.table > :not(caption) > :is(.table-primary, .table-secondary, .table-success,
+    .table-danger, .table-warning, .table-info) > *,
+.table > :not(caption) > * > :is(.table-primary, .table-secondary,
+    .table-success, .table-danger, .table-warning, .table-info) {
+  background-color: var(--bs-table-bg);
+}
 
 /* Navigation and progress. All four of these keep literal hex in Bootstrap. */
 .nav-pills {
@@ -1426,8 +1504,8 @@ input.btn-check {
   --bs-pagination-active-color: var(--pg-on-accent);
   --bs-pagination-active-bg: var(--pg-primary);
   --bs-pagination-active-border-color: var(--pg-primary);
-  --bs-pagination-focus-box-shadow: 0 0 0 var(--bs-focus-ring-width)
-    var(--bs-focus-ring-color);
+  --bs-pagination-focus-box-shadow: 0 0 0 var(--pg-focus-ring-width)
+    var(--pg-focus-ring-color);
 }
 .menu {
   --bs-menu-item-active-color: var(--pg-on-accent);
@@ -1444,8 +1522,8 @@ input.btn-check {
   --bs-progress-bar-bg: var(--pg-primary);
 }
 .btn-close {
-  --bs-btn-close-focus-shadow: 0 0 0 var(--bs-focus-ring-width)
-    var(--bs-focus-ring-color);
+  --bs-btn-close-focus-shadow: 0 0 0 var(--pg-focus-ring-width)
+    var(--pg-focus-ring-color);
 }
 /* The chevron is a stroked SVG, so the colour has to be inlined; it is the
    only place in this section where an accent value is written literally. */
@@ -1466,7 +1544,51 @@ html[data-bs-theme="dark"] .accordion {
 :is(.check, .radio):focus,
 .pg-chips:focus-within {
   border-color: var(--pg-primary);
-  box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+}
+/* Invalid and valid fields. Bootstrap 6 marks them only through
+   --bs-danger-border / --bs-success-border, which the bridge fills with the
+   pale -line tones (alerts and badges read them), so a marked field looked
+   unmarked and turned blue on focus. The panel draws the state with the
+   accent and keeps it, with a ring in the same tone, while the field has
+   focus; the outline colour covers the global :focus-visible rule. */
+.form-control.is-invalid,
+.form-adorn:has(.form-ghost.is-invalid),
+.chip-input:has(.form-ghost.is-invalid),
+:is(.check, .radio).is-invalid,
+.switch:has(input.is-invalid) {
+  border-color: var(--pg-danger);
+}
+.form-control.is-invalid:focus,
+.form-control.is-invalid:focus-visible,
+.form-adorn:has(.form-ghost.is-invalid):focus-within,
+.chip-input:has(.form-ghost.is-invalid):focus-within,
+:is(.check, .radio).is-invalid:focus,
+:is(.check, .radio).is-invalid:focus-visible,
+.switch:has(input.is-invalid):focus-within {
+  border-color: var(--pg-danger);
+  outline-color: var(--pg-danger);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width)
+    color-mix(in srgb, var(--pg-danger) 35%, transparent);
+}
+.form-control.is-valid,
+.form-adorn:has(.form-ghost.is-valid),
+.chip-input:has(.form-ghost.is-valid),
+:is(.check, .radio).is-valid,
+.switch:has(input.is-valid) {
+  border-color: var(--pg-success);
+}
+.form-control.is-valid:focus,
+.form-control.is-valid:focus-visible,
+.form-adorn:has(.form-ghost.is-valid):focus-within,
+.chip-input:has(.form-ghost.is-valid):focus-within,
+:is(.check, .radio).is-valid:focus,
+:is(.check, .radio).is-valid:focus-visible,
+.switch:has(input.is-valid):focus-within {
+  border-color: var(--pg-success);
+  outline-color: var(--pg-success);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width)
+    color-mix(in srgb, var(--pg-success) 35%, transparent);
 }
 :is(.check, .radio):checked,
 :is(.check, .radio)[type="checkbox"]:indeterminate {
@@ -7968,7 +8090,7 @@ textarea:focus-visible,
 .form-adorn:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
-  box-shadow: 0 0 0 0.2rem rgba(var(--pg-primary-rgb), 0.35);
+  box-shadow: 0 0 0 0.2rem var(--pg-focus-ring-color);
 }
 /* A form-adorn field wears the ring on its wrapper, the label drawn as the
    input; the borderless input inside it shows none of its own. */
@@ -8086,8 +8208,8 @@ button.no-popover:focus-visible {
 }
 
 /* Bootstrap 6's text button in the secondary theme is the same object, and
-   the classic screens carry it instead of .btn-ghost (Workspace and the
-   editor still use the class above). Its tokens are set to what the ghost
+   the panel carries it instead of .btn-ghost (only the Workspace flows
+   still use the class above). Its tokens are set to what the ghost
    resolves to, so the two look alike in every state:
    - colours: the ghost's ink and hover surface, not the secondary theme's;
    - focus: the panel-wide focus ring above still wins over the theme's;
@@ -9003,7 +9125,7 @@ button.no-popover:focus-visible {
 }
 .btn-check:focus-visible + .pg-role-card {
   outline: 0;
-  box-shadow: 0 0 0 0.25rem var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 0.25rem var(--pg-focus-ring-color);
 }
 .btn-check:disabled + .pg-role-card {
   opacity: 0.6;
@@ -10238,7 +10360,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 }
 .pg-sale-ig:focus-within {
   border-color: var(--pg-primary);
-  box-shadow: 0 0 0 var(--bs-focus-ring-width) var(--bs-focus-ring-color);
+  box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
 }
 .pg-sale-ig input {
   flex: 1 1 auto;
@@ -13799,13 +13921,14 @@ a.ws-chip:hover {
 }
 /* A mark the caret or the selection has, on a button of a box's row of
    tools: the tint of the bar over a selection. Undo and redo with nothing to
-   take back draw no frame: .btn-ghost sets no disabled border colour, so the
-   border fell back to the text colour. */
-.ws-rich-tools .btn-ghost[aria-pressed="true"] {
+   take back draw no frame: .btn-text.theme-secondary leaves the disabled
+   border colour at initial, so the border would fall back to the text
+   colour. */
+.ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"] {
   background: rgba(var(--ws-accent-rgb), .15);
   color: rgba(var(--ws-accent-rgb), 1);
 }
-.ws-rich-tools .btn-ghost:disabled {
+.ws-rich-tools .btn-text.theme-secondary:disabled {
   border-color: transparent;
 }
 
@@ -15760,10 +15883,12 @@ a.ws-chip:hover {
   margin-top: .15rem;
 }
 
-/* Context menus: the panel's own look, placed at the pointer. */
+/* Context menus: the panel's own look, placed at the pointer. Built
+   without .show, which is what gives a Bootstrap 6 .popover its opacity. */
 .ws-ctx.contextmenu.popover {
   position: fixed;
   z-index: 1095;
+  opacity: 1;
   max-width: 19rem;
   min-width: 12rem;
   border-radius: var(--ws-radius-sm);
@@ -19195,6 +19320,20 @@ button.ws-ack-count:hover {
 html[data-bs-theme="dark"] .wsf-node-manual { --wsf-kind: #8fcf9b; }
 html[data-bs-theme="dark"] .wsf-node-task { --wsf-kind: #8fbde3; }
 html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
+/* A value box: no arrows, a dashed border in the value colour. */
+.wsf-node-constants { --wsf-kind: #a8468f; }
+html[data-bs-theme="dark"] .wsf-node-constants { --wsf-kind: #e58fd0; }
+.wsf-node.wsf-node-constants {
+  border-style: dashed;
+  border-left-style: solid;
+}
+.wsf-constant {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 6.5rem minmax(0, 1.4fr) auto;
+  gap: var(--ws-space-1);
+  align-items: center;
+  margin-bottom: var(--ws-space-1);
+}
 .wsf-node {
   position: absolute;
   width: 208px;
@@ -19424,11 +19563,144 @@ html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
 .wsf-edge-line.wsf-arrow-hold {
   marker-end: none;
 }
+/* Data threads (drawData()): 1 px from a value's dot under the box that
+   gives it to the chip of the field under the box that reads it, in its
+   type's colour, threads of one type a few tones apart. The tones are the
+   dark canvas's; the light one takes deeper ones. */
+.wsf-tone-number-0 { --wsf-tone: #2f6fcc; }
+.wsf-tone-number-1 { --wsf-tone: #5a8fdd; }
+.wsf-tone-number-2 { --wsf-tone: #1d56a8; }
+.wsf-tone-text-0 { --wsf-tone: #a8760f; }
+.wsf-tone-text-1 { --wsf-tone: #c08f2e; }
+.wsf-tone-text-2 { --wsf-tone: #8c6200; }
+html[data-bs-theme="dark"] .wsf-tone-number-0 { --wsf-tone: #6ea8ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-1 { --wsf-tone: #9cc4ff; }
+html[data-bs-theme="dark"] .wsf-tone-number-2 { --wsf-tone: #4d8fe8; }
+html[data-bs-theme="dark"] .wsf-tone-text-0 { --wsf-tone: #e9b44c; }
+html[data-bs-theme="dark"] .wsf-tone-text-1 { --wsf-tone: #f5cf7d; }
+html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-thread {
   fill: none;
-  stroke: #e9b44c;
+  stroke: var(--wsf-tone, #a8760f);
   stroke-width: 1;
   pointer-events: none;
+}
+.wsf-thread-skipped {
+  stroke-dasharray: 4 3;
+}
+/* Placed from the box's outer edges (drawData()), so the box's 1 px border
+   and 4 px kind edge are taken back. */
+.wsf-data {
+  position: absolute;
+  top: calc(100% - 8px);
+  margin-left: -4px;
+  display: flex;
+  align-items: center;
+  height: 18px;
+  font-size: 11px;
+  line-height: 16px;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.wsf-data-field {
+  width: 76px;
+  padding: 0 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  border: 1px solid var(--wsf-tone);
+  border-radius: 999px;
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-2);
+}
+.wsf-data-field.wsf-data-bad {
+  border-color: var(--pg-danger);
+  color: var(--pg-danger);
+}
+.wsf-data-out {
+  width: 84px;
+  gap: 3px;
+  color: var(--pg-fg-2);
+}
+.wsf-data-ring {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 1.5px solid var(--wsf-tone);
+  border-radius: 50%;
+  background: var(--pg-bg-body);
+  color: var(--wsf-tone);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+.wsf-data-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wsf-thread.wsf-dim,
+.wsf-data.wsf-dim {
+  opacity: .25;
+}
+/* Drawing a thread (T2): the dots of a draft take the pointer; while a
+   thread is on its way the fields it may go into are lit and the one
+   under the pointer is filled. */
+.wsf-data-live {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.wsf-data-unused .wsf-data-ring {
+  border-style: dashed;
+}
+.wsf-data-unused {
+  opacity: .75;
+}
+.wsf-data-live:hover .wsf-data-ring,
+.wsf-data-out.wsf-data-hot .wsf-data-ring {
+  background: var(--wsf-tone);
+  color: var(--pg-bg-body);
+}
+.wsf-data-target {
+  pointer-events: auto;
+  cursor: copy;
+  border-style: dashed;
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+  box-shadow: 0 0 0 2px rgba(var(--ws-accent-rgb), .25);
+}
+.wsf-data-target.wsf-data-hot {
+  border-style: solid;
+  background: var(--ws-soft);
+}
+.wsf-binding .wsf-data.wsf-dim.wsf-data-target {
+  opacity: 1;
+}
+.wsf-edge-temp.wsf-temp-thread {
+  stroke: var(--ws-accent);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
+.wsf-threads-off .wsf-thread,
+.wsf-threads-off .wsf-data {
+  display: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .wsf-thread,
+  .wsf-data {
+    transition: opacity 120ms ease-out;
+  }
+}
+.wsf-outline-reads {
+  margin: var(--ws-space-1) 0 var(--ws-space-2);
+  color: var(--pg-fg-2);
+}
+.wsf-outline-read-icon {
+  margin-right: var(--ws-space-1);
+  color: var(--wsf-tone);
+}
+.wsf-outline-reads .wsf-data-bad,
+.wsf-outline-reads .wsf-data-bad .wsf-outline-read-icon {
+  color: var(--pg-danger);
 }
 .wsf-setup {
   position: absolute;
@@ -19870,7 +20142,7 @@ html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
   --bs-border-color-translucent: light-dark(rgba(0, 0, 0, 0.175), rgba(255, 255, 255, 0.15));
   --bs-link-color: var(--pg-primary-ink);
   --bs-link-hover-color: var(--pg-primary-ink-hover);
-  --bs-focus-ring-color: color-mix(in srgb, var(--pg-primary) 35%, transparent);
+  --bs-focus-ring-color: var(--pg-focus-ring-color);
   --bs-btn-input-min-height: 0;
   --bs-btn-input-xs-min-height: 0;
   --bs-btn-input-sm-min-height: 0;

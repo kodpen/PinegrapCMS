@@ -4811,7 +4811,7 @@
             }
 
             var label = t(spec.label);
-            var node = button('btn btn-sm btn-ghost', '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
+            var node = button('btn btn-sm btn-text theme-secondary', '', spec.icon, MAC ? label.replace(/Ctrl\+/g, '⌘') : label);
 
             node.setAttribute('data-ws-tool', name);
 

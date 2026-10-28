@@ -19,13 +19,13 @@ description: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a 
 4. Screen and API: the discussion header says "@Claude follows this discussion" with Stop / Follow again for anybody in it, a system line records who changed it, the line under the channel message shows it; `follow` on the API's discussion object and an endpoint to change it (a person's own choice: `ws_api_person_only()`). Keys with `php tools/tr_add.php`, workspace.js and `php tools/build_js.php`.
 5. Memory topic file, tests (who is followed, what asks, the pile-up rule), plan finished.
 
-## Open questions (recommendation)
-1. Which messages ask the followed agent: (a) every person's message, (b) all but one that mentions only colleagues, (c) only questions → b.
-2. Claude's daily run allowance (Pro 5, Max 15, Team 25): (a) follow with step 3, (b) follow only Pinegrap AI and MCP agents, (c) a per-discussion switch → a, the settings card says a followed discussion costs runs.
-3. Several assistants in one discussion: (a) the last one asked by name is followed, (b) all asked follow, (c) only the first → a.
-4. Who stops following: (a) anybody in the discussion, (b) its starter only → a.
-5. A discussion started from the request message rather than the answer: follow too → yes.
-6. Answers addressed to the latest message (`parent_id`) or to the discussion as a whole → the latest message.
+## Which questions are answered? (#2419)
+1. Every person's message asks the followed agent, but one that mentions only colleagues (b).
+2. All three kinds follow, Claude with step 3; the settings card says a followed discussion costs runs (a).
+3. Several assistants in one discussion: the last one asked by name is followed (a).
+4. Anybody in the discussion may stop the following (a).
+5. A discussion started from the request message is followed too.
+6. Answers address the latest message (`parent_id`).
 
 ## Where to start?
 - Step 2: ask the owner for its schema step first (CLAUDE.md rule 5) and for open questions 1-4.

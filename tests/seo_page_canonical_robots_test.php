@@ -135,6 +135,40 @@ function test_page_robots_content_directives()
 	pg_assert_same('noarchive', pg_page_robots_content(0, 0, 1, '12345678'), 'a stored value out of range is left out');
 }
 
+// Large image previews (config.max_image_preview_large): last, on every
+// indexed page, never on a page out of the index.
+function test_seo_page_robots_large_image_preview()
+{
+	pg_assert_same('max-image-preview:large', pg_page_robots_content(0, 0, 0, null, true));
+	pg_assert_same('noarchive, max-snippet:160, max-image-preview:large', pg_page_robots_content(0, 0, 1, 160, true));
+	pg_assert_same('noindex, follow', pg_page_robots_content(1, 0, 0, null, true));
+	pg_assert_same('noindex, nofollow', pg_page_robots_content(1, 1, 1, '50', true));
+	pg_assert_same('', pg_page_robots_content(0, 0, 0, null, false));
+
+	// Without the argument the site setting decides; the test runner has none.
+	pg_assert_same(defined('MAX_IMAGE_PREVIEW_LARGE') && MAX_IMAGE_PREVIEW_LARGE ? 'max-image-preview:large' : '', pg_page_robots_content(0, 0, 0, null));
+}
+
+// The setting is read from config with a fallback, written by the SEO card
+// only once its column is there, and switched on for a new starter site.
+function test_seo_page_robots_large_image_preview_setting()
+{
+	$init = (string) file_get_contents(PG_FUNCTIONS_DIR . '/init.php');
+	pg_assert_contains("define('MAX_IMAGE_PREVIEW_LARGE', (int) (\$row['max_image_preview_large'] ?? 0) == 1);", $init);
+
+	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
+	pg_assert_contains("pg_schema_has('config', 'max_image_preview_large')", $save);
+	pg_assert_contains('$sql_max_image_preview_field', $save);
+
+	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+	pg_assert_contains("upgrade_2026_11_0_max_image_preview();", $migration);
+	pg_assert_contains("install_add_column('config', 'max_image_preview_large', \"TINYINT(1) UNSIGNED NOT NULL DEFAULT 0\");", $migration);
+
+	$install = (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php');
+	pg_assert_contains("if ((get_starter_site_language(\$install_directory_path) !== '') && (install_column_exists('config', 'max_image_preview_large'))) {", $install);
+	pg_assert_contains('db("UPDATE config SET max_image_preview_large = 1");', $install);
+}
+
 // The page's own address is kept until the next page drawn replaces it.
 function test_page_own_url_register()
 {

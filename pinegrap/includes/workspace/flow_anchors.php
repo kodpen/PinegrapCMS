@@ -13,6 +13,11 @@
  * the newcomers, takes its lock and runs it as the flow's owner; the anchor
  * is left out of every list of scheduled actions, its card, its history and
  * its report (ws_scheduled_action(), ws_scheduled_anchors_out()).
+ * A scheduled action converted into a flow is an anchor too, marked
+ * converted (ws_scheduled_actions.anchor): it stays the action it was, in
+ * the lists, on its card and in its history; by hand and by a chain it
+ * starts its flow as well, and the run's outcome is written back to the
+ * action's run with its news (ws_flow_anchor_run_ended()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -317,6 +322,17 @@ function ws_flow_anchor_sync($viewer, $flow, $graph)
     $trigger = ws_flow_trigger_node($graph);
     $anchor = ws_flow_anchor($flow['id']);
 
+    // A converted action started by hand waits, as before, for its card's
+    // Run now or another action's chain.
+    if ($anchor && ws_scheduled_anchor_converted($anchor) && $trigger && ((string) $trigger['kind'] === 'manual')) {
+        db("UPDATE ws_scheduled_actions SET name = '" . e(mb_substr((string) $flow['name'], 0, 160)) . "', created_by = '" . (int) $flow['owner_id'] . "',
+                rules = '" . e(json_encode(array(array('type' => 'trigger')))) . "', status = 'active', next_run_at = 0,
+                updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
+            WHERE id = '" . (int) $anchor['id'] . "'");
+
+        return array('ok' => true, 'error' => '');
+    }
+
     if (!$trigger || !isset(ws_flow_anchor_kinds()[$trigger['kind']])) {
         if ($anchor) {
             ws_flow_anchor_set_status($flow['id'], 'cancelled');
@@ -346,6 +362,10 @@ function ws_flow_anchor_sync($viewer, $flow, $graph)
     }
 
     $follow = ws_scheduled_chains_ready() ? array('follow' => "'[]'") : array('then_action' => "''");
+
+    if (ws_scheduled_anchor_ready()) {
+        $follow['anchor'] = "'hidden'";
+    }
 
     db("INSERT INTO ws_scheduled_actions (name, kind, flow_id, channel_id, note_id, created_by, rules, action, " . implode(', ', array_keys($follow)) . ",
             status, next_run_at, updated_by, created_at, updated_at)
@@ -394,6 +414,17 @@ function ws_flow_anchor_context($flow, $trigger, $fill)
         'sched_run'  => (int) ($fill['run_id'] ?? 0),
     );
 
+    // A converted action's run: its steps write as the action, and the end
+    // of the run is written back to the action's run.
+    if (ws_scheduled_anchor_converted((array) ($fill['row'] ?? array()))) {
+        $context['anchor_id'] = (int) $fill['row']['id'];
+    }
+
+    if ((string) ($fill['source'] ?? '') !== '') {
+        $context['source'] = (string) $fill['source'];
+        $context['source_result'] = (string) ($fill['source_result'] ?? '');
+    }
+
     if ((string) ($fill['event'] ?? '') !== '') {
         $context['event'] = (string) $fill['event'];
         $payload = json_encode((array) ($fill['event_payload'] ?? array()), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
@@ -416,17 +447,18 @@ function ws_flow_anchor_context($flow, $trigger, $fill)
  * live, started by the box its anchor was written from, the owner on the
  * staff, the open runs and the starts of the hour within their limits. The
  * anchor's run is the start key (sched:<run id>), so a step carried out
- * twice starts one run.
+ * twice starts one run. A converted action also starts a flow whose start
+ * box is by hand: its card's Run now, or another action's chain.
  *
  * @param array $viewer the anchor's creator, the flow's owner
  * @param array $row    the anchor, decoded
- * @param array $fill   what ws_scheduled_execute() hands its step
- * @return array ok, text, message_id
+ * @param array $fill   what ws_scheduled_execute() hands its step, and by_hand
+ * @return array ok, text, message_id, run_id (the run started now, 0 for none)
  */
 function ws_flow_anchor_start($viewer, $row, $fill)
 {
     $fail = function ($text) {
-        return array('ok' => false, 'text' => $text, 'message_id' => 0);
+        return array('ok' => false, 'text' => $text, 'message_id' => 0, 'run_id' => 0);
     };
 
     $flow = ws_flow((int) ($row['flow_id'] ?? 0));
@@ -439,7 +471,9 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     $graph = is_array($version) ? ws_flow_graph_of($version) : null;
     $trigger = $graph ? ws_flow_trigger_node($graph) : null;
 
-    if (!$trigger || !isset(ws_flow_anchor_kinds()[$trigger['kind']])) {
+    $converted = ws_scheduled_anchor_converted($row);
+
+    if (!$trigger || !(isset(ws_flow_anchor_kinds()[$trigger['kind']]) || ($converted && ((string) $trigger['kind'] === 'manual')))) {
         return $fail(lang('This flow is not started on its own.'));
     }
 
@@ -447,7 +481,7 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     $start_key = 'sched:' . (int) ($fill['run_id'] ?? 0);
 
     if ((int) db_value("SELECT id FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND start_key = '" . e($start_key) . "'") > 0) {
-        return array('ok' => true, 'text' => lang('the flow was started already'), 'message_id' => 0);
+        return array('ok' => true, 'text' => lang('the flow was started already'), 'message_id' => 0, 'run_id' => 0);
     }
 
     $open = (int) db_value("SELECT COUNT(*) FROM ws_flow_runs WHERE flow_id = '" . $flow_id . "' AND status IN ('running', 'waiting')");
@@ -474,7 +508,7 @@ function ws_flow_anchor_start($viewer, $row, $fill)
 
     if (!$written) {
         return ((int) mysqli_errno(db::$con) === 1062)
-            ? array('ok' => true, 'text' => lang('the flow was started already'), 'message_id' => 0)
+            ? array('ok' => true, 'text' => lang('the flow was started already'), 'message_id' => 0, 'run_id' => 0)
             : $fail(lang('The run could not be started.'));
     }
 
@@ -483,13 +517,98 @@ function ws_flow_anchor_start($viewer, $row, $fill)
     }
 
     $run_id = (int) mysqli_insert_id(db::$con);
-    $said = ws_flow_anchor_kinds()[$trigger['kind']]['label'];
 
     db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, outcome, attempt, ready_at, claimed_at, finished_at, result)
         VALUES ('" . $run_id . "', '" . e((string) $trigger['id']) . "', 0, 'done', 'next', 1, '" . $now . "', '" . $now . "', '" . $now . "',
-            '" . e(ws_flow_result_pack(lang(array('string' => 'Started on its own: {var:1}.', 'vars' => $said)))) . "')");
+            '" . e(ws_flow_result_pack(ws_flow_anchor_start_said($trigger['kind'], $fill))) . "')");
 
     ws_flow_run_refresh($run_id);
 
-    return array('ok' => true, 'text' => lang(array('string' => 'flow “{var:1}” started, run {var:2}', 'vars' => array($flow['name'], $run_id))), 'message_id' => 0);
+    return array('ok' => true, 'text' => lang(array('string' => 'flow “{var:1}” started, run {var:2}', 'vars' => array($flow['name'], $run_id))), 'message_id' => 0, 'run_id' => $run_id);
+}
+
+/**
+ * What the start box of a run its anchor started says: another action's
+ * chain names that action, a run by hand says so, the rest the kind of box.
+ * Pure.
+ *
+ * @param string $kind the start box's kind
+ * @param array  $fill what ws_scheduled_execute() hands its step, and by_hand
+ * @return string
+ */
+function ws_flow_anchor_start_said($kind, $fill)
+{
+    if ((string) ($fill['source'] ?? '') !== '') {
+        return lang(array('string' => 'Started by {var:1}.', 'vars' => '“' . $fill['source'] . '”'));
+    }
+
+    if (!empty($fill['by_hand']) || !isset(ws_flow_anchor_kinds()[$kind])) {
+        return lang('Started by hand.');
+    }
+
+    return lang(array('string' => 'Started on its own: {var:1}.', 'vars' => ws_flow_anchor_kinds()[$kind]['label']));
+}
+
+/**
+ * How a run's end is written back to the converted action that started it.
+ * Pure.
+ *
+ * @param string $state done | failed | cancelled
+ * @return string done | failed | skipped, '' for a run still open
+ */
+function ws_flow_anchor_run_status($state)
+{
+    $map = array('done' => 'done', 'failed' => 'failed', 'cancelled' => 'skipped');
+
+    return $map[(string) $state] ?? '';
+}
+
+/**
+ * Writes the end of a run a converted action started back to that action's
+ * run (its context's anchor_id and sched_run): the outcome, a line naming
+ * the run, the moment; a single action whose run failed reads failed. Then
+ * the action's news, as a scheduled action's run gives it: the line under
+ * its card, its creator's inbox when it newly failed, the Site Log
+ * (ws_scheduled_report()). Called once, by the request whose UPDATE ended
+ * the run; a hidden anchor's run writes nothing back.
+ *
+ * @param array  $run   ws_flow_runs row
+ * @param string $state done | failed | cancelled
+ */
+function ws_flow_anchor_run_ended($run, $state)
+{
+    $context = ws_flow_run_context($run);
+    $anchor_id = (int) ($context['anchor_id'] ?? 0);
+    $sched_run = (int) ($context['sched_run'] ?? 0);
+    $status = ws_flow_anchor_run_status($state);
+
+    if (($anchor_id <= 0) || ($sched_run <= 0) || ($status === '') || !ws_scheduled_anchor_ready()) {
+        return;
+    }
+
+    $row = ws_scheduled($anchor_id);
+    $kept = db_item("SELECT id, detail, by_hand FROM ws_scheduled_runs WHERE id = '" . $sched_run . "' AND action_id = '" . $anchor_id . "'");
+
+    if (!$row || !ws_scheduled_anchor_converted($row) || !is_array($kept)) {
+        return;
+    }
+
+    $said = array(
+        'done'      => 'flow run {var:1} finished',
+        'failed'    => 'flow run {var:1} failed',
+        'cancelled' => 'flow run {var:1} was cancelled',
+    );
+    $steps = json_decode((string) $kept['detail'], true);
+    $steps = is_array($steps) ? $steps : array();
+    $steps[] = array('step' => 'flow', 'ok' => $status === 'done', 'text' => lang(array('string' => $said[$state], 'vars' => (int) $run['id'])));
+
+    db("UPDATE ws_scheduled_runs SET status = '" . e($status) . "', finished_at = '" . time() . "',
+            detail = '" . e(json_encode($steps, JSON_UNESCAPED_UNICODE)) . "'
+        WHERE id = '" . $sched_run . "'");
+
+    if ($status === 'failed') {
+        db("UPDATE ws_scheduled_actions SET status = 'failed' WHERE id = '" . $anchor_id . "' AND status = 'done'");
+    }
+
+    ws_scheduled_report($row, $status, $steps, ws_scheduled_run_news($row, $sched_run, $status, !empty($kept['by_hand'])));
 }

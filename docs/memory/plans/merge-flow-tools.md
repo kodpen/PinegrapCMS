@@ -15,10 +15,10 @@ description: Plan (2026-10-25, steps 1 to 5 done): merge_train.php (lock, build,
 3. `install-check.yml` runs its six-database matrix only when `pinegrap/install/**`, the migration files or `tools/` change, and always on a `merge-train/*` head; Done in #1985 (`workflow/ci-workflows.md`).
 4. `docs/memory/core/fn-module-map-additions.md` is append-only like the old `tr.json` (8 commits in three days): generate it with `tools/memory_index.php` from a `module:` frontmatter field of the memory files, and drop the hand-written file. Done in #2029 (`core/fn-modules.md`, `workflow/memory-index-key-rules.md`): the module line does not count toward the 4 KB limit; `merge_train.php` regenerates the list with the indexes.
 5. A compiled language cache: `lang()` decodes about 2.8 MB of JSON on every request, from one file or from the shards alike (the shards about 20 ms, the old single file 16 ms: [[lang-files]]). Write `data/temp/lang_<code>.php` (an array, kept by opcache) from the language files, rebuilt when their mtime changes. Independent of the split. Done in #1933 (`core/lang-compiled-cache.md`).
-6. GitHub's merge queue, now that the Turkish wording is in sorted shards ([[lang-files]]): rulesets on `development`, a `merge_group:` trigger in `php-checks.yml`, auto-merge (`mcp__github__enable_pr_auto_merge`) as the way into the queue from a cloud session. It replaces the build and landing of step 1.
+6. GitHub's merge queue: later, not claimable (#2454). The trains stay: they settle the shared-file conflicts a queue would push back to every author. Once those are designed away and the owner sets rulesets on `development` (`merge_group:` trigger, auto-merge as the way in), it replaces step 1's build and landing.
 
 ## What is still open?
 - Whether the merging session is a fresh session per window (a routine that creates a session on each firing); the lock makes it safe either way.
 
 ## Where to start?
-- Step 6.
+- Step 6 waits (#2454).

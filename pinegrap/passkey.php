@@ -8,9 +8,11 @@
  *
  *   email_code        e-mails a code to the signed-in account's address,
  *                     for adding a passkey to an account without two-step
- *                     verification: {"ok": true, "message": ...}; refused as
- *                     mfa_on (403), email_none (409), email_limit (429) or
- *                     email_send (500)
+ *                     verification, or with purpose=recovery for new
+ *                     recovery codes of such an account that has passkeys
+ *                     (account_security.php): {"ok": true, "message": ...};
+ *                     refused as mfa_on (403), email_none (409), email_limit
+ *                     (429) or email_send (500)
  *   register_options  creation options for a new passkey of the signed-in
  *                     account: {"ok": true, "options": {...}}, only after the
  *                     person proves the account again: the current password
@@ -98,7 +100,7 @@ if (pg_post_body_discarded()) {
     passkey_answer(array('ok' => false, 'error' => 'request', 'message' => lang('The request was too large.')), 413);
 }
 
-pg_request_single_values(array('action', 'token', 'credential', 'name', 'current_password', 'code', 'email_code'));
+pg_request_single_values(array('action', 'token', 'credential', 'name', 'current_password', 'code', 'email_code', 'purpose'));
 
 $action = (string) ($_POST['action'] ?? '');
 
@@ -149,7 +151,8 @@ switch ($action) {
                 passkey_answer(array('ok' => false, 'error' => 'mfa_on', 'message' => lang('Enter a code from your authenticator app or a recovery code instead.')), 403);
             }
 
-            $refusal = pg_passkey_email_code_send($account);
+            $purpose = pg_passkey_email_code_purpose($_POST['purpose'] ?? '');
+            $refusal = pg_passkey_email_code_send($account, $purpose);
 
             if ($refusal === 'email_none') {
                 passkey_answer(array('ok' => false, 'error' => $refusal, 'message' => lang('This account has no e-mail address to send a code to.')), 409);
@@ -163,7 +166,9 @@ switch ($action) {
                 passkey_answer(array('ok' => false, 'error' => $refusal, 'message' => lang('The e-mail could not be sent. Please try again later.')), 500);
             }
 
-            log_activity(lang('user asked for an e-mailed code to add a passkey'), USER_USERNAME);
+            log_activity(($purpose === 'recovery')
+                ? lang('user asked for an e-mailed code for new recovery codes')
+                : lang('user asked for an e-mailed code to add a passkey'), USER_USERNAME);
 
             passkey_answer(array('ok' => true, 'message' => lang('We sent a code to your e-mail address. It works for 10 minutes.')));
         }

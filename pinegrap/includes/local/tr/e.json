@@ -149,6 +149,7 @@
     "Each copy opens on its start day and runs {var:1} days, like this one.": "Her kopya başlangıç gününde açılır ve bu görev gibi {var:1} gün sürer.",
     "Each day is added to the daily summary first.": "Her gün önce günlük özete eklenir.",
     "Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.": "Her gün önce kaynağa, giriş sayfasına, kampanyaya, konuma ve cihaza göre toplanır; böylece ziyaretçi raporu ve API o günleri saymaya devam eder. Kapalıysa o günler ziyaretçi raporundan çıkar; pano grafikleri her durumda onları korur.",
+    "Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form's submissions.": "Her alana Form Alanı → Tür bölümünden bir tür verilebilir (sayı, görsel, başka bir forma başvuru). Kayıtlar bu formun gönderimleri olarak kalır.",
     "Each gets a copy in their own notes and a line in their inbox. Your note stays as it is.": "Her biri kendi notlarına bir kopya alır ve gelen kutusuna bildirim düşer. Sizin notunuz olduğu gibi kalır.",
     "Each hash is the 40-character hash of a text.": "Her hash bir metnin 40 karakterlik hash'idir.",
     "Each id in {var:1} must be the id of one of the poll's options.": "{var:1} içindeki her id oylamanın seçeneklerinden birinin kimliği olmalı.",

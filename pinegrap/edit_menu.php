@@ -31,6 +31,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM menus WHERE id = '" . $id
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/menu_form.php');
 $liveform = new liveform('edit_menu', $_REQUEST['id']);
 
 // if the form has not been submitted
@@ -67,14 +68,6 @@ if (!$_POST) {
         $liveform->set('active_item_class', $row['active_item_class']);
     }
     
-    // Set options for First and Second Level Pop-up Positions
-    $popup_position_options = 
-        array(
-            lang('Top') => 'Top',
-            lang('Bottom') => 'Bottom',
-            lang('Left') => 'Left',
-            lang('Right') => 'Right');
-    
     echo
     pg_page_shell([
         'title'=> lang('Edit Menu Properties'),
@@ -109,94 +102,7 @@ if (!$_POST) {
                     <input type="hidden" name="from" value="' . h(($_GET['from'] ?? '')) . '" />
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Menu Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Menu Name') . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<menu>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                                <div class="input-group-text">' . h('</menu>') . '</div>
-                                            </div>
-                                           
-                                        </div>
-                                        <div class="col-12 mt-1">
-                                            <label class="form-label" for="">'. lang('Submenu Effect') . '</label>
-                                        </div>
-                                        <div class="col-12 mb-1">
-                                            <div class="form-field d-inline-grid me-5" title="">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
-                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="img" /></label>
-                                            </div>
-                                            <div class="form-field d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="71" height="75" alt="img" /></label>
-                                            </div>
-                                            <div class="form-field d-inline-grid me-5">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="71" height="75" alt="img" /></label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 md:col-6 my-1">
-                                                            <label for="first_level_popup_position" class="form-label">' . lang('First Expand Menu') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'first_level_popup_position', 'id'=>'first_level_popup_position', 'options'=>$popup_position_options)) . '
-                                                        </div>
-                                                        <div class="col-12 md:col-6 my-1">
-                                                            <label for="first_level_popup_position" class="form-label">' . lang('Then Expand Menu') . '</label>
-                                                            ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'second_level_popup_position', 'id'=>'second_level_popup_position', 'options'=>$popup_position_options)) . '
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 mt-5 mb-3">
-                                            <label for="class" class="form-label">' . lang('Classes') . '</label>
-                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
-                                                <div class="input-group-text bg-reset border-0">&lt;ul class="<span class="chip">software_menu</span></div>
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'text',
-                                                    'name' => 'class',
-                                                    'id' => 'class',
-                                                    'class' => 'form-control tagin border-0 min-width-tagin',
-                                                    'data-placeholder' => lang('Add classes'),
-                                                    'data-pg-chips' => '',
-                                                    'data-pg-separator' => ' ',
-                                                    'maxlength' => '255')) . pg_fields_script() . '
-                                                <div class="input-group-text bg-reset border-0">"&gt;</div>
-                                            </div>
-                                            <div class="form-text text-end">' . lang('One or More Custom Classes for the Menu. Separate classes with a space') . '</div>
-                                        </div>
-                                        <div class="col-12 mt-5 mb-3">
-                                            <label for="active_item_class" class="form-label">' . lang('Active Item Classes') . '</label>
-                                            <div class="input-group input-group-sm d-flex flex-wrap border rounded-4 border-2">
-                                                <div class="input-group-text bg-reset border-0">&lt;a class="current</div>
-                                                ' . $liveform->output_field(array(
-                                                    'type' => 'text',
-                                                    'name' => 'active_item_class',
-                                                    'id' => 'active_item_class',
-                                                    'class' => 'form-control tagin border-0 min-width-tagin',
-                                                    'data-placeholder' => lang('Add classes'),
-                                                    'data-pg-chips' => '',
-                                                    'data-pg-separator' => ' ',
-                                                    'maxlength' => '255')) . pg_fields_script() . '
-                                                <div class="input-group-text bg-reset border-0">"&gt;</div>
-                                            </div>
-                                            <div class="form-text text-end">' . lang('One or More Classes for the Active Menu Item. Separate classes with a space') . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_menu_form_card($liveform) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -258,53 +164,7 @@ if (!$_POST) {
     } else {
         $liveform->add_fields_to_session();
         
-        $liveform->validate_required_field('name', lang('Name is required.'));
-        
-        // if there is not already an error for the name field, then check that valid characters were entered for name field
-        if ($liveform->check_field_error('name') == false) {
-            // Get previous name in order to determine if we should allow underscores or not.
-            // We don't want to allow menus to be created or new menu names to be set with underscores,
-            // because the theme designer does not support underscores in names.  We are going to allow
-            // underscores as long as it was set in the past in order to prevent their styles or themes
-            // from being messed up.
-            $query = "SELECT name FROM menus WHERE id = ?";
-            $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            $row = mysqli_fetch_assoc($result);
-            $previous_name = $row['name'];
-
-            // If the previous name contains underscores, then set regex code and message to allow underscores.
-            if (mb_strpos($previous_name, '_') !== FALSE) {
-                $regex = '/[^A-Za-z0-9_-]/';
-                $message = lang('Please only enter letters, numbers, dashes, and underscores for the name.');
-
-            // Otherwise the previous name does not contain underscores, so set regex code and message so they do not allow underscores.
-            } else {
-                $regex = '/[^A-Za-z0-9-]/';
-                $message = lang('Please only enter letters, numbers, or dashes for the name.');
-            }
-
-            // If the name is not valid, then add error.
-            if (preg_match($regex, $liveform->get_field_value('name')) == 1) {
-                $liveform->mark_error('name', $message);
-            }
-        }
-        
-        // if there is not already an error for the name field, then check to see if name is already in use
-        if ($liveform->check_field_error('name') == false) {
-            // check to see if name is already in use by a different menu
-            $query =
-                "SELECT id
-                FROM menus
-                WHERE
-                    (name = ?)
-                    AND (id != ?)";
-            $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-            
-            // if name is already in use, prepare error
-            if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-            }
-        }
+        pg_menu_form_validate_name($liveform, (string) ($_POST['id'] ?? ''));
         
         // if there is an error, forward user back to edit menu screen
         if ($liveform->check_form_errors() == true) {
@@ -325,7 +185,7 @@ if (!$_POST) {
                 last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
             WHERE id = ?";
-        $result = db_q($query, array((string) $liveform->get_field_value('name'), (string) $liveform->get_field_value('effect'), (string) $liveform->get_field_value('first_level_popup_position'), (string) $liveform->get_field_value('second_level_popup_position'), (string) $liveform->get('class'), (string) $liveform->get('active_item_class'), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $result = db_q($query, array_merge(pg_menu_form_values($liveform), array((string) $user['id'], (string) ($_POST['id'] ?? '')))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'menu ({var:1}) was modified','vars'=>$liveform->get_field_value('name'))), $_SESSION['sessionusername']);
         $liveform->remove_form();

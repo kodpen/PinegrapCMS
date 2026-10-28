@@ -63,7 +63,6 @@ if (!$_POST) {
         )
     ) . '
 <main id="content" class="container-fluid">
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
     ' . get_date_time_picker_format() . '
     ' . get_wysiwyg_editor_code(array('full_description', 'notes', 'no_remaining_spots_message')) . '
             <div class="row">

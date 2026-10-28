@@ -623,7 +623,7 @@ echo
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-5">
                             <span class="fg-secondary">' . h(lang('Status')) . '</span>
-                            <span class="' . h(pg_return_badge_class($status)) . ' fs-md">' . h(pg_return_status_label($status)) . '</span>
+                            <span class="' . h(pg_return_panel_badge_class($status)) . ' fs-md">' . h(pg_return_status_label($status)) . '</span>
                         </div>
                         <ul class="list-unstyled small mb-0">' . $stamp_rows . '
                         </ul>

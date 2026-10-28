@@ -181,16 +181,71 @@ function ws_scheduled_actions_only($alias = '')
 }
 
 /**
- * The condition that leaves the hidden scheduled actions that start a flow
- * (their anchors, flow_anchors.php) out of the lists of scheduled actions.
- * The starts by event and join read them: they are what starts the flow.
+ * Do scheduled actions say which of them are a flow's anchor (2026.11.0,
+ * 11.0.88)? Before the step every row with a flow is a hidden anchor.
+ *
+ * @return bool
+ */
+function ws_scheduled_anchor_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = function_exists('ws_flows_ready') && ws_flows_ready()
+            && pg_schema_has('ws_scheduled_actions', 'anchor');
+    }
+
+    return $ready;
+}
+
+/**
+ * Is the row the hidden anchor of a flow, the row its start box writes? A
+ * converted anchor, a scheduled action a flow now carries out, is not: it
+ * stays an action with its card, history and news. A row read before the
+ * anchor column is hidden when it has a flow. Pure.
+ *
+ * @param array $row ws_scheduled_actions row
+ * @return bool
+ */
+function ws_scheduled_anchor_hidden($row)
+{
+    if (array_key_exists('anchor', (array) $row)) {
+        return (string) $row['anchor'] === 'hidden';
+    }
+
+    return (int) ($row['flow_id'] ?? 0) > 0;
+}
+
+/**
+ * Is the row a scheduled action a flow now carries out (a converted
+ * anchor)? Pure.
+ *
+ * @param array $row ws_scheduled_actions row
+ * @return bool
+ */
+function ws_scheduled_anchor_converted($row)
+{
+    return ((int) ($row['flow_id'] ?? 0) > 0) && ((string) ($row['anchor'] ?? '') === 'converted');
+}
+
+/**
+ * The condition that leaves the hidden anchors of flows (flow_anchors.php)
+ * out of the lists of scheduled actions; a converted one stays in them. The
+ * starts by event and join read every anchor through
+ * ws_scheduled_actions_only(): they are what starts the flow.
  *
  * @param string $alias the table's alias in the query
  * @return string " AND ..." or ""
  */
 function ws_scheduled_anchors_out($alias = '')
 {
-    return (function_exists('ws_flows_ready') && ws_flows_ready()) ? " AND " . (($alias !== '') ? $alias . '.' : '') . "flow_id = 0" : '';
+    $column = (($alias !== '') ? $alias . '.' : '');
+
+    if (ws_scheduled_anchor_ready()) {
+        return " AND " . $column . "anchor <> 'hidden'";
+    }
+
+    return (function_exists('ws_flows_ready') && ws_flows_ready()) ? " AND " . $column . "flow_id = 0" : '';
 }
 
 /**
@@ -250,8 +305,9 @@ function ws_scheduled_action($id)
 {
     $row = ws_scheduled($id);
 
-    // A flow's anchor is the flow's, changed and run only through it.
-    return ($row && ((string) ($row['kind'] ?? 'action') === 'action') && ((int) ($row['flow_id'] ?? 0) === 0)) ? $row : null;
+    // A flow's hidden anchor is the flow's, changed and run only through it;
+    // a converted one is still the action it was.
+    return ($row && ((string) ($row['kind'] ?? 'action') === 'action') && !ws_scheduled_anchor_hidden($row)) ? $row : null;
 }
 
 /**
@@ -3551,6 +3607,7 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
     $steps = array();
     $status = 'done';
     $posted = 0;
+    $flow_run = 0;
     $viewer = ws_change_viewer_for_id($row['created_by']);
 
     // What placeholders and follow-ups read: this action, and the run that
@@ -3605,8 +3662,9 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             // A flow's anchor starts a run of its flow (flow_anchors.php);
             // it is no step a scheduled action takes.
             $done = (((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_anchor_start'))
-                ? ws_flow_anchor_start($viewer, $row, $fill)
+                ? ws_flow_anchor_start($viewer, $row, $fill + array('by_hand' => $by_hand))
                 : ws_scheduled_do($viewer, $row, $row['action'], $fill);
+            $flow_run = (int) ($done['run_id'] ?? 0);
             $steps[] = array('step' => 'action', 'ok' => $done['ok'], 'text' => $done['text']);
             $posted = (int) $done['message_id'];
             $outcome = $done['ok'] ? 'done' : 'failed';
@@ -3646,7 +3704,6 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
     }
 
     $finished = time();
-    $previous = db_value("SELECT status FROM ws_scheduled_runs WHERE action_id = '" . (int) $row['id'] . "' AND id < '" . $run_id . "' AND finished_at > 0 ORDER BY id DESC LIMIT 1");
 
     db("UPDATE ws_scheduled_runs SET finished_at = '" . $finished . "', status = '" . e($status) . "',
             detail = '" . e(json_encode($steps, JSON_UNESCAPED_UNICODE)) . "', message_id = '" . $posted . "'
@@ -3678,16 +3735,36 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
             last_run_at = '" . $finished . "', run_count = run_count + 1, running_at = 0
         WHERE id = '" . (int) $row['id'] . "'");
 
-    // News is a first run, an outcome other than the last one, or a single
-    // action: a check every five minutes that keeps going well is not, and
-    // nor is a greeting that went well for the next newcomer.
-    $event = ws_scheduled_event_rule($row);
-    $every_time = $repeats || ($event && in_array($event['type'], array('join', 'event'), true));
-    $news = !$every_time || ($previous === null) || ($previous === false) || ((string) $previous !== $status) || $by_hand;
-
-    ws_scheduled_report($row, $status, $steps, $news);
+    // A converted anchor that started its flow tells how it went once the
+    // flow's run ends (ws_flow_anchor_run_ended()).
+    if (($flow_run === 0) || !ws_scheduled_anchor_converted($row)) {
+        ws_scheduled_report($row, $status, $steps, ws_scheduled_run_news($row, $run_id, $status, $by_hand));
+    }
 
     return ($status === 'done') ? 'ran' : $status;
+}
+
+/**
+ * Is a run of an action news? A first run, an outcome other than the last
+ * one, a single action or a run by hand: a check every five minutes that
+ * keeps going well is not, and nor is a greeting that went well for the
+ * next newcomer.
+ *
+ * @param array  $row     the action, decoded
+ * @param int    $run_id  its ws_scheduled_runs row
+ * @param string $status  done | skipped | failed
+ * @param bool   $by_hand
+ * @return bool
+ */
+function ws_scheduled_run_news($row, $run_id, $status, $by_hand)
+{
+    $previous = db_value("SELECT status FROM ws_scheduled_runs WHERE action_id = '" . (int) $row['id'] . "' AND id < '" . (int) $run_id . "' AND finished_at > 0 ORDER BY id DESC LIMIT 1");
+    $rule = ws_scheduled_time_rule($row);
+    $repeats = $rule && (($rule['repeat'] ?? 'none') !== 'none');
+    $event = ws_scheduled_event_rule($row);
+    $every_time = $repeats || ($event && in_array($event['type'], array('join', 'event'), true));
+
+    return !$every_time || ($previous === null) || ($previous === false) || ((string) $previous !== $status) || $by_hand;
 }
 
 /**
@@ -3701,9 +3778,9 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
  */
 function ws_scheduled_report($row, $status, $steps, $news = true)
 {
-    // A flow's anchor has no card or channel: the flow's runs say how it
-    // went. Only a start that did not happen is written to the Site Log.
-    if ((int) ($row['flow_id'] ?? 0) > 0) {
+    // A flow's hidden anchor has no card or channel: the flow's runs say how
+    // it went. Only a start that did not happen is written to the Site Log.
+    if (ws_scheduled_anchor_hidden($row)) {
         if ($status === 'failed') {
             $why = array();
 

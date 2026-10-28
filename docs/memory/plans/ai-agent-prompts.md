@@ -26,11 +26,11 @@ description: Plan (2026-10-21, steps 1, 2, 2b, 5 done, answers open): Pinegrap A
 5. Done (PR #1799): connected apps: `pg_mcp_instructions()` ends with the assistant rules and three lines of its own (confirm writes and deletes with the person, dry_run first, copy nothing to other tools): core/ai-prompt-data-blocks.md.
 6. Each request keeps the prompt version it ran with (every prompt already takes the block through step 1).
 
-## Open questions (recommendation)
+## Which questions are answered?
 1. Taken: rules text editable by administrators → (a) code only, by step 1 (#1124); (b), a site note below the rules, stays possible later as data.
-2. Preamble for MCP agents: (a) off by default per server, (b) on → a.
-3. Claude's instructions from the site: (a) yes, bootstrap prompt, (b) keep pasting → a.
-4. Live injection test on dev with the owner, Pinegrap AI and the routine → yes, after step 2.
+2. Preamble for MCP agents: off by default per server (a), #2443.
+3. Claude's instructions from the site: yes, the bootstrap prompt (a), #2443.
+4. Live injection test on dev with the owner, Pinegrap AI and the routine: yes, when the owner has time (#2443).
 
 ## Where to start?
 - Step 3 (the routine stops going stale) once question 3 is answered; the live test (question 4) can run now. Agents of plans/workspace-agent-handles.md use the briefing from the start.

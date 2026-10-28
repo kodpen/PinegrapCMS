@@ -136,6 +136,17 @@ function api_maintenance_purge() {
 		LEFT JOIN api_apps ON api_apps.id = api_webhooks.app_id
 		WHERE api_apps.id IS NULL");
 
+	// Workspace / commands whose application is gone: the channels already
+	// leave them out, and the name is given up when another application asks
+	// for it; this keeps the rows from piling up.
+	if (pg_schema_has('ws_app_commands')) {
+
+		db("DELETE ws_app_commands FROM ws_app_commands
+			LEFT JOIN api_apps ON api_apps.id = ws_app_commands.app_id
+			WHERE api_apps.id IS NULL");
+
+	}
+
 	db("UPDATE config SET api_log_last_purge = '" . time() . "'");
 
 	return true;

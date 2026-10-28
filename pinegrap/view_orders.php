@@ -556,10 +556,9 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                         </div>
                         <div class="col-12 my-1">
                             <label class="form-label" for="tax_rate_for_parasut">' . lang('Products Tax Rate') . '</label>
-                            <div class="input-group w-auto">
-                                <input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-control text-end pe-5" value="20" placeholder="18" />
-                                <div class="input-group-text"> %</div>
-                            </div>
+                            <label class="form-control form-adorn form-adorn-end w-auto">
+                                <span class="form-adorn-text" aria-hidden="true">%</span><input type="number" id="tax_rate_for_parasut" name="tax_rate_for_parasut" class="form-ghost text-end" value="20" placeholder="18" />
+                            </label>
                             <div class="form-text text-end">' . lang('Each product is processed at its tax-deducted price and tax rates are processed in a separate column.') . '</div>
                         </div>
                     </div>
@@ -2552,7 +2551,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         $output_shipping_tracking_icons = '
                         <button type="button" class="btn-data-control m-1 btn btn-outline theme-success border-2 position-relative" title="' . lang('Shipment Tracking') . '" onclick="window.location.href=\'' . $output_link_url . '#trackin_number_from_view_orders\'">
                             <i class="bi bi-truck"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white opacity-75 fg-success">
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill badge-subtle theme-success">
                                 ' . $i . '
                             </span>
                         </button>';

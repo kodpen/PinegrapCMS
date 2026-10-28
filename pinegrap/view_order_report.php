@@ -376,7 +376,12 @@ if (!$_POST) {
     $field_options[] = array('name' => '', 'value' => '</optgroup>');
 
     $field_options[] = array('name' => lang('Payment'), 'value' => '<optgroup>');
-    $field_options[] = array('name' => lang('Payment Method'), 'value' => 'payment_method', 'value_options' => array(array('name' => lang('Credit/Debit Card'), 'value' => 'Credit/Debit Card'), array('name' => lang('PayPal Express Checkout'), 'value' => 'PayPal Express Checkout'), array('name' => lang('Offline Payment'), 'value' => 'Offline Payment')));
+    // The methods the store has always listed, then each redirect driver's.
+    $payment_method_options = array(array('name' => lang('Credit/Debit Card'), 'value' => 'Credit/Debit Card'), array('name' => lang('PayPal Express Checkout'), 'value' => 'PayPal Express Checkout'), array('name' => lang('Offline Payment'), 'value' => 'Offline Payment'));
+    foreach (array_keys(pg_payment_driver_methods()) as $payment_method_driver) {
+        $payment_method_options[] = array('name' => pg_payment_method_label($payment_method_driver), 'value' => $payment_method_driver);
+    }
+    $field_options[] = array('name' => lang('Payment Method'), 'value' => 'payment_method', 'value_options' => $payment_method_options);
     $field_options[] = array('name' => lang('Card Type'), 'value' => 'card_type');
     $field_options[] = array('name' => lang('Cardholder'), 'value' => 'cardholder');
     $field_options[] = array('name' => lang('Card Number'), 'value' => 'card_number');

@@ -54,6 +54,13 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
 
+                                        <div class="col-12">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . ($max_image_preview_large ? ' checked="checked"' : '') . ' class="" type="checkbox" id="max_image_preview_large" name="max_image_preview_large"/></div>
+                                                <label class="" for="max_image_preview_large">' . lang('Allow large image previews in search results') . '</label>
+                                                <div class="form-text">' . lang('Adds max-image-preview:large to the robots meta tag of every page in the search engines, so a page can be shown with its large picture, as Google Discover does. Pages closed to search engines never get it.') . '</div>
+                                            </div>
+                                        </div>
                                         <div class="pg-f-lg">
                                             <label for="indexnow_key" class="form-label">' . lang('IndexNow Key') . '</label>
                                             <div class="input-group">

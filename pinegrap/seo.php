@@ -1808,7 +1808,8 @@ function pg_seo_row_scored($row)
 
 // Color band for a score, shared by every screen that draws one so the bands
 // cannot drift apart. Bootstrap has no orange contextual class, hence the
-// style fallback for the third band.
+// literal orange (the one pg_seo_score_hex() uses) for the third band: the
+// panel defines no orange custom property.
 function pg_seo_score_color($score)
 {
     if ($score >= 80) {
@@ -1820,7 +1821,7 @@ function pg_seo_score_color($score)
     }
 
     if ($score >= 30) {
-        return array('class' => '', 'style' => 'var(--bs-orange)');
+        return array('class' => '', 'style' => '#fd7e14');
     }
 
     return array('class' => 'danger', 'style' => '');
@@ -2939,5 +2940,5 @@ function pg_seo_render_badge($row)
         return '<span class="badge theme-' . $color['class'] . '" title="' . h($title) . '">' . $score . '</span>';
     }
 
-    return '<span class="badge" style="background-color:' . $color['style'] . '" title="' . h($title) . '">' . $score . '</span>';
+    return '<span class="badge" style="background-color:' . $color['style'] . ';color:var(--pg-on-accent)" title="' . h($title) . '">' . $score . '</span>';
 }
