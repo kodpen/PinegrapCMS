@@ -2531,8 +2531,8 @@ function pg_ai_write($user, $args)
     }
 
     log_activity(lang(array(
-        'string' => 'asked Pinegrap AI for a draft of {var:1} ({var:2})',
-        'vars'   => array($field['label'], $record_name),
+        'string' => 'asked Pinegrap AI for a draft of {var:1} ({var:2}), rules {var:3}',
+        'vars'   => array($field['label'], $record_name, pg_ai_prompt_version()),
     )), $username);
 
     return array(
@@ -2669,8 +2669,8 @@ function pg_ai_write_browser_finish($user, $args)
     }
 
     log_activity(lang(array(
-        'string' => 'asked the browser\'s built-in AI for a draft of {var:1} ({var:2})',
-        'vars'   => array($field['label'], pg_ai_write_log_name($field)),
+        'string' => 'asked the browser\'s built-in AI for a draft of {var:1} ({var:2}), rules {var:3}',
+        'vars'   => array($field['label'], pg_ai_write_log_name($field), pg_ai_prompt_version()),
     )), isset($_SESSION['sessionusername']) ? (string) $_SESSION['sessionusername'] : '');
 
     return array(

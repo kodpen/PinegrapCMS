@@ -95,6 +95,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_wtables();      // 11.0.110
 	upgrade_2026_11_0_workspace_mcp_preamble(); // 11.0.111
 	upgrade_2026_11_0_card_security_codes();   // 11.0.56
+	upgrade_2026_11_0_ai_prompt_version();      // 11.0.112
 
 }
 
@@ -3133,6 +3134,18 @@ function upgrade_2026_11_0_workspace_mcp_preamble() {
 	install_add_column('ws_mcp_servers', 'agent_preamble', "TINYINT(1) NOT NULL DEFAULT 0 AFTER agent_tool");
 
 	install_note('Workspace: an MCP server that is an agent itself can be told about the site before each message: the site, who asked, the channel or task by name, the language to answer in and the rules Pinegrap AI follows. It is off for every server until an administrator turns it on.');
+
+}
+
+// The version of the prompt rules each AI request ran with (2026.11.0,
+// 11.0.112; pg_ai_prompt_version(), includes/fn/ai_prompts.php). The version
+// is derived from the rules' text, so the text behind it is read from the
+// code's history. Rows written before this step keep '' and show as unknown.
+function upgrade_2026_11_0_ai_prompt_version() {
+
+	install_add_column('ws_ai_requests', 'prompt_version', "VARCHAR(16) NOT NULL DEFAULT ''");
+
+	install_note('Workspace: every request to an AI assistant now keeps the version of the rules its prompt ran with, shown in Claude\'s settings card and in the assistant requests the API returns. Earlier requests show it as unknown.');
 
 }
 

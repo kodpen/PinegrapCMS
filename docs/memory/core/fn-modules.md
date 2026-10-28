@@ -7,6 +7,7 @@ description: Generated from the module field of the memory files: each includes/
 
 ## Which memory file describes an `includes/fn/` module?
 - `a11y`: [[accessibility-report]]
+- `ai_prompts`: [[ai-prompt-version]]
 - `audit`: [[consent-log-and-audit-trail]]
 - `audit_list`: [[audit-log-paging]]
 - `audit_view`: [[audit-trail-screen]]

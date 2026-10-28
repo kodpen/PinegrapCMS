@@ -2083,8 +2083,10 @@ function ws_note_claude_ask($viewer, $note, $text)
 
     // Written with its assistant in one go: a request to Pinegrap AI must
     // never sit in the table as Claude's, where Claude's run would take it.
-    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, " . (($agent === 'ai') ? 'agent, ' : '') . "created_at)
-        VALUES ('0', '0', '" . (int) $note['id'] . "', '" . e($text) . "', '" . (int) $viewer['id'] . "', 'queued', " . (($agent === 'ai') ? "'ai', " : '') . "'" . time() . "')");
+    list($pv_column, $pv_value) = pg_ai_prompt_version_insert();
+
+    db("INSERT INTO ws_ai_requests (channel_id, message_id, note_id, note_text, requested_by, status, " . (($agent === 'ai') ? 'agent, ' : '') . "created_at" . $pv_column . ")
+        VALUES ('0', '0', '" . (int) $note['id'] . "', '" . e($text) . "', '" . (int) $viewer['id'] . "', 'queued', " . (($agent === 'ai') ? "'ai', " : '') . "'" . time() . "'" . $pv_value . ")");
 
     $request_id = (int) mysqli_insert_id(db::$con);
 
