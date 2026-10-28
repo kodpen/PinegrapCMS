@@ -61,3 +61,4 @@ Firewall (waf.php): rules, bans, rate limits, bots, logs, security headers.
 - waf-security-headers-hsts.md: Security headers are sent outside waf_run(), independent of the firewall switch; HSTS default off and its https gating; Permissions-Policy; nosniff and Referrer-Policy never doubled by server rules.
 - waf-self-rescue.md: CLI waf_unban.php lifts a ban from the server, Settings refuses a block entry covering your own address, the sign-in lock spares allow-listed addresses (#2187)
 - waf-subresource-sign-in-fetches.md: A sub-resource fetch (image, style, script, font, media) of a protected file answers 403, never the sign-in redirect; such a fetch of a sign-in screen is not counted as sensitive (#1989)
+- waf-trusted-proxy-headers.md: Each Trusted Proxies entry names the header its proxy sets; new or edited entries without one read X-Forwarded-For only, stored ones keep every vendor header (#2750).

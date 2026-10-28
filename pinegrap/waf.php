@@ -284,34 +284,30 @@ function waf_client_ip_resolve()
     // Operator-declared trusted proxies (load balancer, Varnish, nginx,
     // Sucuri, a hosting edge...). Empty by default: no header is trusted
     // unless the operator explicitly says which peer may set it.
-    $trusted = waf_parse_list(waf_setting('waf_trusted_proxies', ''));
+    $proxies = waf_setting('waf_trusted_proxies', '');
+    $trusted = waf_proxy_ranges($proxies);
 
     if (!$trusted || !waf_ip_in_any($remote, $trusted)) {
         return $ip;
     }
 
-    // Vendor-specific single-value headers first: they are unambiguous.
+    // A vendor's single-value header is unambiguous, but only from the proxy
+    // that sets it: most proxies add X-Forwarded-For alone and pass the
+    // client's own True-Client-IP or X-Real-IP through untouched, so reading
+    // every vendor header from every trusted peer let a visitor name any
+    // address. Each entry says which one its proxy sets
+    // (waf_proxy_client_headers()); an entry saved before that choice existed
+    // keeps reading all of them, CF-Connecting-IP first.
     //
-    // CF-Connecting-IP leads the list because of Cloudflare Tunnel. With a
-    // tunnel there is no inbound connection from a Cloudflare edge address at
-    // all — cloudflared runs beside the origin and connects outward, so the
-    // peer is 127.0.0.1 and the edge-range check above never fires. The header
-    // is still present and still authoritative; it just has to be authorised
-    // by the operator listing the tunnel's own address as a trusted proxy.
-    //
-    // It is also preferred over X-Forwarded-For because cloudflared is known
-    // to pass through a bogus XFF when the visitor supplies one of their own
-    // (cloudflared issue #1426).
-    $single_headers = array(
-        'HTTP_CF_CONNECTING_IP',
-        'HTTP_X_SUCURI_CLIENTIP',
-        'HTTP_TRUE_CLIENT_IP',
-        'HTTP_FASTLY_CLIENT_IP',
-        'HTTP_INCAP_CLIENT_IP',
-        'HTTP_X_REAL_IP',
-    );
-
-    foreach ($single_headers as $header) {
+    // CF-Connecting-IP matters for Cloudflare Tunnel. With a tunnel there is
+    // no inbound connection from a Cloudflare edge address at all -
+    // cloudflared runs beside the origin and connects outward, so the peer is
+    // 127.0.0.1 and the edge-range check above never fires. The header is
+    // still authoritative once the operator lists the tunnel's own address
+    // with it, and it is preferred over X-Forwarded-For because cloudflared
+    // passes a bogus XFF through when the visitor supplies one (cloudflared
+    // issue #1426).
+    foreach (waf_proxy_client_headers($proxies, $remote) as $header) {
         if (!empty($_SERVER[$header])) {
             $candidate = trim($_SERVER[$header]);
 
@@ -346,6 +342,162 @@ function waf_client_ip_resolve()
     }
 
     return $ip;
+}
+
+/**
+ * The vendor headers a trusted-proxy entry may name, by the name the operator
+ * types, mapped to their $_SERVER key, in the order an entry saved without a
+ * header reads them.
+ *
+ * @return array
+ */
+function waf_proxy_headers()
+{
+    return array(
+        'cf-connecting-ip' => 'HTTP_CF_CONNECTING_IP',
+        'x-sucuri-clientip' => 'HTTP_X_SUCURI_CLIENTIP',
+        'true-client-ip' => 'HTTP_TRUE_CLIENT_IP',
+        'fastly-client-ip' => 'HTTP_FASTLY_CLIENT_IP',
+        'incap-client-ip' => 'HTTP_INCAP_CLIENT_IP',
+        'x-real-ip' => 'HTTP_X_REAL_IP',
+    );
+}
+
+/**
+ * One Trusted Proxies entry: the address or range, then optionally the header
+ * its proxy names the visitor with. An empty header is an entry saved before
+ * the choice existed; a name the firewall does not know reads as
+ * x-forwarded-for, the one header every proxy appends to.
+ *
+ * @param string $entry e.g. "10.0.0.1 true-client-ip"
+ * @return array range, header
+ */
+function waf_proxy_entry($entry)
+{
+    $parts = preg_split('/\s+/', trim((string) $entry), 2);
+    $header = isset($parts[1]) ? strtolower(trim($parts[1])) : '';
+
+    if (($header !== '') && !isset(waf_proxy_headers()[$header])) {
+        $header = 'x-forwarded-for';
+    }
+
+    return array('range' => $parts[0], 'header' => $header);
+}
+
+/**
+ * The addresses and ranges of a stored Trusted Proxies list, without the
+ * header each entry names.
+ *
+ * @param string $raw
+ * @return array
+ */
+function waf_proxy_ranges($raw)
+{
+    $ranges = array();
+
+    foreach (waf_parse_list($raw) as $entry) {
+        $entry = waf_proxy_entry($entry);
+        $ranges[] = $entry['range'];
+    }
+
+    return $ranges;
+}
+
+/**
+ * The single-value headers the peer may name the visitor with, as $_SERVER
+ * keys in reading order: the first entry that covers the peer decides. An
+ * entry without a header reads every vendor header, as before the choice
+ * existed; an x-forwarded-for entry reads none, leaving the chain walk.
+ *
+ * @param string $raw the stored Trusted Proxies list
+ * @param string $remote the peer's address
+ * @return array
+ */
+function waf_proxy_client_headers($raw, $remote)
+{
+    foreach (waf_parse_list($raw) as $entry) {
+        $entry = waf_proxy_entry($entry);
+
+        if (!waf_ip_matches($remote, $entry['range'])) {
+            continue;
+        }
+
+        if ($entry['header'] === '') {
+            return array_values(waf_proxy_headers());
+        }
+
+        $headers = waf_proxy_headers();
+
+        return isset($headers[$entry['header']]) ? array($headers[$entry['header']]) : array();
+    }
+
+    return array();
+}
+
+/**
+ * The Trusted Proxies list as saved. An entry already stored without a
+ * header keeps that reading; a new or edited entry without one, or with a
+ * name the firewall does not know, is stored as x-forwarded-for, so a proxy
+ * added from now on cannot be spoken for through a header it never sets.
+ *
+ * @param string $posted the list as typed
+ * @param string $stored the list as stored before this save
+ * @return string comma-separated entries
+ */
+function waf_proxy_list_on_save($posted, $stored)
+{
+    $kept = array();
+
+    foreach (waf_parse_list($stored) as $entry) {
+        $entry = waf_proxy_entry($entry);
+
+        if ($entry['header'] === '') {
+            $kept[$entry['range']] = true;
+        }
+    }
+
+    $out = array();
+
+    foreach (waf_parse_list($posted) as $entry) {
+        $entry = waf_proxy_entry($entry);
+
+        if (($entry['header'] === '') && !isset($kept[$entry['range']])) {
+            $entry['header'] = 'x-forwarded-for';
+        }
+
+        $out[] = $entry['range'] . (($entry['header'] !== '') ? ' ' . $entry['header'] : '');
+    }
+
+    return implode(',', $out);
+}
+
+/**
+ * A proxy line of the ban shield mirror: the range, then the $_SERVER keys
+ * the shield may read the visitor from, comma-separated, or "-" for none
+ * (an x-forwarded-for proxy: the shield does not walk the chain).
+ *
+ * @param string $entry one Trusted Proxies entry
+ * @return string the line with its newline, or '' for an empty entry
+ */
+function waf_ban_shield_proxy_line($entry)
+{
+    $parsed = waf_proxy_entry($entry);
+
+    if ($parsed['range'] === '') {
+        return '';
+    }
+
+    $headers = waf_proxy_headers();
+
+    if ($parsed['header'] === '') {
+        $keys = array_values($headers);
+    } elseif (isset($headers[$parsed['header']])) {
+        $keys = array($headers[$parsed['header']]);
+    } else {
+        $keys = array();
+    }
+
+    return 'P ' . $parsed['range'] . ' ' . ($keys ? implode(',', $keys) : '-') . "\n";
 }
 
 function waf_is_ip($value)
@@ -430,7 +582,7 @@ function waf_ip_is_infrastructure($ip)
         return true;
     }
 
-    $trusted = waf_parse_list(waf_setting('waf_trusted_proxies', ''));
+    $trusted = waf_proxy_ranges(waf_setting('waf_trusted_proxies', ''));
 
     return ($trusted && waf_ip_in_any($ip, $trusted));
 }
@@ -3178,7 +3330,7 @@ function waf_ban_shield_refresh($force = false)
     $out = 'L ' . (waf_text_log_enabled() ? '1' : '0') . "\n";
 
     foreach (waf_cloudflare_ranges() as $range) {
-        $out .= 'P ' . $range . "\n";
+        $out .= 'P ' . $range . " HTTP_CF_CONNECTING_IP\n";
     }
 
     // Allow lines, so the guard applies the same precedence waf_run() does:
@@ -3194,11 +3346,7 @@ function waf_ban_shield_refresh($force = false)
     }
 
     foreach (waf_parse_list(waf_setting('waf_trusted_proxies', '')) as $proxy) {
-        $proxy = trim($proxy);
-
-        if ($proxy !== '') {
-            $out .= 'P ' . $proxy . "\n";
-        }
+        $out .= waf_ban_shield_proxy_line($proxy);
     }
 
     // Block lines are written only while the firewall is on. Monitor mode

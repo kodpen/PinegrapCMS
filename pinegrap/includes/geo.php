@@ -122,7 +122,7 @@ function pg_geo_trusted_edge()
         return $trusted;
     }
 
-    $proxies = waf_parse_list(waf_setting('waf_trusted_proxies', ''));
+    $proxies = waf_proxy_ranges(waf_setting('waf_trusted_proxies', ''));
     $trusted = ($proxies && waf_ip_in_any($remote, $proxies));
 
     return $trusted;

@@ -17,7 +17,7 @@ Two phases; every check has its own latch, so the phase that reaches it first de
 - Fail-open is mandatory. The `waf_run()` body is in try/catch; if the schema is missing, a regex errors or a table is unreachable, the request PASSES. A firewall that breaks a live store is worse than no firewall.
 
 ## How is the real client IP found?
-- `waf_client_ip()`. `$_SERVER['REMOTE_ADDR']` behind Cloudflare is the edge server, not the visitor. Proxy headers are accepted only if the peer is a known proxy (Cloudflare ranges embedded, the rest from `waf_trusted_proxies`); otherwise an attacker forges the header and bypasses the IP ban.
+- `waf_client_ip()`. `$_SERVER['REMOTE_ADDR']` behind Cloudflare is the edge server, not the visitor. Proxy headers are accepted only if the peer is a known proxy (Cloudflare ranges embedded, the rest from `waf_trusted_proxies`), and from a listed proxy only the header its entry names (`waf-trusted-proxy-headers.md`); otherwise an attacker forges the header and bypasses the IP ban.
 - Every place that needs the visitor's address asks it (sign-in throttle, `check_banned_ip_addresses()`, the external API, OAuth, Workspace guests, consent and audit records, signatures, `includes/geo.php`); never copy its proxy logic.
 
 ## How does it stay compatible with an un-upgraded database?

@@ -192,6 +192,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $waf_post_retention = max(1,  min(3650,  (int) post_value('waf_log_retention_days')));
         $waf_post_max_rows  = max(500, min(5000000, (int) post_value('waf_log_max_rows')));
 
+        // A proxy added or edited here reads X-Forwarded-For only unless its
+        // vendor header is named; one already stored keeps its reading.
+        $waf_post_proxies = trim((string) post_value('waf_trusted_proxies'));
+
+        if (function_exists('waf_proxy_list_on_save')) {
+            $waf_post_proxies = waf_proxy_list_on_save($waf_post_proxies, (string) db_value("SELECT waf_trusted_proxies FROM config"));
+        }
+
         $sql_waf_settings =
             "waf_enabled = '" . escape(post_value('waf_enabled') ? 1 : 0) . "',
              waf_mode = '" . escape($waf_post_mode) . "',
@@ -205,7 +213,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
              waf_auto_ban_minutes = " . $waf_post_minutes . ",
              waf_block_attack_tools = '" . escape(post_value('waf_block_attack_tools') ? 1 : 0) . "',
              waf_verify_bots = '" . escape(post_value('waf_verify_bots') ? 1 : 0) . "',
-             waf_trusted_proxies = '" . escape(trim((string) post_value('waf_trusted_proxies'))) . "',
+             waf_trusted_proxies = '" . escape($waf_post_proxies) . "',
              waf_exclusions = '" . escape(trim((string) post_value('waf_exclusions'))) . "',
              waf_blocked_agents = '" . escape(trim((string) post_value('waf_blocked_agents'))) . "',
              waf_log_retention_days = " . $waf_post_retention . ",
