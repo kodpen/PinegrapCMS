@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 ## What remains?
 - Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 4a one list of checkout methods (#1743, `commerce/payment-method-lists.md`), 5 refund and cancel through the driver (#873).
 3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing from the webhook moved to `plans/order-completion-function.md`.
-4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); a PENDING capture waits as awaiting payment (#2408).
+4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
 4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
 4c. PayTR driver (M), after `order-completion-function.md` A3: it confirms payments only server to server; its iframe needs frame-src CSP.
 6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
