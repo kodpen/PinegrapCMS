@@ -1709,6 +1709,65 @@ function pg_dkim_key_pair($selector, $domain)
     );
 }
 
+/**
+ * The mark this site puts on every mail it sends (the X-Pinegrap-Mail
+ * header), so a Workspace mailbox of the same site turns its own mail away
+ * instead of answering it in a loop. Derived from the site's key, so the
+ * mail of another Pinegrap site, a shop writing to its supplier's support
+ * box, still comes in.
+ *
+ * @return string 16 hex characters
+ */
+function pg_mail_site_mark()
+{
+    $key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+
+    if ($key === '') {
+        $key = pg_mail_hostname() . '|' . (defined('EMAIL_ADDRESS') ? (string) EMAIL_ADDRESS : '');
+    }
+
+    return substr(hash_hmac('sha256', 'pinegrap-mail', $key), 0, 16);
+}
+
+/**
+ * The threading headers email() takes from its 'headers' property: only
+ * Message-ID, In-Reply-To and References, each one or more <id@host>
+ * tokens. Anything else, or a value that could carry another header, is
+ * dropped.
+ *
+ * @param mixed $headers name => value
+ * @return array Message-ID, In-Reply-To, References (only those given and valid)
+ */
+function pg_mail_thread_headers($headers)
+{
+    $names = array('message-id' => 'Message-ID', 'in-reply-to' => 'In-Reply-To', 'references' => 'References');
+    $out = array();
+
+    foreach ((array) $headers as $name => $value) {
+        $key = strtolower(trim((string) $name));
+
+        if (!isset($names[$key]) || !is_string($value)) {
+            continue;
+        }
+
+        $ids = preg_split('/\s+/', trim($value), -1, PREG_SPLIT_NO_EMPTY);
+
+        if (!$ids || (($key !== 'references') && (count($ids) > 1))) {
+            continue;
+        }
+
+        foreach ($ids as $id) {
+            if (!preg_match('/^<[\x21-\x3B\x3D\x3F-\x7E]+@[A-Za-z0-9.\-\[\]:]+>$/', $id)) {
+                continue 2;
+            }
+        }
+
+        $out[$names[$key]] = implode(' ', $ids);
+    }
+
+    return $out;
+}
+
 function email($properties)
 {
     $to = isset($properties['to']) ? $properties['to'] : '';
@@ -1770,10 +1829,33 @@ function email($properties)
         // server. The message is still built as for SMTP (CRLF line ends, the
         // headers a submission server receives); it is handed to the
         // provider's API at the end instead of to a server.
-        $connection = (($type === 'system') || ($type === 'campaign')) ? pg_mail_connection($type) : null;
+        // 'smtp' names a server of the message's own (a Workspace mailbox
+        // answering from its address): host, port, user and the password
+        // sealed with pg_connect_seal(), so a queued row never holds it in
+        // the clear. It comes before everything else; the writer is waiting,
+        // so the timeout is short.
+        $smtp = (isset($properties['smtp']) && is_array($properties['smtp']) && !empty($properties['smtp']['host'])) ? $properties['smtp'] : null;
+
+        $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
 
         // SMTP config
-        if ($connection) {
+        if ($smtp) {
+            $smtp_secret = pg_connect_unseal(isset($smtp['secret']) ? (string) $smtp['secret'] : '');
+
+            if (!isset($smtp_secret['password'])) {
+                $permanent = true;
+
+                throw new Exception(lang('The password of the sending server cannot be read; enter it again.'));
+            }
+
+            $mail->isSMTP();
+            $mail->Host = (string) $smtp['host'];
+            $mail->Port = !empty($smtp['port']) ? (int) $smtp['port'] : 587;
+            $mail->SMTPAuth = true;
+            $mail->Username = isset($smtp['user']) ? (string) $smtp['user'] : '';
+            $mail->Password = (string) $smtp_secret['password'];
+            $mail->Timeout = 15;
+        } elseif ($connection) {
             $mail->isSMTP();
         } elseif ($type === 'system' && defined('SYSTEM_SMTP_HOSTNAME') && SYSTEM_SMTP_HOSTNAME !== '') {
             $mail->isSMTP();
@@ -1861,6 +1943,21 @@ function email($properties)
         }
 
         $permanent = false;
+
+        // Threading headers of an answer, and the site's own mark on every
+        // message (pg_mail_site_mark()).
+        $thread_headers = pg_mail_thread_headers(isset($properties['headers']) ? $properties['headers'] : array());
+
+        if (isset($thread_headers['Message-ID'])) {
+            $mail->MessageID = $thread_headers['Message-ID'];
+            unset($thread_headers['Message-ID']);
+        }
+
+        foreach ($thread_headers as $header_name => $header_value) {
+            $mail->addCustomHeader($header_name, $header_value);
+        }
+
+        $mail->addCustomHeader('X-Pinegrap-Mail', pg_mail_site_mark());
 
         // One-click unsubscribe for commercial campaigns (RFC 8058). The
         // mailto part goes to whoever reads the replies.

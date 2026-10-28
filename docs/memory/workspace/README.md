@@ -29,6 +29,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
 - mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
+- mail-reply.md: Answering a Workspace e-mail conversation by e-mail (includes/workspace/mail_reply.php, G3a): route, headers, subject tag, body, the outgoing item, email()'s headers/smtp properties and the site mark
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - workflow-table-rows.md: Workflow table rows (wtable_rows.php, T1b): add, change, delete, move; row_count and the 5000 limit in one UPDATE; 409 changed_meanwhile; person/link cells open; formulas on read
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
