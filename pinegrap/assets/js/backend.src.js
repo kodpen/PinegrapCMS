@@ -2440,11 +2440,11 @@ function software_image_picker(properties) {
                     <div class="item col">\
                         <div class="card bg-transparent border-0 shadow-none cursor-pointer image">\
                             <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent">\
-                                <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="remove" onclick=" $(this).closest(\'.item\').remove();"></button>\
+                                <button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" aria-label="' + h(pgLang('Remove')) + '" onclick=" $(this).closest(\'.item\').remove();"></button>\
                             </div>\
-                            <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + properties.image_name + '">\
+                            <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' + h(decodeURIComponent(properties.image_name)) + '">\
                                 <input type="hidden" name="' + $output_input_name + '" value="' + $output_input_value + '"/>\
-                                <img class="object-fit-contain w-100 h-100" src="' + _img_src + '" />\
+                                <img class="object-fit-contain w-100 h-100" alt="" src="' + _img_src + '" />\
                             </div>\
                         </div>\
                     </div>');
@@ -3831,15 +3831,15 @@ function init_product_group_attributes(properties) {
 
         $('.attributes').append(
             '<div class="col-12 my-3 attribute attribute_' + attribute.id + '" data-attribute-id="' + attribute.id + '">\
-                <label class="form-label">' + h(attribute.name) + '</label>\
+                <label class="form-label" for="default_option_id_' + attribute.id + '">' + h(attribute.name) + '</label>\
                 <div class="input-group">\
-                    <label class="input-group-text">' + label['Default Option'] + ':</label>\
-                    <select class="default_option_id form-control">\
+                    <label class="input-group-text" for="default_option_id_' + attribute.id + '">' + label['Default Option'] + ':</label>\
+                    <select id="default_option_id_' + attribute.id + '" class="default_option_id form-control">\
                         <option value="">-' + label['None'] + '-</option>\
                         ' + output_options + '\
                     </select>\
-                    <a href="javascript:void(0)" class="move move_up btn btn-solid theme-secondary material-icons border no-popover" title="' + label['Move Up'] + '">north</a>\
-                    <a href="javascript:void(0)" class="move move_down btn btn-solid theme-primary material-icons border no-popover" title="' + label['Move Down'] + '">south</a>\
+                    <button type="button" class="move move_up btn btn-solid theme-secondary border no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
+                    <button type="button" class="move move_down btn btn-solid theme-primary border no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
                 </div>\
             </div>');
 
@@ -3866,22 +3866,22 @@ function init_product_group_attributes(properties) {
             var move_up = $('.move_up', attribute);
             var move_down = $('.move_down', attribute);
 
-            // Let's remove the disabled classes until we find out if they need to be disabled.
-            move_up.removeClass('disabled');
-            move_down.removeClass('disabled');
+            // Enable both buttons until we find out if they need to be disabled.
+            move_up.prop('disabled', false);
+            move_down.prop('disabled', false);
 
             // If there is only 1 attribute, then disable both buttons.
             if (number_of_attributes == 1) {
-                move_up.addClass('disabled');
-                move_down.addClass('disabled');
+                move_up.prop('disabled', true);
+                move_down.prop('disabled', true);
 
                 // Otherwise, if this is the first attribute, then disable the move up button.
             } else if (attribute.index() == 0) {
-                move_up.addClass('disabled');
+                move_up.prop('disabled', true);
 
                 // Otherwise, if this is the last attribute, then disable the move down button.
             } else if (attribute.is(':last-child')) {
-                move_down.addClass('disabled');
+                move_down.prop('disabled', true);
             }
         });
     }
@@ -3938,16 +3938,16 @@ function init_product_attribute_options(properties) {
             var move_up = $('.move_up', option);
             var move_down = $('.move_down', option);
 
-            move_up.removeClass('disabled');
-            move_down.removeClass('disabled');
+            move_up.prop('disabled', false);
+            move_down.prop('disabled', false);
 
             if (option.is(':only-child')) {
-                move_up.addClass('disabled');
-                move_down.addClass('disabled');
+                move_up.prop('disabled', true);
+                move_down.prop('disabled', true);
             } else if (option.is(':first-child')) {
-                move_up.addClass('disabled');
+                move_up.prop('disabled', true);
             } else if (option.is(':last-child')) {
-                move_down.addClass('disabled');
+                move_down.prop('disabled', true);
             }
         });
     }
@@ -3967,10 +3967,10 @@ function init_product_attribute_options(properties) {
                 <div class="p-3 border rounded-4">\
                     <input type="hidden" name="option_id" value="' + id + '" class="option_id">\
                     <div class="input-group">\
-                        <input type="text" name="option_label" maxlength="255" class="option_label form-control">\
-                        <a href="javascript:void(0)" class="move move_up btn btn-solid theme-primary material-icons no-popover" title="' + label['Move Up'] + '">north</a>\
-                        <a href="javascript:void(0)" class="move move_down btn btn-solid theme-primary material-icons no-popover" title="' + label['Move Down'] + '">south</a>\
-                        <a href="javascript:void(0)" class="remove btn btn-solid theme-danger material-icons no-popover" title="' + label['Remove'] + '">delete</a>\
+                        <input type="text" name="option_label" maxlength="255" class="option_label form-control" aria-label="' + h(label['Option']) + '">\
+                        <button type="button" class="move move_up btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Up']) + '"><span class="material-icons" aria-hidden="true">north</span></button>\
+                        <button type="button" class="move move_down btn btn-solid theme-primary no-popover" aria-label="' + h(label['Move Down']) + '"><span class="material-icons" aria-hidden="true">south</span></button>\
+                        <button type="button" class="remove btn btn-solid theme-danger no-popover" aria-label="' + h(label['Remove']) + '"><span class="material-icons" aria-hidden="true">delete</span></button>\
                     </div>\
                     <div class="form-field form-text m-3">\
                       <input class="check option_no_value" type="checkbox" id="option_no_value_' + current_id + '" name="option_no_value" value="1">\
@@ -6457,7 +6457,7 @@ function editBarcodeTemplate(opts) {
             '<dialog class="dialog dialog-xl" id="' + MODAL_ID + '" data-bs-backdrop="static">' +
             '<div class="dialog-header py-3">' +
             '<h5 class="dialog-title fs-md fw-semibold"><i class="bi bi-upc-scan me-3"></i>' + _L('Label Designer') + '</h5>' +
-            '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
+            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + h(_L('Close')) + '"></button>' +
             '</div>' +
             '<div class="dialog-body">' +
             '<div class="mb-5">' +
@@ -8418,7 +8418,7 @@ window.onload = function() {
                     '<dialog class="dialog" id="' + BLIST_ID + '">' +
                     '<div class="dialog-header py-3">' +
                     '<h6 class="dialog-title"><i class="bi bi-upc-scan me-3"></i>' + pgLang('Barcodes') + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + h(pgLang('Close')) + '"></button>' +
                     '</div><div class="dialog-body" id="pg-blist-body"><div class="text-center py-5"><div class="spinner-border spinner-border-sm"></div></div></div>' +
                     '</dialog>'
                 );
