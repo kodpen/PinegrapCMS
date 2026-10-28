@@ -101,9 +101,15 @@ $output_checklist = '';
 
 foreach ($rules as $rule_code => $rule) {
     $found = isset($summary[$rule_code]) ? $summary[$rule_code] : null;
-    $result = $found
-        ? '<a class="pg-link-danger" href="view_accessibility.php?code=' . h($rule_code) . '">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</a>'
-        : '<span class="fg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
+    $state = pg_a11y_result_state($found, $last_run);
+
+    if ($state === 'found') {
+        $result = '<a class="pg-link-danger" href="view_accessibility.php?code=' . h($rule_code) . '">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</a>';
+    } elseif ($state === 'ok') {
+        $result = '<span class="fg-success"><i class="bi bi-check-lg me-1" aria-hidden="true"></i>' . h(lang('No problem found')) . '</span>';
+    } else {
+        $result = '<span class="fg-secondary">' . h(lang('Not checked yet')) . '</span>';
+    }
 
     $output_checklist .=
         '<tr>
@@ -160,9 +166,9 @@ echo pg_page_shell($shell) . '
             <nav id="button_bar" class="pg-toolbar my-3" aria-label="' . h(lang('Button Bar')) . '">
                 <form method="post" action="view_accessibility.php" class="d-inline">
                     ' . get_token_field() . '
-                    <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
+                    <button type="submit" name="submit_check" value="1" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Check Pages Now')) . '</button>
                 </form>
-                <a class="btn btn-sm btn-ghost" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>
+                <a class="btn btn-sm btn-text theme-secondary" href="view_accessibility.php?pdf=1"><i class="bi bi-file-earmark-pdf me-1" aria-hidden="true"></i>' . h(lang('Download PDF')) . '</a>
                 <div class="pg-toolbar-grow"></div>
                 ' . pg_filter_select('code', $code_options, $code, array('label' => lang('Check'), 'icon' => 'funnel', 'action' => 'view_accessibility.php')) . '
             </nav>
@@ -180,7 +186,7 @@ echo pg_page_shell($shell) . '
                 <div class="card-header">' . h(lang('Findings')) . '</div>
                 <div class="card-body p-0">
                     ' . (($output_rows === '')
-                        ? '<p class="fg-secondary m-7">' . h(lang('Nothing was found.')) . '</p>'
+                        ? '<p class="fg-secondary m-7">' . h($last_run ? lang('Nothing was found.') : lang('Not checked yet')) . '</p>'
                         : '<table class="table table-sm table-hover mb-0">
                             <thead><tr><th>' . h(lang('Page')) . '</th><th>' . h(lang('Problem')) . '</th><th>' . h(lang('Times')) . '</th><th>' . h(lang('Example')) . '</th></tr></thead>
                             <tbody>' . $output_rows . '</tbody>

@@ -290,8 +290,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         // Unchanged: both columns stay as they are.
     } elseif ($oauth_google_secret_input !== '') {
         list($oauth_google_secret_enc, $oauth_google_secret_iv) = encrypt_string_with_iv($oauth_google_secret_input);
-        $query = "UPDATE config SET oauth_google_client_secret = '" . escape($oauth_google_secret_enc) . "', oauth_google_secret_iv = '" . escape($oauth_google_secret_iv) . "'";
-        mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "UPDATE config SET oauth_google_client_secret = ?, oauth_google_secret_iv = ?";
+        db_q($query, array((string) $oauth_google_secret_enc, (string) $oauth_google_secret_iv)) or output_error('Query failed.');
     } else {
         db("UPDATE config SET oauth_google_client_secret = '', oauth_google_secret_iv = ''");
     }

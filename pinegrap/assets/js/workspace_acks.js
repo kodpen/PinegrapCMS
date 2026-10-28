@@ -172,7 +172,7 @@
             return null;
         }
 
-        var ask = h.button('btn btn-sm btn-ghost py-0', '', 'bi-eye', h.t('ack_request'));
+        var ask = h.button('btn btn-sm btn-text theme-secondary py-0', '', 'bi-eye', h.t('ack_request'));
 
         ask.addEventListener('click', function () {
             request({ id: pin.id }, true, view, h, redraw);

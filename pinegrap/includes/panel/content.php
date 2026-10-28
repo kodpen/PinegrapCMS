@@ -106,15 +106,21 @@ function pg_panel_upload_file($request, $action)
                 optimized,
                 timestamp) 
             VALUES (
-                '" . escape($file_name) . "',
-                '" . escape($folder) . "',
-                '" . escape($file_extension) . "',
-                '" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $file_name)) . "',
-                '" . $user['id'] . "',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
                 '0',
                 '0',
                 UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array(
+        (string) $file_name,
+        (string) $folder,
+        (string) $file_extension,
+        (string) filesize(FILE_DIRECTORY_PATH . '/' . $file_name),
+        (string) $user['id'],
+    )) or output_error('Query failed.');
     $file_id = mysqli_insert_id(db::$con);
 
     log_activity(lang(array('string' => 'The file, {var:1}, has been uploaded.', 'vars' => h($file_name))), $_SESSION['sessionusername']);
@@ -479,9 +485,9 @@ function pg_panel_create_dynamic_region($request, $action)
         $name = trim($request['dynamic_region']['name']);
 
         $query = "INSERT INTO dregion (dregion_name, dregion_code, dregion_user, dregion_timestamp) "
-            . "VALUES ('" . escape($name) . "', '" . escape($request['dynamic_region']['code']) . "', " . USER_ID . ", UNIX_TIMESTAMP())";
+            . "VALUES (?, ?, ?, UNIX_TIMESTAMP())";
         // insert row into region table
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+        $result = db_q($query, array((string) $name, (string) $request['dynamic_region']['code'], (int) USER_ID)) or output_error('Query failed');
         log_activity(lang(array('string' => '{var:1} ({var:2}) was created', 'vars' => array(lang('dynamic region'), $name))), $_SESSION['sessionusername']);
 
         $response = array(

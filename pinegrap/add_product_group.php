@@ -29,13 +29,13 @@ include_once('liveform.class.php');
 // markup, the drop area and the upload rules stay in one place — the copy that
 // used to live here was a second implementation that quietly fell behind.
 include_once('product_builder.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/product_group_form.php');
 $liveform = new liveform('add_product_group');
 
 if (!$_POST) {
 
-    if(db('SELECT product_image_code_template FROM config') != ''){
-        $code = db('SELECT product_image_code_template FROM config');
-    }
+    // The image code template new groups start from.
+    $code = (string) db('SELECT product_image_code_template FROM config');
 
     // Determine whether to show product images based on config setting (default: show).
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
@@ -55,29 +55,7 @@ if (!$_POST) {
          LIMIT 50"
     );
 
-    // The pictures behind each product's cover, for the image viewer.
-    $more_images = $show_image ? pg_product_more_images(array_column($initial_products, 'id')) : array();
-
-    foreach ($initial_products as $urow) {
-        $urow['price'] = $urow['price'] / 100;
-        $ustatus_class = $urow['enabled'] == 1 ? 'fg-success' : 'fg-danger';
-        $uoutput_image_column = '';
-        if ($show_image) {
-            $uoutput_image_column = pg_product_image_cell('product-' . (int) $urow['id'], $urow['image_name'], $urow['name'], $urow['short_description'],
-                isset($more_images[(int) $urow['id']]) ? $more_images[(int) $urow['id']] : array());
-        }
-        $output_rows .=
-            '<tr id="' . $urow['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
-            '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
-            $uoutput_image_column .
-            '<td class="align-middle chart_label ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
-            '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
-            '<td class="align-middle text-end">' . prepare_amount($urow['price']) . '</td>' .
-            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;width:60px;" /></td>' .
-            '<td></td>' .
-            '</tr>';
-    }
+    $output_rows .= pg_product_group_form_unselected_rows($initial_products, $show_image);
 
     $initial_count = count($initial_products);
 
@@ -87,7 +65,7 @@ if (!$_POST) {
     if ($any_product_groups) {
         $output_parent_group_select_block =
             '<div class="col-12 md:col-4 my-3">' .
-            '<label for="parent_id" class="form-label">*' . lang('Parent Product Group') . '</label>' .
+            '<label for="parent_id" class="form-label">' . lang('Parent Product Group') . '</label>' .
             '<select required style="width:100%" class="form-control" data-pg-combobox id="parent_id" name="parent_id" data-placeholder="' . lang('Select Parent Group') . '">' .
             get_product_group_options($default_parent_id, 0, 0, 0, array(), FALSE, 'text', false, true, false) .
             '</select></div>';
@@ -117,233 +95,18 @@ if (!$_POST) {
                 <form name="form" action="add_product_group.php" method="post">
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('New Product Group Information') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-4 my-3">
-                                            <label for="name" class="form-label">*' . lang('Product Group Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
-                                        <div class="col-12 my-5">
-                                            <div class="form-field">
-                                                <div class="switch"><input class="" type="checkbox" id="enabled" name="enabled" value="1" checked="checked" /></div>
-                                                <label class="" for="enabled">' . lang('Enabled') . '</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Catalog Page Display Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        ' . $output_parent_group_select_block . '
-                                        <div class="col-12 md:col-8 my-3">
-                                            <label for="short_description" class="form-label">' . lang('Short Description') . '</label>
-                                            <input type="text" name="short_description" placeholder="' . lang('Short Description') . '" id="short_description" maxlength="100" class="form-control" />
-                                        </div>
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label for="full_description" class="form-label">' . lang('Full Description') . '</label>
-                                            <textarea id="full_description" name="full_description"></textarea>
-                                        </div>
-
-                                        <div class="col-12 my-5">
-                                            <div class="col-12">
-                                                <label class="form-label">' . lang('Display Type') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" checked="checked" value="browse" />
-                                                <label for="browse">' . lang('Browse') . '</label> 
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" data-bs-target="#display_type_select_row"/>
-                                                <label for="select">' . lang('Select') . '</label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-3">
-                                                            <div class="alert theme-primary">' . lang('Product group behaves like a product and provides the ability to select options in product detail page.') . '</div>
-                                                        </div>
-                                                        <div class="col-12 mt-1 mb-3">
-                                                            <label for="details" class="form-label">' . lang('Details') . '</label>
-                                                            <textarea id="details" name="details"></textarea>
-                                                        </div>
-                                                        <div class="col-12 mt-5 mb-3">
-                                                            <label for="keywords" class="form-label">' . lang('Search Keywords') . '</label>
-                                                            <input type="text" name="keywords" id="keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Image Options') . ' 
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-5">
-                                            ' . pg_pb_render_image_picker(
-                                                    array(),
-                                                    '<button type="button" class="btn btn-sm btn-outline theme-secondary ms-auto" data-bs-toggle="dialog" data-bs-target="#image_code" title="' . lang('Code') . '"><i class="bi bi-code-slash"></i></button>') . '
-
-                                            <dialog class="dialog dialog-lg" id="image_code" aria-labelledby="image_code">
-                                                        <div class="dialog-header">
-                                                            <h5 class="dialog-title">' . lang('Code') . '</h5>
-                                                            <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
-                                                        </div>
-                                                        <div class="dialog-body "> 
-                                                            <div class="row">
-                                                                <div class="col-12 my-3">
-                                                                <div class="alert theme-primary">' . lang('Tags') . ':<span title="' . lang('Loop start') . '">^^image_loop_start^^</span>, <span title="' . lang('Short Description') . '">^^image_alt^^</span>, <span title="' . lang('Image Url') . '">^^image_url^^</span>, <span title="' . lang('Loop End') . '">^^image_loop_end^^</span></div>
-                                                                </div>
-                                                                <div class="col-12 my-3">
-                                                                    <textarea id="code" name="code">' . $code . '</textarea>
-                                                                    ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                            </dialog>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('SEO') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
-                                            <div class="input-group ">
-                                                <label for="address_name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
-                                                <input type="text" name="address_name" id="address_name" class="form-control" />
-                                            </div>
-                                        </div>
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" />
-                                        </div>
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
-                                            <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" ></textarea>
-                                        </div>
-                                        <div class="col-12 mt-1 mb-3">
-                                            <label for="meta_keywords" class="form-label">' . lang('Web Browser Keywords') . '</label>
-                                            <input type="text" name="meta_keywords" id="meta_keywords" class="form-control tagin min-height-tagin" data-pg-chips data-placeholder="' . lang('Add tags') . '"  maxlength="255"/>' . pg_fields_script() . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . lang('Products to Include') . '</div>
-                                <div class="card-body p-0 position-relative">
-                                    <table id="add_product_group_products_table" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
-                                        <thead>
-                                            <tr>
-                                                <th class="noVis">
-                                                    <div class="form-field">
-                                                        <div class="switch"><input class="" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox" id="select_all"></div>
-                                                    </div>
-                                                </th>
-                                                <th class="noVis">' . lang(array('string'=>'Action') ) . '</th>
-                                                ' . $output_image_header . '
-                                                <th>' . lang('Name') . '</th>
-                                                <th>' . lang('Short Description') . '</th>
-                                                <th class="text-end">' . lang('Price') . '</th>
-                                                <th>' . lang('Sorting') . '</th>
-                                                <th class="noVis"></th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>' . $output_rows . '</tbody>
-                                    </table>
-                                </div>
-                                ' . ($total_unselected > $initial_count ? '
-                                <div class="p-5 border-top">
-                                    <button id="btn_load_more_products" type="button" class="btn btn-outline theme-secondary btn-sm">
-                                        <i class="bi bi-arrow-down-circle me-3"></i>' . lang('Load More Products') . '
-                                    </button>
-                                </div>' : '') . '
-                            </div>
-                        <script>
-                        (function() {
-                            var loadedOffset = ' . $initial_count . ';
-                            var loadMoreBusy = false;
-                            var totalUnselected = ' . $total_unselected . ';
-
-                            $("#btn_load_more_products").on("click", function() {
-                                if (loadMoreBusy) return;
-                                loadMoreBusy = true;
-                                var $btn = $(this);
-                                $btn.prop("disabled", true).find("i").removeClass("bi-arrow-down-circle").addClass("bi-hourglass-split");
-
-                                $.ajax({
-                                    url: "api.php",
-                                    type: "POST",
-                                    contentType: "application/json",
-                                    dataType: "json",
-                                    data: JSON.stringify({
-                                        action: "get_unselected_products",
-                                        product_group_id: 0,
-                                        offset: loadedOffset
-                                    }),
-                                    success: function(response) {
-                                        if (response.status === "success" && response.rows) {
-                                            var $rows = $(response.rows);
-                                            var dt = $("#add_product_group_products_table").DataTable();
-                                            $rows.each(function() {
-                                                dt.row.add(this);
-                                            });
-                                            dt.draw(false);
-
-                                            $rows.find("img.lazy").each(function() {
-                                                var src = $(this).data("src");
-                                                if (src) {
-                                                    $(this).attr("src", src).removeClass("lazy");
-                                                }
-                                            });
-
-                                            loadedOffset += response.loaded;
-                                            var remaining = totalUnselected - loadedOffset;
-                                            if (!response.has_more) {
-                                                $btn.closest(".border-top").hide();
-                                            } else {
-                                                $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
-                                            }
-                                        }
-                                        loadMoreBusy = false;
-                                    },
-                                    error: function() {
-                                        loadMoreBusy = false;
-                                        $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
-                                    }
-                                });
-                            });
-                        })();
-                        </script>
-                        </div>
+                        ' . pg_product_group_form_cards($liveform, array('code' => $code), array(
+                            'is_new' => true,
+                            'parent_row' => $output_parent_group_select_block)) . '
+                        ' . pg_product_group_form_products_card(array(
+                            'table_id' => 'add_product_group_products_table',
+                            'title' => lang('Products to Include'),
+                            'card_class' => '',
+                            'image_header' => $output_image_header,
+                            'rows' => $output_rows,
+                            'total_unselected' => $total_unselected,
+                            'loaded' => $initial_count,
+                            'product_group_id' => 0)) . '
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
@@ -394,39 +157,15 @@ $liveform->remove_form();
         $_POST['parent_id'] = 0;
     }
 
-    // if the address name is NOT blank then use that value for the address name
-    if ($_POST['address_name'] != '') {
-        $address_name = $_POST['address_name'];
-        
-    // else if the short description is NOT blank then use that value
-    } elseif ($_POST['short_description'] != '') {
-        $address_name = $_POST['short_description'];
-        
-    // else use the name as the value
-    } else {
-        $address_name = $_POST['name'];
-    }
+    // The address is made from the address name, the short description or the name.
+    $address_name = pg_product_group_form_address_source($_POST);
     
     // prepare the address name for the database
     $address_name = prepare_catalog_item_address_name($address_name);
 
-    $selected_images = pg_pb_selected_images();
-    
-    $selected_count = 0;
-    foreach ($selected_images as $value) {
-        $selected_count++;
-    }
-    if($selected_count >= 1){
-        $selected_cover_image = reset($selected_images);
-        array_shift($selected_images);
-        if($selected_cover_image){
-            $sql_imagename = 
-            "'" . escape($selected_cover_image) . "',";
-        }
-    }else{
-        $sql_imagename = 
-        "'',";
-    }
+    // The first picked image is the cover; the rest are stored apart.
+    list($cover_image, $more_group_images) = pg_product_group_form_images(pg_pb_selected_images());
+    $sql_imagename = "'" . escape($cover_image) . "',";
 
     // create product group
     db(
@@ -469,47 +208,15 @@ $liveform->remove_form();
     
     $product_group_id = mysqli_insert_id(db::$con);
 
-    if($selected_count > 1){
-        foreach ($selected_images as $value) {db("INSERT INTO product_groups_images_xref (product_group,file_name)VALUES ('$product_group_id','" . escape($value) . "')");}
+    foreach ($more_group_images as $value) {
+        db_q("INSERT INTO product_groups_images_xref (product_group, file_name) VALUES (?, ?)", array((string) $product_group_id, (string) $value)) or output_error('Query failed');
     }
 
-    // if at least one product was selected then proceed with update to products_groups_xref table
-    if ($_POST['products']) {
-        // foreach product that was selected
-        foreach($_POST['products'] as $product_id) {
-            $query = "INSERT INTO products_groups_xref (product, product_group, sort_order) VALUES (?, ?, ?)";
-            $result = db_q($query, array((string) $product_id, (string) $product_group_id, (string) $_POST['sort_order_product_' . $product_id])) or output_error('Query failed');
-        }
-    }
-    
-    $search_results_pages = array();
-        
-    // get data from all search result pages that have "search products" enabled
-    $query = "SELECT page_id, product_group_id FROM search_results_pages WHERE search_catalog_items = '1'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    while($row = mysqli_fetch_assoc($result)) {
-        $search_results_pages[] = $row;
-    }
-    
-    $search_results_pages_using_parent_product_group = array();
-    
-    // loop through each search result page to get the search results page ids that uses this product group
-    foreach ($search_results_pages as $search_results_page) {
-        $search_results_page_product_groups = array();
-        
-        // get the product groups inside of this product group
-        $search_results_page_product_groups = get_product_groups_in_product_group_tree($search_results_page['product_group_id']);
-        
-        // loop through the product groups to see if any of them match this one, and if there is a match then add it to the array
-        foreach ($search_results_page_product_groups as $product_group) {
-            if ($product_group['id'] == $product_group_id) {
-                $search_results_pages_using_parent_product_group[] = $search_results_page;
-            }
-        }
-    }
-    
-    // loop through the search result pages for the parent product group and delete then re-build it's tag cloud
-    foreach($search_results_pages_using_parent_product_group as $search_results_page) {
+    pg_product_group_form_link_products($product_group_id, $_POST);
+
+    // The search results pages whose product group tree now holds the new
+    // group rebuild their tag cloud.
+    foreach (pg_product_group_form_search_results_pages($product_group_id)['current'] as $search_results_page) {
         delete_tag_cloud_keywords_for_search_results_page($search_results_page['page_id']);
         update_tag_cloud_keywords_for_search_results_page_product_group($search_results_page['page_id'], $search_results_page['product_group_id']);
     }

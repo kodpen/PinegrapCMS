@@ -294,13 +294,8 @@ function pg_consent_log_record(array $event)
         return 0;
     }
 
-    $values = array();
-
-    foreach ($row as $value) {
-        $values[] = "'" . (is_int($value) ? $value : e($value)) . "'";
-    }
-
-    if (!@mysqli_query(db::$con, "INSERT INTO consent_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', $values) . ")")) {
+    // Every value quoted, as before: an int is written as '5'.
+    if (!db_q("INSERT INTO consent_log (" . implode(', ', array_keys($row)) . ") VALUES (" . implode(', ', array_fill(0, count($row), '?')) . ")", array_map('strval', array_values($row)))) {
         return 0;
     }
 

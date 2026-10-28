@@ -23,12 +23,12 @@ description: Plan (owner request 2026-10-27, draft): flow API beyond the removed
 
 - A6 templates done (PR #2298): `GET /workspace/flow-templates`; `POST /workspace/flows` with `template` and `answers` (workspace-flows-api-templates.md). Never publishes.
 
-- A7 events for webhooks and wake-ups: `workspace.flow.run.finished`, `.failed`, `.waiting`, carrying the run's result.
+- A7 done (PR #2388): `workspace.flow.run.finished`, `.failed`, `.waiting` (workspace-flows-run-events.md). The run-level result waits for C1, as A5's flag does.
 
-- A8 proposals: a `{type: flow}` draft card replaces `{type: scheduled}` (api_proposals.php, scheduled_draft.php).
+- A8 done (PR #2467): a `{type: flow}` draft card replaces `{type: scheduled}` (workspace-flow-draft-proposals.md).
 
 ## Where to start?
-- Next: A7 (events), then A8; none claimed. A7: add the three names to `api_webhook_events()` (an unknown name is dropped silently) and announce from where a run ends or starts waiting in flow_runs.php (the end notice in `workspace-flows-runner.md`, "End and cancel?"), with `channel_id` (workspace key rule) and the run as `ws_api_flow_run_present()` gives it without steps; read `api/api-webhook-events.md` first. Check open PRs on flow_runs.php before claiming.
+- All steps done; open question 1 remains.
 
 ## Which rules hold?
 - Reads are MCP tools; a key or OAuth connection may write drafts; publishing, changing a live flow and resuming stay the person's own session (#1708 rule).

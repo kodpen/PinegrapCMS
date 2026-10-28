@@ -23,14 +23,16 @@
 //   add_submitted_form.php               -> phase 1, pick the custom form
 //   add_submitted_form.php?page_id=42    -> phase 2, fill in that custom form's fields
 //
-// The field rendering is modeled on edit_submitted_form.php and the database
-// inserts are modeled on import_submitted_forms.php and custom_form.php.
+// The fields, their type checks and the stored values are shared with
+// edit_submitted_form.php (includes/forms/submitted_form_form.php); the
+// database inserts are modeled on import_submitted_forms.php and custom_form.php.
 
 include('init.php');
 $user = validate_user();
 validate_forms_access($user);
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
 
 // The custom form's page is one value; one sent as an array (page_id[]=x)
 // counts as not given: it ended in an error page.
@@ -203,357 +205,7 @@ if (!$_POST) {
     // Otherwise a custom form was chosen, so output that custom form's fields.
     } else {
 
-        // get all fields for this form
-        $query = "SELECT
-                    id,
-                    label,
-                    type,
-                    required,
-                    information,
-                    default_value,
-                    size,
-                    maxlength,
-                    wysiwyg,
-                    `rows`, # Backticks for reserved word.
-                    cols,
-                    multiple,
-                    spacing_above,
-                    spacing_below,
-                    contact_field,
-                    office_use_only
-                 FROM form_fields
-                 WHERE page_id = ?
-                 ORDER BY sort_order";
-        $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
-
-        $fields = array();
-
-        while ($row = mysqli_fetch_assoc($result)) {
-            $fields[] = $row;
-        }
-
-        $wysiwyg_fields = array();
-
-        $output_fields = '';
-        $picker_kinds = array();
-
-        // Prepare to keep track if whether there are file upload fields or not,
-        // in order to know later if we need to output enctype for form.
-        $file_upload_exists = false;
-
-        foreach ($fields as $field) {
-            $field_required = '';
-
-            // If this is not an office use only field, or the user has access to edit office use only fields from this screen, then output the field
-            if (($field['office_use_only'] == 0) || ($office_use_only_access == true)) {
-                // if field is for office use only, then prepare to apply office use only style to row
-                if ($field['office_use_only'] == 1) {
-                    $row_class = 'fg-secondary';
-
-                // else field is not for office use only, so don't prepare any special styling
-                } else {
-                    $row_class = '';
-                }
-
-                if ($field['size'] == 0) {
-                    $field['size'] = '';
-                }
-
-                if ($field['maxlength'] == 0) {
-                    $field['maxlength'] = '';
-                }
-
-                if ($field['rows'] == 0) {
-                    $field['rows'] = '';
-                }
-
-                if ($field['cols'] == 0) {
-                    $field['cols'] = '';
-                }
-
-                if ($field['label'] && $field['required']) {
-                    $field['label'] .= '*';
-                }
-
-                if ($field['required']) {
-                    $field_required = '<div class="invalid-feedback">' . lang('Required Area') . '</div>';
-                }
-
-                // if field has options, get options
-                if (($field['type'] == 'pick list') || ($field['type'] == 'radio button') || ($field['type'] == 'check box')) {
-                    $query = "SELECT
-                                id,
-                                label,
-                                value,
-                                default_selected
-                             FROM form_field_options
-                             WHERE form_field_id = ?
-                             ORDER BY sort_order";
-                    $result = db_q($query, array((string) $field['id'])) or output_error('Query failed.');
-
-                    $options = array();
-
-                    while ($row = mysqli_fetch_assoc($result)) {
-                        $options[] = $row;
-                    }
-                }
-
-                // if field should have spacing above, add spacing
-                if ($field['spacing_above']) {
-                    $output_fields .=
-                        '<div class="py-3 ' . $row_class . '"></div>';
-                }
-
-                switch ($field['type']) {
-                    case 'text box':
-                    case 'email address':
-                        $output_fields .=
-                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                                ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                                ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
-                                ' . $field_required . '
-                            </div>';
-                        break;
-
-                    case 'text area':
-                        $style = '';
-
-                        // if field is wysiwyg
-                        if ($field['wysiwyg'] == 1) {
-                            // add field to wysiwyg fields array, so that we can prepare JavaScript later
-                            $wysiwyg_fields[] = $field['id'];
-
-                            // if rows was not set, then set default rows so that WYSIWYG editor appears correctly
-                            if (!$field['rows']) {
-                                $field['rows'] = 15;
-                            }
-
-                            // if cols was not set, then set default width so that WYSIWYG editor appears correctly
-                            if (!$field['cols']) {
-                                $style = 'width: 100%';
-                            }
-                        }
-
-                        $output_fields .=
-                            '<div class="col-12 my-3 ' . $row_class . '">
-                                ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                                ' . $liveform->output_field(array('type'=>'textarea', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'maxlength'=>$field['maxlength'], 'class'=>'form-control', 'rows'=>$field['rows'], 'cols'=>$field['cols'], 'style'=>$style)) . '
-                                ' . $field_required . '
-                            </div>';
-                        break;
-
-                    case 'pick list':
-                        if ($field['multiple'] == 1) {
-                            $name = $field['id'] . '[]';
-                            $multiple = 'multiple';
-                        } else {
-                            $name = $field['id'];
-                            $multiple = '';
-                        }
-
-                        $pick_list_options = array();
-
-                        foreach ($options as $option) {
-                            $pick_list_options[$option['label']] =
-                                array(
-                                    'value' => $option['value'],
-                                    'default_selected' => $option['default_selected']
-                                );
-                        }
-
-                        $output_fields .=
-                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
-                                ' . $field_required . '
-                            </div>';
-
-                        break;
-
-                    case 'radio button':
-                        $output_options = '';
-
-                        foreach ($options as $option) {
-                            // if this radio button should be selected by default, prepare to select by default
-                            if ($option['value'] == $field['default_value']) {
-                                $checked = 'checked';
-                            } else {
-                                $checked = '';
-                            }
-
-                            $output_options .= '
-                            <div class="form-field">
-                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>$field['id'], 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'radio')) . '
-                                <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
-                            </div>';
-                        }
-
-                        $output_fields .=
-                            '<div class="col-12 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $output_options . '
-                            </div>';
-
-                        break;
-
-                    case 'check box':
-                        $output_options = '';
-
-                        // If there is more than one option in this check box group, then the field
-                        // name has to be an array, otherwise only the last checked option would be
-                        // submitted.  This matches the canonical form rendering in functions.php.
-                        if (count($options) > 1) {
-                            $name = $field['id'] . '[]';
-                        } else {
-                            $name = $field['id'];
-                        }
-
-                        foreach ($options as $option) {
-                            // if this checkbox should be selected by default, prepare to select by default
-                            if (($option['default_selected'] == 1) || ($option['value'] == $field['default_value'])) {
-                                $checked = 'checked';
-                            } else {
-                                $checked = '';
-                            }
-
-                            $output_options .= '
-                            <div class="form-field">
-                                ' . $liveform->output_field(array('type'=>'checkbox', 'name'=>$name, 'id'=>'software_option_' . $option['id'], 'value'=>$option['value'], 'checked'=>$checked, 'class'=>'check')) . '
-                                <label for="software_option_' . $option['id'] . '"> ' . h($option['label']) . '</label>
-                            </div>';
-                        }
-
-                        // Note that edit_submitted_form.php outputs a hidden field here, so that the
-                        // field always appears in the post data.  That is not needed when a submitted
-                        // form is being created, because there is no existing data to replace.  The
-                        // set of fields that gets saved is determined by the office use only gate.
-
-                        $output_fields .=
-                            '<div class="col-12 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $output_options . '
-                            </div>';
-
-                        break;
-
-                    // The same pad the visitor signs on. An operator entering a
-                    // form that arrived on paper, or sitting with the customer,
-                    // signs here; nothing about the record differs, and who was
-                    // logged in is part of it.
-                    case 'signature':
-                        $output_fields .=
-                        '<div class="col-12 border py-3 my-3 ' . $row_class . '">
-                            ' . pg_signature_field($field) . '
-                            ' . $field_required . '
-                        </div>';
-
-                        $signature_exists = true;
-
-                        break;
-
-                    case 'file upload':
-                        $output_fields .=
-                        '<div class="col-12 border py-3 my-3 ' . $row_class . '">
-                            <label class="form-label">' . h($field['label']) . '</label>
-                            <div class="input-group d-flex flex-row flex-wrap">
-                                ' . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size'] )) . '
-                            </div>
-                            ' . $field_required . '
-                        </div>';
-
-                        $file_upload_exists = true;
-
-                        break;
-
-                    case 'date':
-                        $picker_kinds['date'] = true;
-                        $output_fields .=
-                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'10', 'data-pg-date' => '')) . '
-                                ' . $field_required . '
-                            </div>';
-                        break;
-
-                    case 'date and time':
-                        $picker_kinds['date and time'] = true;
-                        $output_fields .=
-                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'22', 'data-pg-datetime' => '')) . '
-                                ' . $field_required . '
-                            </div>';
-                        break;
-
-                    case 'information':
-                        $output_fields .=
-                            '<div class="py-5 ' . $row_class . '">' . $field['information'] . '</div>';
-                        break;
-
-                    case 'time':
-                        $picker_kinds['time'] = true;
-                        $output_fields .=
-                            '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                                ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>'11', 'data-pg-time' => '')) . '
-                                ' . $field_required . '
-                                <div class="form-text text-end">' . lang('Format: h:mm AM/PM') . '</div>
-                            </div>';
-                        break;
-
-                    default:
-                        $output_fields .=
-                            '<div class="col-12 my-3 ' . $row_class . '">
-                                <label class="form-label">' . h($field['label']) . '</label>
-                            </div>';
-
-                        break;
-                }
-
-                // if field should have spacing below, add spacing
-                if ($field['spacing_below']) {
-                    $output_fields .=
-                        '<div class="py-3 ' . $row_class . '"></div>';
-                }
-            }
-        }
-
-        // The picker options once, after the fields: they are drawn when the
-        // page has loaded and all read the one datetimepicker_options, so a form
-        // with a date and time field gets the variant with the time wording.
-        if (isset($picker_kinds['date and time'])) {
-            $output_fields .= get_date_time_picker_format();
-        } elseif (isset($picker_kinds['date'])) {
-            $output_fields .= get_date_picker_format();
-        }
-
-        if (isset($picker_kinds['time'])) {
-            $output_fields .= get_time_picker_format();
-        }
-
-        if ($picker_kinds) {
-            $output_fields .= pg_fields_script();
-        }
-
-        $output_wysiwyg_javascript = '';
-
-        // if there is at least one wysiwyg field, prepare wysiwyg fields
-        if ($wysiwyg_fields) {
-            $output_wysiwyg_javascript = get_wysiwyg_editor_code($wysiwyg_fields);
-        }
-
-        // The capture script, once, when this form has a signature field.
-        if (!empty($signature_exists) && function_exists('pg_signature_includes')) {
-            $output_fields .= pg_signature_includes();
-        }
-
-        // Assume that we don't need to set enctype for HTML form until we find out otherwise.
-        $output_enctype = '';
-
-        // If a file upload field exists in the form, then prepare to set enctype for HTML form
-        if ($file_upload_exists == true) {
-            $output_enctype = ' enctype="multipart/form-data"';
-        }
+        $form_markup = pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use_only_access);
 
         echo
         pg_page_shell(
@@ -570,8 +222,7 @@ if (!$_POST) {
             )
         ) . '
 <main id="content" class="container-fluid">
-        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                ' . $output_wysiwyg_javascript . '
+                ' . $form_markup['wysiwyg_javascript'] . '
             <div class="row">
                 <div class="col-12">
                     ' . $liveform->output_errors() . '
@@ -586,7 +237,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <form' . $output_enctype . ' name="form" action="add_submitted_form.php" method="post">
+                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="page_id" value="' . h($page_id) . '" />
                             <div class="row">
@@ -620,7 +271,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="card-body">
                                             <div class="row">
-                                                ' . $output_fields . '
+                                                ' . $form_markup['fields'] . '
                                             </div>
                                         </div>
                                     </div>
@@ -719,55 +370,7 @@ if (!$_POST) {
             $liveform->mark_error($field['id'], lang('The signature could not be read. Please clear the box and sign again.'));
         }
 
-        // A file the web server would run or read as its own settings is
-        // refused at validation, so the form comes back with the field marked
-        // rather than a renamed file quietly landing in the upload folder.
-        if (
-            ($field['type'] == 'file upload')
-            && ($liveform->check_field_error($field['id']) == false)
-            && (isset($_FILES[$field['id']]) == true)
-            && ($_FILES[$field['id']]['name'] != '')
-            && pg_upload_name_blocked($_FILES[$field['id']]['name'])
-        ) {
-            $liveform->mark_error($field['id'], pg_upload_blocked_message(htmlspecialchars($_FILES[$field['id']]['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
-        }
-
-        // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
-        if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h($field['label']))) );
-        }
-
-        // if field has date & time type and there is not already an error for this field and user entered value for field and submitted date & time is invalid, prepare error
-        if (($field['type'] == 'date and time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date_and_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date & time for {var:1}','vars'=>h($field['label']))) );
-        }
-
-        // if field has email address type and there is not already an error for this field and user entered value for field and submitted e-mail address is invalid, prepare error
-        if (($field['type'] == 'email address') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_email_address($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid e-mail address for {var:1}','vars'=>h($field['label']))) );
-        }
-
-        // if field has time type and there is not already an error for this field and user entered value for field and submitted time is invalid, prepare error
-        if (($field['type'] == 'time') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_time($liveform->get_field_value($field['id'])) == false)) {
-            $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h($field['label']))) );
-        }
-
-        // If this field is a title field and there is not already an error for this field,
-        // and the user entered a value for this field, and pretty URLs are enabled,
-        // then check if address name is already in use.
-        if (
-            ($field['rss_field'] == 'title')
-            && ($liveform->check_field_error($field['id']) == false)
-            && ($liveform->get_field_value($field['id']) != '')
-            && ($pretty_urls == true)
-        ) {
-            $address_name = create_address_name($liveform->get_field_value($field['id']));
-
-            // If that address name is already in use, then output error.
-            if (db_value("SELECT COUNT(*) FROM forms WHERE (page_id = '" . escape($page_id) . "') AND (address_name = '" . escape($address_name) . "')") > 0) {
-                $liveform->mark_error($field['id'], lang(array('string'=>'That {var:1} is already in use. Please enter a different one.','vars'=>h($field['label']))) );
-            }
-        }
+        pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls);
     }
 
     // if an error does not exist
@@ -820,51 +423,7 @@ if (!$_POST) {
             if ($field['type'] == 'file upload') {
                 // If a file was uploaded, then deal with that.
                 if ((isset($_FILES[$field['id']]) == true) && ($_FILES[$field['id']]['name'] != '')) {
-                    $file_name = prepare_file_name($_FILES[$field['id']]['name']);
-
-                    // Check if file name is already in use and change it if necessary.
-                    $file_name = get_unique_name(array(
-                        'name' => $file_name,
-                        'type' => 'file'));
-
-                    $file_size = $_FILES[$field['id']]['size'];
-                    $file_temp_name = $_FILES[$field['id']]['tmp_name'];
-
-                    // Get the position of the last period in order to get the extension.
-                    $position_of_last_period = mb_strrpos($file_name, '.');
-
-                    $file_extension = '';
-
-                    // If there is an extension then remember it.
-                    if ($position_of_last_period !== false) {
-                        $file_extension = mb_substr($file_name, $position_of_last_period + 1);
-                    }
-
-                    // create file
-                    copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
-
-                    // create file record in database
-                    $query = "INSERT INTO files (
-                                name,
-                                folder,
-                                type,
-                                size,
-                                user,
-                                design,
-                                attachment,
-                                timestamp)
-                             VALUES (
-                                ?,
-                                ?,
-                                ?,
-                                ?,
-                                ?,
-                                '0',
-                                '1',
-                                UNIX_TIMESTAMP())";
-                    $result = db_q($query, array((string) $file_name, (string) $field['upload_folder_id'], (string) $file_extension, (string) $file_size, (string) $user['id'])) or output_error('Query failed.');
-
-                    $file_id = mysqli_insert_id(db::$con);
+                    $file_id = pg_submitted_form_store_upload($field, $user['id']);
 
                     db(
                         "INSERT INTO form_data (
@@ -944,60 +503,7 @@ if (!$_POST) {
 
             // Otherwise the field is not a file upload type so save data in a different way.
             } else {
-                // assume that the form data type is standard until we find out otherwise
-                $form_data_type = 'standard';
-
-                // if the form field's type is date, date and time, or time, then set form data type to the form field type
-                if (
-                    ($field['type'] == 'date')
-                    || ($field['type'] == 'date and time')
-                    || ($field['type'] == 'time')
-                ) {
-                    $form_data_type = $field['type'];
-
-                // else if the form field is a wysiwyg text area, then set type to html and prepare data for input
-                } elseif (($field['type'] == 'text area') && ($field['wysiwyg'] == 1)) {
-                    $form_data_type = 'html';
-
-                    $liveform->assign_field_value($field['id'], prepare_rich_text_editor_content_for_input($liveform->get_field_value($field['id'])));
-                }
-
-                // if this field has multiple values (i.e. check box group or pick list)
-                if (is_array($liveform->get_field_value($field['id'])) == true) {
-                    foreach ($liveform->get_field_value($field['id']) as $value) {
-                        // store form data
-                        $query = "INSERT INTO form_data (
-                                    form_id,
-                                    form_field_id,
-                                    data,
-                                    name,
-                                    type)
-                                 VALUES (
-                                    ?,
-                                    ?,
-                                    ?,
-                                    ?,
-                                    ?)";
-                        $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($value, $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
-                    }
-
-                // else this field does not have multiple values
-                } else {
-                    // store form data
-                    $query = "INSERT INTO form_data (
-                                form_id,
-                                form_field_id,
-                                data,
-                                name,
-                                type)
-                             VALUES (
-                                ?,
-                                ?,
-                                ?,
-                                ?,
-                                ?)";
-                    $result = db_q($query, array((string) $form_id, (string) $field['id'], (string) prepare_form_data_for_input($liveform->get_field_value($field['id']), $field['type']), (string) $field['name'], (string) $form_data_type)) or output_error('Query failed.');
-                }
+                pg_submitted_form_save_value($liveform, $form_id, $field);
             }
         }
 

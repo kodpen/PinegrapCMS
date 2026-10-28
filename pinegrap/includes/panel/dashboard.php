@@ -179,9 +179,9 @@ function pg_panel_user_pinned_app_update($request, $action)
     $list = implode(',', $list);
     $query =
         "UPDATE user
-            SET selected_appmenu_items_array = '" . escape($list) . "'
-            WHERE user_id = '" . (int) $user['id'] . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            SET selected_appmenu_items_array = ?
+            WHERE user_id = ?";
+    $result = db_q($query, array((string) $list, (string) (int) $user['id'])) or output_error('Query failed.');
 
     //return success json output
     $response = array(

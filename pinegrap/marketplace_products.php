@@ -569,14 +569,14 @@ function mp_products_row_html($account, $row) {
 		$buttons[] = '<button type="button" class="btn btn-sm ' . ($suggested ? 'btn-outline theme-secondary' : 'btn-solid theme-primary') . '" data-mp-act="pick">'
 			. '<i class="bi bi-grid-3x3-gap me-1" aria-hidden="true"></i>' . h($suggested ? lang('Another product') : lang('Pick a product')) . '</button>';
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-ghost" data-mp-act="dismiss" title="' . h(lang('This shop does not sell it')) . '">'
+		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="dismiss" title="' . h(lang('This shop does not sell it')) . '">'
 			. '<i class="bi bi-slash-circle me-1" aria-hidden="true"></i>' . h(lang('Not sold here')) . '</button>';
 
 	}
 
 	if ($matched) {
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-ghost" data-mp-act="unmatch">'
+		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="unmatch">'
 			. '<i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
 
 	}
@@ -823,7 +823,7 @@ function mp_products_shop_row_html($account, $row) {
 
 		}
 
-		$buttons[] = '<button type="button" class="btn btn-sm btn-ghost" data-mp-act="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
+		$buttons[] = '<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-act="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>';
 
 	} else {
 
@@ -953,7 +953,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
 		<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-bulk="shop_own"><i class="bi bi-link-45deg me-1" aria-hidden="true"></i>' . h(lang('Match with own codes')) . '</button>
 		<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="shop_send"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang('Send now')) . '</button>'
 		. (mp_can($account['provider'], 'update_listings')
@@ -961,7 +961,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 				. h(lang('Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.')) . '">'
 				. '<i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang('Send listing changes')) . '</button>'
 			: '') . '
-		<button type="button" class="btn btn-sm btn-ghost" data-mp-bulk="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>
+		<button type="button" class="btn btn-sm btn-text theme-secondary" data-mp-bulk="shop_remove"><i class="bi bi-x-lg me-1" aria-hidden="true"></i>' . h(lang('Remove match')) . '</button>
 	</div>';
 
 }
@@ -1395,7 +1395,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
 		<button type="button" class="btn btn-sm btn-solid theme-primary" data-mp-bulk="list_pick"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>' . h(lang('Choose category')) . '</button>'
 		. (mp_can($account['provider'], 'create_listings')
 			? '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-mp-bulk="list_now"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . h(lang('List on the marketplace')) . '</button>'
@@ -1660,7 +1660,7 @@ a.mpp-title:hover { text-decoration: underline; }
 
 <main id="content" class="container-fluid">
 	<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
-		<a class="btn btn-sm btn-ghost" href="marketplace_settings.php' . ($account ? '?account=' . $account_id : '') . '">'
+		<a class="btn btn-sm btn-text theme-secondary" href="marketplace_settings.php' . ($account ? '?account=' . $account_id : '') . '">'
 			. '<i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('Marketplaces')) . '</a>
 	</nav>
 	<div id="mpp-flash" aria-live="polite"></div>';
@@ -1865,7 +1865,7 @@ if (!$account) {
 	<div class="mpp-bulk d-none" id="mpp-bulk">
 		<span class="small"><b id="mpp-bulk-n">0</b> ' . h(lang('selected')) . '</span>
 		<div class="flex-grow-1"></div>
-		<button type="button" class="btn btn-sm btn-ghost" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
+		<button type="button" class="btn btn-sm btn-text theme-secondary" id="mpp-bulk-clear">' . h(lang('Clear')) . '</button>
 		<button type="button" class="btn btn-sm btn-solid theme-success" id="mpp-bulk-accept"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang('Accept selected')) . '</button>
 	</div>';
 

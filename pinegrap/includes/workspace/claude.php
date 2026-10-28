@@ -1813,7 +1813,7 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
                     <span class="fg-secondary">· ' . h(ws_time_label($row['created_at'])) . '</span>
                     <div class="small">' . h($line['label']) . '</div>
                 </div>'
-                . (($line['session_url'] !== '') ? '<a class="btn btn-sm btn-ghost" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '
+                . (($line['session_url'] !== '') ? '<a class="btn btn-sm btn-text theme-secondary" href="' . h($line['session_url']) . '" target="_blank" rel="noopener" title="' . h(lang('Open the session')) . '"><i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>' : '') . '
             </li>';
     }
 

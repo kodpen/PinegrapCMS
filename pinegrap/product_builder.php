@@ -1650,10 +1650,9 @@ function pg_pb_clear_form_template($group_id)
  * it survives Google renaming a category.
  *
  * The taxonomy is ~5,595 categories. Rendering it as <option> elements is about
- * 785 KB of markup and 5,595 DOM nodes, and select2 copies every one of them
- * into its own results list and rescans them on each keystroke. So the list
- * never reaches the browser: the field is a select2 in AJAX mode and the search
- * happens here.
+ * 785 KB of markup and 5,595 DOM nodes for a field that shows a handful of
+ * matches. So the list never reaches the browser: the field is a combobox that
+ * searches the server (data-pg-source) and the search happens here.
  *
  * The files are shipped with the software and edited by hand — Google last
  * revised the taxonomy in 2021, so there is nothing to keep in sync and no
@@ -2585,6 +2584,7 @@ function pg_pb_render_image_picker_assets()
                 labels: ' . str_replace('</', '<\/', encode_json($labels)) . '
             };
         </script>
+        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/sortablejs/Sortable.min.js"></script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>';
 }
 
@@ -5134,7 +5134,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </select>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">
-                                                        <label for="private_days" class="form-label">' . lang('Length') . '</label>
+                                                        <label for="private_days" class="form-label">' . lang('Access duration') . '</label>
                                                         <label class="form-control form-adorn form-adorn-end">
                                                             <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                                             <input type="text" name="private_days" id="private_days" class="form-ghost" size="7" maxlength="7" inputmode="numeric" style="text-align:right;" value="' . h($v('private_days')) . '" />
@@ -5509,6 +5509,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
         ]);
     </script>
+    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/sortablejs/Sortable.min.js"></script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_builder.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_builder.js') . '"></script>
     <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/product_name_check.js?v=' . @filemtime(dirname(__FILE__) . '/assets/js/product_name_check.js') . '"></script>
     ' . pg_ai_write_assets() . '

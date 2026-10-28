@@ -138,6 +138,9 @@ function pg_parasut_credentials_for_save()
     // and stored after the card's own columns.
     $payment_driver_decisions = pg_payment_settings_check($_POST, $liveform);
 
+    // The same for the carrier label drivers (includes/fn/carrier_labels.php).
+    $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -607,6 +610,9 @@ function pg_parasut_credentials_for_save()
     pg_carrier_api_settings_save($_POST, USER_ID, $liveform);
 
     pg_payment_settings_save($payment_driver_decisions, USER_ID);
+
+    // Stored after the card, then the connection test that was asked for.
+    pg_label_settings_save($label_driver_decisions, USER_ID, $liveform);
 
     // A Paraşüt authorization code is exchanged by the card's Connect button;
     // one pasted and saved with the page is exchanged here as well, after the

@@ -1091,13 +1091,13 @@ function ws_task_card_html($viewer, $task, $assignees)
 
     if ($can_edit && $brief['open']) {
         if ($task['status'] === 'todo') {
-            $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"' . (($waits !== '') ? ' data-ws-blocked="' . h($waits) . '"' : '') . '><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
+            $buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-task-status="doing" data-ws-task="' . (int) $task['id'] . '"' . (($waits !== '') ? ' data-ws-blocked="' . h($waits) . '"' : '') . '><i class="bi bi-play-circle me-1"></i>' . h(lang('Start work')) . '</button>';
         }
 
         $buttons .= '<button type="button" class="btn btn-sm btn-outline theme-success" data-ws-task-status="done" data-ws-task="' . (int) $task['id'] . '"><i class="bi bi-check2-circle me-1"></i>' . h(lang('Mark done')) . '</button>';
     }
 
-    $buttons .= '<button type="button" class="btn btn-sm btn-ghost" data-ws-task-open="' . (int) $task['id'] . '"><i class="bi bi-box-arrow-up-right me-1"></i>' . h(lang('Open task')) . '</button>';
+    $buttons .= '<button type="button" class="btn btn-sm btn-text theme-secondary" data-ws-task-open="' . (int) $task['id'] . '"><i class="bi bi-box-arrow-up-right me-1"></i>' . h(lang('Open task')) . '</button>';
 
     return '<div class="ws-task-card ws-task-' . h($task['status']) . ' ws-priority-' . h($task['priority']) . '" data-ws-task-card="' . (int) $task['id'] . '" data-ws-status="' . h($task['status']) . '" data-ws-due="' . h((string) $brief['due_date']) . '" data-ws-updated="' . (int) $task['updated_at'] . '">
             <div class="ws-task-card-head">

@@ -183,11 +183,11 @@ function pg_waf_unban(array $parsed)
     $removed = pg_waf_unban_rows(mysqli_fetch_items($result), $parsed);
 
     foreach ($removed as $row) {
-        mysqli_query(
-            db::$con,
+        db_q(
             "DELETE FROM banned_ip_addresses
-             WHERE ip_address = '" . escape($row['ip_address']) . "'"
-             . ($has_source ? " AND list_type = 'block'" : '')
+             WHERE ip_address = ?"
+             . ($has_source ? " AND list_type = 'block'" : ''),
+            array((string) $row['ip_address'])
         );
 
         waf_offence_clear($row['ip_address']);

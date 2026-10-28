@@ -21,6 +21,7 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/ad_region_form.php');
 $liveform = new liveform('add_ad_region');
 
 // if the form has not been submitted
@@ -44,96 +45,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_ad_region.php" method="post">
                     ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad Region'))) . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<ad>') . '</div>
-                                                <input name="name" id="name" type="text" class="form-control" maxlength="100" />
-                                                <div class="input-group-text">' . h('</ad>') . '</div>
-                                            </div>
-                                        </div>
-                                        <h5 class="mt-12">' . lang('Region Behavior') . '</h5>
-                                        <div class="col-12">
-                                            <label class="form-label">' . lang('Display Type') . '</label>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'checked'=>'checked', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
-                                            </div>
-                                            <div class="form-field">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
-                                                <label class="" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
-                                            </div>
-                                            
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_dynamic_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 my-1">
-                                                            <label class="form-label">' . lang('Transition Type') . '</label>
-                                                        </div>
-                                                        <div class="col-12 my-1">
-                                                            <div class="form-field">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'checked'=>'checked', 'class'=>'radio')) . '
-                                                                <label class="" for="slide">' . lang('Slide') . '</label>
-                                                            </div>
-                                                            <div class="form-field">
-                                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'radio')) . '
-                                                                <label class="" for="fade">' . lang('Fade') . '</label>
-                                                            </div>
-                                                        </div>
-                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
-                                                            <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
-                                                            <div class="input-group">
-                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'transition_duration', 'id'=>'transition_duration', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'4', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
-                                                                <div class="input-group-text">' . lang('milliseconds') . '</div>
-                                                            </div>
-                                                            <div class="form-text text-end">' . lang('leave blank for default, 1 for instant, 1000 for 1 second') . '</div>
-                                                        </div>
-                                                        <div class="col-12 my-1">
-                                                            <div class="form-field">
-                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow', 'id'=>'slideshow', 'value'=>'1', 'class'=>'collapse-switcher no-bs', 'data-bs-target'=>'#slideshow_row')) . '</div>
-                                                                <label class="" for="slideshow">' . lang('Enable Autoplay') . '</label>
-                                                            </div>
-                                                            <div class="collapse popover  fade bs-popover-bottom p-0 mb-3 w-100" id="slideshow_row">
-                                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                                <div class="popover-body">
-                                                                    <div class="row">
-                                                                        <div class="col-12 md:col-6 lg:col-4 my-1">
-                                                                            <label class="form-label" for="slideshow_interval">' . lang('Interval') . '</label>
-                                                                            <div class="input-group">
-                                                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'slideshow_interval', 'id'=>'slideshow_interval', 'class'=>'form-control text-end', 'inputmode'=>'numeric', 'maxlength'=>'3', 'data-inputmask-alias'=>'decimal', 'data-inputmask-placeholder'=>'0')) . '
-                                                                                <div class="input-group-text">' . lang('seconds') . '</div>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div class="col-12 my-1">
-                                                                            <div class="form-field">
-                                                                                <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'slideshow_continuous', 'id'=>'slideshow_continuous', 'value'=>'1', 'checked'=>'checked', 'class'=>'no-bs')) . '</div>
-                                                                                <label class="" for="slideshow_continuous">' . lang('Play Continuously') . '</label>
-                                                                            </div>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_ad_region_form_card($liveform, '<input name="name" id="name" type="text" class="form-control" maxlength="100" />', true) . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
@@ -157,29 +69,7 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
     
-    $liveform->validate_required_field('name', lang('Name is required.'));
-    
-    // if there is not already an error for the name field, then check that valid characters were entered for name field
-    if ($liveform->check_field_error('name') == false) {
-        // if the name is not valid, then mark error
-        if (preg_match('/[^A-Za-z0-9-]/', $liveform->get_field_value('name')) == 1) {
-            $liveform->mark_error('name', lang('Please only enter letters, numbers, and dashes for the name.'));
-        }
-    }
-    
-    // if there is not already an error for the name field, check to see if name is already in use by a different ad region
-    if ($liveform->check_field_error('name') == false) {
-        $query =
-            "SELECT id
-            FROM ad_regions
-            WHERE (name = '" . escape($liveform->get_field_value('name')) . "')";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        // if the name is already in use by a different ad region, then mark error
-        if (mysqli_num_rows($result) > 0) {
-            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-        }
-    }
+    pg_ad_region_form_validate_name($liveform, null);
     
     // if there is an error, forward user back to add ad region screen
     if ($liveform->check_form_errors() == true) {
@@ -202,18 +92,21 @@ if (!$_POST) {
             last_modified_user_id,
             last_modified_timestamp)
         VALUES (
-            '" . escape($liveform->get_field_value('name')) . "',
-            '" . escape($liveform->get_field_value('display_type')) . "',
-            '" . escape($liveform->get_field_value('transition_type')) . "',
-            '" . escape($liveform->get_field_value('transition_duration')) . "',
-            '" . escape($liveform->get_field_value('slideshow')) . "',
-            '" . escape($liveform->get_field_value('slideshow_interval')) . "',
-            '" . escape($liveform->get_field_value('slideshow_continuous')) . "',
-            '" . $user['id'] . "',
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
+            ?,
             UNIX_TIMESTAMP(),
-            '" . $user['id'] . "',
+            ?,
             UNIX_TIMESTAMP())";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $result = db_q($query, array_merge(array((string) $liveform->get_field_value('name')), pg_ad_region_form_values($liveform), array(
+        (string) $user['id'],
+        (string) $user['id'],
+    ))) or output_error('Query failed.');
 
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('ad region'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
     

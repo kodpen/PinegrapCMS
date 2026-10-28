@@ -87,10 +87,10 @@ echo
 
 pg_page_shell(
     array(
-        'title'=> lang(array('string'=>'View {var:1}','vars'=>lang('Calendars'))),
+        'title'=> lang('View Calendars'),
         'extra classes'=>'calendar',
         'icon'=>'calendar', 
-        'heading'=> lang(array('string'=>'View {var:1}','vars'=>lang('Calendars'))),
+        'heading'=> lang('View Calendars'),
         'heading_description' => lang('View and update this calendar.'),
         'cancel'=>array(
             'enable'=>'true',

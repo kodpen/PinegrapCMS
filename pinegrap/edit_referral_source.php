@@ -33,8 +33,8 @@ $output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-seconda
 
 if (!$_POST) {
     // get referral source data
-    $query = "SELECT * FROM referral_sources WHERE id = '" . escape($_GET['id']) . "'";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+    $query = "SELECT * FROM referral_sources WHERE id = ?";
+    $result = db_q($query, array((string) ($_GET['id'] ?? ''))) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
     $name = h($row['name']);
@@ -76,8 +76,8 @@ if (!$_POST) {
                                             <h5>' . lang('Order Preview Page Display Options') . '</h5>
                                             
                                             <div class="col-12 md:col-6 my-3">
-                                                <label for="name" class="form-label">*' . lang('Referral Source Name') . '</label>
-                                                <input type="text" name="name" class="form-control" maxlength="50" value="' . $name . '" />
+                                                <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
+                                                <input type="text" id="name" name="name" class="form-control" maxlength="50" value="' . $name . '" required />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 sm:col-2 my-3">
@@ -94,8 +94,8 @@ if (!$_POST) {
                                         <div class="row mt-7">
                                             <h5>' . lang('New Referral Source Code for Order Reporting') . '</h5>
                                             <div class="col-12 md:col-4 my-3">
-                                                <label for="code" class="form-label">*' . lang('Referral Source Code') . '</label>
-                                                <input type="text" name="code" class="form-control" maxlength="50" value="' . $code . '" />
+                                                <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
+                                                <input type="text" id="code" name="code" class="form-control" maxlength="50" value="' . $code . '" required />
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                         </div>
@@ -127,20 +127,20 @@ if (!$_POST) {
     // if referral source was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
         // delete referral source
-        $query = "DELETE FROM referral_sources WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        $query = "DELETE FROM referral_sources WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
         log_activity(lang(array('string'=>'referral source ({var:1}) was deleted','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
     // else referral source was not selected for delete
     } else {
         // update referral source
         $query = "UPDATE referral_sources SET
-                    name = '" . escape($_POST['name'] ?? '') . "',
-                    code = '" . escape($_POST['code'] ?? '') . "',
-                    sort_order = '" . escape($_POST['sort_order'] ?? '') . "',
-                    user = '" . $user['id'] . "',
+                    name = ?,
+                    code = ?,
+                    sort_order = ?,
+                    user = ?,
                     timestamp = UNIX_TIMESTAMP()
-                WHERE id = '" . escape($_POST['id'] ?? '') . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                WHERE id = ?";
+        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['sort_order'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
     }

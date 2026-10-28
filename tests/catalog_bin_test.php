@@ -252,9 +252,15 @@ function test_catalog_bin_edit_screens_keep_the_product_they_point_at()
 {
 	// Left off its own select, the stored product falls back to the first
 	// option and the next save points the record elsewhere.
-	foreach (array('edit_short_link.php', 'edit_calendar_event.php') as $file) {
-		pg_assert_contains("get_product_options(true, \$liveform->get_field_value('product_id'))", catalog_bin_test_source($file), $file);
-	}
+	// The short link screen hands its product to the shared form.
+	pg_assert_contains("'product_id' => \$liveform->get_field_value('product_id'),", catalog_bin_test_source('edit_short_link.php'), 'edit_short_link.php');
+	pg_assert_contains("get_product_options(true, \$keep['product_id'])", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short_link_form.php');
+
+	// The calendar event edit screen passes its id; the shared cards then keep the product.
+	pg_assert_contains('pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_event_locations, $id)', catalog_bin_test_source('edit_calendar_event.php'), 'edit_calendar_event.php');
+	$calendar_form = catalog_bin_test_source('includes/forms/calendar_event_form.php');
+	pg_assert_contains("\$product_id = \$liveform->get_field_value('product_id');", $calendar_form, 'calendar_event_form.php');
+	pg_assert_contains('get_product_options(true, $product_id)', $calendar_form, 'calendar_event_form.php');
 
 	// The campaign profile screen hands its product to the shared form.
 	pg_assert_contains("pg_email_campaign_profile_form_cards(\$liveform, \$user, \$liveform->get_field_value('product_id'))", catalog_bin_test_source('edit_email_campaign_profile.php'), 'edit_email_campaign_profile.php');
@@ -270,7 +276,8 @@ function test_catalog_bin_group_screen_neither_lists_nor_drops_binned_rows()
 
 	// Their group links survive the save that cannot post them back.
 	pg_assert_contains("AND product NOT IN (SELECT id FROM products WHERE recycled = '1')", $source, 'the save keeps the links of binned products');
-	pg_assert_contains('in_array((int) $product_id, $kept_product_ids, true)', $source, 'and does not add them a second time');
+	pg_assert_contains('pg_product_group_form_link_products($_POST[\'id\'] ?? \'\', $_POST, $kept_product_ids);', $source, 'and does not add them a second time');
+	pg_assert_contains('in_array((int) $product_id, $kept_product_ids, true)', catalog_bin_test_source('includes/forms/product_group_form.php'), 'the shared form skips the kept links');
 }
 
 function test_catalog_bin_product_screen_does_not_write_a_binned_product()
@@ -361,8 +368,8 @@ function test_catalog_bin_group_pickers_leave_the_bin_out()
 	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), FALSE, 'text', false, true, false)", $builder, 'product screen: parent group');
 	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'text', false, true, false, \$v('catalog_group_ids', array()))", $builder, 'product screen: the groups it is in stay');
 
-	pg_assert_contains("\$include_blank_option = TRUE, TRUE, FALSE, \$liveform->get_field_value('product_group_id'))", catalog_bin_test_source('edit_short_link.php'), 'short link: the group it points at stays');
-	pg_assert_contains('$include_blank_option = TRUE, TRUE, FALSE)', catalog_bin_test_source('add_short_link.php'), 'new short link');
+	pg_assert_contains("'product_group_id' => \$liveform->get_field_value('product_group_id'),", catalog_bin_test_source('edit_short_link.php'), 'short link: the group it points at stays');
+	pg_assert_contains("get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, \$keep['product_group_id'])", catalog_bin_test_source('includes/forms/short_link_form.php'), 'short link form: the bin left out');
 
 	$group = catalog_bin_test_source('edit_product_group.php');
 

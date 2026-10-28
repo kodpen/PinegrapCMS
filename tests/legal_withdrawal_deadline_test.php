@@ -136,6 +136,7 @@ function test_legal_withdrawal_order_view_wiring()
 	pg_assert_contains("empty(\$sw_ctx['email']) ? pg_legal_withdrawal_of_order((int)\$order['id']) : null", $source, 'none in the e-mail');
 	pg_assert_contains("'__withdrawal_deadline'     => h(\$withdrawal_date)", $source, 'the token is escaped');
 	pg_assert_contains("'has_withdrawal_deadline'       => \$withdrawal_date !== ''", $source, 'the flag');
+	pg_assert_contains("'withdrawal_deadline_firm'      => \$withdrawal_date !== '' && !\$withdrawal['estimated'] && \$withdrawal['open']", $source, 'the firm flag');
 	pg_assert_contains("'__withdrawal_text'         => h(pg_legal_withdrawal_text(\$withdrawal, \$withdrawal_date))", $source, 'the line, escaped');
 	pg_assert_contains("!pg_sw_placed(\$tree, array('__withdrawal_deadline', '__withdrawal_text'))", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php'), 'a bound token keeps the line out of the card');
 }

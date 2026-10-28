@@ -330,11 +330,11 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="pg-f-xs">
-                                                            <label for="statracking_code_durationrt" class="form-label">*' . lang('Tracking Code Duration') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-control" value="' . h($tracking_code_duration) . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" min="1" max="365" />
-                                                                <span class="input-group-text">' . lang('day(s)') . '</span>
-                                                            </div>
+                                                            <label for="tracking_code_duration" class="form-label">*' . lang('Tracking Code Duration') . '</label>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                                <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" min="1" max="365" />
+                                                            </label>
                                                         </div>
                                                         <div class="pg-f-md">
                                                             <label for="pay_per_click_flag" class="form-label">' . lang('Pay Per Click Tracking Code Flag') . '</label>
@@ -367,20 +367,20 @@ $pg_settings_cards[] = '
                                         </div>' . ($visitor_retention_available ? '
                                         <div class="pg-f-xs">
                                             <label for="visitor_retention_days" class="form-label">' . lang('Keep visitor records for') . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="visitor_retention_days" id="visitor_retention_days" class="form-control" value="' . h($visitor_retention_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
-                                                <span class="input-group-text">' . lang('day(s)') . '</span>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                <input type="text" name="visitor_retention_days" id="visitor_retention_days" class="form-ghost" value="' . h($visitor_retention_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                            </label>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-text">' . h(lang(array('string' => 'Older visitor records are removed a little at a time by the general job, so the table stays small. 0 keeps every record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_RETENTION_MIN_DAYS, PG_VISITOR_RETENTION_MAX_DAYS)))) . '</div>
                                         </div>
                                         ' . ($visitor_ip_available ? '<div class="pg-f-xs">
                                             <label for="visitor_ip_days" class="form-label">' . lang('Remove IP addresses after') . '</label>
-                                            <div class="input-group">
-                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-control" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
-                                                <span class="input-group-text">' . lang('day(s)') . '</span>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                                                <input type="text" name="visitor_ip_days" id="visitor_ip_days" class="form-ghost" value="' . h($visitor_ip_days) . '" size="5" maxlength="4" inputmode="numeric" style="text-align: right;" />
+                                            </label>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-text">' . h(lang(array('string' => 'The IP address of a visit is taken out of its record after this many days; the record, its source and its figures stay. 0 keeps it as long as the record; otherwise at least {var:1} and at most {var:2} days.', 'vars' => array(PG_VISITOR_IP_MIN_DAYS, PG_VISITOR_IP_MAX_DAYS)))) . '</div>

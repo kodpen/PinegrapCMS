@@ -144,3 +144,86 @@ function test_workspace_flow_condition_is_kept_back()
 	pg_assert_same('The condition held.', ws_step_result_shown('condition', 'yes', $said, false));
 	pg_assert_same('The condition could not be checked.', ws_step_result_shown('condition', '', 'You may not see records of this kind.', false));
 }
+
+// A condition on a value of the run (data-passing D7): one {{node.*}} or
+// {{trigger.*}} kept as written, a comparison of its own list; anything else
+// is no value, which the box names as a problem. Non-editors read the value
+// and its box, never what it is compared with.
+function test_workspace_flow_condition_value_rule_is_kept()
+{
+	$rule = function ($rule) {
+		return ws_flow_condition_normalize(array('rule' => array('type' => 'value') + $rule))['rule'];
+	};
+
+	pg_assert_same(array('type' => 'value', 'ref' => '{{node.web_check_1.status_code}}', 'op' => 'gte', 'value' => '400'),
+		$rule(array('ref' => ' {{node.web_check_1.status_code}}', 'op' => 'gte', 'value' => 400)));
+	pg_assert_same('{{trigger.order_number}}', $rule(array('ref' => '{{trigger.order_number}}'))['ref']);
+	pg_assert_same('eq', $rule(array('ref' => '{{trigger.order_number}}'))['op'], 'eq when none is given');
+	pg_assert_same('eq', $rule(array('op' => 'within'))['op'], 'a date comparison is not a value\'s');
+
+	foreach (array('{{node.a.b}} x', '{{date}}', '{{node.A.b}}', 'node.a.b', array('{{node.a.b}}')) as $bad) {
+		pg_assert_same('', $rule(array('ref' => $bad))['ref'], 'no value: ' . json_encode($bad));
+	}
+
+	pg_assert_same(1, count(ws_flow_condition_problems(ws_flow_condition_normalize(array('rule' => array('type' => 'value'))), 'C')));
+	pg_assert_same(array(), ws_flow_condition_problems(ws_flow_condition_normalize(array('rule' => array('type' => 'value', 'ref' => '{{trigger.event}}'))), 'C'));
+
+	$check = ws_flow_condition_check(array('id' => 1), array('rule' => array('type' => 'value', 'ref' => '{{trigger.event}}', 'op' => 'eq', 'value' => 'order.created')));
+
+	pg_assert_true($check['ok'], 'a value reads no record: nothing the owner may lack');
+	pg_assert_same('{{trigger.event}}', $check['rule']['ref']);
+	pg_assert_false(ws_flow_condition_check(array('id' => 1), array('rule' => array('type' => 'value', 'ref' => 'x')))['ok']);
+
+	$masked = ws_flow_condition_masked(array('rule' => $rule(array('ref' => '{{node.web_1.status_code}}', 'op' => 'gt', 'value' => '499'))));
+
+	pg_assert_same(array('{{node.web_1.status_code}}', 'gt', ''), array($masked['rule']['ref'], $masked['rule']['op'], $masked['rule']['value']));
+
+	// The reference check reads the value: a box that is not before it is
+	// a problem, as in a text.
+	$found = array();
+
+	foreach (ws_flow_graph_check(array('nodes' => array(
+		array('id' => 'start', 'kind' => 'manual'),
+		array('id' => 'cond', 'kind' => 'condition', 'config' => array('rule' => array('type' => 'value', 'ref' => '{{node.later.text}}'))),
+		array('id' => 'later', 'kind' => 'end'),
+	), 'edges' => array(array('from' => 'start', 'to' => 'cond', 'on' => 'next'), array('from' => 'cond', 'to' => 'later', 'on' => 'yes')))) as $problem) {
+		$found[] = $problem['node'] . ' ' . $problem['code'];
+	}
+
+	pg_assert_true(in_array('cond bad_reference', $found, true), 'a box after the condition: ' . implode(', ', $found));
+}
+
+// What a value rule makes of the run's values: a box's field or the
+// trigger's, compared as a scheduled condition compares (case aside); a
+// size only between two numbers, so a skipped box's '' is never less than
+// 5. The sentence names the rule and the value read.
+function test_workspace_flow_condition_value_holds()
+{
+	$values = array(
+		'web_1'         => array('text' => 'Answered 503', 'status' => 'done', 'status_code' => '503'),
+		WS_STEP_TRIGGER => array('order_number' => 'ORD-1042', 'event' => 'order.created'),
+	);
+	$holds = function ($ref, $op, $value) use ($values) {
+		return ws_flow_condition_value_holds(array('type' => 'value', 'ref' => $ref, 'op' => $op, 'value' => $value), $values)['holds'];
+	};
+
+	pg_assert_true($holds('{{node.web_1.status_code}}', 'gte', '500'));
+	pg_assert_false($holds('{{node.web_1.status_code}}', 'lt', '500'));
+	pg_assert_true($holds('{{node.web_1.status_code}}', 'gt', '99'), 'numbers, not text: "503" > "99"');
+	pg_assert_true($holds('{{node.web_1.status}}', 'eq', 'Done'));
+	pg_assert_true($holds('{{node.web_1.text}}', 'contains', '503'));
+	pg_assert_true($holds('{{trigger.order_number}}', 'neq', 'ORD-1'));
+	pg_assert_true($holds('{{trigger.order_number}}', 'not_empty', ''));
+	pg_assert_true($holds('{{node.skipped_1.status_code}}', 'empty', ''), 'a box that did not run gives ""');
+	pg_assert_false($holds('{{node.skipped_1.status_code}}', 'lt', '5'), 'and "" is not a number');
+	pg_assert_false($holds('{{trigger.order_number}}', 'gt', '5'), 'nor is a text');
+
+	$held = ws_flow_condition_value_holds(array('type' => 'value', 'ref' => '{{node.web_1.status_code}}', 'op' => 'gte', 'value' => '500'), $values);
+
+	pg_assert_same('The condition held: node.web_1.status_code is at least 500 (it was "503").', $held['text']);
+
+	$run = ws_flow_conditions_test_source('ws_flow_condition_run');
+
+	pg_assert_contains('ws_step_node_values(', $run, 'the run\'s settled boxes');
+	pg_assert_contains('ws_step_trigger_values_for($owner', $run, 'the trigger\'s values with the owner\'s rights');
+}

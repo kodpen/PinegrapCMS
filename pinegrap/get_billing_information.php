@@ -133,8 +133,8 @@ function get_billing_information($properties) {
                     po_number,
                     tax_exempt,
                     referral_source_code
-                 FROM orders WHERE id = '$order_id'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 FROM orders WHERE id = ?";
+        $result = db_q($query, array((string) $order_id)) or output_error('Query failed.');
         $order = mysqli_fetch_assoc($result);
 
         // A visitor who opens this page before anything is in the cart has no order

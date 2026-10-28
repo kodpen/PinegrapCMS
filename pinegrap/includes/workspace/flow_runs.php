@@ -23,7 +23,9 @@
  * turn. So a join after an outcome that was not taken fires once, on the
  * branch that was. A run with no open box ends: failed when a box failed,
  * done otherwise (an end box reached, or every branch ran out of arrows).
- * Its owner is told once, by the request whose UPDATE ended it.
+ * Its owner is told once, by the request whose UPDATE ended it, and the
+ * webhooks hear it then, as they hear a box that starts to wait
+ * (flow_run_events.php).
  *
  * A run acts with the rights its flow's owner holds when each box runs, not
  * those they held when they published it: an owner who has left the staff
@@ -1708,6 +1710,7 @@ function ws_flow_run_refresh($run_id)
 
     if ((int) mysqli_affected_rows(db::$con) === 1) {
         ws_flow_run_tell_owner($run, $state);
+        ws_flow_run_announce_end((int) $run['id'], $state);
     }
 
     return $state;
@@ -1875,6 +1878,10 @@ function ws_flow_runs_heal($run_id = 0)
             if (!$trigger) {
                 db("UPDATE ws_flow_runs SET status = 'failed', finished_at = '" . $now . "', updated_at = '" . $now . "'
                     WHERE id = '" . (int) $run['id'] . "' AND status = 'running'");
+
+                if ((int) mysqli_affected_rows(db::$con) === 1) {
+                    ws_flow_run_announce_end((int) $run['id'], 'failed');
+                }
 
                 continue;
             }
@@ -2351,6 +2358,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         // later in the same request is kept for it.
         ws_events_awaited(true);
         ws_flow_run_refresh((int) $run['id']);
+        ws_flow_run_announce_waiting((int) $step['id'], 'task:' . $task_id);
 
         return;
     }
@@ -2488,6 +2496,7 @@ function ws_flow_delay_run($step, $node)
 
     if ((int) mysqli_affected_rows(db::$con) === 1) {
         ws_flow_run_refresh((int) $step['run_id']);
+        ws_flow_run_announce_waiting((int) $step['id'], $key);
     }
 }
 
@@ -2562,6 +2571,7 @@ function ws_flow_retry_wait($step, $node, $text, $data = array())
     }
 
     ws_flow_run_refresh((int) $step['run_id']);
+    ws_flow_run_announce_waiting((int) $step['id'], $key);
 
     return true;
 }
@@ -2643,6 +2653,7 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data)
         // again, so a decision later in the same request is kept for it.
         ws_events_awaited(true);
         ws_flow_run_refresh((int) $step['run_id']);
+        ws_flow_run_announce_waiting((int) $step['id'], $key);
 
         return;
     }
@@ -3343,7 +3354,7 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     }
 
     $source_context = ws_flow_run_context($run);
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+    $values = ws_flow_pure_values($graph) + ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
         ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

@@ -275,7 +275,7 @@
 
         if (here) {
             [['all', t('pal_everywhere')], ['here', t('pal_here', here.name)]].forEach(function (option) {
-                var item = el('button', 'btn btn-ghost' + (state.scope === option[0] ? ' active' : ''), option[1]);
+                var item = el('button', 'btn btn-text theme-secondary' + (state.scope === option[0] ? ' active' : ''), option[1]);
                 item.type = 'button';
                 item.setAttribute('aria-pressed', state.scope === option[0] ? 'true' : 'false');
                 item.addEventListener('click', function () {
@@ -484,7 +484,7 @@
         // A colleague: the conversation with them, and their account where
         // the reader may open it.
         if ((item.type === 'person') && !item.me && item.url && (typeof window.pgChatOpenWith === 'function')) {
-            var account = el('a', 'btn btn-sm btn-ghost ws-palette-side');
+            var account = el('a', 'btn btn-sm btn-text theme-secondary ws-palette-side');
             account.href = item.url;
             account.title = t('pal_profile');
             account.setAttribute('aria-label', t('pal_profile'));

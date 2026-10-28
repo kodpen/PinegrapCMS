@@ -136,8 +136,8 @@ if (!$_POST) {
                             products.name as name,
                             price,
                             products.short_description as short_description 
-                            FROM products  WHERE id = '" . escape($product_id) . "'";
-							$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            FROM products  WHERE id = ?";
+							$result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
 							$row = mysqli_fetch_assoc($result);
 							$price = $row['price'];
 						}	
@@ -205,8 +205,8 @@ if (!$_POST) {
                             products.id as id, 
                             inventory,
                             inventory_quantity
-                            FROM products  WHERE id = '" . escape($product_id) . "'";
-                            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                            FROM products  WHERE id = ?";
+                            $result = db_q($query, array((string) $product_id)) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
                             $inventory_quantity = $row['inventory_quantity'];
                             // its value, item inventory_quantity update with new value

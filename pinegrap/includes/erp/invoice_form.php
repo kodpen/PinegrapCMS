@@ -275,7 +275,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                 </td>
                 <td class="text-end align-middle text-nowrap" data-erp-line-total></td>
                 <td class="align-middle text-end">
-                    <button type="button" class="btn btn-sm btn-ghost no-submit" data-erp-remove-line title="' . lang('Remove line') . '" aria-label="' . lang('Remove line') . '"><i class="bi bi-x-lg"></i></button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary no-submit" data-erp-remove-line title="' . lang('Remove line') . '" aria-label="' . lang('Remove line') . '"><i class="bi bi-x-lg"></i></button>
                 </td>
             </tr>';
 }

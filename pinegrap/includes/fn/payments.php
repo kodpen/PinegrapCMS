@@ -1367,6 +1367,33 @@ function pg_payment_checkout_driver($method, $gateway, $mode)
 }
 
 /**
+ * What an incomplete order keeps of a payment a driver started and the
+ * service finishes after a redirect (Stripe's 3-D Secure page): the
+ * service's payment id and the total it was started for. A message the
+ * service sends on its own (payment_callback.php) is matched against them
+ * when the visitor never comes back. Completing the order writes both again.
+ *
+ * @param array     $answer pg_payment_answer() of authorize()
+ * @param int|float $total  hundredths: the amount authorize() was given
+ * @return array|null transaction_id, total (hundredths); null when the
+ *                    answer is no redirect or names no payment
+ */
+function pg_payment_started_order_values($answer, $total)
+{
+    if (empty($answer['success']) || (($answer['status'] ?? '') !== 'redirect')) {
+        return null;
+    }
+
+    $transaction_id = isset($answer['transaction_id']) ? (string) $answer['transaction_id'] : '';
+
+    if ($transaction_id === '') {
+        return null;
+    }
+
+    return array('transaction_id' => $transaction_id, 'total' => (int) round((float) $total));
+}
+
+/**
  * What an order records from a payment a driver took, in the variables the
  * gateway code has always set: the amount above the order total is the
  * instalment charge.

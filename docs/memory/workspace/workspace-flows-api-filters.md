@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-api-filters
-description: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122)
+description: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)
 ---
 
 ## Which filters does the list take?
@@ -20,5 +20,9 @@ description: Flow list filters start, status, channel_id, updated_since and the 
 - `start_text` = `ws_flow_start_text()`: manual says "By hand"; an anchor kind builds its scheduled-action rule (`ws_flow_start_rule()`, pure, tested) and says it with `ws_scheduled_rule_text()`, the same words the scheduled actions use; an unfilled time box says its label ("At a time").
 - A channel in the start box the caller does not read is not named: join says "When somebody joins a channel", event drops the channel from its rule. The API's readable check is `ws_api_flow_claude_channel()` for the Claude app, `ws_flow_channel_readable()` otherwise.
 - The event catalogue reads tables (`ws_approvals_ready()`), so tests check the event rule, not its words.
+
+## How does the Flows screen filter by start? (C4, PR #2391)
+- `ws_flow_list` (panel action) reads every listed flow's start with `ws_flows_start_kinds()` and `ws_flow_brief()` answers it as `start` ('' for no start box); `ws_flow_detail()` works it out with `ws_flow_start_graph()`, so `listEntry()` keeps it after a save.
+- `drawList()` puts a select over the list (`startFilter()`, `state.startFilter`, filtered in the browser): every start, time, manual, event, join. A part left empty says "No flow starts this way."
 
 Related: docs/memory/workspace/workspace-flows-store.md, docs/memory/workspace/workspace-flows-anchors.md, docs/memory/plans/workspace-flows-api.md

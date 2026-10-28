@@ -211,10 +211,10 @@ $pg_settings_cards[] = '
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-control text-end" value="' . h($mailchimp_sync_days) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
-                                                                <span class="input-group-text">' . lang('days in the past') . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
+                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                            </label>
                                                             <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
                                                         </div>
                                                         <div class="pg-f-xs">

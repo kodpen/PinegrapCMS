@@ -25,8 +25,6 @@ $liveform = new liveform('view_submitted_forms');
 
 // These are only ever appended to further below, so they have to start out empty.
 $output = '';
-$output_rows = '';
-$sql_data_joins = '';
 
 // The filter is carried through the paging links and the advanced filters form.
 // One sent as an array (?filter[]=x) counts as not given: it ended in an error
@@ -51,89 +49,30 @@ foreach ($_REQUEST as $key => $value) {
     }
 }
 
-// get all custom forms (the array will be used in multiple places in this script)
-$query = "SELECT
-            page.page_id,
-            page.page_name,
-            page.page_folder as folder_id,
-            custom_form_pages.form_name
-         FROM page
-         LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
-         WHERE " . pg_form_page_sql('page') . "
-         ORDER BY custom_form_pages.form_name, page.page_name";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-$custom_forms = array();
-
-while ($row = mysqli_fetch_assoc($result)) {
-    // if user has access to edit this custom form, then add custom form to array
-    if (check_edit_access($row['folder_id']) == true) {
-        if ($row['form_name']) {
-            $form_name = $row['form_name'];
-        } else {
-            $form_name = $row['page_name'];
-        }
-
-        $custom_forms[] = array(
-            'id' => $row['page_id'],
-            'name' => $form_name);
-    }
-}
-
-// if custom form is not set yet, set default to [All]
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['custom_form']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['custom_form'] = '[All]';
-}
-
-// if advanced filters are not set yet, then default them to off
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = false;
-}
-
-// if the search query is not set yet, then default it to empty
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['query']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['query'] = '';
-}
-
-// if advanced filters are on and custom forms have not already been set in session, set default for custom forms in advanced filters
-if ((($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) && (isset($_SESSION['software']['forms']['view_submitted_forms']['custom_forms']) == false)) {
-    // if custom form is set to all, prepare custom forms so all will be checked
-    if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') == '[All]') {
-        foreach ($custom_forms as $custom_form) {
-            $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][] = $custom_form['id'];
-        }
-
-    // else custom form is not set to all
-    } else {
-        $_SESSION['software']['forms']['view_submitted_forms']['custom_forms'][] = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
-    }
-}
-
-// if advanced filters value was passed in the query string
+// if advanced filters value was passed in the query string, turn them on or
+// off before the defaults below, so the checked custom forms start out filled
 if (isset($_REQUEST['advanced_filters']) == true) {
-    // if advanced filters should be turned on
-    if ($_REQUEST['advanced_filters'] == 'true') {
-        $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = true;
-
-    // else advanced filters should be turned off
-    } else {
-        $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = false;
-    }
+    $_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] = ($_REQUEST['advanced_filters'] == 'true');
 }
 
-// if date type is not set yet, set default to last modified
-if (isset($_SESSION['software']['forms']['view_submitted_forms']['date_type']) == false) {
-    $_SESSION['software']['forms']['view_submitted_forms']['date_type'] = 'last modified';
-}
+// The list's filters, its folder rule and its rows are shared with the
+// action that pages it (includes/fn/submitted_form_list.php).
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/submitted_form_list.php');
 
-// if date type is last modified
+$custom_forms = pg_submitted_form_list_custom_forms();
+pg_submitted_form_list_defaults($custom_forms);
+$list_filter = pg_submitted_form_list_filter($user);
+$sort_columns = $list_filter['sort_columns'];
+$sort_default = $list_filter['sort_default'];
+$sort_levels = $list_filter['sort_levels'];
+$date_type_column = $list_filter['date_type_column'];
+
+$date_type_last_modified_selected = '';
+$date_type_submitted_selected = '';
+
 if (($_SESSION['software']['forms']['view_submitted_forms']['date_type'] ?? '') == 'last modified') {
-    $date_type_column = 'last_modified_timestamp';
     $date_type_last_modified_selected = ' selected="selected"';
-
-// else date type is submitted
 } else {
-    $date_type_column = 'submitted_timestamp';
     $date_type_submitted_selected = ' selected="selected"';
 }
 
@@ -142,26 +81,6 @@ $query = "SELECT MIN($date_type_column) FROM forms";
 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
 $row = mysqli_fetch_row($result);
 $oldest_timestamp = $row[0];
-
-// Default range: a month ago to today. Each date part is checked on its own:
-// the year math and mktime() below throw a TypeError for a missing or
-// non-numeric value, the year select loops forever on a non-numeric stop year,
-// and since the value is kept in the session, one bad address would otherwise
-// break the list for the rest of the session.
-$date_defaults = array(
-    'start_month' => date('m', time() - 2678400),
-    'start_day'   => date('d', time() - 2678400),
-    'start_year'  => date('Y', time() - 2678400),
-    'stop_month'  => date('m'),
-    'stop_day'    => date('d'),
-    'stop_year'   => date('Y'),
-);
-
-foreach ($date_defaults as $key => $value) {
-    if (!preg_match('/^\d{1,4}$/', (string) ($_SESSION['software']['forms']['view_submitted_forms'][$key] ?? ''))) {
-        $_SESSION['software']['forms']['view_submitted_forms'][$key] = $value;
-    }
-}
 
 $decrease_year['start_month'] = '01';
 $decrease_year['start_day'] = '01';
@@ -292,173 +211,12 @@ $increase_day['stop_month'] = $increase_day['new_month'];
 $increase_day['stop_day'] = $increase_day['new_day'];
 $increase_day['stop_year'] = $increase_day['new_year'];
 
-// get timestamps for start and stop dates
-$start_timestamp = mktime(0, 0, 0, ($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
-$stop_timestamp = mktime(23, 59, 59, ($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? ''), ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? ''));
-
-$where = "WHERE (forms.$date_type_column >= $start_timestamp) AND (forms.$date_type_column <= $stop_timestamp)";
-
 // Output start date range time
 $output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['forms']['view_submitted_forms']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['forms']['view_submitted_forms']['start_day'] ?? '') . ', ' . ($_SESSION['software']['forms']['view_submitted_forms']['start_year'] ?? ''));
 $output_date_range_time .= ' - ';
 
 // Output end date range time
 $output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['forms']['view_submitted_forms']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['forms']['view_submitted_forms']['stop_year'] ?? ''));
-
-// Both are built up inside the loops below, one clause at a time, so they
-// have to start out empty.
-$where_custom_forms = '';
-$conditions_for_all_forms = '';
-
-// if advanced filters are on, prepare SQL for checked custom forms
-if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
-    // if at least one custom form is checked
-    if (is_array(($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array())) == true) {
-        foreach (($_SESSION['software']['forms']['view_submitted_forms']['custom_forms'] ?? array()) as $custom_form) {
-            // if this is not the first custom form, then add an OR before SQL
-            if ($where_custom_forms) {
-                $where_custom_forms .= " OR";
-            }
-
-            $where_custom_forms .= " (forms.page_id = '" . escape($custom_form) . "')";
-
-            // get fields for custom form, so we can prepare SQL for data joins
-            $query = "SELECT form_fields.id
-                     FROM form_fields
-                     WHERE form_fields.page_id = ?
-                     ORDER BY form_fields.sort_order";
-            $result = db_q($query, array((string) $custom_form)) or output_error('Query failed.');
-
-            $conditions_for_form = '';
-
-            while ($row = mysqli_fetch_assoc($result)) {
-                $field_id = $row['id'];
-
-                // if a filter value has been entered for this field, then we need to add a join and a where condition
-                if ($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id] ?? '') {
-                    $sql_data_joins .= "LEFT JOIN form_data AS form_data_" . $field_id . " ON ((forms.id = form_data_" . $field_id . ".form_id) AND (form_data_" . $field_id . ".form_field_id = '" . $field_id . "') AND (form_data_" . $field_id . ".data LIKE '%" . escape($_SESSION['software']['forms']['view_submitted_forms']['form_field_' . $field_id]) . "%')) ";
-
-                    // if data conditions have already been set for this form, add an AND
-                    if ($conditions_for_form) {
-                        $conditions_for_form .= " AND";
-                    }
-
-                    $conditions_for_form .= " (form_data_" . $field_id . ".data IS NOT NULL)";
-                }
-            }
-
-            // if there was at least one condition for this form
-            if ($conditions_for_form) {
-                // if conditions have already been added for all forms, add an OR
-                if ($conditions_for_all_forms) {
-                    $conditions_for_all_forms .= " OR";
-                }
-
-                // update conditions for all forms to include conditions for this form
-                $conditions_for_all_forms .= " ($conditions_for_form)";
-            }
-        }
-
-        $where .= " AND ($where_custom_forms)";
-
-        // if there are data conditions, add conditions to where clause
-        if ($conditions_for_all_forms) {
-            $where .= " AND ($conditions_for_all_forms)";
-        }
-
-    // else no custom forms are checked, so use SQL that will result in no forms being found
-    } else {
-        $where .= " AND (0 = 1)";
-    }
-
-// else advanced filters are off, so use custom form picklist
-} else {
-    // if user has not choosen [All] filter by custom form selected
-    if (($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '') != '[All]') {
-        $where .= " AND (forms.page_id = '" . e(($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '')) . "')";
-    }
-}
-
-if (($_SESSION['software']['forms']['view_submitted_forms']['query'] ?? '')) {
-    $where .=
-        " AND (LOWER(CONCAT_WS(',',
-        forms.reference_code,
-        forms.address_name,
-        forms.tracking_code,
-        forms.affiliate_code,
-        forms.http_referer,
-        INET_NTOA(forms.ip_address),
-        custom_form_pages.form_name,
-        CONCAT(contacts.first_name, ' ', contacts.last_name),
-        submitted_user.user_username,
-        form_editor_user.user_username)) LIKE '%" . escape(mb_strtolower(($_SESSION['software']['forms']['view_submitted_forms']['query'] ?? ''))) . "%')";
-}
-
-// if advanced filters are on, prepare SQL
-if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == true) {
-    if (($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) {$where .= " AND (forms.reference_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['reference_code'] ?? '')) . "%')";}
-
-    if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '')) {
-        if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'incomplete') {
-            $where .= " AND (forms.complete = '0')";
-        } else if (($_SESSION['software']['forms']['view_submitted_forms']['status'] ?? '') == 'complete') {
-            $where .= " AND (forms.complete = '1')";
-        }
-    }
-
-    if (($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) {$where .= " AND (forms.tracking_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['tracking_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) {$where .= " AND (forms.affiliate_code LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['affiliate_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) {$where .= " AND (forms.http_referer LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['http_referer'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(forms.ip_address) LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['ip_address'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) {$where .= " AND (CONCAT(contacts.first_name, ' ', contacts.last_name) LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['contact_name'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) {$where .= " AND (submitted_user.user_username LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['username'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) {$where .= " AND (form_editor_user.user_username LIKE '%" . e(($_SESSION['software']['forms']['view_submitted_forms']['form_editor'] ?? '')) . "%')";}
-    if (($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) {$where .= " AND (contacts.member_id LIKE '%" . escape(($_SESSION['software']['forms']['view_submitted_forms']['member_id'] ?? '')) . "%')";}
-}
-
-// The columns this list sorts by, in the order the table shows them.
-// pg_list_state() keeps the choice in the session as a code, so it survives
-// a language change, and falls back to the default for anything else.
-$sort_columns = array(
-    'custom_form'    => lang('Custom Form'),
-    'reference_code' => lang('Reference Code'),
-    'status'         => lang('Status'),
-    'contact'        => lang('Contact'),
-    'user'           => lang('User'),
-    'submitted'      => lang('Submitted'),
-    'last_modified'  => lang('Last Modified'),
-);
-
-$sort_default = array('sort' => 'last_modified', 'order' => 'desc');
-
-$list_state = pg_list_state('view_submitted_forms', $sort_columns, $sort_default);
-$sort_levels = $list_state['sorts'];
-
-// The contact is ordered by last name and then first name, both in the
-// level's direction, so it is handed to pg_list_order_by() as two levels.
-$order_levels = array();
-
-foreach ($sort_levels as $level) {
-    if ($level['sort'] === 'contact') {
-        $order_levels[] = array('sort' => 'contact_last_name', 'order' => $level['order']);
-        $order_levels[] = array('sort' => 'contact_first_name', 'order' => $level['order']);
-    } else {
-        $order_levels[] = $level;
-    }
-}
-
-// What each sort code orders by. Only codes pg_list_state() let through
-// reach pg_list_order_by(), and it writes nothing but these.
-$order_by = pg_list_order_by($order_levels, array(
-    'custom_form'        => 'custom_form_pages.form_name',
-    'reference_code'     => 'forms.reference_code',
-    'status'             => 'forms.complete',
-    'contact_last_name'  => 'contacts.last_name',
-    'contact_first_name' => 'contacts.first_name',
-    'user'               => 'submitted_user.user_username',
-    'submitted'          => 'forms.submitted_timestamp',
-    'last_modified'      => 'forms.last_modified_timestamp',
-));
 
 // if user requested to export forms, export forms
 if (($_GET['submit_data'] ?? '') == 'Export Forms') {
@@ -504,11 +262,10 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     print "\n";
 
-    // get all forms that match filters
+    // get all forms that match filters (the folder rule is part of them)
     $query =
         "SELECT
             forms.id,
-            page.page_folder as folder_id,
             custom_form_pages.form_name,
             forms.quiz_score,
             forms.reference_code,
@@ -522,24 +279,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             forms.last_modified_timestamp,
             contacts.member_id,
             form_editor_user.user_username as form_editor
-        FROM forms
-        LEFT JOIN page ON forms.page_id = page.page_id
-        LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
-        LEFT JOIN contacts ON forms.contact_id = contacts.id
-        LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
-        LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
-        $sql_data_joins
-        $where
-        ORDER BY $order_by";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+        " . $list_filter['from'] . "
+        " . $list_filter['where'] . "
+        ORDER BY " . $list_filter['order_by'];
+    $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
 
     $forms = array();
 
-    while($row = mysqli_fetch_assoc($result)) {
-        // if user has access to edit this form's custom form then add form to forms array
-        if (check_edit_access($row['folder_id']) == true) {
-            $forms[] = $row;
-        }
+    while ($row = mysqli_fetch_assoc($result)) {
+        $forms[] = $row;
     }
 
     $number_of_forms = 0;
@@ -628,29 +376,19 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
     // Mass deletion is triggered by a GET form, so require the token to block forged links.
     validate_token_field();
 
-    // get all forms that match filters
+    // get all forms that match filters (the folder rule is part of them)
     $query = "SELECT
                 forms.id,
-                page.page_folder as folder_id,
                 forms.page_id,
                 custom_form_pages.form_name
-             FROM forms
-             LEFT JOIN page ON forms.page_id = page.page_id
-             LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
-             LEFT JOIN contacts ON forms.contact_id = contacts.id
-             LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
-             LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
-             $sql_data_joins
-             $where";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+             " . $list_filter['from'] . "
+             " . $list_filter['where'];
+    $result = db_q($query, $list_filter['params']) or output_error('Query failed.');
 
     $forms = array();
 
     while ($row = mysqli_fetch_assoc($result)) {
-        // if user has access to edit this form's custom form then user has access to delete form
-        if (check_edit_access($row['folder_id']) == true) {
-            $forms[] = $row;
-        }
+        $forms[] = $row;
     }
 
     $custom_forms_for_log = array();
@@ -752,34 +490,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $years[] = $i;
     }
 
-    // If a screen was passed and it is a positive integer, then use it.
-    // These checks are necessary in order to avoid SQL errors below for a bogus screen value.
-    if (
-        isset($_REQUEST['screen'])
-        and $_REQUEST['screen']
-        and is_numeric($_REQUEST['screen'])
-        and $_REQUEST['screen'] > 0
-        and $_REQUEST['screen'] == round($_REQUEST['screen'])
-    ) {
-        $screen = (int) $_REQUEST['screen'];
-
-    // Otherwise, use the default, which is the first screen.
-    } else {
-        $screen = 1;
-    }
-
-    // Get number of all forms
-    $query = "SELECT id
-             FROM forms";
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    $all_forms = 0;
-
-    // Count all forms.
-    while ($row = mysqli_fetch_assoc($result)) {
-        $all_forms++;
-    }
-
     $total_number_of_forms = 0;
 
     $output_custom_form_options = '';
@@ -822,164 +532,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $output_custom_form_options = '<option value="[All]"' . $selected . '>[' . lang('All') . '] (' . $total_number_of_forms . ')</option>' . $output_custom_form_options;
     }
 
-    // get all forms that match filters
-    $query = "SELECT
-                forms.id,
-                page.page_folder as folder_id,
-                forms.complete,
-                custom_form_pages.form_name,
-                forms.reference_code,
-                contacts.id as contact_id,
-                CONCAT(contacts.first_name, ' ', contacts.last_name) as contact_name,
-                forms.user_id,
-                submitted_user.user_username as submitted_username,
-                forms.submitted_timestamp,
-                last_modified_user.user_username as last_modified_username,
-                forms.last_modified_timestamp
-             FROM forms
-             LEFT JOIN page ON forms.page_id = page.page_id
-             LEFT JOIN custom_form_pages ON forms.page_id = custom_form_pages.page_id
-             LEFT JOIN contacts ON forms.contact_id = contacts.id
-             LEFT JOIN user as submitted_user ON forms.user_id = submitted_user.user_id
-             LEFT JOIN user as last_modified_user ON forms.last_modified_user_id = last_modified_user.user_id
-             LEFT JOIN user AS form_editor_user ON forms.form_editor_user_id = form_editor_user.user_id
-             $sql_data_joins
-             $where
-             ORDER BY $order_by";
-
-    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-
-    $forms = array();
-
-    while ($row = mysqli_fetch_assoc($result)) {
-        // if user has access to edit this form's custom form then add form to forms array
-        if (check_edit_access($row['folder_id']) == true) {
-            $forms[] = $row;
-        }
-    }
-
-    // define the maximum number of results
-    $max = 100;
-
-    $number_of_results = count($forms);
-
-    // get number of screens
-    $number_of_screens = ceil($number_of_results / $max);
-
-    // if there are more than one screen
-    $output_screen_links = '';
-
-    if ($number_of_screens > 1) {
-
-        $output_screen_links .= '
-            <nav class="mt-5 navigation " aria-label="data pagination"> 
-                <ul class="pagination pagination-sm flex-wrap justify-content-center">';
-        // build Previous button if necessary
-        $previous = $screen - 1;
-        // if previous screen is greater than zero, output previous link
-        if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $previous . '" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
-        }else{
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Previous"><span aria-hidden="true">&laquo;</span></a></li>';
-        }
-
-        // build HTML output for links to screens
-        for ($i = 1; $i <= $number_of_screens; $i++) {
-            // if this number is the current screen, then select option
-            if ($i == $screen) {
-                $active = 'active';
-            // else this number is not the current screen, so do not select option
-            } else {
-                $active = '';
-            }
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 ' . $active . '"><a class="page-link " href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $i . '">' . $i . '</a></li>';
-        }
-        // build Next button if necessary
-        $next = $screen + 1;
-        // if next screen is less than or equal to the total number of screens, output next link
-        if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item mt-1 mb-1"><a class="page-link" href="view_submitted_forms.php?filter=' . h($filter) . '&screen=' . $next . '" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-        }else{
-            $output_screen_links .= '<li class="page-item mt-1 mb-1 disabled"><a class="page-link" href="#!" aria-label="Next"><span aria-hidden="true">&raquo;</span></a></li>';
-        }
-        $output_screen_links .= '</ul></nav>';
-    }
-
-    // determine where result set should start
-    $start = $screen * $max - $max;
-
-    // determine where result set should end
-    $end = $start + $max - 1;
-
-    // get the value of the last index of the forms array
-    $last_index = count($forms) - 1;
-
-    // if the end if past the last index of the array, set the end to the last index of the array
-    if ($end > $last_index) {
-        $end = $last_index;
-    }
-
-    // loop through all forms for this screen
-    for ($key = $start; $key <= $end; $key++) {
-        $id = $forms[$key]['id'];
-        $complete = $forms[$key]['complete'];
-        $form_name = $forms[$key]['form_name'];
-        $reference_code = $forms[$key]['reference_code'];
-        $contact_id = $forms[$key]['contact_id'];
-        $contact_name = $forms[$key]['contact_name'];
-        $submitted_username = $forms[$key]['submitted_username'];
-        $submitted_timestamp = $forms[$key]['submitted_timestamp'];
-        $last_modified_username = $forms[$key]['last_modified_username'];
-        $last_modified_timestamp = $forms[$key]['last_modified_timestamp'];
-
-        if ($complete) {
-            $status = '<span class="badge theme-success">' . lang('Complete') . '</span>';
-        } else {
-            $status = '<span class="badge theme-warning fg-black">' . lang('Incomplete') . '</span>';
-        }
-
-        if ($contact_id) {
-            if (trim($contact_name) == '') {
-                $contact_name = '[' . lang('No Name') . ']';
-            }
-        } else {
-            $contact_name = '';
-        }
-
-        // if user has access to contacts, then prepare link to contact
-        if (validate_contacts_access($user, $only_return = true) == true) {
-            $contact_name = '<a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . h($contact_name) . '</a>';
-        } else {
-            $contact_name = h($contact_name);
-        }
-
-        $username = $submitted_username ?? '';
-
-        if (!$submitted_username) {
-            $submitted_username = '[' . lang('Unknown') . ']';
-        }
-
-        if (!$last_modified_username) {
-            $last_modified_username = '[' . lang('Unknown') . ']';
-        }
-
-        $output_link_url = 'edit_submitted_form.php?id=' . $id;
-
-        $output_rows .=
-        '<tr>
-            <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" /></td>
-            <td class="align-middle text-start action-buttons">
-                <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
-            </td>
-            <td class="chart_label">' . h($form_name) . '</td>
-            <td class="align-middle">' . h($reference_code) . '</td>
-            <td class="align-middle">' . $status . '</td>
-            <td class="align-middle">' . $contact_name . '</td>
-            <td class="align-middle">' . h($username) . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . h($submitted_username) . '</td>
-            <td class="align-middle">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) .' ' . h($last_modified_username) . '</td>
-        </tr>';
-    }
+    // The rows come one page at a time from the submitted_form_list_rows
+    // action (includes/panel/lists.php), which reads the same filters from
+    // the session.
 
     // if the advanced filters are off
     if (($_SESSION['software']['forms']['view_submitted_forms']['advanced_filters'] ?? '') == false) {
@@ -1274,7 +829,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                     ' . $output_custom_form_selection . '
                                 </div>
                             </form>
-                            <a class="btn btn-sm btn-ghost' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
+                            <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_submitted_forms.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                             ' . pg_period_nav('view_submitted_forms.php', ($_SESSION['software']['forms']['view_submitted_forms'] ?? array()), array(
                                 'day'   => array($decrease_day, $current_day, $increase_day),
                                 'week'  => array($decrease_week, $current_week, $increase_week),
@@ -1286,7 +841,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                     <div class="card-body p-0 position-relative">
                         <form name="form" action="delete_submitted_forms.php" method="post" class="disable_shortcut"> 
                             ' . get_token_field() . '
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                            <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="submitted_form_list_rows" data-pg-list-params="{}">
                                 <thead>
                                     <tr>
                                         <th class="noVis">
@@ -1304,9 +859,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                         <th>' . get_column_heading(lang('Last Modified'), $sort_levels, '', '', 'last_modified') . '</th>
                                     </tr>
                                 </thead>
-                                <tbody>
-                                    ' . $output_rows . '
-                                </tbody>
+                                <tbody></tbody>
                             </table>
                             <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
                                 <div class="container">
@@ -1318,7 +871,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                         </form>
                     </div>
                 </div>
-                ' . $output_screen_links . '
             </div>
         </div>
 

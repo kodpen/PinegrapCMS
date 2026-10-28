@@ -35,8 +35,8 @@ if ($_POST['forms']) {
         $query = "SELECT page.page_folder as folder_id
                  FROM forms
                  LEFT JOIN page ON forms.page_id = page.page_id
-                 WHERE forms.id = '" . escape($form_id) . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                 WHERE forms.id = ?";
+        $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
         $row = mysqli_fetch_assoc($result);
         
         // if user has access to edit this form's custom form then user has access to delete form
@@ -47,8 +47,8 @@ if ($_POST['forms']) {
                         files.name
                      FROM form_data
                      LEFT JOIN files ON form_data.file_id = files.id
-                     WHERE (form_data.form_id = '" . escape($form_id) . "') AND (form_data.file_id > 0)";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                     WHERE (form_data.form_id = ?) AND (form_data.file_id > 0)";
+            $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
             
             $files = array();
             
@@ -61,8 +61,8 @@ if ($_POST['forms']) {
                 // if file still exists, delete file
                 if ($file['id']) {
                     // delete file record
-                    $query = "DELETE FROM files WHERE id = '" . $file['id'] . "'";
-                    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                    $query = "DELETE FROM files WHERE id = ?";
+                    $result = db_q($query, array((string) $file['id'])) or output_error('Query failed.');
                     
                     // delete file
                     @unlink(FILE_DIRECTORY_PATH . '/' . $file['name']);
@@ -70,12 +70,12 @@ if ($_POST['forms']) {
             }
             
             // delete form
-            $query = "DELETE FROM forms WHERE id = '" . escape($form_id) . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM forms WHERE id = ?";
+            $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
             
             // delete form data
-            $query = "DELETE FROM form_data WHERE (form_id = '" . escape($form_id) . "') AND (form_id != '0')";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $query = "DELETE FROM form_data WHERE (form_id = ?) AND (form_id != '0')";
+            $result = db_q($query, array((string) $form_id)) or output_error('Query failed.');
 
             // delete signature records for this submitted form
             pg_signature_delete($form_id);
