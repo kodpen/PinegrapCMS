@@ -3452,6 +3452,18 @@ function prepare_form_data_for_input($data, $type)
         return $data;
     }
 }
+// A stored time of day ('17:05:00' or '17:05') as the site's clock prints
+// it: '17:05' with the 24-hour clock, '5:05 PM' otherwise. The setting is
+// read from TIME_FORMAT unless a value is passed. Both forms are read back
+// by validate_time() and prepare_form_data_for_input().
+function pg_form_output_time($time, $time_format = null)
+{
+    if (!preg_match('/^\s*(\d{1,2}):(\d{1,2})/', (string) $time, $parts)) {
+        return trim((string) $time);
+    }
+
+    return date(pg_time_format_code($time_format), mktime((int) $parts[1], (int) $parts[2], 0, 1, 1, 2000));
+}
 function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $date_format = '')
 {
     if ($data) {
@@ -3559,59 +3571,15 @@ function prepare_form_data_for_output($data, $type, $prepare_for_html = true, $d
                         $day = mb_substr($day, 1);
                     }
                     $year = $date_parts[0];
-                    $time_parts = explode(':', $time);
-                    $hour = $time_parts[0];
-                    $minute = $time_parts[1];
-                    // if it is AM
-                    if ($hour <= 11) {
-                        $am_pm = 'AM';
-                        // else it is PM
-                    } else {
-                        $am_pm = 'PM';
-                    }
-                    // if hour is equal to 0 then convert to 12
-                    if ($hour == 0) {
-                        $hour = 12;
-                        // else if hour is greater or equal to 13, subtract 12
-                    } elseif ($hour >= 13) {
-                        $hour = $hour - 12;
-                    }
-                    // If the first character of the hour is 0, then remove the 0.
-                    if (mb_substr($hour, 0, 1) == '0') {
-                        $hour = mb_substr($hour, 1);
-                    }
-                    $minute = str_pad($minute, 2, '0', STR_PAD_LEFT);
                     if (DATE_FORMAT == 'month_day') {
-                        $output = $month . '/' . $day . '/' . $year . ' ' . $hour . ':' . $minute . ' ' . $am_pm;
+                        $output = $month . '/' . $day . '/' . $year . ' ' . pg_form_output_time($time);
                     } else {
-                        $output = $day . '/' . $month . '/' . $year . ' ' . $hour . ':' . $minute . ' ' . $am_pm;
+                        $output = $day . '/' . $month . '/' . $year . ' ' . pg_form_output_time($time);
                     }
                 }
                 break;
             case 'time':
-                $time_parts = explode(':', $data);
-                $hour = $time_parts[0];
-                $minute = $time_parts[1];
-                // if it is AM
-                if ($hour <= 11) {
-                    $am_pm = 'AM';
-                    // else it is PM
-                } else {
-                    $am_pm = 'PM';
-                }
-                // if hour is equal to 0 then convert to 12
-                if ($hour == 0) {
-                    $hour = 12;
-                    // else if hour is greater or equal to 13, subtract 12
-                } elseif ($hour >= 13) {
-                    $hour = $hour - 12;
-                }
-                // If the first character of the hour is 0, then remove the 0.
-                if (mb_substr($hour, 0, 1) == '0') {
-                    $hour = mb_substr($hour, 1);
-                }
-                $minute = str_pad($minute, 2, '0', STR_PAD_LEFT);
-                $output = $hour . ':' . $minute . ' ' . $am_pm;
+                $output = pg_form_output_time($data);
                 break;
             // A signature's stored value is the file it was drawn into, and a
             // file name proves nothing to whoever is reading. This is the one

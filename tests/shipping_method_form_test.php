@@ -97,7 +97,8 @@ function test_shipping_method_form_date_time_column()
 
 function test_shipping_method_form_date_time_value()
 {
-	$shown = (shipping_method_form_test_date_format() == 'month_day') ? '10/27/2026 5:00 PM' : '27/10/2026 5:00 PM';
+	// The time is on the site's clock (pg_form_output_time()).
+	$shown = ((shipping_method_form_test_date_format() == 'month_day') ? '10/27/2026 ' : '27/10/2026 ') . pg_form_output_time('17:00');
 
 	pg_assert_same($shown, pg_shipping_method_form_date_time_value('2026-10-27 17:00:00'), 'a stored time as the form shows it');
 	pg_assert_same('', pg_shipping_method_form_date_time_value('0000-00-00 00:00:00'), 'a zero date is shown empty, not as 0/0/0000 12:00 AM');

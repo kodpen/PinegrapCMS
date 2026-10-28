@@ -1480,9 +1480,7 @@ function pg_legal_document_file_name($label, $order_number)
 
 /**
  * A moment as the documents print it: the date in the site's order, the
- * time on the site's clock (Site Settings: 12 or 24 hours). The form
- * formatter (prepare_form_data_for_output()) prints AM/PM whatever the
- * setting.
+ * time on the site's clock (Site Settings: 12 or 24 hours).
  *
  * @param int $timestamp
  * @return string

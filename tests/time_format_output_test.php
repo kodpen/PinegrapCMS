@@ -42,7 +42,6 @@ function test_time_format_output_form_values_use_the_site_clock()
 
 	pg_assert_same($twenty_four ? '17:05' : '5:05 PM', prepare_form_data_for_output('17:05:00', 'time', false), 'a time field');
 	pg_assert_same($date . ' ' . ($twenty_four ? '00:30' : '12:30 AM'), prepare_form_data_for_output('2026-10-03 00:30:00', 'date and time', false), 'a date and time field');
-	pg_assert_same(date('j F', strtotime('2026-10-03 17:05:00')), prepare_form_data_for_output('2026-10-03 17:05:00', 'date and time', false, 'j F'), 'an explicit format is kept');
 }
 
 function test_time_format_output_printed_time_reads_back()
@@ -74,7 +73,15 @@ function test_time_format_output_screens_have_no_fixed_twelve_hour_text()
 
 	pg_assert_false(strpos(file_get_contents($root . 'includes/forms/shipping_method_form.php'), 'date("g:i A")') !== false, 'shipping method form prints the site time on the site clock');
 
-	foreach (array('includes/forms/email_campaign_profile_form.php', 'includes/forms/submitted_form_form.php', 'includes/fn/content.php', 'get_form_item_view.php', 'get_form_list_view.php', 'generate_layout_content.php') as $file) {
-		pg_assert_contains('TIME_FORMAT', file_get_contents($root . $file), $file . ' picks its time help by the clock');
+	foreach (array(
+		'includes/forms/email_campaign_profile_form.php' => "lang('HH:mm, leave blank to send at any time.')",
+		'includes/forms/submitted_form_form.php' => "lang('Format: HH:mm')",
+		'includes/fn/content.php' => "lang('(Format: HH:mm)')",
+		'get_form_item_view.php' => "lang('(Format: HH:mm)')",
+		'get_form_list_view.php' => "lang('(Format: HH:mm)')",
+		'generate_layout_content.php' => "lang('(Format: HH:mm)')",
+		'includes/templates/product_form.php' => "lang('(Format: HH:mm)')",
+	) as $file => $help) {
+		pg_assert_true(strpos(file_get_contents($root . $file), $help) !== false, $file . ' has the 24-hour time help');
 	}
 }

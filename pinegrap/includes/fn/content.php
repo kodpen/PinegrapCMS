@@ -1407,7 +1407,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'maxlength' => '11',
                                 'class' => 'software_input_text',
                                 'required' => $required
-                            )) . ' ' . lang('(Format: h:mm AM/PM)') . '</td>
+                            )) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
 
                     </tr>';
                 break;

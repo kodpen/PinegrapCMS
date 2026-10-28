@@ -13,7 +13,7 @@ module: list_period
 
 ## Which clock do the pickers and time displays use?
 - `pg_time_format_code()` (`includes/fn/core.php`) is the `date()` code of the site's clock (`TIME_FORMAT`: `H:i` for `twenty_four_hours`, else `g:i A`) and `pg_picker_time_format()` the jQuery UI timepicker's `HH:mm` / `h:mm TT`. The three picker-format scripts (`get_date_picker_format()`, `get_date_time_picker_format()`, `get_time_picker_format()`), the checkout pages' own pickers (cart, express order, billing, shipping address), the calendar event form's default times, the calendar's event time ranges and the campaign profiles' schedule time read them. Before (#2040) every one of them hard-coded the 12-hour clock whatever the setting said.
-- The shipping method form's help text under its time fields and the order view's withdrawal date are in their own screens' PRs.
+- Form values (`prepare_form_data_for_output()` for `time` / `date and time`), the time help texts (`pg_time_format_help()`) and the commerce settings' and shipping method form's "current site time" follow it as well (`form-time-24-hour.md`); the order view's withdrawal date is in its own screen's PR. Inputs (native `<input type="time">`, `datetime-local`) and the designer and Workspace JavaScript displays are not covered by this.
 
 ## What changed on the users list?
 - The folder/calendar/form/group access menus (`pg_user_list_names_cell()`, `includes/fn/user_list.php`) print their names in `fg-body` instead of `fg-black` (unreadable in the dark theme) and open with `data-bs-strategy="fixed"`, so the menu is not clipped by the table's scroll box (#2058; the other screens were done in #2481).
