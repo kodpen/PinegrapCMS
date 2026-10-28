@@ -66,6 +66,7 @@ function test_contact_audit_site_storefront_writers_record_their_contacts()
 		'includes/fn/order_completion.php' => 2,
 		'email_preferences.php'     => 3,
 		'affiliate_sign_up_form.php' => 2,
+		'custom_form.php'           => 2,
 	);
 
 	foreach ($writers as $file => $count) {
