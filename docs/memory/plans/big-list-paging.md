@@ -19,3 +19,9 @@ description: Steps of refactor-candidates item 3: the big panel lists (users, su
 - 4. Products (`view_products.php`): many filters with their own sort columns, the impact score sort, inline quick edits posted to the same screen (`pg_pb_quick_update()`) on cells the rows carry, Export through `export_products_f.php`, Modify Selected reads checked rows; the variant sets mode is a separate screen. Done: PR #2655, `includes/fn/product_list.php`, action `product_list_rows`; cells carry attributes for the quick edits (`ui/product-list-paging.md`).
 
 - 5. Commissions (`view_commissions.php`, `view_recurring_commission_profiles.php`): paged by PHP like the forms list, so the search box searched one page (#2038). Done: PR #2675, `includes/fn/commission_list.php`, actions `commission_list_rows` and `commission_profile_list_rows`; closes #2038.
+
+- 6. Audit trail (`view_audit_log.php`): it already read 50 lines a page with Newer/Older links, but each line printed its whole changes table. Now paged, sorted and searched on the server, filters kept in the address and sent nested (`filters`), changes read when a fold opens. `includes/fn/audit_list.php`, actions `audit_log_list_rows` and `audit_log_changes` (`ui/audit-log-paging.md`). PR #PRNUM.
+
+- 7. Firewall log (`view_waf_log.php`), keeping its period selector. Not started.
+
+- 8. `sitemap.xml` built on every request (`get_sitemap.xml.php`): a cache only if its invalidation points are safe. Not started.

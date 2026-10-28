@@ -15,6 +15,8 @@
  *                              a page of the recurring commission profiles
  *                              (view_recurring_commission_profiles.php)
  *   site_log_list_rows         a page of the Site Log (view_log.php)
+ *   audit_log_list_rows        a page of the audit trail (view_audit_log.php)
+ *   audit_log_changes          the changed fields of one audit trail line
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -275,4 +277,70 @@ function pg_panel_site_log_list_rows($request, $action)
     }
 
     return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+// The audit trail's gate: validate_area_access($user, 'manager') and the
+// trail's table, answered in JSON. Each action checks the form token itself.
+function pg_panel_audit_log_gate()
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    $user = validate_user();
+
+    if ((int) $user['role'] > 2) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    if (!pg_audit_ready()) {
+        http_response_code(409);
+        respond(array('status' => 'error', 'message' => lang('The database has not been upgraded yet. Run the software update first.')));
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/audit_list.php');
+}
+
+function pg_panel_audit_log_list_rows($request, $action)
+{
+    pg_panel_audit_log_gate();
+    validate_token();
+
+    // The filters the screen shows (its address), checked again; the sort
+    // is the one it kept in the session.
+    $filters = (isset($request['filters']) && is_array($request['filters'])) ? $request['filters'] : array();
+
+    $page = pg_audit_list_page(
+        pg_audit_view_filters($filters),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_audit_log_changes($request, $action)
+{
+    pg_panel_audit_log_gate();
+    validate_token();
+
+    $id = $request['id'] ?? '';
+    $html = (is_scalar($id) && ctype_digit((string) $id)) ? pg_audit_list_line_changes((int) $id) : null;
+
+    if ($html === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    if ($html === null) {
+        http_response_code(404);
+        respond(array('status' => 'error', 'message' => lang('Not found')));
+    }
+
+    return array('status' => 'success', 'html' => $html);
 }
