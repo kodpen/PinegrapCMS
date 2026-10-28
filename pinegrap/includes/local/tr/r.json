@@ -562,6 +562,8 @@
     "Remove the arrow": "Oku kaldır",
     "Remove the arrow to {var:1}": "{var:1} kutusuna giden oku kaldır",
     "Remove the box": "Kutuyu kaldır",
+    "Remove the classic region": "Klasik bölgeyi kaldır",
+    "Remove the classic region from this page? The widget draws the page from then on; the layout file stays.": "Klasik bölge bu sayfadan kaldırılsın mı? Bundan sonra sayfayı bileşen çizer; yerleşim dosyası kalır.",
     "Remove the customer": "Müşteriyi kaldır",
     "Remove the element, keep the words": "Öğeyi kaldır, sözcükler kalsın",
     "Remove the expiry": "Son kullanma tarihini kaldır",

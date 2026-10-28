@@ -66,6 +66,7 @@
     "\"{var}\" is a draft. A draft page is not sent: publish it.": "\"{var}\" bir taslak. Taslak sayfa gönderilmez: yayınlayın.",
     "\"{var}\" is now a widget you design; its items are still edited where they were.": "\"{var}\" artık tasarladığınız bir widget; öğeleri yine eskiden düzenlendikleri yerde düzenlenir.",
     "\"{var}\" was built from the layout; save the page to keep it. The form's fields are then written from the widget.": "\"{var}\" düzenden oluşturuldu; korumak için sayfayı kaydedin. Formun alanları o zaman widget'tan yazılır.",
+    "\"{var}\" was put after the region; style it, then remove the region when it is ready. Save the page to keep it.": "\"{var}\" bölgenin ardına kondu; biçimlendirin, hazır olunca bölgeyi kaldırın. Korumak için sayfayı kaydedin.",
     "\"{var}\" was turned into a shared component.": "\"{var}\" ortak bileşene dönüştürüldü.",
     "\"{var}\" will be taken off the site and kept in the private Drafts folder. Visitors will not be able to open it; administrators will.": "\"{var}\" yayından kaldırılıp özel Taslaklar klasöründe saklanacak. Ziyaretçiler açamayacak, yöneticiler açabilecek.",
     "# is where the number goes: urun-### gives urun-001. {name} is the name it has now.": "# numaranın geleceği yerdir: urun-### → urun-001. {name} şu anki addır.",

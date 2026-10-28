@@ -33071,7 +33071,7 @@ const StyleDesigner = (function () {
             row(_sdT('Type'), sel('regionType', typeOpts, n.props.regionType)) +
             '<div id="sd-rn" style="' + (show ? '' : 'display:none') + '">' + row(_sdT('Name'), sel('regionName', nameOpts, n.props.regionName)) + '</div>' +
             (n.props.regionType === 'dynamic' ? _sdDregionPropsHtml(n) : '') +
-            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() : '') +
+            (n.props.regionType === 'system' ? _sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n) : '') +
             (n.props.regionType === 'designer' || n.props.regionType === 'common' ? _sdDesignerRegionPropsHtml(n) : '') +
             (n.props.regionType === 'page' ? _sdPageRegionPropsHtml(n) : '') +
             _sdRegionWidgetPropsHtml(n) +
@@ -47282,6 +47282,118 @@ const StyleDesigner = (function () {
         return h;
     }
 
+    // The widget offered for a page's own system region when its type has
+    // one (_design.layoutWidgets, pg_layout_widget_offers()): { kind, cfg },
+    // cfg holding the settings carried from the page's type settings; null
+    // for a page without one and for a named region, which draws another
+    // page.
+    function _sdLayoutWidgetOffer(n) {
+        var p = _pgActivePage();
+        if (!_design || !_design.layoutWidgets || !p || !(p.page_id > 0) || !_sdLegacyRegionOwn(n)) return null;
+        var o = _design.layoutWidgets[p.page_id];
+        return (o && _swIsType(o.kind)) ? o : null;
+    }
+
+    // Whether `root` places a widget of `kind` at any depth: a shared_ref
+    // whose row `kindOf(sid)` names that kind. Pure.
+    function _sdLayoutWidgetPlaced(root, kind, kindOf) {
+        var found = false;
+        var walk = function (n) {
+            if (found || !n || typeof n !== 'object') return;
+            if (n.type === 'shared_ref' && n.props && kindOf(n.props.sharedId) === kind) { found = true; return; }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        };
+        walk(root);
+        return found;
+    }
+
+    // The kind of a loaded system widget row, '' for any other component.
+    function _sdLayoutWidgetKindOfSid(sid) {
+        var c = _sharedCache[sid];
+        if (!c || !c.system_region_config) return '';
+        try { return _swKindOf(JSON.parse(c.system_region_config)); } catch (e) { return ''; }
+    }
+
+    // The widget's config to create: the carried settings, then the kind's
+    // defaults for what they leave out. Pure apart from _swTypeDefaults().
+    function _sdLayoutWidgetCfg(o) {
+        var cfg = {};
+        var src = (o && o.cfg && typeof o.cfg === 'object' && !Array.isArray(o.cfg)) ? o.cfg : {};
+        Object.keys(src).forEach(function (k) { cfg[k] = Array.isArray(src[k]) ? src[k].slice() : src[k]; });
+        return _swTypeDefaults(cfg, o.kind);
+    }
+
+    // The page's own system region: a widget of the page type's kind to put
+    // beside it, or, once the page places one, the way to take the region
+    // out. Never done on its own.
+    function _sdLayoutWidgetPropsHtml(n) {
+        var o = _sdLayoutWidgetOffer(n);
+        if (!o) return '';
+        var label = _swTypeInfo(o.kind).label;
+        if (_sdLayoutWidgetPlaced(tree, o.kind, _sdLayoutWidgetKindOfSid)) {
+            return '<div class="sd-prop-row">' +
+                    '<button type="button" class="btn btn-sm btn-outline theme-danger w-100" id="sd-layout-remove-region">' +
+                        '<span class="bi bi-trash me-1"></span>' + esc(_sdT('Remove the classic region')) +
+                    '</button>' +
+                '</div>' +
+                '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                    esc(_sdT('A "{var}" widget is on this page. Without the region the widget alone draws the page; the layout file stays.', label)) +
+                '</div></div>';
+        }
+        return '<div class="sd-prop-row">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-layout-widget">' +
+                    '<span class="bi bi-magic me-1"></span>' + esc(_sdT('Put a "{var}" widget beside it', label)) +
+                '</button>' +
+            '</div>' +
+            '<div class="sd-prop-row"><div style="font-size:.66rem;color:#888;line-height:1.3">' +
+                esc(_sdT('A widget with this page\'s settings and its default layout goes after the region, for you to style; the region stays until you remove it.')) +
+            '</div></div>';
+    }
+
+    // A new widget of the offer's kind with its starter layout, placed right
+    // after the region node; one undo step. The region stays.
+    function _sdLayoutWidgetPlace(regionNode) {
+        var o = _sdLayoutWidgetOffer(regionNode);
+        if (!o) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        var cfg = _sdLayoutWidgetCfg(o);
+        var start = _sdAnyParent(regionNode);
+        var name = _swAutoName(o.kind, null, { target: start ? start.parent : null });
+        _swCreateRow(name, cfg, _buildStarterTree(o.kind), function (newId, newName) {
+            // The region may have gone meanwhile; the widget is then listed
+            // in the design, unplaced.
+            var hit = _sdAnyParent(regionNode);
+            var parent = hit ? hit.parent : null;
+            var idx = (parent && Array.isArray(parent.children)) ? parent.children.indexOf(regionNode) : -1;
+            if (idx === -1) {
+                if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+                return;
+            }
+            saveState();
+            if (hit.sid) _sharedDirty[hit.sid] = true;
+            var ref = { _id: gid(), type: 'shared_ref', props: { sharedId: newId, sharedName: newName }, children: [] };
+            parent.children.splice(idx + 1, 0, ref);
+            selectedNode  = ref;
+            selectedNodes = [];
+            if (typeof expandAncestorsAnywhere === 'function') expandAncestorsAnywhere(ref);
+            render();
+            if (typeof _refreshSystemTab === 'function') _refreshSystemTab();
+            sdToast(esc(_sdT('"{var}" was put after the region; style it, then remove the region when it is ready. Save the page to keep it.', newName)), 'success', 9000);
+        });
+    }
+
+    // Takes the page's own system region out once a widget of the offer's
+    // kind is on the page, after asking; an ordinary delete (undo brings it
+    // back).
+    function _sdLayoutRegionRemove(regionNode) {
+        var o = _sdLayoutWidgetOffer(regionNode);
+        if (!o || !_sdLayoutWidgetPlaced(tree, o.kind, _sdLayoutWidgetKindOfSid)) return;
+        if (!_collab.mayEdit) { _sdReadOnlyNudge(); return; }
+        if (!window.confirm(_sdT('Remove the classic region from this page? The widget draws the page from then on; the layout file stays.'))) return;
+        onDelete(regionNode);
+        sdToast(esc(_sdT('The classic region was removed; save the page to keep it.')), 'success', 7000);
+    }
+
     // What the converter left out of the widget, by its code (layout_code
     // convert, pg_layout_form_convert()).
     var SD_LAYOUT_DROPPED = {
@@ -50060,6 +50172,12 @@ const StyleDesigner = (function () {
         if (layoutRegenBtn) layoutRegenBtn.addEventListener('click', function () { _sdLayoutCodeOpen(_pgActivePage(), true); });
         var layoutConvertBtn = document.getElementById('sd-layout-convert');
         if (layoutConvertBtn) layoutConvertBtn.addEventListener('click', function () { _sdLayoutConvert(selectedNode); });
+        // The widget offered for the page's own system region, and the
+        // region's removal once that widget is on the page.
+        var layoutWidgetBtn = document.getElementById('sd-layout-widget');
+        if (layoutWidgetBtn) layoutWidgetBtn.addEventListener('click', function () { _sdLayoutWidgetPlace(selectedNode); });
+        var layoutRemoveBtn = document.getElementById('sd-layout-remove-region');
+        if (layoutRemoveBtn) layoutRemoveBtn.addEventListener('click', function () { _sdLayoutRegionRemove(selectedNode); });
 
         // Spacing toggle — expand/collapse responsive breakpoint rows
         document.querySelectorAll('#sd-properties .sd-sp-toggle').forEach(function(btn) {
