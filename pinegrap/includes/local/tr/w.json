@@ -263,6 +263,7 @@
     "Webhook": "Webhook",
     "Webhook Address": "Webhook Adresi",
     "Webhook Delivery Jobs": "Webhook Gönderim Görevi",
+    "Webhook ID": "Webhook Kimliği",
     "Webhook Signing Secret": "Webhook İmzalama Anahtarı",
     "Webhook delivery": "Webhook gönderimi",
     "Webhook registered. {var:1} now sends new orders to this site as they happen.": "Webhook kaydedildi. {var:1} artık yeni siparişleri gerçekleştikleri anda bu siteye gönderiyor.",

@@ -1398,6 +1398,7 @@
     "Add the panel to your home screen first, then turn notifications on from there.": "Bildirimler için önce paneli ana ekranınıza ekleyin, sonra oradan açın.",
     "Add the provider edge addresses to Trusted Proxies below, otherwise every visitor will appear to share one IP address.": "Sağlayıcının uç sunucu adreslerini aşağıdaki Güvenilen Vekil Sunucular alanına ekleyin, aksi hâlde tüm ziyaretçiler tek bir IP adresini paylaşıyor görünür.",
     "Add the redirect address below under Authorized redirect URIs.": "Aşağıdaki yönlendirme adresini Authorized redirect URIs altına ekleyin.",
+    "Add the webhook address above to the same REST API app with the events Payment capture completed and Payment capture denied, and copy its webhook ID here; without it PayPal's messages are refused.": "Yukarıdaki webhook adresini aynı REST API uygulamasına Payment capture completed ve Payment capture denied olaylarıyla ekleyin ve webhook kimliğini buraya kopyalayın; kimlik olmadan PayPal'ın mesajları reddedilir.",
     "Add them as new notes": "Yeni not olarak ekle",
     "Add this TXT record to your DNS:": "Bu TXT kaydını DNS'nize ekleyin:",
     "Add this address as a webhook endpoint in your {var:1} account.": "Bu adresi {var:1} hesabınızda webhook uç noktası olarak ekleyin.",
