@@ -911,6 +911,13 @@ function api_orders_ship($params) {
 
 	}
 
+	// An unknown carrier is not refused: an integration that sends its own
+	// courier's name must still be able to ship. It is kept as sent, and the
+	// answer says it was not recognised (pg_shipment_api_carrier()).
+	$carrier_answer = pg_shipment_api_carrier(isset($params['carrier']) ? $params['carrier'] : '');
+
+	$detail += $carrier_answer;
+
 	api_dry_run_stop('updated', 'shipment', $detail);
 
 	// The carrier is written only into an empty slot. The code beside it is the
@@ -955,7 +962,7 @@ function api_orders_ship($params) {
 
 	$row = api_row(api_order_select() . " WHERE orders.id = '" . $id . "' LIMIT 1");
 
-	api_ok(api_order_present($row, null, api_order_shipments($id)));
+	api_ok(api_order_present($row, null, api_order_shipments($id)) + $carrier_answer);
 
 }
 
@@ -1640,6 +1647,18 @@ function api_order_return_refund_schema() {
 		'method'    => 'string?',
 		'reference' => 'string?',
 		'unclear'   => 'boolean'
+	);
+
+}
+
+// The answer of POST /orders/{id}/shipment: the order, and the carrier the
+// call sent as pg_shipment_api_carrier() reads it.
+function api_order_shipment_schema() {
+
+	return api_order_schema() + array(
+		'carrier'      => 'string?',
+		'carrier_name' => 'string?',
+		'warning'      => 'string?'
 	);
 
 }

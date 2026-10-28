@@ -996,8 +996,12 @@ if (!$_POST) {
 
                         $shipment_select = 'ship_to_id_' . $ship_to_id . '_carrier_' . (int) $shipment_row['id'];
 
+                        // A carrier the row keeps as typed has no key; its
+                        // escaped name is its option's value.
+                        $shipment_typed = ($shipment['named'] && ($shipment['carrier'] === '')) ? $shipment['carrier_name'] : '';
+
                         if (!$liveform->field_in_session('id')) {
-                            $liveform->assign_field_value($shipment_select, $shipment['named'] ? $shipment['carrier'] : '');
+                            $liveform->assign_field_value($shipment_select, $shipment['named'] ? (($shipment_typed !== '') ? h($shipment_typed) : $shipment['carrier']) : '');
                         }
 
                         $shipment_status_title = '';
@@ -1018,7 +1022,7 @@ if (!$_POST) {
                                         'name'    => $shipment_select,
                                         'id'      => $shipment_select,
                                         'class'   => 'form-control form-control-sm',
-                                        'options' => pg_shipment_carrier_options($shipment_automatic['carrier_name']),
+                                        'options' => pg_shipment_carrier_options($shipment_automatic['carrier_name'], $shipment_typed),
                                     )) . '
                                     <label class="visually-hidden" for="' . h($shipment_select) . '">' . h(lang(array('string' => 'Shipping carrier of {var:1}', 'vars' => array($shipment['number'])))) . '</label>
                                 </span>

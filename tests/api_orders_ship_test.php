@@ -82,7 +82,7 @@ function test_api_orders_ship_sent_list_is_passed_with_notify()
 	pg_assert_true($request['shipped']);
 }
 
-function test_api_orders_ship_known_carrier_goes_on_each_number()
+function test_api_orders_ship_carrier_goes_on_each_number()
 {
 	$request = api_orders_ship_recipient(api_orders_ship_test_address(),
 		array('tracking_numbers' => array('1234567890123'), 'carrier' => 'Aras Kargo'),
@@ -94,5 +94,12 @@ function test_api_orders_ship_known_carrier_goes_on_each_number()
 		array('tracking_numbers' => array('1234567890123'), 'carrier' => 'Our own van'),
 		array('1234567890123'));
 
-	pg_assert_same(array('1234567890123'), $free['tracking_numbers'], 'free text names no carrier for the parcel');
+	pg_assert_same(array(array('number' => '1234567890123', 'carrier' => 'Our own van')), $free['tracking_numbers'],
+		'an unknown carrier is kept on the parcel as sent');
+
+	$none = api_orders_ship_recipient(api_orders_ship_test_address(),
+		array('tracking_numbers' => array('1234567890123')),
+		array('1234567890123'));
+
+	pg_assert_same(array('1234567890123'), $none['tracking_numbers'], 'no carrier: each row keeps its own');
 }
