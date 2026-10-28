@@ -15,7 +15,8 @@
 #                               the branch's commits: no Co-Authored-By: or
 #                               Claude-Session: trailer, Erdal Güral as
 #                               author and committer, no change to
-#                               pinegrap/changelog.txt (tools/check_pr.php)
+#                               pinegrap/changelog.txt or
+#                               pinegrap/data/config.php (tools/check_pr.php)
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
 #   .github/, .claude/, the     get_file.php copies, Bootstrap 6 panel
