@@ -479,10 +479,16 @@ function pg_user_list_not_empty($name)
  *
  * @param array  $names already escaped
  * @param string $icon  material icon name
+ * @param string $label the menu button's accessible name (the ligature is hidden)
  * @return array pg_list_cell()
  */
-function pg_user_list_names_cell($names, $icon)
+function pg_user_list_names_cell($names, $icon, $label)
 {
+    // Nothing assigned: a dash, not a button that opens an empty menu.
+    if (!$names) {
+        return pg_list_cell('&mdash;', 'align-middle text-center');
+    }
+
     $items = '';
 
     foreach ($names as $name) {
@@ -492,11 +498,44 @@ function pg_user_list_names_cell($names, $icon)
     return pg_list_cell(
         '<div class="row row-cols-2 align-middle">
             <div class="pg-menu-wrap col">
-                <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu" aria-expanded="false"><span class="material-icons d-inline">' . $icon . '</span></button>
+                <button type="button" class="m-1 btn btn-sm p-1 no-popover pg-menu-caret" data-bs-auto-close="outside" data-bs-strategy="fixed" data-bs-toggle="menu" aria-expanded="false" aria-label="' . h($label) . '"><span class="material-icons d-inline" aria-hidden="true">' . $icon . '</span></button>
                 <ul class="menu">' . $items . '</ul>
             </div>
         </div>',
         'align-middle text-center');
+}
+
+/**
+ * A yes/no cell: the check mark's ligature is hidden and "Yes" is read in
+ * its place.
+ *
+ * @param bool $yes
+ * @return array pg_list_cell()
+ */
+function pg_user_list_mark($yes)
+{
+    return pg_list_cell($yes
+        ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>'
+        : '&nbsp;', 'align-middle text-center');
+}
+
+/**
+ * A row's selection checkbox, named after the user. The last administrator
+ * cannot be deleted, so its box is drawn disabled.
+ *
+ * @param int    $id
+ * @param string $username
+ * @param bool   $selectable
+ * @return array pg_list_cell()
+ */
+function pg_user_list_select_cell($id, $username, $selectable)
+{
+    $name = ' aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => (string) $username))) . '"';
+
+    return pg_list_cell($selectable
+        ? ' <input class="check" type="checkbox" name="users[]" value="' . (int) $id . '"' . $name . ' />'
+        : '<input type="checkbox" name="users[]" value="' . (int) $id . '" class="check disabled" disabled="disabled"' . $name . ' />',
+        'select-all align-middle text-start');
 }
 
 /**
@@ -513,10 +552,6 @@ function pg_user_list_row($row, $view, $providers)
     $filter = $view['filter'];
     $id = (int) $row['id'];
     $role = $row['role'];
-    $checkmark = '<span class="material-icons">task_alt</span>';
-    $mark = function ($yes) use ($checkmark) {
-        return pg_list_cell($yes ? $checkmark : '&nbsp;', 'align-middle text-center');
-    };
 
     $manage = array();
 
@@ -551,19 +586,19 @@ function pg_user_list_row($row, $view, $providers)
 
     if ($filter == 'default') {
         $cells['role'] = pg_list_cell('<span class="badge theme-secondary fw-light">' . get_role_name($role) . '</span>');
-        $cells['member_user'] = $mark(($row['user_member_id'] ?? '') != '');
+        $cells['member_user'] = pg_user_list_mark(($row['user_member_id'] ?? '') != '');
 
         $private_user = db_q("SELECT DISTINCT aclfolder_user FROM aclfolder WHERE ((aclfolder_user = ?) AND (aclfolder_rights = 1))", array((string) $id));
         $private_user = $private_user ? mysqli_fetch_assoc($private_user) : null;
-        $cells['private_folder'] = $mark(($role < 3) || (isset($private_user['aclfolder_user']) && ($private_user['aclfolder_user'] != '')));
-        $cells['manage_content'] = $mark(($role < 3) || (no_acl_check($id) == true));
-        $cells['manage_calendars'] = $mark($manage['calendars']);
-        $cells['manage_forms'] = $mark($manage['forms']);
-        $cells['view_visitors'] = $mark($manage['visitors']);
-        $cells['manage_contacts'] = $mark($manage['contacts']);
-        $cells['manage_ecommerce'] = $mark($manage['ecommerce']);
-        $cells['manage_users'] = $mark($role < 3);
-        $cells['edit_design'] = $mark($role <= 1);
+        $cells['private_folder'] = pg_user_list_mark(($role < 3) || (isset($private_user['aclfolder_user']) && ($private_user['aclfolder_user'] != '')));
+        $cells['manage_content'] = pg_user_list_mark(($role < 3) || (no_acl_check($id) == true));
+        $cells['manage_calendars'] = pg_user_list_mark($manage['calendars']);
+        $cells['manage_forms'] = pg_user_list_mark($manage['forms']);
+        $cells['view_visitors'] = pg_user_list_mark($manage['visitors']);
+        $cells['manage_contacts'] = pg_user_list_mark($manage['contacts']);
+        $cells['manage_ecommerce'] = pg_user_list_mark($manage['ecommerce']);
+        $cells['manage_users'] = pg_user_list_mark($role < 3);
+        $cells['edit_design'] = pg_user_list_mark($role <= 1);
     } else {
         $last_modified_by = ($row['user'] != '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($row['user'])))) : ' ';
         $cells['email'] = pg_list_cell(h($row['email']));
@@ -608,7 +643,7 @@ function pg_user_list_row($row, $view, $providers)
                 FROM folder
                 LEFT JOIN aclfolder ON aclfolder.aclfolder_folder = folder.folder_id
                 WHERE ((aclfolder_user = ?) AND (aclfolder_rights = '1'))
-                ORDER BY folder_name ASC", array((string) $id))), 'folder');
+                ORDER BY folder_name ASC", array((string) $id))), 'folder', lang('Folders'));
             break;
 
         case 'my_content_managers':
@@ -632,7 +667,7 @@ function pg_user_list_row($row, $view, $providers)
                     }
                 }
 
-                $cells['manage_content'] = pg_user_list_names_cell($names, 'folder');
+                $cells['manage_content'] = pg_user_list_names_cell($names, 'folder', lang('Folders'));
             }
             break;
 
@@ -641,7 +676,7 @@ function pg_user_list_row($row, $view, $providers)
                 "SELECT calendars.name
                 FROM users_calendars_xref
                 LEFT JOIN calendars ON calendars.id = users_calendars_xref.calendar_id
-                WHERE users_calendars_xref.user_id = ?", array((string) $id))), 'today');
+                WHERE users_calendars_xref.user_id = ?", array((string) $id))), 'today', lang('Calendars'));
             break;
 
         case 'my_submitted_forms_managers':
@@ -657,12 +692,12 @@ function pg_user_list_row($row, $view, $providers)
                     }
                 }
 
-                $cells['manage_forms'] = pg_user_list_names_cell($names, 'list_alt');
+                $cells['manage_forms'] = pg_user_list_names_cell($names, 'list_alt', lang('Forms'));
             }
             break;
 
         case 'my_campaign_managers':
-            $cells['manage_email'] = $mark(($role == 3) && ($row['manage_emails'] == 'yes') && ($row['manage_contacts'] != 'yes'));
+            $cells['manage_email'] = pg_user_list_mark(($role == 3) && ($row['manage_emails'] == 'yes') && ($row['manage_contacts'] != 'yes'));
             break;
     }
 
@@ -671,11 +706,11 @@ function pg_user_list_row($row, $view, $providers)
             "SELECT contact_groups.name
             FROM users_contact_groups_xref
             LEFT JOIN contact_groups ON contact_groups.id = users_contact_groups_xref.contact_group_id
-            WHERE users_contact_groups_xref.user_id = ?", array((string) $id)), 'pg_user_list_not_empty')), 'groups');
+            WHERE users_contact_groups_xref.user_id = ?", array((string) $id)), 'pg_user_list_not_empty')), 'groups', lang('Contact Groups'));
     }
 
     if (($filter == 'default') || ($filter == 'my_contact_managers')) {
-        $cells['manage_email'] = $mark($manage['emails']);
+        $cells['manage_email'] = pg_user_list_mark($manage['emails']);
     }
 
     $cells['last_online'] = pg_list_cell(($row['last_seen'] >= 1) ? get_relative_time(array('timestamp' => $row['last_seen'])) . ' ' : '[' . lang('Never') . ']');
@@ -685,10 +720,7 @@ function pg_user_list_row($row, $view, $providers)
     $edit_url = 'edit_user.php?id=' . $id . '&send_to=' . h(escape_javascript(urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php?filter=' . $view['filter'])));
 
     $row_cells = array(
-        pg_list_cell($selectable
-            ? ' <input class="check" type="checkbox" name="users[]" value="' . $id . '" />'
-            : '<input type="checkbox" name="users[]" value="' . $id . '" class="check disabled" disabled="disabled"  />',
-            'select-all align-middle text-start'),
+        pg_user_list_select_cell($id, $row['username'], $selectable),
         pg_list_cell('<button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>',
             'align-middle text-start action-buttons'),
     );
