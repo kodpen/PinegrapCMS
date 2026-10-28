@@ -19,7 +19,7 @@ module: imap_client
 
 ## Which commands are there?
 - `pg_imap_command($session, $parts)`: tags `A0001…`; a part `array('literal' => …)` goes as `{N}` + go-ahead, or `{N+}` with LITERAL+. `pg_imap_astring()` quotes, or makes a literal for CR, LF, NUL or 8-bit bytes.
-- `pg_imap_select()` (EXAMINE when read-only) → exists, uidvalidity, uidnext; `pg_imap_uid_search()`; `pg_imap_uid_fetch()` → uid => item map (`BODY[…]` names keep their section, `pg_imap_fetch_section()` finds one by prefix); `pg_imap_uid_mark_seen()`; `pg_imap_uid_move()` (UID MOVE, else COPY + `\Seen \Deleted` + `UID EXPUNGE` only with UIDPLUS: a plain EXPUNGE would remove others' deleted mail); `pg_imap_logout()` closes the stream.
+- `pg_imap_select()` (EXAMINE when read-only) → exists, uidvalidity, uidnext; `pg_imap_uid_search()`; `pg_imap_uid_fetch()` → uid => item map (`BODY[…]` names keep their section, `pg_imap_fetch_section()` finds one by prefix); `pg_imap_uid_mark_seen()`; `pg_imap_uid_move()` (UID MOVE, else COPY + `\Seen \Deleted` + `UID EXPUNGE` only with UIDPLUS: a plain EXPUNGE would remove others' deleted mail); `pg_imap_append()` and `pg_imap_sent_folder()` (LIST, `\Sent` mark; `mail-sent-and-bounces.md`); `pg_imap_logout()` closes the stream.
 - Folder names go through `pg_imap_utf7_encode()` (modified UTF-7, own code); `pg_imap_uid_set()` compresses UIDs; `pg_imap_search_date()` is the English `j-M-Y` SINCE wants.
 
 ## Which errors and limits?

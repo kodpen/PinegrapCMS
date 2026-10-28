@@ -1,11 +1,11 @@
 ---
 name: incoming-email-plan
-description: Incoming e-mail into Workspace channels (G1, G2 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+description: Incoming e-mail into Workspace channels (G1-G3 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 ---
 
 ## What is it and where does it stand?
 - Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
-- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is done: #2764, #2788, #2806, #2828 (`workspace/mail-imap-client.md`, `mail-fetch.md`). G3 (reply by e-mail) is cut into G3a–G3c: docs/memory/plans/incoming-email-g3.md.
+- G1 (core) is done: parser #2586, tables #2676, ingest #2710, card and `.eml` upload on the Mailboxes card #2738 (`workspace/mail-parse.md`, `mail-tables.md`, `mail-ingest.md`, `mail-card.md`). G2 (IMAP read) is done: #2764, #2788, #2806, #2828 (`workspace/mail-imap-client.md`, `mail-fetch.md`). G3 (reply by e-mail) is done: #2846, #2872, #2885 (`workspace/mail-reply.md`, `mail-sent-and-bounces.md`). Next: G6 (routing).
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
@@ -14,7 +14,6 @@ description: Incoming e-mail into Workspace channels (G1, G2 done, owner 2026-10
 - A, IMAP pull (recommended): the site reads the customer's existing mailbox every minute with its own small IMAP client over `stream_socket_client()` (the PHP `imap` extension left core in 8.4). Mail stays in the box (no loss, provider spam filter). Costs: ~1 min delay, needs cron and outbound port 993; Microsoft 365 needs OAuth (no password IMAP), Google Workspace closed password IMAP on 2025-05-01 (app passwords a narrow exception), personal Gmail uses an app password.
 - B, the site's Cloudflare Email Routing + Worker POSTing raw mail: seconds, but Cloudflare DNS required (else a subdomain), no copy kept, no spam score, 25 MiB, per-site setup.
 - C, a Kodpen broker (`in.pinegrap.com`) the customer forwards to: easiest, but Kodpen becomes a KVKK data processor, Microsoft 365 blocks external forwarding (5.7.520), separate repo.
-- If push (B or C) is ever needed the core stays; G9 only adds a transport.
 
 ## What are the slices?
 One PR each. G1 core (schema 10.85 if still free): tables, MIME parser, `ws_mail_ingest()`, channel card, `.eml` upload in settings to test without a transport. G2 IMAP client, box card, "Test connection", inline cron job, System status row. G3 reply by e-mail from the channel. G4 read and send through a connected Microsoft 365 (or Google) account, new purpose `mail_read`. G5 request status, assignee, first-response target, "E-postalar" tab, events, auto-reply. G6 routing rules (+tag or address → channel, line in the customer's channel). G7 external API and MCP. G8 `@ai` triage suggestion (needs an AI key). G9 push endpoint, only if B or C is chosen (replaces G2).

@@ -70,7 +70,7 @@ function ws_mail_providers()
  * @param array $input name, address, channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
- *                     reply_via
+ *                     reply_via, sent_copy, sent_folder
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -109,6 +109,8 @@ function ws_mail_box_input($input)
         'reply_via'   => $reply_via,
         'smtp_host'   => $smtp_host,
         'smtp_port'   => ($smtp_host !== '') ? (int) $line('smtp_port', (string) $preset['smtp_port']) : 0,
+        'sent_copy'   => !empty($input['sent_copy']) ? 1 : 0,
+        'sent_folder' => $line('sent_folder'),
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -153,6 +155,10 @@ function ws_mail_box_input($input)
 
     if ((strlen($values['folder']) > 255) || (($after_fetch === 'move') && (($values['move_folder'] === '') || (strlen($values['move_folder']) > 255)))) {
         return $fail(lang('Name the folder to read and, to move mail after reading, the folder it goes to.'));
+    }
+
+    if (strlen($values['sent_folder']) > 255) {
+        return $fail(lang('The sent folder\'s name is at most 255 characters.'));
     }
 
     if (($after_fetch === 'move') && (strcasecmp($values['move_folder'], $values['folder']) === 0)) {
@@ -209,6 +215,9 @@ function ws_mail_ingest_message($result)
 
         case 'duplicate':
             return array('notice' => true, 'text' => lang('This e-mail is already in the mailbox.'));
+
+        case 'bounce':
+            return array('notice' => true, 'text' => lang('This e-mail says an answer was not delivered; a line was added under its conversation.'));
 
         case 'loop':
             return array('notice' => false, 'text' => lang('This e-mail was not brought in: it was sent by this site or automatically, or to a list.'));
@@ -501,7 +510,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -608,6 +617,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
     $kept = !empty($settings['secret']);
     $move = $box && ((string) $box['after_fetch'] === 'move');
     $site = $box && ((string) ($box['reply_via'] ?? 'box') === 'site');
+    $copy = !isset($settings['sent_copy']) || !empty($settings['sent_copy']);
 
     return '
                 <div class="md:col-12"><h3 class="h6 mt-3 mb-0">' . h(lang('Reading the mailbox')) . '</h3>
@@ -665,6 +675,17 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>
                     <input class="form-control form-control-sm" type="number" name="smtp_port" id="' . $prefix . 'smtp_port" min="1" max="65535" value="' . (int) ($settings['smtp_port'] ?? 587) . '">
+                </div>
+                <div class="md:col-8">
+                    <div class="form-field mt-2">
+                        <input class="check" type="checkbox" name="sent_copy" value="1" id="' . $prefix . 'sent_copy"' . ($copy ? ' checked' : '') . '>
+                        <label for="' . $prefix . 'sent_copy">' . h(lang('Keep a copy of each answer in the mailbox\'s sent folder')) . '</label>
+                    </div>
+                    <div class="form-text">' . h(lang('Needs the IMAP server above. Gmail and Microsoft 365 keep what their own sending server sends, so no copy is added for them.')) . '</div>
+                </div>
+                <div class="md:col-4">
+                    <label class="form-label" for="' . $prefix . 'sent_folder">' . h(lang('Sent folder')) . '</label>
+                    <input class="form-control form-control-sm" type="text" name="sent_folder" id="' . $prefix . 'sent_folder" maxlength="255" value="' . h((string) ($settings['sent_folder'] ?? '')) . '" placeholder="' . h(lang('Found by itself')) . '">
                 </div>
                 <div class="md:col-12">
                     <details class="small fg-secondary"><summary>' . h(lang('What each service needs')) . '</summary><ul class="mb-0 mt-2">' . $hints . '</ul></details>
