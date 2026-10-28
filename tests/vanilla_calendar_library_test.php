@@ -63,3 +63,27 @@ function pg_fields_script_tags_for_test()
 
 	return $start === false ? '' : (string) substr($source, $start, 2000);
 }
+
+function test_vanilla_calendar_settings_follow_the_site_clock()
+{
+	$twelve = pg_calendar_settings('twelve_hours');
+	$twenty_four = pg_calendar_settings('twenty_four_hours');
+
+	pg_assert_same(12, $twelve['timeMode'], 'the 12-hour clock: hour, minute and AM/PM');
+	pg_assert_same(24, $twenty_four['timeMode'], 'the 24-hour setting: the time row in 24 hours');
+	pg_assert_same(
+		array('application', 'navigation', 'arrowNext', 'arrowPrev', 'month', 'months', 'year', 'years', 'week', 'weekNumber', 'dates', 'selectingTime', 'inputHour', 'inputMinute', 'rangeHour', 'rangeMinute', 'btnKeeping'),
+		array_keys($twelve['labels']),
+		'every screen-reader name of the calendar that reaches the panel is translated'
+	);
+	pg_assert_same(true, $twelve['done'] !== '', 'the Done button has its word');
+}
+
+function test_vanilla_calendar_time_row_stylesheet_printed()
+{
+	$tags = pg_fields_script_tags_for_test();
+
+	pg_assert_contains('/assets/css/pg_datetime.css?v=', $tags, 'the time row has its stylesheet');
+	pg_assert_contains('data-pg-calendar="\' . h(json_encode(pg_calendar_settings()))', $tags, 'the clock and the words on the control\'s tag');
+	pg_assert_contains('@layer custom', vanilla_calendar_test_source('assets/css/pg_datetime.css'), 'in the panel layer, above Bootstrap\'s components');
+}

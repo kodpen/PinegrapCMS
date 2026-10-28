@@ -26,10 +26,10 @@
  *   <input data-pg-date>                  the calendar of pg_datetime.js on the field, site date
  *                                         format, names in the panel language
  *   <input data-pg-date="plain">          the same with English names
- *   <input data-pg-datetime>              date and time: the field hidden, a date box with
- *                                         the calendar and an <input type="time"> after it
- *   <input data-pg-time>                  time only: an <input type="time"> after the
- *                                         hidden field
+ *   <input data-pg-datetime>              date and time: the field hidden, one box after it
+ *                                         in the site's date order and clock; its calendar
+ *                                         has the time row under the dates
+ *   <input data-pg-time>                  time only: the same box with the time row alone
  *
  * The named input or the native <select> is always what the form posts, in
  * the text the server reads today. Values cross this interface as ISO text
@@ -166,14 +166,14 @@
                 ready: calendarReady,
                 wait: calendarWait,
                 init: drawDateTime,
-                redraw: showDateTime,
+                redraw: showParts,
                 destroy: removeParts
             },
             time: {
-                ready: function () { return !!(window.pgUI && window.pgUI.version() === 6); },
-                later: function () { return !!(window.pgUI && window.pgUI.version() === 0); },
+                ready: calendarReady,
+                wait: calendarWait,
                 init: drawTime,
-                redraw: showTime,
+                redraw: showParts,
                 destroy: removeParts
             }
         },
@@ -760,30 +760,31 @@
         return !!(el.closest && el.closest('.drawer'));
     }
 
-    // The calendar over the typed input `box` (the posted field itself for a
-    // date, the date part of a date and time), from pg_datetime.js: it
-    // shows our own parse of the box and a pick writes our own format. In a
-    // drawer the calendar is drawn open after the box.
-    function makeCalendar(el, box, onPick) {
+    // The calendar of pg_datetime.js over the typed input `box`: the posted
+    // field itself for a date, the one box after the hidden field for a
+    // date and time or a time. read() gives what the box shows as
+    // {iso, time}, our own parse of its text; onPick(iso, time) writes a
+    // pick. In a drawer the calendar is drawn open after the box.
+    function makeCalendar(el, box, mode, read, onPick) {
         // "plain" keeps the screens that never passed the translated names:
         // English, Sunday first.
-        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale();
+        var plain = el.getAttribute(HOOKS.date) === 'plain', lang = plain ? 'en' : locale(), now = read();
         var control = DT.attach(box, {
-            iso: parseDate(box.value),
+            mode: mode,
+            iso: now.iso,
+            time: now.time,
             locale: lang,
             firstWeekday: plain ? 0 : firstWeekday(lang),
             inline: inlineIn(el),
             host: window.pgUI && window.pgUI.overlayHost ? window.pgUI.overlayHost : null,
-            onPick: function (iso) {
-                box.value = formatDate(iso);
-                onPick();
-            }
+            onPick: onPick
         });
-        // A typed date moves the calendar to it when the box is left; text
-        // that is not a date is kept for the server to refuse.
+        // Typed text moves the calendar to it when the box is left; text
+        // that is not a date or a time is kept for the server to refuse.
         var typed = function () {
             if (!box.pgDatePicking) {
-                control.set(parseDate(box.value));
+                var shown = read();
+                control.set(shown.iso, shown.time);
             }
         };
         box.addEventListener('change', typed);
@@ -815,7 +816,12 @@
     }
 
     function drawDate(el) {
-        makeCalendar(el, el, function () { announce(el); });
+        makeCalendar(el, el, 'date', function () {
+            return { iso: parseDate(el.value), time: '' };
+        }, function (iso) {
+            el.value = formatDate(iso);
+            announce(el);
+        });
     }
 
     function removeDate(el) {
@@ -834,14 +840,6 @@
         return out.join(' ');
     }
 
-    function timeInput(el) {
-        var t = document.createElement('input');
-        t.type = 'time';
-        t.className = partClasses(el, ['pg-time']);
-        t.disabled = !!el.disabled;
-        return t;
-    }
-
     // The posted field stays the store and is hidden; the parts people use
     // come after it, named by the field's label.
     function hideNative(el, parts) {
@@ -855,74 +853,88 @@
         }
     }
 
-    // Date and time: a date box with the calendar and an <input type="time">
-    // in a group after the hidden field, which gets the two composed in the
-    // site text ('26/10/2026 5:00 PM') on every change.
-    function drawDateTime(el) {
-        var group = document.createElement('div'), date = document.createElement('input'), time = timeInput(el);
-        group.className = 'pg-datetime';
-        date.type = 'text';
-        date.className = partClasses(el, ['pg-datetime-date']);
-        date.setAttribute('autocomplete', 'off');
-        date.disabled = !!el.disabled;
-        group.appendChild(date);
-        group.appendChild(time);
-        el.parentNode.insertBefore(group, el.nextSibling);
-        hideNative(el, [date, time]);
-        el.pgParts = { group: group, date: date, time: time };
-        fillDateTime(el);
-        var compose = function () {
-            var day = String(date.value).trim(), iso = parseDate(day);
-            if (day === '') {
-                el.value = '';
-            } else {
-                // A box that is not a date posts as typed, for the server to
-                // refuse as it always did.
-                el.value = (iso ? formatDate(iso) : day) + ' ' + formatTime(time.value || '00:00');
-            }
-            fireChange(el);
-        };
-        makeCalendar(el, date, compose);
-        date.addEventListener('change', function () {
-            if (!date.pgDatePicking) {
-                compose();
-            }
-        });
-        time.addEventListener('change', compose);
-    }
-
-    function fillDateTime(el) {
-        var p = el.pgParts, m = /^(\S+)(?:\s+(.+))?$/.exec(String(el.value || '').trim());
-        p.date.value = m ? m[1] : '';
-        p.time.value = m && m[2] ? parseTime(m[2]) : '';
-    }
-
-    function showDateTime(el) {
-        if (el.pgParts) {
-            fillDateTime(el);
-            if (el.pgParts.date.pgCalendar) {
-                el.pgParts.date.pgCalendar.control.set(parseDate(el.pgParts.date.value));
-            }
+    // What a box of a date and time ('26/10/2026 17:05', '26/10/2026
+    // 5:05 PM', '26/10/2026') or of a time ('17:05', '5:05 PM') says, as
+    // {iso, time}; empty parts when it says nothing we can read.
+    function readParts(text, mode) {
+        if (mode === 'time') {
+            return { iso: '', time: parseTime(text) };
         }
+        var v = parseDateTime(text);
+        return v ? { iso: v.slice(0, 10), time: v.slice(11) } : { iso: '', time: '' };
     }
 
-    // Time only: an <input type="time"> after the hidden field, which keeps
-    // the text the server reads ('5:00 PM').
-    function drawTime(el) {
-        var time = timeInput(el);
-        el.parentNode.insertBefore(time, el.nextSibling);
-        hideNative(el, [time]);
-        el.pgParts = { group: time, time: time };
-        showTime(el);
-        time.addEventListener('change', function () {
-            el.value = time.value ? formatTime(time.value) : '';
-            fireChange(el);
+    // The box's text: the site's date order and the site's clock.
+    function shownParts(iso, time, mode) {
+        return mode === 'time' ? DT.clockTime(time) : (formatDate(iso) + ' ' + DT.clockTime(time));
+    }
+
+    // The hidden field gets the text the server reads, whatever the clock:
+    // '26/10/2026 5:00 PM' or '5:00 PM'. An empty box empties it, a date
+    // without a time is midnight, and text that says no date or time posts
+    // as typed, for the server to refuse as it always did.
+    function writeParts(el, box, mode) {
+        var text = String(box.value).trim(), r = readParts(text, mode);
+        if (text === '') {
+            el.value = '';
+        } else if (mode === 'time') {
+            el.value = r.time ? formatTime(r.time) : text;
+        } else {
+            el.value = r.iso ? (formatDate(r.iso) + ' ' + formatTime(r.time)) : text;
+        }
+        fireChange(el);
+    }
+
+    // The box shows the hidden field: our own reading of its text, or the
+    // text itself when it is none we can read.
+    function fillParts(el) {
+        var p = el.pgParts, r = readParts(el.value, p.mode), ok = p.mode === 'time' ? r.time : r.iso;
+        p.box.value = ok ? shownParts(r.iso, r.time, p.mode) : String(el.value || '');
+    }
+
+    // Date and time (mode 'datetime') or time only ('time'): one box after
+    // the hidden field, typed in, whose calendar holds the time row under
+    // the dates, or the time row alone. A time moved before any date is
+    // picked waits for the date.
+    function drawParts(el, mode) {
+        var box = document.createElement('input');
+        box.type = 'text';
+        box.className = partClasses(el, [mode === 'time' ? 'pg-time-box' : 'pg-datetime-box']);
+        box.setAttribute('autocomplete', 'off');
+        box.disabled = !!el.disabled;
+        el.parentNode.insertBefore(box, el.nextSibling);
+        hideNative(el, [box]);
+        el.pgParts = { box: box, mode: mode };
+        fillParts(el);
+        makeCalendar(el, box, mode, function () {
+            return readParts(box.value, mode);
+        }, function (iso, time) {
+            if (mode !== 'time' && !iso) {
+                return;
+            }
+            box.value = shownParts(iso, time || '00:00', mode);
+            writeParts(el, box, mode);
         });
+        box.addEventListener('change', function () { writeParts(el, box, mode); });
     }
 
-    function showTime(el) {
-        if (el.pgParts) {
-            el.pgParts.time.value = parseTime(el.value);
+    function drawDateTime(el) {
+        drawParts(el, 'datetime');
+    }
+
+    function drawTime(el) {
+        drawParts(el, 'time');
+    }
+
+    // A value written into the hidden field: the box and the calendar show it.
+    function showParts(el) {
+        var p = el.pgParts;
+        if (p) {
+            fillParts(el);
+            var r = readParts(p.box.value, p.mode);
+            if (p.box.pgCalendar) {
+                p.box.pgCalendar.control.set(r.iso, r.time);
+            }
         }
     }
 
@@ -931,11 +943,9 @@
         if (!p) {
             return;
         }
-        if (p.date) {
-            disposeCalendar(p.date);
-        }
-        if (p.group.parentNode) {
-            p.group.parentNode.removeChild(p.group);
+        disposeCalendar(p.box);
+        if (p.box.parentNode) {
+            p.box.parentNode.removeChild(p.box);
         }
         el.classList.remove('pg-field-native');
         if (el.pgTabindex === null || el.pgTabindex === undefined) {

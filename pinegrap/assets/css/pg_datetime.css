@@ -1,7 +1,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * The time row and the Done button of the one date-and-time control
+ * The box, the time row and the Done button of the one date-and-time control
  * (assets/js/pg_datetime.js). bootstrap.css styles the calendar itself
  * ([data-vc=calendar]) but has no rule for vanilla-calendar-pro's time row;
  * these follow the panel tokens, light and dark alike. Printed by
@@ -13,6 +13,28 @@
  * @license     https://opensource.org/licenses/mit-license.html MIT License
  */
 @layer custom {
+  /* The one box of a date and time or of a time, after its hidden field:
+     as wide as its text, as the two parts it replaced were. */
+  .pg-datetime-box,
+  .pg-time-box {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .pg-datetime-box {
+    min-width: 13rem;
+  }
+
+  .pg-time-box {
+    min-width: 7rem;
+  }
+
+  .input-group > .pg-datetime-box,
+  .input-group > .pg-time-box {
+    flex: 1 1 auto;
+    width: 1%;
+  }
+
   [data-vc=calendar] [data-vc=time] {
     display: grid;
     grid-template-columns: auto 1fr;
