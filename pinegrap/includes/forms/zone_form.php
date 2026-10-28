@@ -75,11 +75,14 @@ function pg_zone_form_choices($zone_id = 0)
     $zone_country_ids = array();
     $zone_state_ids = array();
 
-    $result = mysqli_query(db::$con, "SELECT id, name FROM countries ORDER BY name") or output_error('Query failed.');
+    $result = mysqli_query(db::$con, "SELECT id, name, code FROM countries") or output_error('Query failed.');
 
     while ($row = mysqli_fetch_assoc($result)) {
-        $countries[] = array('id' => $row['id'], 'label' => $row['name']);
+        $countries[] = array('id' => $row['id'], 'label' => pg_geo_country_label($row['name'], $row['code']));
     }
+
+    // Named and ordered in the panel's language (pg_geo_country_label()).
+    $countries = pg_geo_sort_by_label($countries);
 
     $result = mysqli_query(db::$con,
         "SELECT states.id, states.name, countries.name as country_name
