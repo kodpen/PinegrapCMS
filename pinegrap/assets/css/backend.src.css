@@ -452,12 +452,15 @@ input.btn-check {
 .pg-fg-emphasis {
   color: var(--pg-fg-emphasis) !important;
 }
+/* The light theme keeps v5's .table-light (#f8f9fa, black text, #c6c7c8
+   lines); the dark theme takes the raised surface, text and line of the
+   panel instead of a light band. */
 .pg-table-light {
-  --bs-table-color: #000;
-  --bs-table-bg: #f8f9fa;
-  --bs-table-border-color: #c6c7c8;
-  color: #000;
-  border-color: #c6c7c8;
+  --bs-table-color: var(--pg-fg-emphasis);
+  --bs-table-bg: var(--pg-bg-1);
+  --bs-table-border-color: light-dark(#c6c7c8, var(--pg-border-color));
+  color: var(--pg-fg-emphasis);
+  border-color: light-dark(#c6c7c8, var(--pg-border-color));
 }
 .pg-lead {
   font-size: 1.25rem;

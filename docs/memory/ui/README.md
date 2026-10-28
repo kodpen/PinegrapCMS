@@ -53,6 +53,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - container-shared-form.md: add_container.php and edit_container.php draw and check the container form through includes/forms/container_form.php; what each screen keeps
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 - dark-theme-fixed-fills.md: Inline light colours in panel markup and scripts (label designer, export overlay, hosting widget, field form ticks) moved onto --pg-* tokens; what stays white on purpose and what is left
+- dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black table-head text in the dark theme), what stays fixed and why
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
 - dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
