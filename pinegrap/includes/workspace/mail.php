@@ -685,7 +685,9 @@ function ws_mail_ingest($raw, $box)
     $settings = json_decode((string) ($box['settings'] ?? ''), true);
     $auth = ws_mail_auth($parsed['headers'], is_array($settings) ? (string) ($settings['auth_server'] ?? '') : '');
     $conversation = ws_mail_find_conversation($box, $parsed, $from_email);
-    $channel = ws_channel($conversation ? (int) $conversation['channel_id'] : (int) ($box['channel_id'] ?? 0));
+    // An answer stays where its conversation is; a new one follows the
+    // box's routes (mail_route.php).
+    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : ws_mail_route_channel($box, $parsed);
 
     if (!$channel || ((int) $channel['archived_at'] > 0)) {
         return array_merge($result, array('reason' => 'no_channel'));
@@ -752,6 +754,12 @@ function ws_mail_ingest($raw, $box)
         $parent_id = $message_id;
 
         db("UPDATE ws_mail_conversations SET message_id = '" . $message_id . "' WHERE id = '" . $conversation_id . "'");
+
+        // A known customer's channels hear of it.
+        if (($contact_id > 0) || ($user_id > 0)) {
+            ws_mail_customer_lines(array('channel_id' => (int) $channel['id'], 'subject' => $subject, 'contact_id' => $contact_id, 'user_id' => $user_id),
+                ($from_name !== '') ? $from_name : $from_email);
+        }
     }
 
     // Each attachment is a message of its own under the card, carrying the
