@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1c #2745 #2794 #2820): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -22,7 +22,7 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1c #2745 #2794 #28
    - T1b rows — done, #2794 (workspace/workflow-table-rows.md): person and record-link cells refused (`not_writable_yet`).
    - T1b2 privacy reader — done, #2808 (workspace/workflow-tables.md): the export and erasure read person and link cells (`pg_privacy_wtable_rows()`); `ws_wtable_row_closed_types()` empty.
    - T1c shares — done, #2820 (workspace/workflow-table-shares.md): person view/edit, channel view, `wtable_shared` bell line; no inbox reach change (no table column in `ws_inbox`); `ws_wtable_flow_gate()` for F6's table boxes.
-   - T1d API and MCP (`ws_openapi_objects()`, dry_run through `*_check()`), `workspace.wtable.*` webhooks on a public channel card.
+   - T1d API and MCP — done, #2890 (workspace/workflow-tables-api.md): `/workspace/tables` routes, row webhooks on a public channel share.
    - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
@@ -33,4 +33,4 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1c #2745 #2794 #28
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1d API and MCP being built (`api_wtables.php`), then T1e screen.
+- T1e screen workspace_wtables.php (API: workspace/workflow-tables-api.md).
