@@ -414,6 +414,18 @@ if (($item_name_lowercase == 'llms.txt') && router_llms_txt_enabled()) {
     exit();
 }
 
+// The site icon's sizes and web manifest (Site Settings, SEO, Site Icon;
+// includes/fn/site_icon.php), while a site icon is set. Without one the
+// names go on as they always have: to a file of that name, or to a page.
+if ((($item_name_lowercase == 'site.webmanifest') || ($item_name_lowercase == 'apple-touch-icon.png')
+        || preg_match('/^site-icon-\d{2,3}\.png$/', $item_name_lowercase))
+    && router_site_icon_set()
+) {
+    define('PG_SITE_ICON_ITEM', $item_name_lowercase);
+    require(dirname(__FILE__) . '/get_site_icon.php');
+    exit();
+}
+
 // Check if item is a file.
 $query = "SELECT id FROM files WHERE name = '" . router_escape($item_name) . "'";
 $result = mysqli_query(db::$con, $query) or router_output_error('Query failed.');
@@ -964,6 +976,25 @@ function router_llms_txt_enabled()
     $row = mysqli_fetch_assoc($result);
 
     return is_array($row) && !empty($row['llms_txt']);
+}
+
+/**
+ * Whether a site icon is set (the settings text 'site_icon', 2026.11.0). A
+ * missing config_text table reads as none.
+ *
+ * @return bool
+ */
+function router_site_icon_set()
+{
+    $result = @mysqli_query(db::$con, "SELECT value FROM config_text WHERE name = 'site_icon'");
+
+    if (!$result) {
+        return false;
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) && (trim((string) $row['value']) !== '');
 }
 
 function router_get_request_url()

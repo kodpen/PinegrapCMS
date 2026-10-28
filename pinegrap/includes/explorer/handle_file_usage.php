@@ -262,6 +262,12 @@ function pg_explorer_handle_file_usage($type, $request, $user, $folders_that_use
         }
     }
 
+    // The site icon is a settings text (includes/fn/site_icon.php), not a
+    // config column.
+    if (function_exists('pg_site_icon_name') && (pg_site_icon_name() === $usage_name)) {
+        $usage_setting_hits[] = array('name' => lang('Site Icon'), 'note' => '', 'url' => '');
+    }
+
     if (count($usage_setting_hits) > 0) {
         $usage_total += count($usage_setting_hits);
         $usage_groups[] = array('label' => lang('Settings'), 'items' => $usage_setting_hits);

@@ -78,6 +78,7 @@ $pg_settings_cards[] = '
                                                 <a class="pg-link-secondary" href="https://www.indexnow.org/" target="_blank">' . lang('Learn more about IndexNow') . '</a>
                                             </div>
                                         </div>
+                                        ' . $output_site_icon_picker . '
                                         ' . $output_app_icon_picker . '
                                         ' . $output_share_image_pickers . '
                                         ' . $output_structured_data_section . '

@@ -6058,6 +6058,18 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
             1);
     }
 
+    // The site's own icon (Site Settings, SEO, Site Icon): favicon sizes,
+    // apple-touch-icon and web manifest, unless the page's own head declares
+    // them. Nothing while no site icon is set, and nothing in an e-mail or
+    // in an output that is not an HTML document.
+    if (($email != TRUE) && (stripos($content, '</head>') !== false) && function_exists('pg_site_icon_page_head')) {
+        $pg_site_icon_head = pg_site_icon_page_head($content);
+
+        if ($pg_site_icon_head !== '') {
+            $content = preg_replace('/<\/head>/i', pg_regex_replacement('        ' . $pg_site_icon_head . "\n") . '</head>', $content, 1);
+        }
+    }
+
     // ── Structured data that describes the page itself (2026.4.4) ───────────
     //
     // BlogPosting and breadcrumbs for a blog post, Organization once on the

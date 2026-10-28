@@ -47,6 +47,19 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         return;
     }
 
+    // The site icon names a PNG or SVG of the Files screen; anything else is
+    // refused before a column of this screen is written.
+    $site_icon_save_ready = pg_schema_has('config_text') && array_key_exists('site_icon', $_POST);
+    $site_icon_input = $site_icon_save_ready ? trim((string) post_value('site_icon')) : '';
+
+    if (($site_icon_input !== '') && ($site_icon_input !== pg_site_icon_name())
+        && ((pg_site_icon_kind($site_icon_input) === '')
+            || !db_value("SELECT COUNT(*) FROM files WHERE (name = '" . e($site_icon_input) . "') AND (attachment = 0)"))
+    ) {
+        $liveform->mark_error('site_icon', lang('The site icon must be a PNG or SVG picture.'));
+        return;
+    }
+
     // Product feeds (2026.11.0, 11.0.4): the addresses the feeds pass on must
     // be absolute, so a wrong one is refused here, before anything on this
     // screen is written. Only when the card's fields were posted and the
@@ -330,6 +343,20 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             google_analytics_web_property_id = '" . escape(post_value('google_analytics_web_property_id')) . "',
             last_modified_user_id = '" . USER_ID . "',
             last_modified_timestamp = UNIX_TIMESTAMP()");
+
+    // The site icon: its sizes are drawn now, so a picture that cannot be
+    // drawn is said here rather than found missing on the site.
+    if ($site_icon_save_ready) {
+        pg_config_text_save('site_icon', $site_icon_input);
+
+        if (pg_site_icon_kind($site_icon_input) === 'png') {
+            $site_icon_drawn = pg_site_icon_generate($site_icon_input);
+
+            if (!$site_icon_drawn['ok']) {
+                $liveform->add_notice(pg_site_icon_error_text($site_icon_drawn['reason']));
+            }
+        }
+    }
 
     // Product feeds: their own JSON column, written after the screen's
     // columns. A new address that cannot be shown again (no site key) is shown
