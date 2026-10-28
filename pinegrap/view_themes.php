@@ -77,7 +77,7 @@ if (isset($_SESSION['software']['design']['view_themes']['query']) == false) {
 $search_query = mb_strtolower(($_SESSION['software']['design']['view_themes']['query'] ?? ''));
 
 // create where clause for sql
-$sql_search = "(LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape($search_query) . "%')";
+$sql_search = "(LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";
 
 if (!empty($_SESSION['software']['design']['view_themes']['query'])) {
     // Get only the results the user wanted in the search.

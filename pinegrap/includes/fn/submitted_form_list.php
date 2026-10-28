@@ -204,7 +204,7 @@ function pg_submitted_form_list_filter($user)
                     if ($value !== '') {
                         $joins .= ' LEFT JOIN form_data AS form_data_' . $field_id . ' ON ((forms.id = form_data_' . $field_id . '.form_id) AND (form_data_' . $field_id . '.form_field_id = ?) AND (form_data_' . $field_id . '.data LIKE ?))';
                         $join_params[] = (string) $field_id;
-                        $join_params[] = '%' . $value . '%';
+                        $join_params[] = pg_list_like_pattern($value);
                         $field_conditions[] = '(form_data_' . $field_id . '.data IS NOT NULL)';
                     }
                 }
@@ -242,7 +242,7 @@ function pg_submitted_form_list_filter($user)
             CONCAT(contacts.first_name, ' ', contacts.last_name),
             submitted_user.user_username,
             form_editor_user.user_username)) LIKE ?)";
-        $params[] = '%' . mb_strtolower($query) . '%';
+        $params[] = pg_list_like_pattern(mb_strtolower($query));
     }
 
     if ($advanced) {
@@ -263,7 +263,7 @@ function pg_submitted_form_list_filter($user)
 
             if ($value !== '') {
                 $conditions[] = '(' . $column . ' LIKE ?)';
-                $params[] = '%' . $value . '%';
+                $params[] = pg_list_like_pattern($value);
             }
         }
 

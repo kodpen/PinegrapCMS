@@ -365,16 +365,16 @@ if (
 
 // if advanced filters are on, prepare SQL
 if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? '') == true) {
-    if (($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) {$where .= " AND (orders.order_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) {$where .= " AND (orders.transaction_id LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) {$where .= " AND (orders.authorization_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) {$where .= " AND (orders.special_offer_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) {$where .= " AND (orders.referral_source_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) {$where .= " AND (orders.reference_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) {$where .= " AND (orders.tracking_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) {$where .= " AND (orders.http_referer LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {$where .= " AND (order_items.product_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) {$where .= " AND (orders.order_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) {$where .= " AND (orders.transaction_id LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) {$where .= " AND (orders.authorization_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) {$where .= " AND (orders.special_offer_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) {$where .= " AND (orders.referral_source_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) {$where .= " AND (orders.reference_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) {$where .= " AND (orders.tracking_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) {$where .= " AND (orders.http_referer LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) {$where .= " AND (INET_NTOA(orders.ip_address) LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) {$where .= " AND (order_items.product_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? ''))) . "')";}
 
     // If payment method has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['payment_method']) == false) {
@@ -389,29 +389,29 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
         $where .= " AND (orders.payment_method = '" . escape(($_SESSION['software']['ecommerce']['view_orders']['payment_method'] ?? '')) . "')";
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) {$where .= " AND (orders.card_type LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) {$where .= " AND (orders.cardholder LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) {$where .= " AND (orders.card_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) {$where .= " AND (orders.card_type LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) {$where .= " AND (orders.cardholder LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) {$where .= " AND (orders.card_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? ''))) . "')";}
 
     if (AFFILIATE_PROGRAM == true) {
-        if (($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) {$where .= " AND (orders.affiliate_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . "%')";}
+        if (($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) {$where .= " AND (orders.affiliate_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? ''))) . "')";}
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) {$where .= " AND (orders.custom_field_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) {$where .= " AND (orders.custom_field_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) {$where .= " AND (orders.billing_salutation LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) {$where .= " AND (orders.billing_first_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) {$where .= " AND (orders.billing_last_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) {$where .= " AND (orders.billing_company LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) {$where .= " AND (orders.billing_address_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) {$where .= " AND (orders.billing_address_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) {$where .= " AND (orders.billing_city LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {$where .= " AND ((orders.billing_state LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . "%') OR (billing_states.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . "%'))";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) {$where .= " AND (orders.billing_zip_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {$where .= " AND ((orders.billing_country LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . "%') OR (billing_countries.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . "%'))";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) {$where .= " AND (orders.billing_phone_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) {$where .= " AND (orders.billing_fax_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . "%')";}
-    if (($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) {$where .= " AND (orders.billing_email_address LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) {$where .= " AND (orders.custom_field_1 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) {$where .= " AND (orders.custom_field_2 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) {$where .= " AND (orders.billing_salutation LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) {$where .= " AND (orders.billing_first_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) {$where .= " AND (orders.billing_last_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) {$where .= " AND (orders.billing_company LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) {$where .= " AND (orders.billing_address_1 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) {$where .= " AND (orders.billing_address_2 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) {$where .= " AND (orders.billing_city LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) {$where .= " AND ((orders.billing_state LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? ''))) . "') OR (billing_states.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? ''))) . "'))";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) {$where .= " AND (orders.billing_zip_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) {$where .= " AND ((orders.billing_country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "') OR (billing_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? ''))) . "'))";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) {$where .= " AND (orders.billing_phone_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) {$where .= " AND (orders.billing_fax_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? ''))) . "')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) {$where .= " AND (orders.billing_email_address LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? ''))) . "')";}
 
     if (($_SESSION['software']['ecommerce']['view_orders']['opt_in_status'] ?? '') == 'opt_in') {
         $where .= " AND (orders.opt_in = '1')";
@@ -419,7 +419,7 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
         $where .= " AND (orders.opt_in = '0')";
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) {$where .= " AND (orders.po_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . "%')";}
+    if (($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) {$where .= " AND (orders.po_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? ''))) . "')";}
 
     if (($_SESSION['software']['ecommerce']['view_orders']['tax_status'] ?? '') == 'tax_exempt') {
         $where .= " AND (orders.tax_exempt = '1')";
@@ -427,17 +427,17 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
         $where .= " AND (orders.tax_exempt = '0')";
     }
 
-    if (($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) {$where .= " AND (ship_tos.ship_to_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) {$where .= " AND (ship_tos.salutation LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) {$where .= " AND (ship_tos.first_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) {$where .= " AND (ship_tos.last_name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) {$where .= " AND (ship_tos.company LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) {$where .= " AND (ship_tos.address_1 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) {$where .= " AND (ship_tos.address_2 LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) {$where .= " AND (ship_tos.city LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {$where .= " AND ((ship_tos.state LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . "%') OR (shipping_states.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . "%'))"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) {$where .= " AND (ship_tos.zip_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {$where .= " AND ((ship_tos.country LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . "%') OR (shipping_countries.name LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . "%'))"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) {$where .= " AND (ship_tos.ship_to_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) {$where .= " AND (ship_tos.salutation LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) {$where .= " AND (ship_tos.first_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) {$where .= " AND (ship_tos.last_name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) {$where .= " AND (ship_tos.company LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) {$where .= " AND (ship_tos.address_1 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) {$where .= " AND (ship_tos.address_2 LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) {$where .= " AND (ship_tos.city LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) {$where .= " AND ((ship_tos.state LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? ''))) . "') OR (shipping_states.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? ''))) . "'))"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) {$where .= " AND (ship_tos.zip_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) {$where .= " AND ((ship_tos.country LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "') OR (shipping_countries.name LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? ''))) . "'))"; $shipping = true;}
     
     // If address type has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['address_type']) == false) {
@@ -449,9 +449,9 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
         $shipping = true;
     }
     
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) {$where .= " AND (ship_tos.phone_number LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) {$where .= " AND (ship_tos.arrival_date_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . "%')"; $shipping = true;}
-    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) {$where .= " AND (ship_tos.shipping_method_code LIKE '%" . escape(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . "%')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) {$where .= " AND (ship_tos.phone_number LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) {$where .= " AND (ship_tos.arrival_date_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? ''))) . "')"; $shipping = true;}
+    if (($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) {$where .= " AND (ship_tos.shipping_method_code LIKE '" . escape(pg_list_like_pattern(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? ''))) . "')"; $shipping = true;}
 
     // If shipping status has not been set yet, then set it to any by default.
     if (isset($_SESSION['software']['ecommerce']['view_orders']['shipping_status']) == false) {
