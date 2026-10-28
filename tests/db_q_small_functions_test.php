@@ -139,7 +139,7 @@ function db_q_small_functions_test_files()
 		'get_calendar_view_screen_content.php' => 1,
 		'get_calendar_event_view_screen_content.php' => 1,
 		'calendars.php' => 0,
-		'add_calendar.php' => 2,
+		'add_calendar.php' => 1,
 		'add_calendar_event_location.php' => 1,
 		'includes/forms/calendar_event_location_form.php' => 1,
 		'view_calendars.php' => 0,

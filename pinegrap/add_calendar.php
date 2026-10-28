@@ -27,6 +27,7 @@ if ($user['role'] == 3) {
     output_error(lang('Access denied.'));
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_form.php');
 $liveform = new liveform('add_calendar');
 
 // if the form has not been submitted
@@ -58,24 +59,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_calendar.php" method="post">
                     ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Calendar'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_calendar_form_card($liveform) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -98,26 +82,10 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
     
-    $liveform->validate_required_field('name', lang('Name is required.'));
+    pg_calendar_form_validate_name($liveform, null);
     
     // if there is an error, forward user back to add calendar screen
     if ($liveform->check_form_errors() == true) {
-        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_calendar.php');
-        exit();
-    }
-    
-    // check to see if name is already in use by a different calendar
-    $query =
-        "SELECT id
-        FROM calendars
-        WHERE (name = ?)";
-    $result = db_q($query, array((string) $liveform->get_field_value('name'))) or output_error('Query failed.');
-    
-    // if name is already in use by a different calendar, prepare error and forward user back to screen
-    if (mysqli_num_rows($result) > 0) {
-        $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
-        
-        // forward user to add calendar screen
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/add_calendar.php');
         exit();
     }

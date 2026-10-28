@@ -587,6 +587,10 @@ function ws_editor_js_strings()
         'tool_table'                => lang('Table'),
         'tool_calc'                 => lang('Calculation'),
         'tool_codeblock'            => lang('Code block'),
+        // The composer's "Aa" switch to its expanded box, and the hint
+        // under it there.
+        'tool_expand'               => lang('Larger box: Enter for a new line, Ctrl+Enter sends'),
+        'tool_expand_hint'          => lang('@ someone · # a record · / a command · Ctrl+Enter to send'),
         'slash_inserts'             => lang('Insert into the note'),
         // The composer's length meter near WS_MESSAGE_MAX, spoken to screen
         // readers, and the server's own refusal past it.

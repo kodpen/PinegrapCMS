@@ -25,6 +25,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 ## Files
 
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
+- mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
 - workspace-ai-rewrite.md: "Rewrite with AI" in the Workspace composer (ai_write target ws_message): what the model reads, the button, Use as one undo step, tags kept, no AI mark
 - workspace-api-callers.md: Which Workspace API writes the person must make themselves: ws_api_person_only() vs ws_api_own_words_only(), whose name a write carries, refusals, which are no MCP tools
 - workspace-api-channel-customer.md: A channel's customer over the Workspace API and MCP (PR #1766): customer_type and customer_id on channels.create and channels.update, one half alone refused, null clears, the user role's contact rule
@@ -60,6 +61,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-command-registry.md: One registry (ws_commands()) for the / picker, /help, palette, the Tab argument popup after "/name " and the API list; an unknown /word refused with the closest names; "//" posts it
 - workspace-command-schedule.md: /schedule (/zamanla) in a Workspace channel: when it reads (+30dk, a day, 14:00), the 09:00 and tomorrow defaults, ws_scheduled_message_save(), its writer-only answer and live line
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
+- workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
 - workspace-crm-lead-intake.md: Lead step and box (CRM seams 6, PR #2092): a submitted form's customer into their channel or a new New customer channel; contact by forms.contact_id or e-mail, hourly cap
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams slice 3, #1666): the API's customer summary through the ws_channel_customer panel action, addresses per row, ids kept back
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
@@ -154,5 +156,6 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
 - workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic (parent_id on ws_attach and files.create), the 5-minute cap, .weba/.ogg/.m4a names, the player, what is not built
-- workspace-voice-transcripts.md: Voice message transcripts (V3, schema 11.0.89): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap; what the next slices add
+- workspace-voice-transcript-job.md: How a voice message is written out (V3b #2696): the queue on upload, ws_voice_kick() and the hourly job, answers and holds, delete for everyone, file.voice in the API
+- workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does

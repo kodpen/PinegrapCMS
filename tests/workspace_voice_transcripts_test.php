@@ -66,7 +66,7 @@ function test_ws_voice_provider_name()
 {
 	pg_assert_same('OpenAI', ws_voice_provider_name(''), 'the default');
 	pg_assert_same('OpenAI', ws_voice_provider_name('https://api.openai.com/v1'), 'OpenAI');
-	pg_assert_same('Azure OpenAI', ws_voice_provider_name('https://acme.openai.azure.com/openai'), 'Azure');
+	pg_assert_same('acme.openai.azure.com', ws_voice_provider_name('https://acme.openai.azure.com/openai'), 'Azure is its host: its address needs a query the check refuses');
 	pg_assert_same('Groq', ws_voice_provider_name('https://api.groq.com/openai/v1'), 'Groq');
 	pg_assert_same('stt.example.com', ws_voice_provider_name('https://STT.example.com/v1'), 'any other host');
 	pg_assert_same('evilopenai.com.example.net', ws_voice_provider_name('https://evilopenai.com.example.net/v1'), 'a look-alike is its host');
@@ -101,4 +101,75 @@ function test_ws_voice_schema_step()
 	pg_assert_contains("install_add_column('ws_channels', 'voice_access', \"TINYINT UNSIGNED NOT NULL DEFAULT 0\")", $step, 'the channel column');
 	pg_assert_false((bool) preg_match("/install_add_column\\('config', '[a-z_]+', \"(VARCHAR|TEXT)/", $step), 'no long column on config');
 	pg_assert_contains("'ws_voice',", (string) file_get_contents(PG_FUNCTIONS_DIR . '/install/index.php'), 'the table is in get_tables()');
+}
+
+// The recorder's names are recordings; an attached sound file is not, and a
+// .webm (drawn as a video) never is.
+function test_ws_voice_is_recording()
+{
+	foreach (array('voice-20261028-121500.weba', 'voice-20261028-121500.ogg', 'voice-20261028-121500.M4A') as $name) {
+		pg_assert_true(ws_voice_is_recording($name), $name);
+	}
+
+	foreach (array('', 'song.mp3', 'voice.weba', 'voice-20261028-121500.webm', 'voice-x.weba.php', 'my voice-1.ogg', 'voice-../x.ogg') as $name) {
+		pg_assert_false(ws_voice_is_recording($name), 'not a recording: ' . $name);
+	}
+}
+
+// The body the service reads: the fields, then the file under its name, the
+// boundary closed; quotes and line breaks never reach a header.
+function test_ws_voice_multipart()
+{
+	$body = ws_voice_multipart('B', array('model' => 'whisper-1', 'response_format' => 'json'), 'file', "voice-1.ogg", 'audio/ogg', 'BYTES');
+
+	pg_assert_same(
+		"--B\r\nContent-Disposition: form-data; name=\"model\"\r\n\r\nwhisper-1\r\n"
+		. "--B\r\nContent-Disposition: form-data; name=\"response_format\"\r\n\r\njson\r\n"
+		. "--B\r\nContent-Disposition: form-data; name=\"file\"; filename=\"voice-1.ogg\"\r\nContent-Type: audio/ogg\r\n\r\nBYTES\r\n--B--\r\n",
+		$body,
+		'the body'
+	);
+
+	pg_assert_contains('filename="ab.ogg"', ws_voice_multipart('B', array(), 'file', "a\"\r\nb.ogg", 'audio/ogg', ''), 'a name cannot break the header');
+}
+
+// The answer decides the recording's fate: a text, another try later, the
+// whole queue held (the key), or this one given up.
+function test_ws_voice_answer()
+{
+	$done = ws_voice_answer(200, '{"text":"  Merhaba, yarın görüşelim. ","language":"turkish"}');
+	pg_assert_same('done', $done['outcome'], '200 with a text');
+	pg_assert_same('Merhaba, yarın görüşelim.', $done['text'], 'trimmed text');
+	pg_assert_same('turkish', $done['language'], 'language when given');
+
+	pg_assert_same('', ws_voice_answer(200, '{"text":"ok"}')['language'], 'no language');
+	pg_assert_same('fail', ws_voice_answer(200, 'not json')['outcome'], '200 without a text');
+
+	foreach (array(401, 402, 403) as $status) {
+		pg_assert_same('hold', ws_voice_answer($status, '{"error":{"message":"Incorrect API key"}}')['outcome'], 'held on ' . $status);
+	}
+
+	foreach (array(0, 408, 429, 500, 503) as $status) {
+		pg_assert_same('retry', ws_voice_answer($status, '', 'timeout')['outcome'], 'retried on ' . $status);
+	}
+
+	$bad = ws_voice_answer(400, '{"error":{"message":"Invalid file format."}}');
+	pg_assert_same('fail', $bad['outcome'], 'a file the service cannot read');
+	pg_assert_contains('Invalid file format.', $bad['error'], 'the service\'s own words');
+	pg_assert_contains('HTTP 413', ws_voice_answer(413, '')['error'], 'the status when it says nothing');
+}
+
+// Both uploads queue a recording, the delete takes it away, the hourly job
+// carries the queue on, and the API shows the transcript in the file.
+function test_ws_voice_is_wired()
+{
+	$read = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	pg_assert_contains('ws_voice_queue($channel, $result[\'message_id\'], $stored[\'file_id\'], $stored[\'name\'])', $read('includes/workspace/files.php'), 'the panel upload');
+	pg_assert_contains('ws_voice_queue($channel, $result[\'message_id\'], $stored[\'file_id\'], $stored[\'name\'])', $read('includes/workspace/api_resources.php'), 'files.create');
+	pg_assert_contains('ws_voice_message_deleted($message)', $read('includes/workspace/messages.php'), 'delete for everyone');
+	pg_assert_contains('ws_voice_job()', $read('workspace_recurring_job.php'), 'the hourly job');
+	pg_assert_contains("'voice' => 'WorkspaceMessageVoice?'", $read('includes/workspace/api_resources.php'), 'the file schema');
 }

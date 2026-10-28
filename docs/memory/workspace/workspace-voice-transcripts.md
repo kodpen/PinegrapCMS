@@ -1,6 +1,6 @@
 ---
 name: workspace-voice-transcripts
-description: Voice message transcripts (V3, schema 11.0.89): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap; what the next slices add
+description: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 ---
 
 ## What does the schema step bring (11.0.89)?
@@ -14,7 +14,7 @@ description: Voice message transcripts (V3, schema 11.0.89): ws_voice, the setti
 ## Which service, and how is it named?
 - The site's own key for any OpenAI-compatible `/audio/transcriptions` (owner 2a, #2417); a Pinegrap AI gateway preset may come later. Empty address = `https://api.openai.com/v1`, empty model = `whisper-1` (`ws_voice_default_url()`, `ws_voice_default_model()`).
 - A pasted full endpoint is cut to its base (`ws_voice_url_clean()`); only HTTPS without user, query or fragment (`ws_voice_url_valid()`): the key travels in a header.
-- The consent line names the provider (`ws_voice_provider_name()`): OpenAI, Azure OpenAI, Groq by host suffix, any other host by itself, so a look-alike host is never shown as OpenAI.
+- The consent line names the provider (`ws_voice_provider_name()`): OpenAI, Groq by host suffix, any other host by itself, so a look-alike host is never shown as OpenAI. Azure OpenAI does not fit: its address needs `?api-version=`, which the check refuses.
 
 ## Who sets it, and what is logged?
 - Card `#ws-voice` on workspace_settings.php (`ws_voice_settings_card()`, action `voice` → `ws_voice_settings_post()`): role 0 only; role-3 settings holders see it disabled without the key field. The key is written, never shown; empty keeps it, a checkbox removes it.
@@ -25,5 +25,5 @@ description: Voice message transcripts (V3, schema 11.0.89): ws_voice, the setti
 - At most `WS_VOICE_MAX_SECONDS` (300, owner 5b), the recorder's own cap.
 
 ## What is not built yet?
-- The job (`ws_voice_transcribe()` like `ws_ai_kick`/`ws_ai_job()`, then `ws_message_touch()`), the row on upload, the channel menu switch and its private-channel consent, the transcript under the player, delete for everyone removing the row and text (owner 4a), `file.voice` in the API and MCP, `workspace.message.transcribed` (public channels only, with `channel_id`): `plans/workspace-voice-messages.md`.
-- The card was checked on a sandbox (save, encrypted key, audit line); never with a real service.
+- V3c: the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider), the transcript under the player, a panel kick, duration and peaks, `workspace.message.transcribed` (public channels only, with `channel_id`; its flows parity line).
+- Never checked with a real service (no key in the sandbox).

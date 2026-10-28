@@ -139,17 +139,20 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
             }
         }
 
-        // A collection's reference pick list offers the records of the form
-        // it points into instead of the options drawn for it, after an empty
-        // choice, as the site form does (pg_cf_apply_field_bindings()).
+        // A collection's reference pick list, radio button or check box
+        // group offers the records of the form it points into instead of
+        // the options drawn for it, a pick list after an empty choice, as
+        // the site form does (pg_cf_apply_field_bindings()).
         $coll_kind = isset($coll_kinds[(int) $field['id']]) ? $coll_kinds[(int) $field['id']] : array('kind' => '', 'reference_page_id' => 0);
 
         if (
             ($coll_kind['kind'] == 'reference')
             && ($coll_kind['reference_page_id'] > 0)
-            && ($field['type'] == 'pick list')
+            && in_array($field['type'], array('pick list', 'radio button', 'check box'), true)
         ) {
-            $options = array(array('id' => $field['id'] . '_ref', 'label' => '', 'value' => '', 'default_selected' => 0));
+            $options = ($field['type'] == 'pick list')
+                ? array(array('id' => $field['id'] . '_ref', 'label' => '', 'value' => '', 'default_selected' => 0))
+                : array();
 
             foreach (pg_coll_reference_options($coll_kind['reference_page_id']) as $code => $label) {
                 $options[] = array('id' => $field['id'] . '_ref' . count($options), 'label' => $label, 'value' => $code, 'default_selected' => 0);
@@ -260,8 +263,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 // If there is more than one option in this check box group, then the field
                 // name has to be an array, otherwise only the last option that is checked
                 // would be submitted.  This matches the canonical form rendering that
-                // get_form_info() uses in functions.php.
-                if (count($options) > 1) {
+                // get_form_info() uses in functions.php.  A reference group always posts
+                // an array: its records come and go.
+                if ((count($options) > 1) || ($coll_kind['kind'] == 'reference')) {
                     $name = $field['id'] . '[]';
 
                 // else there is just one option for this check box group
@@ -360,7 +364,11 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                     // If there is an existing file for this field, then output info for
                     // that. A submission without a row for the field gives null here.
                     if ($file && $file['name'] != '') {
-                        $output_file_info = '
+                        // An image field shows its picture above the file's link.
+                        $output_file_info = (($coll_kind['kind'] == 'image') && pg_coll_image_name_ok($file['name']))
+                            ? '<div class="col-12 mb-2"><img class="img-thumbnail" src="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" alt="" width="240" loading="lazy"></div>'
+                            : '';
+                        $output_file_info .= '
                         <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
                             <span class="material-icons">attach_file</span>
                             ' . h($file['name']) . ' (' . convert_bytes_to_string($file['size']) . ')

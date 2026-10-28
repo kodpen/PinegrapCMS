@@ -148,3 +148,68 @@ function test_bundle_discount_bp_from_input()
 	pg_assert_same(0, pg_bundle_discount_bp_from_input('-5'));
 	pg_assert_same(0, pg_bundle_discount_bp_from_input('101'));
 }
+
+// A plain product's lines take its stock in order; a product that is not
+// tracked, or takes back orders, is not limited.
+function test_bundle_cart_allowance_plain_lines()
+{
+	$stock = array(
+		7 => array('tracked' => true, 'quantity' => 5, 'backorder' => false),
+		8 => array('tracked' => false, 'quantity' => 0, 'backorder' => false),
+		9 => array('tracked' => true, 'quantity' => 0, 'backorder' => true),
+	);
+	$lines = array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 3),
+		array('id' => 2, 'product_id' => 7, 'quantity' => 3),
+		array('id' => 3, 'product_id' => 7, 'quantity' => 1),
+		array('id' => 4, 'product_id' => 8, 'quantity' => 4),
+		array('id' => 5, 'product_id' => 9, 'quantity' => 2),
+	);
+
+	pg_assert_same(array(
+		1 => array('allowed' => 3, 'unavailable' => false),
+		2 => array('allowed' => 2, 'unavailable' => false),
+		3 => array('allowed' => 0, 'unavailable' => false),
+		4 => array('allowed' => 4, 'unavailable' => false),
+		5 => array('allowed' => 2, 'unavailable' => false),
+	), pg_bundle_cart_allowance($lines, $stock));
+}
+
+// A component bought alone and inside a bundle is counted once.
+function test_bundle_cart_allowance_shared_component()
+{
+	$stock = array(
+		7 => array('tracked' => true, 'quantity' => 5, 'backorder' => false),
+		8 => array('tracked' => true, 'quantity' => 10, 'backorder' => false),
+	);
+	$bundle = array(array('product_id' => 7, 'quantity' => 2), array('product_id' => 8, 'quantity' => 1));
+	$lines = array(
+		array('id' => 1, 'product_id' => 7, 'quantity' => 2),
+		array('id' => 2, 'product_id' => 50, 'quantity' => 3, 'components' => $bundle),
+		array('id' => 3, 'product_id' => 8, 'quantity' => 10),
+	);
+
+	$answer = pg_bundle_cart_allowance($lines, $stock);
+
+	pg_assert_same(2, $answer[1]['allowed']);
+	pg_assert_same(1, $answer[2]['allowed'], '3 of 7 left after the plain line: one bundle of two');
+	pg_assert_same(false, $answer[2]['unavailable']);
+	pg_assert_same(9, $answer[3]['allowed'], 'the bundle took one of ten');
+}
+
+// A bundle its components cannot make, or with no contents, is unavailable.
+function test_bundle_cart_allowance_unavailable_bundle()
+{
+	$stock = array(7 => array('tracked' => true, 'quantity' => 1, 'backorder' => false));
+	$lines = array(
+		array('id' => 1, 'product_id' => 50, 'quantity' => 1, 'components' => array(array('product_id' => 7, 'quantity' => 2))),
+		array('id' => 2, 'product_id' => 51, 'quantity' => 1, 'components' => array()),
+		array('id' => 3, 'product_id' => 52, 'quantity' => 2, 'components' => array(array('product_id' => 99, 'quantity' => 1))),
+	);
+
+	$answer = pg_bundle_cart_allowance($lines, $stock);
+
+	pg_assert_same(array('allowed' => 0, 'unavailable' => true), $answer[1]);
+	pg_assert_same(array('allowed' => 0, 'unavailable' => true), $answer[2], 'no contents');
+	pg_assert_same(array('allowed' => 2, 'unavailable' => false), $answer[3], 'an untracked component sets no limit');
+}

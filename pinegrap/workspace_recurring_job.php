@@ -58,6 +58,12 @@ if (ws_enabled() && function_exists('ws_ai_job')) {
     ws_ai_job();
 }
 
+// Voice messages waiting to be written out that no upload carried on
+// (includes/workspace/voice.php).
+if (ws_enabled() && function_exists('ws_voice_job')) {
+    ws_voice_job();
+}
+
 // Messages to MCP servers that are agents themselves, nobody's screen sent
 // (includes/workspace/mcp_agent.php).
 if (ws_enabled() && function_exists('ws_mcp_agent_job')) {

@@ -62,6 +62,33 @@ function ws_voice_js_strings()
 define('WS_VOICE_MAX_SECONDS', 300);
 
 /**
+ * The largest recording sent, in bytes: five minutes at 160 kbit/s, well
+ * above the recorder's 32 kbit/s, and under every service's own limit.
+ */
+define('WS_VOICE_MAX_BYTES', 6 * 1024 * 1024);
+
+/**
+ * Seconds one call to the service may take.
+ */
+define('WS_VOICE_CALL_TIMEOUT', 120);
+
+/**
+ * Calls a recording gets before it is given up on.
+ */
+define('WS_VOICE_ATTEMPTS', 3);
+
+/**
+ * A recording taken this long ago and still running was cut off with its
+ * request: it waits again.
+ */
+define('WS_VOICE_STALE', 900);
+
+/**
+ * A recording not sent within a day is given up on.
+ */
+define('WS_VOICE_QUEUE_TTL', 86400);
+
+/**
  * Whether the schema step that brought transcripts in (11.0.89) has run.
  *
  * @return bool
@@ -178,10 +205,6 @@ function ws_voice_provider_name($url)
 
     if (($host === 'openai.com') || (substr($host, -11) === '.openai.com')) {
         return 'OpenAI';
-    }
-
-    if (substr($host, -17) === '.openai.azure.com') {
-        return 'Azure OpenAI';
     }
 
     if (($host === 'groq.com') || (substr($host, -9) === '.groq.com')) {
@@ -526,4 +549,453 @@ function ws_voice_settings_card($self_url, $viewer)
                 </div>
             </div>
         </div>';
+}
+
+/* ---------------------------------------------------------------------------
+   Transcripts: the queue and the work
+   --------------------------------------------------------------------------- */
+
+/**
+ * Is this the name the recorder gives a voice message
+ * (voice-YYYYMMDD-HHMMSS with a sound extension)? Only those are written
+ * out and taken away with their message: a sound file somebody attached is
+ * left alone.
+ *
+ * @param string $name
+ * @return bool
+ */
+function ws_voice_is_recording($name)
+{
+    return (bool) preg_match('/^voice-[A-Za-z0-9_-]{1,80}\.(weba|ogg|oga|opus|m4a|mp3|wav|aac)$/i', (string) $name);
+}
+
+/**
+ * Notes a recording just posted: queued to be written out when transcripts
+ * are on and its channel allows them, otherwise kept as never asked. Called
+ * by both uploads (ws_message_send_file_bytes(), the API's files.create).
+ *
+ * @param array  $channel
+ * @param int    $message_id
+ * @param int    $file_id
+ * @param string $name the name it was posted with
+ */
+function ws_voice_queue($channel, $message_id, $file_id, $name)
+{
+    if (!ws_voice_schema_ready() || ((int) $file_id <= 0) || !ws_voice_is_recording($name)) {
+        return;
+    }
+
+    $queued = ws_voice_config()['enabled'] && ws_voice_channel_allowed($channel);
+    $now = time();
+
+    db("INSERT IGNORE INTO ws_voice (file_id, message_id, channel_id, status, created_at, updated_at)
+        VALUES ('" . (int) $file_id . "', '" . (int) $message_id . "', '" . (int) $channel['id'] . "', '" . ($queued ? 'queued' : '') . "', '" . $now . "', '" . $now . "')");
+
+    if ($queued) {
+        ws_voice_carry_on();
+    }
+}
+
+/**
+ * Carries the queue on once the answer has gone back, where the server can
+ * send it first (PHP-FPM); elsewhere the hourly job does
+ * (workspace_recurring_job.php). The session is closed first, so a call that
+ * waits for the service does not hold the person's other screens up.
+ */
+function ws_voice_carry_on()
+{
+    static $registered = false;
+
+    if ($registered || !function_exists('fastcgi_finish_request')) {
+        return;
+    }
+
+    $registered = true;
+
+    register_shutdown_function(function () {
+        if (session_status() === PHP_SESSION_ACTIVE) {
+            session_write_close();
+        }
+
+        fastcgi_finish_request();
+        ws_voice_kick();
+    });
+}
+
+/**
+ * The hourly job: the work nobody's upload carried on.
+ */
+function ws_voice_job()
+{
+    ws_voice_kick(300);
+}
+
+/**
+ * Gives up on recordings that waited a day, and puts back the ones whose
+ * call was cut off with its request.
+ */
+function ws_voice_watchdog()
+{
+    $now = time();
+
+    db("UPDATE ws_voice SET status = 'failed', error = '" . e(lang('It could not be sent to the transcription service within a day.')) . "', updated_at = '" . $now . "'
+        WHERE status = 'queued' AND created_at < '" . ($now - WS_VOICE_QUEUE_TTL) . "'");
+
+    db("UPDATE ws_voice SET status = IF(attempts >= '" . WS_VOICE_ATTEMPTS . "', 'failed', 'queued'), updated_at = '" . $now . "'
+        WHERE status = 'running' AND updated_at < '" . ($now - WS_VOICE_STALE) . "'");
+}
+
+/**
+ * Writes the waiting recordings out, one call at a time site-wide, and
+ * another only while the budget lasts. A call that finds the work under way
+ * elsewhere returns at once.
+ *
+ * @param int $budget seconds after which no new call is started
+ * @return string idle | busy | held | working
+ */
+function ws_voice_kick($budget = 60)
+{
+    if (!ws_voice_schema_ready() || !ws_voice_config()['enabled']) {
+        return 'idle';
+    }
+
+    ws_voice_watchdog();
+
+    if (((int) db_value("SELECT COUNT(*) FROM ws_voice WHERE status = 'queued'") === 0) || !empty(ws_voice_missing())) {
+        return 'idle';
+    }
+
+    if (ws_voice_config(true)['hold_until'] > time()) {
+        return 'held';
+    }
+
+    // The lock goes with the database connection, so a request the web
+    // server cuts off lets it go too.
+    if ((int) db_value("SELECT GET_LOCK('pg_ws_voice_run', 0)") !== 1) {
+        return 'busy';
+    }
+
+    if (function_exists('ignore_user_abort')) {
+        @ignore_user_abort(true);
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(WS_VOICE_CALL_TIMEOUT + 60);
+    }
+
+    $started = time();
+    $status = 'working';
+    $guard = 0;
+
+    do {
+        $row = db_item("SELECT * FROM ws_voice WHERE status = 'queued' ORDER BY id LIMIT 1");
+
+        if (!is_array($row)) {
+            $status = 'idle';
+            break;
+        }
+
+        db("UPDATE ws_voice SET status = 'running', attempts = attempts + 1, updated_at = '" . time() . "'
+            WHERE id = '" . (int) $row['id'] . "' AND status = 'queued'");
+
+        if (mysqli_affected_rows(db::$con) < 1) {
+            continue;
+        }
+
+        if (ws_voice_run($row) === 'held') {
+            $status = 'held';
+            break;
+        }
+    } while (((time() - $started) < $budget) && (++$guard < 20));
+
+    db_value("SELECT RELEASE_LOCK('pg_ws_voice_run')");
+
+    return $status;
+}
+
+/**
+ * Writes one recording out: still posted, still allowed where it is, not
+ * too long; then the call, and the row as the answer leaves it.
+ *
+ * @param array $row ws_voice, claimed (status running)
+ * @return string done | skipped | failed | retry | held
+ */
+function ws_voice_run($row)
+{
+    $message = ws_message((int) $row['message_id']);
+
+    if (!$message || ((int) $message['deleted_at'] > 0) || ((int) $message['file_id'] !== (int) $row['file_id'])) {
+        return ws_voice_finish($row, 'skipped', lang('The voice message was deleted.'));
+    }
+
+    $channel = ws_channel((int) $message['channel_id']);
+
+    if (!$channel || !ws_voice_channel_allowed($channel)) {
+        return ws_voice_finish($row, 'skipped', lang('The channel does not allow transcripts.'));
+    }
+
+    $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $row['file_id'] . "'");
+    $path = FILE_DIRECTORY_PATH . '/' . basename($stored);
+    $size = ($stored !== '') ? @filesize($path) : false;
+
+    if (($size === false) || ($size <= 0)) {
+        return ws_voice_finish($row, 'failed', lang('The recording could not be read.'));
+    }
+
+    if ($size > WS_VOICE_MAX_BYTES) {
+        return ws_voice_finish($row, 'skipped', lang(array('string' => 'Recordings longer than {var:1} minutes are not sent.', 'vars' => (int) (WS_VOICE_MAX_SECONDS / 60))));
+    }
+
+    $bytes = @file_get_contents($path);
+
+    if (!is_string($bytes) || ($bytes === '')) {
+        return ws_voice_finish($row, 'failed', lang('The recording could not be read.'));
+    }
+
+    $config = ws_voice_config();
+    $model = ($config['model'] !== '') ? $config['model'] : ws_voice_default_model();
+    $answer = ws_voice_call($bytes, (string) $message['file_name'], $model);
+    $outcome = ws_voice_answer($answer['status'], $answer['body'], $answer['error']);
+
+    switch ($outcome['outcome']) {
+        case 'done':
+            db("UPDATE ws_voice SET status = 'done', transcript = '" . e($outcome['text']) . "', language = '" . e(mb_substr($outcome['language'], 0, 16)) . "',
+                    provider = '" . e(mb_substr($config['provider'], 0, 100)) . "', model = '" . e(mb_substr($model, 0, 100)) . "', error = '',
+                    updated_at = '" . time() . "', transcribed_at = '" . time() . "'
+                WHERE id = '" . (int) $row['id'] . "'");
+
+            // Screens and apps holding the message read it again.
+            ws_message_touch((int) $row['message_id']);
+
+            if ($config['error'] !== '') {
+                pg_config_text_save('ws_voice_error', '');
+            }
+
+            return 'done';
+
+        case 'hold':
+            // The key or the account: every recording would fail the same
+            // way, so they all wait and the card says why.
+            db("UPDATE ws_voice SET status = 'queued', attempts = GREATEST(attempts, 1) - 1, updated_at = '" . time() . "' WHERE id = '" . (int) $row['id'] . "'");
+            ws_voice_hold(3600, $outcome['error']);
+
+            return 'held';
+
+        case 'retry':
+            if ((int) $row['attempts'] + 1 >= WS_VOICE_ATTEMPTS) {
+                return ws_voice_finish($row, 'failed', $outcome['error']);
+            }
+
+            db("UPDATE ws_voice SET status = 'queued', error = '" . e(mb_substr($outcome['error'], 0, 250)) . "', updated_at = '" . time() . "' WHERE id = '" . (int) $row['id'] . "'");
+            ws_voice_hold(($answer['status'] === 429) ? 300 : 60, $outcome['error']);
+
+            return 'held';
+
+        default:
+            return ws_voice_finish($row, 'failed', $outcome['error']);
+    }
+}
+
+/**
+ * Leaves a recording as it ends without a text.
+ *
+ * @param array  $row
+ * @param string $status skipped | failed
+ * @param string $error
+ * @return string the status
+ */
+function ws_voice_finish($row, $status, $error)
+{
+    db("UPDATE ws_voice SET status = '" . e($status) . "', error = '" . e(mb_substr((string) $error, 0, 250)) . "', updated_at = '" . time() . "'
+        WHERE id = '" . (int) $row['id'] . "'");
+
+    return $status;
+}
+
+/**
+ * Holds the queue back for a while after the service refused or could not
+ * be reached, and says why on the card.
+ *
+ * @param int    $seconds
+ * @param string $error
+ */
+function ws_voice_hold($seconds, $error)
+{
+    db("UPDATE config SET ws_voice_hold_until = '" . (time() + (int) $seconds) . "'");
+    pg_config_text_save('ws_voice_error', mb_substr((string) $error, 0, 250));
+}
+
+/**
+ * One call to the service's /audio/transcriptions, through the outgoing
+ * client that refuses addresses inside the network and pins the one it
+ * checked (includes/api/outbound/http.php).
+ *
+ * @param string $bytes the recording
+ * @param string $name  its name, which tells the service its format
+ * @param string $model
+ * @return array status, body, error
+ */
+function ws_voice_call($bytes, $name, $model)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/http.php');
+
+    $config = ws_voice_config();
+    $base = ($config['url'] !== '') ? $config['url'] : ws_voice_default_url();
+    $boundary = 'pgvoice' . bin2hex(random_bytes(12));
+    $type = ws_file_type($name);
+
+    $answer = api_http_request('POST', $base . '/audio/transcriptions', array(
+        'body'     => ws_voice_multipart($boundary, array('model' => $model, 'response_format' => 'json'), 'file', $name, $type['mime'], $bytes),
+        'headers'  => array(
+            'Authorization: Bearer ' . ws_voice_key(),
+            'Content-Type: multipart/form-data; boundary=' . $boundary,
+            'Accept: application/json',
+        ),
+        'timeout'  => WS_VOICE_CALL_TIMEOUT,
+        'max_body' => 0,
+        'agent'    => 'workspace-voice',
+    ));
+
+    return array('status' => (int) $answer['status'], 'body' => (string) $answer['body'], 'error' => (string) $answer['error']);
+}
+
+/**
+ * A multipart/form-data body: the fields, then the file.
+ *
+ * @param string $boundary
+ * @param array  $fields   name => value
+ * @param string $field    the file's field name
+ * @param string $name     the file's name
+ * @param string $mime
+ * @param string $bytes
+ * @return string
+ */
+function ws_voice_multipart($boundary, $fields, $field, $name, $mime, $bytes)
+{
+    $body = '';
+
+    foreach ($fields as $key => $value) {
+        $body .= '--' . $boundary . "\r\n"
+            . 'Content-Disposition: form-data; name="' . str_replace(array('"', "\r", "\n"), '', (string) $key) . '"' . "\r\n\r\n"
+            . $value . "\r\n";
+    }
+
+    return $body . '--' . $boundary . "\r\n"
+        . 'Content-Disposition: form-data; name="' . str_replace(array('"', "\r", "\n"), '', (string) $field) . '"; filename="' . str_replace(array('"', "\r", "\n", '\\'), '', (string) $name) . '"' . "\r\n"
+        . 'Content-Type: ' . $mime . "\r\n\r\n"
+        . $bytes . "\r\n"
+        . '--' . $boundary . "--\r\n";
+}
+
+/**
+ * What a service's answer means for the recording: done with its text, try
+ * again later (limits, the service down, no answer), hold the whole queue
+ * (the key or the account refused), or fail this one (the service could not
+ * read it).
+ *
+ * @param int    $status HTTP status, 0 when no answer came
+ * @param string $body
+ * @param string $error  the client's own error when no answer came
+ * @return array outcome (done | retry | hold | fail), text, language, error
+ */
+function ws_voice_answer($status, $body, $error = '')
+{
+    $json = json_decode((string) $body, true);
+    $message = (is_array($json) && isset($json['error']['message']) && is_string($json['error']['message'])) ? trim($json['error']['message']) : '';
+    $out = array('outcome' => 'fail', 'text' => '', 'language' => '', 'error' => '');
+
+    if ((int) $status === 200) {
+        if (is_array($json) && isset($json['text']) && is_string($json['text'])) {
+            $out['outcome'] = 'done';
+            $out['text'] = mb_substr(trim($json['text']), 0, 100000);
+            $out['language'] = (isset($json['language']) && is_string($json['language'])) ? $json['language'] : '';
+
+            return $out;
+        }
+
+        $out['error'] = lang('The transcription service gave an answer that could not be read.');
+
+        return $out;
+    }
+
+    $said = ($message !== '') ? $message : (((int) $status > 0) ? 'HTTP ' . (int) $status : (string) $error);
+
+    if (in_array((int) $status, array(401, 402, 403), true)) {
+        $out['outcome'] = 'hold';
+    } elseif (((int) $status === 0) || ((int) $status === 408) || ((int) $status === 429) || ((int) $status >= 500)) {
+        $out['outcome'] = 'retry';
+    }
+
+    $out['error'] = lang(array('string' => 'The transcription service said: {var:1}', 'vars' => mb_substr($said, 0, 200)));
+
+    return $out;
+}
+
+/* ---------------------------------------------------------------------------
+   A deleted recording, and the transcript in the API
+   --------------------------------------------------------------------------- */
+
+/**
+ * After a voice message was deleted for everyone (ws_message_delete()): the
+ * recording and its transcript go too. A copy that still carries the file (a
+ * forward, a discussion's copy kept) keeps both, and the row moves to it.
+ *
+ * @param array $message the row as it was before the delete
+ */
+function ws_voice_message_deleted($message)
+{
+    $file_id = (int) ($message['file_id'] ?? 0);
+
+    if (!ws_voice_schema_ready() || ($file_id <= 0)) {
+        return;
+    }
+
+    $row = db_item("SELECT id FROM ws_voice WHERE file_id = '" . $file_id . "'");
+
+    if (!is_array($row) && !ws_voice_is_recording((string) ($message['file_name'] ?? ''))) {
+        return;
+    }
+
+    $other = db_item("SELECT id, channel_id FROM ws_messages
+        WHERE file_id = '" . $file_id . "' AND id <> '" . (int) $message['id'] . "' AND deleted_at = 0
+        ORDER BY id LIMIT 1");
+
+    if (is_array($other)) {
+        db("UPDATE ws_voice SET message_id = '" . (int) $other['id'] . "', channel_id = '" . (int) $other['channel_id'] . "' WHERE file_id = '" . $file_id . "'");
+        return;
+    }
+
+    db("DELETE FROM ws_voice WHERE file_id = '" . $file_id . "'");
+    ws_upload_discard($file_id);
+}
+
+/**
+ * The transcript of a recording as the API shows it, inside the message's
+ * file; null for any other file.
+ *
+ * @param int $file_id
+ * @return array|null
+ */
+function ws_voice_api_present($file_id)
+{
+    if (!ws_voice_schema_ready() || ((int) $file_id <= 0)) {
+        return null;
+    }
+
+    $row = db_item("SELECT status, transcript, language, provider, model, transcribed_at FROM ws_voice WHERE file_id = '" . (int) $file_id . "'");
+
+    if (!is_array($row)) {
+        return null;
+    }
+
+    $done = ($row['status'] === 'done');
+
+    return array(
+        'status'         => ((string) $row['status'] !== '') ? (string) $row['status'] : 'none',
+        'transcript'     => $done ? (string) $row['transcript'] : null,
+        'language'       => ($done && ($row['language'] !== '')) ? (string) $row['language'] : null,
+        'provider'       => $done ? (string) $row['provider'] : null,
+        'model'          => $done ? (string) $row['model'] : null,
+        'transcribed_at' => $done ? api_time((int) $row['transcribed_at']) : null,
+    );
 }

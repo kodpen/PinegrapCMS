@@ -483,3 +483,282 @@ function pg_bundle_is_component($product_id)
 {
     return count(pg_bundle_ids_containing($product_id)) > 0;
 }
+
+/**
+ * The bundles among some products, as a set (id => true). Empty before the
+ * bundle schema exists.
+ *
+ * @param array $product_ids
+ * @return array
+ */
+function pg_bundle_ids_among($product_ids)
+{
+    $ids = array();
+
+    foreach ((array) $product_ids as $product_id) {
+        if ((int) $product_id > 0) {
+            $ids[(int) $product_id] = (int) $product_id;
+        }
+    }
+
+    if (!$ids || !pg_bundles_ready()) {
+        return array();
+    }
+
+    $set = array();
+
+    foreach (db_values("SELECT id FROM products WHERE (id IN (" . implode(',', $ids) . ")) AND (bundle = '1')") as $bundle_id) {
+        $set[(int) $bundle_id] = true;
+    }
+
+    return $set;
+}
+
+/**
+ * How much of each cart line the stock allows, the lines taken in order.
+ *
+ * A plain line of a product that tracks stock without back orders takes
+ * what is left of it. A bundle line takes, from each such component, its
+ * quantity per bundle times the bundles allowed, so a component bought alone
+ * and inside a bundle is counted once. Other lines are not limited. A
+ * bundle with no contents allows none.
+ *
+ * @param array $lines rows with id, product_id, quantity and, for a bundle,
+ *                     components: rows with product_id and quantity
+ * @param array $stock product_id => array(tracked, quantity, backorder)
+ * @return array line id => array(allowed, unavailable): unavailable is true
+ *               when the stock alone, before any other line, allows none
+ */
+function pg_bundle_cart_allowance($lines, $stock)
+{
+    $left = array();
+    $limited = array();
+
+    foreach ((array) $stock as $product_id => $row) {
+        if (!empty($row['tracked']) && empty($row['backorder'])) {
+            $limited[(int) $product_id] = true;
+            $left[(int) $product_id] = max(0, (int) $row['quantity']);
+        }
+    }
+
+    $initial = $left;
+    $answer = array();
+
+    foreach ((array) $lines as $line) {
+        $wanted = max(0, (int) $line['quantity']);
+
+        if (isset($line['components'])) {
+            $allowed = $line['components'] ? $wanted : 0;
+            $alone = $allowed;
+
+            foreach ($line['components'] as $component) {
+                $product_id = (int) $component['product_id'];
+                $per_bundle = max(1, (int) $component['quantity']);
+
+                if (isset($limited[$product_id])) {
+                    $allowed = min($allowed, intdiv($left[$product_id], $per_bundle));
+                    $alone = min($alone, intdiv($initial[$product_id], $per_bundle));
+                }
+            }
+
+            foreach ($line['components'] as $component) {
+                $product_id = (int) $component['product_id'];
+
+                if (isset($limited[$product_id])) {
+                    $left[$product_id] -= $allowed * max(1, (int) $component['quantity']);
+                }
+            }
+
+            $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($alone === 0));
+            continue;
+        }
+
+        $product_id = (int) $line['product_id'];
+
+        if (!isset($limited[$product_id])) {
+            $answer[$line['id']] = array('allowed' => $wanted, 'unavailable' => false);
+            continue;
+        }
+
+        $allowed = min($wanted, $left[$product_id]);
+        $left[$product_id] -= $allowed;
+
+        $answer[$line['id']] = array('allowed' => $allowed, 'unavailable' => ($initial[$product_id] === 0));
+    }
+
+    return $answer;
+}
+
+/**
+ * Take a sold bundle line off its components' stock and keep the contents
+ * it was sold with in order_item_components, so a later edit of the bundle
+ * never changes this order, its return or its invoice.
+ *
+ * Each tracked component with stock left goes down by its quantity per
+ * bundle times the line's quantity and is announced like any sale
+ * (pg_product_stock_changed()); $stock_left carries what the lines above
+ * left, as the sale loops do for plain products. The bundle's own cached
+ * stock follows through the refresh the announcement runs.
+ *
+ * @param int    $order_item_id
+ * @param int    $bundle_id
+ * @param int    $quantity      bundles sold on the line
+ * @param string $source        checkout or local_sale
+ * @param array  $stock_left    product_id => stock left, carried by the caller
+ * @return void
+ */
+function pg_bundle_take_stock($order_item_id, $bundle_id, $quantity, $source, &$stock_left)
+{
+    $order_item_id = (int) $order_item_id;
+    $quantity = max(0, (int) $quantity);
+    $order_id = (int) db_value("SELECT order_id FROM order_items WHERE id = '" . $order_item_id . "'");
+    $costs = pg_schema_has('erp_product_costs');
+
+    foreach (pg_bundle_items($bundle_id) as $component) {
+        $product_id = (int) $component['product_id'];
+        $per_bundle = max(1, (int) $component['quantity']);
+        $unit_cost = $costs ? (int) db_value("SELECT avg_cost FROM erp_product_costs WHERE product_id = '" . $product_id . "'") : 0;
+
+        db_q(
+            "INSERT INTO order_item_components (order_id, order_item_id, product_id, quantity, unit_cost) VALUES (?, ?, ?, ?, ?)",
+            array($order_id, $order_item_id, $product_id, $per_bundle, $unit_cost));
+
+        if (isset($stock_left[$product_id])) {
+            $before = $stock_left[$product_id];
+        } else {
+            $now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . $product_id . "' LIMIT 1");
+
+            if (!$now || ((string) $now['inventory'] !== '1')) {
+                continue;
+            }
+
+            $before = (int) $now['inventory_quantity'];
+        }
+
+        if (($before <= 0) || ($quantity === 0)) {
+            continue;
+        }
+
+        db("UPDATE products SET inventory_quantity = (inventory_quantity - '" . ($per_bundle * $quantity) . "') WHERE id = '" . $product_id . "'");
+
+        // The column is unsigned and the session is not strict, so selling
+        // through the stock leaves 0; the guard raises the warning once.
+        db("UPDATE products SET out_of_stock = '1', out_of_stock_timestamp = UNIX_TIMESTAMP()
+            WHERE id = '" . $product_id . "' AND inventory_quantity <= 0 AND out_of_stock != '1'");
+
+        if (mysqli_affected_rows(db::$con) > 0) {
+            if (function_exists('pg_page_cache_mark_dirty')) {
+                pg_page_cache_mark_dirty();
+            }
+
+            create_notification(array(
+                'action' => 'out_stock',
+                'type' => 'warning',
+                'title' => $component['name'] . ' - ' . $component['short_description'],
+                'product_id' => $product_id));
+        }
+
+        $stock_left[$product_id] = pg_product_stock_changed($product_id, $before, null, $source);
+    }
+}
+
+/**
+ * check_inventory() for a cart that holds a bundle: every line is checked
+ * against one stock pool (pg_bundle_cart_allowance()), so a component bought
+ * alone and inside a bundle cannot be sold twice. A line the stock cannot
+ * cover is shortened or removed with the notices check_inventory() gives.
+ *
+ * @param object $liveform
+ * @param int    $order_id
+ * @param array  $bundle_ids the bundles in the cart, as a set
+ * @return void
+ */
+function pg_bundle_check_inventory($liveform, $order_id, $bundle_ids)
+{
+    $rows = db_items(
+        "SELECT
+            order_items.id,
+            order_items.product_id,
+            order_items.quantity,
+            ship_tos.id AS ship_to_id,
+            ship_tos.complete AS ship_to_complete,
+            products.name,
+            products.short_description,
+            products.out_of_stock_message,
+            products.inventory,
+            products.inventory_quantity,
+            products.backorder
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        LEFT JOIN ship_tos ON order_items.ship_to_id = ship_tos.id
+        WHERE (order_items.order_id = '" . (int) $order_id . "')" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC");
+
+    $stock = array();
+    $lines = array();
+    $contents = array();
+
+    foreach ($rows as $row) {
+        $product_id = (int) $row['product_id'];
+        $line = array('id' => (int) $row['id'], 'product_id' => $product_id, 'quantity' => (int) $row['quantity']);
+
+        if (isset($bundle_ids[$product_id])) {
+            if (!isset($contents[$product_id])) {
+                $contents[$product_id] = pg_bundle_items($product_id);
+            }
+
+            $line['components'] = $contents[$product_id];
+
+            foreach ($contents[$product_id] as $component) {
+                $stock[(int) $component['product_id']] = array(
+                    'tracked'   => ((string) $component['inventory'] === '1'),
+                    'quantity'  => (int) $component['inventory_quantity'],
+                    'backorder' => ((string) $component['backorder'] === '1'));
+            }
+        } elseif ($row['inventory'] !== null) {
+            $stock[$product_id] = array(
+                'tracked'   => ((string) $row['inventory'] === '1'),
+                'quantity'  => (int) $row['inventory_quantity'],
+                'backorder' => ((string) $row['backorder'] === '1'));
+        }
+
+        $lines[] = $line;
+    }
+
+    $allowance = pg_bundle_cart_allowance($lines, $stock);
+
+    foreach ($rows as $row) {
+        $answer = $allowance[(int) $row['id']];
+
+        if ($answer['allowed'] >= (int) $row['quantity']) {
+            continue;
+        }
+
+        $description = trim(implode(' - ', array_filter(array((string) $row['name'], (string) $row['short_description']), 'strlen')));
+
+        if ($description === '') {
+            $description = lang('an item');
+        }
+
+        if ($answer['allowed'] === 0) {
+            remove_order_item($row['id']);
+
+            if ($answer['unavailable']) {
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because it is not currently available.', 'vars' => h($description))) . $row['out_of_stock_message']);
+            } else {
+                $liveform->add_notice(lang(array('string' => 'We\'re sorry, {var:1} has been removed from your order because the availabilty of the item is currently limited.', 'vars' => h($description))));
+            }
+
+            continue;
+        }
+
+        db("UPDATE order_items SET quantity = '" . (int) $answer['allowed'] . "' WHERE id = '" . (int) $row['id'] . "'");
+
+        if (($row['ship_to_id'] != '') && ($row['ship_to_complete'] == 1)) {
+            require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+            update_shipping_cost_for_ship_to($row['ship_to_id']);
+        }
+
+        $liveform->add_notice(lang(array('string' => 'We\'re sorry, the quantity you entered for {var:1} has been reduced because the availabilty of the item is currently limited.', 'vars' => h($description))));
+    }
+}

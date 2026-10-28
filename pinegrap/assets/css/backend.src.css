@@ -13889,6 +13889,22 @@ a.ws-chip:hover {
     display: none;
   }
 }
+/* The "Aa" expanded box (PGWsEditor, expand()): a taller field, and every
+   tool of the row, wrapped onto a second line where it has no room. */
+.ws-composer .ws-rich.is-expanded {
+  min-height: 7.5rem;
+  max-height: min(24rem, 50vh);
+}
+.ws-composer-tools.is-expanded {
+  flex-wrap: wrap;
+}
+.ws-composer-tools.is-expanded .ws-composer-format {
+  display: flex;
+}
+.ws-rich-expand {
+  font-weight: 600;
+  letter-spacing: -.02em;
+}
 /* The hint gives way to the buttons on one line rather than growing the row
    by several. */
 .ws-composer-tools .ws-composer-hint {
