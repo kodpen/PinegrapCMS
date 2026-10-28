@@ -130,7 +130,7 @@ function db_q_pages_regions_test_files()
 		'edit_designer_region.php' => 3,
 		'view_themes.php' => 0,
 		'view_menus.php' => 0,
-		'add_menu.php' => 2,
+		'add_menu.php' => 1,
 		'add_login_region.php' => 2,
 		'add_folder.php' => 2,
 		'view_files.php' => 0,
