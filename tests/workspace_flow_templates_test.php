@@ -91,6 +91,13 @@ function ws_flow_templates_test_flow_only()
 	return array('new_customer', 'quote_approval', 'text_review');
 }
 
+// The scheduled templates a flow words anew: a flow counts the last day, so
+// the hourly one runs once a day.
+function ws_flow_templates_test_reworded()
+{
+	return array('forms');
+}
+
 function ws_flow_templates_test_source()
 {
 	$function = new ReflectionFunction('ws_flow_templates');
@@ -199,6 +206,11 @@ function test_workspace_flow_templates_keep_the_scheduled_texts()
 			continue;
 		}
 
+		if (in_array($template['key'], ws_flow_templates_test_reworded(), true)) {
+			pg_assert_true(isset($strings['sa_tpl_' . $template['key']]), $template['key'] . ' comes from a scheduled one');
+			continue;
+		}
+
 		pg_assert_same($strings['sa_tpl_' . $template['key']] ?? null, $template['title'], $template['key'] . ' title');
 	}
 
@@ -214,9 +226,16 @@ function test_workspace_flow_templates_need_their_counts()
 	$all = array_column(ws_flow_templates(ws_flow_templates_test_fill()), 'key');
 	$none = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('metrics' => array()))), 'key');
 
-	pg_assert_true(in_array('stock', $all, true) && in_array('invoices', $all, true) && in_array('digest', $all, true), 'offered with the counts');
-	pg_assert_false(in_array('stock', $none, true) || in_array('invoices', $none, true) || in_array('digest', $none, true) || in_array('overdue', $none, true), 'left out without them');
-	pg_assert_true(in_array('uptime', $none, true) && in_array('monthly', $none, true), 'the rest stay');
+	foreach (array('stock', 'invoices', 'digest', 'overdue', 'forms', 'orders') as $key) {
+		pg_assert_true(in_array($key, $all, true), $key . ' offered with the counts');
+		pg_assert_false(in_array($key, $none, true), $key . ' left out without them');
+	}
+
+	pg_assert_true(in_array('uptime', $none, true) && in_array('monthly', $none, true) && in_array('chain', $none, true), 'the rest stay');
+
+	// The orders' text reads the day's sales too.
+	$no_sales = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('metrics' => array('orders_new')))), 'key');
+	pg_assert_false(in_array('orders', $no_sales, true), 'orders need the day\'s sales');
 }
 
 // The welcome needs the join start and each event starter its event; the
@@ -389,4 +408,59 @@ function test_workspace_flow_templates_flow_only_use_their_boxes()
 		pg_assert_true(in_array('channel', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for a channel');
 		pg_assert_true(in_array('person', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for people');
 	}
+}
+
+// Forms and orders as a flow counts them: once a day, the last day, and
+// their texts say so; told only when there is something to count.
+function test_workspace_flow_templates_count_the_last_day()
+{
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+
+	foreach (array('forms' => 'forms_new', 'orders' => 'orders_new') as $key => $metric) {
+		$nodes = array_column($by_key[$key]['graph']['nodes'], null, 'id');
+
+		pg_assert_same('schedule', $nodes['start']['kind'], $key . ' on a schedule');
+		pg_assert_same('daily', $nodes['start']['config']['repeat'], $key . ' once a day');
+		pg_assert_same(array('type' => 'metric', 'metric' => $metric, 'param' => 0, 'op' => 'gt', 'value' => '0'), $nodes['any']['config']['rule'], $key . ' counts');
+		pg_assert_same(array('start:any:next', 'any:tell:yes'), array_map(function ($edge) {
+			return $edge['from'] . ':' . $edge['to'] . ':' . $edge['on'];
+		}, $by_key[$key]['graph']['edges']), $key . ' arrows');
+		pg_assert_true(in_array('time', array_column($by_key[$key]['settings'], 'type'), true), $key . ' asks for the time');
+	}
+
+	$forms = array_column($by_key['forms']['graph']['nodes'], null, 'id');
+	pg_assert_same('notify', $forms['tell']['kind'], 'forms tell the person');
+	pg_assert_true(strpos($forms['tell']['config']['text'], 'in the last day') !== false, 'forms say the last day');
+
+	$orders = array_column($by_key['orders']['graph']['nodes'], null, 'id');
+	pg_assert_same('webhook', $orders['tell']['kind'], 'orders to a chat service');
+	pg_assert_same('', $orders['tell']['config']['url'], 'the address is asked');
+	pg_assert_true(in_array('url', array_column($by_key['orders']['settings'], 'type'), true), 'orders ask for the address');
+	pg_assert_true(strpos($orders['tell']['config']['text'], 'in the last day') !== false, 'orders say the last day');
+
+	// In a channel the forms are written there.
+	$in = array_column(ws_flow_templates(ws_flow_templates_test_fill(array('channel' => 3))), null, 'key');
+	pg_assert_same('post', $in['forms']['graph']['nodes'][2]['kind']);
+
+	// No "since the last run" sentence is left in the templates.
+	$source = ws_flow_templates_test_source();
+	pg_assert_false(strpos($source, 'since the last look') !== false || strpos($source, 'in the last hour') !== false, 'no count since the last run');
+}
+
+// The chain step is a flow started by hand, which a "Start a flow" box of
+// another flow starts: it says which flow finished and how.
+function test_workspace_flow_templates_chain_is_a_manual_start()
+{
+	foreach (array(array(), array('metrics' => array(), 'events' => array(), 'join' => false)) as $fill) {
+		pg_assert_true(in_array('chain', array_column(ws_flow_templates(ws_flow_templates_test_fill($fill)), 'key'), true), 'chain offered');
+	}
+
+	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
+	$chain = $by_key['chain'];
+	$strings = ws_scheduled_js_strings();
+
+	pg_assert_same('manual', $chain['start'], 'started by hand');
+	pg_assert_same(2, $chain['boxes']);
+	pg_assert_same($strings['sa_tpl_chain_text'], $chain['graph']['nodes'][1]['config']['text'], 'says which flow finished');
+	pg_assert_true(strpos($chain['help'], 'Start a flow') !== false, 'the line names the box that starts it');
 }

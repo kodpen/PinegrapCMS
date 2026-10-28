@@ -274,6 +274,7 @@
     "New files received from the update service will be replaced with software files. If changes have been made specifically for you, contact your server administrator before updating.": "Güncelleme hizmetinden alınan yeni dosyalar, yazılım dosyalarıyla değiştirilecektir. Size özel değişiklikler yapıldıysa, güncellemeden önce sunucu yöneticinizle iletişime geçin.",
     "New flow": "Yeni akış",
     "New form submission": "Yeni form gönderimi",
+    "New form submissions every day": "Her gün yeni form kayıtları",
     "New form submissions every hour": "Her saat yeni form kayıtları",
     "New form submissions since the last run": "Son çalışmadan beri gelen form kayıtları",
     "New form — this page's form": "Yeni form — bu sayfanın formu",

@@ -20,7 +20,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 - Done: 0 #1590 parity test; 1 #1707 section in Flows; 2 #1810 Show on canvas; 3 boxes (#2205, #2235, #2249, #2275); 4 canvas ways in (4a #2292, 4b #2730, 4c #2306 #2323); 5 conversion (5a #2558, 5b #2606; schema #2396). workspace/workspace-flows-*.md.
 - Retire the form (map and sizes: workspace/workspace-flows-form-retirement.md), in order:
   - R1. Done (#2769). Welcome and the five event starters in the flow gallery.
-  - R1b. forms, orders, chain with flow semantics (#2753 answer 2a): counts of the last day, chain a manual start.
+  - R1b. Done (#2787). forms, orders, chain with flow semantics (#2753 answer 2a): counts of the last day, chain a manual start.
   - R2. Doors closed: Edit of an unconverted row retries `ws_scheduled_convert()`: canvas, or its problems and Duplicate (#2753 answer 1a); `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php).
   - R3a. `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()`, workspace_events.js `whenBox()`/`templates()`; parity readers. After R1, R1b, R2.
   - R3b. `saActionEditor()` and the helpers only it used, the two `scheduledEditor()`. After R3a.
@@ -37,4 +37,4 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 8. A scheduled action kept in a note → b (#2395): no new ones from a note; the toolbar entry goes, converted ones keep their card and post step.
 
 ## Where to start?
-- Next: R1b and R2 (different files; side by side only if the coordinator chooses). Read workspace/README.md and workspace/workspace-flows-form-retirement.md.
+- Next: R2 (workspace.js, workspace_flow.js, scheduled_convert.php), then R3a. Read workspace/README.md and workspace/workspace-flows-form-retirement.md.
