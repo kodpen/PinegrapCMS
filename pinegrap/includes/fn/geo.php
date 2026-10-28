@@ -702,12 +702,14 @@ function pg_geo_country_label($name, $code = '')
         }
     }
 
-    // Only a code the ISO list knows: intl names an unknown code
-    // "Unknown Region" in the panel's language instead of refusing it.
-    if (preg_match('/^[A-Z]{2}$/', $code) && array_key_exists($code, pg_sales_map_iso_countries())) {
+    // intl names a code it does not know "Unknown Region" in the panel's
+    // language instead of refusing it: that answer, read once for a code
+    // nobody has, is not a name.
+    if (preg_match('/^[A-Z]{2}$/', $code)) {
         $from_code = (string) pg_geo_country_name($code);
+        $unknown = (string) pg_geo_country_name('ZZ');
 
-        if (($from_code !== '') && ($from_code !== $code)) {
+        if (($from_code !== '') && ($from_code !== $code) && ($from_code !== $unknown)) {
             return $from_code;
         }
     }
