@@ -10,7 +10,7 @@ description: HOSTNAME (request Host header) for redirects back to the visitor, H
 ## Which one does a link use?
 - Back to the visitor in the same request (a `Location` header, a `go()` target, a link printed on the page they are looking at): `HOSTNAME`, so the visitor stays on the host their session cookie belongs to. The OAuth sign-in return address (`pg_signin_redirect_uri()`) is in this group on purpose.
 - Anything that leaves the request — a link in an e-mail, a stored document, a feed, a canonical URL: `HOSTNAME_SETTING`, never `HOSTNAME` or `$_SERVER['HTTP_HOST']`. Otherwise whoever sends the request decides where the recipient is sent.
-- The ERP sales invoice's `web_address` (`includes/erp/order_bridge.php` `erp_order_internet_sale()`) is in this group: with `ERP_WEB_ADDRESS` empty it falls back to `URL_SCHEME . HOSTNAME_SETTING`. It took the checkout request's Host header and stored it on the invoice before PR #PRNUM; the same test scans the file.
+- The ERP sales invoice's `web_address` (`includes/erp/order_bridge.php` `erp_order_internet_sale()`) is in this group: with `ERP_WEB_ADDRESS` empty it falls back to `URL_SCHEME . HOSTNAME_SETTING`. It took the checkout request's Host header and stored it on the invoice before PR #2748; the same test scans the file.
 - The Workspace's scheduled actions are in this group (`includes/workspace/scheduled.php`): the address a new web check starts from is stored and run later by the job, and a webhook's payload names the site to another service. Both took the operator's request host (an IP address or an alias) before PR #701.
 
 ## Which mails used the request host, and what was the symptom?
