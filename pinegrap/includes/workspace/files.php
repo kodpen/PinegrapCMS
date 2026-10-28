@@ -585,14 +585,29 @@ function ws_store_upload_bytes($viewer, $channel, $original_name, $binary)
         return array('ok' => false, 'error' => $checked['error']);
     }
 
-    $original_name = $checked['name'];
-    $extension = $checked['extension'];
+    return ws_store_file_bytes($channel, $checked['name'], $checked['extension'], $binary, (int) $viewer['id']);
+}
 
+/**
+ * Keeps bytes already inspected (ws_upload_inspect()) as a file of a
+ * channel: in its folder, made on the first file, under a name a person can
+ * read, with a row in the file manager. Shared by an upload and a mail's
+ * attachments (mail.php), which have no viewer.
+ *
+ * @param array  $channel
+ * @param string $original_name the name as ws_upload_inspect() cleaned it
+ * @param string $extension
+ * @param string $binary
+ * @param int    $user_id       the owner of the file manager row
+ * @return array ok, error, file_id, name (the name the author gave it)
+ */
+function ws_store_file_bytes($channel, $original_name, $extension, $binary, $user_id)
+{
     // A file of a discussion is kept in its channel's folder: the people of
     // a discussion are people who read the channel, and the file stays when
     // the discussion is gone.
     $folder_channel = (function_exists('ws_thread_parent_channel') && ws_thread_parent_channel($channel)) ? ws_thread_parent_channel($channel) : $channel;
-    $folder_id = ws_channel_folder_id($folder_channel, $viewer['id']);
+    $folder_id = ws_channel_folder_id($folder_channel, (int) $user_id);
 
     // In a folder the file keeps a name a person can read; without one (the
     // schema not updated yet) it keeps the old channel-marked name.
@@ -614,7 +629,7 @@ function ws_store_upload_bytes($viewer, $channel, $original_name, $binary)
 
     db("INSERT INTO files (name, folder, type, size, user, design, optimized, timestamp)
         VALUES ('" . e($stored_name) . "', '" . (int) $folder_id . "', '" . e($extension) . "', '" . (int) filesize($stored_path) . "',
-            '" . (int) $viewer['id'] . "', '0', '0', UNIX_TIMESTAMP())");
+            '" . (int) $user_id . "', '0', '0', UNIX_TIMESTAMP())");
 
     $file_id = (int) mysqli_insert_id(db::$con);
 
