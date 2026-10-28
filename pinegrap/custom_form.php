@@ -1189,6 +1189,8 @@ if ($liveform->check_form_errors() == false) {
             }
         }
         
+        // a contact made above is traced once it is filled in, as a create
+        $audit_before = empty($new_contact_id) ? pg_audit_fetch('contacts', (int) $contact_id) : array();
         $query = "UPDATE contacts
                  SET
                     $sql_update_contact
@@ -1196,6 +1198,10 @@ if ($liveform->check_form_errors() == false) {
                     timestamp = UNIX_TIMESTAMP()
                  WHERE id = '$contact_id'";
         $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+        if (empty($new_contact_id)) {
+            pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
+        }
 
         // The visitor's answer goes to the consent log as stored: the column
         // keeps the posted value cast to an integer. A contact filled in for
@@ -1219,6 +1225,7 @@ if ($liveform->check_form_errors() == false) {
     // Announced only now: the row above was created empty and has just been
     // filled in from the submitted form.
     if (!empty($new_contact_id)) {
+        pg_audit_site_record('create', 'contacts', (int) $new_contact_id);
         pg_announce_contact_created($new_contact_id);
     }
     
