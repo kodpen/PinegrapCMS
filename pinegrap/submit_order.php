@@ -1557,6 +1557,28 @@ function submit_order($type) {
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($pre_save_hook_code != '')) {
         eval(prepare_for_eval($pre_save_hook_code));
     }
+
+    // A cash-on-delivery order is placed only with the code texted to its
+    // billing phone number (the SMS Messages card's cod_code event). Checked
+    // last, once nothing else stops the order, so a right code is not used
+    // up by a submit that comes back for another reason; a code sent to
+    // another number than the order's reads as expired.
+    $sms_code_posted = (isset($_POST['sms_code']) && is_string($_POST['sms_code'])) ? $_POST['sms_code'] : '';
+    $liveform->assign_field_value('sms_code', '');
+
+    if (
+        !pg_payment_is_return_mode($_GET['mode'] ?? '')
+        && (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE))
+        && ($liveform->check_form_errors() == FALSE)
+        && ($liveform->check_form_notices() == FALSE)
+        && pg_sms_cod_applies($liveform->get_field_value('payment_method'), $erp_on_account_requested, pg_sms_code_on('cod'))
+    ) {
+        $sms_code_refusal = pg_sms_code_verify('cod', 'order:' . (int) ($_SESSION['ecommerce']['order_id'] ?? 0), (string) $billing_phone_number, $sms_code_posted);
+
+        if ($sms_code_refusal !== '') {
+            $liveform->mark_error(($sms_code_refusal === 'number') ? 'billing_phone_number' : 'sms_code', pg_sms_code_sentence($sms_code_refusal));
+        }
+    }
     
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {

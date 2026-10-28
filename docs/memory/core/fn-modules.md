@@ -49,6 +49,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
+- `sms_codes`: [[sms-codes]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
 - `translate`: [[error-screen-language-and-status]]
