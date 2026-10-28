@@ -15,4 +15,6 @@ description: The contact group create and edit screens share includes/forms/cont
 ## What stays in the screens?
 - Create: the role-3 refusal, the INSERT, the notice on the group list.
 - Edit: the not-found guard, `validate_contact_group_access()`, the contact count (delete is refused while the group holds contacts), the record load, delete with its four xref/opt-in tables, the UPDATE, the hidden id.
+- While the group holds contacts, Delete is a disabled `type="button"` with the reason as its title and `aria-describedby`; it used to submit after an `alert()` and come back with the same refusal (#2892). The server-side refusal stays.
+- Organize Contacts (`organize_contacts.php`) reads ticked boxes with `querySelectorAll('input[name="…"]:checked')`: with one group the named form member is the checkbox itself, `.length` is undefined and the selection was dropped (#2892).
 - Tests: `tests/contact_group_form_test.php`; `db_q_contacts_forms_test.php` (edit screen, form) and `db_q_small_functions_test.php` (create screen) pin the queries.

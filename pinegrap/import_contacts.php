@@ -91,8 +91,8 @@ if (!$_POST) {
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             <input name="file" id="file" type="file" size="60" class="form-control w-auto" />
                                         </div>
-                                        <div class="col-12 my-5">
-                                            <label class="form-label" for="">'. lang('Import Mode') . '</label>
+                                        <div class="col-12 my-5" role="radiogroup" aria-labelledby="import_mode_label">
+                                            <div class="form-label" id="import_mode_label">'. lang('Import Mode') . '</div>
                                             <div class="form-field">
                                                 <input value="import_all_contacts" class="radio" type="radio" id="import_all_contacts" name="import_mode" checked>
                                                 <label class="" for="import_all_contacts">'. lang('Import all contacts') . '</label>
@@ -119,7 +119,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import Contacts') ) . '</span></button>

@@ -72,7 +72,7 @@ if (!$_POST) {
         
     // else there is at least one contact in this contact group, so disable delete button
     } else {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " onclick="alert(\'' . lang('Please delete or remove all contacts from this contact group before deleting this contact group.') . '\')" ><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<span class="d-inline-block" title="' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '"><button type="button" class="btn my-1  btn-solid theme-danger " disabled aria-describedby="delete_blocked_reason"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button></span><span id="delete_blocked_reason" class="visually-hidden">' . h(lang('Please delete or remove all contacts from this contact group before deleting this contact group.')) . '</span>';
     }
 
     print
@@ -100,7 +100,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . pg_contact_group_form_card($liveform) . '
 
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

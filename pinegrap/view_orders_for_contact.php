@@ -126,7 +126,7 @@ $query = "SELECT id, order_number, total, order_date ".
          "ORDER BY $order_by ";
 $result = db_q($query, array((string) $id)) or output_error('Query failed.');
 while ($row = mysqli_fetch_assoc($result)) {
-    $row['total'] =                 sprintf("%01.2lf", $row['total'] / 100);
+    $row['total'] = pg_format_money($row['total'] / 100, BASE_CURRENCY_SYMBOL);
     $row['order_date'] = get_relative_time(array('timestamp' => $row['order_date']));
 
     $output_link_url = 'view_order.php?id=' . $row['id'];
@@ -139,7 +139,7 @@ while ($row = mysqli_fetch_assoc($result)) {
             <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
         <td>' . h($row['order_number'] ?? '') . '</td>
-        <td nowrap>' . h($row['total']) . '</td>
+        <td nowrap>' . $row['total'] . '</td>
         <td nowrap>' . $row['order_date'] . '</td>
     </tr>';
 }
@@ -165,7 +165,7 @@ pg_page_shell(
         <div class="col-12">
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_orders_for_contact.php', $sort_columns, $sort_levels, $sort_default, $sort_query) . '
                     </nav>

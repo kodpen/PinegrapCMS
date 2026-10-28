@@ -57,8 +57,8 @@ function pg_contact_group_form_card($liveform, $required = false)
                                             <div class="popover-body">
                                                 <div class="row">
                                                  
-                                                    <div class="col-12 my-5">
-                                                        <label class="form-label">' . lang('E-mail Subscription Type') . '</label>
+                                                    <div class="col-12 my-5" role="radiogroup" aria-labelledby="email_subscription_type_label">
+                                                        <div class="form-label" id="email_subscription_type_label">' . lang('E-mail Subscription Type') . '</div>
                                                         <div class="form-field">
                                                         ' . $liveform->output_field(array('type'=>'radio', 'name'=>'email_subscription_type', 'id'=>'open', 'value'=>'open', 'checked'=>'checked', 'class'=>'radio')) . '
                                                             <label class="" for="open">' . lang('Open') . '</label>

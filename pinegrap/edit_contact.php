@@ -91,7 +91,7 @@ if (!$_POST) {
 
     if ($output_bar_links !== '') {
         $output_orders_button = '
-            <nav id="button_bar" class="navigation " aria-label="Button Bar">
+            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                 <div class=" btn-group btn-group-sm flex-wrap">' . $output_bar_links . '
                 </div>
             </nav>';
@@ -158,7 +158,7 @@ if (!$_POST) {
                     <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                     <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
                         <input type="hidden" name="image_url" id="image_url" value="' . e($row['image']) . '">
-                        <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
+                        <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($row['image']) . '" />
                     </div>
                 </div>
             </div>';
@@ -166,7 +166,7 @@ if (!$_POST) {
             $image = '
             <div class="item col">
                 <div class="card bg-transparent border-0 shadow-none cursor-pointer image">
-                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0"></button></div>
+                    <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0 opacity-0" tabindex="-1" aria-hidden="true"></button></div>
                     <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($row['image']) . '">
                         <div class="d-flex align-items-center justify-content-center w-100 h-100">' . pg_avatar_markup_for($row['first_name'] ?? '', $row['last_name'] ?? '', $row['company'] ?? '', $id, 'avatar-xl') . '</div>
                     </div>
@@ -190,7 +190,7 @@ if (!$_POST) {
                 <div class="card-header d-flex justify-content-end p-1 border-0 bg-transparent"><button type="button" class="btn btn-link pg-link-danger bi bi-x-lg p-0" title="' . h(lang('Remove')) . '" aria-label="' . h(lang('Remove')) . '" onclick=" $(this).closest(\'.item\').remove();"></button></div>
                 <div class="card-body overflow-hidden position-relative rounded-4 w-100 p-0" style="aspect-ratio: 5 / 4;background: radial-gradient(transparent, #00000024);" title="' . h($file_name) . '">
                     <input type="hidden" name="file_id" id="file_id" value="' . $row['file_id'] . '"/>
-                    <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
+                    <img class="lazy object-fit-contain w-100 h-100" alt="' . h(lang('Picture')) . '" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
                 </div>
             </div>
         </div>';
@@ -252,9 +252,9 @@ if (!$_POST) {
     // it, else a note; posted back unchanged either way.
     $output_parasut = (ENABLE_PARASUT ? ($parasut_contact_id ? '
                                         <div class="col-12 md:col-4 my-3">
-                                            <label class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
+                                            <label for="parasut_contact_id" class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" class="form-control form-control-sm font-monospace fg-secondary" />
+                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" id="parasut_contact_id" class="form-control form-control-sm font-monospace fg-secondary" />
                                                 <span class="input-group-text small fg-secondary" title="' . lang('Set automatically when the first invoice is created.') . '"><i class="bi bi-link-45deg"></i></span>
                                             </div>
                                         </div>' : '
@@ -304,7 +304,7 @@ if (!$_POST) {
                                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
                                             <div class="input-group">
                                                 <input value="' . $email_address . '" type="text" name="email_address" id="email_address" autocomplete="off" class="form-control text-end" maxlength="100" inputmode="email" data-inputmask-alias="email" />
-                                                <a class="btn btn-solid theme-primary" href="mailto:' . $email_address . '" ><span class="material-icons">email</span></a>
+                                                <a class="btn btn-solid theme-primary" href="mailto:' . $email_address . '" aria-label="' . h(lang('Send Email')) . '"><span class="material-icons" aria-hidden="true">email</span></a>
                                             </div>
                                         </div>
                                         <div class="col-12 my-1">
@@ -331,7 +331,7 @@ if (!$_POST) {
                         </div>
                     </div>
                     ' . pg_contact_form_detail_cards($row, false, $output_parasut, pg_contact_form_group_cells($contact_groups, pg_contact_form_group_states($_GET['id'], $contact_groups))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>
