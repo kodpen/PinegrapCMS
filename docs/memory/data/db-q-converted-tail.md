@@ -9,11 +9,12 @@ description: Installer, designer actions, TinyMCE pickers (#2647), Flows INSERTs
 - `assets/lib/tiny_mce_3_5_10/plugins/advimage/add_file.php` and `advlink/add_file.php` (4 each): the name check, the two DELETEs of an overwrite and the `files` INSERT. These are Pinegrap's own upload handlers inside the TinyMCE folder, not library code. The DELETE ids were written unescaped before (read from the database).
 - Flows (PR #2819): `ws_flow_versions` in `includes/workspace/flows.php`, `ws_flow_shares` in `flow_shares.php`, the three `ws_flow_runs` INSERT … SELECT of `flow_runs.php` (×2) and `flow_anchors.php`. Ids and times bound as ints (bare, quoted before), the graph, start key and context as strings; the flow id is bound twice in the run INSERTs. They stay off `db()` because a duplicate key (1062) is an answer: `db_q()` runs nothing after `@mysqli_query()`, so `mysqli_errno()`, `mysqli_affected_rows()` and `mysqli_insert_id()` still read that INSERT.
 - `init.php`: the config `path` UPDATE (bound string, `or output_error()` kept). Its `SELECT * FROM config` carries no value and stays raw.
+- `includes/fn/custom_form.php` (1, #2814): the `form_fields` column probe `pg_cf_form_fields_has_column()`, the name bound; the file has no raw query left.
 
 ## What stayed raw?
 - The installer's language probe (line ~249) runs before `functions.php` is loaded, on its own connection; `db_q()` does not exist there yet. The `SET SESSION sql_mode`, `SHOW TABLES`, `SHOW COLUMNS … LIKE '…'` probes and the timestamp UPDATEs carry no value.
 - `includes/authentication.php` calls no `db_q()`: `get_file.php` loads it without `functions.php` and defines only `db()`, `db_value()`, `db_item()`, `db_items()` and `escape()` (the contract at the top of the file). The `auth_tokens` selector lookup of `pg_session_token_binding_broken()` runs for every signed-in download there, so a `db_q()` call ended each one with an undefined function; it stays `@mysqli_query()` with `escape()`. The column probe (`information_schema.COLUMNS`) stays raw too.
-- Left for later: `custom_form.php`'s SHOW COLUMNS probe (with the designer collections work); `includes/fn/parasut.php`, the owner's local ERP area.
+- Left for later: `includes/fn/parasut.php`, the owner's local ERP area.
 - `db()` / `db_item()` / `db_value()` calls with `escape()` in these files are helper calls, not raw queries, and were not touched.
 
 ## What guards it?
