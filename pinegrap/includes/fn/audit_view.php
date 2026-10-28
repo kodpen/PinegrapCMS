@@ -68,7 +68,7 @@ function pg_audit_view_filters(array $input)
     $filters = array(
         'from'    => $date('from'),
         'to'      => $date('to'),
-        'source'  => in_array($source, array('panel', 'api', 'job'), true) ? $source : '',
+        'source'  => in_array($source, pg_audit_sources(), true) ? $source : '',
         'user'    => $text('user', 100),
         'action'  => $word('action', 64),
         'type'    => $word('type', 32),
@@ -387,11 +387,13 @@ function pg_audit_view_label($kind, $word)
             'refund'  => lang('Refunded'),
             'export'  => lang('Exported'),
             'erase'   => lang('Erased'),
+            'merge'   => lang('Merged'),
         ),
         'source' => array(
             'panel' => lang('Panel'),
             'api'   => lang('API'),
             'job'   => lang('Scheduled job'),
+            'site'  => lang('Site visitor'),
         ),
     );
 

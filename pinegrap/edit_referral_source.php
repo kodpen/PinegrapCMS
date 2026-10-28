@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/referral_source_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -34,14 +35,8 @@ $output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-seconda
 if (!$_POST) {
     // get referral source data
     $query = "SELECT * FROM referral_sources WHERE id = ?";
-    $result = db_q($query, array((string) ($_GET['id'] ?? ''))) or output_error('Query failed.');
+    $result = db_q($query, array((int) $id)) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
-
-    $name = h($row['name']);
-    $code = h($row['code']);
-    $sort_order = $row['sort_order'];
-
-
 
     $output =
         pg_page_shell(
@@ -65,45 +60,8 @@ if (!$_POST) {
                     <form name="form" action="edit_referral_source.php" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                        <div class="row">
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('New Referral Source Information') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <h5>' . lang('Order Preview Page Display Options') . '</h5>
-                                            
-                                            <div class="col-12 md:col-6 my-3">
-                                                <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
-                                                <input type="text" id="name" name="name" class="form-control" maxlength="50" value="' . $name . '" required />
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            </div>
-                                            <div class="col-12 sm:col-2 my-3">
-                                                <label for="sort_order" class="form-label">' . lang('Sort Order') . '</label>
-                                                <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button">remove</button>
-                                                    <input class="form-control text-center border-start-0 border-end-0" value="' . $sort_order . '" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button">add</button>
-                                                </div>
-                                            </div>
-
-
-                                        </div>
-                                        <div class="row mt-7">
-                                            <h5>' . lang('New Referral Source Code for Order Reporting') . '</h5>
-                                            <div class="col-12 md:col-4 my-3">
-                                                <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
-                                                <input type="text" id="code" name="code" class="form-control" maxlength="50" value="' . $code . '" required />
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">      
+                        ' . pg_referral_source_form_card(array('name' => $row['name'], 'code' => $row['code'], 'sort_order' => $row['sort_order'])) . '
+                        <input type="hidden" name="id" value="' . $id . '">      
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
@@ -140,7 +98,8 @@ if (!$_POST) {
                     user = ?,
                     timestamp = UNIX_TIMESTAMP()
                 WHERE id = ?";
-        $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['code'] ?? ''), (string) ($_POST['sort_order'] ?? ''), (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
+        $values = pg_referral_source_form_values($_POST);
+        $result = db_q($query, array($values['name'], $values['code'], $values['sort_order'], (string) $user['id'], (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'referral source ({var:1}) was modified','vars'=>array($_POST['name']) )) , $_SESSION['sessionusername']);
     }

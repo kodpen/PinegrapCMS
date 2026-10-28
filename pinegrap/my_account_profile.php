@@ -125,6 +125,7 @@ if (!$_POST) {
 
         // if a contact was found, update contact
         if (mysqli_num_rows($result) > 0) {
+            $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
             $query = "UPDATE contacts
                      SET
                         $sql_profile_set
@@ -133,6 +134,7 @@ if (!$_POST) {
                         timestamp = UNIX_TIMESTAMP()
                      WHERE id = $contact_id";
             $result = mysqli_query(db::$con, $query) or output_error('Query failed');
+            pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
 
         // else a contact was not found, so create contact
         } else {
@@ -178,6 +180,7 @@ if (!$_POST) {
 
             // get contact id so we can connect user to contact
             $contact_id = mysqli_insert_id(db::$con);
+            pg_audit_site_record('create', 'contacts', (int) $contact_id);
             
             // check if registration contact group exists
             $query = "SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID  . "'";

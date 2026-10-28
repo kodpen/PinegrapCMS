@@ -106,3 +106,17 @@ function test_submitted_form_screens_use_shared_fields()
 		pg_assert_contains('validate_token_field()', $source, $file . ' checks the token');
 	}
 }
+
+// A submission without a form_data row for a file field: db_item() returns
+// null there, so the stored file is read only when a row came back, on the
+// edit screen's markup, its replace and its delete path.
+function test_submitted_form_file_field_without_a_row()
+{
+	$shared = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
+	pg_assert_contains("if (\$file && \$file['name'] != '')", $shared);
+	pg_assert_false(strpos($shared, "if (\$file['name'] != '')") !== false);
+
+	$edit = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_submitted_form.php');
+	pg_assert_same(2, substr_count($edit, "if (\$file && \$file['id'] != '')"), 'replace and delete');
+	pg_assert_false(strpos($edit, "if (\$file['id'] != '')") !== false);
+}

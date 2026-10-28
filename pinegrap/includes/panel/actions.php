@@ -174,6 +174,7 @@ function pg_panel_actions()
         'user_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_user_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'submitted_form_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_submitted_form_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'contact_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_contact_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
+        'product_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_product_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'get_page' => array('file' => 'content.php', 'handler' => 'pg_panel_get_page', 'exempt' => false, 'token' => false, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),

@@ -20,6 +20,8 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/custom_style_form.php');
+
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
 // "not found" screen instead of PHP notices from the unchecked row below or
@@ -57,10 +59,7 @@ if (!$_POST) {
     $style_id = $row['style_id'];
     $style_name = $row['style_name'];
     $style_timestamp = $row['style_timestamp'];
-    $style_code = $row['style_code'];
-    $social_networking_position = $row['social_networking_position'];
-    $collection = $row['collection'];
-    $layout_type = $row['layout_type'];
+    $style = $row;
     
     // Faz 3c: same-host whitelisted cancel URL (avoids open-redirect via ?send_to=)
     $output_cancel_button_url = pg_safe_back_url(
@@ -71,68 +70,6 @@ if (!$_POST) {
     $output_header = pg_page_shell( array('cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Edit Custom Page Style'))),
         ) ) . '<main id="content" class="container-fluid">';
-    
-    $output_social_networking_position = '';
-
-    // If social networking is enabled, then output position pick list.
-    if (SOCIAL_NETWORKING == TRUE) {
-        $output_top_left_selected = '';
-        $output_top_right_selected = '';
-        $output_bottom_left_selected = '';
-        $output_bottom_right_selected = '';
-        $output_disabled_selected = '';
-
-        switch ($social_networking_position) {
-            case 'top_left':
-                $output_top_left_selected = ' selected="selected"';
-                break;
-
-            case 'top_right':
-                $output_top_right_selected = ' selected="selected"';
-                break;
-
-            case 'bottom_left':
-                $output_bottom_left_selected = ' selected="selected"';
-                break;
-
-            case 'bottom_right':
-                $output_bottom_right_selected = ' selected="selected"';
-                break;
-
-            case 'disabled':
-                $output_disabled_selected = ' selected="selected"';
-                break;
-        }
-
-        $output_social_networking_position =
-            '<div class="col-12 md:col-6 lg:col-4 my-3">
-                <label for="social_networking_position" class="form-label">' . lang('Social Networking Position') . '</label>
-                <select id="social_networking_position" name="social_networking_position" class="form-control">
-                    <option value="top_left"' . $output_top_left_selected . '>' . lang('Top Left') . '</option>
-                    <option value="top_right"' . $output_top_right_selected . '>' . lang('Top Right') . '</option>
-                    <option value="bottom_left"' . $output_bottom_left_selected . '>' . lang('Bottom Left') . '</option>
-                    <option value="bottom_right"' . $output_bottom_right_selected . '>' . lang('Bottom Right') . '</option>
-                    <option value="disabled"' . $output_disabled_selected . '>' . lang('Disabled') . '</option>
-                </select>
-            </div>';
-    }
-
-    if ($collection == 'a') {
-        $output_collection_a_checked = ' checked="checked"';
-        $output_collection_b_checked = '';
-    } else {
-        $output_collection_a_checked = '';
-        $output_collection_b_checked = ' checked="checked"';
-    }
-
-    $output_layout_type_system_selected = '';
-    $output_layout_type_custom_selected = '';
-
-    if ($layout_type == 'system') {
-        $output_layout_type_system_selected = ' selected="selected"';
-    } else if ($layout_type == 'custom') {
-        $output_layout_type_custom_selected = ' selected="selected"';
-    }
     
     if (isset($row['user_username']) == TRUE) {
         $user_username = $row['user_username'];
@@ -200,65 +137,7 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="'. h($_REQUEST['id']) .'">
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Page Style Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-8 lg:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            <input value="' . h($style_name) . '" name="name" id="name" type="text" placeholder="' . lang('new page style') . '" class="form-control" maxlength="100" required />
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <label class="form-label">' . lang('HTML Page with embedded Tags') . '</label>
-                                            <div id="edit_custom">
-                                                <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($style_code) . '</textarea>
-                                                ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Additional Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 mt-3">
-                                            <h5>'. lang('Collection') . '</h5>
-                                        </div>
-                                        <div class="col-12 mb-3">
-                                            <div class="form-field d-inline-grid me-5">
-                                                <input type="radio" name="collection" id="collection_a" value="a"' . $output_collection_a_checked . ' class="radio" />
-                                                <label class="" for="collection_a">' . lang('Collection') . ' A</label>
-                                            </div>
-                                            <div class="form-field d-inline-grid me-5">
-                                                <input type="radio" name="collection" id="collection_b" value="b"' . $output_collection_b_checked . ' class="radio" />
-                                                <label class="" for="collection_b">' . lang('Collection') . ' B</label>
-                                            </div>
-                                        </div>
-                                        <div class="col-12 md:col-6 lg:col-4 my-3">
-                                            <label for="layout_type" class="form-label">' . lang('Override Layout Type') . '</label>
-                                            <select id="layout_type" name="layout_type" class="form-control">
-                                                <option value=""></option>
-                                                <option value="system"' . $output_layout_type_system_selected . '>' . lang('System') . '</option>
-                                                <option value="custom"' . $output_layout_type_custom_selected . '>' . lang('Custom') . '</option>
-                                            </select>
-                                        </div>
-                                        ' . $output_social_networking_position . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_custom_style_form_cards($style, SOCIAL_NETWORKING == TRUE) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -341,17 +220,14 @@ else
     
     // Else update the style.
     } else {
-        $name = trim($_POST['name']);
-
-        $sql_social_networking_position = "";
-
-        // If social networking is enabled, then update position value.
-        if (SOCIAL_NETWORKING == TRUE) {
-            $sql_social_networking_position = "social_networking_position = '" . escape($_POST['social_networking_position'] ?? '') . "',";
-        }
+        $values = pg_custom_style_form_values($_POST, SOCIAL_NETWORKING == TRUE);
+        $name = $values['style_name'];
 
         // update style
-        $result = mysqli_query(db::$con, "UPDATE style SET style_name = '" . escape($name) . "', style_code = '" . escape($_POST['code'] ?? '') . "', " . $sql_social_networking_position . "collection = '" . escape($_POST['collection'] ?? '') . "', layout_type = '" . e($_POST['layout_type'] ?? '') . "', style_timestamp = UNIX_TIMESTAMP(), style_user = '" . $user['id'] . "' WHERE style_id = '" . escape($_POST['id'] ?? '') . "'") or output_error('Query failed');
+        $result = db_q(
+            "UPDATE style SET " . implode(' = ?, ', array_keys($values)) . " = ?, style_timestamp = UNIX_TIMESTAMP(), style_user = ? WHERE style_id = ?",
+            array_merge(array_values($values), array((string) $user['id'], (string) ($_POST['id'] ?? '')))
+        ) or output_error('Query failed');
         log_activity(lang(array('string'=>'style ({var:1}) was modified','vars'=>$name)), $_SESSION['sessionusername']);
         $notice = lang('The style was edited successfully.');
     }

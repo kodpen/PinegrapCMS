@@ -273,8 +273,13 @@ function _pg_acct_pairs($label_value)
 function _pg_acct_country_options()
 {
     $out = array(array('', ''));
-    foreach ((array)db_items("SELECT name, code FROM countries ORDER BY name") as $c) {
-        $out[] = array((string)$c['code'], (string)$c['name']);
+    $rows = array();
+    foreach ((array)db_items("SELECT name, code FROM countries") as $c) {
+        $rows[] = array('code' => (string)$c['code'], 'label' => pg_geo_country_label($c['name'], $c['code']));
+    }
+    // Named and ordered in the site's language (pg_geo_country_label()).
+    foreach (pg_geo_sort_by_label($rows) as $c) {
+        $out[] = array($c['code'], $c['label']);
     }
     return $out;
 }

@@ -2489,6 +2489,9 @@ $pages[] = array(
         'confirm_page_id'      => '{{tab:email_article_received}}',
         'pretty_urls'          => 0,
         'sample_records'       => $sample_articles,
+        // The BlogPosting author is the byline readers see, not the account
+        // that sent the story (the sample stories have none).
+        'schema_author'        => 'field:byline',
     ),
     'tree'    => $page(array(
         $page_header(lang('Submit an Article'), lang('Write your article and send it to the desk. An editor reads it, may ask for changes and decides when it goes live.')),
@@ -3950,7 +3953,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.0.0',
+    'version'     => '1.0.1',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

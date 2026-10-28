@@ -124,7 +124,7 @@ function get_view_order_screen_content($properties)
 
     // if the order was not found, output error
     if (mysqli_num_rows($result) == 0) {
-        output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        output_error(lang('The order could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
     }
 
     $row = mysqli_fetch_assoc($result);

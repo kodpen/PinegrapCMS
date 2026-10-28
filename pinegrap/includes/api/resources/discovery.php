@@ -154,8 +154,8 @@ function api_discovery_facts() {
 		'devices_ready'  => $devices_ready,
 		'device_app'     => is_array($app) ? $app : null,
 		'ip_allowed'     => is_array($app) && api_ip_allowlist_admits($app['ip_allowlist'], api_client_ip()),
-		// No pairing table exists yet.
-		'pairing_ready'  => false,
+		// POST /auth/pair answers once the pairing table is there.
+		'pairing_ready'  => $devices_ready && api_pairing_ready(),
 		'now'            => time()
 	);
 

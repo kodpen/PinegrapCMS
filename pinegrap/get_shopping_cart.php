@@ -2938,7 +2938,7 @@ function get_shopping_cart($properties) {
                             '<script>
                                 software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
                                     dateFormat: date_picker_format,
-                                    timeFormat: "h:mm TT"
+                                    timeFormat: "' . pg_picker_time_format() . '"
                                 });
                             </script>';
                     }

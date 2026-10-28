@@ -226,7 +226,7 @@
         return fmt(L.productsText, ['<b>' + esc(c.quantity || '?') + '</b>', '<b>' + esc(names.length ? names.join(' / ') : '?') + '</b>']);
     }
     function productPicker(onchange, index, exclude, selectedId, placeholder) {
-        var h = '<select class="form-control form-control-sm" data-on="' + esc(onchange) + '" data-index="' + index + '">';
+        var h = '<select class="form-control form-control-sm" aria-label="' + esc(placeholder) + '" data-on="' + esc(onchange) + '" data-index="' + index + '">';
         h += '<option value="">' + esc(placeholder) + '</option>';
         PRODUCTS.forEach(function (p) {
             if (exclude && exclude.indexOf(p.id) >= 0) { return; }
@@ -238,7 +238,7 @@
         return h + '</select>';
     }
     function groupPicker(index, exclude) {
-        var h = '<select class="form-control form-control-sm" data-on="cond-group-add" data-index="' + index + '">';
+        var h = '<select class="form-control form-control-sm" aria-label="' + esc(L.addGroup) + '" data-on="cond-group-add" data-index="' + index + '">';
         h += '<option value="">' + esc(GROUPS.length ? L.addGroup : L.noGroups) + '</option>';
         GROUPS.forEach(function (g) {
             if (exclude && exclude.indexOf(g.id) >= 0) { return; }
@@ -258,7 +258,7 @@
             var cols = '';
             if (c.type === 'subtotal') {
                 cols = '<div class="col-7 sm:col-5 md:col-3 xl:col-2">' +
-                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" data-on="cond-amount" data-index="' + i + '"></label>' +
+                    '<label class="form-control form-control-sm form-adorn form-adorn-end"><span class="form-adorn-text" aria-hidden="true">' + esc(C.currency) + '</span><input type="text" class="form-ghost text-end" inputmode="decimal" value="' + esc(centsToInput(c.amount)) + '" placeholder="0.00" aria-label="' + esc(t.label) + '" data-on="cond-amount" data-index="' + i + '"></label>' +
                     '</div>';
             } else if (c.type === 'products') {
                 var tags = c.product_ids.map(function (id) {
@@ -268,7 +268,7 @@
                     '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + productPicker('cond-product-add', i, c.product_ids, 0, L.addProduct) + '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" aria-label="' + esc(L.quantity) + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'product group') {
@@ -279,28 +279,28 @@
                     '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + groupPicker(i, c.group_ids) + '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" aria-label="' + esc(L.quantity) + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'cart quantity') {
                 cols = '<div class="col-auto fg-secondary small">' + esc(L.atLeast) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" data-on="cond-quantity" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.quantity || '') + '" aria-label="' + esc(L.quantity) + '" data-on="cond-quantity" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.pieces) + '</div>';
             } else if (c.type === 'usage limit') {
                 cols = '<div class="col-auto fg-secondary small">' + esc(L.usageTotalLabel) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.total_limit || '') + '" data-on="cond-total-limit" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.total_limit || '') + '" aria-label="' + esc(L.usageTotalLabel) + '" data-on="cond-total-limit" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.usageCustomerLabel) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.customer_limit || '') + '" data-on="cond-customer-limit" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" placeholder="∞" value="' + esc(c.customer_limit || '') + '" aria-label="' + esc(L.usageCustomerLabel) + '" data-on="cond-customer-limit" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-12 xl:col small fg-secondary">' + esc(L.usageHint) + '</div>';
             } else if (c.type === 'new customer') {
                 var modes = L.newCustomerModes || {};
-                var ms = '<select class="form-control form-control-sm" data-on="cond-mode" data-index="' + i + '">';
+                var ms = '<select class="form-control form-control-sm" aria-label="' + esc(t.label) + '" data-on="cond-mode" data-index="' + i + '">';
                 Object.keys(modes).forEach(function (key) {
                     ms += '<option value="' + esc(key) + '"' + (c.mode === key ? ' selected' : '') + '>' + esc(modes[key]) + '</option>';
                 });
@@ -308,7 +308,7 @@
                 cols = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3">' + ms + '</div>' +
                     '<div class="col-auto fg-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-label>' + esc(L.atLeast) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-input>' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.days || '') + '" data-on="cond-days" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(c.days || '') + '" aria-label="' + esc(L.days) + '" data-on="cond-days" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small' + (c.mode === 'no_orders' ? ' d-none' : '') + '" data-days-unit>' + esc(L.days) + '</div>';
             }
@@ -405,7 +405,7 @@
     function valueInput(a, i) {
         var shown = a.unit === 'amount' ? centsToInput(a.value) : (a.value || '');
         return '<div class="col-7 sm:col-5 md:col-4 xl:col-3 2xl:col-2">' +
-            '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(shown) + '" placeholder="0" data-on="act-value" data-index="' + i + '">' + unitToggle(a, i) + '</div>' +
+            '<div class="input-group input-group-sm"><input type="text" class="form-control text-end" inputmode="decimal" value="' + esc(shown) + '" placeholder="0" aria-label="' + esc(L.discount) + '" data-on="act-value" data-index="' + i + '">' + unitToggle(a, i) + '</div>' +
             '</div>';
     }
     // Shown only where the schema can store a group (C.group_discount); on a
@@ -422,7 +422,7 @@
             '</div></div>';
     }
     function actionGroupPicker(a, i) {
-        var h = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3"><select class="form-control form-control-sm" data-on="act-group" data-index="' + i + '">';
+        var h = '<div class="col-12 sm:col-7 lg:col-4 2xl:col-3"><select class="form-control form-control-sm" aria-label="' + esc(L.selectGroupPlaceholder) + '" data-on="act-group" data-index="' + i + '">';
         h += '<option value="">' + esc(GROUPS.length ? L.selectGroupPlaceholder : L.noGroups) + '</option>';
         GROUPS.forEach(function (g) {
             h += '<option value="' + g.id + '"' + (a.group_id == g.id ? ' selected' : '') + '>' + esc(g.label) + '</option>';
@@ -479,7 +479,7 @@
                 cols = picker +
                     '<div class="col-auto fg-secondary small">' + esc(L.quantity) + '</div>' +
                     '<div class="col-3 sm:col-2 lg:col-1">' +
-                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(a.quantity || 1) + '" data-on="act-quantity" data-index="' + i + '">' +
+                    '<input type="text" class="form-control form-control-sm text-center" inputmode="numeric" value="' + esc(a.quantity || 1) + '" aria-label="' + esc(L.quantity) + '" data-on="act-quantity" data-index="' + i + '">' +
                     '</div>' +
                     '<div class="col-auto fg-secondary small">' + esc(L.discount) + '</div>' + valueInput(a, i) +
                     '<div class="col-auto fg-secondary small">' + esc(L.giftHint) + '</div>';
@@ -487,7 +487,7 @@
                 var tags = a.shipping_method_ids.map(function (id) {
                     return tagHtml(methodName(id) || ('#' + id), 'act-method-remove', i, id, 'secondary');
                 }).join('');
-                var sel = '<select class="form-control form-control-sm" data-on="act-method-add" data-index="' + i + '"><option value="">' + esc(L.addMethod) + '</option>';
+                var sel = '<select class="form-control form-control-sm" aria-label="' + esc(L.addMethod) + '" data-on="act-method-add" data-index="' + i + '"><option value="">' + esc(L.addMethod) + '</option>';
                 METHODS.forEach(function (m) {
                     if (a.shipping_method_ids.indexOf(m.id) < 0) { sel += '<option value="' + m.id + '">' + esc(m.name) + '</option>'; }
                 });

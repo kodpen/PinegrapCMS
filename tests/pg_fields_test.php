@@ -479,6 +479,18 @@ function main() {
     cb.win.pgFields.destroy(acct);
     out.combobox_destroy = { native: acct.className, siblings: acct.parentNode.children.length, value: acct.value, calls: cb.calls.slice(-1).map(function (c) { return c[0]; }) };
 
+    // Inside a switch panel (.collapse clips overflow-y in Bootstrap 6) the
+    // menu is placed fixed, so it is not cut off at the panel's edge. The
+    // fields are drawn on load, so the one moved into the panel is drawn again.
+    var cz = load({ fields: [['select', { id: 'zones', 'data-pg-combobox': '' }], ['select', { id: 'outside', 'data-pg-combobox': '' }]], options: [['zones', { value: 'eu', text: 'EU' }], ['outside', { value: 'a', text: 'A' }]] });
+    var zones = cz.doc.querySelector('#zones'), zform = zones.parentNode, panel = cz.doc.create('div', { 'class': 'collapse' });
+    cz.win.pgFields.destroy(zones);
+    zform.removeChild(zones);
+    panel.appendChild(zones);
+    zform.appendChild(panel);
+    cz.win.pgFields.init();
+    out.combobox_in_collapse = [zones.nextSibling.getAttribute('data-bs-strategy'), cz.doc.querySelector('#outside').nextSibling.getAttribute('data-bs-strategy')];
+
     // Without the library the field stays a plain one; no error.
     var b = load({ noBootstrap: true, fields: [['select', { id: 's', 'data-pg-combobox': '' }], ['input', { id: 'c', 'data-pg-chips': '' }]] });
     out.no_library = { kind: [b.doc.querySelector('#s').pgFieldKind || null, b.doc.querySelector('#c').pgFieldKind || null], calls: b.calls.length };
@@ -890,6 +902,7 @@ function test_pg_fields_combobox_on_bootstrap_6()
 	pg_assert_same(array('item:a:A', 'item:b:B'), $m['few'], 'no search box under eight options');
 	pg_assert_same(array('Pick one', 'combobox-value combobox-placeholder'), $m['few_text'], 'nothing chosen: the placeholder');
 	pg_assert_same(0, $m['heard_on_draw'], 'drawing fires no change');
+	pg_assert_same(array('fixed', null), $r['combobox_in_collapse'], 'a combobox inside a .collapse panel opens its menu fixed, one outside keeps the default');
 	pg_assert_same(1, $r['combobox_click'], 'a click on the toggle opens its own instance');
 	pg_assert_same(
 		array('value' => '120', 'heard' => array('120:true'), 'text' => 'Account 120', 'get' => '120'),
@@ -1017,4 +1030,19 @@ function test_pg_fields_combobox_server_search()
 		'opening again starts from the stored choice'
 	);
 	pg_assert_same(array('form-control', 'My own category', 2), $m['destroyed'], 'destroy() leaves the plain select with its value');
+}
+
+// Bootstrap 6.0.0-alpha.1's Combobox binds a second component to its own
+// toggle: the one console error of that call is dropped, and the keys the
+// combobox handles on its menu do not reach the document handler that
+// would build an unbound Menu for each of them (#2520).
+function test_pg_fields_combobox_quiets_the_menu_instance_noise()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/pg_fields.js');
+
+	pg_assert_true(strpos($source, "var INSTANCE_NOISE = \"doesn't allow more than one instance per element\";") !== false, 'the one known message');
+	pg_assert_true(strpos($source, 'var combobox = withoutInstanceNoise(function () {') !== false, 'the combobox is built inside the guard');
+	pg_assert_true(strpos($source, 'window.console.error = original;') !== false, 'console.error is restored');
+	pg_assert_true(strpos($source, 'keepMenuKeysInCombobox(combobox, toggle);') !== false, 'the menu keys stay in the combobox');
+	pg_assert_true(strpos($source, "var MENU_KEYS = { ArrowUp: 1, ArrowDown: 1, Home: 1, End: 1 };") !== false, 'only the keys the combobox handles itself');
 }
