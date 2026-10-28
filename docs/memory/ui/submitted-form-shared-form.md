@@ -15,3 +15,6 @@ description: The submitted form create and edit screens share includes/forms/sub
 
 ## Why only these parts?
 - PR #2466. Measured among the remaining add/edit pairs: add 1,048 and edit 1,511 lines, about 706 shared, the largest free pair. The save flows differ (edit is also posted from the site), so only the identical parts moved. Tests: `tests/submitted_form_form_test.php`.
+
+## What if a submission has no row for a file field?
+- `db_item()` returns null there, so the markup, the replace path and the delete path of the edit screen read `$file` only when a row came back. Symptom fixed: `E_WARNING "Trying to access array offset on null"` on every opening of a submission whose upload field was left empty (#2065).

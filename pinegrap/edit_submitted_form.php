@@ -766,8 +766,9 @@ if (!$_POST) {
                                         (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
-                                // If there is an existing file, then delete it.
-                                if ($file['id'] != '') {
+                                // If there is an existing file, then delete it. A submission
+                                // without a row for the field gives null here.
+                                if ($file && $file['id'] != '') {
                                     // Delete file record in database.
                                     db("DELETE FROM files WHERE id = '" . $file['id'] . "'");
                                     
@@ -821,8 +822,9 @@ if (!$_POST) {
                                         (form_data.form_id = '" . escape($_POST['id'] ?? '') . "')
                                         AND (form_data.form_field_id = '" . $field['id'] . "')");
 
-                                // If there is an existing file, then delete it.
-                                if ($file['id'] != '') {
+                                // If there is an existing file, then delete it. A submission
+                                // without a row for the field gives null here.
+                                if ($file && $file['id'] != '') {
                                     // Delete file record in database.
                                     db("DELETE FROM files WHERE id = '" . $file['id'] . "'");
                                     

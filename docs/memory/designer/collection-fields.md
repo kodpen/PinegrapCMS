@@ -17,7 +17,7 @@ description: Collection forms and field kinds (11.0.43, C2): the three columns, 
 ## Where is it read?
 - `pg_cf_load_page_fields()` (`kind`, `reference_page_id`; `_cfBuildFromFields()` copies them onto a rebuilt control) and `list_form_fields` (`collection_kind`, `reference_page_id`).
 - The Form Field panel shows "Kind" when the page's form is a collection or the field already has a kind; a reference adds the form picker (`_swFormOptions()`; this form itself too: related posts).
-- Nothing renders by kind yet: inputs by kind are C3, lists and filters C4.
+- Inputs by kind: `collection-inputs.md` (C3); lists and filters by kind are C4.
 
 ## Why is there no slug kind yet?
 - A slug kind that does not feed the record's address name would be a visible but dead choice. It comes with C5, which makes `update_submitted_form_address_name()` read it before the Title field.

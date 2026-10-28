@@ -43,6 +43,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - checkout-contact-card-update.md: What a checkout writes on the contact card: the "Update my contact info" box, tax fields only when on the form, a typed tax number filling an empty card
 - checkout-kvkk-notice.md: KVKK notice link and optional explicit consent box at checkout and sign-up (11.0.48): settings, why a page and a config_text row, injection, the kvkk copy in order_documents, consent log row
 - checkout-legal-checkboxes.md: How the legal documents' checkboxes reach every checkout, what the cart document page shows (drawn snapshot or the values its link posts), its amounts, the server check in submit_order.php
+- country-names-display.md: Country names on screen: pg_geo_country_label() (lang() of the stored name, else intl by code) and pg_geo_sort_by_label() name and order every country list in the current language (#2522)
 - express-order-notes-address-book.md: Express order (EO) widget bindings for order note (eo_field notes) and address book section, plus the narrow-screen table classes and the three places to update.
 - express-order-recipient-loop-area.md: Express Order recipient_loop_area node for multi-recipient carts: designer usage, render pipeline, visibility flags, compatibility, structural rules.
 - express-order-recipient-tokens.md: Binding tokens available inside an Express Order recipient_loop_area (^^__recipient_*^^ text/href tokens) and how form inputs bind via eo_field.
@@ -105,14 +106,16 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-view-legal-documents.md: Order view widget links to the legal documents kept with the order: __legal_*_url tokens, has_legal_* flags, starter tree card, the card added after older layouts, none in the receipt e-mail
+- order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)
 - order-view-timeline-invoice-card.md: Order view timeline events/sources, printable invoice endpoint and its dompdf exception, readonly form/gift-card blocks, masked card number, status badge stages.
 - order-view-tracking-link.md: How a parcel's carrier, name and tracking link are found (pg_shipping_carrier: method code, site default, number shape; Turkish capitals), the order view tokens, and how to add a carrier
 - order-withdrawal-deadline.md: Last day of an order's right of withdrawal: latest delivery's window with parcel arrivals, estimate rules, none for a dateless delivery, order view token, fallback card, panel row
 - orders-list-amount-column.md: Orders list amount cell: an incomplete order shows its cart total (muted, titled "Cart total"), never added to the filter totals; one GROUP BY query per page
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
-- payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alert only, never the order), status codes, firewall entry
+- payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alerts; records a pending payment), status codes, firewall entry
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
-- payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id, no webhook yet
+- payment-driver-paypal-webhook.md: PayPal Checkout's notify(): webhook_id, PayPal's verify-webhook-signature check, CAPTURE.COMPLETED records an order awaiting payment, DENIED alerts
+- payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
@@ -139,6 +142,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-review-request-email.md: The e-mail asking a buyer for a review (order_review_request; 2026.11.0, PR #1316): what starts it, once per order, items, mail-merge fields, delete; the verified filter in moderation
 - product-review-store-reply.md: The store's reply under a product review (comments.seller_reply, seller_reply_at; 2026.11.0, PR #698): where it is written and shown, when its date is set, the verified marker in moderation
 - product-reviews-verified.md: Product reviews only from buyers (2026.11.0, 11.0.14, PR #698): which comments are reviews, the purchase check, the product rating and its refresh, aggregateRating
+- product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric typed keeps four places, unit labels through lang()) and the commission rate limit read like a dimension and held to decimal(5,2) (#2056)
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
 - shipment-api-fields.md: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel

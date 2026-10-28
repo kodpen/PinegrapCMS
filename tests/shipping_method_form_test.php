@@ -20,11 +20,32 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
 
-function test_shipping_method_form_new_values()
+if (!defined('BASE_CURRENCY_SYMBOL')) {
+	define('BASE_CURRENCY_SYMBOL', '$');
+}
+
+// The site's date order: day/month unless a test file before this one
+// defined the month-first order.
+function shipping_method_form_test_date_format()
 {
 	if (!defined('DATE_FORMAT')) {
 		define('DATE_FORMAT', 'day_month');
 	}
+
+	return DATE_FORMAT;
+}
+
+// A date typed in the site's order.
+function shipping_method_form_test_date($day, $month, $year)
+{
+	$order = (shipping_method_form_test_date_format() == 'month_day') ? $month . '/' . $day : $day . '/' . $month;
+
+	return $order . '/' . $year;
+}
+
+function test_shipping_method_form_new_values()
+{
+	$today = (shipping_method_form_test_date_format() == 'month_day') ? date('n/j/Y') : date('j/n/Y');
 
 	$values = pg_shipping_method_form_new_values();
 
@@ -43,8 +64,81 @@ function test_shipping_method_form_new_values()
 		pg_assert_same('', $values['available_on_' . $long . '_cutoff_time'], $long . ' has no cut-off');
 	}
 
-	pg_assert_same(date('n/j/Y') . ' 12:00 AM', $values['start_time'], 'opens today');
+	// Month-first text read day-first was day 10 of month 27, or a swapped
+	// date on days 1-12.
+	pg_assert_same($today . ' 12:00 AM', $values['start_time'], 'opens today, in the site\'s date order');
 	pg_assert_contains('2099 11:59 PM', $values['end_time'], 'closes at the end of 2099');
+	pg_assert_same('2026-01-01 00:00', pg_shipping_method_form_date_time_column(shipping_method_form_test_date(1, 1, 2026) . ' 12:00 AM'), 'the default is read back in the same order');
+	pg_assert_same('2099-12-31 23:59', pg_shipping_method_form_date_time_column($values['end_time']), 'the end default is read back');
+}
+
+function test_shipping_method_form_date_time_column()
+{
+	$date = 'shipping_method_form_test_date';
+	$swapped = (shipping_method_form_test_date_format() == 'month_day') ? '27/10/2026' : '10/27/2026';
+
+	pg_assert_same('2026-10-27 00:00', pg_shipping_method_form_date_time_column($date(27, 10, 2026) . ' 12:00 AM'), 'midnight');
+	pg_assert_same('2026-03-05 17:00', pg_shipping_method_form_date_time_column($date(5, 3, 2026) . ' 5:00 PM'), 'day 5 of March in the site\'s order');
+	pg_assert_same('2026-10-27 17:00', pg_shipping_method_form_date_time_column($date(27, 10, 2026) . ' 17:00'), 'a 24-hour time');
+	pg_assert_same('2026-10-27 09:05', pg_shipping_method_form_date_time_column(' ' . $date(27, 10, 2026) . '  9:05 AM '), 'white space around and between');
+	pg_assert_same('2026-10-27 09:05', pg_shipping_method_form_date_time_column(str_replace('/', '-', $date(27, 10, 2026)) . ' 9:05 AM'), 'dashes as the date validator allows');
+
+	pg_assert_same(null, pg_shipping_method_form_date_time_column($swapped . ' 12:00 AM'), 'the other order: day 10 of month 27 is no date');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column($date(30, 2, 2026) . ' 5:00 PM'), 'an impossible day');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column($date(27, 10, 2026)), 'no time');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column($date(27, 10, 2026) . ' 25:00'), 'no such hour');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column($date(27, 10, 2026) . ' 13:00 PM'), 'no such 12-hour time');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column('2026-10-27 17:00'), 'an ISO date is not in the site\'s order');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column('27/10/26 5:00 PM'), 'a two-digit year');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column(''), 'blank');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column(null), 'not posted');
+	pg_assert_same(null, pg_shipping_method_form_date_time_column(array('27/10/2026 12:00 AM')), 'an array is no date');
+}
+
+function test_shipping_method_form_date_time_value()
+{
+	$shown = (shipping_method_form_test_date_format() == 'month_day') ? '10/27/2026 5:00 PM' : '27/10/2026 5:00 PM';
+
+	pg_assert_same($shown, pg_shipping_method_form_date_time_value('2026-10-27 17:00:00'), 'a stored time as the form shows it');
+	pg_assert_same('', pg_shipping_method_form_date_time_value('0000-00-00 00:00:00'), 'a zero date is shown empty, not as 0/0/0000 12:00 AM');
+	pg_assert_same('', pg_shipping_method_form_date_time_value(''), 'blank');
+	pg_assert_same('', pg_shipping_method_form_date_time_value(null), 'null');
+}
+
+function test_shipping_method_form_errors()
+{
+	$valid = array(
+		'start_time' => shipping_method_form_test_date(27, 10, 2026) . ' 12:00 AM',
+		'end_time' => shipping_method_form_test_date(31, 12, 2099) . ' 11:59 PM',
+	);
+
+	pg_assert_same(array(), pg_shipping_method_form_errors($valid), 'both times in the site\'s order');
+
+	$swapped = (shipping_method_form_test_date_format() == 'month_day') ? '27/10/2026' : '10/27/2026';
+	$errors = pg_shipping_method_form_errors(array('start_time' => $swapped . ' 12:00 AM'));
+
+	pg_assert_same(array('start_time', 'end_time'), array_keys($errors), 'the swapped start and the missing end are named');
+	pg_assert_contains(lang('Start Time'), $errors['start_time'], 'the start message names its field');
+	pg_assert_contains(lang('End Time'), $errors['end_time'], 'the end message names its field');
+}
+
+function test_shipping_method_form_time_help()
+{
+	pg_assert_same(lang('h:mm AM/PM'), pg_shipping_method_form_time_help('twelve_hours'), '12-hour site');
+	pg_assert_same(lang('HH:mm'), pg_shipping_method_form_time_help('twenty_four_hours'), '24-hour site');
+}
+
+// The cards reach the database for the money mask, so their markup is read
+// from the source.
+function test_shipping_method_form_cards_times()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/shipping_method_form.php');
+
+	pg_assert_contains('name="start_time" id="start_time" class="form-control" autocomplete="off" data-pg-datetime', $source, 'the start time has no maxlength: the value is 19 characters');
+	pg_assert_contains('name="end_time" id="end_time" class="form-control" autocomplete="off" data-pg-datetime', $source, 'the end time has no maxlength');
+	pg_assert_false(strpos($source, '>h:mm AM/PM<') !== false, 'no hour format written into a time field\'s help');
+	pg_assert_contains('pg_shipping_method_form_time_help(TIME_FORMAT)', $source, 'the help follows the time format setting');
+	pg_assert_same(2, substr_count($source, '<div class="form-text text-end">\' . $time_help . \'</div>'), 'under the cut-off times and the end of day');
 }
 
 function test_shipping_method_amount_cents()
@@ -120,7 +214,12 @@ function test_shipping_method_zone_options()
 // The columns and values the screens wrote before the form was shared.
 function test_shipping_method_form_columns()
 {
-	$columns = pg_shipping_method_form_columns(array(
+	$times = array(
+		'start_time' => shipping_method_form_test_date(27, 10, 2026) . ' 12:00 AM',
+		'end_time' => shipping_method_form_test_date(31, 12, 2099) . ' 11:59 PM',
+	);
+
+	$columns = pg_shipping_method_form_columns($times + array(
 		'name' => 'Courier',
 		'service' => 'fedex_ground',
 		'realtime_rate' => '1',
@@ -157,14 +256,43 @@ function test_shipping_method_form_columns()
 	pg_assert_same('', $columns['handle_tue'], 'unticked box is not posted');
 	pg_assert_same('', $columns['protected'], 'an array is not saved as "Array"');
 	pg_assert_same('', $columns['end_of_day'], 'blank time');
+	pg_assert_same('2026-10-27 00:00', $columns['start_time'], 'the start time in storage format');
+	pg_assert_same('2099-12-31 23:59', $columns['end_time'], 'the end time in storage format');
 
 	foreach ($columns as $column => $value) {
 		pg_assert_true(is_string($value), $column . ' is bound as a string, as before');
 	}
 
-	$disabled = pg_shipping_method_form_columns(array('service' => 'ups_ground', 'realtime_rate' => '1'));
+	$disabled = pg_shipping_method_form_columns($times + array('service' => 'ups_ground', 'realtime_rate' => '1'));
 	pg_assert_same('disabled', $disabled['status'], 'unticked status');
 	pg_assert_same('1', $disabled['realtime_rate'], 'a service with real-time rates keeps the box');
+}
+
+// A post whose start or end time is not a date and time in the site's order
+// ends on the error screen before any column is read: a strict SQL mode
+// refused the value as a failed query, a lenient one stored 0000-00-00 or,
+// with the day and month swapped, a date in the future.
+function test_shipping_method_form_columns_refuse_invalid_time()
+{
+	$swapped = (shipping_method_form_test_date_format() == 'month_day') ? '27/10/2026' : '10/27/2026';
+	$throws = pg_error_throws();
+	pg_error_throws(true);
+	$message = '';
+
+	try {
+		pg_shipping_method_form_columns(array(
+			'name' => 'Courier',
+			'start_time' => $swapped . ' 12:00 AM',
+			'end_time' => shipping_method_form_test_date(31, 12, 2099) . ' 11:59 PM',
+		));
+	} catch (RuntimeException $exception) {
+		$message = $exception->getMessage();
+	} finally {
+		pg_error_throws($throws);
+	}
+
+	pg_assert_contains(lang('Start Time'), $message, 'the error screen names the start time');
+	pg_assert_false(strpos($message, lang('End Time')) !== false, 'and not the valid end time');
 }
 
 function test_shipping_method_screens_use_shared_form()

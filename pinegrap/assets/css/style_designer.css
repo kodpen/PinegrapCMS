@@ -291,14 +291,23 @@
 .sd-tabs-all-btn { width: auto; min-width: 32px; padding: 0 .4rem; gap: .25rem; font-size: .9rem; }
 .sd-tabs-all-count { font-size: .66rem; font-weight: 600; }
 .sd-tabs-all-count:empty { display: none; }
-.sd-tabs-all-menu { width: min(300px, calc(100vw - 16px)); padding: .4rem 0; }
-.sd-tabs-all-find { padding: 0 .5rem .4rem; }
-.sd-tabs-all-list { max-height: min(60vh, 420px); overflow-y: auto; }
-.sd-tabs-all-item { display: flex; align-items: center; gap: .45rem; font-size: .78rem; }
+.sd-tabs-all-menu { width: min(300px, calc(100vw - 16px)); padding: .4rem .25rem; }
+.sd-tabs-all-find { padding: 0 .25rem .4rem; }
+/* The rows are Bootstrap 6 menu items in a list of their own, so the
+   search box stays put while the list scrolls; the gap is the menu's. */
+.sd-tabs-all-list { display: flex; flex-direction: column; gap: .125rem; max-height: min(60vh, 420px); overflow-y: auto; overscroll-behavior: contain; }
+.sd-tabs-all-item { gap: .45rem; min-width: 0; padding: .3rem .6rem; font-size: .78rem; line-height: 1.35; }
+.sd-tabs-all-item:focus-visible { outline: 2px solid var(--sd-accent, #58a6ff); outline-offset: -2px; }
+.sd-tabs-all-item:disabled .bi-lock-fill { margin-left: auto; font-size: .7rem; }
 .sd-tabs-all-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sd-tabs-all-dot { flex: 0 0 auto; width: 8px; height: 8px; border-radius: 50%; }
 .sd-tabs-all-dirty { flex: 0 0 auto; color: #f0b95d; font-size: .6rem; }
-.sd-tabs-all-empty { padding: .4rem .75rem; font-size: .75rem; color: var(--sd-text-muted, #8b949e); }
+/* The strip's Draft pill, on the dark menu: a lighter dashed outline, and
+   on the active (accent) row the row's own text colour. */
+.sd-tabs-all-item .sd-tabs-all-badge { color: #b1bac4; border-color: #8b949e; }
+.sd-tabs-all-item.active .sd-tabs-all-badge { color: inherit; border-color: currentColor; }
+.sd-tabs-all-item.active .sd-tabs-all-dirty { color: inherit; }
+.sd-tabs-all-empty { padding: .4rem .6rem; font-size: .75rem; color: var(--sd-text-muted, #8b949e); }
 
 /* Settings modal: see SETTINGS MODAL further below. */
 
@@ -401,24 +410,29 @@
 .sd-panel-bottom.collapsed { height: 28px !important; overflow: hidden; }
 .sd-panel-bottom.sd-resizing { transition: none; }
 
-/* ── Vertical resize handle (resizes the bottom panel up/down) ── */
+/* ── Vertical resize handle (resizes the bottom panel up/down) ──
+   The panel's top edge owns a strip 4px above the line and 5px below it,
+   above the canvas, across the whole width: grabbing the line anywhere
+   resizes the panel. The canvas frame's own bottom handles sit higher, in
+   the canvas (.sd-resize-handle-bottom). The band drawn on hover is the
+   5px below the line. */
 .sd-bp-vresize {
     position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 5px;
+    top: -4px; left: 0; right: 0;
+    height: 9px;
     cursor: ns-resize;
     z-index: 20;
     background: transparent;
-    transition: background .15s;
+    touch-action: none;
 }
 .sd-bp-vresize:hover, .sd-bp-vresize.active {
-    background: var(--sd-panel-border);
+    background: linear-gradient(transparent 4px, var(--sd-panel-border) 4px);
     opacity: .8;
 }
 .sd-bp-vresize::after {
     content: '';
     position: absolute;
-    top: 50%; left: 50%;
+    top: calc(50% + 2px); left: 50%;
     transform: translate(-50%, -50%);
     width: 12px; height: 4px;
     background-image: radial-gradient(circle, rgba(255,255,255,.45) 1px, transparent 1px);
@@ -663,8 +677,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-resize-handle::after { content:''; width:3px; height:28px; background:var(--sd-panel-border); border-radius:3px; transition:background .15s, height .15s; }
 .sd-resize-handle:hover::after, .sd-resize-handle.active::after { background:var(--sd-accent); height:44px; }
 
+/* The bottom and corner handles stand 4px inside the canvas: at the
+   bottom of the area the canvas meets the bottom panel, whose edge strip
+   takes the 4px above the line (.sd-bp-vresize). Hanging below the canvas
+   they lay on that line and a grab there resized the canvas instead. */
 .sd-resize-handle-bottom {
-    position:absolute; bottom:-6px; left:0; width:100%; height:12px;
+    position:absolute; bottom:4px; left:0; width:100%; height:12px;
     cursor:ns-resize; z-index:5;
     display:flex; align-items:center; justify-content:center;
 }
@@ -672,7 +690,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-resize-handle-bottom:hover::after, .sd-resize-handle-bottom.active::after { background:var(--sd-accent); width:44px; }
 
 .sd-resize-handle-corner {
-    position:absolute; bottom:-6px; right:-6px; width:12px; height:12px;
+    position:absolute; bottom:4px; right:-6px; width:12px; height:12px;
     cursor:nwse-resize; z-index:6;
     background:var(--sd-panel-border); border-radius:50%; transition:background .15s, transform .15s;
 }
@@ -1559,6 +1577,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     grid-row: 1;
     background: var(--sd-panel-border);
     cursor: ew-resize;
+    touch-action: none;
     z-index: 5;
     position: relative;
 }
@@ -5235,7 +5254,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Panel resize handles: slightly thicker on hover ── */
 .sd-left-vsep:hover { height: 6px; margin: -0.5px 0; }
-.sd-bp-vresize:hover { height: 6px; }
 
 /* ── Breadcrumb hover ── */
 #sd-statusbar-breadcrumb span { border-radius: 3px; }
@@ -5265,6 +5283,10 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 /* ── Smoother panel collapse ── */
 .sd-panel-bottom { transition: height .2s cubic-bezier(.4,0,.2,1); }
 .sd-panel-bottom.collapsed { transition: height .15s ease; }
+/* A drag sets the height itself; the snap-to-collapse preview must not
+   animate under it either. */
+.sd-panel-bottom.sd-resizing,
+.sd-panel-bottom.sd-resizing.collapsed { transition: none; }
 #sd-assets-panel { transition: height .2s cubic-bezier(.4,0,.2,1); }
 
 

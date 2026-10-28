@@ -25,7 +25,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - ai-prompt-rules.md: The rules block every language-model prompt ends with (pg_ai_prompt_rules(), PR #1124) writer and assistant profiles, the builders, the test that fails for a prompt without it
 - api-php-credentials-in-body.md: api.php accepting username/password in the request body: API_USERNAME vs API_AUTHENTICATED, CSRF skip, remember-me, login throttle, WAF rate buckets.
 - api-php-role-gate-and-actions.md: api.php general role gate before handlers, the exempt column, the designer endpoint's content-role allowlist, read vs write gates on shared_component, and the role numbers to compare against.
-- audit-trail-contacts.md: Contacts in audit_log (PR #2170, #2246): which panel, API, import, İYS and Workspace paths write a contact line, the label, the writers not hooked, how erasure clears the lines
+- audit-trail-contacts.md: Contacts in audit_log (#2170, #2246, #2620, #2643): which panel, API, import, İYS, Workspace, storefront, job, merge paths write a line, the label, erasure
 - audit-trail-recycle-bin.md: How Recycle Bin work appears in audit_log: the daily purge recorded as a job (pg_audit_as_job), not as the operator whose visit ran it
 - audit-trail-screen.md: The audit trail screen view_audit_log.php, its CSV export and GET /audit-log (includes/fn/audit_view.php): who may open it, filters, how each stored value form is shown, export limits
 - audit-trail-stored-values.md: What audit_log leaves out of before/after, how secrets are masked (by name, inside JSON text), how JSON text and long values are stored, what the audit screen must expect
@@ -43,6 +43,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - consent-log-cookie-notice.md: How the cookie notice's answers reach consent_log: consent_answer.php, the cookie as baseline, the same-origin check instead of a token, rate limit, signed-in and ghosting visitors
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
 - consent-log-writers.md: Who writes consent_log rows: own e-mail marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581), accepted checkout documents as contract rows (PR #2000)
+- contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
 - content-translation-jobs-duplicates.md: Translation jobs (includes/translate/jobs.php): why translate-on-save opens no second job while one is open, and why a job skips texts translated meanwhile
 - content-translation-product-answers.md: How a product's texts reach a page drawn in another language after it is drawn: variant data in the page, get_product refreshes with pg_lang, pg_tr_product_fields()
@@ -55,6 +56,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
+- error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
 - explorer-subaction-registration.md: Adding an explorer_* sub-action: it must be registered in the file_explorer allowlist as well as pg_explorer_handle(); symptoms and the catalog gate.
 - file-header-and-embedded-libraries.md: The Pinegrap file header every new PHP/JS file must carry, which files it applies to, the PHP 7.1 base rule when embedding a third-party library, and the libraries with a local change.
@@ -98,6 +100,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - sdt-designer-js-text-rules.md: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 - security-helpers-and-secret-storage.md: CSRF helpers; secret config fields (one encrypted blob, never a constant, never shown back, the written exception); session cookie flags and sign-in renewal; the install unlock throttle.
 - session-token-binding.md: How a signed-in session is bound to its auth_tokens row (selector kept in the session), what ends a session server-side, and the rules every sign-in and minting path must follow.
+- site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.

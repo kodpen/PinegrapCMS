@@ -158,7 +158,7 @@ function test_seo_page_robots_large_image_preview_setting()
 
 	$save = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/settings/seo.save.php');
 	pg_assert_contains("pg_schema_has('config', 'max_image_preview_large')", $save);
-	pg_assert_contains('$sql_max_image_preview_field', $save);
+	pg_assert_contains('$sql_seo_switch_fields', $save);
 
 	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains("upgrade_2026_11_0_max_image_preview();", $migration);

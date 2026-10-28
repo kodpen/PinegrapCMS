@@ -736,6 +736,7 @@
     "Open the task “{var:1}”{var:2}": "“{var:1}” görevini aç{var:2}",
     "Open the task:": "Görevi açın:",
     "Open the task: {var:1}": "Görevi aç: {var:1}",
+    "Open the team app, choose Scan QR code and point the camera at this code.": "Ekip uygulamasını açın, QR kodu tara'yı seçin ve kamerayı bu koda tutun.",
     "Open the text": "Metni aç",
     "Open the token page": "Jeton sayfasını aç",
     "Open the topic": "Konuyu aç",

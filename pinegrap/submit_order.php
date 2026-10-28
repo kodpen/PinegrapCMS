@@ -170,6 +170,7 @@ function submit_order($type) {
                 UNIX_TIMESTAMP())";
         $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
         $contact_id = mysqli_insert_id(db::$con);
+        pg_audit_site_record('create', 'contacts', (int) $contact_id);
 
         // if user is logged in, connect new contact record to user record
         if ($user_id) {
@@ -641,6 +642,7 @@ function submit_order($type) {
                              . "tax_office = '" . e(trim((string) $liveform->get_field_value('tax_office'))) . "',";
                 }
                 
+                $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
                 $query =
                     "UPDATE contacts
                     SET
@@ -664,6 +666,7 @@ function submit_order($type) {
                         timestamp = UNIX_TIMESTAMP()
                     WHERE id = '" . $contact_id . "'";
                 $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+                pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
 
                 // The box's answer goes to the consent log as the contact now
                 // holds it, here where the contact takes it: this runs also
@@ -6494,8 +6497,10 @@ function submit_order($type) {
             // if user does not have a member id, set member id to the order's reference code and set new member id for user
             if (!$member_id) {
                 $member_id = $reference_code;
+                $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
                 $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
                 $result = db_q($query, array((string) $member_id, (string) $contact_id)) or output_error('Query failed');
+                pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
             }
 
             // get current date
@@ -6511,8 +6516,10 @@ function submit_order($type) {
             }
 
             // update expiration date for member
+            $audit_members = pg_audit_fetch_by('contacts', 'member_id', $member_id);
             $query = "UPDATE contacts SET expiration_date = ? WHERE member_id = ?";
             $result = db_q($query, array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
+            pg_audit_site_record_many('update', 'contacts', $audit_members);
             
             // if a membership contact group is selected and membership contact group has not already been added to the array,
             // then add membership contact group to array, so that contact is added to contact group
@@ -8068,6 +8075,7 @@ function submit_order($type) {
                 $expiration_date = $row['expiration_date'];
 
                 // if user does not have a member id, set member id to order number and set new member id for user
+                $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
                 if ($member_id == '') {
                     $member_id = $order_number;
                     $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
@@ -8096,6 +8104,7 @@ function submit_order($type) {
                 // update expiration date for member
                 $query = "UPDATE contacts SET expiration_date = ? WHERE id = ?";
                 $result = db_q($query, array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
+                pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
                 
                 // if a membership contact group is selected and membership contact group has not already been added to the array,
                 // then add membership contact group to array, so that contact is added to contact group

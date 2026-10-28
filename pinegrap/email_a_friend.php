@@ -79,9 +79,10 @@ if ($liveform->check_form_errors() == false) {
     
     // if the visitor does not have edit rights to the page's folder, then check to see if the user has reached the usage limit for this feature
     if ($edit_rights == false) {
-        // Check log table to see how many times this visitor has used this feature in the last day
+        // Check log table to see how many times this visitor has used this feature in the last day,
+        // by the address log_activity() records for the row (includes/authentication.php).
         $query = "SELECT COUNT(log_id) FROM log WHERE (log_description LIKE '%e-mailed a link%') AND (log_timestamp > (UNIX_TIMESTAMP() - 86400)) AND (log_ip = ?)";
-        $result = db_q($query, array((string) $_SERVER['REMOTE_ADDR'])) or output_error('Query failed.');
+        $result = db_q($query, array(pg_auth_request_address())) or output_error('Query failed.');
         $row = mysqli_fetch_row($result);
         
         // if the user has reached the limit of ten e-mails in a day, then do not allow user to send email and output error message.

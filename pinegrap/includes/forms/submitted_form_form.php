@@ -72,6 +72,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
     $output_fields = '';
     $picker_kinds = array();
+    $coll_kinds = pg_coll_field_kinds((int) $page_id);
     $signature_exists = false;
 
     // Prepare to keep track if whether there are file upload fields or not,
@@ -138,6 +139,23 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
             }
         }
 
+        // A collection's reference pick list offers the records of the form
+        // it points into instead of the options drawn for it, after an empty
+        // choice, as the site form does (pg_cf_apply_field_bindings()).
+        $coll_kind = isset($coll_kinds[(int) $field['id']]) ? $coll_kinds[(int) $field['id']] : array('kind' => '', 'reference_page_id' => 0);
+
+        if (
+            ($coll_kind['kind'] == 'reference')
+            && ($coll_kind['reference_page_id'] > 0)
+            && ($field['type'] == 'pick list')
+        ) {
+            $options = array(array('id' => $field['id'] . '_ref', 'label' => '', 'value' => '', 'default_selected' => 0));
+
+            foreach (pg_coll_reference_options($coll_kind['reference_page_id']) as $code => $label) {
+                $options[] = array('id' => $field['id'] . '_ref' . count($options), 'label' => $label, 'value' => $code, 'default_selected' => 0);
+            }
+        }
+
         // if field should have spacing above, add spacing
         if ($field['spacing_above']) {
             $output_fields .=
@@ -150,7 +168,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
                         ' . pg_ai_write_label_row('<label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>', pg_ai_write_form_button($user, $page_id, $field['id'])) . '
-                        ' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength'])) . '
+                        ' . $liveform->output_field(array_merge(array('type'=>'text', 'name'=>$field['id'], 'id'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'class'=>'form-control', 'maxlength'=>$field['maxlength']), pg_coll_input_attrs($coll_kind['kind'], $field['type']))) . '
                         ' . $field_required . '
                     </div>';
                 break;
@@ -339,8 +357,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                             (form_data.form_id = '" . escape($form_id) . "')
                             AND (form_data.form_field_id = '" . $field['id'] . "')");
 
-                    // If there is an existing file for this field, then output info for that.
-                    if ($file['name'] != '') {
+                    // If there is an existing file for this field, then output info for
+                    // that. A submission without a row for the field gives null here.
+                    if ($file && $file['name'] != '') {
                         $output_file_info = '
                         <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file['name'])) . '" target="_blank">
                             <span class="material-icons">attach_file</span>
@@ -469,8 +488,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
 /**
  * Marks the type errors of one posted field: a blocked upload name, an
- * invalid date, date and time, e-mail address or time, and a title whose
- * address name another submitted form of the same custom form already uses.
+ * invalid date, date and time, e-mail address or time, a title whose
+ * address name another submitted form of the same custom form already uses,
+ * and a collection field's kind (pg_coll_check_field()).
  * The required check stays in the screens.
  *
  * @param liveform $liveform
@@ -537,6 +557,9 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
             $liveform->mark_error($field['id'], lang(array('string'=>'That {var:1} is already in use. Please enter a different one.','vars'=>h($field['label']))) );
         }
     }
+
+    // A number, an image or a reference of a collection's field.
+    pg_coll_check_field($liveform, $field, pg_coll_field_kinds((int) $page_id));
 }
 
 /**

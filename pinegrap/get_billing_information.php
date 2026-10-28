@@ -350,8 +350,17 @@ function get_billing_information($properties) {
     // get countries for country selection
     $countries = db_items("SELECT name, code, zip_code_required AS zip FROM countries ORDER BY name", 'code');
 
+    // Named and ordered in the site's language (pg_geo_country_label()); two
+    // rows that share a label (a duplicate code in the data) keep both options.
+    $country_labels = array();
+
     foreach ($countries as $country) {
-        $billing_country_options[$country['name']] = $country['code'];
+        $country_labels[] = array('code' => $country['code'], 'label' => pg_geo_country_label($country['name'], $country['code']));
+    }
+
+    foreach (pg_geo_sort_by_label($country_labels) as $country) {
+        $label = isset($billing_country_options[$country['label']]) ? $country['label'] . ' (' . $country['code'] . ')' : $country['label'];
+        $billing_country_options[$label] = $country['code'];
     }
 
     $states = db_items(
@@ -1080,7 +1089,7 @@ function get_billing_information($properties) {
                         '<script>
                             software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
                                 dateFormat: date_picker_format,
-                                timeFormat: "h:mm TT"
+                                timeFormat: "' . pg_picker_time_format() . '"
                             });
                         </script>';
                 }

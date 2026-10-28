@@ -45,6 +45,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, why the slug kind waits for C5
+- collection-inputs.md: Inputs of a collection's fields by kind (C3): number, image and reference controls on the site form and the panel's add/edit screen, the server checks, what is not drawn yet
 - collection-references.md: A form list or detail element prints a field of the record a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
@@ -105,6 +106,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - design-templates-standard-pages.md: What every design template carries: account, inbox, staff and blog pages under fixed keys, sample records, the support-center search sections, e-mail pages, settings keys checked against the renderer.
 - design-theme-look-and-palette.md: A visual design's look and colour palette (style.style_look / style_palette, 2026.4.5): values, the stylesheets and their load order on site, canvas and preview, tokens for new component styles.
 - designed-page-comment-names.md: Which name a signed-in member's comment gets: the contact's display name (else Member) on visual-designer pages, the username on legacy pages; the name select's choices and forged values
+- designer-ai-known-class.md: How the designer AI decides a class is one the framework ships (pg_design_ai_known_class()): the Bootstrap 5 vocabulary, state/pg-*/Bootstrap Icons classes, custom designs, the class-family fallback
 - designer-audit-contrast-opacity.md: How the designer audit's contrast check (PgContrast.check(), assets/js/pg_contrast.js) counts opacity on the text and its ancestors, and why
 - designer-audit-contrast.md: Designer audit's text contrast check (WCAG 1.4.3): measured on the canvas with PgContrast, what it leaves alone (pictures, hidden, disabled, editor chrome), findings on templates, cost
 - designer-audit-form-action.md: Designer audit hint form_no_action: a form outside every system widget with no action is sent nowhere; what counts as wired, why it is a hint and not a ban, and the test.
@@ -183,7 +185,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-sdt-translation.md: Designer _sdT() rules: editor data block must print before style_designer.js; English keys, no embedded numbers or variables, price keys, palette labels.
 - designer-settings-modal-panes.md: Designer settings modal panes per scope, one row per setting with a sentence (pg_designer_setting()), live address/access/search lines, head code field, content-level view.
 - designer-settings-modal-sizing.md: Designer settings modal size and closing: dialog-xl from 1024px, full screen below, one height capped at 56rem, static backdrop, sizes in style_designer.css, rail becomes a strip under 1024px.
-- designer-sticky-panel-layout.md: Designer left/right panel docking: docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, clamp width, one layer at a time, three-strip bottom panel, rail icons.
+- designer-sticky-panel-layout.md: Designer panel docking (docked drawer vs in-flow, 32px rail, sd-dock-* classes, _SD_DOCK_BP 992px, one layer at a time, three-strip bottom panel, rail icons) and the bottom panel edge drag.
 - designer-tab-groups.md: Page tab order and named coloured groups in the designer (style.style_tab_layout, 2026.4.8): shape, own endpoint apart from Save, twin normalisers, colours, folding per browser, new tabs, drag.
 - designer-theme-light-selector-upgrade.md: Upgrade step 11.0.32 splits the Themes panel's old combined light block in designs, page copies, templates and old theme files with a PHP twin of the editor's split.
 - designer-theme-panel-light-selector.md: Which blocks the designer's Themes panel writes light and dark variables into, why colours and fonts/radii use different light selectors, and how old designs are split.
@@ -213,6 +215,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - legacy-region-preview.md: The canvas preview of a classic page's system region drawn by its custom layout (designer/legacy_region_preview): who sees it, the markers, the background render, read only, when it is asked again
 - link-button-inline-children.md: Spans and icons inside a link or button: two ways to hold them, why an inline edit keeps a link's markup, which drops a button accepts, where the label prints beside children.
 - link-target-in-attrs.md: A link's window and rel: props first, _attrs when the prop is empty (link and button link, server and canvas alike), the selection-time fold, starter trees and templates, page bodies drawn before
+- loop-band-canvas.md: The loop area's band on the canvas (.sd-loop-band): one line with an ellipsis and the full text in its tooltip, and the Turkish terms the band and its notes use (#2523)
 - member-email-asked-once.md: Registration and membership activation ask for the email once: email_verify optional, a typed copy must match; starter layouts, templates, classic screens and the starter site changed
 - member-widgets-handlers-and-forms.md: Membership widgets (login/forgot/registration/membership): legacy handlers, pg_member_register/activate, control naming, form wrap, validation script.
 - member-widgets-rendering.md: Membership widget render rules: closed feature = no output, canvas twin _sdMemberBindingOff, Messages node stamping, always render own tree, signed-in state.
@@ -223,6 +226,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - multi-page-designer-editor.md: Editor screen code, save flow, JSON api.php body, the dirty check and unchanged pages, tab switching/menu/rename DOM rules, toolbar overflow, palette order and designer texts.
 - no-form-in-form.md: No form inside a form in the designer: semantic forms at any depth, widgets the server wraps in a form (_SD_FORM_WIDGET_TYPES), blocks, widgets and components that bring one.
 - node-text-and-whitespace.md: Designer node props.text: innerHTML (content nodes) vs plain text (semantic nodes), and whitespace-sensitive tags pre/textarea/code in generateHTML().
+- options-panel-style-labels.md: Labels of the options panel selects built from utility classes (selStyleGroup) and of the colour pickers: how options and placeholders are translated, the Text/Background Color row keys (#2046)
 - order-form-widget.md: The Order Form widget (classic "order form" page type): handler and page row, list and drop-down layouts, row controls by name, flags, schedule section, what is left out.
 - order-preview-widget.md: The Order Preview widget (last classic checkout step): values from get_order_preview()'s custom-layout branch, page row, controls by name, sections, what is left out.
 - page-conditions.md: W18: an element outside a widget shown by visit facts (signed in, cart) or the page's record (found, allow-listed values); stored-body markers decided per request, cache, editor
@@ -243,11 +247,13 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
 - photo-gallery-widget.md: The Photo Gallery widget (classic "photo gallery" page type): the folder it shows and the ?folder_id= scope check, album and photo rows, tokens, flags, what is left out.
+- record-media-field-share-image.md: A form's RSS media upload opens with the record (every public view counts as printing it); og:image and the feed enclosure skip an upload an anonymous visitor cannot open (#2191, #2174)
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)
 - region-node-to-widget.md: "Make designable" on a classic menu, menu sequence, ad or tag cloud region node: the widget kind and setting per type, where the widget goes, what stays the same.
 - responsive-images.md: Designer and widget images with srcset/sizes, AVIF/WebP <picture> on the Image element: which images, sizes rule, widget pass, variant swap, version stamp, e-mail strip (loading order: image-loading)
+- search-results-catalog-detail-page.md: Search Results widget: a catalog item is a result only when a page opens it (chosen, Catalog Detail widget page, legacy catalog detail page); the editor names a site without one (#2062)
 - sentence-with-values.md: Words beside a value (W26): props._sentence draws one translatable sentence, its N-th child at {var:N}; twins, panel row, code view lock, comment stars' label, order view's withdrawal line
 - seo-score-live-check-parity.md: pg_seo_compose() must get all four groups wherever the same SEO score is computed (designer seo_check vs pg_seo_recalculate); which inputs come from where.
 - shared-component-content-editing.md: Shared components opened to content editors (the designer's common region): content_editable flag, users_shared_components_xref grants, the rule, content_update under the page merge, schema 11.0.8

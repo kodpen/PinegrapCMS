@@ -229,7 +229,6 @@ $pg_settings_cards[] = '
                                                                             <input type="text" name="ecommerce_no_shipping_methods_message" id="ecommerce_no_shipping_methods_message" class="form-control" value="' . h($ecommerce_no_shipping_methods_message) . '" maxlength="255"/>
                                                                         </div>
                                                                         ' . get_time_picker_format() . '
-                                                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
                                                                         <div class="pg-f-xs">
                                                                             <label for="ecommerce_end_of_day_time" class="form-label">' . lang('End of Day Time') . '</label>
                                                                             <input type="text" name="ecommerce_end_of_day_time" id="ecommerce_end_of_day_time" class="form-control" data-pg-time value="' . prepare_form_data_for_output($ecommerce_end_of_day_time, 'time') . '" maxlength="8"/>' . pg_fields_script() . '

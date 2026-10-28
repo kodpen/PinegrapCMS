@@ -298,6 +298,56 @@
         }
     }
 
+    // Bootstrap 6.0.0-alpha.1 binds the Combobox's Menu to the combobox's
+    // own toggle, which Data.set() refuses with a console error ("doesn't
+    // allow more than one instance per element") while the combobox keeps
+    // working with its own Menu. The one known complaint is dropped for the
+    // call that builds the combobox; anything else console.error gets passes.
+    var INSTANCE_NOISE = "doesn't allow more than one instance per element";
+
+    function withoutInstanceNoise(fn) {
+        var original = (window.console && window.console.error) || null;
+
+        if (typeof original !== 'function') {
+            return fn();
+        }
+
+        window.console.error = function () {
+            if (arguments.length && (typeof arguments[0] === 'string') && (arguments[0].indexOf(INSTANCE_NOISE) !== -1)) {
+                return undefined;
+            }
+
+            return original.apply(window.console, arguments);
+        };
+
+        try {
+            return fn();
+        } finally {
+            window.console.error = original;
+        }
+    }
+
+    // The keys the combobox handles on its own menu (arrows, Home, End) stop
+    // at the menu: Bootstrap's document keydown handler for .menu would ask
+    // Menu.getOrCreateInstance() on the toggle for each of them and, since
+    // the combobox's Menu is not the bound instance there, build an unbound
+    // Menu with the same console error on every key.
+    var MENU_KEYS = { ArrowUp: 1, ArrowDown: 1, Home: 1, End: 1 };
+
+    function keepMenuKeysInCombobox(combobox, toggle) {
+        var menu = (combobox && combobox._menu) || toggle.nextElementSibling;
+
+        if (!menu || !menu.classList || !menu.classList.contains('menu')) {
+            return;
+        }
+
+        menu.addEventListener('keydown', function (event) {
+            if (MENU_KEYS[event.key]) {
+                event.stopPropagation();
+            }
+        });
+    }
+
     // A combobox offers a search box from this many options on.
     var COMBOBOX_SEARCH_FROM = 8;
 
@@ -439,11 +489,19 @@
             named.id = named.id || (el.id + '_label');
             toggle.setAttribute('aria-labelledby', named.id);
         }
-        var combobox = window.pgUI.combobox.get(toggle, {
-            multiple: multiple,
-            search: search,
-            placeholder: el.getAttribute('data-placeholder') || ''
+        // Bootstrap 6's .collapse clips overflow-y, so a menu placed inside a
+        // switch panel would be cut off at the panel's edge: place it fixed.
+        if (el.closest && el.closest('.collapse')) {
+            toggle.setAttribute('data-bs-strategy', 'fixed');
+        }
+        var combobox = withoutInstanceNoise(function () {
+            return window.pgUI.combobox.get(toggle, {
+                multiple: multiple,
+                search: search,
+                placeholder: el.getAttribute('data-placeholder') || ''
+            });
         });
+        keepMenuKeysInCombobox(combobox, toggle);
         showComboboxText(el);
         var offs = [
             window.pgUI.combobox.on(toggle, 'change', function () {

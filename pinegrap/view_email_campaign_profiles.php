@@ -411,7 +411,7 @@ if (isset($_GET['export'])) {
 
             // If there is a time, then add it to schedule.
             if ($email_campaign_profile['schedule_time'] != '00:00:00') {
-                $output_schedule_action .= ' (' . prepare_form_data_for_output($email_campaign_profile['schedule_time'], 'time') . ')';
+                $output_schedule_action .= ' (' . date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time'])) . ')';
             }
 
           
