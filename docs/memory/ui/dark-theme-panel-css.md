@@ -10,7 +10,7 @@ description: backend.src.css swept for fixed light fills and dark text after Boo
 
 ## Why did tone rows show only coloured text?
 - The panel paints every cell with the card fill (`.table > :not(caption) > * > *`, `@layer custom`), which beats Bootstrap 6's cell rule and DataTables' vendor rule, so `.table-warning` rows (ERP account sync comparison, `erp_account_sync_item.php`) and the `.table-info` Grand Total row (`view_shipping_report.php`, its `dt-scroll-foot` clone too) showed tone text on card grey in both themes.
-- A rule after the `.table-info` block (#PR) paints tone rows' cells and tone cells with their own `--bs-table-bg`. The card-fill rule stays: changing it would start painting `.pg-table-light` heads and `.pg-sale-table`. `tests/table_tone_rows_test.php` pins it.
+- A rule after the `.table-info` block (#2580) paints tone rows' cells and tone cells with their own `--bs-table-bg`. The card-fill rule stays: changing it would start painting `.pg-table-light` heads and `.pg-sale-table`. `tests/table_tone_rows_test.php` pins it.
 - Computed (Chromium, v6 dist + backend.src.css): warning cell 245,245,245 to 255,248,225 light, 12,13,15 to 42,34,16 dark; info 224,247,250 light, 13,36,40 dark; plain cells unchanged.
 
 ## Why `light-dark()` for the line?
