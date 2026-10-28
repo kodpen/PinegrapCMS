@@ -407,6 +407,34 @@ function pg_member_widget_asks_opt_in($widget_id, $type = 'registration')
     return is_array($tree) && pg_member_tree_asks_opt_in($tree);
 }
 
+// The settings (system_region_config) of the widget a form was posted from,
+// when $widget_id names a widget of $type ('registration', 'membership',
+// 'affiliate_sign_up_form'); null for any other id, so a post cannot borrow
+// another widget's settings.
+function pg_member_widget_cfg($widget_id, $type)
+{
+    $widget_id = is_scalar($widget_id) ? (int) $widget_id : 0;
+    if ($widget_id <= 0) {
+        return null;
+    }
+
+    $config = db_value("SELECT system_region_config FROM shared_components WHERE id = '" . $widget_id . "' LIMIT 1");
+    $cfg = json_decode((string) $config, true);
+
+    return (is_array($cfg) && isset($cfg['regionType']) && ($cfg['regionType'] === (string) $type)) ? $cfg : null;
+}
+
+// The notice a designed sign-up page shows when the visitor stays on it (no
+// next page): the widget's confirmation_message, plain text with its line
+// breaks kept, else $default (a translated sentence, already markup).
+function pg_member_confirmation_notice($cfg, $default)
+{
+    $message = (is_array($cfg) && isset($cfg['confirmation_message']) && is_string($cfg['confirmation_message']))
+        ? trim(str_replace("\r\n", "\n", $cfg['confirmation_message'])) : '';
+
+    return ($message !== '') ? nl2br(h($message), false) : (string) $default;
+}
+
 // Register a member from the 'register' liveform: the validation and the
 // writes the registration entrance has always done, in one place, so the
 // legacy screen and a designed page (the registration widget) run the same

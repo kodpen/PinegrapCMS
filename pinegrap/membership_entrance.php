@@ -224,13 +224,16 @@ if (!$_POST) {
             // for it (the posted widget, else the site's live one).
             pg_account_email_send_welcome($activated['user_id'], 'membership', ($return_to !== '') ? (int) ($_POST['pg_widget_id'] ?? 0) : 0);
 
-            // The designed page: a send_to it chose, else back to itself with
-            // the notice its Messages block prints. The legacy screen: the
-            // membership confirmation page.
+            // The designed page: a send_to it chose (its next page), else
+            // back to itself with the notice its Messages block prints: the
+            // widget's confirmation message or the default sentence. The
+            // legacy screen: the membership confirmation page.
             if ($return_to !== '') {
                 $done_url = pg_safe_redirect_path(($_POST['send_to'] ?? ''), '/__none__');
                 if ($done_url === '/__none__') {
-                    $liveform->add_notice(lang('Your membership is active. You are now signed in.'));
+                    $liveform->add_notice(pg_member_confirmation_notice(
+                        pg_member_widget_cfg($_POST['pg_widget_id'] ?? 0, 'membership'),
+                        lang('Your membership is active. You are now signed in.')));
                     $done_url = $return_to;
                 }
                 header('Location: ' . URL_SCHEME . HOSTNAME . $done_url);

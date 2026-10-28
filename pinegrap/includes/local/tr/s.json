@@ -1288,6 +1288,7 @@
     "Shown in the styles list. Pages keep their own names.": "Stiller listesinde görünür. Sayfalar kendi adlarını korur.",
     "Shown instead of the event when the address names none, or one outside these calendars.": "Adres bir etkinlik belirtmediğinde ya da bu takvimlerin dışındaki bir etkinliği gösterdiğinde etkinliğin yerine çıkar.",
     "Shown on the home screen when the panel is installed as an application. The picture is fitted whole onto a square, so nothing is cropped; a square picture of at least 512x512 looks best.": "Panel uygulama olarak kurulduğunda ana ekranda görünen simge. Görsel kare bir tuvale bütün olarak yerleştirilir, hiçbir yeri kesilmez; en iyi sonuç için 512x512 veya daha büyük kare bir görsel kullanın.",
+    "Shown on this page once the form is sent, when no next page is chosen. Empty: the sentence shown in grey.": "Sonraki sayfa seçilmediğinde, form gönderilince bu sayfada gösterilir. Boşsa gri görünen cümle gösterilir.",
     "Shown once": "Bir kez gösterilir",
     "Shown only to a signed-in member: their own comments, published or awaiting approval.": "Yalnızca oturum açmış üyeye gösterilir: yayınlanmış ya da onay bekleyen kendi yorumları.",
     "Shown only to people who may edit the page a comment is on.": "Yalnızca yorumun bulunduğu sayfayı düzenleyebilenlere gösterilir.",

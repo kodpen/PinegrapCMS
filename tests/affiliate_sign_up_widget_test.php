@@ -62,3 +62,32 @@ function test_affiliate_sign_up_widget_registered()
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_affiliate_sign_up.php');
 	pg_assert_contains("_pg_inject_messages_node(\$tree, 'affiliate_sign_up_form')", $source, 'Messages named after the classic liveform');
 }
+
+// A sign-up widget's confirmation message: plain text escaped once, its line
+// breaks kept; empty, missing or not text keeps the default sentence.
+function test_affiliate_sign_up_widget_confirmation_notice()
+{
+	$default = 'Thank you. Your affiliate application has been sent.';
+	pg_assert_same("We got it &lt;b&gt;<br>\nThanks", pg_member_confirmation_notice(array('confirmation_message' => "  We got it <b>\r\nThanks "), $default));
+	pg_assert_same($default, pg_member_confirmation_notice(array('confirmation_message' => '  '), $default), 'blank');
+	pg_assert_same($default, pg_member_confirmation_notice(array('confirmation_message' => array('x')), $default), 'not text');
+	pg_assert_same($default, pg_member_confirmation_notice(null, $default), 'no widget');
+	pg_assert_same(null, pg_member_widget_cfg(array(1), 'registration'), 'an id that is not a number');
+	pg_assert_same(null, pg_member_widget_cfg('0', 'registration'), 'no id');
+}
+
+// The handlers read the posting widget's message only when the visitor stays
+// on the designed page; the affiliate widget names itself in its post.
+function test_affiliate_sign_up_widget_confirmation_wiring()
+{
+	foreach (array('registration_entrance.php' => "'registration'", 'membership_entrance.php' => "'membership'", 'affiliate_sign_up_form.php' => "'affiliate_sign_up_form'") as $file => $type) {
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+		pg_assert_contains("pg_member_widget_cfg(\$_POST['pg_widget_id'] ?? 0, " . $type . ')', $source, $file);
+		pg_assert_contains('pg_member_confirmation_notice(', $source, $file);
+	}
+	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_affiliate_sign_up.php');
+	pg_assert_contains("'pg_widget_id'    => \$widget_id,", $widget, 'the affiliate form names its widget');
+	pg_assert_contains("(string)\$lf->get_field_value('screen') === 'confirm'", $widget, 'the confirmation screen');
+	pg_assert_contains('_pg_member_drop_all_controls($tree);', $widget, 'the design stays, its controls go');
+	pg_assert_contains("\$confirmed->assign_field_value('screen', 'confirm');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/affiliate_sign_up_form.php'), 'the handler asks for it');
+}

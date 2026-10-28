@@ -275,13 +275,16 @@ if (!$_POST) {
                 $query_string = '?send_to=' . urlencode($_POST['send_to']);
             }
 
-            // The designed page: a send_to it chose, else back to itself with
-            // the notice its Messages block prints. The legacy screen: the
-            // registration confirmation page.
+            // The designed page: a send_to it chose (its next page), else
+            // back to itself with the notice its Messages block prints: the
+            // widget's confirmation message or the default sentence. The
+            // legacy screen: the registration confirmation page.
             if ($return_to !== '') {
                 $done_url = pg_safe_redirect_path(($_POST['send_to'] ?? ''), '/__none__');
                 if ($done_url === '/__none__') {
-                    $register_form->add_notice(lang('Thank you for registering. You are now signed in.'));
+                    $register_form->add_notice(pg_member_confirmation_notice(
+                        pg_member_widget_cfg($_POST['pg_widget_id'] ?? 0, 'registration'),
+                        lang('Thank you for registering. You are now signed in.')));
                     $done_url = $return_to;
                 }
                 header('Location: ' . URL_SCHEME . HOSTNAME . $done_url);
