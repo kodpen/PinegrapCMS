@@ -158,6 +158,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_prompts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_codes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/captcha.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/returns.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/short_link_redirects.php');

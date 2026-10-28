@@ -43,6 +43,7 @@ description: Generated from the module field of the memory files: each includes/
 - `reviews`: [[product-reviews-verified]]
 - `seo`: [[main-host-redirect]], [[record-breadcrumb-list-step]], [[robots-large-image-preview]], [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
+- `sms_codes`: [[sms-codes]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
 - `translate`: [[error-screen-language-and-status]]
