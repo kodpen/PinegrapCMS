@@ -14,8 +14,12 @@
  *   pgDateTime.parseTime(text) / formatTime(hhmm)
  *   pgDateTime.parseDateTime(text, order) / formatDateTime(iso, order)
  *   pgDateTime.order()                    'day_month' or 'month_day'
+ *   pgDateTime.clockTime(hhmm)            '17:05' on the site's clock ('5:05 PM' with 12 hours)
+ *   pgDateTime.timeMode()                 12 or 24, from the data-pg-calendar of its tag
  *   pgDateTime.ready() / whenReady(fn)    the calendar library is loaded
- *   pgDateTime.attach(box, options)       a calendar for the typed box `box`
+ *   pgDateTime.attach(box, options)       a calendar for the typed box `box`: a date, a
+ *                                         date and time (the time row under the dates)
+ *                                         or a time (the time row alone)
  *
  * The library is loaded once, by this file, from the data-pg-calendar-src
  * of its own tag: a settings card that brings the tags again runs this file
@@ -225,18 +229,100 @@
         return to;
     }
 
+    // ------------------------------------------------------------ clock
+
+    // The clock and the words pg_fields_script() printed on this file's tag
+    // (data-pg-calendar, from pg_calendar_settings()): 12 or 24, the Done
+    // button's word, the calendar's screen-reader names.
+    var settingsCache = null;
+
+    function settings() {
+        if (settingsCache) {
+            return settingsCache;
+        }
+        var own = document.querySelector('script[data-pg-calendar]'), read = null;
+        try {
+            read = own ? JSON.parse(own.getAttribute('data-pg-calendar')) : null;
+        } catch (e) {
+            read = null;
+        }
+        read = read || {};
+        settingsCache = {
+            timeMode: read.timeMode === 24 ? 24 : 12,
+            done: read.done || 'Done',
+            labels: read.labels || null
+        };
+        return settingsCache;
+    }
+
+    // '17:05' on the site's clock: '17:05' with the 24-hour clock, else
+    // '5:05 PM'; '' for anything else.
+    function clockTime(hhmm) {
+        if (!/^\d{2}:\d{2}$/.test(String(hhmm || '')) || !formatTime(hhmm)) {
+            return '';
+        }
+        return settings().timeMode === 24 ? hhmm : formatTime(hhmm);
+    }
+
+    // '17:05' in the form the library's time row takes: '17:05', or with
+    // the 12-hour clock '05:05 PM' (its pattern refuses an hour without
+    // its zero, and falls back to midnight).
+    function libraryTime(hhmm, mode) {
+        var m = /^(\d{2}):(\d{2})$/.exec(String(hhmm || '')) || [null, '00', '00'];
+        if (mode === 24) {
+            return m[1] + ':' + m[2];
+        }
+        var h = +m[1];
+        return pad((h % 12) || 12) + ':' + m[2] + ' ' + (h < 12 ? 'AM' : 'PM');
+    }
+
+    function escapeText(text) {
+        return String(text).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    // The library's own month layout with the time row under the dates, as
+    // its default layout has it; the Done button after them in a popup.
+    function layout(mode, inline) {
+        var s = settings(), done = inline ? '' : '<div class="pg-vc-actions"><button type="button" class="btn btn-sm btn-solid theme-primary" data-pg-vc-done>' + escapeText(s.done) + '</button></div>';
+        if (mode === 'time') {
+            return '<#ControlTime />' + done;
+        }
+        var nav = escapeText((s.labels && s.labels.navigation) || 'Calendar Navigation');
+        return '<div class="vc-header" data-vc="header" role="group" aria-label="' + nav + '">'
+            + '<#ArrowPrev [month] />'
+            + '<div class="vc-header__content" data-vc-header="content" aria-live="polite" aria-atomic="true"><#Month /><#Year /></div>'
+            + '<#ArrowNext [month] />'
+            + '</div>'
+            + '<div class="vc-wrapper" data-vc="wrapper"><#WeekNumbers />'
+            + '<div class="vc-content" data-vc="content" role="grid"><#Week /><#Dates /><#DateRangeTooltip /></div>'
+            + '</div>'
+            + '<#ControlTime />' + done;
+    }
+
+    // The time the library's row shows, as '17:05'.
+    function shownTime(self) {
+        var c = self.context;
+        return parseTime(c.selectedHours + ':' + c.selectedMinutes + (c.selectedKeeping ? ' ' + c.selectedKeeping : ''));
+    }
+
     // A calendar for the typed box `box`, as a popup under it, or drawn open
     // after it (options.inline: in a drawer, where a popup would hang off
     // the drawer's scrolling body).
+    //   options.mode           'date' (the default), 'datetime' (the time row
+    //                          under the dates) or 'time' (the time row only)
     //   options.iso            the date it shows ('' for none)
+    //   options.time           the time it shows ('17:05'; midnight without)
     //   options.locale         month and day names ('tr', 'en')
     //   options.firstWeekday   0 Sunday, 1 Monday
-    //   options.onPick(iso)    a day was clicked
+    //   options.onPick(iso, hhmm)  a day was clicked or the time moved: the
+    //                          shown date ('' for none) and time ('' in date mode)
     //   options.host(box)      the element the popup goes into
-    // Returns { calendar, set(iso), destroy() }; set() moves the calendar to
-    // a date without drawing it again.
+    // A date closes a date popup; with a time row the popup stays open for
+    // it and closes with Done, Escape or a click outside. Returns
+    // { calendar, set(iso, hhmm), destroy() }; set() moves the calendar to a
+    // date and time without drawing it again.
     function attach(box, options) {
-        var o = options || {}, inline = !!o.inline, target = box, wrap = null, offs = [];
+        var o = options || {}, mode = o.mode || 'date', inline = !!o.inline, target = box, wrap = null, offs = [];
         // The calendar takes over the element it is drawn in, classes
         // included, so it gets a box of its own inside ours.
         if (inline) {
@@ -246,7 +332,7 @@
             wrap.appendChild(target);
             box.parentNode.insertBefore(wrap, box.nextSibling);
         }
-        var theme = themeOf(box), shown = false, calendar = null;
+        var theme = themeOf(box), shown = false, calendar = null, timeMode = settings().timeMode;
         var place = function () {
             window.setTimeout(function () {
                 if (shown && calendar) {
@@ -254,7 +340,19 @@
                 }
             }, 0);
         };
-        var settings = assign({
+        var pick = function (self, time) {
+            var dates = self.context.selectedDates || [];
+            if (o.onPick) {
+                o.onPick(mode === 'time' ? '' : (dates.length ? dates[0] : ''), time);
+            }
+        };
+        var dressed = function (main) {
+            syncTheme(box, main);
+            if (mode === 'time' && main && main !== box && main.classList) {
+                main.classList.add('pg-vc-time-only');
+            }
+        };
+        var calendarOptions = {
             inputMode: !inline,
             positionToInput: 'left',
             locale: o.locale || 'en',
@@ -266,11 +364,20 @@
             selectedTheme: (!theme || theme === 'auto') ? 'system' : theme,
             themeAttrDetect: '[data-bs-theme]',
             onInit: function (self) {
-                syncTheme(box, self.context.mainElement);
+                var main = self.context.mainElement;
+                dressed(main);
+                // Done is ours: the library has no such button.
+                if (mode !== 'date' && !inline && main && main !== box) {
+                    main.addEventListener('click', function (event) {
+                        if (event.target && event.target.closest && event.target.closest('[data-pg-vc-done]')) {
+                            self.hide();
+                        }
+                    });
+                }
             },
             onShow: function (self) {
                 shown = true;
-                syncTheme(box, self.context.mainElement);
+                dressed(self.context.mainElement);
                 placeInHost(box, self.context.mainElement, o.host);
                 window.addEventListener('resize', place);
             },
@@ -279,16 +386,27 @@
                 window.removeEventListener('resize', place);
             },
             onClickDate: function (self) {
-                var dates = self.context.selectedDates || [];
-                if (o.onPick) {
-                    o.onPick(dates.length ? dates[0] : '');
-                }
-                // A date closes the popup; focus goes back to the box.
-                if (!inline && dates.length) {
+                pick(self, mode === 'date' ? '' : shownTime(self));
+                // A date closes a date popup; focus goes back to the box.
+                if (mode === 'date' && !inline && (self.context.selectedDates || []).length) {
                     self.hide();
                 }
             }
-        }, monthOf(o.iso));
+        };
+        if (settings().labels) {
+            calendarOptions.labels = settings().labels;
+        }
+        if (mode !== 'date') {
+            calendarOptions.selectionTimeMode = timeMode;
+            calendarOptions.selectedTime = libraryTime(o.time, timeMode);
+            calendarOptions.layouts = { default: layout(mode, inline) };
+            calendarOptions.onChangeTime = function (self, event, isError) {
+                if (!isError) {
+                    pick(self, shownTime(self));
+                }
+            };
+        }
+        assign(calendarOptions, monthOf(o.iso));
         // The library moves focus into the open calendar on every arrow key
         // in the box; Left and Right keep moving the text cursor. This
         // listener comes first, so it runs before the library's own.
@@ -301,12 +419,16 @@
             box.addEventListener('keydown', keys);
             offs.push(function () { box.removeEventListener('keydown', keys); });
         }
-        calendar = new window.VanillaCalendarPro.Calendar(target, settings);
+        calendar = new window.VanillaCalendarPro.Calendar(target, calendarOptions);
         calendar.init();
         return {
             calendar: calendar,
-            set: function (iso) {
-                calendar.set(assign({ selectedDates: iso ? [iso] : [] }, monthOf(iso)));
+            set: function (iso, hhmm) {
+                var next = mode === 'time' ? {} : assign({ selectedDates: iso ? [iso] : [] }, monthOf(iso));
+                if (mode !== 'date') {
+                    next.selectedTime = libraryTime(hhmm, timeMode);
+                }
+                calendar.set(next);
             },
             destroy: function () {
                 offs.forEach(function (off) { off(); });
@@ -334,6 +456,8 @@
         formatTime: formatTime,
         parseDateTime: parseDateTime,
         formatDateTime: formatDateTime,
+        clockTime: clockTime,
+        timeMode: function () { return settings().timeMode; },
         ready: ready,
         whenReady: whenReady,
         attach: attach

@@ -1,0 +1,127 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The box, the time row and the Done button of the one date-and-time control
+ * (assets/js/pg_datetime.js). bootstrap.css styles the calendar itself
+ * ([data-vc=calendar]) but has no rule for vanilla-calendar-pro's time row;
+ * these follow the panel tokens, light and dark alike. Printed by
+ * pg_fields_script() with the control.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+@layer custom {
+  /* The one box of a date and time or of a time, after its hidden field:
+     as wide as its text, as the two parts it replaced were. */
+  .pg-datetime-box,
+  .pg-time-box {
+    width: auto;
+    max-width: 100%;
+  }
+
+  .pg-datetime-box {
+    min-width: 13rem;
+  }
+
+  .pg-time-box {
+    min-width: 7rem;
+  }
+
+  .input-group > .pg-datetime-box,
+  .input-group > .pg-time-box {
+    flex: 1 1 auto;
+    width: 1%;
+  }
+
+  [data-vc=calendar] [data-vc=time] {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: .75rem;
+    align-items: center;
+    margin-top: .75rem;
+    padding-top: .75rem;
+    border-top: var(--pg-border-width, 1px) solid var(--pg-border-color, var(--bs-border-color));
+  }
+
+  /* A time-only popup has no calendar above the row. */
+  [data-vc=calendar].pg-vc-time-only [data-vc=time] {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+  }
+
+  [data-vc=calendar] [data-vc-time=content] {
+    display: flex;
+    align-items: center;
+    gap: .25rem;
+  }
+
+  [data-vc=calendar] [data-vc-time-input=hour]::after {
+    content: ":";
+    margin-left: .25rem;
+    font-weight: 600;
+  }
+
+  [data-vc=calendar] [data-vc-time-input] {
+    display: flex;
+    align-items: center;
+  }
+
+  [data-vc=calendar] [data-vc-time-input] input {
+    box-sizing: border-box;
+    width: 2.5rem;
+    padding: .25rem;
+    font-size: 1rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--pg-fg-body, var(--bs-fg-body));
+    text-align: center;
+    background-color: var(--pg-bg-body, var(--bs-bg-body));
+    border: var(--pg-border-width, 1px) solid var(--pg-border-color, var(--bs-border-color));
+    border-radius: var(--pg-radius, .375rem);
+  }
+
+  [data-vc=calendar] [data-vc-time-input] input:focus-visible,
+  [data-vc=calendar] [data-vc-time-input] input[data-vc-input-focus] {
+    border-color: var(--pg-primary, var(--bs-primary-bg));
+    outline: var(--bs-focus-ring);
+  }
+
+  [data-vc=calendar] [data-vc-time=keeping] {
+    min-width: 2.5rem;
+    margin-left: .25rem;
+    padding: .25rem .375rem;
+    font-size: .8125rem;
+    font-weight: 600;
+    color: var(--pg-fg-body, var(--bs-fg-body));
+    cursor: pointer;
+    background-color: var(--pg-bg-1, var(--bs-bg-1));
+    border: var(--pg-border-width, 1px) solid var(--pg-border-color, var(--bs-border-color));
+    border-radius: var(--pg-radius, .375rem);
+  }
+
+  [data-vc=calendar] [data-vc-time=keeping]:hover {
+    background-color: var(--pg-bg-2, var(--bs-bg-2));
+  }
+
+  [data-vc=calendar] [data-vc-time=ranges] {
+    display: grid;
+    gap: .25rem;
+  }
+
+  [data-vc=calendar] [data-vc-time-range] input {
+    display: block;
+    width: 100%;
+    margin: 0;
+    cursor: pointer;
+    accent-color: var(--pg-primary, var(--bs-primary-bg));
+  }
+
+  [data-vc=calendar] .pg-vc-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: .75rem;
+  }
+}

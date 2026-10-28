@@ -2562,6 +2562,7 @@
     "Sustainability": "Sürdürülebilirlik",
     "Swim school offers free lessons for beginners in December": "Yüzme okulu aralıkta yeni başlayanlara ücretsiz ders veriyor",
     "Switch": "Anahtar",
+    "Switch AM/PM": "ÖÖ/ÖS değiştir",
     "Switch the account on and let it bring orders in before registering a webhook. Deliveries are refused until then.": "Webhook kaydetmeden önce hesabı açın ve siparişleri içeri almasını sağlayın. O zamana kadar gönderimler reddedilir.",
     "Switch the theme": "Tema değiştir",
     "Switched on but hidden until their settings are complete: {var:1}": "Açık ama ayarları tamamlanana kadar gizli: {var:1}",

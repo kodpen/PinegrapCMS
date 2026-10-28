@@ -18,7 +18,7 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 - Listen with `pgFields.onChange(el, fn)` or jQuery `.on('change')`: on a select2 (a `data-pg-source` field on a page without Bootstrap 6) a pick is announced only through jQuery, so a bare `addEventListener('change')` misses it there.
 
 ## What is the engine today?
-- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), server search for `data-pg-source` included (#2362). Date, date and time, time: `v6`, the calendar of `pg_datetime.js` on vanilla-calendar-pro and `<input type="time">` (`pg-datepicker.md`).
+- Chips: `v6`, Bootstrap 6 Chips (`pg-chips.md`). Combobox: `v6`, Bootstrap 6 Combobox (`pg-combobox.md`), server search for `data-pg-source` included (#2362). Date, date and time, time: `v6`, the calendar of `pg_datetime.js` on vanilla-calendar-pro, the time row in its popup (`pg-datepicker.md`).
 - `v5`: only select2 for a `data-pg-source` combobox on a page without Bootstrap 6 (theme bootstrap-5, `dropdownParent` from `pgUI.overlayHost()`). A field whose library is not on the screen stays a plain field.
 - Both files are served as written (no twin, no bundle). Tested under Node by `tests/pg_fields_test.php`.
 

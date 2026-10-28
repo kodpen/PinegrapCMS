@@ -265,20 +265,50 @@ function makePgUI(calls, late) {
 // vanilla-calendar-pro stand-in: new Calendar(target, opts) records its
 // options; init() binds the library's own arrow-key listener on an input
 // (recorded as vcp-key), set() and destroy() are recorded, destroy() puts a
-// copy of the input in its place as the library does; pick(iso) clicks a day.
+// copy of the input in its place as the library does. open() draws the
+// popup as the library does on a click (onInit, then onShow); pick(iso)
+// clicks a day, setTime('08:15') moves the time row, done() clicks our
+// Done button.
 function makeCalendarLibrary(calls) {
     function Calendar(target, opts) {
-        var self = this, id = target.attributes.id || target.className;
+        var self = this, id = target.attributes.id || target.className, popup = null;
         calls.push(['calendar', id, opts]);
         this.opts = opts;
         this.hidden = 0;
         this.context = { mainElement: target, selectedDates: (opts.selectedDates || []).slice() };
+        // The time row's parts, from 'hh:mm' or 'hh:mm AM' as the library reads them.
+        var readTime = function (text) {
+            var m = /^(\d{2}):(\d{2})(?: (AM|PM))?$/.exec(text || '');
+            if (m) { self.context.selectedHours = m[1]; self.context.selectedMinutes = m[2]; self.context.selectedKeeping = m[3] || null; }
+        };
+        readTime(opts.selectedTime);
         target.instance = this;
         this.init = function () {
             if (opts.inputMode) { target.addEventListener('keydown', function (e) { calls.push(['vcp-key', id, e.key]); }); }
-            if (opts.onInit) { opts.onInit(self); }
+            else if (opts.onInit) { opts.onInit(self); }
         };
-        this.set = function (o) { calls.push(['calendar-set', id, o]); if (o.selectedDates) { self.context.selectedDates = o.selectedDates.slice(); } };
+        this.open = function () {
+            if (!popup) {
+                popup = new FakeElement(target.ownerDocument, 'div', { 'data-vc': 'calendar' });
+                self.context.mainElement = popup;
+                if (opts.onInit) { opts.onInit(self); }
+            }
+            if (opts.onShow) { opts.onShow(self); }
+            return popup;
+        };
+        this.setTime = function (hhmm) {
+            var h = +hhmm.slice(0, 2), mm = hhmm.slice(3);
+            readTime(opts.selectionTimeMode === 24 ? hhmm : (('0' + ((h % 12) || 12)).slice(-2) + ':' + mm + ' ' + (h < 12 ? 'AM' : 'PM')));
+            opts.onChangeTime(self, {}, false);
+        };
+        this.done = function () {
+            popup.dispatchEvent({ type: 'click', target: { closest: function (sel) { return sel === '[data-pg-vc-done]' ? {} : null; } } });
+        };
+        this.set = function (o) {
+            calls.push(['calendar-set', id, o]);
+            if (o.selectedDates) { self.context.selectedDates = o.selectedDates.slice(); }
+            if (o.selectedTime) { readTime(o.selectedTime); }
+        };
         this.hide = function () { self.hidden++; if (opts.onHide) { opts.onHide(self); } };
         this.destroy = function () {
             calls.push(['calendar-destroy', id]);
@@ -324,6 +354,7 @@ function load(opts) {
     if (opts.firstDay !== undefined) { win.datetimepicker_options.firstDay = opts.firstDay; }
     if (opts.label) { doc.create('script', { 'data-pg-remove-label': opts.label, 'data-pg-search-label': 'Ara', 'data-pg-no-results-label': 'Sonuç bulunamadı', 'data-pg-locale-label': 'tr', 'data-pg-searching-label': 'Aranıyor…', 'data-pg-type-label': 'Aramak için yazın...' }); }
     if (opts.calendarSrc) { doc.create('script', { 'data-pg-calendar-src': opts.calendarSrc }); }
+    if (opts.calendar) { doc.create('script', { 'data-pg-calendar': JSON.stringify(opts.calendar) }); }
     new Function('window', 'document', PG_DATETIME_SOURCE)(win, doc);
     new Function('window', 'document', PG_FIELDS_SOURCE)(win, doc);
     return { win: win, doc: doc, calls: calls };
@@ -572,33 +603,68 @@ function main() {
         calls: dp.calls.map(function (c) { return c[0] + ':' + c[1] + ':' + JSON.stringify(c[2] ? c[2].selectedDates : null); }),
         value: q('d').value
     };
-    var dt = q('dt'), group = dt.nextSibling, datePart = group.children[0], timePart = group.children[1];
+    // Date and time: one box after the hidden field, in the site's order and
+    // clock (12 hours here), the time row under the dates and our Done; the
+    // hidden field keeps the 12-hour text the server reads.
+    var dt = q('dt'), box = dt.nextSibling, dtOpts = box.instance.opts, dtLayout = dtOpts.layouts['default'];
     out.dp_datetime = {
         native: dt.className,
-        group: group.className,
-        parts: [datePart.className, datePart.value, timePart.type, timePart.className, timePart.value],
-        named: [datePart.getAttribute('aria-labelledby'), timePart.getAttribute('aria-labelledby')]
+        box: [box.tagName, box.type, box.className, box.value, box.getAttribute('aria-labelledby')],
+        options: [dtOpts.selectionTimeMode, dtOpts.selectedTime, dtOpts.selectedDates, dtLayout.indexOf('<#ControlTime />') > dtLayout.indexOf('<#Dates />'), dtLayout.indexOf('data-pg-vc-done') > 0]
     };
-    timePart.value = '08:15';
-    timePart.dispatchEvent({ type: 'change' });
-    datePart.instance.pick('2026-10-03');
-    datePart.value = '';
-    datePart.dispatchEvent({ type: 'change' });
+    box.instance.open();
+    box.instance.setTime('08:15');
+    box.instance.pick('2026-10-03');
+    out.dp_datetime.after_pick = [box.value, box.instance.hidden];
+    box.instance.done();
+    out.dp_datetime.after_done = box.instance.hidden;
+    dp.calls.length = 0;
+    box.value = '7/4/2026 17:30';
+    box.dispatchEvent({ type: 'change' });
+    box.value = 'x';
+    box.dispatchEvent({ type: 'change' });
+    box.value = '';
+    box.dispatchEvent({ type: 'change' });
+    // A time moved before any date waits for the date.
+    box.instance.setTime('10:00');
+    out.dp_datetime.typed = dp.calls.map(function (c) { return c[0] + ':' + JSON.stringify(c[2]); });
     dp.win.pgDateTimeField.set(dt, '2027-01-02 23:45');
     out.dp_datetime.heard = dtHeard;
-    out.dp_datetime.set = [dt.value, group.children[0].value, group.children[1].value];
-    var t = q('t'), tPart = t.nextSibling;
-    out.dp_time = { native: [t.className, t.getAttribute('tabindex')], part: [tPart.type, tPart.className, tPart.value] };
-    tPart.value = '17:05';
-    tPart.dispatchEvent({ type: 'change' });
-    tPart.value = '';
-    tPart.dispatchEvent({ type: 'change' });
+    out.dp_datetime.set = [dt.value, box.value];
+    // Time only: the same box with the time row alone.
+    var t = q('t'), tBox = t.nextSibling, tOpts = tBox.instance.opts;
+    out.dp_time = {
+        native: [t.className, t.getAttribute('tabindex')],
+        box: [tBox.className, tBox.value],
+        options: [tOpts.selectionTimeMode, tOpts.selectedTime, tOpts.layouts['default'].indexOf('<#ControlTime />'), tOpts.layouts['default'].indexOf('<#Dates />')],
+        dressed: tBox.instance.open().className
+    };
+    tBox.instance.setTime('17:05');
+    tBox.value = '9';
+    tBox.dispatchEvent({ type: 'change' });
+    tBox.value = '';
+    tBox.dispatchEvent({ type: 'change' });
     dp.win.pgDateTimeField.set(t, '09:00');
     out.dp_time.heard = tHeard;
-    out.dp_time.set = [t.value, tPart.value];
+    out.dp_time.set = [t.value, tBox.value];
     dp.win.pgFields.destroy(t);
     dp.win.pgFields.destroy(dt);
-    out.dp_destroy = { t: [t.className, t.getAttribute('tabindex'), t.nextSibling === tPart], dt: [dt.className, dt.nextSibling === group, dt.value] };
+    out.dp_destroy = { t: [t.className, t.getAttribute('tabindex'), t.nextSibling === tBox], dt: [dt.className, dt.nextSibling === box, dt.value] };
+
+    // The 24-hour clock: the box and the time row in 24 hours, the words
+    // from the tag; the hidden field still gets the 12-hour text.
+    var h24 = load({ format: 'm/d/yy', calendar: { timeMode: 24, done: 'Bitti', labels: { application: 'Takvim', navigation: 'Takvim gezinmesi' } }, fields: [
+        ['input', { id: 'dt24', 'data-pg-datetime': '', value: '10/26/2026 5:00 PM' }],
+        ['input', { id: 't24', 'data-pg-time': '', value: '5:30 PM' }]
+    ] });
+    h24.win.pgFields.init();
+    var dt24 = h24.doc.querySelector('#dt24'), box24 = dt24.nextSibling, o24 = box24.instance.opts;
+    out.dp_24 = {
+        box: [box24.value, h24.doc.querySelector('#t24').nextSibling.value],
+        options: [o24.selectionTimeMode, o24.selectedTime, o24.labels.application, o24.layouts['default'].indexOf('>Bitti</button>') > 0, o24.layouts['default'].indexOf('aria-label="Takvim gezinmesi"') > 0]
+    };
+    box24.instance.setTime('08:05');
+    out.dp_24.after = [dt24.value, box24.value];
     var wrap = drawerField.nextSibling;
     out.dp_drawer = { wrap: wrap.className, popup: wrap.children[0].instance.opts.inputMode };
     wrap.children[0].instance.pick('2027-02-09');
@@ -781,9 +847,9 @@ function test_pg_fields_hooks_drawn_by_their_engine()
 	pg_assert_same(array('v6', 'v6', 'v6', 'v6'), $r['engine'], 'every kind on Bootstrap 6, a server-searched combobox too');
 	pg_assert_same(array('v5', 'v6'), $r['engine_site'], 'a site page without Bootstrap 6 keeps select2 for a server-searched combobox');
 	pg_assert_same(
-		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'calendar:day', 'calendar:form-control pg-datetime-date'),
+		array('chips:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips pg-chips-sm', 'combobox:form-control combobox-toggle pg-combobox', 'calendar:day', 'calendar:form-control pg-datetime-box', 'calendar:form-control pg-time-box'),
 		$r['init_calls'],
-		'each hook once (a time field has no calendar), the plain field untouched, a second init() draws nothing'
+		'each hook once, a time field on the calendar too, the plain field untouched, a second init() draws nothing'
 	);
 	pg_assert_same('bootstrap-5', $r['select2_theme'], 'on a site page a server-searched combobox is a select2 as before');
 	pg_assert_same(array('en', 0, true, array('2026-10-26'), false, 9, 2026, 'system'), $r['date_options'], 'no language on the tag: English, Sunday first; a popup on the stored date parsed by us, its month shown; a second click keeps the day; the system theme outside a data-bs-theme');
@@ -801,7 +867,7 @@ function test_pg_fields_switch_kind_and_destroy()
 	}
 
 	pg_assert_same(
-		array('calendar-destroy:form-control pg-datetime-date', 'calendar:start', 'calendar-destroy:start', 'calendar:form-control pg-datetime-date', 'calendar:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
+		array('calendar-destroy:form-control pg-datetime-box', 'calendar:start', 'calendar-destroy:start', 'calendar:form-control pg-datetime-box', 'calendar:plain', 'combobox-dispose:form-control combobox-toggle pg-combobox'),
 		$r['switch_kind']['calls'],
 		'the old widget destroyed, the new one drawn, the same kind again a no-op'
 	);
@@ -970,7 +1036,7 @@ function test_pg_fields_dates_on_the_calendar_control()
 
 	pg_assert_same(
 		array(
-			'calls' => array('calendar:d', 'calendar:form-control pg-datetime-date form-control-sm', 'calendar:'),
+			'calls' => array('calendar:d', 'calendar:form-control pg-datetime-box form-control-sm', 'calendar:form-control pg-time-box', 'calendar:'),
 			'options' => array('tr', 1, true, array('2026-03-05'), 2, 2026, 'dark', '[data-bs-theme]'),
 			'value' => '5/3/2026',
 		),
@@ -987,24 +1053,41 @@ function test_pg_fields_dates_on_the_calendar_control()
 	pg_assert_same(
 		array(
 			'native' => 'form-control form-control-sm pg-field-native',
-			'group' => 'pg-datetime',
-			'parts' => array('form-control pg-datetime-date form-control-sm', '26/10/2026', 'time', 'form-control pg-time form-control-sm', '17:00'),
-			'named' => array('dt_label', 'dt_label'),
-			'heard' => array('26/10/2026 8:15 AM', '3/10/2026 8:15 AM', '', '2/1/2027 11:45 PM'),
-			'set' => array('2/1/2027 11:45 PM', '2/1/2027', '23:45'),
+			'box' => array('INPUT', 'text', 'form-control pg-datetime-box form-control-sm', '26/10/2026 5:00 PM', 'dt_label'),
+			'options' => array(12, '05:00 PM', array('2026-10-26'), true, true),
+			'after_pick' => array('3/10/2026 8:15 AM', 0),
+			'after_done' => 1,
+			'typed' => array(
+				'calendar-set:{"selectedDates":["2026-04-07"],"selectedYear":2026,"selectedMonth":3,"selectedTime":"05:30 PM"}',
+				'calendar-set:{"selectedDates":[],"selectedTime":"12:00 AM"}',
+				'calendar-set:{"selectedDates":[],"selectedTime":"12:00 AM"}',
+			),
+			'heard' => array('26/10/2026 8:15 AM', '3/10/2026 8:15 AM', '7/4/2026 5:30 PM', 'x', '', '2/1/2027 11:45 PM'),
+			'set' => array('2/1/2027 11:45 PM', '2/1/2027 11:45 PM'),
 		),
 		$r['dp_datetime'],
-		'date and time composed into the hidden field in the text the server reads; an empty date empties it'
+		'date and time in one box named by the label; the time row under the dates with the hour zero-padded; a date keeps the popup open, Done closes it; the hidden field gets the 12-hour text, typed text as typed, an empty box empties it, a time before any date waits'
 	);
 	pg_assert_same(
 		array(
 			'native' => array('pg-field-native', '-1'),
-			'part' => array('time', 'form-control pg-time', '17:30'),
-			'heard' => array('5:05 PM', '', '9:00 AM'),
-			'set' => array('9:00 AM', '09:00'),
+			'box' => array('form-control pg-time-box', '5:30 PM'),
+			'options' => array(12, '05:30 PM', 0, -1),
+			'dressed' => 'pg-vc-time-only',
+			'heard' => array('5:05 PM', '9', '', '9:00 AM'),
+			'set' => array('9:00 AM', '9:00 AM'),
 		),
 		$r['dp_time'],
-		'time only: an <input type="time"> writing h:mm AM into the hidden field'
+		'time only: the same box with the time row alone, writing h:mm AM into the hidden field'
+	);
+	pg_assert_same(
+		array(
+			'box' => array('10/26/2026 17:00', '17:30'),
+			'options' => array(24, '17:00', 'Takvim', true, true),
+			'after' => array('10/26/2026 8:05 AM', '10/26/2026 08:05'),
+		),
+		$r['dp_24'],
+		'with the 24-hour clock the box and the time row show 24 hours, the words come from the tag, the hidden field keeps the 12-hour text'
 	);
 	pg_assert_same(
 		array('t' => array('', '3', false), 'dt' => array('form-control form-control-sm', false, '2/1/2027 11:45 PM'), 'd' => array(true, 'tomorrow')),
