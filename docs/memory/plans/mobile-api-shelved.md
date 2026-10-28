@@ -29,7 +29,7 @@ description: Team-device API work for the closed-source Pinegrap Mobile app (res
 
 ## How were the open questions answered? (owner, 2026-10-24)
 1. Which app: one Kodpen store app for every site (not a PWA, not branded per customer).
-2. Sign-in: a Team devices session (`/auth/login`) and QR pairing (#1640), no OAuth in the browser.
+2. Sign-in: a Team devices session (`/auth/login`) and QR pairing (#1640; its `api_device_pairings` table approved in #2470, `workflow/decisions-made-schema.md`), no OAuth in the browser.
 3. Native push: a Kodpen broker; the push shape (M7) is handed to this repository as an issue.
 4. Broker access for free and licensed sites: still open in the app repository.
 - Questions 5–12 concern Claude in channels: docs/memory/plans/claude-code-channel.md

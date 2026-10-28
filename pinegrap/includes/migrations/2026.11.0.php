@@ -67,6 +67,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_note_revision(); // 11.0.84
 	upgrade_2026_11_0_workspace_note_deletions(); // 11.0.85
 	upgrade_2026_11_0_workspace_note_sources(); // 11.0.86
+	upgrade_2026_11_0_workspace_app_commands(); // 11.0.87
 	upgrade_2026_11_0_marketplace_columns();    // 11.0.37
 	upgrade_2026_11_0_audit_feed_tokens();      // 11.0.38
 	upgrade_2026_11_0_erp_efatura_threshold();  // 11.0.61
@@ -81,6 +82,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_paypal_checkout();        // 11.0.50
 	upgrade_2026_11_0_max_image_preview();      // 11.0.51
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 
@@ -1811,6 +1813,35 @@ function upgrade_2026_11_0_workspace_note_sources() {
 
 }
 
+// The / commands an application registers for itself (2026.11.0, 11.0.87;
+// includes/workspace/app_commands.php).
+//
+// One row a command: the application that registered it, its name (one word
+// of letters, Turkish lower case, without the slash), what it does and the
+// arguments after the name as /help shows them. A name is the site's: UNIQUE
+// lets the database refuse a second application the name the first one
+// holds, even when both register at once. Deleting the application deletes
+// its commands; renaming it keeps them. usage_text, since USAGE is a
+// reserved word.
+function upgrade_2026_11_0_workspace_app_commands() {
+
+	install_create_table('ws_app_commands', "CREATE TABLE ws_app_commands (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		app_id INT UNSIGNED NOT NULL DEFAULT 0,
+		name VARCHAR(20) NOT NULL DEFAULT '',
+		description VARCHAR(200) NOT NULL DEFAULT '',
+		usage_text VARCHAR(200) NOT NULL DEFAULT '',
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_name (name),
+		KEY idx_app (app_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: connected applications can add their own / commands to the channels.');
+
+}
+
 // Workspace flows (2026.11.0, 11.0.80; includes/workspace/flows.php).
 //
 // A flow is a graph of boxes and arrows drawn on the Workspace canvas: a
@@ -2636,4 +2667,43 @@ function upgrade_2026_11_0_max_image_preview() {
 
 	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings, SEO, Site Map and Crawling. It stays off on this site until switched on.');
 
+}
+
+// The PayPal Checkout payment driver on the Orders v2 API (2026.11.0, 11.0.50;
+// includes/payments/paypal.php).
+//
+// orders.payment_method is an ENUM and the connection runs without strict
+// mode, so a method outside the list is stored as '': an order paid with the
+// driver would lose its method, and with it its refund through the driver.
+// 'PayPal Checkout' is appended to the list the column already has, as 4.48
+// appended 'Pay With Iyzico'; 'PayPal Express Checkout' stays the classic
+// code. Nullability and default are copied from the column as it is. The
+// driver keeps its keys in connect_apps, so no other column is needed.
+function upgrade_2026_11_0_paypal_checkout() {
+
+	$column = install_column_info('orders', 'payment_method');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('orders.payment_method does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'PayPal Checkout'") !== false) {
+
+		install_skipped(lang('orders.payment_method already knows about PayPal Checkout'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('orders', 'payment_method',
+			"ENUM(" . $enum_match[1] . ",'PayPal Checkout') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('orders.payment_method is not an ENUM, skipped'));
+
+	}
+
+	install_note('PayPal can now take payments on its Checkout (Orders v2) API: the visitor approves the payment on PayPal\'s page and the store takes it on the way back. Turn on "PayPal Checkout" in the Ecommerce settings with the REST app\'s client ID and secret; "PayPal Express Checkout" keeps working as before.');
 }

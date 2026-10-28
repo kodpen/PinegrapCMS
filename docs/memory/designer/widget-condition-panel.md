@@ -17,7 +17,7 @@ description: The Bind Data row "Show only when a value…" (#1665): token, opera
 - No list name holds TOKEN: `tools/check_bindings.php` reads `SW_*TOKEN*` arrays as palettes, and the refused tokens would count as offered.
 
 ## Why can a required form control not be hidden?
-- Owner decision (2026-10-25): the server still asks for a required control's value, so a form whose required control a condition cut could never be sent. The panel offers no condition on an element that is or holds a control with a `required` attribute (`_sdCondHoldsRequired()`); the renderer ignores one set by hand or by a template (`pg_sw_cond_holds_required()` in `_render_tree_node()`), and the panel says so.
+- Owner decision (2026-10-25): the server still asks for a required control's value, so a form whose required control a condition cut could never be sent. The panel offers no condition on an element that is or holds a control with a `required` attribute (`_sdCondHoldsRequired()`); the renderer ignores one set by hand or by a template (`pg_sw_cond_holds_required()` in `_render_tree_node()`), and the panel says so. A `required="{{token}}"` is the row's to decide and does not count ([[widget-default-parts-cart-form]]).
 
 ## Is the compared text translated?
 - Yes, owner decision (2026-10-25): the value it is compared with is drawn in the page's language (form records through `translate_records`), so a compared text with words is a translatable field `_cond:show_if` (`pg_sw_cond_operand_is_words()`: eq, neq, contains, not_contains, starts; not a number or an amount). The renderer reads it in the page's language before it reads the condition (`pg_tr_condition_props()`). The Translate section lists it as "Condition: compared with" ([[designer-content-translation]]).

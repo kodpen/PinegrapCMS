@@ -9062,6 +9062,7 @@ function get_tables() {
 		'ws_note_versions',
 		'ws_note_deletions',
 		'ws_note_sources',
+		'ws_app_commands',
 		'ws_file_edits',
 		'ws_message_hides',
 		'ws_scheduled_actions',

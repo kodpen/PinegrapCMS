@@ -123,7 +123,7 @@ function db_q_commerce_tail_test_calls($path)
 function db_q_commerce_tail_test_files()
 {
 	return array(
-		'add_tax_zone.php' => 3,
+		'add_tax_zone.php' => 1,
 		'edit_referral_source.php' => 3,
 		'add_referral_source.php' => 1,
 		'view_referral_sources.php' => 0,
