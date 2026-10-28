@@ -14,3 +14,4 @@ description: Incoming e-mail slice G1 (core) cut into G1a-G1d of about 1,000 pro
 
 ## Where does it stand?
 - G1a: #2586.
+- G1b: schema step 11.0.82 and the parser's `require_once` written (`workspace/mail-tables.md`); waits on the architect's approval of the tables.

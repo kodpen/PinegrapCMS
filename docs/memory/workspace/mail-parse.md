@@ -6,7 +6,7 @@ module: mail_parse
 
 ## What does it do?
 - `pg_mail_parse($raw, $options)` in `includes/fn/mail_parse.php` turns a raw RFC 5322 message into decoded headers (`headers[name][]`), `subject`, `from` / `to` / `cc` / `reply_to` (`email`, `name`), `message_id`, `in_reply_to`, `references` (IDs without brackets), `date` (Unix time, 0 unknown), `text` and `html` in UTF-8, `attachments` and `errors`. Pure functions; tests in `tests/mail_parse_test.php`.
-- Not loaded by `functions.php` yet: the tests and later callers `require_once` it; G1b adds its manifest line (`plans/incoming-email-g1-slices.md`).
+- Loaded by `functions.php` since G1b (`mail-tables.md`); the tests `require_once` it.
 - The outgoing path (`mail.php`, PHPMailer) is separate; nothing is shared.
 
 ## How are parts sorted?

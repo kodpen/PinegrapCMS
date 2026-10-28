@@ -13,10 +13,7 @@ description: Design of the not-started incoming e-mail feature: ingest flow, ws_
 6. Notify channel and assignee; Workspace event "E-mail received".
 
 ## Which tables? (G1)
-- `ws_mail_boxes`: name, address, `transport` (imap | graph | gmail | push), `settings` (server, port, user; secret sealed with `pg_connect_seal()`), folder, `after_fetch` (seen | move), channel, `reply_via` (box | site | connection), `uidvalidity`, `last_uid`, last checked / ok / error.
-- `ws_mail_conversations`: box, channel, card message, thread, subject, customer e-mail / name, `contact_id`, status, assignee, first in / first reply / last in / last out / closed (status columns now, so G5 needs no step).
-- `ws_mail_items`, every mail in and out: direction, `rfc_message_id` (unique per box), `in_reply_to`, `references`, from, to / cc, subject, `body_text` MEDIUMTEXT, `auth` (pass | fail | none), raw path, refused files.
-- `ws_messages.sender_kind` gains `'mail'` (enum widening as done for guests in 2026.4.5).
+- `ws_mail_boxes`, `ws_mail_conversations`, `ws_mail_items`, and `ws_messages.sender_kind` gains `'mail'`: columns in docs/memory/workspace/mail-tables.md (step 11.0.82).
 
 ## How is it shown and routed?
 - Card: sender, "E-mail" or "Sender not verified" badge, subject, cleaned text ("Show all" past 4000 characters), attachments, status, "Reply by e-mail". HTML never rendered, remote images never loaded.
