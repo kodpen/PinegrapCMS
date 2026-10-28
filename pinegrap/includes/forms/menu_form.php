@@ -18,6 +18,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/tag_name_rule.php');
+
 /**
  * The Menu Options card: name, submenu effect with its pop-up positions,
  * the menu classes and the active item classes.
@@ -125,32 +127,6 @@ function pg_menu_form_class_field($liveform, $name, $label, $prefix, $help)
 }
 
 /**
- * Why a menu name breaks the name rule, or '' when it does not. A new name
- * takes letters, numbers and dashes; underscores stay allowed only for a
- * menu whose stored name already has one, because the theme designer does
- * not support them and renaming would break its styles.
- *
- * @param string $name
- * @param string|null $previous_name  Stored name on edit, null on create
- * @return string
- */
-function pg_menu_form_name_error($name, $previous_name)
-{
-    if ($previous_name === null) {
-        $regex = '/[^A-Za-z0-9-]/';
-        $message = lang('Please only enter letters, numbers, and dashes for the name.');
-    } elseif (mb_strpos($previous_name, '_') !== false) {
-        $regex = '/[^A-Za-z0-9_-]/';
-        $message = lang('Please only enter letters, numbers, dashes, and underscores for the name.');
-    } else {
-        $regex = '/[^A-Za-z0-9-]/';
-        $message = lang('Please only enter letters, numbers, or dashes for the name.');
-    }
-
-    return (preg_match($regex, (string) $name) == 1) ? $message : '';
-}
-
-/**
  * Checks the posted name: required, the name rule, not used by another
  * menu. Errors are marked on the form.
  *
@@ -170,7 +146,7 @@ function pg_menu_form_validate_name($liveform, $id)
             $previous_name = (string) ($row['name'] ?? '');
         }
 
-        $error = pg_menu_form_name_error($liveform->get_field_value('name'), $previous_name);
+        $error = pg_tag_name_error($liveform->get_field_value('name'), $previous_name);
 
         if ($error !== '') {
             $liveform->mark_error('name', $error);

@@ -142,7 +142,7 @@ function db_q_pages_regions_test_files()
 		'edit_javascript.php' => 2,
 		'view_system_style_source.php' => 1,
 		'generate_system_theme_css.php' => 1,
-		'add_ad_region.php' => 2,
+		'add_ad_region.php' => 1,
 		'add_ad.php' => 2,
 		'add_dynamic_region.php' => 1,
 		'add_designer_region.php' => 1,
