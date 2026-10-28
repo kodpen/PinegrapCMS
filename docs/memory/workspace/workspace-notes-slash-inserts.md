@@ -8,7 +8,7 @@ description: "/" in a note's writing box lists the box's own inserts (lists, quo
 - `slashInserts(before, blocked, labels)` (assets/js/workspace_editor.js, pure): a "/" at a line's start, after a space or a chip; never in a word (`and/or`, `/var/www`), inside code, a link or a card (`blocked`), nor while a word is composed (IME). `Editor.slashCheck()` runs it on every input.
 
 ## What does it list?
-- `SLASH`: bullets, numbers, quote, checklist, table, calc, codeblock, highlight, with their `TOOLS` icons and `tool_*` labels (shortcut cut off). No heading or `---`: the server draws neither (plan question 1).
+- `SLASH`: bullets, numbers, quote, checklist, table, calc, codeblock, highlight, with their `TOOLS` icons and `tool_*` labels (shortcut cut off). No heading or `---`: they have the note row's tools and "# " autoformat (workspace-text-headings.md).
 - Filter: a word of the label or the tool's name begins with the typed word, in plain or Turkish lower case ("/tab" → Table, "/işa" → İşaretle). Nothing matching closes the list.
 
 ## Keys and undo?

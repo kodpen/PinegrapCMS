@@ -638,7 +638,7 @@ function test_record_files_calls_only_its_contract()
 			$calls[strtolower($tokens[$i][1])] = true;
 		}
 	}
-	$allowed = array('escape', 'check_view_access', 'pg_auth_column_exists', 'initialize_timezone');
+	$allowed = array('escape', 'check_view_access', 'get_access_control_type', 'pg_auth_column_exists', 'initialize_timezone');
 	$foreign = array();
 	foreach (array_keys($calls) as $name) {
 		if (isset($own[$name]) || in_array($name, $allowed, true)) {
@@ -692,4 +692,152 @@ function test_record_files_get_file_call_site()
 
 	pg_assert_same(1, substr_count($source, 'pg_record_file_designed_access('));
 	pg_assert_same(0, preg_match('/^\s*(require|include)(_once)?\b[^;\n]*functions\.php/m', $source), 'get_file.php does not load functions.php');
+}
+
+// -- the media field, and a visitor who is not signed in -------------------------
+
+// The form's RSS media field counts as printed by every public view of the
+// record: the decision reads that from the facts, and the rest of the rule
+// (a public widget, an open page, the filters) still holds.
+function test_record_files_media_field_counts_as_shown()
+{
+	$tree = array('type' => 'div', 'children' => array(
+		array('type' => 'heading', 'props' => array('_bindings' => array('text' => 'title'))),
+	));
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree))), 'not printed');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => false))), 'not the media field');
+	pg_assert_true(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true))), 'the media field');
+	pg_assert_true(pg_record_file_view_grants(_record_files_facts(array('tree' => '', 'media' => true))), 'no tree needed');
+
+	$list = array('regionType' => 'form_list_view', 'custom_form_page_id' => 12, 'detail_page_id' => 7);
+	pg_assert_true(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'cfg' => $list))), 'a public list');
+
+	$private = array('regionType' => 'form_item_view', 'custom_form_page_id' => 12, 'access_control' => 'logged_in');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'cfg' => $private))), 'a private view');
+	$viewer = array('regionType' => 'form_list_view', 'custom_form_page_id' => 12, 'viewer_filter' => 1);
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'cfg' => $viewer))), 'a viewer filtered list');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'filters' => 'fail'))), 'a filtered-out record');
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'pages' => array()))), 'on no page');
+	$closed = array('binned' => false, 'draft' => false, 'viewable' => false);
+	pg_assert_false(pg_record_file_view_grants(_record_files_facts(array('tree' => $tree, 'media' => true, 'pages' => array($closed)))), 'on a closed page');
+}
+
+// The classic layout rule: the field's ^^variable^^ in the layout, without
+// case, the name quoted; or the field being the media field.
+function test_record_files_layout_prints()
+{
+	pg_assert_true(pg_record_file_layout_prints('<img src="{path}^^cover^^">', 'cover'));
+	pg_assert_true(pg_record_file_layout_prints('^^Cover^^', 'cover'), 'without case');
+	pg_assert_false(pg_record_file_layout_prints('^^cover_photo^^ ^^title^^', 'cover'), 'another field');
+	pg_assert_true(pg_record_file_layout_prints('^^a.b^^', 'a.b'), 'the name quoted');
+	pg_assert_false(pg_record_file_layout_prints('^^axb^^', 'a.b'), 'the name quoted');
+	pg_assert_false(pg_record_file_layout_prints('^^^^', ''), 'no name');
+	pg_assert_true(pg_record_file_layout_prints('^^title^^', 'cover', true), 'the media field');
+	pg_assert_true(pg_record_file_layout_prints('', 'cover', true), 'the media field in an empty layout');
+	pg_assert_false(pg_record_file_layout_prints('', 'cover', false));
+}
+
+// Whether a classic list view, or the item view it names, shows the file to
+// a visitor who is not signed in: the rule of get_file.php for such a
+// visitor over the view's facts.
+function test_record_files_classic_view_shows()
+{
+	$list = array('layout' => '<h1>^^title^^</h1><img src="^^cover^^">', 'folder_public' => true, 'viewer_filter' => 0, 'item' => null);
+	pg_assert_true(pg_record_file_classic_view_shows($list, 'cover'), 'a public list printing the field');
+	pg_assert_false(pg_record_file_classic_view_shows($list, 'photo'), 'not printed, no item view');
+	pg_assert_true(pg_record_file_classic_view_shows($list, 'photo', true), 'the media field');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($list, array('folder_public' => false)), 'cover'), 'a folder that is not public');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($list, array('viewer_filter' => 1)), 'cover'), 'a viewer filter needs a signed-in visitor');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($list, array('viewer_filter' => '1')), 'cover', true), 'the media field too');
+	pg_assert_false(pg_record_file_classic_view_shows(null, 'cover'));
+	pg_assert_false(pg_record_file_classic_view_shows(array(), 'cover'));
+
+	$item = array('layout' => '<img src="^^cover^^">', 'folder_public' => true, 'submitter_security' => 0);
+	$named = array_merge($list, array('layout' => '^^title^^', 'item' => $item));
+	pg_assert_true(pg_record_file_classic_view_shows($named, 'cover'), 'the item view printing the field');
+	pg_assert_true(pg_record_file_classic_view_shows(array_merge($named, array('item' => array_merge($item, array('layout' => '')))), 'cover', true), 'the media field on the item view');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($named, array('item' => array_merge($item, array('layout' => '^^title^^')))), 'cover'), 'the item view not printing it');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($named, array('item' => array_merge($item, array('folder_public' => false)))), 'cover'), 'the item view in a folder that is not public');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($named, array('item' => array_merge($item, array('submitter_security' => 1)))), 'cover'), 'submitter security needs a signed-in visitor');
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($named, array('folder_public' => false, 'item' => array_merge($item, array('submitter_security' => '1')))), 'cover', true), 'the media field too');
+
+	// As in get_file.php: a list that prints the field in a public folder
+	// decides by its viewer filter and never falls back to its item view; a
+	// list that does not print it, or sits in a closed folder, does.
+	pg_assert_false(pg_record_file_classic_view_shows(array_merge($list, array('viewer_filter' => 1, 'item' => $item)), 'cover'), 'no fallback past the viewer filter');
+	pg_assert_true(pg_record_file_classic_view_shows(array_merge($list, array('folder_public' => false, 'item' => $item)), 'cover'), 'a closed list, an open item view');
+	pg_assert_true(pg_record_file_classic_view_shows(array_merge($list, array('layout' => '', 'item' => $item)), 'cover'), 'a list not printing it, an open item view');
+}
+
+// The media rule sits in both layout checks of get_file.php, with the same
+// variable pattern the copy uses, and the field is read with its RSS role
+// on both sides; the anonymous rule reads the rows get_file.php reads.
+function test_record_files_classic_rule_matches_get_file()
+{
+	$get_file = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_file.php');
+	$copy     = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+
+	pg_assert_contains("form_fields.rss_field AS attachment_field_rss_field", $get_file);
+	pg_assert_contains("\$attachment_field_media = ((string) \$submitted_form['attachment_field_rss_field'] === 'media');", $get_file);
+	$pattern = "(\$attachment_field_media || (preg_match('/\^\^' . preg_quote(\$submitted_form['attachment_field_name'], '/') . '\^\^/i', ";
+	pg_assert_same(2, substr_count($get_file, $pattern), 'the list view and the item view layout checks');
+	pg_assert_same(2, substr_count($get_file, "preg_match('/\^\^' . preg_quote(\$submitted_form['attachment_field_name'], '/') . '\^\^/i', "), 'no other layout check');
+	$media = strpos($get_file, '$attachment_field_media = ');
+	$loop  = strpos($get_file, 'foreach ($form_list_views as $form_list_view) {');
+	pg_assert_true($media !== false && $loop !== false && $media < $loop, 'read before the loop');
+
+	pg_assert_contains("preg_match('/\^\^' . preg_quote(\$field_name, '/') . '\^\^/i', (string)\$layout) === 1", $copy);
+	pg_assert_contains("WHERE (page.page_type = 'form list view')", $copy);
+	pg_assert_contains("AND (form_list_view_pages.custom_form_page_id = '", $copy);
+	pg_assert_contains("AND (form_item_view_pages.collection = 'a')", $copy);
+	pg_assert_contains("form_fields.rss_field", $copy);
+}
+
+// pg_record_file_designed_access() reads the field's RSS role with the
+// label, carries it to the decision, and skips the tree walk for the media
+// field; for a visitor who is not signed in the pages are judged by their
+// folder's own setting.
+function test_record_files_designed_access_carries_media()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+	$start  = strpos($source, 'function pg_record_file_designed_access(');
+	$body   = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+	pg_assert_contains('function pg_record_file_designed_access($custom_form_page_id, $form_id, $field_name, $anonymous = false)', $body);
+	pg_assert_contains('SELECT page.page_name, form_fields.label, form_fields.type, form_fields.office_use_only, form_fields.rss_field', $body);
+	pg_assert_contains("\$media = isset(\$form[0]['rss_field']) && (string)\$form[0]['rss_field'] === 'media';", $body);
+	pg_assert_contains("'media'          => \$media,", $body, 'the facts carry it to the decision');
+	pg_assert_contains('if (!$media) {', $body, 'no tree walk for the media field');
+	pg_assert_contains('pg_record_file_widget_pages(array_keys($rest), $page_ids, $anonymous)', $body);
+
+	$start = strpos($source, 'function pg_record_file_widget_pages(');
+	$body  = substr($source, $start, strpos($source, "\nfunction ", $start + 10) - $start);
+	pg_assert_contains('$anonymous ? pg_record_file_folder_public($folder) : (check_view_access($folder) == true)', $body);
+}
+
+// The answer for a visitor who is not signed in: the folder first, then
+// the attachment flag, a comment attachment refused, the record's classic
+// views, then the designed widgets. Without a database nothing can be read,
+// and a file that cannot be read stays closed, so the share image and the
+// feed fall back.
+function test_record_files_anonymous_access_fails_closed()
+{
+	_record_files_db_stub();
+	pg_assert_false(pg_record_file_anonymous_access(0));
+	pg_assert_false(pg_record_file_anonymous_access(301));
+	pg_assert_false(pg_record_file_classic_anonymous_access(12, 'cover', true));
+	pg_assert_false(pg_record_file_designed_access(12, 7, 'cover', true));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/record_files.php');
+	$start  = strpos($source, 'function pg_record_file_anonymous_access(');
+	$end    = strpos($source, "\nfunction ", $start + 10);
+	$body   = substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
+	$folder   = strpos($body, 'pg_record_file_folder_public(');
+	$flag     = strpos($body, "(int)\$file[0]['attachment'] !== 1");
+	$comment  = strpos($body, 'FROM comments');
+	$record   = strpos($body, 'FROM form_data');
+	$classic  = strpos($body, 'pg_record_file_classic_anonymous_access(');
+	$designed = strpos($body, 'pg_record_file_designed_access(');
+	pg_assert_true($folder !== false && $flag !== false && $comment !== false && $record !== false && $classic !== false && $designed !== false);
+	pg_assert_true($folder < $flag && $flag < $comment && $comment < $record && $record < $classic && $classic < $designed, 'in that order');
+	pg_assert_contains('pg_record_file_designed_access($form_page_id, $form_id, $field_name, true)', $body, 'for a visitor who is not signed in');
 }

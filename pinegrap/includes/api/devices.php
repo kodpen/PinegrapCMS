@@ -41,6 +41,8 @@ if (!defined('PG_INIT_LOADED')) {
 	exit;
 }
 
+require_once(dirname(__FILE__) . '/pairing.php');
+
 // How long each token lives, in seconds.
 function api_device_access_lifetime() {
 
@@ -688,6 +690,9 @@ function api_devices_revoke_user($user_id) {
 
 	$user_id = (int)$user_id;
 
+	// A code shown but not yet scanned would still open a new session.
+	api_pairings_forget_user($user_id);
+
 	if (($user_id < 1) || !api_devices_ready()) {
 
 		return;
@@ -706,6 +711,8 @@ function api_devices_revoke_user($user_id) {
 function api_devices_revoke_app($app_id) {
 
 	$app_id = (int)$app_id;
+
+	api_pairings_forget_app($app_id);
 
 	if (($app_id < 1) || !api_devices_ready()) {
 

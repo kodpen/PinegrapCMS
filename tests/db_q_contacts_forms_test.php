@@ -144,7 +144,7 @@ function db_q_contacts_forms_test_files()
 		'edit_theme_file.php' => 9,
 		'add_theme_file.php' => 5,
 		'edit_file.php' => 7,
-		'edit_custom_style.php' => 6,
+		'edit_custom_style.php' => 7,
 		'includes/panel/explorer.php' => 9,
 		'includes/forms/page_form.php' => 3,
 		'includes/forms/submitted_form_form.php' => 4,

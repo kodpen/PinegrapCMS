@@ -431,6 +431,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
         'pretty_urls' => 0, 'double_opt_in' => 0, 'collection' => 0,
+        'schema_type' => 'BlogPosting',
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
     // The 11.0.27 column is read once it is there.
@@ -443,7 +444,8 @@ function pg_cf_load_page_form_settings($page_id)
                 submitter_email, submitter_email_subject, submitter_email_format, submitter_email_page_id,
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
                 membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '')
-                . (pg_coll_ready() ? ', collection' : '') . "
+                . (pg_coll_ready() ? ', collection' : '')
+                . (pg_record_schema_type_setting_ready() ? ', schema_type' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -482,6 +484,9 @@ function pg_cf_load_page_form_settings($page_id)
         // A collection: its records are items other forms' records may
         // point at (includes/fn/collections.php).
         'collection'           => (isset($row['collection']) && (int)$row['collection'] === 1) ? 1 : 0,
+        // How the structured data of the record pages names them
+        // (includes/fn/seo.php); BlogPosting before the 11.0.55 column.
+        'schema_type'          => pg_record_schema_type($row['schema_type'] ?? ''),
     );
 }
 
@@ -837,6 +842,9 @@ function pg_cf_write_form_settings($page_id, $settings, $old_fields, $new_fields
     }
     if (array_key_exists('collection', $settings) && pg_coll_ready()) {
         $set['collection'] = !empty($settings['collection']) ? '1' : '0';
+    }
+    if (array_key_exists('schema_type', $settings) && pg_record_schema_type_setting_ready()) {
+        $set['schema_type'] = pg_record_schema_type($settings['schema_type']);
     }
     if (array_key_exists('double_opt_in', $settings) && pg_fs_ready()) {
         $set['double_opt_in'] = !empty($settings['double_opt_in']) ? '1' : '0';
@@ -2566,7 +2574,35 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
         $res['seeded'] = pg_cf_seed_sample_records($page_id, is_array($sample) ? $sample : (string)$sample, (int)$user_id);
     }
 
+    // A template's form may name its BlogPosting author (`schema_author`,
+    // 'field:<field name>' for a field). It is written once, into the form
+    // this save created; the form screen's Schema Author choice owns it
+    // after that, and the editor never sends the key again.
+    if (!$had_form && is_array($settings) && isset($settings['schema_author']) && pg_blogposting_author_setting_ready()) {
+        db("UPDATE custom_form_pages
+            SET schema_author = '" . e(pg_cf_template_schema_author($settings['schema_author'], $ids_by_name)) . "'
+            WHERE page_id = '$page_id' LIMIT 1");
+    }
+
     return $res;
+}
+
+/**
+ * The custom_form_pages.schema_author value a design template's form setting
+ * names: 'contact', 'organization' or 'field:<field name>', the name turned
+ * into the id of the form's field ($ids_by_name: lowercased name => id). A
+ * field the form does not have, or anything else, is the contact, the
+ * column's default (pg_blogposting_author_setting_value(), includes/fn/seo.php).
+ */
+function pg_cf_template_schema_author($wanted, $ids_by_name)
+{
+    $wanted = is_scalar($wanted) ? trim((string)$wanted) : '';
+    if (strpos($wanted, 'field:') === 0) {
+        $name = mb_strtolower(pg_cf_clean_field_name(substr($wanted, 6)), 'UTF-8');
+        $id   = (is_array($ids_by_name) && $name !== '' && isset($ids_by_name[$name])) ? (int)$ids_by_name[$name] : 0;
+        return pg_blogposting_author_setting_value('field', $id);
+    }
+    return pg_blogposting_author_setting_value($wanted, 0);
 }
 
 /**

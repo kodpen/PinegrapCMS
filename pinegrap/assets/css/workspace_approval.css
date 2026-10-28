@@ -7,6 +7,21 @@
  * team (workspace_approval.php).
  */
 
+/* Token layer: the --pg-* names this page's rules read. The approval page
+   does not load backend.src.css, whose token layer the panel uses, so the
+   names it needs are mapped to Bootstrap's variables here, in this one
+   block; the notes on that block hold for this one. */
+:root,
+[data-bs-theme] {
+  --pg-bg-1: var(--bs-bg-1);
+  --pg-bg-body: var(--bs-bg-body);
+  --pg-border-color: var(--bs-border-color);
+  --pg-danger: var(--bs-danger-base);
+  --pg-fg-2: var(--bs-fg-2);
+  --pg-fg-body: var(--bs-fg-body);
+  --pg-success: var(--bs-success-base);
+}
+
 body.pg-approval {
   min-height: 100vh;
   margin: 0;
@@ -18,7 +33,7 @@ body.pg-approval {
   max-width: 40rem;
   margin: 0 auto;
   padding: 1.5rem;
-  border: 1px solid var(--bs-border-color);
+  border: 1px solid var(--pg-border-color);
   border-radius: 1rem;
   background: var(--pg-bg-body);
   box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .05);
@@ -58,7 +73,7 @@ body.pg-approval {
 .ws-quote {
   margin: .15rem 0 .35rem;
   padding-left: .7rem;
-  border-left: 3px solid var(--bs-border-color);
+  border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-2);
 }
 
@@ -98,7 +113,7 @@ body.pg-approval {
 .pg-approval-quote {
   margin: 0 0 1rem;
   padding: .5rem .75rem;
-  border-left: 3px solid var(--bs-border-color);
+  border-left: 3px solid var(--pg-border-color);
   color: var(--pg-fg-body);
   overflow-wrap: anywhere;
 }

@@ -4998,7 +4998,9 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         $enclosure = '';
         if ($media_field_id > 0) {
             $media = db_item("SELECT data, file_id FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $media_field_id . "' LIMIT 1");
-            if (is_array($media) && !empty($media['file_id'])) {
+            // An upload only when a visitor who is not signed in may open it: the
+            // enclosure's address must not answer with the sign-in screen.
+            if (is_array($media) && !empty($media['file_id']) && pg_file_open_to_everyone($media['file_id'])) {
                 $file = db_item("SELECT name, type, size FROM files WHERE id = '" . (int)$media['file_id'] . "' LIMIT 1");
                 if (is_array($file)) {
                     $enclosure = '<enclosure url="' . $site . PATH . h(rawurlencode($file['name'])) . '" length="' . (int)$file['size'] . '" type="' . h(get_mime_type($file['type'])) . '"/>';

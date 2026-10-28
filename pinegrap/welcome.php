@@ -912,6 +912,12 @@ $output_header_includes .
     .pg-widget-ghost { opacity: 0; }
     .pg-widget-drag { opacity: 1 !important; cursor: move; }
 </style>
+<style>
+    /* Bootstrap 6 raised the .placeholder min-height from 1em to 1.25em,
+       which overrides the inline heights of the skeleton bars in 16px text;
+       the skeleton was measured against the loaded rows with 1em. */
+    @layer custom { .card-body-placeholder .placeholder { min-height: 1em; } }
+</style>
     <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the

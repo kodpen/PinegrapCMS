@@ -43,6 +43,7 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 		'add_submitted_form.php',
 		'edit_submitted_form.php',
 		'includes/settings/commerce.php',
+		'view_order.php',
 	);
 
 	foreach ($files as $path) {
@@ -55,6 +56,7 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 	pg_assert_contains('get_date_time_picker_format()', bs6_timepicker_addon_test_source('edit_comment.php'), 'edit_comment.php keeps the date and time options');
 	pg_assert_contains('get_time_picker_format()', bs6_timepicker_addon_test_source('add_shipping_method.php'), 'add_shipping_method.php keeps the time options');
 	pg_assert_contains('get_time_picker_format()', bs6_timepicker_addon_test_source('includes/settings/commerce.php'), 'the commerce settings keep the time options');
+	pg_assert_contains('get_date_picker_format()', bs6_timepicker_addon_test_source('view_order.php'), 'view_order.php keeps the date options');
 }
 
 function test_bs6_timepicker_addon_only_site_files_load_it()
@@ -73,8 +75,6 @@ function test_bs6_timepicker_addon_only_site_files_load_it()
 		'includes/fn/content.php',
 		'includes/fn/widgets_comments.php',
 	);
-	// The order view still loads it; it leaves in its own change.
-	$pending = array('view_order.php');
 
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$found = array();
@@ -93,9 +93,8 @@ function test_bs6_timepicker_addon_only_site_files_load_it()
 	}
 	sort($found);
 
-	$expected = array_merge($site, $pending);
-	sort($expected);
-	pg_assert_same($expected, $found, 'only the site files load the timepicker add-on');
+	sort($site);
+	pg_assert_same($site, $found, 'only the site files load the timepicker add-on');
 }
 
 function test_bs6_timepicker_addon_form_content_branches()

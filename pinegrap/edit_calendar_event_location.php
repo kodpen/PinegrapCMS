@@ -35,6 +35,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM calendar_event_locations 
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/calendar_event_location_form.php');
 $liveform = new liveform('edit_calendar_event_location', $_REQUEST['id']);
 
 if (!$_POST) {
@@ -72,24 +73,7 @@ if (!$_POST) {
                 <form name="form" action="edit_calendar_event_location.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Event Location'))) . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_calendar_event_location_form_card($liveform) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -146,17 +130,8 @@ if (!$_POST) {
             exit();
         }
         
-        // check to see if name is already in use by a different calendar location
-        $query =
-            "SELECT id
-            FROM calendar_event_locations
-            WHERE
-                (name = ?)
-                AND (id != ?)";
-        $result = db_q($query, array((string) ($liveform->get_field_value('name')), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-        
         // if name is already in use by a different calendar event location, prepare error and forward user back to screen
-        if (mysqli_num_rows($result) > 0) {
+        if (pg_calendar_event_location_form_name_in_use($liveform->get_field_value('name'), (string) ($_POST['id'] ?? ''))) {
             $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
             
             // forward user to edit calendar event location screen

@@ -6523,7 +6523,7 @@ const StyleDesigner = (function () {
         // Band label — real DOM element (.sd-loop-band) appended in buildInnerElement,
         // so it can carry a Bootstrap Icon (bi-arrow-repeat) and a clear label.
         // The element is canvas-only (data-sd-band="1"), excluded from tree ops.
-        '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; }',
+        '.sd-loop-band { position:absolute; top:0; left:0; right:0; display:flex; align-items:center; gap:6px; padding:4px 8px; font-size:.7rem; font-weight:700; letter-spacing:.03em; text-transform:uppercase; color:#fff; background:#6366f1; border-radius:4px 4px 0 0; pointer-events:none; user-select:none; white-space:nowrap; overflow:hidden; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area { min-height:0; padding:0; border:0; outline:0; background:none; }',
         // Ghost records (_sdAppendGhosts): real records drawn after the card
         // being designed — untouchable, faintly hatched so they read as a
@@ -6544,7 +6544,10 @@ const StyleDesigner = (function () {
         '.sd-ghost-note { font-weight:400; text-transform:none; letter-spacing:0; opacity:.85; }',
         '.sd-wrap.sd-loop-single > .sd-loop-area > .sd-loop-band { display:none; }',
         '.sd-loop-band .bi { font-size:.85rem; line-height:1; }',
-        '.sd-loop-band .sd-loop-band-text { font-size:.65rem; }',
+        // One line whatever the width: a narrow loop area (a ticker, a sidebar
+        // list) used to wrap the band into four lines over its content.
+        '.sd-loop-band .sd-loop-band-text { font-size:.65rem; min-width:0; overflow:hidden; text-overflow:ellipsis; }',
+        '.sd-loop-band .sd-ghost-note { flex:none; white-space:nowrap; }',
         // Recipient loop band — uses a teal accent so designers can tell the
         // per-recipient template apart from a regular per-cart-item loop_area.
         '.sd-recipient-loop-band { background:#0d9488; }',
@@ -13798,6 +13801,9 @@ const StyleDesigner = (function () {
                     la.className += ' sd-list-area' + (laList.off ? ' sd-list-off' : '');
                     laBand.innerHTML = '<i class="bi bi-list-ul"></i><span class="sd-loop-band-text">' + esc(laList.text) + '</span>';
                 }
+                // The band keeps to one line and may be cut short: the full
+                // text stays readable in its tooltip.
+                laBand.title = laBand.textContent;
                 la.appendChild(laBand);
                 return la;
             case 'recipient_loop_area':
@@ -14518,6 +14524,7 @@ const StyleDesigner = (function () {
             note.className = 'sd-ghost-note';
             note.textContent = '· ' + _sdT('{var} real records after the card', rows.length);
             band.appendChild(note);
+            band.title = band.textContent;
         }
     }
 
@@ -35426,6 +35433,20 @@ const StyleDesigner = (function () {
                             '</div>' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
                                 esc(_sdT('Each field can then be given a kind (number, image, a reference to another form) in Form Field → Kind. The records stay this form\'s submissions.')) +
+                            '</div>'
+                        ) +
+                        // How the structured data of the record pages names
+                        // them (pg_record_schema_type() in includes/fn/seo.php);
+                        // None leaves the page's own JSON-LD as the only one.
+                        row(_sdT('Schema Type'),
+                            '<select class="form-control form-control-sm sd-cf-s" data-s="schema_type">' +
+                                ['BlogPosting', 'Article', 'NewsArticle', 'none'].map(function (t) {
+                                    return '<option value="' + t + '"' + ((_cfFS.schema_type || 'BlogPosting') === t ? ' selected' : '') + '>' +
+                                        esc(t === 'none' ? _sdT('None') : t) + '</option>';
+                                }).join('') +
+                            '</select>' +
+                            '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                esc(_sdT('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.')) +
                             '</div>'
                         ) +
                         row(_sdT('Notification email'),
