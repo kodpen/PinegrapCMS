@@ -888,7 +888,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	</div>
 	<div class="card">
 		<div class="mpp-list-head">
-			<div class="mpp-tabs" role="tablist">';
+			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
 	foreach ($filters as $key => $label) {
 
@@ -900,7 +900,7 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 	}
 
 	echo '
-			</div>
+			</nav>
 			<div class="flex-grow-1"></div>
 			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
@@ -1335,7 +1335,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	echo '
 	<div class="card">
 		<div class="mpp-list-head">
-			<div class="mpp-tabs" role="tablist">';
+			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
 	foreach ($filters as $key => $label) {
 
@@ -1347,7 +1347,7 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 	}
 
 	echo '
-			</div>
+			</nav>
 			<div class="flex-grow-1"></div>
 			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
@@ -1786,7 +1786,7 @@ if (!$account) {
 		echo '
 	<div class="card">
 		<div class="mpp-list-head">
-			<div class="mpp-tabs" role="tablist">';
+			<nav class="mpp-tabs" aria-label="' . h(lang('Filters')) . '">';
 
 		foreach ($filters as $key => $label) {
 
@@ -1798,7 +1798,7 @@ if (!$account) {
 		}
 
 		echo '
-			</div>
+			</nav>
 			<div class="flex-grow-1"></div>
 			<form method="get" action="marketplace_products.php" class="d-flex gap-3 disable_shortcut" role="search">
 				<input type="hidden" name="account" value="' . $account_id . '">
