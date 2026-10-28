@@ -813,11 +813,11 @@ function bs6_shared_panel_functions()
 {
 	return array(
 		'chat.php' => array('pg_chat_render_backend_launcher'),
-		'includes/fn/auth.php' => array('get_acl_folder_tree', 'pg_login_captcha_screen'),
+		'includes/fn/auth.php' => array('get_acl_folder_tree', 'pg_login_captcha_screen', 'pg_secure_card'),
 		'includes/fn/content.php' => array('get_checkboxes_for_items_user_can_edit'),
 		'includes/fn/ecommerce.php' => array('pg_key_code_list_cells', 'pg_order_list_status_html'),
 		'includes/fn/editor.php' => array('pg_code_editor_attach'),
-		'includes/fn/forms.php' => array('get_page_type_checkboxes_and_labels'),
+		'includes/fn/forms.php' => array('get_page_type_checkboxes_and_labels', 'get_logout_screen'),
 		'includes/fn/legal_documents.php' => array('pg_legal_documents_panel_card'),
 		'seo.php' => array(
 			'pg_seo_render_impact', 'pg_seo_render_bar', 'pg_seo_render_checklist', 'pg_seo_render_run_buttons',
@@ -841,6 +841,10 @@ function bs6_shared_panel_blocks()
 		// No login page: the default sign-in screen inside
 		// output_header_secure(); a login page's branches are site output.
 		'get_login.php' => array('get_login' => 'if ((int)$page_id <= 0) {'),
+		// The same for the forgot password and set password screens it
+		// leads to.
+		'get_forgot_password.php' => array('get_forgot_password' => 'if ((int)$page_id <= 0) {'),
+		'get_set_password.php' => array('get_set_password' => 'if ((int)$page_id <= 0) {'),
 	);
 }
 
@@ -1153,7 +1157,7 @@ function bs6_scope_kind($path)
 	// panel markup (the panel head, the main and account menus, the footer,
 	// list screens' helpers); output_toolbar() prints nothing.
 	$shared = array(
-		'get_login.php', 'liveform.class.php', 'toolbar.php', 'chat.php', 'seo.php',
+		'get_login.php', 'get_forgot_password.php', 'get_set_password.php', 'liveform.class.php', 'toolbar.php', 'chat.php', 'seo.php',
 		'includes/fn/ecommerce.php', 'includes/fn/forms.php', 'includes/fn/editor.php',
 		'includes/fn/content.php', 'includes/fn/calendar.php', 'includes/fn/auth.php', 'includes/fn/seo.php',
 		'includes/fn/legal_documents.php',

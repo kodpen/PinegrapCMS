@@ -4557,6 +4557,25 @@ function pg_login_captcha_passthrough()
 }
 
 /**
+ * The Bootstrap 6 card a sign-in screen without a site page is drawn on
+ * inside output_header_secure(): forgot password, set password, the device
+ * limit question, the subscription confirmation and the logout screen.
+ * $icon is a Bootstrap Icons name (bi-key), $title plain text, $body HTML.
+ */
+function pg_secure_card($icon, $title, $body)
+{
+    return
+        '<main class="container py-7 md:py-12">
+            <div class="card mx-auto shadow-sm" style="max-width: 28rem;">
+                <div class="card-body p-7">
+                    <h1 class="h4 mb-5"><i class="bi ' . h($icon) . ' me-3" aria-hidden="true"></i>' . h($title) . '</h1>
+                    ' . $body . '
+                </div>
+            </div>
+        </main>';
+}
+
+/**
  * Render the question screen and end the request.
  *
  * The form asks for the account and the password again - the password is
