@@ -5,9 +5,9 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), Ma
 
 ## What is in docker/?
 - `Dockerfile` with two targets built from the repository root: `app` (php:8.3-fpm-alpine plus mysqli, pdo_mysql, gd with JPEG/PNG/WebP/AVIF, imagick, zip, intl, exif, opcache, ftp; `docker/php-settings.conf`, named .conf as `.gitignore` drops `*.ini`) and `web` (nginx:stable-alpine with `docker/nginx.conf` and a copy of the same files for static assets).
-- `docker-compose.yml`: `db` (mariadb:10.11, not published), `app`, `cron` (app image, `pinegrap-cron` as www-data), `install` (app image, `docker/install.sh` as www-data, after `app`; the unattended install, platform/install-command-line.md), `web` on `PG_HTTP_PORT` (8080). Volumes `data` (`pinegrap/data/`: config.php, uploads, layouts, backups) and `db`.
+- `docker-compose.yml`: `db` (mariadb:10.11, not published), `app`, `cron` (app image, `pinegrap-cron`), `install` (app image, `docker/install.sh` as www-data, after `app`; the unattended install, platform/install-command-line.md), `web` on `PG_HTTP_PORT` (8080). Volumes `data` (`pinegrap/data/`: config.php, uploads, layouts, backups) and `db`.
 - The folder ships in the release tree (release-status.md removes only CLAUDE.md, .claude/, docs/, tools/, tests/).
-- README "Try it with Docker" and README.tr.md repeat the compose header's commands, variables, URLs, volumes: change together.
+- README "Try it with Docker" and README.tr.md repeat the compose header's commands, variables, URLs, volumes.
 
 ## Why is imagick not from PECL?
 - pecl.php.net's 504s (2026-10-21) broke every build: `IMAGICK_VERSION` tag is fetched from GitHub, `@PACKAGE_VERSION@` filled in (#1080).
@@ -17,8 +17,8 @@ description: docker/ compose stack (PR #565): app (PHP-FPM 8.3), web (nginx), Ma
 - A new named volume is filled from the image on first start (starter sites included). Later images do not refresh the volume.
 
 ## How do nginx and the installer's rules stay the same?
-- The rules between the markers in `docker/nginx.conf` are `pg_server_config_default('nginx')` for a site at `/` in `pinegrap`; `tests/docker_nginx_test.php` fails when a directive is missing or out of order, and checks the deny rules come before the PHP location.
-- `location ~ \.php$` falls back to `/pinegrap/router.php` for a missing script, as Apache and IIS do. `fastcgi_pass` takes a variable with `resolver 127.0.0.11`: a fixed `app:9000` kept a stale address (502 after `app` was recreated).
+- The rules between the markers in `docker/nginx.conf` are `pg_server_config_default('nginx')` for a site at `/` in `pinegrap`; `tests/docker_nginx_test.php` fails when a directive is missing or out of order, and checks the deny rules come before the PHP location. The static location (gzip, expires) follows them.
+- `location ~ \.php$` falls back to `/pinegrap/router.php` for a missing script, as Apache and IIS do. `fastcgi_pass` takes a variable with `resolver 127.0.0.11`: a fixed `app:9000` kept a stale address (502).
 
 ## When does the cron service run job.php?
 - Every `PG_CRON_INTERVAL` seconds (60), one run at a time, only while `pinegrap-job-ready` (`docker/job-ready.php`) says the database `config.version` equals the last version of `versions.php`. The installer writes config.php before it runs the upgrade steps; a job started then would work on half-built tables. A database behind or ahead of the code waits too.

@@ -514,6 +514,7 @@
     "Browser": "Tarayıcı",
     "Browser (Chrome Translator API)": "Tarayıcı (Chrome Translator API)",
     "Browser AI (Gemini Nano)": "Tarayıcı yapay zekâsı (Gemini Nano)",
+    "Browser caching for static files": "Statik dosyalar için tarayıcı önbelleği",
     "Browser identification, as sent": "Tarayıcı kimliği (gönderildiği gibi)",
     "Browser language only": "Yalnızca tarayıcı dili",
     "Browser language, then location": "Önce tarayıcı dili, sonra konum",

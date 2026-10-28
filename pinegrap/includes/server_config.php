@@ -219,7 +219,7 @@ function pg_server_config_software_dir()
  *             'core'        the site does not work without it
  *   detect    regex tested against the file, or '' for "cannot be missing"
  *   snippet   the text to insert
- *   anchor    where it goes: 'rules' | 'top' | 'end'
+ *   anchor    where it goes, per server (see the insert functions)
  *
  * @param string $server 'apache' | 'iis' | 'nginx' | 'unknown'
  * @return array
@@ -350,6 +350,22 @@ function pg_server_config_blocks($server = '')
         </staticContent>',
             ),
 
+            // Inside the <staticContent> of the charset block, which comes
+            // first so that a repair has written the element by the time this
+            // one is placed. A second <staticContent> is a 500.19 for the
+            // whole site. The static file handler alone reads it: PHP output,
+            // get_file.php included, keeps the headers PHP sends.
+            array(
+                'key'    => 'cache',
+                'label'  => 'Browser caching for static files',
+                'why'    => 'Without a lifetime the browser asks again for every stylesheet, script, picture and font on every page, and a slow connection waits for each answer.',
+                'level'  => 'recommended',
+                'detect' => '/<clientCache\b/i',
+                'anchor' => 'static-content',
+                'snippet' =>
+'            <clientCache cacheControlMode="UseMaxAge" cacheControlMaxAge="7.00:00:00" />',
+            ),
+
             // No Referrer-Policy is added here: PHP sends it on every page
             // (waf_send_security_headers) and the pages that must not leak
             // their address replace it with no-referrer. IIS appends a
@@ -375,6 +391,21 @@ function pg_server_config_blocks($server = '')
                 <remove name="X-Powered-By" />
             </customHeaders>
         </httpProtocol>',
+            ),
+
+            // Static files only. Dynamic compression holds a PHP answer back
+            // until the buffer fills, which stops the installer's streamed
+            // progress and server-sent events. <httpCompression> is locked at
+            // the server level and is left alone.
+            array(
+                'key'    => 'compression',
+                'label'  => 'Compression for static files',
+                'why'    => 'Stylesheets and scripts are sent at full size, several times larger than they need to be, and a slow connection waits for every byte.',
+                'level'  => 'recommended',
+                'detect' => '/<urlCompression\b/i',
+                'anchor' => 'web-server',
+                'snippet' =>
+'        <urlCompression doStaticCompression="true" doDynamicCompression="false" />',
             ),
         );
     }
@@ -500,6 +531,65 @@ RewriteRule (^|/)\\.(git|svn|hg|env)(/|$) - [F,L]',
     Header always unset X-Powered-By
 </IfModule>',
         ),
+
+        // Real files only: a request rewritten to router.php is matched as
+        // router.php, so PHP output (pages, the API, get_file.php) is never
+        // compressed here. Pages carry CSRF tokens (BREACH), and a compressed
+        // stream is held back until the buffer fills.
+        array(
+            'key'    => 'compression',
+            'label'  => 'Compression for static files',
+            'why'    => 'Stylesheets and scripts are sent at full size, several times larger than they need to be, and a slow connection waits for every byte.',
+            'level'  => 'recommended',
+            'detect' => '/#\s*pg-compression\b|AddOutputFilterByType\s+DEFLATE|SetOutputFilter\s+DEFLATE/i',
+            'anchor' => 'top',
+            'snippet' =>
+'# pg-compression
+<IfModule mod_deflate.c>
+    <FilesMatch "\\.(css|js|json|svg|txt|xml|ttf|otf|eot)$">
+        AddOutputFilterByType DEFLATE text/css text/javascript application/javascript application/x-javascript application/json image/svg+xml text/plain text/xml application/xml font/ttf font/otf application/vnd.ms-fontobject
+    </FilesMatch>
+</IfModule>',
+        ),
+
+        // A week, as get_file.php gives: library files such as
+        // jquery.min.js carry no ?v= stamp, so a new copy has to reach the
+        // browser within days. Scoped to real files, as above, so it never
+        // touches the headers PHP sends.
+        array(
+            'key'    => 'cache',
+            'label'  => 'Browser caching for static files',
+            'why'    => 'Without a lifetime the browser asks again for every stylesheet, script, picture and font on every page, and a slow connection waits for each answer.',
+            'level'  => 'recommended',
+            'detect' => '/#\s*pg-static-cache\b|ExpiresActive\s+On/i',
+            'anchor' => 'top',
+            'snippet' =>
+'# pg-static-cache
+<IfModule mod_expires.c>
+    <FilesMatch "\\.(css|js|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|eot)$">
+        ExpiresActive On
+        ExpiresByType text/css "access plus 7 days"
+        ExpiresByType text/javascript "access plus 7 days"
+        ExpiresByType application/javascript "access plus 7 days"
+        ExpiresByType application/x-javascript "access plus 7 days"
+        ExpiresByType image/svg+xml "access plus 7 days"
+        ExpiresByType image/png "access plus 7 days"
+        ExpiresByType image/jpeg "access plus 7 days"
+        ExpiresByType image/gif "access plus 7 days"
+        ExpiresByType image/webp "access plus 7 days"
+        ExpiresByType image/avif "access plus 7 days"
+        ExpiresByType image/x-icon "access plus 7 days"
+        ExpiresByType image/vnd.microsoft.icon "access plus 7 days"
+        ExpiresByType font/woff "access plus 7 days"
+        ExpiresByType font/woff2 "access plus 7 days"
+        ExpiresByType font/ttf "access plus 7 days"
+        ExpiresByType font/otf "access plus 7 days"
+        ExpiresByType application/font-woff "access plus 7 days"
+        ExpiresByType application/font-woff2 "access plus 7 days"
+        ExpiresByType application/vnd.ms-fontobject "access plus 7 days"
+    </FilesMatch>
+</IfModule>',
+        ),
     );
 }
 
@@ -546,6 +636,21 @@ location ~ \.(sql|bak|log|env|ini|swp|dist|orig|rej)$ {
     return 403;
 }
 
+# Static files: compressed and kept by the browser for a week, as
+# get_file.php keeps its own (library files carry no ?v= stamp). PHP output
+# is not compressed: pages carry CSRF tokens, and a compressed stream is
+# held back until the buffer fills. A missing file still goes to the router,
+# which serves uploaded files at root addresses.
+location ~* ^' . $path . '.+\.(css|js|svg|png|jpe?g|gif|webp|avif|ico|woff2?|ttf|otf|eot)$ {
+    gzip on;
+    gzip_vary on;
+    gzip_comp_level 5;
+    gzip_min_length 1024;
+    gzip_types text/css application/javascript text/javascript image/svg+xml font/ttf font/otf application/vnd.ms-fontobject;
+    expires 7d;
+    try_files $uri ' . $path . $dir . '/router.php;
+}
+
 # Everything that is not a real file goes to the router.
 location ' . $path . ' {
     try_files $uri $uri/ ' . $path . $dir . '/router.php;
@@ -580,8 +685,9 @@ add_header X-Content-Type-Options "nosniff" always;
                 <add value="index.html" />
             </files>
         </defaultDocument>
-' . $blocks['charset'] . '
+' . str_replace('        </staticContent>', $blocks['cache'] . "\n        </staticContent>", $blocks['charset']) . '
 ' . $blocks['headers'] . '
+' . $blocks['compression'] . '
         <rewrite>
             <rules>
 ' . $blocks['data'] . '
@@ -613,6 +719,10 @@ add_header X-Content-Type-Options "nosniff" always;
 ' . $blocks['charset'] . '
 
 ' . $blocks['headers'] . '
+
+' . $blocks['compression'] . '
+
+' . $blocks['cache'] . '
 
 ' . $blocks['hidden'] . '
 
@@ -1125,6 +1235,25 @@ function pg_server_config_insert_iis($contents, $block)
             return $head
                  . "        <security>\n            <requestFiltering>\n" . $snippet
                  . "\n            </requestFiltering>\n        </security>\n" . $indent . $tail;
+
+        case 'static-content':
+            // Into the <staticContent> the file already has, before its
+            // closing tag: a second element is a 500.19 for the whole site.
+            if (preg_match('/<\/staticContent\s*>/i', $contents, $found, PREG_OFFSET_CAPTURE)) {
+                list($head, $indent, $tail) = pg_server_config_split_indent($contents, $found[0][1]);
+                return $head . $snippet . "\n" . $indent . $tail;
+            }
+            // A self-closing <staticContent /> is opened up.
+            if (preg_match('/<staticContent\b([^>]*?)\s*\/>/i', $contents, $found, PREG_OFFSET_CAPTURE)) {
+                return substr($contents, 0, $found[0][1])
+                     . '<staticContent' . $found[1][0] . ">\n" . $snippet . "\n        </staticContent>"
+                     . substr($contents, $found[0][1] + strlen($found[0][0]));
+            }
+            if (!preg_match('/<\/system\.webServer\s*>/i', $contents, $found, PREG_OFFSET_CAPTURE)) {
+                return null;
+            }
+            list($head, $indent, $tail) = pg_server_config_split_indent($contents, $found[0][1]);
+            return $head . "        <staticContent>\n" . $snippet . "\n        </staticContent>\n" . $indent . $tail;
 
         case 'web-server':
         default:
