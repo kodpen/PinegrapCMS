@@ -325,7 +325,7 @@ pg_page_shell([
                     </div>
                 </div>
 
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             <button type="submit" name="submit_export" value="Export" class="btn my-1 btn-solid theme-success"><i class="bi bi-box-arrow-up me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Create the file')) . '</span></button>

@@ -252,7 +252,7 @@ pg_page_shell([
                 ? '<form name="form" action="edit_erp_waybill.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $waybill_id . '" />
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
+                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_invoice

@@ -69,8 +69,11 @@
         lastCost: root.getAttribute('data-text-last-cost') || '',
         avgCost: root.getAttribute('data-text-avg-cost') || '',
         accountPrice: root.getAttribute('data-text-account-price') || '',
-        accountDiscount: root.getAttribute('data-text-account-discount') || ''
+        accountDiscount: root.getAttribute('data-text-account-discount') || '',
+        percent: root.getAttribute('data-text-percent') || '{var:1}%'
     };
+    // The panel language's decimal mark for figures shown, not for typed input.
+    var decimalMark = root.getAttribute('data-decimal-mark') || '.';
     var barcodeInput = root.querySelector('[data-erp-barcode]');
     var withholdingToggle = root.querySelector('[data-erp-withholding-toggle]');
     var withholdingRates = {};
@@ -612,6 +615,11 @@
         return text.replace(/0+$/, '').replace(/\.$/, '');
     }
 
+    // A rate as the panel language writes it: '%12,5' in Turkish, '12.5%' in English.
+    function percentText(rate) {
+        return fill(texts.percent, trimNumber(Number(rate).toFixed(3)).replace('.', decimalMark));
+    }
+
     function isPurchase() {
         return !!(directionSelect && directionSelect.value === 'purchase');
     }
@@ -725,7 +733,7 @@
             termsText = fill(texts.accountPrice, formatPrice(product.price));
         } else if (terms && terms.discount_rate > 0 && field(row, 'discount_rate')) {
             field(row, 'discount_rate').value = trimNumber(Number(terms.discount_rate).toFixed(3));
-            termsText = fill(texts.accountDiscount, trimNumber(Number(terms.discount_rate).toFixed(3)) + '%');
+            termsText = fill(texts.accountDiscount, percentText(terms.discount_rate));
         }
         if (taxRate && product.tax_rate !== null && product.tax_rate !== undefined) {
             taxRate.value = trimNumber(Number(product.tax_rate).toFixed(3));
@@ -749,7 +757,7 @@
         row.dataset.erpSku = product.sku || '';
         row.dataset.erpStock = (product.stock === null || product.stock === undefined) ? '' : String(product.stock);
         row.dataset.erpDisabled = (product.enabled === false) ? '1' : '0';
-        row.dataset.erpOffer = offer ? ('\u2212' + trimNumber(Number(offer.rate).toFixed(3)) + '%') : '';
+        row.dataset.erpOffer = offer ? ('\u2212' + percentText(offer.rate)) : '';
         row.dataset.erpTerms = termsText;
         row.dataset.erpLastCost = (product.cost && product.cost.last > 0)
             ? (product.cost.last_text + (product.cost.last_date ? ' (' + product.cost.last_date + ')' : ''))
@@ -831,7 +839,7 @@
                 item.appendChild(badge(texts.disabled, 'theme-secondary'));
             }
             if (product.offer && !isPurchase()) {
-                item.appendChild(badge('\u2212' + trimNumber(Number(product.offer.rate).toFixed(3)) + '%', 'theme-success'));
+                item.appendChild(badge('\u2212' + percentText(product.offer.rate), 'theme-success'));
             }
 
             item.addEventListener('click', function () {

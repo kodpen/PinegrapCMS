@@ -344,7 +344,7 @@ foreach ($report['rows'] as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . ($quiet ? '—' : number_format($row['count'])) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . ($quiet ? '—' : pg_format_number($row['count'], 0)) . '</td>
                                 <td class="align-middle text-end fw-bold' . (($row['balance'] < 0) ? ' fg-danger' : '') . '" data-sort="' . (int) $row['balance'] . '">' . h(erp_money_out($row['balance'])) . '</td>
                             </tr>';
 }
@@ -364,7 +364,7 @@ foreach ($by_till as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['net'] . '">' . $signed($row['net']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . (($row['count'] === 0) ? '—' : number_format($row['count'])) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . (($row['count'] === 0) ? '—' : pg_format_number($row['count'], 0)) . '</td>
                                 <td class="align-middle text-end fw-bold' . (($row['closing'] < 0) ? ' fg-danger' : '') . '" data-sort="' . (int) $row['closing'] . '">' . h(erp_money_out($row['closing'])) . '</td>
                             </tr>';
 }
@@ -384,7 +384,7 @@ foreach ($by_method as $row) {
                                 <td class="align-middle text-end" data-sort="' . (int) $row['in'] . '">' . $money($row['in']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) $row['out'] . '">' . $money($row['out']) . '</td>
                                 <td class="align-middle text-end" data-sort="' . (int) ($row['in'] - $row['out']) . '">' . $signed($row['in'] - $row['out']) . '</td>
-                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . number_format($row['count']) . '</td>
+                                <td class="align-middle text-end small" data-sort="' . (int) $row['count'] . '">' . pg_format_number($row['count'], 0) . '</td>
                             </tr>';
 }
 
@@ -509,7 +509,7 @@ pg_page_shell(array(
                                 <td class="text-end">' . h(erp_money_out($report['in'])) . '</td>
                                 <td class="text-end">' . h(erp_money_out($report['out'])) . '</td>
                                 <td class="text-end">' . $signed($report['net']) . '</td>
-                                <td class="text-end small">' . number_format($report['count']) . '</td>
+                                <td class="text-end small">' . pg_format_number($report['count'], 0) . '</td>
                                 <td class="text-end">' . h(erp_money_out($report['closing'])) . '</td>
                             </tr>
                         </tfoot>
@@ -550,7 +550,7 @@ pg_page_shell(array(
                             <table class="table table-hover align-middle mb-0" data-pg-sort>
                                 <thead>
                                     <tr>
-                                        <th>' . lang('Method') . '</th>
+                                        <th>' . lang('Payment method') . '</th>
                                         <th class="text-end">' . lang('In') . '</th>
                                         <th class="text-end">' . lang('Out') . '</th>
                                         <th class="text-end">' . lang('Net change') . '</th>
