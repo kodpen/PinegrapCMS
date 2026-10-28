@@ -1230,6 +1230,60 @@ JS
 	pg_assert_same(array(), $result['itself'], 'a box reads nothing of itself, and the start gives nothing');
 }
 
+// A derived value box reads any box, wherever it stands, and gives one value
+// of its rule's type; a rule of one input has no second field to fill.
+function test_workspace_flows_canvas_derived_box_reads_any_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'derivedRule', 'openFields'),
+		"var VALUE_FIELDS = { post: [['body', 'fl_post_body', 4000]], value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]] };\n" . <<<'JS'
+var KINDS = {
+    manual: { name: 'Manual', into: false, out: ['next'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] },
+    value: { name: 'Derived value', into: false, out: [], pure: true }
+};
+var FL = {
+    outputs: { post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [] },
+    trigger_outputs: { kinds: { manual: [] }, events: {} },
+    steps: {},
+    derived: { rules: [{ key: 'join', label: 'Join', type: 'text', two: true }, { key: 'round', label: 'Round', type: 'number', two: false }] }
+};
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+state = { graph: { nodes: [
+    box('manual_1', 'manual', {}, 0),
+    box('condition_1', 'condition', {}, 1),
+    box('post_1', 'post', {}, 2),
+    box('post_2', 'post', {}, 3),
+    box('value_1', 'value', { rule: 'round', a: '', b: '' }, 4),
+    box('value_2', 'value', { rule: 'nothing', a: '', b: '' }, 5)
+], edges: [
+    { from: 'manual_1', to: 'condition_1', on: 'next' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'condition_1', to: 'post_2', on: 'no' }
+] } };
+var read = function (id) {
+    return valueGroups(nodeById(id)).map(function (group) { return (group.skipped ? 'skipped ' : '') + group.node.id; });
+};
+console.log(JSON.stringify({
+    value: read('value_1'),
+    post: read('post_2'),
+    gives: boxValues(nodeById('value_1')).map(function (value) { return value.token + ':' + value.type; }).concat(boxValues(nodeById('value_2')).map(function (value) { return value.type; })),
+    fields: openFields(nodeById('value_1')).map(function (item) { return item.key; }).concat(openFields(nodeById('value_2')).map(function (item) { return item.key; }))
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('condition_1', 'post_1', 'post_2', 'value_2'), $result['value'], 'every other box, none marked skipped');
+	pg_assert_same(array('condition_1', 'value_1', 'value_2'), $result['post'], 'a box reads it wherever it stands');
+	pg_assert_same(array('{{node.value_1.value}}:number', 'text'), $result['gives'], 'its value, of its rule\'s type; an unknown rule as join');
+	pg_assert_same(array('a', 'a', 'b'), $result['fields'], 'round reads one value, join two');
+}
+
 // The run view (Flows T4) lists what each box received: every thread into
 // a field with the value it brought in the run (a box's kept value, its
 // sentence, a constants row; empty for a box skipped or not reached, not

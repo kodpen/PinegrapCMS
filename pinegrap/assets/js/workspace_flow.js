@@ -132,7 +132,8 @@
         delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
         end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] },
         // A value box: no arrows, its values reach the boxes through threads.
-        constants: { icon: 'bi-tag', name: 'fl_kind_constants', into: false, out: [], pure: true }
+        constants: { icon: 'bi-tag', name: 'fl_kind_constants', into: false, out: [], pure: true },
+        value: { icon: 'bi-calculator', name: 'fl_kind_value', into: false, out: [], pure: true }
     };
 
     // What an arrow is taken on, as its box says it.
@@ -181,6 +182,7 @@
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
         ['approval', 'bi-patch-check', 'fl_kind_approval'],
         ['constants', 'bi-tag', 'fl_kind_constants'],
+        ['value', 'bi-calculator', 'fl_kind_value'],
         ['end', 'bi-flag', 'fl_add_end']
     ];
 
@@ -455,6 +457,10 @@
             var names = (config.rows || []).map(function (row) { return row.key; }).filter(Boolean);
 
             return names.length ? names.join(', ') : t('fl_constants_none');
+        }
+
+        if (node.kind === 'value') {
+            return derivedRule(config.rule).label;
         }
 
         if (node.kind === 'manual') {
@@ -2131,7 +2137,8 @@
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
-        approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]]
+        approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]],
+        value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]]
     };
 
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
@@ -2169,7 +2176,9 @@
             return ((rule.type === 'value') && !rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: '', max: 0 }] : [];
         }
 
-        return (VALUE_FIELDS[node.kind] || []).map(function (item) {
+        return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
+            return (node.kind !== 'value') || (item[0] !== 'b') || derivedRule(config.rule).two;
+        }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
         });
     }
@@ -3029,7 +3038,15 @@
             }
         };
 
-        // A value box gives its rows (ws_flow_constants_outputs()).
+        // A derived value box gives one value of its rule's type
+        // (ws_flow_derived_outputs()).
+        if (node.kind === 'value') {
+            add('node.' + node.id + '.', { key: 'value', label: t('fl_derived_value'), type: derivedRule(node.config.rule).type });
+
+            return list;
+        }
+
+        // A constants box gives its rows (ws_flow_constants_outputs()).
         if (kindOf(node).pure) {
             (node.config.rows || []).forEach(function (row) {
                 if (/^[a-z_][a-z0-9_]{0,31}$/.test(row.key || '')) {
@@ -3095,13 +3112,16 @@
         });
 
         var before = boxesBefore(into, node.id);
+        // A derived value box has no place among the arrows: it may read any
+        // box, checked at the boxes that read it.
+        var reader = node.kind === 'value';
 
         orderedNodes().forEach(function (other) {
             // A value box gives to every box, read whenever it is.
             var pure = !!kindOf(other).pure;
             var start = !kindOf(other).into && !pure;
 
-            if ((other.id === node.id) || (!start && !pure && !before[other.id])) {
+            if ((other.id === node.id) || (!start && !pure && !reader && !before[other.id])) {
                 return;
             }
 
@@ -3112,7 +3132,7 @@
             }
 
             sure = sure || sureBefore(maps);
-            groups.push({ node: other, values: values, skipped: !start && !pure && !!sure[node.id] && !sure[node.id][other.id] });
+            groups.push({ node: other, values: values, skipped: !start && !pure && !reader && !!sure[node.id] && !sure[node.id][other.id] });
         });
 
         return groups;
@@ -3644,6 +3664,10 @@
 
         if (node.kind === 'constants') {
             constantsFields(box, node);
+        }
+
+        if (node.kind === 'value') {
+            derivedFields(box, node);
         }
 
         if (node.kind === 'start_flow') {
@@ -4377,6 +4401,76 @@
         });
         box.appendChild(add);
         box.appendChild(el('p', 'small fg-secondary', t('fl_constants_help')));
+    }
+
+    // A derived value box's rule (FL.derived, ws_flow_derived_rules()): its
+    // label, the type of the value it gives and whether it reads a second
+    // value; an unknown one as join, as the server keeps it.
+    function derivedRule(key) {
+        var rules = (FL.derived || {}).rules || [];
+        var rule = rules.filter(function (item) { return item.key === key; })[0] || rules.filter(function (item) { return item.key === 'join'; })[0];
+
+        return rule || { key: 'join', label: key || '', type: 'text', two: true };
+    }
+
+    // A derived value box: its rule, the values it works from (with value
+    // chips) and what the rule takes beside them.
+    function derivedFields(box, node) {
+        var config = node.config;
+        var lists = FL.derived || {};
+        var operators = stepLists().operators;
+        var rule = derivedRule(config.rule);
+        var pick = K.select((lists.rules || []).map(function (item) { return [item.key, item.label]; }), rule.key);
+
+        pick.addEventListener('change', function () {
+            config.rule = pick.value;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_derived_rule'), pick));
+        box.appendChild(valueField(node, t('fl_derived_a'), config.a || '', 500, function (value) {
+            config.a = value;
+            refreshNode(node);
+        }, false));
+
+        if (rule.key === 'compare') {
+            var op = K.select((lists.operators || []).map(function (key) { return [key, operators[key] || key]; }), config.op || 'eq');
+
+            op.addEventListener('change', function () {
+                config.op = op.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_derived_op'), op));
+        }
+
+        if (rule.two) {
+            box.appendChild(valueField(node, t((rule.key === 'add_days') ? 'fl_derived_days' : 'fl_derived_b'), config.b || '', 500, function (value) {
+                config.b = value;
+                refreshNode(node);
+            }, false));
+        }
+
+        if (rule.key === 'round') {
+            var places = K.select([0, 1, 2, 3, 4, 5, 6].map(function (n) { return [String(n), String(n)]; }), String(config.places || 0));
+
+            places.addEventListener('change', function () {
+                config.places = parseInt(places.value, 10) || 0;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_derived_places'), places));
+        }
+
+        if (rule.key === 'date_format') {
+            var format = K.select((lists.formats || []).map(function (item) { return [item.key, item.label]; }), config.format || 'Y-m-d');
+
+            format.addEventListener('change', function () {
+                config.format = format.value;
+                refreshNode(node);
+            });
+            box.appendChild(field(t('fl_derived_format'), format));
+        }
+
+        box.appendChild(el('p', 'small fg-secondary', t('fl_derived_help')));
     }
 
     function retryFields(box, node) {
@@ -5526,6 +5620,8 @@
             config = { record: '', action: 'update', id: 0, fields: {} };
         } else if (kind === 'constants') {
             config = { rows: [{ key: '', type: 'text', value: '' }] };
+        } else if (kind === 'value') {
+            config = { rule: 'join', a: '', b: '', op: 'eq', places: 0, format: 'Y-m-d' };
         } else if (kind === 'lead') {
             config = { private: false, user_ids: [] };
         } else if (kind === 'condition') {
@@ -6948,7 +7044,8 @@
 
     // The value a thread brought in the run shown, as the server fills it
     // (ws_step_node_values()): the box's sentence, outcome and status, else
-    // the value it kept (steps[].outputs); a constants box's row. A box not
+    // the value it kept (steps[].outputs); a constants box's row; a derived
+    // value named, not worked out again. A box not
     // reached or skipped gives nothing. What started the run is not in the
     // run's answer: unknown, named rather than given.
     function runValue(thread) {
@@ -6969,6 +7066,12 @@
             var row = ((node.config || {}).rows || []).filter(function (item) { return item.key === key; })[0];
 
             return row ? { text: String(row.value) } : { text: '', note: t('fl_run_value_empty') };
+        }
+
+        // A derived value is worked out as a box reads it; the run's answer
+        // does not hold it.
+        if (node && (node.kind === 'value')) {
+            return { text: '', note: t('fl_run_value_derived'), unknown: true };
         }
 
         var step = stepOf(match[1]);

@@ -136,3 +136,131 @@ function test_workspace_flow_constants_fill_a_text()
 
 	pg_assert_same('VAT 18 %, Posted', ws_step_fill_nodes('VAT {{node.constants_1.rate}} %, {{node.post_1.text}}', $values));
 }
+
+// A derived value box's set-up kept: an unknown rule is join, the
+// comparison, places and date shape within their lists, inputs one line.
+function test_workspace_flow_derived_kind_and_config()
+{
+	$kind = ws_flow_kinds()['value'];
+
+	pg_assert_true(!empty($kind['pure']), 'a value box');
+	pg_assert_same(array(), $kind['outcomes'], 'no outcomes');
+	pg_assert_same(array('rule' => 'join', 'a' => '', 'b' => '', 'op' => 'eq', 'places' => 0, 'format' => 'Y-m-d'), ws_flow_config_normalize('value', array()), 'empty');
+	pg_assert_same(
+		array('rule' => 'round', 'a' => '{{node.web_1.ms}} ms', 'b' => 'x', 'op' => 'eq', 'places' => 6, 'format' => 'Y-m-d'),
+		ws_flow_config_normalize('value', array('rule' => 'round', 'a' => "{{node.web_1.ms}}\nms", 'b' => 'x', 'op' => 'like', 'places' => 9, 'format' => 'l')),
+		'kept within the lists'
+	);
+	pg_assert_same('join', ws_flow_derived_normalize(array('rule' => 'record_field'))['rule'], 'reading a record is not a rule: it is not pure');
+	pg_assert_same(array('value'), ws_flow_node_fields(ws_flow_values_test_node('value_1', 'value', ws_flow_derived_normalize(array('rule' => 'add'))), ws_flow_kinds()));
+	pg_assert_same('number', ws_flow_derived_outputs(ws_flow_derived_normalize(array('rule' => 'compare')))[0]['type']);
+	pg_assert_same('text', ws_flow_derived_outputs(ws_flow_derived_normalize(array('rule' => 'add_days')))[0]['type']);
+}
+
+// Each rule on its inputs as filled; an input the rule cannot read gives an
+// empty value, never an error.
+function test_workspace_flow_derived_rules()
+{
+	$value = function ($rule, $a, $b = '', $more = array()) {
+		return ws_flow_derived_value(ws_flow_derived_normalize(array('rule' => $rule) + $more), $a, $b);
+	};
+
+	pg_assert_same('1', $value('compare', '5', '5.0'), 'numbers equal by value');
+	pg_assert_same('1', $value('compare', 'abc', 'ABC'), 'texts as a value condition compares them');
+	pg_assert_same('0', $value('compare', 'abc', 'abd'), 'two texts');
+	pg_assert_same('1', $value('compare', '12', '9', array('op' => 'gt')), 'more than');
+	pg_assert_same('0', $value('compare', 'x', '9', array('op' => 'gt')), 'a word is never more');
+	pg_assert_same('1', $value('compare', 'Order shipped', 'SHIP', array('op' => 'contains')), 'contains');
+	pg_assert_same('Ada Lovelace', $value('join', ' Ada ', 'Lovelace'), 'join');
+	pg_assert_same('Ada', $value('join', 'Ada', ''), 'join with an empty one');
+	pg_assert_same('3.5', $value('add', '1.25', '2.25'), 'add');
+	pg_assert_same('-7', $value('subtract', '3', '10'), 'subtract');
+	pg_assert_same('', $value('add', '3', 'ten'), 'a word is not added');
+	pg_assert_same('3.14', $value('round', '3.14159', '', array('places' => 2)), 'round');
+	pg_assert_same('3', $value('round', '2.5'), 'round half up');
+	pg_assert_same('31.12.2026', $value('date_format', '2026-12-31', '', array('format' => 'd.m.Y')), 'date shape');
+	pg_assert_same('12/31/2026 09:05', ws_flow_derived_value(array('rule' => 'date_format', 'format' => 'm/d/Y H:i'), '2026-12-31 09:05', ''), 'a time kept');
+	pg_assert_same('', $value('date_format', 'next monday'), 'words are not a date');
+	pg_assert_same('', $value('date_format', '2026-02-30'), 'no such day');
+	pg_assert_same('2027-01-02', $value('add_days', '2026-12-31', '2'), 'add days across a year');
+	pg_assert_same('2026-12-29 08:00', $value('add_days', '2026-12-31 08:00', '-2'), 'take days away, the time kept');
+	pg_assert_same('', $value('add_days', '2026-12-31', 'two'), 'days must be a whole number');
+}
+
+// The run's values reach a derived box, which may read another one; one that
+// reads itself gives an empty value.
+function test_workspace_flow_derived_values_in_a_run()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			ws_flow_values_test_node('manual_1', 'manual'),
+			ws_flow_values_test_node('post_1', 'post', array('channel_id' => 5, 'body' => '{{node.value_2.value}}')),
+			ws_flow_values_test_node('constants_1', 'constants', array('rows' => array(array('key' => 'rate', 'type' => 'number', 'value' => '18')))),
+			ws_flow_values_test_node('value_2', 'value', array('rule' => 'round', 'a' => '{{node.value_1.value}}', 'places' => 1)),
+			ws_flow_values_test_node('value_1', 'value', array('rule' => 'add', 'a' => '{{node.web_1.ms}}', 'b' => '{{node.constants_1.rate}}')),
+			ws_flow_values_test_node('value_3', 'value', array('rule' => 'join', 'a' => '{{trigger.name}}', 'b' => '{{node.value_4.value}}')),
+			ws_flow_values_test_node('value_4', 'value', array('rule' => 'join', 'a' => '{{node.value_3.value}}', 'b' => 'x')),
+		),
+		'edges' => array(),
+	));
+	$values = ws_flow_pure_values($graph, array('web_1' => array('ms' => '0.06'), WS_STEP_TRIGGER => array('name' => 'Ada')));
+
+	pg_assert_same('18.06', $values['value_1']['value'], 'from a box and a constant');
+	pg_assert_same('18.1', $values['value_2']['value'], 'from another derived box, whatever their order');
+	pg_assert_same('', $values['value_3']['value'], 'a loop gives nothing');
+	pg_assert_same('18', $values['constants_1']['rate'], 'the constants too');
+	pg_assert_true(!isset($values['web_1']), 'the run values are not given back');
+	pg_assert_same('', ws_flow_pure_values($graph)['value_1']['value'], 'no run: nothing to add');
+	pg_assert_same('VAT 18.1', ws_step_fill_nodes('VAT {{node.value_2.value}}', $values));
+}
+
+// A derived box has no place among the arrows: its own reads are never "not
+// before"; the box that reads it is checked against what it reads, at any
+// depth. A loop and a missing input are its own problems.
+function test_workspace_flow_derived_in_the_graph_check()
+{
+	$graph = function ($body, $a, $edges, $more = array()) {
+		return array(
+			'nodes' => array_merge(array(
+				ws_flow_values_test_node('manual_1', 'manual'),
+				ws_flow_values_test_node('notify_1', 'notify', array('user_ids' => array(2), 'text' => 'Hi')),
+				ws_flow_values_test_node('post_1', 'post', array('channel_id' => 5, 'body' => $body)),
+				ws_flow_values_test_node('value_1', 'value', array('rule' => 'join', 'a' => $a, 'b' => 'x')),
+			), $more),
+			'edges' => $edges,
+		);
+	};
+	$line = array(
+		array('from' => 'manual_1', 'to' => 'notify_1', 'on' => 'next'),
+		array('from' => 'notify_1', 'to' => 'post_1', 'on' => 'done'),
+	);
+	$fork = array(
+		array('from' => 'manual_1', 'to' => 'notify_1', 'on' => 'next'),
+		array('from' => 'manual_1', 'to' => 'post_1', 'on' => 'next'),
+	);
+	// notify_1 runs only when notify_2 is done; post_1 after either way.
+	$either = array(
+		array('from' => 'manual_1', 'to' => 'notify_2', 'on' => 'next'),
+		array('from' => 'notify_2', 'to' => 'notify_1', 'on' => 'done'),
+		array('from' => 'notify_2', 'to' => 'post_1', 'on' => 'always'),
+		array('from' => 'notify_1', 'to' => 'post_1', 'on' => 'always'),
+	);
+
+	pg_assert_same(array(), ws_flow_values_test_found($graph('{{node.value_1.value}}', '{{node.notify_1.text}}', $line)), 'its input comes before the reader');
+	pg_assert_same(array('bad_reference post_1'), ws_flow_values_test_found($graph('{{node.value_1.value}}', '{{node.notify_1.text}}', $fork)), 'its input on another branch');
+	pg_assert_same(array(), ws_flow_values_test_found($graph('Hello', '{{node.notify_1.text}}', $fork)), 'nobody reads it: nothing to check');
+	pg_assert_same(array('skippable_reference post_1 warning'), ws_flow_values_test_found($graph('{{node.value_1.value}}', '{{node.notify_1.text}}', $either, array(
+		ws_flow_values_test_node('notify_2', 'notify', array('user_ids' => array(2), 'text' => 'Hi')),
+	))), 'its input may be skipped');
+	pg_assert_same(array('bad_reference value_1'), ws_flow_values_test_found($graph('Hello', '{{node.notify_1.nothing}}', $line)), 'a field the box does not give');
+	pg_assert_same(array('bad_reference post_1'), ws_flow_values_test_found($graph('{{node.value_1.value}}', '{{node.value_2.value}}', $fork, array(
+		ws_flow_values_test_node('value_2', 'value', array('rule' => 'round', 'a' => '{{node.notify_1.text}}')),
+	))), 'through a second derived box');
+	pg_assert_same(array('bad_config value_1', 'bad_config value_2'), ws_flow_values_test_found($graph('Hello', '{{node.value_2.value}}', $line, array(
+		ws_flow_values_test_node('value_2', 'value', array('rule' => 'round', 'a' => '{{node.value_1.value}}')),
+	))), 'a loop of derived boxes');
+	pg_assert_same(array('bad_config value_1', 'bad_config value_1'), ws_flow_values_test_found(array(
+		'nodes' => array(ws_flow_values_test_node('manual_1', 'manual'), ws_flow_values_test_node('value_1', 'value', array('rule' => 'add_days', 'a' => '', 'b' => 'soon'))),
+		'edges' => array(),
+	)), 'no input, days not a number');
+}
