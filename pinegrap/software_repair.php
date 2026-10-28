@@ -44,7 +44,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('software_repair');
 
 $software_repair_url = PATH . SOFTWARE_DIRECTORY . '/software_repair.php';
-$software_upgrade_url = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/install/index.php?automated_upgrade=true';
+// Relative, so the upgrade screen opens with the scheme and host the visitor
+// used. URL_SCHEME is the site's setting: behind a proxy that ends TLS it may
+// say http while the panel is served over https, and a redirect to that
+// address left the secure origin (a request that followed it from a script
+// was refused as mixed content). go() below redirects the same way.
+$software_upgrade_url = PATH . SOFTWARE_DIRECTORY . '/install/index.php?automated_upgrade=true';
 
 // The replace step succeeded: the files on disk are the package's. The
 // version the check step found is in the session; failing that, the VERSION

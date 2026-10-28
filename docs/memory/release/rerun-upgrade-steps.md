@@ -10,6 +10,7 @@ description: How to re-run an open version's upgrade steps on a dev DB (config.v
 
 ## Can it be done from the panel (2026.4.8)?
 - Settings -> İşler -> Yazılımı Onar (`software_repair.php`, admin only): the card "Veritabanı yükseltme adımlarını yeniden koş" writes the chosen version to `config.version` and goes to `install/index.php?automated_upgrade=true`. It refuses while the `install/` folder is missing (Repair Software puts it back).
+- Both cards send the browser to `install/index.php?automated_upgrade=true` with a relative `Location`, so the upgrade screen keeps the scheme the visitor used; built from `URL_SCHEME` (the site setting, `http://` on dev behind cloudflared) the redirect left the HTTPS origin and a script following it was refused as mixed content.
 - Choices come from `pg_upgrade_rerun_choices()` (`includes/fn/update.php`). It reads `versions.php` as text (`pg_upgrade_versions_from_source()`; the file is `INSTALL_OR_UPDATE`-gated and cannot be included), from the first version starting with `'2026'` up to the one before `VERSION`. Pre-2026 `legacy.php` steps write raw `ALTER ... ADD` and cannot be re-run.
 
 ## What does the "Yazılımı Onar" package card do?
