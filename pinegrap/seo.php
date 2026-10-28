@@ -2912,7 +2912,7 @@ function pg_seo_render_detail_offcanvas()
         var offcanvas_element = document.getElementById("pg_seo_offcanvas");
         var body = document.getElementById("pg_seo_offcanvas_body");
 
-        body.innerHTML = "<div class=\"text-center py-7\"><div class=\"spinner-border fg-primary\" role=\"status\"></div></div>";
+        body.innerHTML = "<div class=\"text-center py-7\"><div class=\"spinner-border fg-primary\" style=\"font-size:2rem\" role=\"status\"></div></div>";
         pgUI.drawer.show(offcanvas_element);
 
         fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})

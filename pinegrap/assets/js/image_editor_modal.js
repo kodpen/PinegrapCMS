@@ -168,7 +168,12 @@
             // fullscreen button also pushed right, two auto margins split the
             // free space and left a gap between the pair; the close button
             // only needs to sit next to its neighbour.
-            '#pgImageEditorModal .dialog-header .btn-close { margin-left:0; }';
+            '#pgImageEditorModal .dialog-header .btn-close { margin-left:0; }' +
+            // Unlayered like doka.css, which a @layer custom rule cannot
+            // override. The editor's palette is RGB triples it derives its
+            // shades from on the same element; the panel body triple keeps
+            // it on the dark body colour.
+            '[data-bs-theme="dark"] .doka-image-editor { --color-background: var(--pg-body-bg-rgb, 16, 17, 20); --color-foreground: 222, 226, 230; }';
         document.head.appendChild(style);
 
         var fullButton = _modalEl.querySelector('#pgImageEditorFull');

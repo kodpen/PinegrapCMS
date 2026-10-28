@@ -75,3 +75,19 @@ function test_bs6_js_leftovers_settings_rail()
 	pg_assert_true(strpos($source, 'data-bs-toggle="pill"') === false, 'Settings rail uses pill');
 	pg_assert_contains('data-bs-toggle="tab" data-bs-target="#tab-', $source);
 }
+
+function test_bs6_js_leftovers_loader_metrics()
+{
+	// Bootstrap 6 raised .placeholder's min-height to 1.25em; the dashboard
+	// skeleton was measured with v5's 1em.
+	pg_assert_contains('@layer custom { .card-body-placeholder .placeholder { min-height: 1em; } }', bs6_js_leftovers_source('welcome.php'));
+
+	// v6 .spinner-border is 1em; 2rem gives v5's 32px with a 4px ring.
+	foreach (array('assets/js/add_order.js' => 2, 'assets/js/erp_lists.js' => 1) as $path => $count) {
+		$source = bs6_js_leftovers_source($path);
+		pg_assert_same($count, substr_count($source, '<span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span>'), $path);
+		pg_assert_same($count, substr_count($source, 'spinner-border'), $path . ': spinner without the size');
+	}
+
+	pg_assert_contains('<div class=\\"spinner-border fg-primary\\" style=\\"font-size:2rem\\" role=\\"status\\"></div>', bs6_js_leftovers_source('seo.php'));
+}
