@@ -1,6 +1,8 @@
 {
     "Z Index": "Katman Sırası",
     "Z to A": "Z'den A'ya",
+    "ZIP creation failed or resulted in empty archive.": "ZIP oluşturulamadı ya da arşiv boş çıktı.",
+    "ZIP file not readable.": "ZIP dosyası okunamıyor.",
     "ZIP, {var:1} MB. The link works until {var:2}; ask for a new one after that.": "ZIP, {var:1} MB. Bağlantı {var:2} tarihine kadar çalışır; sonrasında yenisini isteyin.",
     "Zip / Postal Code": "Zip / posta kodu",
     "Zip Code": "Posta kodu",

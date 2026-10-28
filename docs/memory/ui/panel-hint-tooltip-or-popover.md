@@ -12,3 +12,7 @@ description: Panel hover hints: why a bare title turns into a large header-only 
 
 ## And a details popover?
 - Name in `title` (escaped twice: html), body in `data-bs-content`, `data-bs-custom-class` for a smaller font and width (Bootstrap reads both from the element). Keep it to a few lines: the first pages and "+n more", two highlights; facts already on the card stay off it. Example: the template gallery's info button (`sd-tpl-info`, docs/memory/designer/designer-home-screen.md).
+
+## Why does a form field never carry a hint in `title`?
+- Bootstrap 6's `Tooltip._fixTitle()` copies the title into `aria-label` on an element with no `aria-label` and no text, then removes the title. On a labelled field that `aria-label` replaces the label's name ("Leave it empty for one day." instead of "Last day"), and the hint shows only on mouse hover. A field hint is `<div class="form-text" id="…_hint">` under the field with `aria-describedby` on it (holiday form, `includes/workspace/workdays.php`, #2668).
+- A popover sits at z-index 1050, under a fixed sheet at 1055 (`.pg-open-sheet`); an icon button inside one uses the tooltip recipe (1060) and its own `aria-label` (the Copy buttons of the Claude card's secret sheet).

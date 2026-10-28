@@ -1665,6 +1665,7 @@
     "Could not check whether the buyer is registered for e-invoice: {var:1}": "Alıcının e-fatura mükellefi olup olmadığı kontrol edilemedi: {var:1}",
     "Could not connect to the FTP server {var:1}.": "{var:1} FTP sunucusuna bağlanılamadı.",
     "Could not connect: {var:1}": "Bağlanılamadı: {var:1}",
+    "Could not create the update file. Check write permission for the software directory.": "Güncelleme dosyası oluşturulamadı. Yazılım klasörünün yazma iznini denetleyin.",
     "Could not fetch stock locations: {var:1}": "Stok konumları alınamadı: {var:1}",
     "Could not generate a unique barcode. Please try again.": "Benzersiz bir barkod oluşturulamadı. Lütfen tekrar deneyin.",
     "Could not load installments.": "Taksitler yüklenemedi.",

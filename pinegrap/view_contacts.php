@@ -689,9 +689,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
 
             // Output select box.
             $output_opt_status = '
-                <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>Opt-In</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>Opt-Out</option></select>';
+                <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>';
         } else {
-            $output_opt_status = 'Opt-In';
+            $output_opt_status = lang('Opt-In');
         }
 
         // If any of the Membership filters are not on.
@@ -1014,11 +1014,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
     if ($filter != 'all_duplicate_contacts') {
         // if the user has selected to show contact groups, then prepare toggle to hide contact groups
         if (($_SESSION['software']['view_contacts']['show_contact_groups'] ?? '') == true) {
-            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=false" title="Hide Contact Groups">' . lang('Hide Groups') . '</a>';
+            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=false" title="' . h(lang('Hide Contact Groups')) . '">' . lang('Hide Groups') . '</a>';
         
         // else set the show groups toggle link's value and label
         } else {
-            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=true" title="Show Contact Groups">' . lang('Show Groups') . '</a>';
+            $output_contact_groups_toggle = '<a href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . h($filter) . '&show_contact_groups=true" title="' . h(lang('Show Contact Groups')) . '">' . lang('Show Groups') . '</a>';
         }
     }
     

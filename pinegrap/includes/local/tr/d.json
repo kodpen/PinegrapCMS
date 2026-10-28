@@ -712,6 +712,7 @@
     "Downloading the AI model: {var:1}%": "Yapay zekâ modeli indiriliyor: %{var:1}",
     "Downloading the language model… {var}%": "Dil modeli indiriliyor… %{var}",
     "Downloading {var:1}...": "{var:1} indiriliyor...",
+    "Downloading...": "İndiriliyor...",
     "Downloads": "İndirme",
     "Dr. Daniel Ross": "Dr. Can Arslan",
     "Dr. Emily Turner": "Dr. Zeynep Demir",
