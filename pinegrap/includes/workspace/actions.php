@@ -1987,7 +1987,12 @@ function ws_handle_action($action, $request)
 
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
-            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array('parent_id' => $parent_id));
+            // A recording also carries the length and waveform its recorder
+            // measured, cleaned before they are kept (ws_voice_queue()).
+            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array(
+                'parent_id' => $parent_id,
+                'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
+            ));
 
             return $result['ok'] ? ws_action_ok(array('message_id' => $result['message_id'])) : ws_action_error($result['error']);
 
@@ -2706,6 +2711,13 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('status' => (string) $kick['status']));
 
+        // Writes out the voice messages waiting for a transcript, one call
+        // to the service at most, for servers that cannot carry it on after
+        // the upload's answer (voice.php). Another screen's call that finds
+        // the work under way returns at once.
+        case 'ws_voice_kick':
+            return ws_action_ok(array('status' => function_exists('ws_voice_kick') ? (string) ws_voice_kick(1) : 'idle'));
+
         // Sends the oldest request waiting for an MCP agent and posts its
         // answer (mcp_agent.php). Another screen's call takes the next one.
         case 'ws_mcp_agent_kick':
@@ -2734,6 +2746,22 @@ function ws_handle_action($action, $request)
             }
 
             $result = ws_ai_channel_set($viewer, $channel, !empty($request['allowed']));
+
+            return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
+
+        // Whether the voice messages of a channel are transcribed.
+        case 'ws_channel_voice':
+            $channel = ws_action_channel($viewer, $request, 'manage');
+
+            if (!is_array($channel)) {
+                return ws_action_error($channel);
+            }
+
+            if (!function_exists('ws_voice_channel_set')) {
+                return ws_action_error(lang('Invalid request.'));
+            }
+
+            $result = ws_voice_channel_set($viewer, $channel, !empty($request['allowed']));
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 

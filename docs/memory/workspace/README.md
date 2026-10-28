@@ -164,7 +164,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
-- workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic (parent_id on ws_attach and files.create), the 5-minute cap, .weba/.ogg/.m4a names, the player, what is not built
+- workspace-voice-recording.md: Voice messages (workspace_voice.js): the mic in place of Send, a sound's reply mic, the 5-minute cap, .weba/.ogg/.m4a names, the player
+- workspace-voice-screen.md: Voice transcripts on the channel screen (V3c2): recorder waveform and length, the player's peaks and transcript, the panel kick, the channel menu switch
 - workspace-voice-transcript-job.md: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, ws_voice_kick(), answers and holds, delete for everyone, file.voice, channel switch, workspace.message.transcribed
 - workspace-voice-transcripts.md: Voice message transcripts (V3a #2674): ws_voice, the settings card with the site's own OpenAI-compatible key, ws_channels.voice_access, the 5-minute cap
 - workspace-webhook-channel-groups.md: A webhook subscription narrowed to one group of Workspace channels (api_webhooks.channel_group_id, schema 10.76): what it hears, the checks, what removing the group does
