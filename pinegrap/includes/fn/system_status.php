@@ -1721,6 +1721,7 @@ function get_system_status_checks()
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
         'Product Feeds'            => 'Feeds',
+        'Incoming E-mail'          => 'Mailboxes',
         'e-Fatura Threshold'       => 'e-Fatura',
     );
 
@@ -1755,6 +1756,7 @@ function get_system_status_checks()
         'Operations Alerts',
         'Maintenance Mode',
         'Product Feeds',
+        'Incoming E-mail',
         'e-Fatura Threshold',
     );
 
@@ -3378,6 +3380,86 @@ function get_system_status_checks()
                     $feeds_detail
                 );
 
+            }
+        }
+    }
+
+    // 📨 Incoming e-mail (ws_mail_fetch_health() in includes/workspace/mail_settings.php)
+    //
+    // A tile only while a Workspace mailbox with a server is on. Mail that
+    // is not read waits unseen in the box, so the team learns of it from the
+    // customer: red when a box's last read failed, yellow when a mail over
+    // 25 MB was left in a box or a box was not read for an hour (the general
+    // job is not running). Reported, not scored, like Product Feeds.
+    if (
+        defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED
+        && is_file(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php')
+    ) {
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+
+        if (function_exists('ws_mail_fetch_health') && ws_enabled() && ws_mail_ready()) {
+
+            $mail_health = ws_mail_fetch_health((array) db_items("SELECT * FROM ws_mail_boxes WHERE enabled = 1 ORDER BY name"), time());
+
+            if ($mail_health['state'] !== 'none') {
+
+                $mail_href = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php#ws-mail';
+                $mail_detail = array();
+
+                foreach ($mail_health['rows'] as $mail_row) {
+                    if ($mail_row['error'] !== '') {
+                        $mail_when = ws_mail_error_text($mail_row['error'], $mail_row['detail'], $mail_row['host']);
+                    } elseif ($mail_row['checked_at'] <= 0) {
+                        $mail_when = lang('Not checked yet');
+                    } else {
+                        $mail_when = get_relative_time(array('timestamp' => $mail_row['checked_at'], 'format' => 'plain_text'));
+                    }
+
+                    $mail_detail[] = array(
+                        'label' => ($mail_row['name'] !== '') ? $mail_row['name'] : $mail_row['address'],
+                        'state' => $mail_row['state'],
+                        'when'  => $mail_when,
+                    );
+                }
+
+                if ($mail_health['state'] === 'fail') {
+
+                    $output .= $makeIcon(
+                        'bi-envelope-exclamation-fill',
+                        'fg-danger',
+                        'Incoming E-mail',
+                        'A mailbox could not be read, so the mail sent to it does not reach its channel. The reason is on the Mailboxes card of Workspace Settings.',
+                        lang(array('string' => '{var:1} failing', 'vars' => pg_format_number($mail_health['failing'], 0))),
+                        $mail_href,
+                        $mail_detail
+                    );
+
+                } elseif ($mail_health['state'] === 'warn') {
+
+                    $output .= $makeIcon(
+                        'bi-envelope-exclamation',
+                        'fg-warning',
+                        'Incoming E-mail',
+                        'A mailbox was not read in the last hour, or an e-mail over 25 MB was left in it. Check that the scheduled tasks run.',
+                        '',
+                        $mail_href,
+                        $mail_detail
+                    );
+
+                } else {
+
+                    $output .= $makeIcon(
+                        'bi-envelope-check-fill',
+                        'fg-success',
+                        'Incoming E-mail',
+                        'The mailboxes that are on were read in the last hour.',
+                        lang(array('string' => '{var:1} on', 'vars' => pg_format_number($mail_health['on'], 0))),
+                        $mail_href,
+                        $mail_detail
+                    );
+
+                }
             }
         }
     }

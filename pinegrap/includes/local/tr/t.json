@@ -2210,6 +2210,7 @@
     "The mail queue table is not available yet; run the upgrade.": "Posta kuyruğu tablosu henüz yok; yükseltmeyi çalıştırın.",
     "The mailbox was saved.": "E-posta kutusu kaydedildi.",
     "The mailbox's channel is missing or in the archive.": "E-posta kutusunun kanalı yok ya da arşivde.",
+    "The mailboxes that are on were read in the last hour.": "Açık e-posta kutuları son bir saatte okundu.",
     "The mailing lists you receive.": "Aldığınız e-posta listeleri.",
     "The main content of the page. Use it once per page.": "Sayfanın ana içeriği. Sayfada bir kez kullanılır.",
     "The main points of the article, written by the visitor's browser.": "Haberin ana fikirleri, ziyaretçinin tarayıcısında hazırlanır.",

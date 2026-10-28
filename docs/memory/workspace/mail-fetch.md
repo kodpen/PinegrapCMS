@@ -1,11 +1,16 @@
 ---
 name: mail-fetch
-description: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), workspace_mail_job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records
+description: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 ---
 
 ## Who reads a mailbox, and when?
-- `workspace_mail_job.php` (catalogue `workspace_mail_job`, light lane, every 60 s, switched on in the scheduled jobs settings) calls `ws_mail_fetch_run(40)`: boxes `enabled`, `transport = 'imap'`, a `host` in `settings`, not read in the last `WS_MAIL_FETCH_EVERY` (60) s, longest waiting first, while a whole box budget (15 s) still fits.
-- `includes/workspace/mail_fetch.php` is loaded only by the job (`require_once`), with the IMAP client (`mail-imap-client.md`).
+- `job.php` on every tick (G2c2, no switch, like the scheduled actions): while the module is on and a box `enabled`, `transport = 'imap'` has a `host`, it loads `mail_fetch.php` and calls `ws_mail_fetch_run(20)`, then `pg_cron_ran('workspace_mail_job')`. A site with no such box costs one small read.
+- Catalogue `workspace_mail_job`: `inline => true`, `dispatch => false` (no switch on the scheduled jobs screen, not in the rotation; Operations alerts count it as always expected). `workspace_mail_job.php` (`ws_mail_fetch_run(40)`) stays for a dedicated cron line.
+- `ws_mail_fetch_run()` reads boxes not read in the last `WS_MAIL_FETCH_EVERY` (60) s, longest waiting first, while a whole box budget (15 s) still fits.
+- `includes/workspace/mail_fetch.php` is loaded only by those two callers (`require_once`), with the IMAP client (`mail-imap-client.md`).
+
+## What does System status show?
+- Tile "Incoming E-mail" (reported, not scored; only while a box with a server is on), from `ws_mail_fetch_health()` in `mail_settings.php`: red when a box's `last_error` is set (not `too_large`); yellow for `too_large` or no good read (`ok_at`, else `created_at`) for over an hour; detail rows per box with the error text from `ws_mail_error_text()`. Links to `workspace_settings.php#ws-mail`.
 
 ## What does one read do?
 - `GET_LOCK('pg_ws_mail_<id>', 0)`: a second reader answers `locked` and skips the box.
@@ -23,4 +28,4 @@ description: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), workspace_m
 - `checked_at` every run; `ok_at` and an empty `last_error` on success; else `last_error` = `code|server words` (`ws_mail_last_error()`), drawn on the Mailboxes card by `ws_mail_box_check_line()` (`mail-card.md`). A run that left a too-large mail succeeds with `too_large|`.
 
 ## Tests?
-- `tests/workspace_mail_fetch_test.php`: plan, candidates, cursor, Message-ID, outcomes, the catalogue entry. The read itself was not run against a server (no port 993 in the cloud sessions).
+- `tests/workspace_mail_fetch_test.php`: plan, candidates, cursor, Message-ID, outcomes, the catalogue entry and the job.php pass, the System status health. The read itself was not run against a server (no port 993 in the cloud sessions).
