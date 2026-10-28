@@ -410,24 +410,29 @@
 .sd-panel-bottom.collapsed { height: 28px !important; overflow: hidden; }
 .sd-panel-bottom.sd-resizing { transition: none; }
 
-/* ── Vertical resize handle (resizes the bottom panel up/down) ── */
+/* ── Vertical resize handle (resizes the bottom panel up/down) ──
+   The panel's top edge owns a strip 4px above the line and 5px below it,
+   above the canvas, across the whole width: grabbing the line anywhere
+   resizes the panel. The canvas frame's own bottom handles sit higher, in
+   the canvas (.sd-resize-handle-bottom). The band drawn on hover is the
+   5px below the line. */
 .sd-bp-vresize {
     position: absolute;
-    top: 0; left: 0; right: 0;
-    height: 5px;
+    top: -4px; left: 0; right: 0;
+    height: 9px;
     cursor: ns-resize;
     z-index: 20;
     background: transparent;
-    transition: background .15s;
+    touch-action: none;
 }
 .sd-bp-vresize:hover, .sd-bp-vresize.active {
-    background: var(--sd-panel-border);
+    background: linear-gradient(transparent 4px, var(--sd-panel-border) 4px);
     opacity: .8;
 }
 .sd-bp-vresize::after {
     content: '';
     position: absolute;
-    top: 50%; left: 50%;
+    top: calc(50% + 2px); left: 50%;
     transform: translate(-50%, -50%);
     width: 12px; height: 4px;
     background-image: radial-gradient(circle, rgba(255,255,255,.45) 1px, transparent 1px);
@@ -672,8 +677,12 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-resize-handle::after { content:''; width:3px; height:28px; background:var(--sd-panel-border); border-radius:3px; transition:background .15s, height .15s; }
 .sd-resize-handle:hover::after, .sd-resize-handle.active::after { background:var(--sd-accent); height:44px; }
 
+/* The bottom and corner handles stand 4px inside the canvas: at the
+   bottom of the area the canvas meets the bottom panel, whose edge strip
+   takes the 4px above the line (.sd-bp-vresize). Hanging below the canvas
+   they lay on that line and a grab there resized the canvas instead. */
 .sd-resize-handle-bottom {
-    position:absolute; bottom:-6px; left:0; width:100%; height:12px;
+    position:absolute; bottom:4px; left:0; width:100%; height:12px;
     cursor:ns-resize; z-index:5;
     display:flex; align-items:center; justify-content:center;
 }
@@ -681,7 +690,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
 .sd-resize-handle-bottom:hover::after, .sd-resize-handle-bottom.active::after { background:var(--sd-accent); width:44px; }
 
 .sd-resize-handle-corner {
-    position:absolute; bottom:-6px; right:-6px; width:12px; height:12px;
+    position:absolute; bottom:4px; right:-6px; width:12px; height:12px;
     cursor:nwse-resize; z-index:6;
     background:var(--sd-panel-border); border-radius:50%; transition:background .15s, transform .15s;
 }
@@ -1568,6 +1577,7 @@ a.sd-vb-btn, a.sd-vb-btn:hover { text-decoration:none; }
     grid-row: 1;
     background: var(--sd-panel-border);
     cursor: ew-resize;
+    touch-action: none;
     z-index: 5;
     position: relative;
 }
@@ -5244,7 +5254,6 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 
 /* ── Panel resize handles: slightly thicker on hover ── */
 .sd-left-vsep:hover { height: 6px; margin: -0.5px 0; }
-.sd-bp-vresize:hover { height: 6px; }
 
 /* ── Breadcrumb hover ── */
 #sd-statusbar-breadcrumb span { border-radius: 3px; }
@@ -5274,6 +5283,10 @@ textarea.sd-as-co-input { resize: vertical; min-height: 38px; }
 /* ── Smoother panel collapse ── */
 .sd-panel-bottom { transition: height .2s cubic-bezier(.4,0,.2,1); }
 .sd-panel-bottom.collapsed { transition: height .15s ease; }
+/* A drag sets the height itself; the snap-to-collapse preview must not
+   animate under it either. */
+.sd-panel-bottom.sd-resizing,
+.sd-panel-bottom.sd-resizing.collapsed { transition: none; }
 #sd-assets-panel { transition: height .2s cubic-bezier(.4,0,.2,1); }
 
 

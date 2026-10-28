@@ -24069,16 +24069,60 @@ const StyleDesigner = (function () {
         // ── Vertical resize (snap-to-collapse) ──
         var _BP_SNAP_THRESHOLD = 60;
         var _BP_EXPAND_DEFAULT = 200;
+        // One drag on a handle of this panel. The pointer is captured, so
+        // the moves and the release keep coming to the handle while the
+        // cursor is over the canvas iframe, whose document took them before
+        // (the drag froze, then jumped, and a release over the canvas never
+        // ended it). The iframe also stops taking the pointer for the
+        // drag's length, as the side panel handles do. `move` gets the
+        // latest event once per frame; every way a drag can end runs `end`
+        // once and puts the iframe and the handle back.
+        function _sdBpDrag(handle, e, bodyClass, move, end) {
+            var pid = e.pointerId;
+            var iframe = document.getElementById('sd-canvas-iframe');
+            var prevPe = iframe ? iframe.style.pointerEvents : '';
+            var last = null, raf = 0, done = false;
+            try { handle.setPointerCapture(pid); } catch (err) {}
+            if (iframe) iframe.style.pointerEvents = 'none';
+            document.body.classList.add(bodyClass);
+            handle.classList.add('active');
+            function frame() { raf = 0; if (last) move(last); }
+            function onMove(ev) {
+                if (ev.pointerId !== pid) return;
+                last = ev;
+                if (!raf) raf = requestAnimationFrame(frame);
+            }
+            function onEnd(ev) {
+                if (done || ev.pointerId !== pid) return;
+                done = true;
+                if (raf) { cancelAnimationFrame(raf); frame(); }
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onEnd);
+                document.removeEventListener('pointercancel', onEnd);
+                handle.removeEventListener('lostpointercapture', onEnd);
+                try { if (handle.hasPointerCapture(pid)) handle.releasePointerCapture(pid); } catch (err) {}
+                if (iframe) iframe.style.pointerEvents = prevPe;
+                document.body.classList.remove(bodyClass);
+                handle.classList.remove('active');
+                end();
+            }
+            // On the document: captured events bubble up from the handle,
+            // and without capture the document still sees the moves.
+            document.addEventListener('pointermove', onMove);
+            document.addEventListener('pointerup', onEnd);
+            document.addEventListener('pointercancel', onEnd);
+            handle.addEventListener('lostpointercapture', onEnd);
+        }
         var vResizeHandle = document.getElementById('sd-bp-vresize');
         if (vResizeHandle) {
-            vResizeHandle.addEventListener('mousedown', function (e) {
+            vResizeHandle.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0) return;
                 e.preventDefault();
                 var startY = e.clientY;
                 var startH = p.classList.contains('collapsed') ? _BP_EXPAND_DEFAULT : p.offsetHeight;
                 p.classList.add('sd-resizing');
-                vResizeHandle.classList.add('active');
-                function onMove(e) {
-                    var delta = startY - e.clientY;
+                _sdBpDrag(vResizeHandle, e, 'sd-resizing-v', function (ev) {
+                    var delta = startY - ev.clientY;
                     var maxH = (window.innerHeight || document.documentElement.clientHeight) * 0.75;
                     var newH = Math.min(maxH, startH + delta);
                     if (newH < _BP_SNAP_THRESHOLD) {
@@ -24090,19 +24134,13 @@ const StyleDesigner = (function () {
                         colBtn.classList.remove('bi-chevron-up'); colBtn.classList.add('bi-chevron-down');
                         p.style.height = Math.max(80, newH) + 'px';
                     }
-                }
-                function onUp() {
+                }, function () {
                     p.classList.remove('sd-resizing');
-                    vResizeHandle.classList.remove('active');
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
                     if (p.classList.contains('collapsed')) {
                         colBtn.classList.remove('bi-chevron-down'); colBtn.classList.add('bi-chevron-up');
                     }
                     saveLayout();
-                }
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
+                });
             });
             // Double-click: toggle collapse
             vResizeHandle.addEventListener('dblclick', function() {
@@ -24128,24 +24166,16 @@ const StyleDesigner = (function () {
         function _bindColResize(handleId, varName, startSiblingFn) {
             var handle = document.getElementById(handleId);
             if (!gridEl || !handle) return;
-            handle.addEventListener('mousedown', function (e) {
+            handle.addEventListener('pointerdown', function (e) {
+                if (e.button !== 0) return;
                 e.preventDefault();
                 var startX = e.clientX;
                 var startW = startSiblingFn();
-                handle.classList.add('active');
-                function onMove(ev) {
+                _sdBpDrag(handle, e, 'sd-resizing', function (ev) {
                     var rect = gridEl.getBoundingClientRect();
                     var newW = Math.max(160, Math.min(rect.width - 320, startW + (ev.clientX - startX)));
                     gridEl.style.setProperty(varName, newW + 'px');
-                }
-                function onUp() {
-                    handle.classList.remove('active');
-                    document.removeEventListener('mousemove', onMove);
-                    document.removeEventListener('mouseup', onUp);
-                    saveLayout();
-                }
-                document.addEventListener('mousemove', onMove);
-                document.addEventListener('mouseup', onUp);
+                }, saveLayout);
             });
         }
         // Left handle resizes col 1 (HTML). Read its current pixel width
