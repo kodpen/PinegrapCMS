@@ -6,6 +6,7 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 ## What sends an order's text message?
 - `includes/fn/sms_messages.php`. Three events (`pg_sms_message_events()`): `order_received` (kind `order`), `order_shipped` and `order_delivered` (kind `shipping`). Each is queued with `pg_sms_enqueue()`, never sent in the request, to the order's `billing_phone_number`; a number that is not a mobile, an event switched off or SMS not set up sends nothing and stops nothing.
 - A fourth event, `stock_back` (kind `stock`), texts a back-in-stock notice to the number the request kept: [[back-in-stock-sms]].
+- A fifth, `cod_code` (kind `otp`), carries the cash-on-delivery confirmation code ([[sms-codes]]); a code event's template must contain `^^code^^`. `pg_sms_message_text()` fills any event's template.
 - Every event is off until switched on (Settings › Communication › SMS Messages): each message is paid, so switching SMS on for a test does not start texting every customer.
 
 ## Where is each one queued?
@@ -24,7 +25,7 @@ description: Order SMS (received, shipped, delivered) and back in stock: templat
 - Fields `^^store^^` (ORGANIZATION_NAME), `^^name^^` (billing first name), `^^order_number^^`, `^^total^^` (received), `^^carrier^^`, `^^tracking_number^^` (all of the address's numbers in the save), `^^tracking_url^^` (first parcel's, `pg_shipment_view()`). A field the event lacks is refused on save; an empty value leaves no double space (`pg_sms_message_render()`). Templates at most 480 characters.
 
 ## What is still open?
-- COD confirmation code at checkout and member OTP (Netgsm's OTP route or not): `plans/sms-and-iys.md` step 3b.
+- The member sign-in code: `plans/sms-and-iys.md` step 3b.
 
 ## How was it verified?
 - `tests/sms_messages_test.php` (render, normalize, the card's decision). Not run on a sandbox: the hooks are one call each after paths the shipment and order tests already pin; Netgsm was not reached.

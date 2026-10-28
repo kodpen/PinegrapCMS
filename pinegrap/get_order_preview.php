@@ -1838,6 +1838,10 @@ function get_order_preview($properties) {
                 $output_payment_methods .= '<div class="payment data" style="margin-bottom: 1em">' . $form->output_field(array('type'=>'radio', 'name'=>'payment_method', 'id'=>'payment_method_on_account', 'value'=>'On Account', 'class'=>'software_input_radio', 'required' => 'true')) . '<label for="payment_method_on_account"> ' . h($on_account_option['label']) . ' <span class="software_note">(' . h($on_account_option['note']) . ')</span></label></div>';
             }
 
+            // The cash-on-delivery code's field, shown while offline payment
+            // is chosen (includes/fn/sms_codes.php).
+            $output_payment_methods .= pg_sms_cod_field_html();
+
             // output the payment information
             $output_payment_information =
                 '<div class="payment heading">Payment Information</div>
@@ -3376,6 +3380,11 @@ function get_order_preview($properties) {
                 }
 
                 $system .= '<script>software.init_payment_method()</script>';
+
+                // A custom layout has no place of its own for the
+                // cash-on-delivery code's field: it comes with the system
+                // part every layout prints.
+                $system .= pg_sms_cod_field_html();
             }
 
             // If a terms page was selected for this page,
