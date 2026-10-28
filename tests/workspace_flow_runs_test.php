@@ -704,7 +704,7 @@ function test_workspace_flow_runs_deleted_flow_stops()
 
 	$start = ws_flow_runs_test_source('ws_flow_run_start');
 
-	pg_assert_contains("FROM ws_flows WHERE id = '\" . \$flow_id . \"' AND status = 'live'", $start, 'the run is written only while the flow is live');
+	pg_assert_contains("FROM ws_flows WHERE id = ? AND status = 'live'", $start, 'the run is written only while the flow is live');
 
 	$cancel = ws_flow_runs_test_source('ws_flow_runs_cancel_for_flow');
 
