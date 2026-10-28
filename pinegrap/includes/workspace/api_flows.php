@@ -1241,14 +1241,21 @@ function ws_api_flow_run_step_schema()
  * @param int        $n     the number of the version it follows
  * @param array|null $steps its ws_flow_run_steps rows, for a single read
  * @param array|null $graph the version's graph, with the steps
+ * @param string|null $result the flag's result read for a page of runs
+ *                            (ws_flow_runs_results()); a single read works
+ *                            it out from its steps
  * @return array
  */
-function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null)
+function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null, $result = null)
 {
     $starter = ((int) $run['started_by'] === (int) $viewer['id']);
     $full = ($steps !== null) && ($graph !== null);
     $edit = ((string) $run['access'] === 'edit');
     $states = $full ? ws_flow_step_states($steps) : array();
+
+    if ($result === null) {
+        $result = $full ? ws_flow_run_result_of($run, $steps, $graph) : (string) ($run['result'] ?? '');
+    }
 
     return array(
         'id'          => (int) $run['id'],
@@ -1265,6 +1272,7 @@ function ws_api_flow_run_present($viewer, $run, $n, $steps = null, $graph = null
         'started_at'  => ws_flow_time($run['started_at']),
         'updated_at'  => ws_flow_time($run['updated_at']),
         'finished_at' => ws_flow_time($run['finished_at']),
+        'result'      => (string) $result,
         'steps'       => $full ? array_map(function ($step) use ($graph, $edit, $states) {
             return ws_api_flow_run_step_present($step, $graph, $edit, $states);
         }, $steps) : null,
@@ -1290,6 +1298,7 @@ function ws_api_flow_run_schema()
         'started_at'  => 'string?',
         'updated_at'  => 'string?',
         'finished_at' => 'string?',
+        'result'      => 'string',
         'steps'       => 'WorkspaceFlowRunStep[]?',
         'graph'       => 'WorkspaceFlowGraph?',
     );
@@ -1384,9 +1393,10 @@ function ws_api_flow_runs_list($params)
     }
 
     $out = array();
+    $results = ws_flow_runs_results($page['rows']);
 
     foreach ($page['rows'] as $run) {
-        $out[] = ws_api_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0);
+        $out[] = ws_api_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0, null, null, $results[(int) $run['id']]);
     }
 
     api_ok_list($out, $limit, ($page['next'] !== null) ? api_cursor_encode($page['next'], $page['next']) : null);

@@ -95,6 +95,17 @@
         failed: ['fl_run_failed', 'bi-x-octagon-fill'],
         cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
     };
+    // A run's flag (runFlag()): its tone and mark; a run done is Completed.
+    var FLAG_STATES = {
+        done: ['fl_flag_done', 'bi-flag-fill'],
+        waiting: ['fl_run_waiting', 'bi-hourglass-split'],
+        running: ['fl_run_running', 'bi-arrow-repeat'],
+        failed: ['fl_run_failed', 'bi-x-octagon-fill'],
+        cancelled: ['fl_run_cancelled_state', 'bi-slash-circle']
+    };
+    // A result longer than this many characters, or of more than one line,
+    // folds behind the flag's down arrow.
+    var FLAG_LINE = 60;
     var STEP_STATES = {
         ready: ['fl_step_ready', 'bi-hourglass'],
         running: ['fl_step_running', 'bi-arrow-repeat'],
@@ -810,6 +821,22 @@
                     open(flow.id);
                 });
                 item.appendChild(link);
+
+                // The flow's last run as its flag; its link opens the flow,
+                // then the run.
+                if (flow.last_run) {
+                    item.appendChild(runFlag(flow.last_run, {
+                        key: 'list-flag-' + flow.id,
+                        label: t('fl_flag_last') + ': ' + flow.name,
+                        open: function (run) {
+                            ui.app.classList.remove('wsf-show-list');
+                            ((state.flow && state.flow.id === flow.id) ? Promise.resolve() : open(flow.id)).then(function () {
+                                openLastRun(run);
+                            });
+                        }
+                    }));
+                }
+
                 list.appendChild(item);
             });
 
@@ -885,12 +912,14 @@
     }
 
     function listEntry(flow) {
-        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start };
+        var brief = { id: flow.id, name: flow.name, status: flow.status, access: flow.access, mine: flow.mine, channel_id: flow.channel_id, draft_rev: flow.draft_rev, version: flow.version, start: flow.start, last_run: null };
         var found = false;
 
         state.flows = state.flows.map(function (item) {
             if (item.id === flow.id) {
                 found = true;
+                // The flow's own answer carries no runs: its last one stays.
+                brief.last_run = item.last_run || null;
                 return brief;
             }
 
@@ -1970,6 +1999,7 @@
         });
 
         drawEdges();
+        drawFlag();
         ui.empty.textContent = state.edit ? t('fl_empty_canvas') : '';
         ui.empty.classList.toggle('d-none', state.graph.nodes.length > 0);
         drawPalette();
@@ -2080,6 +2110,11 @@
     function place(box, item) {
         box.style.left = item.x + 'px';
         box.style.top = item.y + 'px';
+
+        // A box moved may change which box is the last.
+        if (ui.flag && (box !== ui.flag)) {
+            placeFlag();
+        }
     }
 
     function curve(x1, y1, x2, y2) {
@@ -6564,6 +6599,261 @@
         return badge;
     }
 
+    // How long a run took, or has taken so far: "45 s", "12 min",
+    // "2 h 5 min", "3 d 4 h".
+    function flagDuration(run, tr) {
+        var from = Date.parse(run.started_at || '');
+        var to = run.finished_at ? Date.parse(run.finished_at) : Date.now();
+        var secs = Math.max(0, Math.round((to - from) / 1000));
+
+        if (isNaN(secs)) {
+            return '';
+        }
+
+        if (secs < 60) {
+            return tr('fl_flag_sec', secs);
+        }
+
+        var mins = Math.floor(secs / 60);
+
+        if (mins < 60) {
+            return tr('fl_flag_min', mins);
+        }
+
+        if (mins < 1440) {
+            return tr('fl_flag_hour', Math.floor(mins / 60), mins % 60);
+        }
+
+        return tr('fl_flag_day', Math.floor(mins / 1440), Math.floor((mins % 1440) / 60));
+    }
+
+    // A run's flag: Completed once it ended well, Waiting, Running, Failed
+    // or Cancelled until then, in its tone with a mark beside the word, how
+    // long it took and one line of its result (the ws_flow_run_result_pick()
+    // sentence). A longer result folds behind a down arrow, which opens it
+    // whole with options.open, the link to the run, under it; a running run
+    // the person may cancel has options.stop as Stop. options.key names the
+    // flag's controls for the focus kept across a redraw. Needs only the
+    // kit (window.PGWsKit) and the fl_flag_* texts, so the run's card in a
+    // channel draws the same flag (window.PGWsFlow.runFlag()).
+    function runFlag(run, options) {
+        var kit = K || window.PGWsKit;
+        var tr = kit.t;
+        var mk = kit.el;
+        var opts = options || {};
+        var known = FLAG_STATES[run.status];
+        var flag = mk('div', 'wsf-flag wsf-flag-' + (known ? run.status : 'none'));
+        var line = mk('div', 'wsf-flag-line');
+        var result = String(run.result || '');
+        var long = (result.length > FLAG_LINE) || (result.indexOf('\n') >= 0);
+        var key = opts.key || ('flag-' + run.id);
+
+        flag.setAttribute('role', 'group');
+        flag.setAttribute('aria-label', opts.label || tr('fl_flag_last'));
+        line.appendChild(kit.icon(known ? known[1] : 'bi-question-circle'));
+        line.appendChild(mk('span', 'wsf-flag-state', known ? tr(known[0]) : String(run.status || '')));
+
+        var took = flagDuration(run, tr);
+
+        if (took) {
+            line.appendChild(mk('span', 'wsf-flag-time', took));
+        }
+
+        if (result) {
+            var first = mk('span', 'wsf-flag-result', result.split('\n')[0]);
+
+            first.title = result;
+            line.appendChild(first);
+        }
+
+        if ((run.status === 'running') && run.can_cancel && opts.stop) {
+            var stop = kit.button('btn btn-sm btn-link', tr('fl_flag_stop'), 'bi-stop-circle');
+
+            stop.setAttribute('data-refocus', key + '-stop');
+            stop.addEventListener('click', function () {
+                opts.stop(run, stop);
+            });
+            line.appendChild(stop);
+        }
+
+        flag.appendChild(line);
+
+        if (!long && !opts.open) {
+            return flag;
+        }
+
+        var fold = kit.button('btn btn-sm btn-link wsf-flag-fold', '', 'bi-chevron-down', tr('fl_flag_more'));
+        var whole = mk('div', 'wsf-flag-whole d-none');
+
+        uid++;
+        whole.id = 'wsf-flag-whole-' + uid;
+        fold.setAttribute('aria-expanded', 'false');
+        fold.setAttribute('aria-controls', whole.id);
+        fold.setAttribute('data-refocus', key + '-fold');
+        fold.addEventListener('click', function () {
+            var shown = fold.getAttribute('aria-expanded') !== 'true';
+
+            fold.setAttribute('aria-expanded', shown ? 'true' : 'false');
+            fold.title = tr(shown ? 'fl_flag_less' : 'fl_flag_more');
+            fold.setAttribute('aria-label', fold.title);
+            whole.classList.toggle('d-none', !shown);
+        });
+        line.appendChild(fold);
+
+        if (long) {
+            whole.appendChild(mk('div', '', result));
+        }
+
+        if (opts.open) {
+            var link = kit.button('btn btn-sm btn-link', tr('fl_flag_open'));
+
+            link.setAttribute('data-refocus', key + '-open');
+            link.addEventListener('click', function () {
+                opts.open(run);
+            });
+            whole.appendChild(link);
+        }
+
+        flag.appendChild(whole);
+
+        return flag;
+    }
+
+    // The last run of a flow in the list, null for none.
+    function lastRunOf(flowId) {
+        var entry = state.flows.filter(function (item) { return item.id === flowId; })[0];
+
+        return (entry && entry.last_run) || null;
+    }
+
+    // A run read, started or cancelled is the last one of its flow when no
+    // later one is known: its flag in the list and on the canvas follows it.
+    function noteLastRun(run) {
+        var changed = false;
+
+        if (!run || !run.id) {
+            return;
+        }
+
+        state.flows.forEach(function (entry) {
+            if ((entry.id !== run.flow_id) || (entry.last_run && (entry.last_run.id > run.id))) {
+                return;
+            }
+
+            var brief = {};
+
+            Object.keys(run).forEach(function (key) {
+                brief[key] = ((key === 'steps') || (key === 'graph')) ? null : run[key];
+            });
+
+            if (JSON.stringify(entry.last_run) !== JSON.stringify(brief)) {
+                entry.last_run = brief;
+                changed = true;
+            }
+        });
+
+        if (changed) {
+            keepFocus(function () {
+                drawList();
+                drawFlag();
+            });
+        }
+    }
+
+    // The box the canvas flag stands above: the end box farthest right, else
+    // the box farthest right (lowest of those) that is not a value box.
+    function lastBox() {
+        var best = null;
+
+        state.graph.nodes.forEach(function (node) {
+            if (kindOf(node).pure) {
+                return;
+            }
+
+            var rank = [(node.kind === 'end') ? 1 : 0, node.x, node.y];
+
+            if (!best || (rank[0] > best.rank[0]) || ((rank[0] === best.rank[0]) && ((rank[1] > best.rank[1]) || ((rank[1] === best.rank[1]) && (rank[2] > best.rank[2]))))) {
+                best = { node: node, rank: rank };
+            }
+        });
+
+        return best ? best.node : null;
+    }
+
+    // The flow's last run as a flag above its last box, while no run is
+    // shown on the canvas (that one marks every box itself).
+    function drawFlag() {
+        if (ui.flag) {
+            ui.flag.remove();
+            ui.flag = null;
+        }
+
+        var run = (state.flow && !state.run) ? lastRunOf(state.flow.id) : null;
+        var node = run ? lastBox() : null;
+
+        if (!node) {
+            return;
+        }
+
+        ui.flag = runFlag(run, {
+            key: 'canvas-flag',
+            open: openLastRun,
+            stop: stopLastRun
+        });
+        ui.flag.classList.add('wsf-flag-canvas');
+        placeFlag();
+        ui.boxes.appendChild(ui.flag);
+    }
+
+    function placeFlag() {
+        var node = ui.flag ? lastBox() : null;
+
+        if (node) {
+            place(ui.flag, node);
+        }
+    }
+
+    // The link of a flag: the run on the canvas, with the list of runs
+    // open behind it (openRun() shows a run only while it is).
+    function openLastRun(run) {
+        if (!state.flow || (state.flow.id !== run.flow_id)) {
+            return;
+        }
+
+        if (state.run) {
+            closeRun('runs');
+        } else if (!runsShown()) {
+            state.panel = 'runs';
+            state.selected = null;
+            markSelected();
+            loadRuns(false);
+            drawBar();
+            drawSettings();
+        }
+
+        openRun(run.id);
+    }
+
+    // Stop on a running run's flag: asked first, as Cancel the run is.
+    function stopLastRun(run, control) {
+        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+            if (!yes) {
+                refocus();
+                return null;
+            }
+
+            control.disabled = true;
+
+            return K.api('ws_flow_run_cancel', { run_id: run.id }).then(function (data) {
+                K.toast(t('fl_run_cancelled'), 'success');
+                noteLastRun(data.run);
+            });
+        }).catch(function (error) {
+            control.disabled = false;
+            K.fail(error);
+        });
+    }
+
     // The task a box opened: a link to it on the tasks screen, which opens
     // the Workspace's task drawer in place; a change made there reads the
     // run again at once (the task done moves the run on).
@@ -6718,6 +7008,8 @@
         var list = state.runs;
         var brief = {};
         var found = false;
+
+        noteLastRun(run);
 
         if (!state.flow || (list.flow !== run.flow_id)) {
             return;
@@ -7827,9 +8119,9 @@
             return;
         }
 
-        // A link on a box (the task of a waiting box) keeps its own click:
-        // the canvas captures no pointer for it.
-        if (event.target.closest && event.target.closest('.wsf-node a[href]')) {
+        // A link on a box (the task of a waiting box) and the last run's
+        // flag keep their own clicks: the canvas captures no pointer for them.
+        if (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas')) {
             delete state.pointers[event.pointerId];
             return;
         }
@@ -8120,8 +8412,9 @@
     }
 
     function canvasKey(event) {
-        // A link on a box answers its own keys (Enter follows it).
-        if (typing(event.target) || event.altKey || (event.target.closest && event.target.closest('.wsf-node a[href]'))) {
+        // A link on a box and the last run's flag answer their own keys
+        // (Enter follows the link, opens the fold).
+        if (typing(event.target) || event.altKey || (event.target.closest && event.target.closest('.wsf-node a[href], .wsf-flag-canvas'))) {
             return;
         }
 
@@ -8233,5 +8526,5 @@
         });
     }
 
-    window.PGWsFlow = { start: start, showAction: showAction };
+    window.PGWsFlow = { start: start, showAction: showAction, runFlag: runFlag };
 })();

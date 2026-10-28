@@ -13,7 +13,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 - Decided (owner, 2026-10-27): the `/workspace/scheduled-actions` routes (list, get, create, update, pause, resume, cancel; `api_scheduled.php`, #1708 #1858 #1987, never released) are removed before 2026.11.0 ships, with no compatibility layer. Scheduled work goes through the flow routes (`/workspace/flows`). The #1708 rule moves to flows: only the person publishes, changes live or resumes (workflow/decisions-made-product.md). `/workspace/scheduled-messages` stays.
 
 ## Which steps? (one PR each)
-- C1 the run's flag: state, one-line result, fold; on the canvas, in the list, on the run card.
+- C1 the run's flag: state, one-line result, fold; on the canvas and in the list — done, #2903 (workspace/workspace-flows-run-flag.md). The run card uses its `runFlag()` in C2.
 
 - C2 Add › Start a flow in the composer; the run's card in the channel follows the run.
 

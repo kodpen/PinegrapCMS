@@ -1499,6 +1499,121 @@ function ws_flow_runs_list($viewer, $flow, $filters = array(), $keep = null)
 }
 
 /**
+ * The result a run's flag shows (ws_flow_run_result_pick()) from its boxes,
+ * each sentence as the reader is shown it (ws_step_result_shown(): who may
+ * not edit the run gets a condition's or a record change's plain word).
+ *
+ * @param array   $run   ws_flow_runs row with access
+ * @param array[] $steps its ws_flow_run_steps rows
+ * @param array   $graph the version's graph
+ * @return string
+ */
+function ws_flow_run_result_of($run, $steps, $graph)
+{
+    $edit = ((string) ($run['access'] ?? '') === 'edit');
+    $lines = array();
+
+    foreach ((array) $steps as $step) {
+        $node = ws_flow_graph_node($graph, (string) $step['node_id']);
+
+        $lines[] = array(
+            'status'      => (string) $step['status'],
+            'text'        => ws_step_result_shown(is_array($node) ? (string) $node['kind'] : '', (string) $step['outcome'], ws_flow_result_text($step['result']), $edit),
+            'finished_at' => (int) $step['finished_at'],
+            'id'          => (int) ($step['id'] ?? 0),
+        );
+    }
+
+    return ws_flow_run_result_pick((string) $run['status'], $lines);
+}
+
+/**
+ * The results of a page of runs (ws_flow_run_result_of()) in one look at
+ * their boxes: only the boxes that keep a sentence are read.
+ *
+ * @param array[] $runs ws_flow_runs rows with access
+ * @return array run id => text
+ */
+function ws_flow_runs_results($runs)
+{
+    $by_id = array();
+    $steps = array();
+    $out = array();
+
+    foreach ((array) $runs as $run) {
+        $by_id[(int) $run['id']] = $run;
+        $out[(int) $run['id']] = '';
+    }
+
+    if (empty($by_id)) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT id, run_id, node_id, status, outcome, result, finished_at FROM ws_flow_run_steps
+        WHERE run_id IN (" . implode(',', array_keys($by_id)) . ") AND result IS NOT NULL AND result <> ''");
+
+    foreach ($rows as $row) {
+        $steps[(int) $row['run_id']][] = $row;
+    }
+
+    foreach ($steps as $run_id => $list) {
+        $out[$run_id] = ws_flow_run_result_of($by_id[$run_id], $list, ws_flow_run_graph($by_id[$run_id]));
+    }
+
+    return $out;
+}
+
+/**
+ * The last run of each flow listed, as the person reaches it, for the flag
+ * the list and the canvas show: the newest run of the flow, with access and
+ * result. When the person may not read the newest one, the flow shows no
+ * last run rather than an older one.
+ *
+ * @param array   $viewer
+ * @param array[] $flows ws_flows_list() rows
+ * @return array flow id => ws_flow_runs row with access and result
+ */
+function ws_flow_last_runs($viewer, $flows)
+{
+    $by_id = array();
+    $runs = array();
+    $out = array();
+
+    foreach ((array) $flows as $flow) {
+        $by_id[(int) $flow['id']] = $flow;
+    }
+
+    if (empty($by_id)) {
+        return $out;
+    }
+
+    $ids = array_map('intval', (array) db_values("SELECT MAX(id) FROM ws_flow_runs
+        WHERE flow_id IN (" . implode(',', array_keys($by_id)) . ") GROUP BY flow_id"));
+
+    if (empty($ids)) {
+        return $out;
+    }
+
+    foreach ((array) db_items("SELECT * FROM ws_flow_runs WHERE id IN (" . implode(',', $ids) . ")") as $run) {
+        $access = ws_flow_run_access($viewer, $by_id[(int) $run['flow_id']] ?? null, $run);
+
+        if ($access !== '') {
+            $run['access'] = $access;
+            $runs[(int) $run['id']] = $run;
+        }
+    }
+
+    $results = ws_flow_runs_results($runs);
+
+    foreach ($runs as $id => $run) {
+        $run['result'] = $results[$id];
+        $out[(int) $run['flow_id']] = $run;
+    }
+
+    return $out;
+}
+
+/**
  * The run a start token named for a flow, as the person reaches it
  * (ws_flow_run_for()): null for no token, a token of the wrong shape, one
  * that started no run of the flow, or a run they may not read.

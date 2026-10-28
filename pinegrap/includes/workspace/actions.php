@@ -656,9 +656,16 @@ function ws_handle_action($action, $request)
             $rows = ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
             $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
+            // Each flow's last run, for its flag in the list and on the canvas.
+            $last = ws_flow_last_runs($viewer, $rows);
+            $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts) {
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '');
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $last, $run_numbers) {
+                $run = $last[(int) $row['id']] ?? null;
+
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '') + array(
+                    'last_run' => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
+                );
             }, $rows)));
 
         case 'ws_flow_get':
@@ -808,10 +815,11 @@ function ws_handle_action($action, $request)
             // A small page, newest first: the side panel of the canvas.
             $page = ws_flow_runs_list($viewer, $flow, array('before_id' => (int) ($request['before_id'] ?? 0), 'limit' => 20));
             $numbers = ws_flow_version_numbers($page['rows']);
+            $results = ws_flow_runs_results($page['rows']);
 
             return ws_action_ok(array(
-                'runs' => array_map(function ($run) use ($viewer, $numbers) {
-                    return ws_action_flow_run_present($viewer, $run, $numbers[(int) $run['version_id']] ?? 0);
+                'runs' => array_map(function ($run) use ($viewer, $numbers, $results) {
+                    return ws_action_flow_run_present($viewer, $run + array('result' => $results[(int) $run['id']]), $numbers[(int) $run['version_id']] ?? 0);
                 }, $page['rows']),
                 'next' => $page['next'],
             ));

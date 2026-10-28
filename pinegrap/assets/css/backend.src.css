@@ -19968,6 +19968,81 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   margin-left: auto;
   font-size: 10px;
 }
+/* A run's flag (runFlag()): Completed green, Waiting amber, Running blue,
+   Failed red, each with its mark and word, the run's duration and one line
+   of its result; ▾ opens the whole result. The dark values are the canvas
+   spec's, the light ones the same hues on a light ground. */
+.wsf-flag { --wsf-flag-bg: var(--pg-secondary-bg-subtle); --wsf-flag-fg: var(--pg-secondary-fg-emphasis); }
+.wsf-flag-done { --wsf-flag-bg: #dff3e8; --wsf-flag-fg: #1d6b45; }
+.wsf-flag-waiting { --wsf-flag-bg: #fbf1d8; --wsf-flag-fg: #6e5200; }
+.wsf-flag-running { --wsf-flag-bg: #e3edfc; --wsf-flag-fg: #1f4f99; }
+.wsf-flag-failed { --wsf-flag-bg: #fbe3e5; --wsf-flag-fg: #9b1c27; }
+html[data-bs-theme="dark"] .wsf-flag-done { --wsf-flag-bg: #173a2a; --wsf-flag-fg: #6fdca6; }
+html[data-bs-theme="dark"] .wsf-flag-waiting { --wsf-flag-bg: #2a2416; --wsf-flag-fg: #f3dca0; }
+html[data-bs-theme="dark"] .wsf-flag-running { --wsf-flag-bg: #1b2638; --wsf-flag-fg: #b9d3ff; }
+html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag-fg: #ffb3b8; }
+.wsf-flag {
+  max-width: 100%;
+  padding: .2rem .5rem;
+  border-radius: var(--ws-radius-xs);
+  background: var(--wsf-flag-bg);
+  color: var(--wsf-flag-fg);
+  font-size: .75rem;
+  line-height: 1.35;
+}
+.wsf-flag-line {
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  min-width: 0;
+}
+.wsf-flag-state {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+.wsf-flag-time {
+  flex: 0 0 auto;
+  opacity: .8;
+}
+.wsf-flag-result {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.wsf-flag .btn {
+  flex: 0 0 auto;
+  padding: 0 .25rem;
+  color: inherit;
+  font-size: inherit;
+  line-height: inherit;
+}
+.wsf-flag-fold .bi {
+  display: inline-block;
+  transition: transform .15s ease;
+}
+.wsf-flag-fold[aria-expanded="true"] .bi { transform: rotate(180deg); }
+.wsf-flag-whole {
+  margin-top: .25rem;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.wsf-flag-whole .btn { padding: 0; text-decoration: underline; }
+/* Above the flow's last box on the canvas, as wide as the box. */
+.wsf-flag-canvas {
+  position: absolute;
+  z-index: 2;
+  width: 208px;
+  transform: translateY(calc(-100% - 8px));
+}
+/* Under a flow's entry in the list. */
+.wsf-list .wsf-flag {
+  margin: -.15rem .75rem .35rem 2.1rem;
+}
+@media (prefers-reduced-motion: reduce) {
+  .wsf-flag-fold .bi { transition: none; }
+}
 .wsf-node-head .wsf-node-kind {
   min-width: 0;
   overflow: hidden;
