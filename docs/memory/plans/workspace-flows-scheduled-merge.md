@@ -21,7 +21,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
 - Retire the form (map and sizes: workspace/workspace-flows-form-retirement.md), in order:
   - R1. Done (#2769). Welcome and the five event starters in the flow gallery.
   - R1b. forms, orders, chain with flow semantics (#2753 answer 2a): counts of the last day, chain a manual start.
-  - R2. Done (#PR). Doors closed: Edit of an unconverted row retries `ws_scheduled_convert()`: canvas, or its problems and Duplicate (#2753 answer 1a); `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php).
+  - R2. Done (#2803). Doors closed: Edit of an unconverted row retries `ws_scheduled_convert()`: canvas, or its problems and Duplicate (#2753 answer 1a); `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php).
   - R3a. `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()`, workspace_events.js `whenBox()`/`templates()`; parity readers. After R1, R1b, R2.
   - R3b. `saActionEditor()` and the helpers only it used, the two `scheduledEditor()`. After R3a.
   - R4. Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; memory. After R3b.
