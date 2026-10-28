@@ -40,6 +40,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
+- bootstrap-6-collapse-switcher.md: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
 - bootstrap-6-editor-markers.md: The visual editor's /* @pg-site-output */ markers (step B7, #1822, #1841): what they cover, how the codemod and check_bs6.php read them, the test that keeps them, what stays unmarked
 - bootstrap-6-floating-labels.md: Bootstrap 6 floats a .form-floating label only when it comes before its field; the Modify Selected popups fixed (#2579), the test and the check_bs6.php check that keep it
 - bootstrap-6-own-widget-swaps.md: Own panel widgets replaced by Bootstrap 6 components with the same look (step B9k): which ones, the token mapping that keeps the pixels, what is left
