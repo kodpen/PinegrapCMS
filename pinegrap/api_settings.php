@@ -74,6 +74,29 @@ if ($_POST) {
 
 	$app_id = isset($_POST['app_id']) ? (int)$_POST['app_id'] : 0;
 
+	// Every action on an existing row (save, new secret, delete, its webhooks
+	// and devices) is refused when the row's owner outranks the editor: the
+	// key calls the API with the owner's rights as the cap
+	// (api_app_row_locked()). Checked here, once, so no branch can miss it.
+	if ($app_id > 0 && $action !== 'create') {
+
+		$rank_row = db_item("SELECT user.user_role AS owner_role
+			FROM api_apps
+			LEFT JOIN user ON api_apps.owner_user_id = user.user_id
+			WHERE api_apps.id = '" . $app_id . "' LIMIT 1");
+
+		if ($rank_row && api_app_row_locked($rank_row['owner_role'], $user['role'])) {
+
+			$liveform->add_error(lang('This application belongs to an account above yours, so only that account or one above it can change it.'));
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
+	}
+
 	// What the permission rows posted, turned back into scope strings.
 	//
 	// The form offers one control per resource with three positions, so the only
@@ -503,7 +526,7 @@ if (isset($_SESSION['software']['api_new_credentials'])) {
 // The documentation screen's temporary credentials live in this table too, so
 // they are kept out of the list: they are not integrations, they expire on their
 // own, and an operator seeing one would reasonably wonder what it is.
-$apps = db_items("SELECT api_apps.*, user.user_username AS owner_username
+$apps = db_items("SELECT api_apps.*, user.user_username AS owner_username, user.user_role AS owner_role
 	FROM api_apps
 	LEFT JOIN user ON api_apps.owner_user_id = user.user_id
 	WHERE api_apps.name NOT LIKE '\\_\\_test\\_\\_%'
@@ -847,7 +870,10 @@ if (!empty($webhook_all)) {
 
 	}
 
-	$named = db_items("SELECT id, name, status FROM api_apps WHERE id IN (" . implode(',', array_keys($wanted)) . ")");
+	$named = db_items("SELECT api_apps.id, api_apps.name, api_apps.status, user.user_role AS owner_role
+		FROM api_apps
+		LEFT JOIN user ON api_apps.owner_user_id = user.user_id
+		WHERE api_apps.id IN (" . implode(',', array_keys($wanted)) . ")");
 
 	if (is_array($named)) {
 
@@ -855,7 +881,8 @@ if (!empty($webhook_all)) {
 
 			$webhook_app_names[(int)$row['id']] = array(
 				'name'   => $row['name'],
-				'status' => $row['status']
+				'status' => $row['status'],
+				'locked' => api_app_row_locked($row['owner_role'], $user['role'])
 			);
 
 		}
@@ -966,6 +993,7 @@ foreach ($apps as $app) {
 		'scopes'      => $scope_choices,
 		'has_secret'  => ($app['api_secret_hash'] !== ''),
 		'kind'        => $is_oauth ? 'oauth' : ($is_device ? 'device' : 'server'),
+		'locked'      => api_app_row_locked($app['owner_role'], $user['role']),
 		'devices'     => isset($device_rows[(int)$app['id']]) ? $device_rows[(int)$app['id']] : array(),
 		'log'         => isset($log_rows[(int)$app['id']]) ? $log_rows[(int)$app['id']] : array(),
 		'webhooks'    => isset($webhook_rows[(int)$app['id']]) ? $webhook_rows[(int)$app['id']] : array()
@@ -1340,7 +1368,10 @@ if (!empty($webhook_all)) {
 					. ($meta ? ' &middot; ' . h(implode(' · ', $meta)) : '') . '</div>'
 				. ($hook['error'] !== ''
 					? '<div class="api-hook-error"><i class="bi bi-exclamation-triangle me-1"></i>' . h($hook['error']) . '</div>'
-					: '') . '
+					: '')
+				// A subscription of a row whose owner outranks the editor gets no
+				// buttons; the server refuses those actions anyway.
+				. (($owner_app !== null && $owner_app['locked']) ? '' : '
 				<form method="post" action="api_settings.php" class="api-hook-acts disable_shortcut">
 					' . get_token_field() . '
 					<input type="hidden" name="app_id" value="' . $hook_app_id . '">
@@ -1356,7 +1387,7 @@ if (!empty($webhook_all)) {
 						class="btn btn-sm btn-outline theme-danger api-confirm"
 						data-confirm="' . h(lang('The subscription will be removed and the application will stop being told.')) . '">'
 						. lang('Remove') . '</button>
-				</form>
+				</form>') . '
 			</div>';
 
 	}
@@ -1618,6 +1649,7 @@ echo pg_page_shell(array(
    drawer is a modal context, and a chat bubble floating over the button that
    commits the form is not something to nudge sideways. */
 body.api-drawer-open .pg-chat-launcher { display: none !important; }
+#api_drawer.api-locked .api-hook-acts { display: none; }
 </style>
 
 <main id="content" class="container-fluid">
@@ -1715,7 +1747,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="mb-5" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="api-secret-box"><code id="d_hint" class="opacity-50"></code>
-						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate">
+						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate" id="d_rotate">
 							<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Issue a new secret') . '</button></div>
 					<div class="form-text">'
 						. lang('Only the last four characters are kept for display. A new secret is shown once; the previous one keeps working for 24 hours.') . '</div>
@@ -1723,6 +1755,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="mb-5 d-none" id="d_nosecret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
 					<div class="form-text mt-0">' . h(lang('This application was made without a secret and is never given one, so it cannot sign in.')) . '</div>
+				</div>
+				<div class="alert theme-warning py-3 px-5 small mb-5 d-none" id="d_locked_note">
+					<i class="bi bi-lock me-1"></i>' . h(lang('This application belongs to an account above yours, so only that account or one above it can change it.')) . '
 				</div>
 				<div class="mb-5" id="d_device_block">
 					<label class="form-label small">' . lang('Signing in') . '</label>
@@ -1782,7 +1817,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 						<div class="form-text">' . lang('When an application asks for more than this in one minute, the rest of that minute is refused and it is told how long to wait.') . '</div>
 					</div>
 				</div>
-				<div class="api-danger-zone">
+				<div class="api-danger-zone" id="d_danger_zone">
 					<button type="button" class="btn btn-sm btn-outline theme-danger" id="d_delete_ask">
 						<i class="bi bi-trash me-1"></i>' . lang('Delete this application') . '</button>
 					<div id="d_delete_confirm" class="d-none">
@@ -1835,7 +1870,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		<div class="drawer-footer border-top p-5 d-flex gap-3">
 			<span class="flex-grow-1"></span>
 			<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-dismiss="drawer">' . lang('Cancel') . '</button>
-			<button type="submit" class="btn btn-sm btn-solid theme-success">' . lang('Save') . '</button>
+			<button type="submit" class="btn btn-sm btn-solid theme-success" id="d_save">' . lang('Save') . '</button>
 		</div>
 	</form>
 </dialog>
@@ -2198,6 +2233,14 @@ echo '
 		var devicesLabel = document.getElementById("d_devices_label");
 		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
+		// A row whose owner outranks the editor is refused on the server; its
+		// Save, new secret, delete and webhook and device buttons are hidden.
+		var locked = !!app.locked;
+		document.getElementById("d_locked_note").classList.toggle("d-none", !locked);
+		document.getElementById("d_save").classList.toggle("d-none", locked);
+		document.getElementById("d_rotate").classList.toggle("d-none", locked);
+		document.getElementById("d_danger_zone").classList.toggle("d-none", locked);
+		drawerElement.classList.toggle("api-locked", locked);
 		var firstTab = document.querySelector("#api_drawer .nav-link[data-bs-target=\'#d_general\']");
 		if (firstTab) { pgUI.tab.show(firstTab); }
 
