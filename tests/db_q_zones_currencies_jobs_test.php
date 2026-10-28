@@ -124,7 +124,7 @@ function db_q_zones_currencies_jobs_test_files()
 	return array(
 		'edit_tax_zone.php' => 6,
 		'edit_state.php' => 6,
-		'edit_currency.php' => 5,
+		'edit_currency.php' => 4,
 		'update_currency.php' => 3,
 		'add_zone.php' => 3,
 		'add_shipping_method.php' => 1,
