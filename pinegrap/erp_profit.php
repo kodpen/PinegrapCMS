@@ -427,6 +427,14 @@ pg_page_shell([
     var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
     var locale = document.documentElement.lang || undefined;
     var format = function (value) { return Number(value).toLocaleString(locale, { maximumFractionDigits: 0 }); };
+    // Chart.js cannot parse the light-dark() text of a custom property, so the
+    // panel ink is resolved to an rgb() value through a probe element.
+    var probe = document.createElement("span");
+    probe.style.color = "var(--pg-fg-2)";
+    document.body.appendChild(probe);
+    var ink = getComputedStyle(probe).color;
+    probe.remove();
+    var grid = "rgba(128,128,128,.2)";
     new Chart(canvas, {
         data: {
             labels: data.labels,
@@ -440,10 +448,13 @@ pg_page_shell([
             maintainAspectRatio: false,
             interaction: { mode: "index", intersect: false },
             plugins: {
-                legend: { position: "bottom" },
+                legend: { position: "bottom", labels: { color: ink } },
                 tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ": " + format(ctx.parsed.y); } } }
             },
-            scales: { y: { ticks: { callback: function (value) { return format(value); } } } }
+            scales: {
+                x: { ticks: { color: ink }, grid: { color: grid } },
+                y: { ticks: { color: ink, callback: function (value) { return format(value); } }, grid: { color: grid } }
+            }
         }
     });
 })();

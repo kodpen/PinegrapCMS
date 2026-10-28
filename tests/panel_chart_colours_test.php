@@ -32,7 +32,7 @@ function panel_chart_colours_assert_inked($path, $scales)
 	pg_assert_contains('var ink = getComputedStyle(probe).color;', $source, $path . ' reads the computed ink');
 	pg_assert_contains('var grid = "rgba(128,128,128,.2)";', $source, $path . ' uses a theme-neutral grid');
 	pg_assert_contains('legend: { position: "bottom", labels: { color: ink } }', $source, $path . ' legend ink');
-	pg_assert_same($scales, substr_count($source, 'ticks: { color: ink,'), $path . ' every scale has ink');
+	pg_assert_same($scales, substr_count($source, 'ticks: { color: ink'), $path . ' every scale has ink');
 	pg_assert_same($scales, substr_count($source, 'grid: { color: grid'), $path . ' every scale has a grid colour');
 	pg_assert_false(
 		(bool) preg_match('/getPropertyValue\(\s*["\']--pg-/', $source),
