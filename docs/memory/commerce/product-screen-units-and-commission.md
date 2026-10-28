@@ -4,7 +4,7 @@ description: Product screen weight and dimensions (lb/in stored, metric typed ke
 ---
 
 ## How are weight and dimensions stored and typed?
-- `products.weight`, `length`, `width`, `height` are `decimal(12,4) unsigned`, in pounds and inches. The "Convert to metric system" switch lets the operator type kilograms and centimetres; `pg_pb_common_from_post()` (`product_builder.php`) converts on save with the legacy factors and rounds to four places, the columns' precision. Rounded to two, 0.11 kg was stored as 0.24 lb and came back as 0.1089 kg on the next open (#2056, PR #0000).
+- `products.weight`, `length`, `width`, `height` are `decimal(12,4) unsigned`, in pounds and inches. The "Convert to metric system" switch lets the operator type kilograms and centimetres; `pg_pb_common_from_post()` (`product_builder.php`) converts on save with the legacy factors and rounds to four places, the columns' precision. Rounded to two, 0.11 kg was stored as 0.24 lb and came back as 0.1089 kg on the next open (#2056, PR #2618).
 - Both separators are read: `pg_pb_decimal_from_input()` takes `0,125` and `0.125`.
 - The unit labels beside the fields are `lang('lbs')` and `lang('in')` (Turkish `lb`, `inç`). The switch's script restores them from the label text it read at load, so it needs no literal of its own; `kg` and `cm` are the same in every language.
 

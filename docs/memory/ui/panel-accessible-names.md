@@ -12,7 +12,7 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 - select2 on site pages (`v5` combobox) gets `language` texts (no results, searching, search) from the labels on the `pg_fields_script()` tag.
 
 ## Where does a required field's marker come from?
-- `pgInjectAriaAndRequiredMarkers()` (`backend.src.js`) appends one `.pg-required-marker` to the label of every `required` control, so a label never carries a hand-written `*`: the two together read "*Product ID / SKU *" (#2057; the product screen in PR #0000, the folder, product group and referral source screens in #2481). A box that a script-side save refuses blank (the product screen's attribute name, in a dialog outside the form) carries `required` too and gets the same marker.
+- `pgInjectAriaAndRequiredMarkers()` (`backend.src.js`) appends one `.pg-required-marker` to the label of every `required` control, so a label never carries a hand-written `*`: the two together read "*Product ID / SKU *" (#2057; the product screen in PR #2618, the folder, product group and referral source screens in #2481). A box that a script-side save refuses blank (the product screen's attribute name, in a dialog outside the form) carries `required` too and gets the same marker.
 - The script skips a label whose text already starts with `*`, so a screen that keeps a hand-written marker shows one.
 
 ## How are badges on a user-chosen colour made readable?
