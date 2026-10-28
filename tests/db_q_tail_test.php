@@ -2,8 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Static checks on the installer, the designer panel actions and the
- * TinyMCE image and link upload pickers: their queries with values run
+ * Static checks on the installer, the designer panel actions, the
+ * TinyMCE image and link upload pickers, the Flows INSERTs whose duplicate
+ * key is an answer and init.php's config path UPDATE: their queries with values run
  * through db_q() placeholders, not escape() / e() concatenated into the SQL
  * text, every db_q() call passes one value per '?', and the raw
  * mysqli_query() calls left (none of them with a value) do not grow in
@@ -29,6 +30,11 @@ function db_q_tail_test_files()
 		'includes/panel/designer.php' => array(2, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advimage/add_file.php' => array(4, 0),
 		'assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php' => array(4, 0),
+		'includes/workspace/flows.php' => array(1, 0),
+		'includes/workspace/flow_shares.php' => array(1, 0),
+		'includes/workspace/flow_runs.php' => array(2, 0),
+		'includes/workspace/flow_anchors.php' => array(1, 0),
+		'init.php' => array(1, 1),
 	);
 }
 
@@ -256,4 +262,9 @@ function test_db_q_tail_binds_as_before()
 	pg_assert_same(
 		"INSERT INTO files (name, folder, type, size, user, timestamp, design) VALUES ('a.png', '', 'png', '12', '3', UNIX_TIMESTAMP(), '0')",
 		pg_db_bind("INSERT INTO files (name, folder, type, size, user, timestamp, design) VALUES (?, ?, ?, ?, ?, UNIX_TIMESTAMP(), '0')", array('a.png', (string) null, 'png', (string) 12, (string) 3), $escape));
+	// A Flows run: the ids bare, the start key and the context quoted, one
+	// bound value per column with the flow id bound twice.
+	pg_assert_same(
+		"INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by) SELECT 7, 3, 'running', 2 FROM ws_flows WHERE id = 7 AND start_key = 'k\\'1'",
+		pg_db_bind("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by) SELECT ?, ?, 'running', ? FROM ws_flows WHERE id = ? AND start_key = ?", array(7, 3, 2, 7, "k'1"), $escape));
 }

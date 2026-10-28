@@ -325,7 +325,8 @@ function pg_coll_ready()
  * The kinds a field of a collection may have beyond its type, and the field
  * types each one is given to. A text, a rich text, a date, a file or an
  * option set is the field's type itself; these say what the type cannot:
- * a number, an image, a reference to another form's records. The editor's twin is _CF_KINDS in
+ * a number, an image, a reference to another form's records, a product or a
+ * page of the site (its id). The editor's twin is _CF_KINDS in
  * style_designer.js.
  *
  * @return array kind => field types
@@ -336,6 +337,8 @@ function pg_coll_kinds()
         'number'    => array('text box'),
         'image'     => array('file upload'),
         'reference' => array('text box', 'pick list', 'radio button', 'check box'),
+        'product'   => array('pick list'),
+        'page'      => array('pick list'),
     );
 }
 
@@ -550,6 +553,94 @@ function pg_coll_reference_labels($options)
 }
 
 /**
+ * Choices of a product or page pick list from the rows read for it: id =>
+ * label (the id when the label is empty), rows $visible refuses left out,
+ * then labelled and sorted as reference choices are
+ * (pg_coll_reference_labels()), so two pages of one name read differently.
+ *
+ * @param array         $rows    array('id', 'label', ...) each
+ * @param callable|null $visible row => whether the visitor may see it
+ * @return array id => label
+ */
+function pg_coll_pick_options($rows, $visible = null)
+{
+    $options = array();
+    foreach ((array)$rows as $row) {
+        $id = (is_array($row) && isset($row['id']) && is_scalar($row['id'])) ? (int)$row['id'] : 0;
+        if ($id <= 0) continue;
+        if ($visible !== null && !call_user_func($visible, $row)) continue;
+        $label = isset($row['label']) ? trim((string)$row['label']) : '';
+        $options[$id] = ($label !== '') ? $label : (string)$id;
+    }
+    return pg_coll_reference_labels($options);
+}
+
+/**
+ * The products a product field may point at: id => label (its short
+ * description, else its name), the enabled ones out of the recycle bin, at
+ * most 500, the most recent.
+ *
+ * @return array
+ */
+function pg_coll_product_options()
+{
+    static $options = null;
+    if ($options !== null) return $options;
+
+    $binned = pg_schema_has('products', 'recycled') ? "AND products.recycled = '0'" : '';
+    return $options = pg_coll_pick_options(db_items(
+        "SELECT products.id, IF(products.short_description != '', products.short_description, products.name) AS label
+         FROM products
+         WHERE products.enabled = '1' $binned
+         ORDER BY products.id DESC
+         LIMIT 500"));
+}
+
+/**
+ * The pages a page field may point at: id => page name, those of folders
+ * neither archived nor in the recycle bin that the visitor may see
+ * (check_view_access()), at most 500 read, the most recent.
+ *
+ * @return array
+ */
+function pg_coll_page_options()
+{
+    static $options = null;
+    if ($options !== null) return $options;
+
+    return $options = pg_coll_pick_options(db_items(
+        "SELECT page.page_id AS id, page.page_name AS label, page.page_folder AS folder
+         FROM page
+         INNER JOIN folder ON folder.folder_id = page.page_folder
+         WHERE folder.folder_archived = '0'" . pg_designer_not_binned_sql('page.page_folder') . "
+         ORDER BY page.page_id DESC
+         LIMIT 500"), function ($row) {
+        return check_view_access((int)$row['folder']);
+    });
+}
+
+/**
+ * The choices a field of $kind offers in place of its drawn ones, value =>
+ * label: a reference's records (pg_coll_reference_options()), products,
+ * pages; null when its choices stay the drawn ones (another kind, or a
+ * reference whose form is gone). $field['options'], when given, stands for
+ * that read.
+ *
+ * @param array $field array('kind', 'reference_page_id', optional 'options')
+ * @return array|null
+ */
+function pg_coll_kind_options($field)
+{
+    $kind = isset($field['kind']) ? (string)$field['kind'] : '';
+    if (!in_array($kind, array('reference', 'product', 'page'), true)) return null;
+    if (isset($field['options']) && is_array($field['options'])) return $field['options'];
+    if ($kind === 'product') return pg_coll_product_options();
+    if ($kind === 'page') return pg_coll_page_options();
+    $page_id = isset($field['reference_page_id']) ? (int)$field['reference_page_id'] : 0;
+    return ($page_id > 0) ? pg_coll_reference_options($page_id) : null;
+}
+
+/**
  * The kinds of a form's fields: field id => array('kind', 'reference_page_id'),
  * only the fields that have one. Empty before step 11.0.43 has run.
  *
@@ -580,8 +671,9 @@ function pg_coll_field_kinds($page_id)
  * Marks the kind errors of one posted field: a number that is not one (a
  * valid one is stored as pg_coll_number_value() writes it), an image field
  * given another file, a reference to a record the form it points into does
- * not have. Run after the field's own checks; a field already marked is
- * left alone.
+ * not have, a product or a page the visitor may not pick
+ * (pg_coll_kind_options()). Run after the field's own checks; a field
+ * already marked is left alone.
  *
  * @param liveform $liveform
  * @param array    $field  form_fields row: id, label, type
@@ -614,9 +706,10 @@ function pg_coll_check_field($liveform, $field, $kinds)
         return;
     }
 
-    // A reference whose form is gone points nowhere and is not checked.
-    if ($kind === 'reference' && $kinds[$id]['reference_page_id'] > 0
-        && !pg_coll_reference_ok($value, pg_coll_reference_options($kinds[$id]['reference_page_id']))) {
+    // A reference, a product or a page names one of the listed choices; a
+    // reference whose form is gone points nowhere and is not checked.
+    $choices = pg_coll_kind_options($kinds[$id]);
+    if ($choices !== null && !pg_coll_reference_ok($value, $choices)) {
         $liveform->mark_error($field['id'], lang(array('string' => 'Please choose one of the listed items for {var:1}', 'vars' => $label)));
     }
 }

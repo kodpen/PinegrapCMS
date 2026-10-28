@@ -240,3 +240,75 @@ function test_collections_site_reference_group_edges()
 	pg_cf_apply_field_bindings($tree, array('category' => $row), null, 0, false, array());
 	pg_assert_same('old', _collections_inputs_attr($tree['children'][0], 'value'), 'not a reference: the drawn choices stay');
 }
+
+function test_collections_pick_options()
+{
+	$rows = array(
+		array('id' => '12', 'label' => 'Shoes', 'folder' => 1),
+		array('id' => 7, 'label' => ' Bags ', 'folder' => 2),
+		array('id' => 9, 'label' => 'Shoes', 'folder' => 1),
+		array('id' => 3, 'label' => '', 'folder' => 1),
+		array('id' => 0, 'label' => 'No id'),
+		array('id' => array(1), 'label' => 'Not a number'),
+		'not a row',
+	);
+	pg_assert_same(array(3 => '3', 7 => 'Bags', 9 => 'Shoes (9)', 12 => 'Shoes (12)'), pg_coll_pick_options($rows),
+		'id => label, an empty label is the id, one name twice reads differently, sorted');
+
+	$visible = pg_coll_pick_options($rows, function ($row) { return $row['folder'] === 1; });
+	pg_assert_same(array(3 => '3', 9 => 'Shoes (9)', 12 => 'Shoes (12)'), $visible, 'a row the visitor may not see is left out');
+	pg_assert_same(array(), pg_coll_pick_options(null));
+}
+
+function test_collections_kind_options()
+{
+	pg_assert_same(null, pg_coll_kind_options(array('kind' => 'number')), 'not a kind with choices');
+	pg_assert_same(null, pg_coll_kind_options(array('kind' => 'reference', 'reference_page_id' => 0)), 'a reference whose form is gone');
+	foreach (array('reference', 'product', 'page') as $kind) {
+		pg_assert_same(array(5 => 'Five'), pg_coll_kind_options(array('kind' => $kind, 'options' => array(5 => 'Five'))), $kind);
+	}
+}
+
+class _CollectionsInputsLiveform
+{
+	public $values = array();
+	public $errors = array();
+	public function check_field_error($id) { return isset($this->errors[$id]); }
+	public function mark_error($id, $message) { $this->errors[$id] = $message; }
+	public function get_field_value($id) { return isset($this->values[$id]) ? $this->values[$id] : ''; }
+	public function assign_field_value($id, $value) { $this->values[$id] = $value; }
+}
+
+// A picked product or page must be one of the listed ids.
+function test_collections_check_product_and_page()
+{
+	$kinds = array(
+		31 => array('kind' => 'product', 'reference_page_id' => 0, 'options' => array(12 => 'Shoes', 7 => 'Bags')),
+		32 => array('kind' => 'page', 'reference_page_id' => 0, 'options' => array(4 => 'about-us')),
+	);
+	$cases = array(
+		array(31, '12', false), array(31, '', false), array(31, '99', true), array(31, '12x', true),
+		array(31, array('12', '7'), false), array(31, array('12', '5'), true), array(31, array(array('12')), true),
+		array(32, '4', false), array(32, '12', true), array(32, ' 4 ', false),
+	);
+	foreach ($cases as $case) {
+		list($id, $value, $refused) = $case;
+		$liveform = new _CollectionsInputsLiveform();
+		$liveform->values[$id] = $value;
+		pg_coll_check_field($liveform, array('id' => $id, 'label' => 'Item'), $kinds);
+		pg_assert_same($refused, isset($liveform->errors[$id]), $id . ' ' . var_export($value, true));
+	}
+}
+
+function test_collections_site_product_pick_list()
+{
+	$prompt = array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => 'Choose', '_attrs' => array(array('name' => 'value', 'value' => ''))), 'children' => array());
+	$drawn = array('type' => 'semantic', 'props' => array('tag' => 'option', 'text' => 'Old', '_attrs' => array(array('name' => 'value', 'value' => 'old'))), 'children' => array());
+	$tree = _collections_inputs_control('select', array('name' => 'product'), array($prompt, $drawn));
+	$map = array('product' => _collections_inputs_row(905, 'product', 'pick list', 'product', array(12 => 'Shoes')));
+	pg_cf_apply_field_bindings($tree, $map, null, 0, false, array());
+
+	pg_assert_same(2, count($tree['children']), 'the prompt and the product, the drawn choice dropped');
+	pg_assert_same('12', _collections_inputs_attr($tree['children'][1], 'value'));
+	pg_assert_same('Shoes', $tree['children'][1]['props']['text']);
+}

@@ -1678,11 +1678,11 @@ function ws_flow_run_start($viewer, $flow, $data = array())
 
     // Not db(): a failed statement there ends the request with an HTML page,
     // and the duplicate start key is an answer here.
-    $written = @mysqli_query(db::$con, "INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
+    $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT '" . $flow_id . "', '" . (int) $check['version']['id'] . "', 'running', '" . (int) $viewer['id'] . "', '" . (int) $flow['owner_id'] . "',
-            '" . e($start_key) . "', '', 0, '" . e((string) $context) . "', 0, 0, '" . $now . "', '" . $now . "', 0
-        FROM ws_flows WHERE id = '" . $flow_id . "' AND status = 'live'");
+        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, 0, 0, ?, ?, 0
+        FROM ws_flows WHERE id = ? AND status = 'live'",
+        array($flow_id, (int) $check['version']['id'], (int) $viewer['id'], (int) $flow['owner_id'], (string) $start_key, (string) $context, $now, $now, $flow_id));
 
     if (!$written) {
         $existing = ((int) mysqli_errno(db::$con) === 1062)
@@ -3441,11 +3441,12 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     // Started by the owner of the flow whose box starts it, acting as the
     // owner of the flow started. Not db(): the duplicate start key of a box
     // carried out twice is an answer here.
-    $written = @mysqli_query(db::$con, "INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
+    $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT '" . $flow_id . "', '" . (int) $version['id'] . "', 'running', '" . (int) $run['actor_id'] . "', '" . (int) $flow['owner_id'] . "',
-            '" . e($start_key) . "', '', 0, '" . e((string) $context) . "', '" . ((int) $run['depth'] + 1) . "', 0, '" . $now . "', '" . $now . "', 0
-        FROM ws_flows WHERE id = '" . $flow_id . "' AND status = 'live'");
+        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, ?, 0, ?, ?, 0
+        FROM ws_flows WHERE id = ? AND status = 'live'",
+        array($flow_id, (int) $version['id'], (int) $run['actor_id'], (int) $flow['owner_id'], (string) $start_key, (string) $context,
+            (int) $run['depth'] + 1, $now, $now, $flow_id));
 
     if (!$written) {
         $existing = ((int) mysqli_errno(db::$con) === 1062)
