@@ -467,7 +467,7 @@ function ws_note_title($viewer, $row)
         if (preg_match('/^\s*\|/', $line)) {
             $line = implode(' · ', array_filter(ws_table_cells($line), 'strlen'));
         } else {
-            $line = ws_plain_text($viewer, $line);
+            $line = ws_plain_text($viewer, $line, null, true);
         }
 
         $line = trim($line);
@@ -624,7 +624,7 @@ function ws_notes_present($viewer, $rows, $full = false)
         }
 
         $made = $channels[(int) $row['channel_id']] ?? null;
-        $excerpt = ws_plain_text($viewer, $body);
+        $excerpt = ws_plain_text($viewer, $body, null, true);
 
         if (mb_strlen($excerpt) > 140) {
             $excerpt = rtrim(mb_substr($excerpt, 0, 139)) . '…';
@@ -688,7 +688,7 @@ function ws_note_body_view($viewer, $body)
         }
     }
 
-    return array('body' => $body, 'labels' => $labels, 'html' => ws_render_body($body, $refs));
+    return array('body' => $body, 'labels' => $labels, 'html' => ws_render_body($body, $refs, null, false, null, null, true));
 }
 
 /**
@@ -1665,7 +1665,7 @@ function ws_note_cards_map($viewer, $message_ids)
             'id'         => (int) $note['id'],
             'name'       => $card['name'],
             'excerpt'    => $card['excerpt'],
-            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body))),
+            'html'       => ws_render_body($body, ws_refs_resolve($viewer, ws_tokens($body)), null, false, null, null, true),
             'access'     => $access,
             'owner'      => $card['owner'],
             'updated_by' => $card['updated_by'],

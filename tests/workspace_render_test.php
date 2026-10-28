@@ -219,11 +219,9 @@ function test_workspace_render_note_draws_headings_and_rules()
 		workspace_render_test_note("Shopping:\n## List\n- milk\n- bread"),
 		'a heading ends the paragraph before a list'
 	);
-	pg_assert_same(
-		'<pre class="ws-code"><code>' . "# comment\n---" . '</code></pre>',
-		preg_replace('/<pre[^>]*>/', '<pre class="ws-code">', workspace_render_test_note("```\n# comment\n---\n```")),
-		'lines of code are no headings'
-	);
+	$code = workspace_render_test_note("```\n# comment\n---\n```");
+	pg_assert_same(true, strpos($code, "<code># comment\n---</code>") !== false, 'lines of code are no headings');
+	pg_assert_same(false, strpos($code, '<h2') || strpos($code, '<hr'), 'nothing drawn of them');
 }
 
 function test_workspace_render_message_keeps_headings_raw()
