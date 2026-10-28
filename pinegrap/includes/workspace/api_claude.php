@@ -227,6 +227,18 @@ function ws_api_is_claude()
         && (!function_exists('api_current_device') || (api_current_device() === null));
 }
 
+/**
+ * A message's recording transcript as the assistants' reads give it: one
+ * line, no tags (ws_voice_transcript_clean()), '' for none.
+ *
+ * @param array $message ws_messages row
+ * @return string
+ */
+function ws_api_voice_transcript($message)
+{
+    return function_exists('ws_voice_transcript_of') ? ws_voice_transcript_clean(ws_voice_transcript_of($message)) : '';
+}
+
 function ws_api_claude_request_present($viewer, $row)
 {
     $message = ws_message($row['message_id']);
@@ -299,11 +311,15 @@ function ws_api_claude_request_present($viewer, $row)
             'kind' => $kind,
         ),
         'message'          => array(
-            'id'            => (int) $row['message_id'],
-            'text'          => ($body !== '') ? ws_plain_text($viewer, $body) : '',
-            'body'          => $body,
-            'reply_to_id'   => $parent ? (int) $parent['id'] : null,
-            'reply_to_text' => $parent ? ws_plain_text($viewer, (string) $parent['body']) : '',
+            'id'                  => (int) $row['message_id'],
+            'text'                => ($body !== '') ? ws_plain_text($viewer, $body) : '',
+            'body'                => $body,
+            'reply_to_id'         => $parent ? (int) $parent['id'] : null,
+            'reply_to_text'       => $parent ? ws_plain_text($viewer, (string) $parent['body']) : '',
+            // A voice message's machine transcript, kept apart from the
+            // person's own words; '' while there is none (yet).
+            'transcript'          => ($message && ($body === (string) $message['body'])) ? ws_api_voice_transcript($message) : '',
+            'reply_to_transcript' => $parent ? ws_api_voice_transcript($parent) : '',
         ),
         'note'             => array(
             'id'    => $note ? (int) $note['id'] : 0,
@@ -327,7 +343,7 @@ function ws_api_claude_request_schema()
         'id'               => 'integer',
         'status'           => 'string',
         'channel'          => array('id' => 'integer', 'name' => 'string', 'kind' => 'string'),
-        'message'          => array('id' => 'integer', 'text' => 'string', 'body' => 'string', 'reply_to_id' => 'integer?', 'reply_to_text' => 'string'),
+        'message'          => array('id' => 'integer', 'text' => 'string', 'body' => 'string', 'reply_to_id' => 'integer?', 'reply_to_text' => 'string', 'transcript' => 'string', 'reply_to_transcript' => 'string'),
         'note'             => array('id' => 'integer', 'title' => 'string', 'body' => 'string'),
         'design'           => array('page_id' => 'integer', 'page_name' => 'string', 'node_id' => 'string', 'scope' => 'string', 'from_editor' => 'boolean'),
         'task'             => ws_api_claude_task_schema(),
@@ -1065,6 +1081,12 @@ function ws_api_channel_context($params)
 
     $refs = ws_refs_resolve($viewer, $tokens);
 
+    // A voice message's machine transcript, once written out.
+    $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts(array_merge($rows, $about ? array($about) : array())) : array();
+    $transcript = function ($row) use ($heard) {
+        return isset($heard[(int) $row['file_id']]) ? ws_voice_transcript_clean($heard[(int) $row['file_id']]) : null;
+    };
+
     $author = function ($row) {
         if ($row['sender_kind'] === 'user') {
             return ws_person_name($row['sender_id']);
@@ -1073,7 +1095,7 @@ function ws_api_channel_context($params)
         return ($row['sender_kind'] === 'app') ? (string) ws_app_sender((int) $row['sender_id'])['name'] : '';
     };
 
-    $thread = $parent ? ws_api_context_thread_present($parent, $about, $about ? $author($about) : '', $about ? ws_plain_text($viewer, $about['body'], $refs) : '') : null;
+    $thread = $parent ? ws_api_context_thread_present($parent, $about, $about ? $author($about) : '', $about ? ws_plain_text($viewer, $about['body'], $refs) : '', $about ? $transcript($about) : null) : null;
 
     $messages = array();
 
@@ -1089,6 +1111,7 @@ function ws_api_channel_context($params)
             'sender_kind' => (string) $row['sender_kind'],
             'author'      => $author($row),
             'text'        => ws_plain_text($viewer, $row['body'], $refs),
+            'transcript'  => $transcript($row),
             'task_id'     => ((int) $row['task_id'] > 0) ? (int) $row['task_id'] : null,
             'created_at'  => api_time($row['created_at']),
         );
@@ -1147,10 +1170,11 @@ function ws_api_channel_context($params)
  * @param array      $parent the channel row the discussion was started in
  * @param array|null $about  the ws_messages row it talks over
  * @param string     $author who wrote that message, in words
- * @param string     $text   its words as the reader reads them
+ * @param string      $text       its words as the reader reads them
+ * @param string|null $transcript its recording's machine transcript, null for none
  * @return array
  */
-function ws_api_context_thread_present($parent, $about, $author, $text)
+function ws_api_context_thread_present($parent, $about, $author, $text, $transcript = null)
 {
     return array(
         'channel' => array(
@@ -1164,6 +1188,7 @@ function ws_api_context_thread_present($parent, $about, $author, $text)
             'sender_kind' => (string) $about['sender_kind'],
             'author'      => (string) $author,
             'text'        => (string) $text,
+            'transcript'  => ($transcript !== null) ? (string) $transcript : null,
             'task_id'     => ((int) $about['task_id'] > 0) ? (int) $about['task_id'] : null,
             'created_at'  => api_time($about['created_at']),
         ) : null,
@@ -1177,7 +1202,7 @@ function ws_api_channel_context_schema()
         'channel'    => array('id' => 'integer', 'name' => 'string', 'kind' => 'string', 'topic' => 'string', 'summary' => 'string'),
         'thread'     => 'WorkspaceContextThread?',
         'decisions'  => array(array('id' => 'integer', 'kind' => 'string', 'author' => 'string', 'text' => 'string', 'created_at' => 'string')),
-        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string')),
+        'messages'   => array(array('id' => 'integer', 'parent_id' => 'integer?', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string')),
         'open_tasks' => array(array('id' => 'integer', 'number' => 'string', 'title' => 'string', 'status' => 'string', 'due_date' => 'string?', 'assignees' => array(array('user_id' => 'integer', 'name' => 'string')))),
     );
 }
@@ -1194,5 +1219,5 @@ function ws_api_context_thread_schema()
 
 function ws_api_context_message_schema()
 {
-    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'task_id' => 'integer?', 'created_at' => 'string');
+    return array('id' => 'integer', 'kind' => 'string', 'sender_kind' => 'string', 'author' => 'string', 'text' => 'string', 'transcript' => 'string?', 'task_id' => 'integer?', 'created_at' => 'string');
 }

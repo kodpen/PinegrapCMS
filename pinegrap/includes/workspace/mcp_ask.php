@@ -411,15 +411,15 @@ function ws_mcp_ask_start($row, $asker)
         $where = $first ? ws_channel($first['channel_id']) : null;
 
         if ($first && $where && ((int) $first['deleted_at'] === 0) && ws_can_read_channel($asker, $where)) {
-            $parts[] = 'Earlier request, by ' . ws_ai_author($first) . ': ' . ws_ai_text($asker, (string) $first['body'], null, 1500);
+            $parts[] = 'Earlier request, by ' . ws_ai_author($first) . ': ' . ws_ai_heard_text($asker, $first, 1500);
         }
 
-        $parts[] = 'The request answers message ' . (int) $parent['id'] . ' by ' . ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 3000);
+        $parts[] = 'The request answers message ' . (int) $parent['id'] . ' by ' . ws_ai_author($parent) . ': ' . ws_ai_heard_text($asker, $parent, 3000);
         $parts[] = 'Carry the conversation on from there.';
         $parts[] = '';
     }
 
-    $request_text = ws_ai_text($asker, (string) $message['body'], null, 4000);
+    $request_text = ws_ai_heard_text($asker, $message, 4000);
 
     $parts[] = 'The request (message ' . (int) $message['id'] . '):';
     $parts[] = $request_text;

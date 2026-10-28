@@ -746,12 +746,16 @@ function ws_recap_transcript($viewer, $channel, $since_id, $limit, $chars)
     }
 
     $refs = ws_refs_resolve($viewer, $tokens);
+    $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
     $lines = array();
 
     foreach ($rows as $row) {
         $text = ws_recap_untag(ws_ai_text($viewer, (string) $row['body'], $refs, 400));
 
-        if (($text === '') && ((string) $row['file_name'] !== '')) {
+        // A voice message is recapped from its transcript once written out.
+        if (isset($heard[(int) $row['file_id']])) {
+            $text = ws_voice_with_transcript($text, $heard[(int) $row['file_id']], 400);
+        } elseif (($text === '') && ((string) $row['file_name'] !== '')) {
             $text = '[file: ' . $row['file_name'] . ']';
         }
 

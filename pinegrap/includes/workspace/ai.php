@@ -2858,6 +2858,22 @@ function ws_ai_text($viewer, $body, $refs = null, $limit = 0)
 }
 
 /**
+ * A message as the model reads it (ws_ai_text()), with its recording's
+ * transcript once written out (ws_voice_with_transcript()).
+ *
+ * @param array $viewer
+ * @param array $row   ws_messages row
+ * @param int   $limit characters of the words and of the transcript, 0 for all
+ * @return string
+ */
+function ws_ai_heard_text($viewer, $row, $limit = 0)
+{
+    $text = ws_ai_text($viewer, (string) $row['body'], null, $limit);
+
+    return function_exists('ws_voice_transcript_of') ? ws_voice_with_transcript($text, ws_voice_transcript_of($row), $limit) : $text;
+}
+
+/**
  * Who wrote a message, in words.
  *
  * @param array $row ws_messages row
@@ -2906,6 +2922,9 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
 
     $refs = ws_refs_resolve($viewer, $tokens);
 
+    // A voice message is read with its transcript once written out.
+    $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
+
     $out = array();
     $out[] = 'Channel: #' . $channel['name'] . ' (' . $channel['kind'] . ', <#channel:' . (int) $channel['id'] . '>)';
 
@@ -2942,7 +2961,8 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
             $line .= ' (task card <#task:' . (int) $row['task_id'] . '>)';
         }
 
-        $lines[] = $line . ' ' . ws_ai_text($viewer, (string) $row['body'], $refs, $per);
+        $text = ws_ai_text($viewer, (string) $row['body'], $refs, $per);
+        $lines[] = $line . ' ' . (isset($heard[(int) $row['file_id']]) ? ws_voice_with_transcript($text, $heard[(int) $row['file_id']], $per) : $text);
     }
 
     // Within the budget: the newest messages that fit, the rest left to
@@ -3427,7 +3447,7 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
 
         if ($about && $parent && ((int) $about['deleted_at'] === 0)) {
             $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ':';
-            $parts[] = pg_ai_data_block('message', ws_ai_author($about) . ': ' . ws_ai_text($asker, (string) $about['body'], null, 2000));
+            $parts[] = pg_ai_data_block('message', ws_ai_author($about) . ': ' . ws_ai_heard_text($asker, $about, 2000));
             $parts[] = 'Decisions marked and tasks opened here go into #' . $parent['name'] . ' as well.';
             $parts[] = '';
         }
@@ -3441,12 +3461,12 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
 
         if ($parent && ((int) $parent['deleted_at'] === 0)) {
             $parts[] = 'The request answers message ' . (int) $parent['id'] . ':';
-            $parts[] = pg_ai_data_block('message', ws_ai_author($parent) . ': ' . ws_ai_text($asker, (string) $parent['body'], null, 2000));
+            $parts[] = pg_ai_data_block('message', ws_ai_author($parent) . ': ' . ws_ai_heard_text($asker, $parent, 2000));
             $parts[] = 'Carry the conversation on from there.';
             $parts[] = '';
         }
 
-        $request_text = ws_ai_text($asker, (string) $message['body'], null, 4000);
+        $request_text = ws_ai_heard_text($asker, $message, 4000);
 
         $parts[] = 'The request (message ' . (int) $message['id'] . '):';
         $parts[] = pg_ai_data_block('request', $request_text);
