@@ -5,7 +5,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 
 ## What did the owner decide?
 - 2026-10-19: legacy pages (pages on a classic `style` row whose `style_code` is edited as text in `page_designer.php` / `edit_custom_style.php`, regions in `cregion` / `dregion`) will open in the visual designer and be edited there; the legacy page designer (`page_designer.php`, its `.js` and `.css`) then goes away for good.
-- 2026-10-19 (later): only once every existing page moves without loss, in look and in features. First the prerequisites: regions as shared-component-like blocks (done: `designer/classic-regions-in-designer.md`), the missing system widget types (`system-widget-missing-types.md`) and the custom layouts (`legacy-layouts-in-designer.md`).
+- 2026-10-19 (later): only once every existing page moves without loss, in look and in features. First the prerequisites: regions as shared-component-like blocks (done: `designer/classic-regions-in-designer.md`), the missing system widget types (`system-widget-missing-types.md`) and the custom layouts (done: `designer/layout-widget-offer.md`).
 - The code editor (`designer-code-editor.md`) is the bridge: a converted page keeps a code view, so nothing the old text editor allowed is lost; the emitter and the converter are the two halves of the round trip.
 
 ## Steps (one PR each)
