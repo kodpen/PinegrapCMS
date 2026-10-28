@@ -409,7 +409,7 @@ function pg_contact_list_filter($user, $filter, $groups)
 
             if ($value !== '') {
                 $conditions[] = '(contacts.' . $box . ' LIKE ?)';
-                $params[] = '%' . $value . '%';
+                $params[] = pg_list_like_pattern($value);
             }
         }
 

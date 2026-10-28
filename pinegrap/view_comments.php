@@ -94,7 +94,7 @@ $all_comments = $row[0];
 $search_query = mb_strtolower(($_SESSION['software']['comments']['query'] ?? ''));
 
 // create where clause for sql
-$sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '%" . escape($search_query) . "%')";
+$sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";
 
 // The search and the verified filter narrow the list together.
 $conditions = array();
