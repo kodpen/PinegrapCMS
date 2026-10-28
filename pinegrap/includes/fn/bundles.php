@@ -590,6 +590,21 @@ function pg_bundle_cart_allowance($lines, $stock)
 }
 
 /**
+ * Whether a sold line takes its product's components' stock instead of its
+ * own: the product is a bundle and the line has an order item to keep the
+ * contents it was sold with on.
+ *
+ * @param int|string $product_id
+ * @param int|string $order_item_id
+ * @param array      $bundle_ids    as pg_bundle_ids_among() gives them
+ * @return bool
+ */
+function pg_bundle_sale_takes_components($product_id, $order_item_id, $bundle_ids)
+{
+    return isset($bundle_ids[(int) $product_id]) && ((int) $order_item_id > 0);
+}
+
+/**
  * Take a sold bundle line off its components' stock and keep the contents
  * it was sold with in order_item_components, so a later edit of the bundle
  * never changes this order, its return or its invoice.
@@ -603,7 +618,7 @@ function pg_bundle_cart_allowance($lines, $stock)
  * @param int    $order_item_id
  * @param int    $bundle_id
  * @param int    $quantity      bundles sold on the line
- * @param string $source        checkout or local_sale
+ * @param string $source        checkout, local_sale or marketplace
  * @param array  $stock_left    product_id => stock left, carried by the caller
  * @return void
  */
