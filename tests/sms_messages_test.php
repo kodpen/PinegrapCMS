@@ -58,7 +58,7 @@ function test_sms_messages_normalize_defaults_off()
 {
 	$events = pg_sms_message_normalize(null);
 
-	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'cod_code'), array_keys($events));
+	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'cod_code', 'signin_code'), array_keys($events));
 	pg_assert_same(array('on' => false, 'text' => ''), $events['order_shipped']);
 
 	$events = pg_sms_message_normalize(array('events' => array('order_received' => array('on' => 1, 'text' => 'X'), 'order_shipped' => 'junk')));
