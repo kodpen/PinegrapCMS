@@ -789,6 +789,32 @@ function main() {
     md.win.pgFields.init(built);
     out.built = [built.pgFieldKind, md.calls.map(function (c) { return c[0] + ':' + c[1]; })];
 
+    // A script writes the store and its disabled state itself (the
+    // designer's page schedule): refresh() shows both without a change.
+    var rf = load({ format: 'd/m/yy', fields: [
+        ['input', { id: 'pub', type: 'datetime-local', 'data-pg-datetime': '', value: '' }],
+        ['input', { id: 'fd', type: 'date', 'data-pg-date': '', value: '', placeholder: 'Value' }],
+        ['input', { id: 'ft', type: 'time', 'data-pg-time': '', value: '', 'aria-label': 'Value' }]
+    ] });
+    rf.win.pgFields.init();
+    var pub = rf.doc.querySelector('#pub'), pubBox = pub.nextSibling, pubHeard = 0;
+    pub.addEventListener('change', function () { pubHeard++; });
+    pub.value = '2026-11-03T09:15';
+    pub.disabled = true;
+    rf.win.pgDateTimeField.refresh(pub);
+    out.refresh = { shown: [pubBox.value, pubBox.disabled, pubHeard, pub.value] };
+    pub.value = '';
+    pub.disabled = false;
+    rf.win.pgDateTimeField.refresh(pub);
+    out.refresh.emptied = [pubBox.value, pubBox.disabled, pubHeard];
+    pubBox.instance.pick('2026-12-01');
+    pubBox.instance.setTime('18:30');
+    out.refresh.picked = [pub.value, pubHeard > 0];
+    var fd = rf.doc.querySelector('#fd'), ft = rf.doc.querySelector('#ft');
+    fd.value = '2026-02-03';
+    rf.win.pgDatePicker.refresh(fd);
+    out.refresh.named = [fd.nextSibling.value, fd.nextSibling.getAttribute('placeholder'), ft.nextSibling.getAttribute('aria-label')];
+
     return out;
 }
 
@@ -1339,4 +1365,23 @@ function test_pg_fields_date_selects_and_built_fields()
 		'month, day and year selects stay posted and hidden behind one box named by the wrapper\'s label; the year list bounds the calendar; a pick writes the three selects with a change each; a year outside the list is taken back'
 	);
 	pg_assert_same(array('date', array('calendar:built')), $r['built'], 'a field a script builds is drawn by pgFields.init(field)');
+}
+
+function test_pg_fields_refresh_shows_a_store_a_script_wrote()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array(
+			'shown' => array('3/11/2026 9:15 AM', true, 0, '2026-11-03T09:15'),
+			'emptied' => array('', false, 0),
+			'picked' => array('2026-12-01T18:30', true),
+			'named' => array('3/2/2026', 'Value', 'Value'),
+		),
+		$r['refresh'],
+		'refresh() draws a value and a disabled state a script wrote into an ISO store without firing a change; a pick still writes Y-m-d\TH:i; the box takes the field\'s placeholder and aria-label'
+	);
 }
