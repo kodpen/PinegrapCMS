@@ -26,8 +26,9 @@ function db_q_logs_short_links_system_test_files()
 	return array(
 		'view_performance_log.php' => 0,
 		'view_log.php' => 0,
-		'edit_short_link.php' => 6,
-		'add_short_link.php' => 4,
+		'edit_short_link.php' => 3,
+		'add_short_link.php' => 1,
+		'includes/forms/short_link_form.php' => 3,
 		'view_short_links.php' => 0,
 		'includes/fn/short_link_redirects.php' => 3,
 		'allow_or_disallow_new_comments.php' => 4,
@@ -176,7 +177,7 @@ function test_db_q_logs_short_links_system_value_queries_use_db_q()
 	}
 
 	// These files no longer escape a value into any SQL text.
-	foreach (array('edit_short_link.php', 'add_short_link.php', 'allow_or_disallow_new_comments.php', 'includes/fn/audit.php', 'includes/fn/privacy_retention.php') as $path) {
+	foreach (array('edit_short_link.php', 'add_short_link.php', 'includes/forms/short_link_form.php', 'allow_or_disallow_new_comments.php', 'includes/fn/audit.php', 'includes/fn/privacy_retention.php') as $path) {
 		pg_assert_false(
 			(bool) preg_match('/mysqli_real_escape_string|(?<![\w>$])(escape|e)\(/', file_get_contents(PG_FUNCTIONS_DIR . '/' . $path)),
 			$path . ' escapes a value for SQL text');

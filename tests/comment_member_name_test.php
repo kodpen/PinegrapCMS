@@ -156,3 +156,12 @@ function test_comment_member_name_callers()
 	$lines = array_slice(file($seo->getFileName()), $seo->getStartLine() - 1, $seo->getEndLine() - $seo->getStartLine() + 1);
 	pg_assert_contains('pg_contact_display_name(', implode('', $lines), 'the BlogPosting author follows the same rule');
 }
+
+// The stored 'Anonymous' and an empty name read in the panel language.
+function test_comment_display_name()
+{
+	pg_assert_same(lang('Anonymous'), pg_comment_display_name('Anonymous'));
+	pg_assert_same(lang('Anonymous'), pg_comment_display_name(''));
+	pg_assert_same(lang('Anonymous'), pg_comment_display_name(null));
+	pg_assert_same('Ayşe K.', pg_comment_display_name('Ayşe K.'));
+}

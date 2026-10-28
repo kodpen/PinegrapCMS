@@ -108,7 +108,9 @@ if (function_exists('pg_cron_ran')) {
     pg_cron_ran('workspace_recurring_job');
 }
 
-if (php_sapi_name() === 'cli') {
+// The summary is for a person running the script by hand; under the general
+// job's dispatcher printed text goes to the site log (pg_cron_dispatch_output()).
+if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'repeating tasks: ' . (int) $result['made'] . ' handed out, ' . (int) $result['ended'] . ' ended, ' . (int) $result['failed'] . ' failed' . "\n";
 } elseif (!pg_cron_is_background_run()) {
     header('Content-Type: application/json; charset=utf-8');

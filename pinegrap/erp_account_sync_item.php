@@ -514,7 +514,7 @@ pg_page_shell([
             ' . $liveform->output_notices() . '
             ' . ((($row !== null) && ($provider_code !== '') && erp_edoc_supports('account', $provider_code))
                 ? '<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
-                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-ghost"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read the card again from {var:1}', 'vars' => $provider_label))) . '</button>') . '
+                ' . $form('refresh', '<button type="submit" class="btn btn-sm btn-text theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Read the card again from {var:1}', 'vars' => $provider_label))) . '</button>') . '
             </nav>'
                 : '') . '
         </div>

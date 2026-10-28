@@ -152,7 +152,7 @@
             return wrap;
         }
 
-        var change = h.button('btn btn-sm btn-ghost', t('ci_change'), 'bi-pencil');
+        var change = h.button('btn btn-sm btn-text theme-secondary', t('ci_change'), 'bi-pencil');
         var holder = el('div');
 
         wrap.hidden = true;
@@ -303,7 +303,7 @@
                 textRow.appendChild(write);
             }
 
-            var cancel = h.button('btn btn-sm btn-ghost', t('cancel'));
+            var cancel = h.button('btn btn-sm btn-text theme-secondary', t('cancel'));
             cancel.setAttribute('data-bs-dismiss', 'drawer');
             footer.appendChild(cancel);
 

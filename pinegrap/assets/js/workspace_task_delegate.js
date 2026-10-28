@@ -168,7 +168,7 @@
         }
 
         if (change.can_dismiss) {
-            var dismiss = h.button('btn btn-sm btn-ghost', h.t('change_dismiss'), 'bi-x-lg');
+            var dismiss = h.button('btn btn-sm btn-text theme-secondary', h.t('change_dismiss'), 'bi-x-lg');
 
             dismiss.addEventListener('click', function () {
                 decide('ws_ai_change_dismiss');
@@ -544,7 +544,7 @@
             head.appendChild(h.el('span', 'fw-semibold ws-grow', h.t('dg_title')));
 
             if (state.can_stop) {
-                var stop = h.button('btn btn-sm btn-ghost py-0', h.t('dg_stop'), 'bi-stop-circle');
+                var stop = h.button('btn btn-sm btn-text theme-secondary py-0', h.t('dg_stop'), 'bi-stop-circle');
                 stop.addEventListener('click', function () {
                     h.ask(h.t('dg_stop_confirm'), h.t('dg_stop'), true).then(function (yes) {
                         if (yes) {
@@ -567,7 +567,7 @@
                 badge.appendChild(who);
 
                 if (state.can_take) {
-                    var back = h.button('btn btn-sm btn-ghost', h.t('dg_take_back'), 'bi-arrow-return-left');
+                    var back = h.button('btn btn-sm btn-text theme-secondary', h.t('dg_take_back'), 'bi-arrow-return-left');
                     back.addEventListener('click', function () {
                         h.ask(h.t('dg_take_confirm'), h.t('dg_take_back'), true).then(function (yes) {
                             if (yes) {

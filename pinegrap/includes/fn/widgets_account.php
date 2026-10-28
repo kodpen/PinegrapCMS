@@ -55,6 +55,8 @@ function pg_sw_page_type_widgets()
         'order preview'         => 'order_preview',
         'order form'            => 'order_form',
         'folder view'           => 'folder_view',
+        'photo gallery'         => 'photo_gallery',
+        'affiliate sign up form' => 'affiliate_sign_up_form',
         'view order'            => 'order_view',
         'calendar view'         => 'calendar_view',
         'calendar event view'   => 'calendar_event_view',

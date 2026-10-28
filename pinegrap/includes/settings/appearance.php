@@ -93,10 +93,10 @@ if ($dashboard_card_shown) {
                                    <div class="row gy-5">' . $output_dashboard_appearance . '
                                         <div class="pg-f-xs">
                                             <label for="dashboard_refresh" class="form-label">' . lang('Refresh Time') . '</label>
-                                            <div class="input-group">
-                                                <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-control" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric" style="text-align: right;"/>
-                                                <span class="input-group-text">' . lang('seconds') . '</span>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('seconds') . '</span>
+                                                <input type="number" name="dashboard_refresh" id="dashboard_refresh" class="form-ghost" value="' . (int) $dashboard_refresh . '" min="10" max="86400" step="1" inputmode="numeric" style="text-align: right;"/>
+                                            </label>
                                             <div class="form-text">' . lang('How often the dashboard asks for fresh figures, at least 10 seconds. It is kept for this sign-in only and goes back to 60 seconds at the next one.') . '</div>
                                         </div>
                                         <div class="col-12 ">

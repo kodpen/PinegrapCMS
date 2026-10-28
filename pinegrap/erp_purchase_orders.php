@@ -108,11 +108,13 @@ pg_page_shell([
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . lang('Button Bar') . '">
                 ' . ((!$readonly && $ready) ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_erp_purchase_order.php' . (($account_id > 0) ? '?account_id=' . $account_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . lang('New purchase order') . '</a>' : '') . '
                 <div class="pg-toolbar-grow"></div>
-                <form method="get" action="erp_purchase_orders.php" class="input-group input-group-sm rounded-pill pg-toolbar-search disable_shortcut" role="search">
+                <form method="get" action="erp_purchase_orders.php" class="pg-toolbar-search disable_shortcut" role="search">
                     ' . (($status !== '') ? '<input type="hidden" name="status" value="' . h($status) . '" />' : '') . '
                     ' . (($account_id > 0) ? '<input type="hidden" name="account_id" value="' . $account_id . '" />' : '') . '
-                    <span class="input-group-text bg-transparent border-end-0 rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control border-start-0 rounded-end-pill" name="search" value="' . h($search) . '" placeholder="' . h(lang('Number or supplier')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    <label class="form-control form-control-sm form-adorn rounded-pill">
+                        <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                        <input type="search" class="form-ghost" name="search" value="' . h($search) . '" placeholder="' . h(lang('Number or supplier')) . '" aria-label="' . h(lang('Search')) . '" autocomplete="off" />
+                    </label>
                 </form>
                 ' . $output_filters . '
             </nav>

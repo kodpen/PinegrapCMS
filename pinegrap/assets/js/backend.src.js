@@ -595,11 +595,28 @@ $(document).ready(function () {
         });
     });
     //classic popover
+    // An empty data-bs-title or data-bs-content (a title a script fills in
+    // later) reads as null in Bootstrap, whose type check then throws; an
+    // empty string given here wins over the attribute. One element that still
+    // fails must not stop the rest of this ready block (the main menu below).
     $('[data-bs-toggle="popover"]:not([ data-bs-custom-class="contextmenu"])').each(function () {
-        pgUI.popover.get(this, {
+        var popoverOptions = {
             placement: 'auto',
             html: true
-        });
+        };
+        if (this.getAttribute('data-bs-title') === '') {
+            popoverOptions.title = '';
+        }
+        if (this.getAttribute('data-bs-content') === '') {
+            popoverOptions.content = '';
+        }
+        try {
+            pgUI.popover.get(this, popoverOptions);
+        } catch (error) {
+            if (window.console) {
+                console.error(error);
+            }
+        }
     });
 
 
@@ -1334,15 +1351,9 @@ $(document).ready(function () {
 
 
 
-    var output_system_language_name;
-    switch (software_system_language) {
-        case "tr":
-            output_system_language_name = "Turkish";
-            break;
-        default:
-            //default is english so we use default.
-            output_system_language_name = "English";
-    }
+    // Panel languages with a file in assets/lib/DataTables/i18n/.
+    var DATATABLES_LANGUAGES = { tr: true };
+
 
 
     /*
@@ -1398,9 +1409,15 @@ $(document).ready(function () {
     }
 
     var options = {};
-    options["language"] = {
-        url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/tr.json"
-    };
+    // The panel language's DataTables 2 texts from the local copy; English
+    // is DataTables' own. The CDN's 1.13.6 Turkish file was loaded for every
+    // language, lacked the 2.x keys ("All", pagination names) and held the
+    // table back until a third party answered.
+    if (DATATABLES_LANGUAGES[software_system_language]) {
+        options["language"] = {
+            url: path + software_directory + "/assets/lib/DataTables/i18n/" + software_system_language + ".json"
+        };
+    }
 
     options["stateSave"] = false;
     options["serverside"] = false;
@@ -1461,7 +1478,12 @@ $(document).ready(function () {
             }
         });
         $("table.dataTable #select_all").prop("checked", false);
-        datatable.columns.adjust().draw();
+        datatable.columns.adjust();
+
+        // A list paged on the server would ask for the same page again.
+        if (!options.serverSide) {
+            datatable.draw();
+        }
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
     };
 
@@ -1525,6 +1547,11 @@ $(document).ready(function () {
             options["info"] = false;
         } else {
             options["info"] = true;
+        }
+
+        // A list that names a panel action is paged on the server.
+        if ($('table.chart[data-pg-list-action]').length === 1) {
+            pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
         }
 
         var datatable = $("table.chart").DataTable(options);
@@ -2353,6 +2380,74 @@ function edit_chart_content(action, name) {
     if (result == true) {
         document.form.submit();
     }
+}
+
+/**
+ * DataTables options for a list paged on the server (includes/fn/list_paging.php).
+ * The table names its panel action in data-pg-list-action and what the action
+ * needs besides the page (the filter) in data-pg-list-params. Each draw asks
+ * the action for one page with the page window and the search box; a row
+ * comes back as its cells' content, with the cells' classes in DT_RowData.
+ * Sorting stays the headings' links, so DataTables sends no order.
+ */
+function pgListServerOptions(options, $table) {
+    var params = {};
+
+    try {
+        params = JSON.parse($table.attr('data-pg-list-params') || '{}') || {};
+    } catch (e) {
+        params = {};
+    }
+
+    options.serverSide = true;
+    options.searchDelay = 400;
+
+    options.ajax = function (request, callback) {
+        var body = $.extend({}, params, {
+            action: $table.attr('data-pg-list-action'),
+            token: software_token,
+            draw: request.draw,
+            start: request.start,
+            length: request.length,
+            search: (request.search && request.search.value) || ''
+        });
+
+        $.ajax({
+            contentType: 'application/json',
+            url: 'api.php',
+            type: 'POST',
+            dataType: 'json',
+            data: JSON.stringify(body)
+        }).done(function (response) {
+            if (response && (response.status === 'success')) {
+                callback(response);
+            } else {
+                pgListServerFailed(callback, request.draw, $table, response && response.message);
+            }
+        }).fail(function (xhr) {
+            pgListServerFailed(callback, request.draw, $table, xhr.responseJSON && xhr.responseJSON.message);
+        });
+    };
+
+    // The cells' classes; cells holds hidden columns' cells too.
+    options.createdRow = function (row, data, index, cells) {
+        var classes = (data && data.DT_RowData && data.DT_RowData.pgCells) || [];
+
+        for (var i = 0; (i < classes.length) && cells && (i < cells.length); i++) {
+            cells[i].className = classes[i];
+        }
+    };
+
+    // Hints and menus of the rows that just arrived.
+    $table.on('draw.dt', function () {
+        pgInitInjected($table.find('tbody'));
+    });
+}
+
+// An empty page with the reason in the table's empty row.
+function pgListServerFailed(callback, draw, $table, message) {
+    callback({ draw: draw, recordsTotal: 0, recordsFiltered: 0, data: [] });
+    $table.find('tbody td.dt-empty').text(message || lang('Query failed.'));
 }
 
 function chart_checkbox_state_change() {

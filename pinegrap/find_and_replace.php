@@ -275,8 +275,10 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
+                                            <label for="find" class="visually-hidden">' . lang('Find') . '</label>
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
+                                                'id'    => 'find',
                                                 'name'  => 'find',
                                                 'rows'  => '10',
                                                 'class' => 'form-control font-monospace',
@@ -317,8 +319,10 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
+                                            <label for="replace" class="visually-hidden">' . lang('Replace') . '</label>
                                             ' . $liveform->output_field([
                                                 'type'  => 'textarea',
+                                                'id'    => 'replace',
                                                 'name'  => 'replace',
                                                 'rows'  => '10',
                                                 'class' => 'form-control font-monospace',

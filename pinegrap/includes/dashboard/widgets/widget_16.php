@@ -48,14 +48,17 @@ function pg_dashboard_widget_16($request, $user)
             // if there is at least one result to display  
             foreach ($currencies as $currency) {
 
-                $output_link_url = 'edit_currency.php?id=' . $currency['id'] . '&amp;send_to=' . h(escape_javascript(urlencode(REQUEST_URL)));
+                // No send_to: edit_currency.php always returns to the
+                // currency list, and REQUEST_URL here is api.php, which
+                // draws this card.
+                $output_link_url = 'edit_currency.php?id=' . (int) $currency['id'];
                 if ($currency['base'] != 1) {
                     $rate_display = ((float) $currency['exchange_rate'] > 0) ? pg_format_number((1 / $currency['exchange_rate']), 5) : '-';
                     $output_rows .= pg_widget_row(array(
                         'href'  => $output_link_url,
                         'badge' => $currency['symbol'],
                         'name'  => h($currency['code']) . ' &mdash; ' . h($currency['name']),
-                        'aside' => h($currency['exchange_rate']),
+                        'aside' => pg_format_number((float) $currency['exchange_rate'], 5),
                         'meta'  => '1 ' . $currency['symbol'] . ' = ' . $rate_display . ' ' . BASE_CURRENCY_SYMBOL,
                     ));
                 }

@@ -30,6 +30,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - account-email-pages.md: Designable welcome and password reset e-mails: Account E-mail widget, *_email_page_id settings, resolver, stored recipient, 'secret' mail (#1192).
 - account-widget-forms.md: Designed account widgets: the login region's two states and per-placement ids, account_security's one form per block, links dropped in a grid, comments on a form detail page, one-screen widget kinds.
 - ad-region-widget.md: Ad Region widget (ad_region, #1836): the classic <ad> region in the designer; which ads show and in which order, the carousel and its rotation, raw ad markup, edit chips, what is left out.
+- affiliate-sign-up-widget.md: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, what is left out.
 - attrs-panel-undo.md: Undo steps of the designer's Attributes panel text fields (id, prop-bound attributes, custom attribute name and value) and when its style row is written
 - billing-information-widget.md: The Billing Information widget (third classic checkout step): handler and page row, prefill from order and contact, parts the page turns off, helpers shared with step 1.
 - bootstrap-direct-child-canvas.md: Bootstrap direct-child selectors break on the canvas because of .sd-wrap: two-part fix (display:contents + re-applied rule), the td display:flex ban, the selected-child lift.
@@ -238,6 +239,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - palette-component-rules.md: Rules for a new designer palette component: the full guide, no script or stylesheet, render equals toHTML, tree by default, inline style, cssClass vs _attrs, grid, canDrop, accessibility, registration
 - palette-insert-at-selection.md: Where a palette double-click or command palette insert lands: in the selection, else beside it (in a widget too), where the operator may edit, wrapped as a drop; widgets stop at a system widget.
 - passkey-widget-list.md: Passkeys in the designed account_security widget (PR #1843, #2279): the list, row tokens, flags, rename/remove, the add form with the e-mailed code, device rows
+- photo-gallery-widget.md: The Photo Gallery widget (classic "photo gallery" page type): the folder it shows and the ?folder_id= scope check, album and photo rows, tokens, flags, what is left out.
 - record-value-page-links.md: A form list or detail link opening another page with the record's values in its address (__page_link + _bindParams.href): shape, pre-pass, escaping, values, Publish, export, editor, code view
 - record-view-counts.md: Views on designed record pages (form counters, people only, counted after sending) and form lists ordered by views, comments, recent views or newest activity; why not visitor_content_hourly
 - record-view-filters.md: form_item_view filters (opt-in record visibility, e.g. Status = Published): where they apply, fail-closed cases, the e-mail bypass, viewer_filter lists without feed or sitemap (#1194)

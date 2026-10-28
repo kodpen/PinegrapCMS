@@ -241,8 +241,8 @@ if (empty($_POST['name'])) {
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 md:col-8 my-3">
-                                                <label for="name" class="form-label">*' . lang('Folder Name') . '</label>
-                                                <input id="name" name="name" type="text" value="' . h($folder_name) . '" class="form-control ">
+                                                <label for="name" class="form-label">' . lang('Folder Name') . '</label>
+                                                <input id="name" name="name" type="text" value="' . h($folder_name) . '" class="form-control " required>
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 md:col-4  my-3">

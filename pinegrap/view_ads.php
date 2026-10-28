@@ -311,7 +311,7 @@ print
                         <div class="row justify-content-center md:justify-content-end">
                             <form id="search_form" action="view_ads.php" method="get" class="search_form col-auto">
                                 <div class="input-group input-group-sm">
-                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="filter_select">visibility</label>
+                                    <label class="input-group-text mt-1 mb-1 material-icons" title="' . lang('Content that viewed') . '" for="ad_region_id">visibility</label>
                                     <select id="ad_region_id" name="ad_region_id" class="form-control mt-1 mb-1" title="' . lang('Content that viewed') . '" onchange="submit_form(\'search_form\')"><option value="[All]">[' . lang('All') . '] (' . pg_format_number($all_ads, 0) . ')</option>' . $output_ad_region_options . '</select>
                                 </div>
                             </form>

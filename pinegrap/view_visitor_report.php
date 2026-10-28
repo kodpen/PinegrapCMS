@@ -717,7 +717,7 @@ if (!$_POST) {
             </div>    
         </div>
         <p class="text-center md:text-end p-0 m-0">
-            <span class="badge fg-black fw-light border-2">    ' . $output_date_range . '</span>
+            <span class="badge fg-body fw-light border-2">    ' . $output_date_range . '</span>
         </p>';
 
     }
@@ -1324,7 +1324,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <h4 class="fw-bold fg-secondary">' . lang('Order Report Filters') . '</h4>
+                                            <h4 class="fw-bold fg-secondary">' . lang('Visitor Report Filters') . '</h4>
                                         </div>
                                         <script type="text/javascript" language="JavaScript 1.2">
                                             //We add new language data to translate object

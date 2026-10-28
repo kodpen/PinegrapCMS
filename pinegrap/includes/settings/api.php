@@ -85,10 +85,10 @@ $output_api_storage = '
                     </div>
                     <div class="pg-f-xs">
                         <label for="api_log_retention_days" class="form-label">' . lang('Log Retention') . '</label>
-                        <div class="input-group">
-                            <input type="number" name="api_log_retention_days" id="api_log_retention_days" class="form-control" value="' . (int) $api_log_retention_days . '" min="1" max="3650" inputmode="numeric" style="text-align: right;"/>
-                            <span class="input-group-text">' . lang('day(s)') . '</span>
-                        </div>
+                        <label class="form-control form-adorn form-adorn-end">
+                            <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
+                            <input type="number" name="api_log_retention_days" id="api_log_retention_days" class="form-ghost" value="' . (int) $api_log_retention_days . '" min="1" max="3650" inputmode="numeric" style="text-align: right;"/>
+                        </label>
                         <div class="form-text">' . lang('Requests older than this are removed from the API log once a day by the cron job. Between 1 and 3650 days.') . '</div>
                     </div>';
 

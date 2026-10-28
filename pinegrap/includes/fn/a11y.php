@@ -847,6 +847,24 @@ function pg_a11y_report_summary()
 }
 
 /**
+ * What a checklist row says about a rule: 'found' when the stored findings
+ * have it, 'ok' when a full pass has finished without it, 'unchecked' when no
+ * full pass has finished yet, so an unchecked site never reads as compliant.
+ *
+ * @param array|null $found    The rule's summary row, null when none.
+ * @param int        $last_run Time the last full pass ended, 0 for never.
+ * @return string
+ */
+function pg_a11y_result_state($found, $last_run)
+{
+    if ($found) {
+        return 'found';
+    }
+
+    return $last_run ? 'ok' : 'unchecked';
+}
+
+/**
  * Findings with their page, worst first, at most $limit of them.
  *
  * @param string $code One check, or '' for all.
@@ -904,12 +922,18 @@ function pg_a11y_report_html($summary, $rows, $pages, $last_run, $site)
     foreach ($by_criterion as $number => $codes) {
         foreach ($codes as $code => $rule) {
             $found = isset($summary[$code]) ? $summary[$code] : null;
+            $state = pg_a11y_result_state($found, $last_run);
+
+            if ($state === 'found') {
+                $result = '<span class="fail">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</span>';
+            } elseif ($state === 'ok') {
+                $result = '<span class="ok">' . h(lang('No problem found')) . '</span>';
+            } else {
+                $result = '<span class="muted">' . h(lang('Not checked yet')) . '</span>';
+            }
 
             $html .= '<tr><td>' . h($number . ' ' . (isset($criteria[$number]) ? $criteria[$number] : '')) . '</td><td>' . h($rule['level']) . '</td><td>' . h(pg_a11y_issue_label($code)) . '</td><td>'
-                . ($found
-                    ? '<span class="fail">' . h(lang(array('string' => '{var:1} page(s), {var:2} time(s)', 'vars' => array($found['pages'], $found['occurrences'])))) . '</span>'
-                    : '<span class="ok">' . h(lang('No problem found')) . '</span>')
-                . '</td></tr>';
+                . $result . '</td></tr>';
         }
     }
 

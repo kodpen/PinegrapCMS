@@ -35,10 +35,10 @@ if ($form_limits_ready) {
         $form_limit_inputs .= '
                                                         <div class="pg-f-sm">
                                                             <label for="' . $form_limit_input[0] . '" class="form-label">' . h($form_limit_input[1]) . '</label>
-                                                            <div class="input-group">
-                                                                <input type="text" name="' . $form_limit_input[0] . '" id="' . $form_limit_input[0] . '" class="form-control" value="' . (int) $form_limit_input[2] . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
-                                                                <span class="input-group-text">' . h($form_limit_input[3]) . '</span>
-                                                            </div>
+                                                            <label class="form-control form-adorn form-adorn-end">
+                                                                <span class="form-adorn-text" aria-hidden="true">' . h($form_limit_input[3]) . '</span>
+                                                                <input type="text" name="' . $form_limit_input[0] . '" id="' . $form_limit_input[0] . '" class="form-ghost" value="' . (int) $form_limit_input[2] . '" size="5" maxlength="5" inputmode="numeric" style="text-align: right;"/>
+                                                            </label>
                                                         </div>';
     }
 
@@ -230,10 +230,10 @@ if ($audit_retention_ready) {
                 <div class="row gy-12">
                                         <div class="col-12">
                                             <label for="audit_log_retention_years" class="form-label">' . lang('Keep audit trail lines for') . '</label>
-                                            <div class="input-group pg-f-sm">
-                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-control" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric" style="text-align: right;"/>
-                                                <span class="input-group-text">' . lang('years') . '</span>
-                                            </div>
+                                            <label class="form-control form-adorn form-adorn-end pg-f-sm">
+                                                <span class="form-adorn-text" aria-hidden="true">' . lang('years') . '</span>
+                                                <input type="text" name="audit_log_retention_years" id="audit_log_retention_years" class="form-ghost" value="' . (int) $audit_retention_years . '" size="3" maxlength="2" inputmode="numeric" style="text-align: right;"/>
+                                            </label>
                                             <div class="form-text">' . h(lang(array('string' => 'Who changed what, with the values before and after. Older lines are removed by the general job once a day. 0 keeps every line; otherwise {var:1} to {var:2} years. The consent log keeps its history for {var:3} years, and always the answer in force.', 'vars' => array($audit_retention_limits['audit_min'], $audit_retention_limits['audit_max'], $audit_retention_limits['consent_years'])))) . '</div>
                                         </div>
                 </div>

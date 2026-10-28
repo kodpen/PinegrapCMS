@@ -208,22 +208,24 @@ function pg_dashboard_widget_5($request, $user)
         }
         $kpi_tm = array_sum($m_tm_map);
 
-        // Previous 12 months — monthly totals.
+        // Last 12 months — monthly totals: the eleven months before
+        // this one and this month so far, so the figure is never below
+        // "This Month".
         //
         // This was the single most expensive query on the screen:
         // a year of raw visitor rows read and grouped on a
         // formatted date. Against the rollup it reads at most
         // 8,760 rows.
-        $twelve_months_ago = mktime(0, 0, 0, (int) date('n') - 12, 1, (int) date('Y'));
+        $twelve_months_ago = mktime(0, 0, 0, (int) date('n') - 11, 1, (int) date('Y'));
 
         $pm_map = array();
         $res    = db_q(
             "SELECT DATE_FORMAT(stat_date, '%Y-%m') AS ym, SUM(new_visitors) AS cnt
              FROM visitor_stats_hourly
              WHERE stat_date >= ?
-               AND stat_date <  ?
+               AND stat_date <= ?
              GROUP BY ym",
-            array((string) date('Y-m-d', $twelve_months_ago), (string) date('Y-m-d', $month_start))
+            array((string) date('Y-m-d', $twelve_months_ago), (string) date('Y-m-d', $now))
         );
         if ($res) {
             while ($r = @mysqli_fetch_assoc($res))
@@ -232,7 +234,7 @@ function pg_dashboard_widget_5($request, $user)
 
         $m_pm_labels = $m_pm_data = '';
         $has_pm = false;
-        for ($i = 12; $i >= 1; $i--) {
+        for ($i = 11; $i >= 0; $i--) {
             $m_ts = mktime(0, 0, 0, (int) date('n') - $i, 1, (int) date('Y'));
             $ym = date('Y-m', $m_ts);
             $cnt = isset($pm_map[$ym]) ? $pm_map[$ym] : 0;
