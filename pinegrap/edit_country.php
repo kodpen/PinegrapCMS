@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/country_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
@@ -24,19 +25,13 @@ validate_ecommerce_access($user);
 // link, hand-typed URL, row deleted meanwhile): a "not found" screen instead
 // of a half-empty form and PHP notices from the unchecked row below.
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
-if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM countries WHERE id = '" . $id . "'") < 1)) {
+$result = ($id > 0) ? db_q("SELECT * FROM countries WHERE id = ?", array($id)) : false;
+$row = $result ? mysqli_fetch_assoc($result) : null;
+if (!$row) {
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
 if (!$_POST) {
-    $row = db_item("SELECT * FROM countries WHERE id = '" . escape($_GET['id']) . "'");
-
-    $name = $row['name'];
-    $code = $row['code'];
-    $zip_code_required = $row['zip_code_required'];
-    $transit_adjustment_days = $row['transit_adjustment_days'];
-    $default_selected = $row['default_selected'];
-
     $output =
         pg_page_shell([
             'title'=> lang('Edit Country'),
@@ -54,53 +49,8 @@ if (!$_POST) {
                     
                     <form name="form" action="edit_country.php" method="post">
                         ' . get_token_field() . '
-                        <input type="hidden" name="id" value="' . h($_GET['id']) . '">
-                            <div class="col-12">
-                                <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                        ' . lang('Options') . '
-                                    </div>
-                                    <div class="card-body">
-                                        <div class="row">
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Country'))) . '</label>
-                                                <input type="text" name="name" id="name" class="form-control" maxlength="50" value="' . h($name) . '" />
-                                                <div class="invalid-feedback">' . lang('Required Area') . '</div>
-                                                <div class="form-text">' . lang('Display on Commerce Pages') . '</div>
-                                            </div>
-                                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label for="code" class="form-label">' . lang('Code') . '</label>
-                                                <input type="text" name="code" id="code" class="form-control" maxlength="50" value="' . h($code) . '"/>
-                                                <div class="form-text">' . lang('New Country Code for Order Reporting') . '</div>
-                                            </div>
-
-                                            <div class="col-12 my-1 mt-5">
-                                                <div class="form-field">
-                                                    <div class="switch"><input value="1"' . ($zip_code_required ? ' checked' : '') . ' name="zip_code_required" id="zip_code_required" class="" type="checkbox" role="switch"></div>
-                                                    <label class="" for="zip_code_required">' . lang('Zip Code Required') . '</label>
-                                                </div>
-                                            </div>
-
-                                            <div class="col-12 my-1 mb-5">
-                                                <div class="form-field">
-                                                    <div class="switch"><input value="1"' . ($default_selected == 1 ? ' checked' : '') . '  name="default_selected" id="default_selected" class="" type="checkbox" role="switch"></div>
-                                                    <label class="" for="default_selected">' . lang('Selected by Default') . '</label>
-                                                </div>
-                                            </div>
-                                            
-                                            <div class="col-12 md:col-6 lg:col-4 my-1">
-                                                <label for="transit_adjustment_days" class="form-label ">' . lang('Transit Adjustment Days') . '</label>
-                                                <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button">remove</button>
-                                                    <input class="form-control text-center border-start-0 border-end-0" value="' . h($transit_adjustment_days) . '" type="text" name="transit_adjustment_days" id="transit_adjustment_days" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button">add</button>
-                                                </div>
-                                                <div class="form-text">' . lang('Shipping Delays Specific to this Country') . '</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                        <input type="hidden" name="id" value="' . $id . '">
+                        ' . pg_country_form_card(pg_country_form_values($row)) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons">
                             <div class="container">
                                 <div class="btn-group flex-wrap justify-content-center">
@@ -121,39 +71,54 @@ if (!$_POST) {
 } else {
     validate_token_field();
 
+    $values = pg_country_form_values($_POST);
+
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
-        // get all states so that we can delete all items connected to each state
-        $states = db_items("SELECT id FROM states WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
-        foreach ($states as $state) {
-            db("DELETE FROM zones_states_xref WHERE state_id = '" . escape($state['id']) . "'");
-            db("DELETE FROM tax_zones_states_xref WHERE state_id = '" . escape($state['id']) . "'");
-            db("DELETE FROM verified_shipping_addresses WHERE state_id = '" . escape($state['id']) . "'");
+        // Clear everything tied to each state of the country before the states themselves.
+        $result = db_q("SELECT id FROM states WHERE country_id = ?", array($id)) or output_error('Query failed.');
+        $state_ids = array();
+        while ($state = mysqli_fetch_assoc($result)) {
+            $state_ids[] = (int) $state['id'];
         }
 
-        db("DELETE FROM states WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
-        db("DELETE FROM zones_countries_xref WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
-        db("DELETE FROM tax_zones_countries_xref WHERE country_id = '" . escape($_POST['id'] ?? '') . "'");
-        db("DELETE FROM countries WHERE id = '" . escape($_POST['id'] ?? '') . "'");
+        foreach ($state_ids as $state_id) {
+            db_q("DELETE FROM zones_states_xref WHERE state_id = ?", array($state_id));
+            db_q("DELETE FROM tax_zones_states_xref WHERE state_id = ?", array($state_id));
+            db_q("DELETE FROM verified_shipping_addresses WHERE state_id = ?", array($state_id));
+        }
 
-        log_activity(lang(array('string' => 'country ({var:1}) was deleted', 'vars' => array($_POST['name']))), $_SESSION['sessionusername']);
+        db_q("DELETE FROM states WHERE country_id = ?", array($id));
+        db_q("DELETE FROM zones_countries_xref WHERE country_id = ?", array($id));
+        db_q("DELETE FROM tax_zones_countries_xref WHERE country_id = ?", array($id));
+        db_q("DELETE FROM countries WHERE id = ?", array($id));
+
+        log_activity(lang(array('string' => 'country ({var:1}) was deleted', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
 
     } else {
-        db("UPDATE countries SET
-                name = '" . escape($_POST['name'] ?? '') . "',
-                code = '" . escape($_POST['code'] ?? '') . "',
-                zip_code_required = '" . e($_POST['zip_code_required'] ?? '') . "',
-                transit_adjustment_days = '" . escape($_POST['transit_adjustment_days'] ?? '') . "',
-                default_selected = '" . escape($_POST['default_selected'] ?? '') . "',
-                user = '" . $user['id'] . "',
+        $query = "UPDATE countries SET
+                name = ?,
+                code = ?,
+                zip_code_required = ?,
+                transit_adjustment_days = ?,
+                default_selected = ?,
+                user = ?,
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . escape($_POST['id'] ?? '') . "'");
+            WHERE id = ?";
+        $result = db_q($query, array(
+            $values['name'],
+            $values['code'],
+            $values['zip_code_required'],
+            $values['transit_adjustment_days'],
+            $values['default_selected'],
+            (int) $user['id'],
+            $id)) or output_error('Query failed.');
 
         // if default selected was checked, then turn value off for all other countries
-        if ($_POST['default_selected'] == 1) {
-            db("UPDATE countries SET default_selected = 0 WHERE id != '" . escape($_POST['id'] ?? '') . "'");
+        if ($values['default_selected'] == 1) {
+            db_q("UPDATE countries SET default_selected = 0 WHERE id != ?", array($id));
         }
 
-        log_activity(lang(array('string' => 'country ({var:1}) was modified', 'vars' => array($_POST['name']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'country ({var:1}) was modified', 'vars' => array($values['name']))), $_SESSION['sessionusername']);
     }
 
     header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/view_countries.php');
