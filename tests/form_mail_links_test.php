@@ -186,7 +186,7 @@ function pg_test_form_mail_links_positions($source, $needles, $from = 0)
 }
 
 // One sending path (custom_form.php, the notifications in includes/fn/mail.php,
-// submit_order.php): the context is set behind the gate for the sender's own
+// an order line's form in includes/fn/order_completion.php): the context is set behind the gate for the sender's own
 // copy, the subject and plain text body take the links into the template
 // before the submitted values, the HTML body gets the bare tokens only, the
 // e-mail goes out, the context is cleared, and the administrator's e-mail
@@ -255,18 +255,19 @@ function test_form_mail_links_notifications_order()
 
 function test_form_mail_links_submit_order_order()
 {
-	pg_test_form_mail_links_path('submit_order.php', 'if ($to_email_address == $billing_email_address)', array(
+	// A form an order line creates (includes/fn/order_completion.php).
+	pg_test_form_mail_links_path('includes/fn/order_completion.php', 'if ($to_email_address == $billing_email_address)', array(
 		'values'            => '$mail_link_values = pg_cf_mail_link_values();',
-		'subject'           => "\$subject = get_variable_submitted_form_data_for_content(\$product['submit_form_custom_form_page_id'], \$submitted_form_id, pg_cf_fill_mail_links(\$submitter_email_subject, \$mail_link_values, 'plain_text')",
-		'plain body'        => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$product['submit_form_custom_form_page_id'], \$submitter_email_body, true), \$mail_link_values, 'plain_text')",
-		'html page'         => '$body = get_page_content($submitter_email_page_id',
+		'subject'           => "\$subject = get_variable_submitted_form_data_for_content(\$page_id, \$submitted_form_id, pg_cf_fill_mail_links(\$custom_form_page['submitter_email_subject'], \$mail_link_values, 'plain_text')",
+		'plain body'        => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$page_id, \$custom_form_page['submitter_email_body'], true), \$mail_link_values, 'plain_text')",
+		'html page'         => "\$body = get_page_content(\$custom_form_page['submitter_email_page_id']",
 		'html tokens'       => "pg_cf_fill_mail_link_tokens(\$body, \$mail_link_values, 'html')",
 		'send'              => 'email(array(',
 		'clear'             => 'pg_cf_mail_links_context(false);',
-		'admin subject'     => "\$administrator_email_subject = pg_cf_fill_mail_links(\$administrator_email_subject, array(), 'plain_text');",
-		'admin subject values' => '$administrator_email_subject = get_variable_submitted_form_data_for_content(',
-		'admin plain body'  => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$product['submit_form_custom_form_page_id'], \$administrator_email_body), array(), 'plain_text')",
-		'admin html page'   => '$body = get_page_content($administrator_email_page_id',
+		'admin subject'     => "\$subject = pg_cf_fill_mail_links(\$custom_form_page['administrator_email_subject'], array(), 'plain_text');",
+		'admin subject values' => '$subject = get_variable_submitted_form_data_for_content(',
+		'admin plain body'  => "pg_cf_fill_mail_links(pg_cf_email_body_or_default(\$page_id, \$custom_form_page['administrator_email_body']), array(), 'plain_text')",
+		'admin html page'   => "\$body = get_page_content(\$custom_form_page['administrator_email_page_id']",
 		'admin html tokens' => "pg_cf_fill_mail_link_tokens(\$body, array(), 'html')",
 	));
 }

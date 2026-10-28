@@ -1383,3 +1383,413 @@ function pg_order_complete_line_form_update(array $line, array $variable_fields,
 
     return (int) $submitted_form_id;
 }
+
+/**
+ * The user an order line names as a watcher: order_items.add_watcher holds
+ * the user name or e-mail address the add watcher feature stored when the
+ * line went into the cart.
+ *
+ * @param array $line add_watcher
+ * @return array id and email_address, empty when none is named or found
+ */
+function pg_order_line_watcher(array $line)
+{
+    if ($line['add_watcher'] == '') {
+        return array();
+    }
+
+    $user = db_item(
+        "SELECT
+            user_id AS id,
+            user_email AS email_address
+        FROM user
+        WHERE
+            (user_username = '" . escape($line['add_watcher']) . "')
+            OR (user_email = '" . escape($line['add_watcher']) . "')");
+
+    return is_array($user) ? $user : array();
+}
+
+/**
+ * Where an order came from, as its row keeps it: the tracking and affiliate
+ * codes, the referring address and the IP address (the number INET_ATON()
+ * made of it). Read from the order, not the request, so a completion
+ * without the visitor writes the same values.
+ *
+ * @param int $order_id
+ * @return array tracking_code, affiliate_code, http_referer, ip_address;
+ *               empty when there is no such order
+ */
+function pg_order_form_origin($order_id)
+{
+    $origin = db_item(
+        "SELECT
+            tracking_code,
+            affiliate_code,
+            http_referer,
+            ip_address
+        FROM orders
+        WHERE id = '" . (int) $order_id . "'");
+
+    return is_array($origin) ? $origin : array();
+}
+
+/**
+ * The INSERT of a submitted form an order line creates, for db_q(): complete,
+ * submitted now, its origin from the order row (pg_order_form_origin()).
+ * Pure.
+ *
+ * @param int    $page_id        the custom form page
+ * @param string $user_id        the buyer's user, '' for none
+ * @param string $contact_id     the buyer's contact
+ * @param string $reference_code the new form's reference code
+ * @param array  $origin         pg_order_form_origin()
+ * @return array array('sql' => string, 'params' => array)
+ */
+function pg_order_form_insert_query($page_id, $user_id, $contact_id, $reference_code, array $origin)
+{
+    return array(
+        'sql' => "INSERT INTO forms (
+                page_id,
+                complete,
+                user_id,
+                contact_id,
+                reference_code,
+                tracking_code,
+                affiliate_code,
+                http_referer,
+                ip_address,
+                submitted_timestamp,
+                last_modified_user_id,
+                last_modified_timestamp)
+            VALUES (?, '1', ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())",
+        'params' => array(
+            (string) (int) $page_id,
+            (string) $user_id,
+            (string) $contact_id,
+            (string) $reference_code,
+            (string) ($origin['tracking_code'] ?? ''),
+            (string) ($origin['affiliate_code'] ?? ''),
+            (string) ($origin['http_referer'] ?? ''),
+            (string) (int) ($origin['ip_address'] ?? 0),
+            (string) $user_id,
+        ),
+    );
+}
+
+/**
+ * Who gets the submitter e-mail of a form an order line created: the
+ * billing address, then the line's watcher when one was found; each gets a
+ * copy of their own. Pure.
+ *
+ * @param string $billing_email_address
+ * @param array  $watcher               pg_order_line_watcher()
+ * @return string[]
+ */
+function pg_order_form_submitter_addresses($billing_email_address, array $watcher)
+{
+    $addresses = array($billing_email_address);
+
+    if (!empty($watcher['id'])) {
+        $addresses[] = $watcher['email_address'];
+    }
+
+    return $addresses;
+}
+
+/**
+ * Who gets the administrator e-mail of a form an order line created: the
+ * addresses of the chosen options, each once, then the page's to address
+ * when it is not among them. Pure.
+ *
+ * @param string[] $option_addresses in field order
+ * @param string   $to               custom_form_pages.administrator_email_to_email_address
+ * @return string[]
+ */
+function pg_order_form_admin_addresses(array $option_addresses, $to)
+{
+    $addresses = array();
+
+    foreach ($option_addresses as $address) {
+        if (!in_array($address, $addresses)) {
+            $addresses[] = $address;
+        }
+    }
+
+    if (($to != '') && !in_array($to, $addresses)) {
+        $addresses[] = $to;
+    }
+
+    return $addresses;
+}
+
+/**
+ * For a line whose product creates a submitted form: creates it on the
+ * product's custom form page with the product's create fields (variables
+ * filled from the order and the unit's product form), then sends the page's
+ * submitter e-mail (to the billing address and the watcher) and
+ * administrator e-mail, and starts the page's custom_form_submitted
+ * campaigns. Its tracking and affiliate codes, referrer and IP address come
+ * from the order row, so the visitor's request is not needed.
+ *
+ * @param array      $line            product_id, submit_form_custom_form_page_id
+ * @param array      $order           id, user_id, contact_id, billing_email_address
+ * @param array      $variable_fields pg_order_line_variable_fields()
+ * @param array|null $product_form    the unit's product form fields, null for none
+ * @param array      $watcher         pg_order_line_watcher()
+ * @param bool       $pretty_urls     whether the form page uses pretty URLs
+ * @return int the created submitted form's id, 0 when the page is not a form page
+ */
+function pg_order_complete_line_form_create(array $line, array $order, array $variable_fields, $product_form, array $watcher, $pretty_urls)
+{
+    $page_id = (int) $line['submit_form_custom_form_page_id'];
+
+    $custom_form_page = db_item(
+        "SELECT
+            page.page_id AS id,
+            custom_form_pages.submitter_email,
+            custom_form_pages.submitter_email_from_email_address,
+            custom_form_pages.submitter_email_subject,
+            custom_form_pages.submitter_email_format,
+            custom_form_pages.submitter_email_body,
+            custom_form_pages.submitter_email_page_id,
+            custom_form_pages.administrator_email,
+            custom_form_pages.administrator_email_to_email_address,
+            custom_form_pages.administrator_email_bcc_email_address,
+            custom_form_pages.administrator_email_subject,
+            custom_form_pages.administrator_email_format,
+            custom_form_pages.administrator_email_body,
+            custom_form_pages.administrator_email_page_id
+        FROM page
+        LEFT JOIN custom_form_pages ON page.page_id = custom_form_pages.page_id
+        WHERE
+            (page.page_id = '$page_id')
+            AND " . pg_form_page_sql('page'));
+
+    if (empty($custom_form_page['id'])) {
+        return 0;
+    }
+
+    $billing_email_address = $order['billing_email_address'];
+
+    $query = pg_order_form_insert_query($page_id, $order['user_id'], $order['contact_id'], generate_form_reference_code(), pg_order_form_origin($order['id']));
+    db_q($query['sql'], $query['params']) or output_error('Query failed.');
+
+    $submitted_form_id = mysqli_insert_id(db::$con);
+
+    $submit_form_fields = db_items(
+        "SELECT
+            product_submit_form_fields.form_field_id,
+            product_submit_form_fields.value,
+            form_fields.name,
+            form_fields.type,
+            form_fields.wysiwyg
+        FROM product_submit_form_fields
+        LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
+        WHERE
+            (form_fields.id IS NOT NULL)
+            AND (product_submit_form_fields.product_id = '" . (int) $line['product_id'] . "')
+            AND (product_submit_form_fields.action = 'create')
+            AND (form_fields.type != 'information')
+            AND (form_fields.type != 'file upload')");
+
+    $option_addresses = array();
+
+    foreach ($submit_form_fields as $submit_form_field) {
+        $value = pg_order_line_fill($submit_form_field['value'], $variable_fields, $product_form);
+
+        $form_data_type = pg_order_form_data_type($submit_form_field['type'], $submit_form_field['wysiwyg']);
+
+        db(
+            "INSERT INTO form_data (
+                form_id,
+                form_field_id,
+                data,
+                name,
+                type)
+            VALUES (
+                '$submitted_form_id',
+                '" . $submit_form_field['form_field_id'] . "',
+                '" . escape($value) . "',
+                '" . escape($submit_form_field['name']) . "',
+                '$form_data_type')");
+
+        // A chosen option of a pick list, radio button or check box may name
+        // an administrator to e-mail.
+        if (in_array($submit_form_field['type'], array('pick list', 'radio button', 'check box'), true)) {
+            $option_addresses = array_merge($option_addresses, db_values(
+                "SELECT email_address
+                FROM form_field_options
+                WHERE
+                    (form_field_id = '" . $submit_form_field['form_field_id'] . "')
+                    AND (email_address != '')
+                    AND (value = '" . escape($value) . "')"));
+        }
+    }
+
+    if ($pretty_urls == true) {
+        update_submitted_form_address_name($submitted_form_id);
+    }
+
+    if ($custom_form_page['submitter_email'] == 1) {
+        $submitter_email_format = $custom_form_page['submitter_email_format'];
+
+        $from_email_address = ($custom_form_page['submitter_email_from_email_address'] != '')
+            ? $custom_form_page['submitter_email_from_email_address']
+            : EMAIL_ADDRESS;
+
+        // A separate e-mail to each address, so they do not see each other's.
+        foreach (pg_order_form_submitter_addresses($billing_email_address, $watcher) as $to_email_address) {
+            // The signed links (^^email_preferences_url^^, ^^confirm_subscription_url^^)
+            // go into the billing address's own copy only; a watcher's copy gets them empty.
+            // The order's form has no contact of its own, so there is no confirmation link.
+            if ($to_email_address == $billing_email_address) {
+                pg_cf_mail_links_context(array(
+                    'email_address' => $billing_email_address,
+                    'contact_id' => 0,
+                    'custom_form_page_id' => $page_id,
+                    'form_id' => (int) $submitted_form_id));
+            } else {
+                pg_cf_mail_links_context(false);
+            }
+
+            $mail_link_values = pg_cf_mail_link_values();
+
+            // The link fields go into the template before the submitted values, so a
+            // value holding "[[" or "]]" cannot open or close a block around other text.
+            $subject = get_variable_submitted_form_data_for_content($page_id, $submitted_form_id, pg_cf_fill_mail_links($custom_form_page['submitter_email_subject'], $mail_link_values, 'plain_text'), false);
+
+            if ($submitter_email_format == 'plain_text') {
+                // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+                $body = get_variable_submitted_form_data_for_content($page_id, $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($page_id, $custom_form_page['submitter_email_body'], true), $mail_link_values, 'plain_text'), false);
+            } else {
+                require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+                $body = get_page_content($custom_form_page['submitter_email_page_id'], '', '', 'preview', true, array('form_id' => $submitted_form_id));
+
+                // Bare link fields only: the body already holds the submitted values.
+                $body = pg_cf_fill_mail_link_tokens($body, $mail_link_values, 'html');
+            }
+
+            email(array(
+                'to' => $to_email_address,
+                'from_name' => ORGANIZATION_NAME,
+                'from_email_address' => $from_email_address,
+                'subject' => $subject,
+                'format' => $submitter_email_format,
+                'body' => $body,
+                // A signed link stays out of the failure log and the delivery-failed notice.
+                'secret' => pg_cf_mail_links_in($subject . $body, $mail_link_values),
+                'queue' => true));
+
+            pg_cf_mail_links_context(false);
+        }
+    }
+
+    $administrator_email_addresses = pg_order_form_admin_addresses($option_addresses, $custom_form_page['administrator_email_to_email_address']);
+    $administrator_email_bcc_email_address = $custom_form_page['administrator_email_bcc_email_address'];
+
+    if (($custom_form_page['administrator_email'] == 1) && (($administrator_email_bcc_email_address != '') || (count($administrator_email_addresses) > 0))) {
+        $administrator_email_format = $custom_form_page['administrator_email_format'];
+
+        // The signed links belong to the buyer alone: empty in the administrator's
+        // e-mail, filled into the template before the submitted values go in.
+        $subject = pg_cf_fill_mail_links($custom_form_page['administrator_email_subject'], array(), 'plain_text');
+        $subject = get_variable_submitted_form_data_for_content($page_id, $submitted_form_id, $subject, false);
+
+        if ($administrator_email_format == 'plain_text') {
+            // An empty body becomes the list of the form's fields (pg_cf_email_body_or_default()).
+            $body = get_variable_submitted_form_data_for_content($page_id, $submitted_form_id, pg_cf_fill_mail_links(pg_cf_email_body_or_default($page_id, $custom_form_page['administrator_email_body']), array(), 'plain_text'), false);
+        } else {
+            require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+            // The administrator's e-mail in the site's own language.
+            if (function_exists('pg_tr_suspend')) {
+                pg_tr_suspend(true);
+            }
+
+            $body = get_page_content($custom_form_page['administrator_email_page_id'], '', '', 'preview', true, array('form_id' => $submitted_form_id));
+
+            if (function_exists('pg_tr_suspend')) {
+                pg_tr_suspend(false);
+            }
+
+            $body = pg_cf_fill_mail_link_tokens($body, array(), 'html');
+        }
+
+        // Sent from this site with a reply-to of the buyer: a mail provider
+        // using DMARC refuses mail from the buyer's own domain.
+        email(array(
+            'to' => $administrator_email_addresses,
+            'bcc' => $administrator_email_bcc_email_address,
+            'from_name' => ORGANIZATION_NAME,
+            'from_email_address' => EMAIL_ADDRESS,
+            'reply_to' => $billing_email_address,
+            'subject' => $subject,
+            'format' => $administrator_email_format,
+            'body' => $body,
+            'queue' => true));
+    }
+
+    create_auto_email_campaigns(array(
+        'action' => 'custom_form_submitted',
+        'action_item_id' => $page_id,
+        'contact_id' => $order['contact_id']));
+
+    return (int) $submitted_form_id;
+}
+
+/**
+ * Makes the line's watcher a watcher of the unit's submitted form on the
+ * product's add comment page, when that page is a form item view with
+ * comments and a watcher e-mail, and the user is not one already.
+ *
+ * @param array $line              add_comment_page_id
+ * @param array $watcher           pg_order_line_watcher()
+ * @param int   $submitted_form_id the unit's created or updated form, 0 for none
+ * @return void
+ */
+function pg_order_complete_line_watcher(array $line, array $watcher, $submitted_form_id)
+{
+    if (empty($watcher['id']) || !$line['add_comment_page_id']) {
+        return;
+    }
+
+    $page_id = db_value(
+        "SELECT page_id
+        FROM page
+        WHERE
+            (page_id = '" . (int) $line['add_comment_page_id'] . "')
+            AND (page_type = 'form item view')
+            AND (comments = '1')
+            AND (comments_watcher_email_page_id != '0')");
+
+    if (!$page_id) {
+        return;
+    }
+
+    $user_id = (int) $watcher['id'];
+    $submitted_form_id = (int) $submitted_form_id;
+
+    if (db_value(
+        "SELECT COUNT(*)
+        FROM watchers
+        WHERE
+            (user_id = '$user_id')
+            AND (page_id = '$page_id')
+            AND (item_id = '$submitted_form_id')
+            AND (item_type = 'submitted_form')") == 0
+    ) {
+        db(
+            "INSERT INTO watchers (
+                user_id,
+                page_id,
+                item_id,
+                item_type)
+            VALUES (
+                '$user_id',
+                '$page_id',
+                '$submitted_form_id',
+                'submitted_form')");
+    }
+}

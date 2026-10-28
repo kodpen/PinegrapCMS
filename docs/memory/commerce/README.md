@@ -83,7 +83,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, the one restore path, what the API status moves call.
-- order-completion-lines.md: The per-line stage functions of the order completion (#2713, #2740, #2766): stock, reservations, membership, folder access, gift cards, variable fields, product forms, submitted form update
+- order-completion-lines.md: Per-line stage functions of the order completion (#2713, #2740, #2766, A2c3b): stock, reservations, membership, folder access, gift cards, product forms, submitted forms, watcher
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
 - order-completion.md: pg_order_complete() (#2638) and its stage functions (#2687): the session-free completion of an incomplete order, the once-only lock, what each writes
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
