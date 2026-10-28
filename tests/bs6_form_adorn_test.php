@@ -51,10 +51,8 @@ function pg_test_form_adorn_cases()
 		array($root . 'workspace_template.php', 'id="ws_tpl_icon"', 'for="ws_tpl_icon"', '', 'id="ws_tpl_icon_preview"'),
 		array($root . 'includes/workspace/mcp_catalogue.php', 'id="ws_mcp_probe_alias"', 'for="ws_mcp_probe_alias"', 'form-control-sm', '>@</span>'),
 		array($root . 'includes/workspace/mcp.php', 'id="\' . $prefix . \'alias"', 'for="\' . $prefix . \'alias"', 'form-control-sm', '>@</span>'),
-		array($root . 'add_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
-		array($root . 'edit_ad_region.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
-		array($root . 'add_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
-		array($root . 'edit_ad_region.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
+		array($root . 'includes/forms/ad_region_form.php', "'id'=>'transition_duration'", '<label class="form-label" for="transition_duration"', 'form-adorn-end', "lang('milliseconds')"),
+		array($root . 'includes/forms/ad_region_form.php', "'id'=>'slideshow_interval'", '<label class="form-label" for="slideshow_interval"', 'form-adorn-end', "lang('seconds')"),
 		// Toolbar search fields: the input names itself with aria-label.
 		array($root . 'view_folders.php', 'id="filter_input"', '', 'form-control-sm', 'bi bi-search'),
 		array($root . 'view_folders.php', 'id="transfer_filter"', '', 'form-control-sm', 'bi bi-search'),

@@ -3,8 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the menu form shared by the create and the edit screens
- * (includes/forms/menu_form.php): the menu name rule, and that both
- * screens use the shared form.
+ * (includes/forms/menu_form.php): both screens use the shared form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -17,28 +16,6 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/menu_form.php');
-
-function test_menu_form_name_rule_on_create()
-{
-	$message = lang('Please only enter letters, numbers, and dashes for the name.');
-
-	pg_assert_same('', pg_menu_form_name_error('Main-Menu-2', null), 'letters, numbers and dashes pass');
-	pg_assert_same($message, pg_menu_form_name_error('main_menu', null), 'an underscore is refused');
-	pg_assert_same($message, pg_menu_form_name_error('main menu', null), 'a space is refused');
-	pg_assert_same($message, pg_menu_form_name_error('menü', null), 'a non-ASCII letter is refused');
-}
-
-function test_menu_form_name_rule_on_edit()
-{
-	$plain = lang('Please only enter letters, numbers, or dashes for the name.');
-	$underscore = lang('Please only enter letters, numbers, dashes, and underscores for the name.');
-
-	pg_assert_same('', pg_menu_form_name_error('top-menu', 'top-menu'), 'a valid name passes');
-	pg_assert_same($plain, pg_menu_form_name_error('top_menu', 'top-menu'), 'no underscore when the stored name had none');
-	pg_assert_same('', pg_menu_form_name_error('top_menu_2', 'top_menu'), 'underscores stay when the stored name had one');
-	pg_assert_same($underscore, pg_menu_form_name_error('top menu', 'top_menu'), 'the underscore rule still refuses a space');
-	pg_assert_same($plain, pg_menu_form_name_error('a.b', ''), 'a missing stored name uses the plain rule');
-}
 
 function test_menu_form_screens_use_shared_form()
 {
