@@ -2464,6 +2464,8 @@ function ws_notes_js_strings()
         'notes_untitled'        => lang('Untitled note'),
         'notes_back'            => lang('Notes'),
         'notes_attach'          => lang('Attach a file'),
+        'notes_voice'           => lang('Record a voice note'),
+        'notes_voices'          => lang('Recordings in this note'),
         'notes_drop'            => lang('Drop the files to attach them to the note'),
         'notes_uploading'       => lang('Uploading…'),
         'notes_tag'             => lang('Tag a person or a record'),

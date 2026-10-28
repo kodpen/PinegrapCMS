@@ -23,6 +23,6 @@ description: Voice message transcripts at work (V3b #2696, V3c1 #2744): queue, w
 
 ## Which event says it was written out?
 - `workspace.message.transcribed` (`ws_voice_announce()`, from `ws_voice_run()` once done): public channels only, never a private channel or a discussion, as `workspace.message.created`. Carries id, `channel_id` (narrowed subscriptions), sender_id or app_id, file_id, file_name, duration_ms, transcript, language, provider, model.
-- A webhook event only (`pg_announce()`), not a Flows trigger: no `ws_event()` call, so no line in `workspace_flows_parity_table()`.
+- A webhook event only (`pg_announce()`), not a Flows trigger: no `ws_event()` call, so no line in `workspace_flows_parity_table()`. Making it one belongs to the Flows work, not the voice slices: an entry in `ws_events_catalog()`, a `ws_event()` call beside `ws_voice_announce()` and its parity line (tests/workspace_flows_parity_test.php).
 
 Schema, settings and the channel rule: workspace-voice-transcripts.md.

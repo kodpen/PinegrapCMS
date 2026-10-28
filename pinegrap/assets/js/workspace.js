@@ -19621,6 +19621,8 @@
         var lists = { mine: [], shared: [] };
         var current = null;     // the note open, with its text
         var field = null;       // the writing box of the open note
+        var voiceRow = null;    // where a recording made in the note runs
+        var voiceList = null;   // the note's recordings, each with its player
         var dirty = false;
         var saving = null;
         var saveTimer = 0;
@@ -19998,6 +20000,7 @@
             setStatus('unsaved');
             clearTimeout(saveTimer);
             saveTimer = setTimeout(function () { save(); }, 900);
+            voicesLater();
         }
 
         function editable() {
@@ -21643,6 +21646,83 @@
             }).catch(fail);
         }
 
+        // A recording made in the note: kept as the note's own file like a
+        // dropped one (attach(), ws_note_file) and linked where the caret
+        // was. The recorder's row stands above the text while it runs.
+        function recordVoice() {
+            var voice = window.PGWsVoice;
+
+            if (!voiceRow || !voice || voice.busy() || !current || !editable()) {
+                return;
+            }
+
+            voiceRow.classList.remove('d-none');
+            voice.start({
+                box: voiceRow,
+                send: function (file) { attach([file]); },
+                done: function () {
+                    if (voiceRow) {
+                        voiceRow.classList.add('d-none');
+                    }
+
+                    if (field && field.rich.node.isConnected && !touchScreen()) {
+                        field.rich.node.focus();
+                    }
+                }
+            }, featureHelpers());
+        }
+
+        // The recordings a note links to: a Markdown link whose words are a
+        // recorder's file name (voice-…), once each, in their order.
+        function voiceLinks(text) {
+            var found = [];
+            var seen = {};
+            var pattern = /\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g;
+            var match;
+
+            if (!window.PGWsVoice) {
+                return found;
+            }
+
+            while ((match = pattern.exec(String(text || ''))) !== null) {
+                if (window.PGWsVoice.isVoice(match[1]) && !seen[match[2]]) {
+                    seen[match[2]] = true;
+                    found.push({ name: match[1], url: match[2], kind: 'audio' });
+                }
+            }
+
+            return found;
+        }
+
+        // Under the text, a player for each recording, so the note is
+        // listened to where it is read. Drawn again only when the list
+        // changes, so typing never stops one that sounds.
+        function drawVoices(text) {
+            if (!voiceList) {
+                return;
+            }
+
+            var voices = voiceLinks(text);
+            var key = voices.map(function (voice) { return voice.url; }).join('\n');
+
+            if (voiceList.wsKey === key) {
+                return;
+            }
+
+            voiceList.wsKey = key;
+            clear(voiceList);
+            voiceList.classList.toggle('d-none', !voices.length);
+
+            if (voices.length) {
+                voiceList.appendChild(el('div', 'small fw-semibold fg-secondary', t('notes_voices')));
+                voices.forEach(function (voice) {
+                    voiceList.appendChild(window.PGWsVoice.player(voice, featureHelpers(), {}));
+                });
+            }
+        }
+
+        var voicesLater = debounce(function () { drawVoices(field ? field.value() : ''); }, 400);
+
         var scheduledStrip = null;
 
         function drawScheduled(items) {
@@ -21714,6 +21794,14 @@
                 emojiPicker(box.left, box.bottom + 4, function (picked) { rich.insertText(picked); });
             });
 
+            var files = [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); })];
+
+            if (window.PGWsVoice && window.PGWsVoice.supported()) {
+                files.push(tool('bi-mic', t('notes_voice'), recordVoice));
+            }
+
+            files.push(emoji);
+
             return window.PGWsEditor.toolbar(rich, [
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike', 'highlight'],
@@ -21721,7 +21809,7 @@
                 ['heading1', 'heading2', 'heading3', 'rule'],
                 blocks,
                 tags,
-                [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]
+                files
             ], {
                 className: 'ws-nb-tools',
                 groupClass: 'ws-nb-tool-group',
@@ -21773,6 +21861,8 @@
             card.appendChild(body);
             pane.appendChild(card);
             field = null;
+            voiceRow = null;
+            voiceList = el('div', 'ws-nb-voices d-flex flex-column gap-2 mt-4 d-none');
             drawHead();
 
             if (!editable()) {
@@ -21782,6 +21872,8 @@
                 setHtml(read, current.html || '');
                 chipMenus(read);
                 body.appendChild(read);
+                body.appendChild(voiceList);
+                drawVoices(current.body || '');
                 return;
             }
 
@@ -21822,6 +21914,9 @@
 
             body.appendChild(toolbar());
 
+            voiceRow = el('div', 'ws-nb-voice d-none');
+            body.appendChild(voiceRow);
+
             // The scheduled actions written in this note, above its text.
             if (CFG.scheduled) {
                 scheduledStrip = el('div', 'ws-sa-strip');
@@ -21837,7 +21932,9 @@
             claudeLine.appendChild(el('span', 'ws-nb-claude-words', t('notes_claude_waiting')));
             body.appendChild(claudeLine);
 
+            body.appendChild(voiceList);
             field.set(current.body || '', current.labels || {});
+            drawVoices(field.value());
             showResults();
 
             // Files dropped on the note are attached to it.

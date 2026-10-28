@@ -36,7 +36,7 @@ description: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): 
 2. Enter in the expanded box is a new line, Ctrl+Enter sends (a).
 3. Autoformat on, with an off switch per viewer (a).
 4. Saved replies: personal first (b), team as a later slice.
-5. Dictation: not now (b); plans/workspace-voice-messages.md covers recordings and transcripts.
+5. Dictation: not now (b); recordings and transcripts are built (workspace/workspace-voice-recording.md).
 
 ## Where to start?
 - Steps 1-9 and 11 are done. Left: 10 (saved replies; question 4 answered, but it needs a schema step: ask the owner first, Fixed rules 5); 12 is "later".

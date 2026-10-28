@@ -24,5 +24,5 @@ description: Shared names and single owners across the Workspace growth plans (2
 - One follow-up opener `ws_followup_task_open()` (proposed): plans/workspace-crm-seams.md; quote expiry and plans/workspace-phase3-leftovers.md item 4 call it.
 - Saved replies: plans/workspace-composer-tools.md. Channel `/` commands: plans/workspace-slash-commands.md; other plans add registry entries (`/product` after its slice 2).
 - Contacts in the audit trail and erasure: core/audit-trail-writers.md, core/personal-data-erasure.md; the CRM merge and erasure share one list of every `contact_id` holder (with `cart_quotes` and workflow-table cells).
-- Recorded audio and transcripts: plans/workspace-voice-messages.md; live dictation: composer tools.
+- Recorded audio and transcripts: workspace/workspace-voice-recording.md (done); live dictation: composer tools.
 - The site's own MCP server: plans/workspace-mcp-capabilities.md; outside MCP servers the Workspace calls: plans/workspace-mcp-connectors.md.
