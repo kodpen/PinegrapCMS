@@ -80,6 +80,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_max_image_preview();      // 11.0.51
 
 }
 
@@ -2578,5 +2579,22 @@ function upgrade_2026_11_0_reference_price_rule() {
 	install_add_column('config', 'ecommerce_reference_price_rule', "TEXT DEFAULT NULL");
 
 	install_note('Ecommerce: Settings › Ecommerce › Reference Price now picks which price counts as the price before a discount: the lowest price of the last 30 days (the default), of the last 10 days, or the compare-at price entered on each product.');
+
+}
+
+// Large image previews in search results (2026.11.0, 11.0.51;
+// includes/fn/seo.php, Site Settings › SEO, Site Map and Crawling).
+//
+// max_image_preview_large adds max-image-preview:large to the robots meta tag
+// of every indexed page (pg_page_robots_content()), which lets Google show a
+// page's large picture in Discover and in results; a noindex page never gets
+// it. It starts off, so a running site writes exactly what it wrote before
+// until the operator switches it on; a new site gets it on from the
+// installer, after this step.
+function upgrade_2026_11_0_max_image_preview() {
+
+	install_add_column('config', 'max_image_preview_large', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('SEO: pages can now let search engines show their pictures large (max-image-preview:large in the robots meta tag), under Site Settings, SEO, Site Map and Crawling. It stays off on this site until switched on.');
 
 }

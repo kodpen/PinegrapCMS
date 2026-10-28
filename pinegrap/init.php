@@ -745,6 +745,9 @@ define('INDEXNOW_KEY', $row['indexnow_key']);
 // The code Google Search Console asks the pages to carry in a meta tag
 // (2026.4.10, 10.73; includes/fn/search_console.php). Empty before the upgrade.
 define('GOOGLE_SITE_VERIFICATION', (string) ($row['google_site_verification'] ?? ''));
+// Large image previews for every indexed page (2026.11.0, 11.0.51;
+// pg_page_robots_content()). Off before the upgrade.
+define('MAX_IMAGE_PREVIEW_LARGE', (int) ($row['max_image_preview_large'] ?? 0) == 1);
 
 // Open Graph and structured data settings (2026.4.4). Read with a fallback so
 // an installation that takes the code without running the database upgrade
