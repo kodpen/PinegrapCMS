@@ -29,10 +29,11 @@ if (check_edit_access($_POST['folder_id']) == false) {
 }
 
 // find out if file name is already in use.
-$query = "SELECT id, folder, design
+$result = db_q(
+    "SELECT id, folder, design
          FROM files
-         WHERE name = '" . escape($file_name) . "'";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+         WHERE name = ?",
+    array((string) $file_name)) or output_error('Query failed.');
 
 // if file name is already in use
 if (mysqli_num_rows($result) > 0) {
@@ -49,12 +50,10 @@ if (mysqli_num_rows($result) > 0) {
         }
         // if user has access to overwrite existing file, delete existing record for file in database and delete existing file
         if (check_edit_access($existing_folder_id) == true) {
-            $query = "DELETE FROM files WHERE id = '$existing_file_id'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q("DELETE FROM files WHERE id = ?", array((string) $existing_file_id)) or output_error('Query failed.');
 
             // delete file's system css properties in case any exist
-            $query = "DELETE FROM system_theme_css_rules WHERE file_id = '" . $existing_file_id . "'";
-            $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+            $result = db_q("DELETE FROM system_theme_css_rules WHERE file_id = ?", array((string) $existing_file_id)) or output_error('Query failed.');
 
             db("DELETE FROM preview_styles WHERE theme_id = '" . escape($existing_file_id) . "'");
             
@@ -82,10 +81,16 @@ $file_extension = $array_file_extension[$size_of_array - 1];
 copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name) or output_error('Upload failed. <a href="javascript:history.go(-1);">Go back</a>.');
 
 // insert file data into file table
-$query =    "INSERT INTO files ".
-            "(name, folder, type, size, user, timestamp, design) ".
-            "VALUES ('" . escape($file_name) . "','" . escape($_POST['folder_id'] ?? '') . "','" . escape($file_extension) . "','" . escape($file_size) . "','" . $user['id'] . "',UNIX_TIMESTAMP(), '0')";
-$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+$result = db_q(
+    "INSERT INTO files ".
+    "(name, folder, type, size, user, timestamp, design) ".
+    "VALUES (?, ?, ?, ?, ?, UNIX_TIMESTAMP(), '0')",
+    array(
+        (string) $file_name,
+        (string) ($_POST['folder_id'] ?? ''),
+        (string) $file_extension,
+        (string) $file_size,
+        (string) $user['id'])) or output_error('Query failed.');
 $file_id = mysqli_insert_id(db::$con);
 
 if ($overwrite == true) {

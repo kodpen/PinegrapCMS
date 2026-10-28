@@ -412,6 +412,8 @@ function pg_session_token_binding_broken()
     // upgrade bridge (no auth_tokens table yet, or a database restored from
     // before it), where there is nothing to verify against and the session is
     // left alone the way the previous release treated it, not a fatal error.
+    // Not db_q(): get_file.php loads this file without functions.php, so only
+    // the helpers named at the top of this file exist on both paths.
     $result = @mysqli_query(db::$con, "SELECT user_id, expires_at FROM auth_tokens WHERE selector = '" . escape($selector) . "'");
 
     if (!$result) {

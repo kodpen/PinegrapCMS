@@ -5694,22 +5694,19 @@ else {
 		// if software_language exist in config we can update it
     	if (mysqli_num_rows($result) != 0) {
 			// Update config settings.
-			$query ="UPDATE config SET software_language = '" . escape($liveform->get_field_value('default_software_language')) . "'";
-			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			$result = db_q("UPDATE config SET software_language = ?", array((string) $liveform->get_field_value('default_software_language'))) or exit(mysqli_error(db::$con));
 		}else{
 			//else software_language not exist, we add column to config
 			db("ALTER TABLE config ADD software_language ENUM('en','tr') NOT NULL DEFAULT 'en'");
 			// Update config settings.
-			$query ="UPDATE config SET software_language = '" . escape($liveform->get_field_value('default_software_language')) . "'";
-			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			$result = db_q("UPDATE config SET software_language = ?", array((string) $liveform->get_field_value('default_software_language'))) or exit(mysqli_error(db::$con));
 		}
 
 		// The site's host name and path. The starter dump carries the path it was
 		// made on (/dev/); init.php corrects it on the first web request, but a job
 		// run from the command line reads PATH from this column, so an installation
 		// from the command line linked its e-mails to /dev/ until the site was opened.
-		$query ="UPDATE config SET hostname = '" . escape($_SERVER['HTTP_HOST']) . "', path = '" . escape(PATH) . "'";
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE config SET hostname = ?, path = ?", array((string) $_SERVER['HTTP_HOST'], (string) PATH)) or exit(mysqli_error(db::$con));
 
 		
 		// if a settings e-mail address was passed, then use it
@@ -5729,45 +5726,25 @@ else {
 		// set e-mail address in various places
 		
 
-		$query = "UPDATE config SET email_address = '" . escape($settings_email_address) . "' WHERE email_address != ''";
+		$result = db_q("UPDATE config SET email_address = ? WHERE email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE config SET registration_email_address = ? WHERE registration_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$query = "UPDATE config SET registration_email_address = '" . escape($settings_email_address) . "' WHERE registration_email_address != ''";
+		$result = db_q("UPDATE config SET membership_email_address = ? WHERE membership_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE config SET ecommerce_email_address = ? WHERE ecommerce_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$query = "UPDATE config SET membership_email_address = '" . escape($settings_email_address) . "' WHERE membership_email_address != ''";
+		$result = db_q("UPDATE config SET affiliate_email_address = ? WHERE affiliate_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE custom_form_pages SET submitter_email_from_email_address = ? WHERE submitter_email_from_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$query = "UPDATE config SET ecommerce_email_address = '" . escape($settings_email_address) . "' WHERE ecommerce_email_address != ''";
+		$result = db_q("UPDATE custom_form_pages SET administrator_email_to_email_address = ? WHERE administrator_email_to_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE custom_form_pages SET administrator_email_bcc_email_address = ? WHERE administrator_email_bcc_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$query = "UPDATE config SET affiliate_email_address = '" . escape($settings_email_address) . "' WHERE affiliate_email_address != ''";
+		$result = db_q("UPDATE page SET comments_administrator_email_to_email_address = ? WHERE comments_administrator_email_to_email_address != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-		$query = "UPDATE custom_form_pages SET submitter_email_from_email_address = '" . escape($settings_email_address) . "' WHERE submitter_email_from_email_address != ''";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-		$query = "UPDATE custom_form_pages SET administrator_email_to_email_address = '" . escape($settings_email_address) . "' WHERE administrator_email_to_email_address != ''";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-		$query = "UPDATE custom_form_pages SET administrator_email_bcc_email_address = '" . escape($settings_email_address) . "' WHERE administrator_email_bcc_email_address != ''";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-		$query = "UPDATE page SET comments_administrator_email_to_email_address = '" . escape($settings_email_address) . "' WHERE comments_administrator_email_to_email_address != ''";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
-
-		$query = "UPDATE products SET email_bcc = '" . escape($settings_email_address) . "' WHERE email_bcc != ''";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("UPDATE products SET email_bcc = ? WHERE email_bcc != ''", array((string) $settings_email_address)) or exit(mysqli_error(db::$con));
 
 		db("UPDATE email_campaign_profiles SET from_email_address = '" . escape($settings_email_address) . "' WHERE from_email_address != ''");
 
@@ -5822,7 +5799,7 @@ else {
 
 			// add administrator user
 			// We are setting the user's start page to the 294 page which is "staff-home".
-			$query =
+			$result = db_q(
 
 			"INSERT INTO user (
 
@@ -5838,21 +5815,12 @@ else {
 
 					user_timestamp)
 
-				VALUES (
+				VALUES (?, ?, ?, '0', '294', UNIX_TIMESTAMP())",
 
-					'" . escape($liveform->get_field_value('admin_username')) . "',
-
-					'" . escape($liveform->get_field_value('admin_email_address')) . "',
-
-					'" . md5($liveform->get_field_value('admin_password')) . "',
-
-					'0',
-
-					'294',
-
-					UNIX_TIMESTAMP())";
-
-			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			array(
+				(string) $liveform->get_field_value('admin_username'),
+				(string) $liveform->get_field_value('admin_email_address'),
+				md5($liveform->get_field_value('admin_password')))) or exit(mysqli_error(db::$con));
 
 			$user_id = mysqli_insert_id(db::$con);
 
@@ -5863,8 +5831,7 @@ else {
 			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
 			// If the column exists, then we can update user with 'default' selected_appmenu_items_array value
 			if (mysqli_num_rows($result) != 0) {
-				$query = "UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = '" . escape($user_id) . "'";
-				$result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+				$result = db_q("UPDATE user SET selected_appmenu_items_array = 'default' WHERE user_id = ?", array((string) $user_id)) or output_error('Query failed.');
 			}
 
 		}
@@ -8080,7 +8047,7 @@ function check_if_administrator_is_logged_in()
 	// if a signed-in user id is set in the session, check it belongs to an administrator
 	if ((isset($_SESSION['sessionuserid']) == true) && ($_SESSION['sessionuserid'] !== '')) {
 
-		$query =
+		$result = db_q(
 
 		"SELECT user_id
 
@@ -8090,9 +8057,9 @@ function check_if_administrator_is_logged_in()
 
 				(user_role = '0')
 
-				AND (user_id = '" . (int) $_SESSION['sessionuserid'] . "')";
+				AND (user_id = ?)",
 
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		array((string) (int) $_SESSION['sessionuserid'])) or exit(mysqli_error(db::$con));
 
 		// if a user was found, then return true
 		if (mysqli_num_rows($result) > 0) {
@@ -8487,9 +8454,7 @@ function backup_system_themes($version)
 	foreach ($themes as $theme) {
 
 		// Check to see if this is a system or custom theme.
-		$query = "SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $theme['id'] . "'";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme['id'])) or exit(mysqli_error(db::$con));
 
 		$row = mysqli_fetch_row($result);
 
@@ -8505,16 +8470,14 @@ function backup_system_themes($version)
 			$backup_theme_name = $theme_name_without_extension . '-backup-pre-v' . $version . '.' . $theme_extension;
 
 			// Check if the backup theme name already exists (unlikely)
-			$query = "SELECT COUNT(*) FROM files WHERE name = '" . escape($backup_theme_name) . "'";
-
-			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			$result = db_q("SELECT COUNT(*) FROM files WHERE name = ?", array((string) $backup_theme_name)) or exit(mysqli_error(db::$con));
 
 			$row = mysqli_fetch_row($result);
 
 			// If the backup theme name does not exist, then create backup theme.
 			if ($row[0] == 0) {
 
-				$query =
+				$result = db_q(
 
 				"INSERT INTO files (
 
@@ -8532,23 +8495,14 @@ function backup_system_themes($version)
 
 						timestamp)
 
-					VALUES (
+					VALUES (?, ?, ?, ?, ?, '1', UNIX_TIMESTAMP())",
 
-						'" . escape($backup_theme_name) . "',
-
-						'" . escape($theme['folder_id']) . "',
-
-						'" . escape('This backup Theme was automatically created during the v' . $version . ' update.') . "',
-
-						'" . escape($theme_extension) . "',
-
-						'" . escape(filesize(FILE_DIRECTORY_PATH . '/' . $theme['name'])) . "',
-
-						'1',
-
-						UNIX_TIMESTAMP())";
-
-				$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+				array(
+					(string) $backup_theme_name,
+					(string) $theme['folder_id'],
+					'This backup Theme was automatically created during the v' . $version . ' update.',
+					(string) $theme_extension,
+					(string) filesize(FILE_DIRECTORY_PATH . '/' . $theme['name']))) or exit(mysqli_error(db::$con));
 
 				$backup_theme_id = mysqli_insert_id(db::$con);
 
@@ -8607,9 +8561,7 @@ function update_system_themes()
 	foreach ($themes as $theme) {
 
 		// Check to see if this is a system theme.
-		$query = "SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $theme['id'] . "'";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme['id'])) or exit(mysqli_error(db::$con));
 
 		$row = mysqli_fetch_row($result);
 
@@ -8617,7 +8569,7 @@ function update_system_themes()
 		if ($row[0] > 0) {
 
 			// Get the properties from the database.
-			$query =
+			$result = db_q(
 
 			"SELECT
 
@@ -8639,9 +8591,9 @@ function update_system_themes()
 
 				FROM system_theme_css_rules 
 
-				WHERE file_id = '" . $theme['id'] . "'";
+				WHERE file_id = ?",
 
-			$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+			array((string) $theme['id'])) or exit(mysqli_error(db::$con));
 
 			$rules = mysqli_fetch_items($result);
 
@@ -8755,9 +8707,7 @@ function update_custom_themes($content)
 	foreach ($themes as $theme) {
 
 		// Check to see if this is a custom theme.
-		$query = "SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $theme['id'] . "'";
-
-		$result = mysqli_query(db::$con, $query) or exit(mysqli_error(db::$con));
+		$result = db_q("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = ?", array((string) $theme['id'])) or exit(mysqli_error(db::$con));
 
 		$row = mysqli_fetch_row($result);
 
