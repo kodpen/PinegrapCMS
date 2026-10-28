@@ -141,6 +141,16 @@ function pg_parasut_credentials_for_save()
     // The same for the carrier label drivers (includes/fn/carrier_labels.php).
     $label_driver_decisions = pg_label_settings_check($_POST, $liveform);
 
+    // A new gateway secret whose sealed form would not fit its column is
+    // refused rather than cut or stored plain.
+    foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
+        $gateway_secret_posted = trim((string) post_value($gateway_secret_column));
+
+        if (($gateway_secret_posted !== pg_gateway_secret_mask()) && !pg_gateway_secret_fits($gateway_secret_posted, $gateway_secret_width)) {
+            $liveform->mark_error($gateway_secret_column, lang(array('string' => 'This secret is too long to be stored encrypted; at most {var:1} characters.', 'vars' => array(pg_gateway_secret_max_length($gateway_secret_width)))));
+        }
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }
@@ -217,6 +227,17 @@ function pg_parasut_credentials_for_save()
                 $result = db_q($query, array((string) encrypt_credit_card_number($order['card_number'], $new_encryption_key), (string) (int) $order['id'])) or output_error('Query failed.');
             }
         }
+    }
+
+    // The gateway secrets as written: kept, replaced, or sealed again with the
+    // new key when it was just reset above.
+    $gateway_secret_key = defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '';
+    $gateway_secret_new_key = isset($new_encryption_key) ? (string) $new_encryption_key : $gateway_secret_key;
+    $gateway_secret_stored = db_item("SELECT " . implode(', ', array_keys(pg_gateway_secret_fields())) . " FROM config LIMIT 1");
+    $gateway_secret_values = array();
+
+    foreach (pg_gateway_secret_fields() as $gateway_secret_column => $gateway_secret_width) {
+        $gateway_secret_values[$gateway_secret_column] = pg_gateway_secret_for_save(post_value($gateway_secret_column), (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), $gateway_secret_key, $gateway_secret_new_key, $gateway_secret_width);
     }
 
     // Remove commas from gift card validity days.
@@ -554,7 +575,7 @@ function pg_parasut_credentials_for_save()
             ecommerce_payment_gateway_transaction_type = '" . escape(post_value('ecommerce_payment_gateway_transaction_type')) . "',
             ecommerce_payment_gateway_mode = '" . escape($payment_gateway_mode) . "',
             ecommerce_authorizenet_api_login_id = '" . escape(trim(post_value('ecommerce_authorizenet_api_login_id'))) . "',
-            ecommerce_authorizenet_transaction_key = '" . escape(trim(post_value('ecommerce_authorizenet_transaction_key'))) . "',
+            ecommerce_authorizenet_transaction_key = '" . escape($gateway_secret_values['ecommerce_authorizenet_transaction_key']) . "',
             ecommerce_clearcommerce_client_id = '" . escape(trim(post_value('ecommerce_clearcommerce_client_id'))) . "',
             ecommerce_clearcommerce_user_id = '" . escape(trim(post_value('ecommerce_clearcommerce_user_id'))) . "',
             ecommerce_clearcommerce_password = '" . escape(trim(post_value('ecommerce_clearcommerce_password'))) . "',
@@ -563,15 +584,15 @@ function pg_parasut_credentials_for_save()
             ecommerce_paypal_payflow_pro_partner = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_partner'))) . "',
             ecommerce_paypal_payflow_pro_merchant_login = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_merchant_login'))) . "',
             ecommerce_paypal_payflow_pro_user = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_user'))) . "',
-            ecommerce_paypal_payflow_pro_password = '" . escape(trim(post_value('ecommerce_paypal_payflow_pro_password'))) . "',
+            ecommerce_paypal_payflow_pro_password = '" . escape($gateway_secret_values['ecommerce_paypal_payflow_pro_password']) . "',
             ecommerce_paypal_payments_pro_api_username = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_username'))) . "',
-            ecommerce_paypal_payments_pro_api_password = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_password'))) ."',
+            ecommerce_paypal_payments_pro_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_payments_pro_api_password']) . "',
             ecommerce_paypal_payments_pro_api_signature = '" . escape(trim(post_value('ecommerce_paypal_payments_pro_api_signature'))) ."',
             ecommerce_sage_merchant_id = '" . escape(trim(post_value('ecommerce_sage_merchant_id'))) . "',
             ecommerce_sage_merchant_key = '" . escape(trim(post_value('ecommerce_sage_merchant_key'))) . "',
             ecommerce_stripe_api_key = '" . escape(trim(post_value('ecommerce_stripe_api_key'))) . "',
             ecommerce_iyzipay_api_key = '" . escape(trim(post_value('ecommerce_iyzipay_api_key'))) . "',
-            ecommerce_iyzipay_secret_key = '" . escape(trim(post_value('ecommerce_iyzipay_secret_key'))) . "',
+            ecommerce_iyzipay_secret_key = '" . escape($gateway_secret_values['ecommerce_iyzipay_secret_key']) . "',
             ecommerce_iyzipay_installment = '" . escape(post_value('ecommerce_iyzipay_installment')) . "',
             ecommerce_iyzipay_threeds = '" . escape(post_value('ecommerce_iyzipay_threeds')) . "',
             ecommerce_pay_with_iyzico = '" . escape(post_value('ecommerce_pay_with_iyzico')) . "',
@@ -580,7 +601,7 @@ function pg_parasut_credentials_for_save()
             ecommerce_paypal_express_checkout_transaction_type = '" . escape(post_value('ecommerce_paypal_express_checkout_transaction_type')) . "',
             ecommerce_paypal_express_checkout_mode = '" . escape(post_value('ecommerce_paypal_express_checkout_mode')) . "',
             ecommerce_paypal_express_checkout_api_username = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_username'))) . "',
-            ecommerce_paypal_express_checkout_api_password = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_password'))) . "',
+            ecommerce_paypal_express_checkout_api_password = '" . escape($gateway_secret_values['ecommerce_paypal_express_checkout_api_password']) . "',
             ecommerce_paypal_express_checkout_api_signature = '" . escape(trim(post_value('ecommerce_paypal_express_checkout_api_signature'))) . "',
             ecommerce_offline_payment = '" . escape(post_value('ecommerce_offline_payment')) . "',
             ecommerce_offline_payment_only_specific_orders = '" . escape(post_value('ecommerce_offline_payment_only_specific_orders')) . "',

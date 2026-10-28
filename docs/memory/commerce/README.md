@@ -119,6 +119,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
+- payment-gateway-secrets.md: Legacy gateway secrets (Authorize.net key, PayPal passwords, iyzipay secret) sealed in config, drawn masked, opened in init.php; plain values still read; the 47-character limit
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
 - payment-method-lists.md: One list of checkout payment methods (pg_payment_checkout_methods(), PR #1743): screens that read it, what a redirect driver still needs by hand, the Pay With Iyzico gaps kept

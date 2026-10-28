@@ -334,7 +334,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_payment_gateway_transaction_type = $row['ecommerce_payment_gateway_transaction_type'];
     $ecommerce_payment_gateway_mode = $row['ecommerce_payment_gateway_mode'];
     $ecommerce_authorizenet_api_login_id = $row['ecommerce_authorizenet_api_login_id'];
-    $ecommerce_authorizenet_transaction_key = $row['ecommerce_authorizenet_transaction_key'];
+    $ecommerce_authorizenet_transaction_key = pg_gateway_secret_shown($row['ecommerce_authorizenet_transaction_key']);
     $ecommerce_clearcommerce_client_id = $row['ecommerce_clearcommerce_client_id'];
     $ecommerce_clearcommerce_user_id = $row['ecommerce_clearcommerce_user_id'];
     $ecommerce_clearcommerce_password = $row['ecommerce_clearcommerce_password'];
@@ -343,15 +343,15 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_paypal_payflow_pro_partner = $row['ecommerce_paypal_payflow_pro_partner'];
     $ecommerce_paypal_payflow_pro_merchant_login = $row['ecommerce_paypal_payflow_pro_merchant_login'];
     $ecommerce_paypal_payflow_pro_user = $row['ecommerce_paypal_payflow_pro_user'];
-    $ecommerce_paypal_payflow_pro_password = $row['ecommerce_paypal_payflow_pro_password'];
+    $ecommerce_paypal_payflow_pro_password = pg_gateway_secret_shown($row['ecommerce_paypal_payflow_pro_password']);
     $ecommerce_paypal_payments_pro_api_username = $row['ecommerce_paypal_payments_pro_api_username'];
-    $ecommerce_paypal_payments_pro_api_password = $row['ecommerce_paypal_payments_pro_api_password'];
+    $ecommerce_paypal_payments_pro_api_password = pg_gateway_secret_shown($row['ecommerce_paypal_payments_pro_api_password']);
     $ecommerce_paypal_payments_pro_api_signature = $row['ecommerce_paypal_payments_pro_api_signature'];
     $ecommerce_sage_merchant_id = $row['ecommerce_sage_merchant_id'];
     $ecommerce_sage_merchant_key = $row['ecommerce_sage_merchant_key'];
     $ecommerce_stripe_api_key = $row['ecommerce_stripe_api_key'];
 	$ecommerce_iyzipay_api_key = $row['ecommerce_iyzipay_api_key'];
-	$ecommerce_iyzipay_secret_key = $row['ecommerce_iyzipay_secret_key'];
+	$ecommerce_iyzipay_secret_key = pg_gateway_secret_shown($row['ecommerce_iyzipay_secret_key']);
 	$ecommerce_iyzipay_threeds = $row['ecommerce_iyzipay_threeds'];
     $ecommerce_pay_with_iyzico = $row['ecommerce_pay_with_iyzico'];
     $ecommerce_surcharge_percentage = $row['ecommerce_surcharge_percentage'];
@@ -359,7 +359,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $ecommerce_paypal_express_checkout_transaction_type = $row['ecommerce_paypal_express_checkout_transaction_type'];
     $ecommerce_paypal_express_checkout_mode = $row['ecommerce_paypal_express_checkout_mode'];
     $ecommerce_paypal_express_checkout_api_username = $row['ecommerce_paypal_express_checkout_api_username'];
-    $ecommerce_paypal_express_checkout_api_password = $row['ecommerce_paypal_express_checkout_api_password'];
+    $ecommerce_paypal_express_checkout_api_password = pg_gateway_secret_shown($row['ecommerce_paypal_express_checkout_api_password']);
     $ecommerce_paypal_express_checkout_api_signature = $row['ecommerce_paypal_express_checkout_api_signature'];
     $ecommerce_offline_payment = $row['ecommerce_offline_payment'];
     $ecommerce_offline_payment_only_specific_orders = $row['ecommerce_offline_payment_only_specific_orders'];
@@ -516,11 +516,10 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
                     $erp_edoc_control .= '</select>';
                 } else {
-                    // Shown, not hidden behind a placeholder: the rest of this
-                    // card prints its stored keys and passwords the same way
-                    // (ups_password, stripe_api_key, iyzipay_secret_key), and
-                    // Site Settings already asks for manager rights. A box the
-                    // operator can read is a box they can check.
+                    // The stored value is still printed here: legacy behaviour
+                    // left from before the secret-storage rule, not a pattern
+                    // to copy. The payment gateways' secrets are sealed and
+                    // drawn as a mask (pg_gateway_secret_fields()).
                     $erp_edoc_control = '<input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '" />';
                 }
 
