@@ -3,6 +3,10 @@ name: layout-widget-offer
 description: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 ---
 
+## What is a custom layout, and how does it reach the designer?
+- 26 page types (`check_if_page_type_supports_layout()`) draw their system region through `render_layout()`: `includes/templates/<type>.php`, or with `page.layout_modified` the PHP file `data/layouts/<page_id>.php` (hosted sites ignore it). A view template over a fixed data contract, no queries. The starting site has 88 of 180 pages with one.
+- In the designer the page's `system` node keeps drawing it: edited as a code tab ([[layout-code-tab]]), previewed on the canvas ([[legacy-region-preview]]), replaced by a widget only when the designer chooses (below).
+
 ## Which pages get an offer?
 - A page in `_design.layoutPages` (custom layout, `pg_layout_custom_page_ids()`, role 1 or better) whose type is in `pg_layout_widget_kinds()` (`includes/fn/layouts.php`): the 24 layout types with a widget. The editor gets them as `_design.layoutWidgets`, page id => `{kind, cfg}` (`pg_layout_widget_offers()`, `designer_screen.php`).
 - Left out: `custom form` (its layout converts into a widget of design elements, [[layout-code-tab]]) and `order receipt` (no widget). The kinds agree with `pg_sw_page_type_widgets()` (test).

@@ -21,7 +21,7 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - Owner (2026-10-19): almost every site checks out through it, so it cannot stay a `system` node ("frozen" means its code keeps working). The four widgets post to the classic handlers with their names; the order preview draws `get_order_preview()`'s own values (`workflow/decisions-made-product.md`).
 
 ## What does a converted page use until a widget exists?
-- A `region` node of type `system` (`<system></system>`) keeps the classic renderer running on the page, so the page works; only its inside is not designable. A custom layout (`layout_type = 'custom'`) keeps drawing through that node too; swapping it for a widget is Y5 of `legacy-layouts-in-designer.md`, opt-in per page. Retirement needs the owner's list of types that must be designable first.
+- A `region` node of type `system` (`<system></system>`) keeps the classic renderer running on the page, so the page works; only its inside is not designable. A custom layout (`layout_type = 'custom'`) keeps drawing through that node too; swapping it for a widget is opt-in per page (`designer/layout-widget-offer.md`). Retirement needs the owner's list of types that must be designable first.
 
 ## How is a new type added?
 - `SW_TYPES` + `_swTypeDefaults`, `pg_sw_type_labels()`, renderer in `includes/fn/widgets*.php` with `_pg_inject_messages_node()` named after the classic liveform, PHP default tree and JS starter tree in lockstep, tokens and flags passing `tools/check_bindings.php`; compare against the classic page (`designer/system-widget-test-pages.md`).
