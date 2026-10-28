@@ -431,7 +431,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
         'pretty_urls' => 0, 'double_opt_in' => 0, 'collection' => 0,
-        'schema_type' => 'BlogPosting',
+        'schema_type' => 'BlogPosting', 'schema_author' => 'contact',
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
     // The 11.0.27 column is read once it is there.
@@ -445,7 +445,8 @@ function pg_cf_load_page_form_settings($page_id)
                 confirmation_type, confirmation_message, confirmation_page_id, contact_group_id,
                 membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '')
                 . (pg_coll_ready() ? ', collection' : '')
-                . (pg_record_schema_type_setting_ready() ? ', schema_type' : '') . "
+                . (pg_record_schema_type_setting_ready() ? ', schema_type' : '')
+                . (pg_blogposting_author_setting_ready() ? ', schema_author' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -487,7 +488,34 @@ function pg_cf_load_page_form_settings($page_id)
         // How the structured data of the record pages names them
         // (includes/fn/seo.php); BlogPosting before the 11.0.55 column.
         'schema_type'          => pg_record_schema_type($row['schema_type'] ?? ''),
+        // Who the record pages' structured data names as the author, with a
+        // field by its name: the editor knows its controls by name, and a
+        // field made in this very save has no id yet. The save turns the
+        // name back into the id (pg_cf_template_schema_author()).
+        'schema_author'        => pg_cf_editor_schema_author($row['schema_author'] ?? '', function ($field_id) use ($page_id) {
+            return (string)db_value("SELECT name FROM form_fields
+                                     WHERE id = '" . (int)$field_id . "' AND page_id = '$page_id' AND form_type = 'custom' LIMIT 1");
+        }),
     );
+}
+
+/**
+ * custom_form_pages.schema_author as the designer's form settings hold it:
+ * 'contact', 'organization' or 'field:<field name>'. A field the form no
+ * longer has is the contact, as the record pages read it
+ * (pg_blogposting_author_choice()).
+ *
+ * Pure apart from $name_of.
+ *
+ * @param string   $stored   custom_form_pages.schema_author
+ * @param callable $name_of  function ($field_id): the form field's name, '' when there is none
+ */
+function pg_cf_editor_schema_author($stored, $name_of)
+{
+    $choice = pg_blogposting_author_choice($stored);
+    if ($choice['source'] !== 'field') return $choice['source'];
+    $name = (string)$name_of($choice['field_id']);
+    return ($name !== '') ? 'field:' . $name : 'contact';
 }
 
 // `form_fields` grew columns over twenty years and not every installation has
@@ -2764,11 +2792,11 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
         $res['seeded'] = pg_cf_seed_sample_records($page_id, is_array($sample) ? $sample : (string)$sample, (int)$user_id);
     }
 
-    // A template's form may name its BlogPosting author (`schema_author`,
-    // 'field:<field name>' for a field). It is written once, into the form
-    // this save created; the form screen's Schema Author choice owns it
-    // after that, and the editor never sends the key again.
-    if (!$had_form && is_array($settings) && isset($settings['schema_author']) && pg_blogposting_author_setting_ready()) {
+    // The BlogPosting author (`schema_author`, 'field:<field name>' for a
+    // field): the designer's Schema Author choice, or a template's on the
+    // form Publish makes. Written after the fields, so a field added in this
+    // save has its id. A form only shown here is never written from here.
+    if (is_array($settings) && isset($settings['schema_author']) && empty($res['read_only']) && pg_blogposting_author_setting_ready()) {
         db("UPDATE custom_form_pages
             SET schema_author = '" . e(pg_cf_template_schema_author($settings['schema_author'], $ids_by_name)) . "'
             WHERE page_id = '$page_id' LIMIT 1");

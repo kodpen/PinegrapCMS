@@ -35490,6 +35490,37 @@ const StyleDesigner = (function () {
                                 esc(_sdT('How the structured data of the record pages describes them. None leaves the page\'s own structured data as their only description.')) +
                             '</div>'
                         ) +
+                        // Who that structured data names as the author: the
+                        // record's contact, the site, or a field by its name
+                        // (the save turns it into the field's id,
+                        // pg_cf_template_schema_author()). A field no longer
+                        // on the form reads as the contact, as on the server.
+                        row(_sdT('Schema Author'), (function () {
+                            var cur = String(_cfFS.schema_author || 'contact');
+                            var fields = (_cfTree ? _cfFieldsOf(_cfTree) : []).filter(function (f) {
+                                return f.name && f.type !== 'file upload' && f.type !== 'information';
+                            });
+                            var picked = cur.indexOf('field:') === 0 ? cur.slice(6).toLowerCase() : '';
+                            var hit = picked !== '' && fields.some(function (f) { return String(f.name).toLowerCase() === picked; });
+                            if (picked !== '' && !hit) cur = 'contact';
+                            var opt = function (value, label, on) {
+                                return '<option value="' + esc(value) + '"' + (on ? ' selected' : '') + '>' + esc(label) + '</option>';
+                            };
+                            return '<select class="form-control form-control-sm sd-cf-s" data-s="schema_author">' +
+                                    opt('contact', _sdT('The contact of the record'), cur === 'contact') +
+                                    opt('organization', _sdT('The site as an organization'), cur === 'organization') +
+                                    (fields.length
+                                        ? '<optgroup label="' + esc(_sdT('A field of the form')) + '">' +
+                                              fields.map(function (f) {
+                                                  return opt('field:' + f.name, (f.label || f.name) + ' (' + f.name + ')', hit && String(f.name).toLowerCase() === picked);
+                                              }).join('') +
+                                          '</optgroup>'
+                                        : '') +
+                                '</select>' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                    esc(_sdT('The author named in the structured data of the record pages.')) +
+                                '</div>';
+                        })()) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
