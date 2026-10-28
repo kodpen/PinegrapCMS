@@ -1436,10 +1436,10 @@ function pg_designer_start_screen($ctx)
     if ($designs) {
         // A name to look for once there are more designs than fit a glance.
         $search = (count($designs) > 6)
-            ? '<div class="input-group input-group-sm">
-                    <span class="input-group-text rounded-start-pill"><i class="bi bi-search" aria-hidden="true"></i></span>
-                    <input type="search" class="form-control rounded-end-pill" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
-               </div>'
+            ? '<label class="form-control form-control-sm form-adorn rounded-pill">
+                    <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
+                    <input type="search" class="form-ghost" id="sdh-filter" placeholder="' . h(lang('Find a design')) . '" aria-label="' . h(lang('Find a design')) . '" autocomplete="off">
+               </label>'
             : '';
         $list =
             '<section class="sdh-section" aria-labelledby="sdh-designs-title">
