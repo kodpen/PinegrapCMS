@@ -939,10 +939,10 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 
 		echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
 				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
 				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
 		</nav>';
 
@@ -1381,10 +1381,10 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 
 		echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
 				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
 				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
 		</nav>';
 
@@ -1538,7 +1538,9 @@ echo pg_page_shell(array(
 	)
 )) . '
 
-<style>
+<style>@layer custom {
+/* Unlayered rules beat every layered one, so the d-none utility could not
+   hide .mpp-bulk (display: flex) and the bulk bar stayed on screen. */
 .mpp-hero { display: flex; flex-wrap: wrap; gap: 20px 32px; align-items: center; }
 .mpp-stats { display: flex; flex-wrap: wrap; gap: 14px 32px; flex: 1 1 420px; }
 .mpp-stat b { display: block; font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
@@ -1656,7 +1658,7 @@ a.mpp-title:hover { text-decoration: underline; }
 	.mpp-steps { grid-template-columns: 1fr; }
 	.mpp-hero-actions { align-items: stretch; width: 100%; }
 }
-</style>
+}</style>
 
 <main id="content" class="container-fluid">
 	<nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
@@ -1851,10 +1853,10 @@ if (!$account) {
 
 			echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
 				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '">'
+			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
 				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
 		</nav>';
 

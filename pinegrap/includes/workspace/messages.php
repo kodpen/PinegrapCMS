@@ -1155,7 +1155,8 @@ function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
 /**
  * The one application a workspace event is for, as the webhook queue asks
  * it (api_webhook_event_app_id()): the application a mention names
- * (workspace.app.mentioned), -1 for a mention that names none - sent to
+ * (workspace.app.mentioned) or whose command was typed
+ * (workspace.app.command, app_id), -1 for one that names none - sent to
  * nobody rather than to every subscriber - and 0 for every other event,
  * which any subscription listening to it hears.
  *
@@ -1165,12 +1166,14 @@ function ws_message_tell_apps($channel, $message_id, $tokens, $edited = false)
  */
 function ws_webhook_event_app_id($event, $payload)
 {
-    if ((string) $event !== 'workspace.app.mentioned') {
+    $keys = array('workspace.app.mentioned' => 'mentioned_app_id', 'workspace.app.command' => 'app_id');
+
+    if (!isset($keys[(string) $event])) {
         return 0;
     }
 
     $payload = (array) $payload;
-    $named = $payload['mentioned_app_id'] ?? 0;
+    $named = $payload[$keys[(string) $event]] ?? 0;
     $app_id = (is_int($named) || (is_string($named) && ctype_digit($named))) ? (int) $named : 0;
 
     return ($app_id > 0) ? $app_id : -1;

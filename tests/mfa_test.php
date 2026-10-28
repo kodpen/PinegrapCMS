@@ -279,6 +279,16 @@ function test_mfa_gate_mode()
 	pg_assert_same('', pg_mfa_gate_mode(false, false, false));
 }
 
+// New recovery codes ask for a TOTP code while TOTP is on, an e-mailed code
+// for an account whose second factor is its passkeys, nothing otherwise.
+function test_mfa_recovery_proof()
+{
+	pg_assert_same('totp', pg_mfa_recovery_proof(true, false));
+	pg_assert_same('totp', pg_mfa_recovery_proof(true, true), 'TOTP wins over passkeys');
+	pg_assert_same('email', pg_mfa_recovery_proof(false, true));
+	pg_assert_same('', pg_mfa_recovery_proof(false, false));
+}
+
 // A passkey counts as a second step wherever a code does: a request that
 // carries only a password (api.php, ShipWorks) is refused for an account
 // with either, and the user screen shows two-step on, with its reset, for

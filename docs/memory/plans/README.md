@@ -25,7 +25,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-panel-steps.md: Steps B0-B12 of plans/bootstrap-6-panel.md with dependencies and status (each done step names its PR); claim as [plan:bootstrap-6-panel] B<n>
 - bootstrap-6-panel.md: Plan (owner decisions 2026-10-25; status in bootstrap-6-panel-steps.md): panel UI from Bootstrap 5.3.8 to 6.0.0-alpha.1 by pre-landing adapters on development, then one generated switch
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
-- checkout-legal-documents.md: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: KVKK at registration, designer KVKK node, order view link to the kvkk copy
+- checkout-legal-documents.md: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: designer KVKK node, order view link to the kvkk copy
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
@@ -39,15 +39,15 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - erp-auto-invoice-earchive.md: Plan (approved 2026-10-19): auto invoice with its two filters and the e-Fatura threshold warning built (#697, #958, #1773); only the internet-sale UBL fields (step 3) left
 - erp-edocument-leftovers.md: Open ERP work (e-document phase 3): Paraşüt send path, queue worker, İşbaşı live key, code lists, e-waybill, accountant sign-off; owner works on it locally
 - erp-parasut-driver-design.md: Paraşüt e-document driver: what awaits the live test, what is still open (queue worker and reconcile ladder), the decisions behind it
-- erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three owner questions, small fixes; where to start
+- erp-parasut-open-work.md: Paraşüt work left after the rounds of 2026-10-23 to 26 (#1405-#1682): one live round when a new demo key comes, three decisions (#2440-#2442), small fixes; where to start
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
 - incoming-email-g1-slices.md: Incoming e-mail slice G1 (core) cut into G1a-G1d of about 1,000 product lines each: MIME parser, schema, ingest, card and .eml upload
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (not started): options IMAP / Cloudflare push / Kodpen broker, recommendation, slices G1–G9, the 11 owner questions
+- incoming-email-plan.md: Incoming e-mail into Workspace channels (starting, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-layouts-in-designer.md: Plan (2026-10-19; Y1-Y4, Y6 done): how a classic page's custom layout (layout_type 'custom', data/layouts/<id>.php) lives on in the visual designer once page_designer.php retires; Y1-Y6
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
-- legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, with a build-or-drop proposal and files per item; waits for the owner
+- legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
 - marketplace-trendyol-hepsiburada.md: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n11 layer; Trendyol 1, 2, 2b-i, 2b-ii, 3, 4a-4c, 5a, 5b (with rejection), 5c, 6, A, B done; Hepsiburada open
 - merge-flow-tools.md: Plan (2026-10-25, steps 1 to 5 done): merge_train.php (lock, build, fast-forward landing), CI guards, filtered install matrix, generated fn-module map, lang cache, merge queue
@@ -55,8 +55,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - notes-import-export-sync.md: Plan (2026-10-19) for Workspace notes: export, Markdown/zip, .enex, Keep and HTML import, note revision, delete, sources and unshare in sync done; later Notion/OneNote; open questions
 - order-completion-function.md: Plan (#2382; A1 done in #2199): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
 - passkeys.md: Plan (approved 2026-10-19): WebAuthn passkeys as a second factor and for sign-in with a passkey alone
-- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 5 done; 4b, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
-- payment-driver-paypal.md: Step 4b (PayPal Checkout v2) hand-over: branch feature/payment-4b-paypal-v2 (closed PR #1827), what is missing before it lands, the open PENDING-capture question
+- payment-driver-layer.md: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 5 done; 4b2, 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 - php-compatibility-and-bugs.md: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
 - privacy-data-pack-audit-log.md: Plan (approved 2026-10-19; all steps done, open questions remain): per-person export, erasure wizard keeping invoices, consent log, admin audit trail with before/after values
 - prototype-sharing-code.md: What the code holds for plans/prototype-sharing.md: drafts and their revisions, how a draft opens today, what Preview draws, token links, the password throttle, MCP routes, flow and note rights
@@ -103,7 +102,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
-- workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app membership moved to workspace-agent-handles; ERP overdue to task done; left: command registry over the API, designer task panel
+- workspace-phase3-leftovers.md: Workspace phase 3 (bots): app.mentioned webhook done (#809), app commands done (#2213), app membership moved to workspace-agent-handles; ERP overdue to task done; left: designer task panel
 - workspace-quotes.md: Plan (2026-10-23, 1 #1546, 2 #1614, 3 #1705, 6 #1826 #1907 done, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands
 - workspace-voice-messages.md: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, answers open): voice messages in the Workspace, a quick voice reply, transcripts the assistants read

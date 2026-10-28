@@ -214,13 +214,16 @@ function _pg_sw_cond_drop_conditions(&$node)
 // Whether $node is, or holds, a form control marked required. A condition
 // on such a node is not applied: the control stays on the page, because a
 // form whose required control is cut could never be sent (the server still
-// asks for its value). The editor's twin is _sdCondHoldsRequired().
+// asks for its value). A required="{{token}}" is the row's to decide
+// (pg_sw_attr_dropped_when_empty()), as a control a row does not show is
+// not asked for. The editor's twin is _sdCondHoldsRequired().
 function pg_sw_cond_holds_required($node)
 {
     if (!is_array($node)) return false;
     if (!empty($node['props']['_attrs']) && is_array($node['props']['_attrs'])) {
         foreach ($node['props']['_attrs'] as $attr) {
-            if (is_array($attr) && isset($attr['name']) && strtolower((string)$attr['name']) === 'required') return true;
+            if (is_array($attr) && isset($attr['name']) && strtolower((string)$attr['name']) === 'required'
+                && !preg_match('/^\{\{[A-Za-z0-9_-]+\}\}$/', isset($attr['value']) ? (string)$attr['value'] : '')) return true;
         }
     }
     if (!empty($node['children']) && is_array($node['children'])) {

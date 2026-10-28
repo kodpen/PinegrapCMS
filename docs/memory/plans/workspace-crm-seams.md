@@ -26,7 +26,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 
 ## Open questions (recommendation)
 1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
-2. Merge (7): (a) re-point orders, forms, email_recipients, ws_channels, ws_refs, cart quotes, ERP account (`erp_account_link_contact()`; refuse if both have one), keep `consent_log` (proof), (b) warn only, (c) a plus `consent_log` → a.
+2. Merge (7): answered (#2421), (a): re-point every `contact_id` holder by one list shared with erasure, the ERP account refused when both have one, `consent_log` kept (proof).
 3. History (4): (a) union read, (b) activity table → a.
 
 ## Which are answered?
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 7, 9, 10 ask first; 8's storefront writers wait on an owner question (core/audit-trail-contacts.md "not hooked").
+- 7 decided (#2421); 9, 10 ask first; 8's storefront writers follow 7's list (core/audit-trail-contacts.md "not hooked").

@@ -519,7 +519,7 @@ echo '
                             <select name="area" class="form-control form-control-sm" onchange="this.form.submit()">' . $area_select . '</select>
                         </div>
                         <div class="col-auto">
-                            <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-search"></i></button>
+                            <button type="submit" class="btn btn-sm btn-solid theme-primary" aria-label="' . h(lang('Search')) . '"><i class="bi bi-search"></i></button>
                         </div>
                         <div class="col-auto">
                             <button type="button" class="btn btn-sm btn-outline theme-danger" data-bs-toggle="dialog" data-bs-target="#perf-log-clear-modal" title="' . h(lang('Clear all performance log data')) . '"><i class="bi bi-trash"></i></button>

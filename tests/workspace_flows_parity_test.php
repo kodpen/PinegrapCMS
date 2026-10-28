@@ -2556,6 +2556,7 @@ function workspace_flows_parity_table()
 			array(array('active', 'paused', 'done', 'failed', 'cancelled'), 5, 'converted anchor keeps its own state (flows: draft, live, paused, binned)'),
 		),
 		'news' => array(
+			array(array('ws_scheduled_anchor_hidden'), 5, 'only a hidden anchor is silent; a converted one reports once its flow run ends (ws_flow_anchor_run_ended())'),
 			array(array('ws_message_system'), 5, 'converted anchor: the line under the card, on a first run, a new outcome, a single action or by hand'),
 			array(array('ws_message_touch'), 5, 'converted anchor: its card drawn again'),
 			array(array('ws_notify'), 5, 'converted anchor: the creator\'s scheduled_failed when it newly fails'),
@@ -2912,4 +2913,24 @@ function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 
 	pg_assert_true(strpos($channels, 'function scheduledList(body, bar, options) {') !== false);
 	pg_assert_true(strpos($channels, "if (!options || (options.add !== false)) {") !== false, 'New stays where no options are given');
+}
+
+// Hidden and converted anchors (slice 5): the starts by event and join read
+// every anchor, hidden or converted, through ws_scheduled_actions_only();
+// the filter that keeps hidden anchors out of the lists of scheduled actions
+// is never among them, or a flow started on an event or a join would stop.
+function test_workspace_flows_parity_anchor_filters()
+{
+	foreach (array('ws_events_start', 'ws_scheduled_joined', 'ws_events_awaited') as $function) {
+		$source = workspace_flows_parity_source($function);
+
+		pg_assert_contains('ws_scheduled_actions_only()', $source, $function);
+		pg_assert_false(strpos($source, 'ws_scheduled_anchors_out') !== false, $function);
+	}
+
+	foreach (array('ws_scheduled_list', 'ws_scheduled_targets') as $function) {
+		pg_assert_contains('ws_scheduled_anchors_out()', workspace_flows_parity_source($function), $function);
+	}
+
+	pg_assert_false(strpos(workspace_flows_parity_source('ws_scheduled_actions_only'), 'anchor') !== false);
 }
