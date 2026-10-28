@@ -120,12 +120,12 @@ decision questions.
    `php tools/tr_add.php` (`core/lang-files.md`). Generated indexes and
    `.min.js` bundles: append only. A new `includes/fn/` module is named in
    the `module:` field of its memory file (`core/fn-modules.md` is generated).
-8. **Queue limit.** While more than 15 PRs are open, drafts and
+8. **Queue limit.** While more than 20 PRs are open, drafts and
    `merge-train/*` not counted, nobody starts a new task (checked before the
    claim); finished work is still marked ready. A PR waiting on a decision
    (Working mode 10) goes back to draft until it comes, so only work the
    merging session can take holds a place; each coordinator's workers hold
-   at most 6 of the 15.
+   at most 6 of the 20.
    `gh api 'repos/kodpen/pinegrapcms/pulls?state=open&per_page=100' --jq '[.[]|select(.draft|not)|select(.head.ref|startswith("merge-train")|not)]|length'`
 9. **Coordinators.** One coordinator per account starts its cloud workers within
    the account's quota and worker cap (`coordinator-limits.md`); it writes
