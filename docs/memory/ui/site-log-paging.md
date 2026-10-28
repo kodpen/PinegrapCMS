@@ -16,4 +16,4 @@ module: site_log_list
 - Every word in the user, the description or the IP address. The type badge, relative time and "UNKNOWN" (no user) are not searched.
 
 ## What is left of #2054?
-- The main menu panels' markup (`data-bs-content`, about 170 KB on every panel screen), the Repair Software permission scan (`pg_update_permissions_block()`, 3.4 s on each visit), the WAF log, `sitemap.xml` built on every request, and serving minified panel JS/CSS.
+- The main menu panels' markup (`data-bs-content`, about 170 KB on every panel screen), the Repair Software permission scan (`pg_update_permissions_block()`, 3.4 s on each visit), `sitemap.xml` built on every request, and serving minified panel JS/CSS.
