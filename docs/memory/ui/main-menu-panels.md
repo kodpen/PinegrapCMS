@@ -31,4 +31,4 @@ description: Main menu rows that open their entries in a panel inside the menu: 
 - Rows carry `no-popover`, so `pgBindTitlePopovers()` leaves them the browser's title hint.
 - The panel CSS outweighs `#menu .menu-body .bi { font-size: 1.3rem }` (entries carry `bi`). The head is a tinted bar with a smaller title, so long names keep to one line.
 
-Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/loading-curtain.md
+Related: docs/memory/ui/main-menu-states.md, docs/memory/ui/loading-curtain.md, docs/memory/ui/main-menu-categories.md
