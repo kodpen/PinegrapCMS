@@ -24,7 +24,7 @@ description: "@Claude" in Workspace channels through one site-wide claude.ai rou
 - API credential proxy (key never visible to the session) exists only on Pro/Max; on Team/Enterprise the key sits in an environment variable every user of that environment can read.
 
 ## How is the routine set up on claude.ai?
-- Admin: claude.ai/code/routines → New routine (Cloud), prompt copied from the "Claude in channels" card in Workspace settings, a model; environment with Custom network allowing the site's domain and the API credential (header `Authorization`, `Basic base64(key:secret)`); remove all connectors; Trigger → API → generate token, paste URL and token into the card. The owner enters every credential.
+- Admin: claude.ai/code/routines → New routine (Cloud), the short bootstrap prompt copied from the "Claude in channels" card in Workspace settings (the rest is read from the site: workspace-claude-bootstrap.md), a model; environment with Custom network allowing the site's domain and the API credential (header `Authorization`, `Basic base64(key:secret)`); remove all connectors; Trigger → API → generate token, paste URL and token into the card. The owner enters every credential.
 - Key: "Create Claude's key" on the card, shown once; "Reset secret" (`workspace-assistant-keys.md`).
 
 ## What was never tested with a real routine?
