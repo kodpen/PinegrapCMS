@@ -973,7 +973,12 @@
         } else {
             el.value = store === 'iso' ? '' : text;
         }
-        fireChange(el);
+        el.pgPartsWriting = true;
+        try {
+            fireChange(el);
+        } finally {
+            el.pgPartsWriting = false;
+        }
     }
 
     // The box shows the hidden field: our own reading of it, or its text
@@ -999,9 +1004,24 @@
         box.className = partClasses(el, [mode === 'time' ? 'pg-time-box' : (mode === 'date' ? 'pg-date-box' : 'pg-datetime-box')]);
         box.setAttribute('autocomplete', 'off');
         box.disabled = !!el.disabled;
+        // A field named only by its own attributes (a toolbar date) passes
+        // them to the box people use.
+        ['aria-label', 'placeholder', 'title'].forEach(function (name) {
+            if (el.hasAttribute(name)) {
+                box.setAttribute(name, el.getAttribute(name));
+            }
+        });
         el.parentNode.insertBefore(box, el.nextSibling);
         hideNative(el, [box]);
-        el.pgParts = { box: box, mode: mode };
+        // A script that writes the store and announces it with a change
+        // gets it shown; the box's own writes are skipped.
+        var stored = function () {
+            if (!el.pgPartsWriting) {
+                showParts(el);
+            }
+        };
+        el.addEventListener('change', stored);
+        el.pgParts = { box: box, mode: mode, off: function () { el.removeEventListener('change', stored); } };
         fillParts(el);
         makeCalendar(el, box, mode, function () {
             return readParts(box.value, mode);
@@ -1023,10 +1043,12 @@
         drawParts(el, 'time');
     }
 
-    // A value written into the hidden field: the box and the calendar show it.
+    // A value written into the hidden field: the box and the calendar show it,
+    // and the box follows the field's disabled state.
     function showParts(el) {
         var p = el.pgParts;
         if (p) {
+            p.box.disabled = !!el.disabled;
             fillParts(el);
             var r = readParts(p.box.value, p.mode);
             if (p.box.pgCalendar) {
@@ -1040,6 +1062,7 @@
         if (!p) {
             return;
         }
+        p.off();
         disposeCalendar(p.box);
         if (p.box.parentNode) {
             p.box.parentNode.removeChild(p.box);
@@ -1329,6 +1352,15 @@
         }
     }
 
+    // Shows what a script wrote into a drawn date field (its value, its
+    // disabled state) without announcing it.
+    function refresh(el) {
+        el = element(el);
+        if (el && el.pgFieldKind) {
+            engine(el.pgFieldKind, el).redraw(el);
+        }
+    }
+
     function onChange(el, fn) {
         el = element(el);
         var $ = jq();
@@ -1445,6 +1477,9 @@
             }
             write(el, 'date', storeText(storeOf(el), 'date', /^\d{4}-\d{2}-\d{2}$/.test(String(iso || '')) && formatDate(iso) ? iso : '', ''));
         },
+        // After a script wrote the field's value or disabled state itself:
+        // the widget shows them, no change is fired.
+        refresh: refresh,
         parse: parseDate,
         format: formatDate,
         order: dateOrder
@@ -1483,6 +1518,7 @@
             var day = m && formatDate(m[1]) ? m[1] : '', time = m ? parseTime(m[2]) : '';
             write(el, 'datetime', (day && time) ? storeText(store, 'datetime', day, time) : '');
         },
+        refresh: refresh,
         parse: parseDateTime,
         format: formatDateTime,
         parseTime: parseTime,
