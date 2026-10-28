@@ -1731,8 +1731,8 @@ function ws_flow_publish($viewer, $flow, $data = array())
 
     // Not db(): a failed statement there ends the request with an HTML page,
     // and the duplicate key is an answer here.
-    $written = @mysqli_query(db::$con, "INSERT INTO ws_flow_versions (flow_id, n, graph, published_by, published_at)
-        VALUES ('" . $flow_id . "', '" . $n . "', '" . e($check['json']) . "', '" . (int) $viewer['id'] . "', '" . $now . "')");
+    $written = db_q("INSERT INTO ws_flow_versions (flow_id, n, graph, published_by, published_at) VALUES (?, ?, ?, ?, ?)",
+        array($flow_id, $n, (string) $check['json'], (int) $viewer['id'], $now));
 
     if (!$written) {
         return (((int) mysqli_errno(db::$con) === 1062)
