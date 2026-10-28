@@ -36,6 +36,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-panel.md: The "Write with AI" button and draft panel (pg_ai_write_button(), pg_ai_write.js): where it is, adding it to a field, what the panel does, what the server adds
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
+- arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-editor-markers.md: The visual editor's /* @pg-site-output */ markers (step B7, #1822, #1841): what they cover, how the codemod and check_bs6.php read them, the test that keeps them, what stays unmarked
