@@ -751,10 +751,10 @@ print pg_page_shell([
       <input type="hidden" name="period" value="custom">
       <div class="row g-3">
         <div class="md:col-4">
-          <input type="date" name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="start_date" value="' . htmlspecialchars((string)isset($_REQUEST['start_date']) ? $_REQUEST['start_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
         </div>
         <div class="md:col-4">
-          <input type="date" name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
+          <input type="date" data-pg-date name="end_date" value="' . htmlspecialchars((string)isset($_REQUEST['end_date']) ? $_REQUEST['end_date'] : '', ENT_QUOTES | ENT_SUBSTITUTE | ENT_HTML401) . '" class="form-control" required>
         </div>
         <div class="md:col-4">
           <button type="submit" class="btn btn-solid theme-primary">' . lang('Apply') . '</button>
@@ -872,11 +872,11 @@ print pg_page_shell([
           <div class="row g-3 align-items-end">
             <div class="md:col-3">
               <label class="form-label small">' . lang('Start Date') . '</label>
-              <input type="date" name="log_start" value="'.$log_start_val.'" class="form-control" required>
+              <input type="date" data-pg-date name="log_start" value="'.$log_start_val.'" class="form-control" required>
             </div>
             <div class="md:col-3">
               <label class="form-label small">' . lang('End Date') . '</label>
-              <input type="date" name="log_end" value="'.$log_end_val.'" class="form-control" required>
+              <input type="date" data-pg-date name="log_end" value="'.$log_end_val.'" class="form-control" required>
             </div>
             <div class="md:col-2">
               <button type="submit" class="btn btn-solid theme-primary btn-sm"><i class="bi bi-arrow-clockwise"></i> ' . lang('Refresh Logs') . '</button>
@@ -1073,7 +1073,7 @@ document.addEventListener("DOMContentLoaded", function() {
 </script>
 
 </main>
-'. output_footer();
+' . get_date_picker_format() . pg_fields_script() . output_footer();
 
 $liveform->remove_form();
 ?>

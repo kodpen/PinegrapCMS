@@ -95,9 +95,9 @@ function pg_country_form_card($values)
                                             <div class="col-12 md:col-6 lg:col-4 my-1">
                                                 <label for="transit_adjustment_days" class="form-label">' . lang('Transit Adjustment Days') . '</label>
                                                 <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                    <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                     <input class="form-control text-center border-start-0 border-end-0" value="' . h($values['transit_adjustment_days']) . '" type="text" name="transit_adjustment_days" id="transit_adjustment_days" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                    <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                                 </div>
                                                 <div class="form-text">' . lang('Shipping Delays Specific to this Country') . '</div>
                                             </div>

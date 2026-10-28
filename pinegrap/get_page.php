@@ -2800,9 +2800,11 @@ else
     			z-index: 9999999;
     			width: auto;
 			}
+			/* The --pg-sp-* palette and its dark set come from the SEO block
+			   (seo.php); the fallbacks keep the light box where it is absent. */
 			#software_pinegrap_button_container:not(.collapsed){
-				background: #fff;
-    			border: 1px solid #00000033;
+				background: var(--pg-sp-bg, #fff);
+    			border: 1px solid var(--pg-sp-border, #00000033);
 				border-top: 0px;
     			border-right: 0px;
 				border-radius: 0;
@@ -2816,7 +2818,7 @@ else
 				margin-right:7px;
         	    width: 32px;
 				height: 40px;
-				background: #fff url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktYXJyb3ctYmFyLWRvd24iIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzE5NzZkMiIgZD0iTTEgMy41YS41LjUgMCAwIDEgLjUtLjVoMTNhLjUuNSAwIDAgMSAwIDFoLTEzYS41LjUgMCAwIDEtLjUtLjV6TTggNmEuNS41IDAgMCAxIC41LjV2NS43OTNsMi4xNDYtMi4xNDdhLjUuNSAwIDAgMSAuNzA4LjcwOGwtMyAzYS41LjUgMCAwIDEtLjcwOCAwbC0zLTNhLjUuNSAwIDAgMSAuNzA4LS43MDhMNy41IDEyLjI5M1Y2LjVBLjUuNSAwIDAgMSA4IDZ6Ii8+DQo8L3N2Zz4NCg==") no-repeat center;
+				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktYXJyb3ctYmFyLWRvd24iIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzE5NzZkMiIgZD0iTTEgMy41YS41LjUgMCAwIDEgLjUtLjVoMTNhLjUuNSAwIDAgMSAwIDFoLTEzYS41LjUgMCAwIDEtLjUtLjV6TTggNmEuNS41IDAgMCAxIC41LjV2NS43OTNsMi4xNDYtMi4xNDdhLjUuNSAwIDAgMSAuNzA4LjcwOGwtMyAzYS41LjUgMCAwIDEtLjcwOCAwbC0zLTNhLjUuNSAwIDAgMSAuNzA4LS43MDhMNy41IDEyLjI5M1Y2LjVBLjUuNSAwIDAgMSA4IDZ6Ii8+DQo8L3N2Zz4NCg==") no-repeat center;
 				border-radius: 0;
     			border:0;
 				padding:0;
@@ -2831,16 +2833,24 @@ else
 				margin-right:0px;
         	    width: 32px;
 				height: 40px;
-				background: #fff url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktcGVuY2lsLXNxdWFyZSIgdmlld0JveD0iMCAwIDE2IDE2Ij4NCiAgPHBhdGggZmlsbD0iI2MyMTg1YiIgZD0iTTE1LjUwMiAxLjk0YS41LjUgMCAwIDEgMCAuNzA2TDE0LjQ1OSAzLjY5bC0yLTJMMTMuNTAyLjY0NmEuNS41IDAgMCAxIC43MDcgMGwxLjI5MyAxLjI5M3ptLTEuNzUgMi40NTYtMi0yTDQuOTM5IDkuMjFhLjUuNSAwIDAgMC0uMTIxLjE5NmwtLjgwNSAyLjQxNGEuMjUuMjUgMCAwIDAgLjMxNi4zMTZsMi40MTQtLjgwNWEuNS41IDAgMCAwIC4xOTYtLjEybDYuODEzLTYuODE0eiIvPg0KICA8cGF0aCBmaWxsPSIjYzIxODViIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xIDEzLjVBMS41IDEuNSAwIDAgMCAyLjUgMTVoMTFhMS41IDEuNSAwIDAgMCAxLjUtMS41di02YS41LjUgMCAwIDAtMSAwdjZhLjUuNSAwIDAgMS0uNS41aC0xMWEuNS41IDAgMCAxLS41LS41di0xMWEuNS41IDAgMCAxIC41LS41SDlhLjUuNSAwIDAgMCAwLTFIMi41QTEuNSAxLjUgMCAwIDAgMSAyLjV2MTF6Ii8+DQo8L3N2Zz4=") no-repeat center;
+				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktcGVuY2lsLXNxdWFyZSIgdmlld0JveD0iMCAwIDE2IDE2Ij4NCiAgPHBhdGggZmlsbD0iI2MyMTg1YiIgZD0iTTE1LjUwMiAxLjk0YS41LjUgMCAwIDEgMCAuNzA2TDE0LjQ1OSAzLjY5bC0yLTJMMTMuNTAyLjY0NmEuNS41IDAgMCAxIC43MDcgMGwxLjI5MyAxLjI5M3ptLTEuNzUgMi40NTYtMi0yTDQuOTM5IDkuMjFhLjUuNSAwIDAgMC0uMTIxLjE5NmwtLjgwNSAyLjQxNGEuMjUuMjUgMCAwIDAgLjMxNi4zMTZsMi40MTQtLjgwNWEuNS41IDAgMCAwIC4xOTYtLjEybDYuODEzLTYuODE0eiIvPg0KICA8cGF0aCBmaWxsPSIjYzIxODViIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xIDEzLjVBMS41IDEuNSAwIDAgMCAyLjUgMTVoMTFhMS41IDEuNSAwIDAgMCAxLjUtMS41di02YS41LjUgMCAwIDAtMSAwdjZhLjUuNSAwIDAgMS0uNS41aC0xMWEuNS41IDAgMCAxLS41LS41di0xMWEuNS41IDAgMCAxIC41LS41SDlhLjUuNSAwIDAgMCAwLTFIMi41QTEuNSAxLjUgMCAwIDAgMSAyLjV2MTF6Ii8+DQo8L3N2Zz4=") no-repeat center;
 				border-radius: 0;
     			border:0;
 				padding:0;
 			}
 
 			.toggle_button_on {
-				background: #fff url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmkteC1zcXVhcmUiIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGw9IiNjMjE4NWIiIGQ9Ik0xNCAxYTEgMSAwIDAgMSAxIDF2MTJhMSAxIDAgMCAxLTEgMUgyYTEgMSAwIDAgMS0xLTFWMmExIDEgMCAwIDEgMS0xaDEyek0yIDBhMiAyIDAgMCAwLTIgMnYxMmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWMmEyIDIgMCAwIDAtMi0ySDJ6Ii8+DQogIDxwYXRoIGZpbGw9IiNjMjE4NWIiIGQ9Ik00LjY0NiA0LjY0NmEuNS41IDAgMCAxIC43MDggMEw4IDcuMjkzbDIuNjQ2LTIuNjQ3YS41LjUgMCAwIDEgLjcwOC43MDhMOC43MDcgOGwyLjY0NyAyLjY0NmEuNS41IDAgMCAxLS43MDguNzA4TDggOC43MDdsLTIuNjQ2IDIuNjQ3YS41LjUgMCAwIDEtLjcwOC0uNzA4TDcuMjkzIDggNC42NDYgNS4zNTRhLjUuNSAwIDAgMSAwLS43MDh6Ii8+DQo8L3N2Zz4=") no-repeat center;
+				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmkteC1zcXVhcmUiIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGw9IiNjMjE4NWIiIGQ9Ik0xNCAxYTEgMSAwIDAgMSAxIDF2MTJhMSAxIDAgMCAxLTEgMUgyYTEgMSAwIDAgMS0xLTFWMmExIDEgMCAwIDEgMS0xaDEyek0yIDBhMiAyIDAgMCAwLTIgMnYxMmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWMmEyIDIgMCAwIDAtMi0ySDJ6Ii8+DQogIDxwYXRoIGZpbGw9IiNjMjE4NWIiIGQ9Ik00LjY0NiA0LjY0NmEuNS41IDAgMCAxIC43MDggMEw4IDcuMjkzbDIuNjQ2LTIuNjQ3YS41LjUgMCAwIDEgLjcwOC43MDhMOC43MDcgOGwyLjY0NyAyLjY0NmEuNS41IDAgMCAxLS43MDguNzA4TDggOC43MDdsLTIuNjQ2IDIuNjQ3YS41LjUgMCAwIDEtLjcwOC0uNzA4TDcuMjkzIDggNC42NDYgNS4zNTRhLjUuNSAwIDAgMSAwLS43MDh6Ii8+DQo8L3N2Zz4=") no-repeat center;
 			}
 
+
+			/* The pink icons are 2.8:1 on the dark box; a lighter pink there. */
+			#software_pinegrap_button_container.pg_seo_tb_dark .toggle_button_off{
+				background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktcGVuY2lsLXNxdWFyZSIgdmlld0JveD0iMCAwIDE2IDE2Ij4NCiAgPHBhdGggZmlsbD0iI2YwNjI5MiIgZD0iTTE1LjUwMiAxLjk0YS41LjUgMCAwIDEgMCAuNzA2TDE0LjQ1OSAzLjY5bC0yLTJMMTMuNTAyLjY0NmEuNS41IDAgMCAxIC43MDcgMGwxLjI5MyAxLjI5M3ptLTEuNzUgMi40NTYtMi0yTDQuOTM5IDkuMjFhLjUuNSAwIDAgMC0uMTIxLjE5NmwtLjgwNSAyLjQxNGEuMjUuMjUgMCAwIDAgLjMxNi4zMTZsMi40MTQtLjgwNWEuNS41IDAgMCAwIC4xOTYtLjEybDYuODEzLTYuODE0eiIvPg0KICA8cGF0aCBmaWxsPSIjZjA2MjkyIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xIDEzLjVBMS41IDEuNSAwIDAgMCAyLjUgMTVoMTFhMS41IDEuNSAwIDAgMCAxLjUtMS41di02YS41LjUgMCAwIDAtMSAwdjZhLjUuNSAwIDAgMS0uNS41aC0xMWEuNS41IDAgMCAxLS41LS41di0xMWEuNS41IDAgMCAxIC41LS41SDlhLjUuNSAwIDAgMCAwLTFIMi41QTEuNSAxLjUgMCAwIDAgMSAyLjV2MTF6Ii8+DQo8L3N2Zz4=");
+			}
+			#software_pinegrap_button_container.pg_seo_tb_dark .toggle_button_on{
+				background-image: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmkteC1zcXVhcmUiIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGw9IiNmMDYyOTIiIGQ9Ik0xNCAxYTEgMSAwIDAgMSAxIDF2MTJhMSAxIDAgMCAxLTEgMUgyYTEgMSAwIDAgMS0xLTFWMmExIDEgMCAwIDEgMS0xaDEyek0yIDBhMiAyIDAgMCAwLTIgMnYxMmEyIDIgMCAwIDAgMiAyaDEyYTIgMiAwIDAgMCAyLTJWMmEyIDIgMCAwIDAtMi0ySDJ6Ii8+DQogIDxwYXRoIGZpbGw9IiNmMDYyOTIiIGQ9Ik00LjY0NiA0LjY0NmEuNS41IDAgMCAxIC43MDggMEw4IDcuMjkzbDIuNjQ2LTIuNjQ3YS41LjUgMCAwIDEgLjcwOC43MDhMOC43MDcgOGwyLjY0NyAyLjY0NmEuNS41IDAgMCAxLS43MDguNzA4TDggOC43MDdsLTIuNjQ2IDIuNjQ3YS41LjUgMCAwIDEtLjcwOC0uNzA4TDcuMjkzIDggNC42NDYgNS4zNTRhLjUuNSAwIDAgMSAwLS43MDh6Ii8+DQo8L3N2Zz4=");
+			}
 
 			.grid_toggle_button_vh{
 				height: 28px;
@@ -2848,7 +2858,7 @@ else
 				padding-right: .25rem;
 				margin-top: auto;
 				margin-bottom: auto;
-				border-right: 1px solid #00000033;
+				border-right: 1px solid var(--pg-sp-border, #00000033);
 			}
 
 
@@ -2908,14 +2918,14 @@ else
 				height: 18px;
 				width: 18px;
 				z-index: 99999999;
-				background: white;
+				background: var(--pg-sp-bg, #fff);
 				border-radius: 0px;
 				color: #898989;
 				border-radius: 3px;
 				line-height: 16px;
 				transform: rotate(90deg);
 				transition: all .3s ease;
-				border: 1px solid #00000033;
+				border: 1px solid var(--pg-sp-border, #00000033);
 
 			}
 			#softwareminimizebuttons.active{
@@ -2925,8 +2935,8 @@ else
     			border-bottom: 0;
 				border-radius: 0;
 				border-top-left-radius: 3px;
-				border-left: 1px solid #00000033;
-    			border-top: 1px solid #00000033;
+				border-left: 1px solid var(--pg-sp-border, #00000033);
+    			border-top: 1px solid var(--pg-sp-border, #00000033);
 				transition: all .3s ease;
 			}
 			.software_pinegrap_inline_edit_button {
@@ -3157,6 +3167,26 @@ else
 						
 					}
 					toggle_control_buttons();	
+
+					// Dressed like the panel screens and the SEO panel
+					// (seo.php): the theme the admin screens store, or the one
+					// the machine asks for when there is no choice. A fixed
+					// white box sat on dark sites matching neither.
+					function dress_control_buttons() {
+						var stored = null;
+
+						try {
+							stored = localStorage.getItem("pinegrap backend color scheme");
+						} catch (error) {
+							stored = null;
+						}
+
+						button_container.classList.toggle("pg_seo_tb_dark", (stored === "dark")
+							|| ((stored !== "light") && window.matchMedia("(prefers-color-scheme: dark)").matches));
+					}
+
+					dress_control_buttons();
+					window.addEventListener("storage", dress_control_buttons);
 					
 					toggle_softwareminimizebuttons.onclick = function() {
 						toggle_control_buttons(update = true);

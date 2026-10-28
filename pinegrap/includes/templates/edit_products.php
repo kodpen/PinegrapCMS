@@ -213,7 +213,7 @@ if (!defined('PG_INIT_LOADED')) {
                     <div class="popover-body">
                         <div class="row">
 							<div class="input-group number-controls">
-                                <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="<?=h(lang('Decrease'))?>">remove</button>
                                 <?=$liveform->output_field(array(
 									'type' => 'text',
 									'id' => 'inventory_quantity',
@@ -225,7 +225,7 @@ if (!defined('PG_INIT_LOADED')) {
 									'data-inputmask-placeholder'=>'0'						
 									
 									))?>
-                                <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="<?=h(lang('Increase'))?>">add</button>
 							</div>
 						</div>
 					</div>
@@ -270,7 +270,7 @@ if (!defined('PG_INIT_LOADED')) {
 			</div>
 		</div>
 		<?php endif ?>
-		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="<?=h(lang('data edit buttons'))?>">
 			<div class="container">
 				<div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
 					<button type="button" name="submit_save" value="Modify Products" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_products()"><span class="material-icons me-3">save</span><?=lang(array('string'=>'Modify Products') )?></button>

@@ -51,7 +51,7 @@ description: Generated from the module field of the memory files: each includes/
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
 - `returns`: [[bootstrap-6-runtime-markup]]
-- `reviews`: [[product-reviews-verified]]
+- `reviews`: [[product-review-photos]], [[product-reviews-verified]]
 - `seo`: [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `site_icon`: [[site-icon]]

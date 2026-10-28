@@ -506,6 +506,11 @@ function pg_parasut_credentials_for_save()
         }
     }
 
+    // Photo reviews (2026.11.0, 11.0.57), once the column is there.
+    $sql_review_photos = pg_schema_has('config', 'review_photos')
+        ? "review_photos = '" . ((post_value('review_photos') == 1) ? 1 : 0) . "',"
+        : '';
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET
@@ -562,6 +567,7 @@ function pg_parasut_credentials_for_save()
             " . $sql_erp_fx . "
             " . $sql_erp_due . "
             " . $sql_erp_overdue . "
+            " . $sql_review_photos . "
             " . $sql_legal_documents . "
             " . $sql_reference_price_rule . "
             ecommerce_credit_debit_card = '" . escape(post_value('ecommerce_credit_debit_card')) . "',

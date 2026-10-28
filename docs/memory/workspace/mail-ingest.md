@@ -11,14 +11,14 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 - `rfc_message_hash` = SHA-256 of `id:<Message-ID>`, else of `raw:<whole mail>` (`ws_mail_hash()`); `UNIQUE (box_id, rfc_message_hash)`. A failed item INSERT is read back as `duplicate` (two readers).
 
 ## What is the loop gate?
-- `ws_mail_loop_reason()`: the `X-Pinegrap-Mail` header (`WS_MAIL_LOOP_HEADER`; G3 adds it to every mail the site sends), From = the box address, `Auto-Submitted` other than `no`, `Precedence: bulk | junk | list`. Then more than `WS_MAIL_SENDER_HOURLY` (20) items from one sender in one box in an hour is `held` (`idx_sender`).
+- `ws_mail_loop_reason()`: this site's mark in `X-Pinegrap-Mail` (`mail-reply.md`), From = the box address, `Auto-Submitted` other than `no`, `Precedence: bulk | junk | list`. Then more than `WS_MAIL_SENDER_HOURLY` (20) items from one sender in one box in an hour is `held` (`idx_sender`).
 
 ## When is a sender verified?
 - `ws_mail_auth()` reads `dmarc=pass | fail` only from an `Authentication-Results` header whose authserv-id equals the box's `settings.auth_server` (RFC 8601: a server strips forged headers with its own id). A box naming no server stays `none`. G2 should fill `auth_server` per provider (e.g. `mx.google.com`).
 - Only `pass` ties a new conversation to `contacts.email_address` (`contact_id`) or `user.user_email` (`user_id`).
 
 ## How is the conversation found?
-- `ws_mail_find_conversation()`: In-Reply-To, then References newest first (at most 30), hashed and looked up in the box's items, ours or the customer's; then a `[#T<id>]` subject tag, only when that conversation's `customer_email` is the sender. Never by subject. G3 stores outgoing items, so our own Message-IDs are found by hash.
+- `ws_mail_find_conversation()`: In-Reply-To, then References newest first (at most 30), hashed and looked up in the box's items, ours or the customer's; then a `[#T<id>]` subject tag, only when that conversation's `customer_email` is the sender. Never by subject. Outgoing answers are items too (`mail-reply.md`), so our own Message-IDs are found by hash.
 
 ## What is written in the channel?
 - Channel: the conversation's, else the box's; missing or archived is `refused` / `no_channel`.

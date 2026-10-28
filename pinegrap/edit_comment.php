@@ -222,9 +222,14 @@ if (!$_POST) {
     // if there is a file attachment, then output it
     if ($file_name != '') {
         // we are using a separate link for the image and the file name because we don't want an underline on the image and we don't want to have to update all themes with new CSS
+        // An image (a review photo) shows as a thumbnail above its link.
+        $output_file_thumbnail = pg_comment_file_is_image($file_name)
+            ? '<a href="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" target="_blank" rel="noopener" class="d-inline-block mb-2"><img src="' . h(OUTPUT_PATH . encode_url_path($file_name)) . '" alt="' . h(lang('Photo')) . '" class="img-thumbnail" style="max-width: 240px; max-height: 240px"></a>'
+            : '';
         $output_file_attachment =
             '<div class="col-12 my-3">
                 <label class="form-label">' . lang('Attachment') . '</label>
+                ' . $output_file_thumbnail . '
                 <div class="input-group">
                     <a class=" btn btn-subtle theme-secondary border" href="' . OUTPUT_PATH . h(encode_url_path($file_name)) . '" target="_blank">
                         <span class="material-icons">attach_file</span>

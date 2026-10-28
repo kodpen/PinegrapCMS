@@ -141,11 +141,11 @@ if (in_array($tab, ['incoming', 'outgoing'])) {
         <input type="hidden" name="tab" value="' . h($tab) . '" />
         <div class="col-auto">
             <label class="form-label small fg-secondary mb-1">' . lang('Start Date') . '</label>
-            <input type="date" class="form-control form-control-sm" name="start_date" value="' . $start_date_val . '" />
+            <input type="date" data-pg-date class="form-control form-control-sm" name="start_date" value="' . $start_date_val . '" />
         </div>
         <div class="col-auto">
             <label class="form-label small fg-secondary mb-1">' . lang('End Date') . '</label>
-            <input type="date" class="form-control form-control-sm" name="end_date" value="' . $end_date_val . '" />
+            <input type="date" data-pg-date class="form-control form-control-sm" name="end_date" value="' . $end_date_val . '" />
         </div>
         <div class="col-auto">
             <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-funnel me-1"></i>' . lang('Filter') . '</button>
@@ -588,6 +588,6 @@ echo pg_page_shell([
     </div>
 ' .
 $output_detail_modal .
-'</main>' . output_footer();
+'</main>' . get_date_picker_format() . pg_fields_script() . output_footer();
 
 $liveform->remove_form();

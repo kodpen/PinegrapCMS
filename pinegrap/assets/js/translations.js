@@ -137,7 +137,9 @@
         if (review) {
             review.classList.toggle('d-none', state === 'pending');
             review.setAttribute('data-state', state);
-            review.setAttribute('title', (state === 'reviewed') ? text('mark_machine') : text('mark_reviewed'));
+            var reviewLabel = (state === 'reviewed') ? text('mark_machine') : text('mark_reviewed');
+            review.setAttribute('title', reviewLabel);
+            review.setAttribute('aria-label', reviewLabel);
             var icon = review.querySelector('i');
             if (icon) {
                 icon.className = 'bi ' + ((state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye');

@@ -135,9 +135,9 @@ if (!defined('PG_INIT_LOADED')) {
                                     <?php // The stepper the other screens use (backend.src.js binds .number-controls). ?>
                                     <div class="col-auto">
                                         <div class="input-group input-group-sm number-controls" style="width: 7.5rem">
-                                            <button class="btn btn-outline theme-secondary material-icons minus border-end-0 disabled" type="button" tabindex="-1" aria-label="<?=lang('Remove')?>">remove</button>
+                                            <button class="btn btn-outline theme-secondary material-icons minus border-end-0 disabled" type="button" tabindex="-1" aria-label="<?=h(lang('Decrease'))?>">remove</button>
                                             <input type="text" class="form-control text-center border-start-0 border-end-0" id="pg-if-keycodes-quantity" value="1" min="1" max="100" inputmode="numeric" aria-label="<?=lang('Quantity')?>">
-                                            <button class="btn btn-outline theme-secondary material-icons plus border-start-0" type="button" tabindex="-1" aria-label="<?=lang('Add')?>">add</button>
+                                            <button class="btn btn-outline theme-secondary material-icons plus border-start-0" type="button" tabindex="-1" aria-label="<?=h(lang('Increase'))?>">add</button>
                                         </div>
                                     </div>
                                     <div class="col-auto">

@@ -921,7 +921,7 @@
     function imageChip(filename) {
         return '<span class="pg-pb-chip" title="' + esc(filename) + '">' +
             '<img src="' + esc(imagePath(filename)) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' +
-            '<button type="button" class="pg-pb-chip-remove" tabindex="-1" title="' + esc(label('Remove')) + '"><i class="bi bi-x-lg"></i></button>' +
+            '<button type="button" class="pg-pb-chip-remove" aria-label="' + esc(label('Remove image')) + '" title="' + esc(label('Remove')) + '"><i class="bi bi-x-lg" aria-hidden="true"></i></button>' +
             '<input type="hidden" class="pg-pb-chip-input" value="' + esc(filename) + '" />' +
             '</span>';
     }
@@ -1671,6 +1671,12 @@
         return '<span class="lg:d-none d-block fg-secondary small">' + esc(text) + '</span>';
     }
 
+    /* The cell label above is hidden from lg up and tied to no input, so each
+       matrix input carries its own name: the column and the combination. */
+    function cellName(column, combo) {
+        return ' aria-label="' + esc(label(column) + ': ' + comboLabel(combo)) + '"';
+    }
+
     /* -------------------------------------------- per-variant recurring */
 
     /* Recurring is a product-wide switch, but the schedule is not: a yearly
@@ -1721,13 +1727,13 @@
             '<div class="col-12"><hr class="my-3" /></div>' +
 
             '<div class="col-12 sm:col-6 lg:col-3">' +
-            '<label class="form-label small mb-1">' + esc(label('GTIN')) + '</label>' +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-gtin" value="' + esc(saved.gtin || '') + '" />' +
+            '<label class="form-label small mb-1" for="pg_pb_v_gtin_' + index + '">' + esc(label('GTIN')) + '</label>' +
+            '<input type="text" id="pg_pb_v_gtin_' + index + '" class="form-control form-control-sm pg-pb-v-gtin" value="' + esc(saved.gtin || '') + '" />' +
             '</div>' +
 
             '<div class="col-12 sm:col-6 lg:col-3">' +
-            '<label class="form-label small mb-1">' + esc(barcodeLabel) + '</label>' +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-barcode font-monospace"' +
+            '<label class="form-label small mb-1" for="pg_pb_v_barcode_' + index + '">' + esc(barcodeLabel) + '</label>' +
+            '<input type="text" id="pg_pb_v_barcode_' + index + '" class="form-control form-control-sm pg-pb-v-barcode font-monospace"' +
             barcodeAttributes() +
             ' value="' + esc(saved.barcode || '') + '"' +
             ' placeholder="' + esc(label('Leave blank to generate')) + '" />' +
@@ -1747,8 +1753,8 @@
         if (hasStartField()) {
             startField =
                 '<div class="col-12 sm:col-6 lg:col-3">' +
-                '<label class="form-label small mb-1">' + esc(label('Start (days)')) + '</label>' +
-                '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-start" value="' + esc(defaults.start) + '" />' +
+                '<label class="form-label small mb-1" for="pg_pb_v_start_' + index + '">' + esc(label('Start (days)')) + '</label>' +
+                '<input type="number" min="0" id="pg_pb_v_start_' + index + '" class="form-control form-control-sm pg-pb-v-start" value="' + esc(defaults.start) + '" />' +
                 '</div>';
         }
 
@@ -1768,13 +1774,13 @@
             '</div></div>' +
 
             '<div class="col-12 sm:col-6 lg:col-3">' +
-            '<label class="form-label small mb-1">' + esc(label('Number of Payments')) + '</label>' +
-            '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-payments" value="' + esc(defaults.payments) + '" />' +
+            '<label class="form-label small mb-1" for="pg_pb_v_payments_' + index + '">' + esc(label('Number of Payments')) + '</label>' +
+            '<input type="number" min="0" id="pg_pb_v_payments_' + index + '" class="form-control form-control-sm pg-pb-v-payments" value="' + esc(defaults.payments) + '" />' +
             '</div>' +
 
             '<div class="col-12 sm:col-6 lg:col-3">' +
-            '<label class="form-label small mb-1">' + esc(label('Payment Period')) + '</label>' +
-            '<select class="form-control form-control-sm pg-pb-v-period">' + defaults.periodOptions + '</select>' +
+            '<label class="form-label small mb-1" for="pg_pb_v_period_' + index + '">' + esc(label('Payment Period')) + '</label>' +
+            '<select id="pg_pb_v_period_' + index + '" class="form-control form-control-sm pg-pb-v-period">' + defaults.periodOptions + '</select>' +
             '</div>' +
 
             startField +
@@ -1869,18 +1875,18 @@
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Product ID / SKU')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '" />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-name" value="' + esc(sku) + '"' + cellName('Product ID / SKU', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Short Description')) +
-            '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '" />' +
+            '<input type="text" class="form-control form-control-sm pg-pb-v-short" value="' + esc(short) + '"' + cellName('Short Description', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Unit Price')) +
             '<div class="input-group input-group-sm">' +
-            '<input type="number" step="0.01" min="0" class="form-control pg-pb-v-price" value="' + esc(price) + '" />' +
+            '<input type="number" step="0.01" min="0" class="form-control pg-pb-v-price" value="' + esc(price) + '"' + cellName('Unit Price', combo) + ' />' +
             /* Not escaped: the currency symbol is a setting, and for most
                non-Latin currencies it is stored as an HTML entity ("&#8378;"
                for the lira). Escaping it prints the entity instead of the
@@ -1904,7 +1910,7 @@
 
             '<td class="d-block lg:d-table-cell align-middle">' +
             cellLabel(label('Inventory Quantity')) +
-            '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-stock" value="' + esc(stock) + '" />' +
+            '<input type="number" min="0" class="form-control form-control-sm pg-pb-v-stock" value="' + esc(stock) + '"' + cellName('Inventory Quantity', combo) + ' />' +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +
@@ -2770,10 +2776,10 @@
     function optionRow() {
         return '<div class="input-group input-group-sm mb-3 pg-pb-attr-option">' +
             '<input type="text" class="form-control pg-pb-attr-option-label" maxlength="255" placeholder="' + esc(label('Label')) + '" />' +
-            '<span class="input-group-text">' +
+            '<label class="input-group-text">' +
             '<input class="check mt-0 me-3 pg-pb-attr-option-novalue" type="checkbox" />' +
             '<span class="small">' + esc(label("'No Thanks' Option")) + '</span>' +
-            '</span>' +
+            '</label>' +
             '<button type="button" class="btn btn-outline theme-danger pg-pb-attr-option-remove" title="' + esc(label('Remove')) + '"><i class="bi bi-trash"></i></button>' +
             '</div>';
     }

@@ -96,6 +96,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_mcp_preamble(); // 11.0.111
 	upgrade_2026_11_0_card_security_codes();   // 11.0.56
 	upgrade_2026_11_0_ai_prompt_version();      // 11.0.112
+	upgrade_2026_11_0_review_photos();          // 11.0.57
 
 }
 
@@ -3162,5 +3163,18 @@ function upgrade_2026_11_0_card_security_codes() {
 	$cleared = max(0, (int) mysqli_affected_rows(db::$con));
 
 	install_note('Orders: card security codes are no longer stored; ' . $cleared . ' stored code(s) were removed. Card numbers of exported and cancelled orders are masked to their last four digits by the general job.');
+
+}
+
+// Photo reviews (2026.11.0, 11.0.57; includes/fn/reviews.php, Site Settings ›
+// Commerce). review_photos lets a product review carry one image; a review
+// thread asks only this switch, not the page's attachment switch. It starts
+// off, so a running site takes no file on a review until it is switched on;
+// files already attached stay.
+function upgrade_2026_11_0_review_photos() {
+
+	install_add_column('config', 'review_photos', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Commerce: a product review can now carry a photo when Photo Reviews is switched on under Site Settings, Commerce. It is off on this site, and from now on a review takes no other file.');
 
 }

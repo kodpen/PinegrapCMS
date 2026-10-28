@@ -121,7 +121,7 @@ if (!$_POST) {
                                         <div class="col-12 sm:col-4 xl:col-3 my-3">
                                             <label for="quantity" class="form-label">' . lang('Quantity') . '</label>
                                             <div class="input-group number-controls">
-                                                <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'text',
                                                     'name' => 'quantity',
@@ -133,7 +133,7 @@ if (!$_POST) {
                                                     'inputmode'=>'numeric',
                                                     'data-inputmask-alias'=>'decimal',
                                                     'data-inputmask-placeholder'=>'0')) . '
-                                                <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
                                             
                                             <div class="text-end form-text">' . lang('increase quantity to create multiple gift cards at once') . '</div>
@@ -151,7 +151,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>

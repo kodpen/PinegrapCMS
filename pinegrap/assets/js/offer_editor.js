@@ -157,7 +157,7 @@
     }
     function tagHtml(label, action, index, id, variant) {
         return '<span class="badge rounded-pill theme-' + variant + ' d-inline-flex align-items-center gap-1 fw-normal">' + esc(label) +
-            '<a href="#" class="fg-reset text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+            '<a href="#" class="fg-reset text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '" aria-label="' + esc(L.remove + ': ' + label) + '"><span aria-hidden="true">&times;</span></a></span>';
     }
 
     // ── condition rows ───────────────────────────────────────────────────

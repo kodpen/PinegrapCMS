@@ -4596,6 +4596,10 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
         $read_thread = null;
     }
 
+    // A product's reviews take a file by the photo review setting alone, as
+    // add_comment.php does (includes/fn/reviews.php).
+    $settings['attachments'] = pg_comment_attachments_allowed($settings['attachments'], pg_review_gate_applies($post_type, $post_id), pg_review_photos_on());
+
     // Who reads it. The search index stores what a visitor who is not signed
     // in reads; a background render (the editor's Preview, the SEO pass)
     // draws the same and leaves the session of the user whose request runs

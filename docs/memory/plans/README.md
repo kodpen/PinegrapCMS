@@ -41,9 +41,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-g2.md: G2 of incoming e-mail (IMAP read): G2a client, G2b box card and Test connection, G2c1 fetch run and its job (done or open); G2c2 inline pass in job.php and System status row (next)
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
-- legacy-layouts-in-designer.md: "Plan (2026-10-19; Y1-Y4, Y5a, Y6 done): a classic page's custom layout in the visual designer"
+- incoming-email-g3.md: G3 of incoming e-mail (reply by e-mail): G3a sending core, G3b box SMTP fields and the reply composer, G3c copy to Sent and bounces
+- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1, G2 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+- legacy-layouts-in-designer.md: "Plan (2026-10-19; Y1-Y4, Y5a-b, Y6 done): a classic page's custom layout in the visual designer"
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves

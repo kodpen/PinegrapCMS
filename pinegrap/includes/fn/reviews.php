@@ -515,6 +515,112 @@ function pg_review_product_aggregate_jsonld($product_id)
     return pg_review_aggregate_jsonld($row['rating_avg'], $row['rating_count']);
 }
 
+// Photo reviews (2026.11.0, 11.0.57; decided in #2426 and #2818).
+//
+// A review takes one file, as any comment does (comments.file_id), but only
+// while the site setting is on (config.review_photos, REVIEW_PHOTOS, off by
+// default) and only an image. The page's own attachment switch
+// (comments_allow_file_attachments) is not asked on a review thread; every
+// other thread keeps it. Files already attached stay.
+
+/**
+ * The file name endings a review photo may have.
+ *
+ * @return array
+ */
+function pg_review_photo_extensions()
+{
+    return array('jpg', 'jpeg', 'png', 'gif', 'webp');
+}
+
+/**
+ * Whether a file name ends like a review photo. Pure.
+ *
+ * @param mixed $file_name
+ * @return bool
+ */
+function pg_comment_file_is_image($file_name)
+{
+    if (!is_scalar($file_name)) {
+        return false;
+    }
+
+    $dot = strrpos((string) $file_name, '.');
+
+    return ($dot !== false) && in_array(strtolower(substr((string) $file_name, $dot + 1)), pg_review_photo_extensions(), true);
+}
+
+/**
+ * Whether the photo review setting is on (REVIEW_PHOTOS, false before the
+ * column exists).
+ *
+ * @return bool
+ */
+function pg_review_photos_on()
+{
+    return defined('REVIEW_PHOTOS') && (REVIEW_PHOTOS === true);
+}
+
+/**
+ * Whether a thread's comment form takes a file. Pure: a review thread
+ * ($review, pg_review_gate_applies()) by the site setting ($photos_on)
+ * alone, any other thread by the page's switch ($page_switch).
+ *
+ * @param bool $page_switch
+ * @param bool $review
+ * @param bool $photos_on
+ * @return bool
+ */
+function pg_comment_attachments_allowed($page_switch, $review, $photos_on)
+{
+    return $review ? (bool) $photos_on : (bool) $page_switch;
+}
+
+/**
+ * Whether an uploaded file may be a review photo: an image name ending
+ * (pg_comment_file_is_image()) and content PHP reads as one of those image
+ * types, so a renamed file is refused. Pure but for reading $tmp_path.
+ *
+ * @param mixed $file_name the name the visitor's browser sent
+ * @param mixed $tmp_path  the uploaded file
+ * @return bool
+ */
+function pg_review_photo_ok($file_name, $tmp_path)
+{
+    if (!pg_comment_file_is_image($file_name) || !is_string($tmp_path) || ($tmp_path === '') || !is_file($tmp_path)) {
+        return false;
+    }
+
+    $info = @getimagesize($tmp_path);
+    $types = array(IMAGETYPE_JPEG, IMAGETYPE_PNG, IMAGETYPE_GIF);
+
+    if (defined('IMAGETYPE_WEBP')) {
+        $types[] = IMAGETYPE_WEBP;
+    }
+
+    return is_array($info) && isset($info[2]) && in_array($info[2], $types, true);
+}
+
+/**
+ * A review photo as a thumbnail that opens the full image, for the classic
+ * comments block and Comment Moderation. '' for a file that is no image.
+ *
+ * @param mixed $file_name files.name
+ * @return string
+ */
+function pg_comment_image_thumbnail_html($file_name)
+{
+    if (!pg_comment_file_is_image($file_name)) {
+        return '';
+    }
+
+    $url = h(OUTPUT_PATH . encode_url_path((string) $file_name));
+
+    return '<a class="software_attachment_image d-inline-block" href="' . $url . '" target="_blank" rel="noopener">'
+        . '<img src="' . $url . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail" style="max-width: 160px; max-height: 160px">'
+        . '</a>';
+}
+
 // The review request e-mail.
 //
 // When an order ships, update_order() starts the auto campaigns of the

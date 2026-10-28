@@ -1,12 +1,17 @@
 ---
 name: layout-widget-offer
-description: Y5 widget offer beside a custom layout: page type to widget kind, type settings carried into its config, why no 301 while the page keeps its type
+description: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
 ---
 
 ## Which pages get an offer?
 - A page in `_design.layoutPages` (custom layout, `pg_layout_custom_page_ids()`, role 1 or better) whose type is in `pg_layout_widget_kinds()` (`includes/fn/layouts.php`): the 24 layout types with a widget. The editor gets them as `_design.layoutWidgets`, page id => `{kind, cfg}` (`pg_layout_widget_offers()`, `designer_screen.php`).
 - Left out: `custom form` (its layout converts into a widget of design elements, [[layout-code-tab]]) and `order receipt` (no widget). The kinds agree with `pg_sw_page_type_widgets()` (test).
 - A `standard` page with `layout_type = 'custom'` gets nothing and is not normalised: it never calls `render_layout()`, gets no tab, and rewriting its row would be a data change for no visible gain.
+
+## What does the editor do with it?
+- The Region panel of the page's own (unnamed) `system` node (`_sdLegacyRegionOwn()`) on a page in `layoutWidgets` shows "Put a "{kind}" widget beside it" (`_sdLayoutWidgetPropsHtml()`, `style_designer.js`). `_sdLayoutWidgetPlace()` creates the row (`_sdLayoutWidgetCfg()`: the carried settings, then `_swTypeDefaults()`; `_buildStarterTree(kind)`) and puts its `shared_ref` right after the region, one undo step. The region stays.
+- Once the page tree places a widget of that kind anywhere (`_sdLayoutWidgetPlaced()`, shared components not searched), the button becomes "Remove the classic region": a confirm, then `onDelete()` (undo brings it back). The layout file, the page type and its type row stay.
+- Never automatic, one page at a time; a named system region (another page's) gets nothing.
 
 ## Which settings are carried?
 - `pg_layout_widget_seed($type, $row, $field_names)` (pure), from the page's type row:

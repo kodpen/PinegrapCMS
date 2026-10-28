@@ -4307,6 +4307,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                 ? '<div class="software_attachment small mt-3 d-flex align-items-center gap-2"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" viewBox="0 0 16 16" aria-hidden="true"><path d="M4.5 3a2.5 2.5 0 0 1 5 0v9a1.5 1.5 0 0 1-3 0V5a.5.5 0 0 1 1 0v7a.5.5 0 0 0 1 0V3a1.5 1.5 0 1 0-3 0v9a2.5 2.5 0 0 0 5 0V5a.5.5 0 0 1 1 0v7a3.5 3.5 0 1 1-7 0z"/></svg><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank">' . h($comment['file_name']) . '</a> <span class="text-body-secondary">(' . convert_bytes_to_string($comment['file_size']) . ')</span></div>'
                                 : '<div class="software_attachment" style="margin-top: 1.5em"><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank" style="background: none; padding: 0"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_attachment.png" width="16" height="16" alt="attachment" title="" border="0" style="padding-right: .5em; vertical-align: middle" /></a><a href="' . OUTPUT_PATH . h(encode_url_path($comment['file_name'])) . '" target="_blank">' . h($comment['file_name']) . '</a> (' . convert_bytes_to_string($comment['file_size']) . ')</div>';
                         }
+
+                        // A review photo shows as a thumbnail above its link.
+                        if (!empty($comments_read['review']) && ($output_file_attachment !== '') && pg_comment_file_is_image($comment['file_name'])) {
+                            $output_file_attachment = '<div class="software_attachment_photo' . ($cm_bs ? ' mt-3' : '" style="margin-top: 1.5em') . '">' . pg_comment_image_thumbnail_html($comment['file_name']) . '</div>' . $output_file_attachment;
+                        }
                         
                         //command rating
                         //if rating is not 0 than 
@@ -4464,6 +4469,11 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                     $review_refusal = pg_review_eligibility(USER_LOGGED_IN ? (int) USER_ID : 0, $item_type, $item_id)['refusal'];
                 }
 
+                // A product review takes a file by the photo review setting
+                // alone, and only an image (includes/fn/reviews.php).
+                $review_photo_thread = pg_review_gate_applies($item_type, $item_id);
+                $comments_file_field_on = pg_comment_attachments_allowed(($system_region_properties['comments_allow_file_attachments'] == 1), $review_photo_thread, pg_review_photos_on());
+
                 // if new comments are allowed, then prepare to output add comment form.
                 if ($allow_new_comments == TRUE) {
                     // add the stuff at the start of the comment form
@@ -4557,7 +4567,7 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $enctype = '';
                         
                         // if file attachments are allowed for comments, then prepare to set enctype for HTML form
-                        if ($system_region_properties['comments_allow_file_attachments'] == 1) {
+                        if ($comments_file_field_on) {
                             $enctype = ' enctype="multipart/form-data"';
                         }
                         
@@ -4626,10 +4636,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                         $output_file_attachment_field = '';
                         
                         // if file attachments are allowed for comments, then output file attachment field
-                        if ($system_region_properties['comments_allow_file_attachments'] == 1) {
+                        if ($comments_file_field_on) {
+                            // A review takes a photo only.
+                            $file_label = $review_photo_thread ? lang('Add a Photo') : lang('Attach a File');
                             $output_file_attachment_field = $cm_bs
-                                ? '<div class="mb-3"><label class="file_upload_label form-label" for="comment_file">' . lang('Attach a File') . '</label>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'id'=>'comment_file', 'class'=>$cm_file)) . '</div>'
-                                : '<div style="margin-bottom: 1em"><span class="file_upload_label">' . lang('Attach a File') . ': </span>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'class'=>'software_input_file')) . '</div>';
+                                ? '<div class="mb-3"><label class="file_upload_label form-label" for="comment_file">' . $file_label . '</label>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'id'=>'comment_file', 'class'=>$cm_file)) . '</div>'
+                                : '<div style="margin-bottom: 1em"><span class="file_upload_label">' . $file_label . ': </span>' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'class'=>'software_input_file')) . '</div>';
 						}
                         
                         $output_publish = '';

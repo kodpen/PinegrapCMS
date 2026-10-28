@@ -31,4 +31,4 @@ module: reviews
 - `_pg_build_product_jsonld()`: only where its comments widget shows them ([[comments-widget-product-page]]). A catalog detail page with a catalog_item_view widget and no System region gets no Product markup; not covered.
 
 ## Where are the other parts?
-- Store reply: [[product-review-store-reply]]. Order: [[product-review-order]]. Request e-mail: [[product-review-request-email]]. API: `api/api-reviews-and-wishlist.md`. Photo reviews: plan step 2c3.
+- Store reply: [[product-review-store-reply]]. Order: [[product-review-order]]. Request e-mail: [[product-review-request-email]]. API: `api/api-reviews-and-wishlist.md`. Photo reviews: [[product-review-photos]].

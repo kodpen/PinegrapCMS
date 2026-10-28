@@ -147,6 +147,10 @@ if ($pg_toolbar_panel['panel'] !== '') {
                 --pg-sp-hover: var(--pg-bg-1);
                 --pg-sp-link: var(--pg-link-color);
                 --pg-sp-track: var(--pg-bg-2);
+                --pg-sp-success: var(--pg-success-fg-emphasis);
+                --pg-sp-warning: var(--pg-warning-fg-emphasis);
+                --pg-sp-orange: color-mix(in srgb, #fd7e14 55%, var(--pg-fg-emphasis));
+                --pg-sp-danger: var(--pg-danger-fg-emphasis);
             }
 
             #software_seo_panel{

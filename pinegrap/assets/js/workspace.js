@@ -7257,6 +7257,10 @@
             var self = this;
 
             self.stop();
+
+            if (window.PGWsVoice) {
+                window.PGWsVoice.speakStop();
+            }
             self.pending = null;
             self.reply = null;
             self.replyMore = null;
@@ -7846,6 +7850,19 @@
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {
                         api('ws_channel_notify', { channel_id: channel.id, notify: option[0] }).then(function () { self.reloadChannels(channel.id); }).catch(fail);
                     });
+                });
+                divider();
+            }
+
+            // The viewer's own choice in this browser, not the channel's:
+            // assistants' answers to what they asked read aloud
+            // (speakAnswer()).
+            if (window.PGWsVoice && window.PGWsVoice.speakSupported() && (BOOT.claude || BOOT.ai || (BOOT.mcp || []).length)) {
+                var speaking = window.PGWsVoice.speakOn(CFG.api_url, CFG.me);
+
+                item(t('voice_speak') + (speaking ? ' ✓' : ''), speaking ? 'bi-volume-up' : 'bi-volume-mute', function () {
+                    window.PGWsVoice.speakSet(CFG.api_url, CFG.me, !speaking);
+                    toast(t(speaking ? 'voice_speak_off' : 'voice_speak_on'), 'info');
                 });
                 divider();
             }
@@ -11735,6 +11752,35 @@
         // or Pinegrap AI asks it once the recording is written out
         // (includes/workspace/voice.php, ws_voice_ask()); an MCP agent reads
         // only the words, so a recording does not stand in for them.
+        // An assistant's answer to the viewer's own message, come in while the
+        // conversation is open and in sight, read aloud for a person who
+        // switched it on in this browser (the channel menu). Code blocks,
+        // buttons and change cards are left out of what is read.
+        speakAnswer: function (message, node) {
+            var voice = window.PGWsVoice;
+            var sender = message.sender || {};
+
+            if (!voice || !voice.speakSupported() || !voice.speakOn(CFG.api_url, CFG.me) || document.hidden || !node
+                || (message.sender_kind !== 'app') || !(sender.claude || sender.ai || sender.mcp) || !message.parent_id) {
+                return;
+            }
+
+            var parent = this.findMessage(message.parent_id);
+            var body = node.querySelector('.ws-msg-body');
+
+            if (!parent || !parent.mine || !body) {
+                return;
+            }
+
+            var copy = body.cloneNode(true);
+
+            copy.querySelectorAll('pre, button, audio, .ws-drafts, .visually-hidden').forEach(function (part) {
+                part.remove();
+            });
+
+            voice.speak(copy.textContent, CFG.locale || document.documentElement.lang || '');
+        },
+
         voiceAnswers: function (message) {
             var sender = (message && message.sender) || {};
 
@@ -14397,6 +14443,7 @@
 
                         self.appendMessage(message, previous);
                         playMotion(self.pane.lastElementChild, 'ws-msg-in');
+                        self.speakAnswer(message, self.pane.lastElementChild);
                         grew = true;
 
                         if (!message.mine && message.kind !== 'system') {

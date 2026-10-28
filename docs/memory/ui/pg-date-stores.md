@@ -23,6 +23,7 @@ description: What each hooked date/time field keeps (site text, ISO on native in
 
 ## How is a field built by a script drawn?
 - Put the hooked field in the document, then `pgFields.init(field)` (or a node around it). A select wrapper drawn before its selects are inside stays undrawn until the next `init()`.
+- A script that writes a drawn field's store calls `pgFields.refresh(el)` (value and disabled state, no change: designer page schedule, #2854) or fires a change on it; a bare `.value =` leaves the box stale. The box takes the field's `aria-label`, `placeholder` and `title`.
 
 ## Which panel fields reach the control outside the shared forms (P4)?
 - The form preview's `time` row (`get_form_info()`, panel only) has `data-pg-time`; `pg_form_info_picker_format()` gives the options its hooked rows need. The site rows stay plain until S2.

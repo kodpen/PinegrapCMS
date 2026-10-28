@@ -126,16 +126,16 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 sm:col-6 lg:col-4 my-3">
-                                            <label for="name" class="form-label">' . lang('Arrival Date Code') . '</label>
+                                            <label for="code" class="form-label">' . lang('Arrival Date Code') . '</label>
                                             <input value="' . h($v['code']) . '" type="text" name="code"  id="code" maxlength="50" class="form-control" />
                                             <div class="form-text text-end">' . lang('Arrival Date Code for Order Reporting') . '</div>
                                         </div>
                                         <div class="col-12 sm:col-4  my-3">
                                             <label for="sort_order" class="form-label">' . lang('Sorting') . '</label>
                                             <div class="input-group number-controls">
-                                                <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                 <input value="' . h($v['sort_order']) . '" class="form-control text-center border-start-0 border-end-0" type="text" name="sort_order" id="sort_order" maxlength="3" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
-                                                <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                                             </div>
                                         </div>
                                         <div class="col-12  sm:col-8 lg:col-12 my-3">
