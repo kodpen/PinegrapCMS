@@ -21,7 +21,7 @@ description: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 do
 2. PR #1523. No schema. Pinegrap AI: Create without a secret (answer 3a), guide; no rotation gives such a row a secret (`api_app_secret_can_rotate()`); see workspace/workspace-assistant-keys.md.
 3. PR #1726. No schema. api_settings.php uses the helpers, same behaviour (keyless refusal included).
 4. Pinegrap AI measurements (question 5).
-5. PR #PRNUM. No schema. Application Access locks a row whose owner outranks the editor (question 6).
+5. PR #2733. No schema. Application Access locks a row whose owner outranks the editor (question 6).
 
 ## Which questions are answered? (owner, 2026-10-24)
 1. Reads: (a) all, (b) all but `account:read`, `key_codes:read`, `gift_cards:read`, `site_log:read`, `system:read` → b. Claude's GET /orders etc. run as the key owner, so a public-channel asker reads what the admin reads (Pinegrap AI reads as the asker). Answer: b.
