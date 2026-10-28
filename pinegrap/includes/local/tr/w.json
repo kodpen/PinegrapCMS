@@ -947,6 +947,7 @@
     "Write permissions repaired from the dashboard ({var:1}).": "Yazma izinleri panodan onarıldı ({var:1}).",
     "Write the address of an iCal calendar (https://…).": "Bir iCal takviminin adresini yazın (https://…).",
     "Write the address to send it to.": "Gönderilecek adresi yazın.",
+    "Write the answer first.": "Önce yanıtı yazın.",
     "Write the carrier on the \"{var:1}\" shipping method once and the next orders bring it along.": "Taşıyıcıyı \"{var:1}\" kargo yöntemine bir kez yazın; sonraki siparişlerde faturaya kendiliğinden gelir.",
     "Write the chosen values to the ERP account and to {var:1}?": "Seçilen değerler ERP carisine ve {var:1} tarafına yazılsın mı?",
     "Write the country in place of \"turkish\" (usa, uk, german, french…).": "\"turkish\" yerine ülkeyi yazın (usa, uk, german, french…).",

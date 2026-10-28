@@ -43,7 +43,8 @@ function test_workspace_mail_loop_gate()
 
 	pg_assert_same('', ws_mail_loop_reason($plain, 'support@shop.test'), 'a person\'s mail comes in');
 	pg_assert_same('own', ws_mail_loop_reason($plain, 'Ayse@Example.com'), 'the box\'s own address as sender, any case');
-	pg_assert_same('own', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: a@example.com', 'X-Pinegrap-Mail: 1')), 'support@shop.test'), 'the site\'s own header');
+	pg_assert_same('own', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: a@example.com', 'X-Pinegrap-Mail: ' . pg_mail_site_mark())), 'support@shop.test'), 'this site\'s mark');
+	pg_assert_same('', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: shop@other.test', 'X-Pinegrap-Mail: 0123456789abcdef')), 'support@shop.test'), 'another Pinegrap site\'s mail comes in');
 	pg_assert_same('auto', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: a@example.com', 'Auto-Submitted: auto-replied; owner-email="a@example.com"')), 'support@shop.test'), 'an automatic answer');
 	pg_assert_same('', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: a@example.com', 'Auto-Submitted: No')), 'support@shop.test'), 'Auto-Submitted: no is a person');
 	pg_assert_same('bulk', ws_mail_loop_reason(workspace_mail_ingest_test_mail(array('From: a@example.com', 'Precedence: bulk')), 'support@shop.test'), 'bulk');

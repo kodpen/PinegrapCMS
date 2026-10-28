@@ -70,8 +70,8 @@ function ws_mail_hash($message_id, $raw)
 }
 
 /**
- * Why a mail must not come in, from its headers: our own mail (the site's
- * header, or the box's own address as sender), an automatic one
+ * Why a mail must not come in, from its headers: our own mail (this site's
+ * mark in X-Pinegrap-Mail, or the box's own address as sender), an automatic one
  * (Auto-Submitted other than "no") or a list or bulk one (Precedence). Any
  * of them answered by the site could start a loop of answers.
  *
@@ -86,7 +86,7 @@ function ws_mail_loop_reason($parsed, $box_address)
         return isset($headers[$name][0]) ? strtolower(trim((string) $headers[$name][0])) : '';
     };
 
-    if (isset($headers[WS_MAIL_LOOP_HEADER])) {
+    if ($first(WS_MAIL_LOOP_HEADER) === pg_mail_site_mark()) {
         return 'own';
     }
 
