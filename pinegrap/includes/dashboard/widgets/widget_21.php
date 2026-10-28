@@ -141,9 +141,9 @@ function pg_dashboard_widget_21($request, $user)
             'block'       => array('danger',            lang('Blocked')),
             'rate'        => array('danger',            lang('Rate limited')),
             'ban'         => array('dark',              lang('Banned')),
-            'would-block' => array('warning text-dark', lang('Would block')),
-            'would-rate'  => array('warning text-dark', lang('Would rate limit')),
-            'would-ban'   => array('warning text-dark', lang('Would ban')),
+            'would-block' => array('warning',           lang('Would block')),
+            'would-rate'  => array('warning',           lang('Would rate limit')),
+            'would-ban'   => array('warning',           lang('Would ban')),
             'log'         => array('secondary',         lang('Recorded')),
         );
 

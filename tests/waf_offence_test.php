@@ -167,7 +167,7 @@ function test_waf_offence_would_ban_has_a_badge()
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $screen);
 
 	$widget = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_21.php');
-	pg_assert_contains("'would-ban'   => array('warning text-dark', lang('Would ban')),", $widget);
+	pg_assert_contains("'would-ban'   => array('warning',           lang('Would ban')),", $widget);
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", $widget);
 	pg_assert_contains("action IN ('would-block','would-rate','would-ban')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets/widget_22.php'));
 }
