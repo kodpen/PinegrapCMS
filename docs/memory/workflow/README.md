@@ -32,7 +32,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-files.md: Decisions list, files part: a submitted-form file whose record no view shows stays refused in a public folder too (no fallback); the RSS media field counts as shown with the record.
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
-- decisions-made-panel.md: Part of the decisions list: the control panel's Bootstrap 6 breakpoints (own media queries on 1024/1280, xxl to 2xl), kept as they are on purpose
+- decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints (1024/1280, xxl to 2xl) kept on purpose; the one date-and-time picker (vanilla-calendar-pro) for the panel, the sites and phones
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema.md: Decisions list, schema part: steps approved in advance (ENUM appends in the 4.48 shape), the tables and columns approved on 2026-10-27 and 2026-10-28, who decides schema
 - decisions-made-seo.md: Decisions list, SEO part (2026-10-27/28): large image preview, site icon, main-host redirect, per-form structured-data type and author source; settings whose defaults keep running sites
