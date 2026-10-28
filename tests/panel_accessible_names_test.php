@@ -100,6 +100,7 @@ function test_panel_accessible_names_dialogs_named_by_their_title()
 		'edit_form_item_view.php' => array('hints'),
 		'edit_form_list_view.php' => array('hints', 'hints_for_advanced_search'),
 		'includes/forms/product_group_form.php' => array('image_code'),
+		'translations.php' => array('pg_tr_import', 'pg_tr_clear_modal', 'pg_tr_review_all_modal', 'pg_tr_accept_modal', 'pg_tr_glossary_modal'),
 	);
 
 	foreach ($expect as $path => $ids) {

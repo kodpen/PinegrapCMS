@@ -409,11 +409,15 @@ if ($language !== '') {
 
 // The editor rows.
 $output_rows = '';
+$suspicious_text = lang('The length of the translation is out of proportion to the source text.');
 
 foreach ($rows as $row) {
     $has = ($row['text'] !== null);
     $state = $has ? (string) $row['status'] : 'pending';
     $state_label = $has ? (($state === 'reviewed') ? lang('Reviewed') : lang('Machine')) : lang('Pending');
+    // The review toggle is named by what pressing it does: a reviewed row
+    // goes back to not reviewed.
+    $review_label = ($state === 'reviewed') ? lang('Mark as not reviewed') : lang('Mark as reviewed');
     $state_class = $has ? (($state === 'reviewed') ? 'theme-success' : 'theme-warning') : 'theme-secondary';
     $engine_label = ($has && isset($engine_labels[$row['engine']])) ? $engine_labels[$row['engine']] : ($has ? (string) $row['engine'] : '');
     $row_owner = isset($index_row_owners[(int) $row['id']]) ? $index_row_owners[(int) $row['id']] : null;
@@ -437,18 +441,18 @@ foreach ($rows as $row) {
                         </div>
                     </div>
                     <div class="col-12 xl:col-5">
-                        <textarea class="form-control pg-tr-target" rows="2" lang="' . h($language) . '" placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
+                        <textarea class="form-control pg-tr-target" rows="2" aria-label="' . h(lang('Translation')) . '" lang="' . h($language) . '" placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
                     </div>
                     <div class="col-12 xl:col-2">
                         <div class="d-flex xl:flex-column align-items-start gap-3">
                             <div class="pg-tr-state">
                                 <span class="badge ' . $state_class . ' pg-tr-state-badge">' . h($state_label) . '</span>
                                 <span class="small fg-secondary pg-tr-engine">' . h($engine_label) . '</span>'
-                                . (($has && ((int) $row['suspicious'] === 1)) ? '<span class="badge theme-danger pg-tr-suspicious" title="' . h(lang('The length of the translation is out of proportion to the source text.')) . '"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>' : '<span class="badge theme-danger pg-tr-suspicious d-none"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i></span>') . '
+                                . '<span class="badge theme-danger pg-tr-suspicious' . (($has && ((int) $row['suspicious'] === 1)) ? '' : ' d-none') . '" title="' . h($suspicious_text) . '"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i><span class="visually-hidden">' . h($suspicious_text) . '</span></span>' . '
                             </div>
                             <div class="btn-group btn-group-sm">
                                 <button type="button" class="btn btn-outline theme-secondary pg-tr-save" title="' . h(lang('Save')) . '"><i class="bi bi-check-lg" aria-hidden="true"></i> ' . lang('Save') . '</button>
-                                <button type="button" class="btn btn-outline theme-secondary pg-tr-review' . ($has ? '' : ' d-none') . '" title="' . h(lang('Mark as reviewed')) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
+                                <button type="button" class="btn btn-outline theme-secondary pg-tr-review no-popover' . ($has ? '' : ' d-none') . '" title="' . h($review_label) . '" aria-label="' . h($review_label) . '" data-state="' . h($state) . '"><i class="bi ' . (($state === 'reviewed') ? 'bi-eye-slash' : 'bi-eye') . '" aria-hidden="true"></i></button>
                             </div>
                         </div>
                     </div>
@@ -815,13 +819,13 @@ echo pg_page_shell(array(
                 </div>
             </div>
         </div>
-        <dialog class="dialog" id="pg_tr_import">
+        <dialog class="dialog" id="pg_tr_import" aria-labelledby="pg_tr_import_title">
                 <form class="d-contents" method="post" action="translations_action.php" enctype="multipart/form-data">
                     <input type="hidden" name="action" value="import"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
                     ' . get_token_field() . '
                     <div class="dialog-header">
-                        <h5 class="dialog-title">' . lang('Import CSV') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_import_title">' . lang('Import CSV') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
@@ -841,9 +845,9 @@ echo pg_page_shell(array(
                     </div>
                 </form>
         </dialog>
-        <dialog class="dialog" id="pg_tr_clear_modal">
+        <dialog class="dialog" id="pg_tr_clear_modal" aria-labelledby="pg_tr_clear_modal_title">
                     <div class="dialog-header">
-                        <h5 class="dialog-title">' . lang('Clear translations') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_clear_modal_title">' . lang('Clear translations') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
@@ -859,9 +863,9 @@ echo pg_page_shell(array(
                         <button type="button" class="btn btn-outline theme-warning pg-tr-clear" data-machine="' . $clear_machine_count . '" data-all="' . $clear_all_count . '"><i class="bi bi-eraser me-1" aria-hidden="true"></i>' . lang('Clear translations') . '</button>
                     </div>
         </dialog>
-        <dialog class="dialog" id="pg_tr_review_all_modal">
+        <dialog class="dialog" id="pg_tr_review_all_modal" aria-labelledby="pg_tr_review_all_modal_title">
                     <div class="dialog-header">
-                        <h5 class="dialog-title">' . lang('Approve all') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_review_all_modal_title">' . lang('Approve all') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
@@ -878,9 +882,9 @@ echo pg_page_shell(array(
                         <button type="button" class="btn btn-solid theme-primary pg-tr-review-all-go" data-plain="' . (int) $review_all_count . '" data-flagged="' . (int) $review_all_flagged . '"><i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
         </dialog>
-        <dialog class="dialog" id="pg_tr_accept_modal">
+        <dialog class="dialog" id="pg_tr_accept_modal" aria-labelledby="pg_tr_accept_modal_title">
                     <div class="dialog-header">
-                        <h5 class="dialog-title">' . lang('Keep as in the source and approve') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_accept_modal_title">' . lang('Keep as in the source and approve') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
@@ -892,14 +896,14 @@ echo pg_page_shell(array(
                         <button type="button" class="btn btn-solid theme-primary pg-tr-accept-go"><i class="bi bi-check2-square me-1" aria-hidden="true"></i>' . lang('Approve') . '</button>
                     </div>
         </dialog>
-        <dialog class="dialog" id="pg_tr_glossary_modal">
+        <dialog class="dialog" id="pg_tr_glossary_modal" aria-labelledby="pg_tr_glossary_modal_title">
                 <form class="d-contents" method="post" action="translations_action.php">
                     <input type="hidden" name="action" value="glossary_save"/>
                     <input type="hidden" name="language" value="' . h($language) . '"/>
                     <input type="hidden" name="id" value="0"/>
                     ' . get_token_field() . '
                     <div class="dialog-header">
-                        <h5 class="dialog-title">' . lang('Add a term') . '</h5>
+                        <h5 class="dialog-title" id="pg_tr_glossary_modal_title">' . lang('Add a term') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
