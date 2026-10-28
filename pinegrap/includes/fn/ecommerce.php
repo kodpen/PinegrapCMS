@@ -1844,6 +1844,10 @@ function pg_marketplace_product_changed($product_id, $priority = 5)
         return 0;
     }
 
+    // Every stock and price writer ends here, so the bundles that hold the
+    // product follow it (includes/fn/bundles.php).
+    pg_bundle_refresh_for($product_id);
+
     $connectors = PG_FUNCTIONS_DIR . '/includes/api/outbound/connectors/base.php';
 
     if (!is_file($connectors)) {
@@ -2027,7 +2031,7 @@ function pg_product_out_of_stock_sql($tracked, $quantity, $was_flagged)
  * @param int      $product_id
  * @param int|null $before  stock before the write; null when it was not tracked
  * @param int|null $after   stock left after the write; null reads the row
- * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit
+ * @param string   $source  the writer: checkout, local_sale, panel, barcode, bulk_edit, bundle
  * @return int|null the stock left, null when the product is not there
  */
 function pg_product_stock_changed($product_id, $before, $after, $source)

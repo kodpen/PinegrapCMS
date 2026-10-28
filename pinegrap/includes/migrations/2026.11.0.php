@@ -89,6 +89,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_record_schema_type();     // 11.0.55
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
+	upgrade_2026_11_0_product_bundles();        // 11.0.54
 
 }
 
@@ -2782,5 +2783,87 @@ function upgrade_2026_11_0_api_device_pairings() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Team devices can now be paired by scanning a code the person shows in the panel, without typing a password on the phone.');
+
+}
+
+
+// Product bundles (2026.11.0, 11.0.54; includes/fn/bundles.php, the product
+// screen's contents card).
+//
+// A bundle is a products row with bundle = 1 whose contents are other
+// products in fixed whole quantities (product_bundle_items). Its
+// inventory_quantity is a cache of what its components allow, and with
+// bundle_pricing = 'sum' its price is the components' sum less
+// bundle_discount_bp basis points. order_item_components and
+// erp_invoice_item_components keep the contents a sold line had, so a later
+// edit of the bundle never changes an old order or invoice. One bundle line
+// writes one stock move per component, so the ledger's unique key widens to
+// (kind, line_id, product_id): the new key goes in before the old one goes,
+// and every existing row stays unique because a line has one product.
+function upgrade_2026_11_0_product_bundles() {
+
+	$columns = array(
+		'bundle'             => "TINYINT(1) NOT NULL DEFAULT 0",
+		'bundle_pricing'     => "ENUM('fixed','sum') NOT NULL DEFAULT 'fixed'",
+		'bundle_discount_bp' => "SMALLINT UNSIGNED NOT NULL DEFAULT 0",
+	);
+
+	if (!install_add_columns_instant('products', $columns)) {
+
+		foreach ($columns as $column => $definition) {
+
+			install_add_column('products', $column, $definition);
+
+		}
+
+	}
+
+	install_create_table('product_bundle_items', "CREATE TABLE product_bundle_items (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		bundle_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity    INT UNSIGNED NOT NULL DEFAULT 1,
+		sort_order  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uniq_bundle_product (bundle_id, product_id),
+		KEY idx_product (product_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('order_item_components', "CREATE TABLE order_item_components (
+		id             INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id       INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity       INT UNSIGNED NOT NULL DEFAULT 1,
+		unit_cost      BIGINT NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_order_item (order_item_id),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('erp_invoice_item_components', "CREATE TABLE erp_invoice_item_components (
+		id          INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		invoice_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		line_id     INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity    INT UNSIGNED NOT NULL DEFAULT 1,
+		PRIMARY KEY (id),
+		KEY idx_line (line_id),
+		KEY idx_invoice (invoice_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	if (install_table_exists('erp_stock_moves')) {
+
+		install_add_index('erp_stock_moves', 'uniq_line_product', "UNIQUE KEY uniq_line_product (kind, line_id, product_id)");
+
+		if (install_index_exists('erp_stock_moves', 'uniq_line_product')) {
+
+			install_drop_index('erp_stock_moves', 'uniq_line');
+
+		}
+
+	}
+
+	install_note('Products: a product can now be a bundle of other products, sold as one item. Its stock follows its contents and its price can be the sum of their prices less a discount.');
 
 }
