@@ -1510,7 +1510,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                      to files while the sidebar, the tree and the address bar all
                      stayed in the store -- a half-changed screen. Crossing to the
                      other area is a link, the way the sidebar's bridge row is. -->
-                <!-- The way back. Under 992px the sidebar is gone and this menu
+                <!-- The way back. Under 1024px the sidebar is gone and this menu
                      is the whole of the navigation, so the views across
                      everything cannot be the only things in it: an operator who
                      reached Pages from here looks for Folders here too, and the
@@ -5056,14 +5056,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // dragged edge mean something, and what stops eleven columns from
     // squeezing a name down to one letter per line.
 
-    var LIST_BREAKPOINTS = { md: 768, lg: 992, xl: 1200, xxl: 1400 };
+    var LIST_BREAKPOINTS = { md: 768, lg: 1024, xl: 1280, xxl: 1536 };
 
     // Whether a column that asks for a minimum width gets one.
     //
     // Below the first breakpoint the answer is always yes: a phone keeps every
     // column and scrolls the table sideways instead of trimming it. There is
     // nowhere else for the detail to go at that width -- the tree and preview
-    // panes are hidden under 992px too -- and a name that does not fit is
+    // panes are hidden under 1024px too -- and a name that does not fit is
     // already cut with an ellipsis rather than breaking the row.
     //
     // Between the breakpoints the table still trims, because there the panes

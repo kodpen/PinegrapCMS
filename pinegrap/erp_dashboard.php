@@ -187,7 +187,7 @@ $bucket_classes = array(
     'd1_30' => 'bg-info',
     'd31_60' => 'bg-warning',
     'd61_90' => 'bg-danger',
-    'd90p' => 'bg-black',
+    'd90p' => 'bg-inverse',
 );
 
 $output_bar = '';
