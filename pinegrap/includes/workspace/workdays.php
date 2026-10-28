@@ -926,11 +926,11 @@ function ws_holidays_settings_card($self_url)
                                 </div>
                                 <div class="col-6 sm:col-4">
                                     <label class="form-label small" for="ws_hol_from">' . h(lang('First day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" name="from" id="ws_hol_from" required>
+                                    <input class="form-control form-control-sm" type="date" data-pg-date name="from" id="ws_hol_from" required>
                                 </div>
                                 <div class="col-6 sm:col-4">
                                     <label class="form-label small" for="ws_hol_to">' . h(lang('Last day')) . '</label>
-                                    <input class="form-control form-control-sm" type="date" name="to" id="ws_hol_to" aria-describedby="ws_hol_to_hint">
+                                    <input class="form-control form-control-sm" type="date" data-pg-date name="to" id="ws_hol_to" aria-describedby="ws_hol_to_hint">
                                     <div class="form-text" id="ws_hol_to_hint">' . h(lang('Leave it empty for one day.')) . '</div>
                                 </div>
                                 <div class="sm:col-4">
@@ -987,5 +987,5 @@ function ws_holidays_settings_card($self_url)
                         </div>
                     </div>', '') . '
             </div>
-        </div>';
+        </div>' . get_date_picker_format() . pg_fields_script();
 }

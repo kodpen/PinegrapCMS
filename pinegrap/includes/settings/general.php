@@ -625,7 +625,7 @@ if ($maintenance_ready) {
                     </div>' . $maintenance_state . '
                     <div class="pg-f-sm">
                         <label for="maintenance_until" class="form-label">' . lang('Ends at') . '</label>
-                        <input type="datetime-local" name="maintenance_until" id="maintenance_until" class="form-control" value="' . h($maintenance_until_value) . '" />
+                        <input type="datetime-local" data-pg-datetime name="maintenance_until" id="maintenance_until" class="form-control" value="' . h($maintenance_until_value) . '" />' . get_date_picker_format() . pg_fields_script() . '
                     </div>
                     <div class="col-12">
                         <div class="form-text">' . lang('Optional. At this time the site opens to visitors again by itself, and search engines are told to come back then.') . '</div>

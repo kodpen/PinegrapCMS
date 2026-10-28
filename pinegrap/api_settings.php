@@ -1800,15 +1800,15 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<div class="mb-5">
 					<label class="form-label small">' . lang('Allowed addresses') . '</label>
 					<input type="text" class="form-control tagin min-height-tagin" name="ip_allowlist" id="d_ip" data-pg-chips
-						data-placeholder="' . lang('Add an address') . '" value="">' . pg_fields_script() . '
+						data-placeholder="' . lang('Add an address') . '" value="">' . get_date_picker_format() . pg_fields_script() . '
 					<div class="form-text">'
 						. lang('Leave empty to let this application connect from anywhere. Once an address is added, requests from anywhere else are refused.')
 						. '<br>' . lang('Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32') . '</div>
 				</div>
 				<div class="row g-5">
 					<div class="col-6">
-						<label class="form-label small">' . lang('Expires on') . '</label>
-						<input type="date" class="form-control form-control-sm" name="expires_at" id="d_expires">
+						<label class="form-label small" for="d_expires">' . lang('Expires on') . '</label>
+						<input type="date" data-pg-date class="form-control form-control-sm" name="expires_at" id="d_expires">
 						<div class="form-text">' . lang('After this date the key stops working. Leave empty for a key that does not expire.') . '</div>
 					</div>
 					<div class="col-6">
@@ -2198,7 +2198,7 @@ echo '
 		// One drawer serves every application, so the chips are redrawn with
 		// the addresses of the application being opened.
 		pgChips.set("#d_ip", (app.ip || "").split(/[\s,;]+/).filter(Boolean));
-		document.getElementById("d_expires").value = app.expires || "";
+		window.pgDatePicker.set(document.getElementById("d_expires"), app.expires || "");
 		document.getElementById("d_rate").value = app.rate;
 
 		Object.keys(app.scopes).forEach(function (group) {

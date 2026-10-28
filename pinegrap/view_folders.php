@@ -2046,6 +2046,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 <div class="toast-container position-fixed bottom-0 end-0 p-5" id="explorer_toasts"></div>
 
 <?php echo pg_code_editor_includes(); ?>
+<?php echo get_date_picker_format() . pg_fields_script(); ?>
 <script type="text/javascript">
 (function () {
     'use strict';
@@ -12734,7 +12735,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                             '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
                             '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
                             '</select></td>' +
-                            '<td><input type="date" class="form-control form-control-sm access-expiration" title="' + esc(L.expiration_date) + '" value="' + esc(userRow.expiration_date || '') + '"' + (userRow.rights === 1 ? '' : ' style="display:none"') + ' /></td>' +
+                            '<td><div class="access-expiration-wrap"' + (userRow.rights === 1 ? '' : ' style="display:none"') + '><input type="date" data-pg-date class="form-control form-control-sm access-expiration" title="' + esc(L.expiration_date) + '" aria-label="' + esc(L.expiration_date) + '" value="' + esc(userRow.expiration_date || '') + '" /></div></td>' +
                             '</tr>';
                     });
 
@@ -12753,9 +12754,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 (usersHtml ? '<hr /><h6>' + esc(L.access_permissions) + '</h6>' + usersHtml : '') +
                 '<div class="mt-5 text-end"><button type="button" id="access_save_button" class="btn btn-solid theme-success"><span class="bi bi-save me-3"></span>' + esc(L.save) + '</button></div>';
 
+            // The expiry dates go on the date-and-time control once the rows are in the document.
+            if (window.pgFields) {
+                window.pgFields.init(body);
+            }
+
             body.querySelectorAll('.access-rights-select').forEach(function (select) {
                 select.addEventListener('change', function () {
-                    var expiration = select.closest('tr').querySelector('.access-expiration');
+                    // The wrapper, not the hidden store, carries the date box the control draws.
+                    var expiration = select.closest('tr').querySelector('.access-expiration-wrap');
                     expiration.style.display = (select.value === '1') ? '' : 'none';
                 });
             });
