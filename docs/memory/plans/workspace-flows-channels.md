@@ -23,7 +23,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 
 - C5a remove the scheduled-actions routes, their MCP tools, tests and the parity table's `api_routes` lines; rewrite workspace/workspace-scheduled-actions-api.md — done, #2107. The draft card's texts no longer name the removed route.
 
-- C5b before 2026.11.0: the `scheduled` proposal type (api_proposals.php, scheduled_draft.php) becomes a flow draft card. `?start=` on `GET /workspace/flows` is workspace-flows-api.md A1. More flow routes come in their place: workspace-flows-api.md.
+- C5b before 2026.11.0: the `scheduled` proposal type (api_proposals.php, scheduled_draft.php) becomes a flow draft card. `?start=` on `GET /workspace/flows`: workspace-flows-api-filters.md.
 
 - C6 every scheduled action becomes a flow in the 2026.11.0 upgrade, none left read-only; then the scheduled-action form goes. The work is merge plan slice 5: the mark on converted rows approved (#2396), 5a done (#2558).
 

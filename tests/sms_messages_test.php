@@ -58,7 +58,7 @@ function test_sms_messages_normalize_defaults_off()
 {
 	$events = pg_sms_message_normalize(null);
 
-	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back'), array_keys($events));
+	pg_assert_same(array('order_received', 'order_shipped', 'order_delivered', 'stock_back', 'cod_code', 'signin_code'), array_keys($events));
 	pg_assert_same(array('on' => false, 'text' => ''), $events['order_shipped']);
 
 	$events = pg_sms_message_normalize(array('events' => array('order_received' => array('on' => 1, 'text' => 'X'), 'order_shipped' => 'junk')));
@@ -137,3 +137,23 @@ function test_sms_messages_marketplace_order_is_not_texted()
 	pg_assert_contains('if (!$order || !pg_sms_order_texted($order)) {', $source, 'every order message reads the order through the check');
 }
 
+
+// A code's message must carry the code; the built-in one stays allowed.
+function test_sms_messages_code_event_needs_code()
+{
+	$decision = pg_sms_message_settings_decide(sms_messages_test_post(array(
+		'sms_msg_cod_code_on'   => '1',
+		'sms_msg_cod_code_text' => '^^store^^: confirm your order',
+	)), pg_sms_message_normalize(null));
+
+	pg_assert_contains('^^code^^', $decision['marks']['sms_msg_cod_code_text']);
+
+	$decision = pg_sms_message_settings_decide(sms_messages_test_post(array(
+		'sms_msg_cod_code_on'   => '1',
+		'sms_msg_cod_code_text' => 'Code ^^code^^',
+	)), pg_sms_message_normalize(null));
+
+	pg_assert_same(array(), $decision['marks']);
+	pg_assert_same('otp', pg_sms_message_events()['cod_code']['kind']);
+	pg_assert_false(pg_sms_message_normalize(null)['cod_code']['on'], 'off by default');
+}

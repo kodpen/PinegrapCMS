@@ -3618,7 +3618,7 @@ function pg_pb_variant_sets_screen()
                             <form id="search_form" action="view_products.php?mode=variant_sets" method="get" class="search_form col-auto">
                                 <div class="input-group input-group-sm">
                                     <label class="input-group-text mt-1 mb-1" for="status" title="' . lang('Enabled') . '"><i class="bi bi-eye"></i></label>
-                                    <select id="status" name="status" class="form-control mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
+                                    <select id="status" aria-label="' . h(lang('Enabled')) . '" name="status" class="form-control mt-1 mb-1" title="' . lang('Enabled') . '" onchange="submit_form(\'search_form\')">' . $output_status_options . '</select>
                                     <select id="parent" name="parent" class="form-control mt-1 mb-1" title="' . lang('Parent Product Group') . '" onchange="submit_form(\'search_form\')">' . $output_parent_options . '</select>
                                     ' . ($filters_active
                                         ? '<a class="btn btn-outline theme-secondary mt-1 mb-1 no-submit" href="view_products.php?mode=variant_sets&amp;status=&amp;parent=0" title="' . lang('Clear Filters') . '"><i class="bi bi-x-lg"></i></a>'

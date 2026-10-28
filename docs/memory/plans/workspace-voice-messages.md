@@ -7,34 +7,25 @@ description: Plan (2026-10-23, V1 done #1457, V2 done #1494, V1b done #1717, ans
 - Answer a voice recording with a quick voice recording; the assistants use voice messages too.
 
 ## What is there today?
-- Recording, playing and the quick voice reply are built (#1457, #1494): workspace/workspace-voice-recording.md. Uploads never call `ws_message_ask_assistants()`.
-- Assistants, MCP, webhooks, push, search and recaps (`ws_recap_transcript()`: `[file: name]`) read only `body`.
-- get_file.php answers `Range` with 206 (#1717, platform/get-file-byte-ranges.md).
-- Not blocked: `Permissions-Policy: microphone=(self)` (`waf_send_security_headers()`, waf.php), keep `(self)`; CSP `media-src` has `blob:`.
-
-## What is proposed? (answered in #2417)
-- A voice message: a message with an audio file, by the existing upload path and read rules (no site member). Mic in place of Send while the box is empty; vanilla `assets/js/workspace_voice.js` (proposed) in `workspace.min.js`; labels via `ws_voice_js_strings()` (proposed), keys added with `php tools/tr_add.php`.
-- Transcription: admin switch, off by default, named provider ("audio is sent to OpenAI"), sealed key; a private channel only where its manager allowed (like `ai_access`); `pg_audit()` line. One OpenAI-compatible `/audio/transcriptions` call (`pg_curl_tls()`, `pinegrap_user_agent()`); the provider card of plans/workspace-agent-handles.md step 3 if built first.
-- Owns recordings and transcripts; plans/workspace-composer-tools.md (in writing) owns live dictation. Erasure (plans/privacy-data-pack-audit-log.md step 4) covers both.
-- Each slice ships its API; no new scope (one would go into `ws_owner_scopes()`).
+- Recording, playing, the quick voice reply (#1457, #1494, #1717: workspace/workspace-voice-recording.md) and transcripts on the server side (#2674, #2696: workspace-voice-transcripts.md, workspace-voice-transcript-job.md).
+- Assistants, webhooks, push, search and recaps (`ws_recap_transcript()`: `[file: name]`) read only `body`. Live dictation belongs to plans/workspace-composer-tools.md; erasure (plans/privacy-data-pack-audit-log.md step 4) covers recordings and transcripts. No new API scope.
 
 ## Slices
-1. Done (#1457): V1 record, send, play (no schema; `files.create` takes them already).
-2. Done (#1717): V1b `Range` 206 in get_file.php (no schema, no `lang()`).
-3. Done (#1494): V2 quick voice reply (no schema): a mic on a voice message (tap: a phone's long press opens the menu) sends with `parent_id`; `ws_attach` and `files.create` (dry run too) learn it; quote "Voice message".
+1. Done: V1 record, send, play (#1457); V1b `Range` 206 (#1717); V2 quick voice reply (#1494).
 4. V3 transcripts (schema approved in #2417), three PRs, each after the previous merges:
    - V3a (#2674): schema 11.0.89 (`ws_voice`, `ws_channels.voice_access`, two config columns, texts in `config_text`), the settings card, `ws_voice_channel_allowed()`: workspace/workspace-voice-transcripts.md.
-   - V3b (#2696): the row on a voice upload, `ws_voice_kick()`/`ws_voice_job()` (pinned HTTPS call, size cap, holds), delete for everyone, `file.voice` in the API and MCP. Server side only: draft #2545 holds `workspace.js` and `actions.php`.
-   - V3c (after #2545 lands or with it): the channel menu switch (`ws_channel_voice`, private-channel consent naming the provider), the transcript under the player, a panel kick for servers without PHP-FPM, duration and peaks from the recorder, `workspace.message.transcribed` with `channel_id`, public channels only.
+   - V3b (#2696): the row on a voice upload, `ws_voice_kick()`/`ws_voice_job()` (pinned HTTPS call, size cap, holds), delete for everyone, `file.voice` in the API and MCP. Server side only.
+   - V3c (waits for #2545, which edits `assets/js/workspace.js`, `workspace.min.js` and `includes/workspace/actions.php`; claim once it has merged), about 400-600 product lines:
+     - Channel switch: `ws_voice_channel_set($viewer, $channel, $allowed)` in voice.php as `ws_ai_channel_set()` (ai.php) does it (`ws_can_manage_channel()`, `voice_access` 1/2, a system line), action `ws_channel_voice` in actions.php beside `ws_channel_ai`, a `voice` part (allowed, can be asked) in the channel payload beside `channel.ai`, and the menu item in workspace.js beside `ai_allow` with a private-channel confirm that names `ws_voice_config()['provider']`; texts through `ws_voice_js_strings()`.
+     - Transcript under the player: `PGWsVoice.player()` in `assets/js/workspace_voice.js` draws the text (marked as machine text, with provider) when the message's file carries it; the message payload needs it (the panel's file part, as `file.voice` in the API: `ws_voice_api_present()`).
+     - Panel kick for servers without PHP-FPM: an action `ws_voice_kick` (add it to the session-free list in `includes/panel/actions.php` beside `ws_ai_kick`) the screen calls after a recording is sent and while a transcript is queued; returns `ws_voice_kick(1)`'s status.
+     - Duration and peaks from the recorder: `ws_attach` takes them (bounded), `ws_voice_queue()` stores them; the player draws peaks.
+     - `workspace.message.transcribed` (public channels only, with `channel_id`) from `ws_voice_run()` once done; its line in `workspace_flows_parity_table()` (tests/workspace_flows_parity_test.php) and the webhook catalogue: read `workspace-flows-parity-test.md` and `workspace-webhook-channel-groups.md` first. If that needs a `workspace_flow*` file, check no open PR holds it.
 5. V4 assistants hear it: transcript in Pinegrap AI's context, `ws_api_claude_request_present()`, `ws_api_channel_context()`, recaps, push, search; a recording with typed tags (mic kept while the box holds only tags) or answering an assistant asks once transcribed.
 6. V5 (optional) answers read aloud by `speechSynthesis`; V6 a recording in a note (`ws_note_file`).
 
-## Which questions are answered? (#2417)
-1. Transcript in `ws_voice`, not in `body`.
-2. First provider: the site's own key (OpenAI-compatible), the gateway as a preset later.
-3. Private channels: off until a manager allows (a `ws_channels` column, in the V3 step).
-4. Delete for everyone removes the recording and the transcript (a discussion copy that shares the id is re-pointed).
-5. Cap 5 minutes.
+## Which questions are answered?
+- #2417: transcript in `ws_voice`; the site's own OpenAI-compatible key (a gateway preset later); private channels off until a manager allows; delete for everyone removes recording and transcript; cap 5 minutes.
 
 ## Where to start?
-- V3c once V3b has merged and #2545 no longer holds `workspace.js` and `actions.php`.
+- V3c (above) once #2545 has merged; memory: workspace/workspace-voice-transcripts.md and workspace-voice-transcript-job.md.

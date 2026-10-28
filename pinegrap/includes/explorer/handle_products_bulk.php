@@ -431,6 +431,11 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
                 WHERE id = '" . e($product_id) . "'");
             pg_audit_record('update', 'products', $product_id, $audit_before);
 
+            // A bundle's stock (and a summed price) is worked out from its
+            // components: whatever this edit wrote there is put back
+            // (includes/fn/bundles.php).
+            pg_bundle_refresh((int) $product_id);
+
             if ($bulk_price_method !== '') {
                 pg_price_history_queue($product_id, 'panel');
             }

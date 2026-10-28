@@ -419,6 +419,7 @@
     "user role": "kullanıcı rolü",
     "user signed in after clearing older devices": "kullanıcı eski cihazları kapatıp giriş yaptı",
     "user signed in with Google": "kullanıcı Google ile giriş yaptı",
+    "user signed in with a code sent by SMS": "kullanıcı SMS ile gönderilen kodla giriş yaptı",
     "user signed in with a passkey ({var:1})": "kullanıcı geçiş anahtarıyla oturum açtı ({var:1})",
     "user signed in with a recovery code ({var:1} left)": "kullanıcı kurtarma koduyla oturum açtı ({var:1} kod kaldı)",
     "user signed in with two-step verification": "kullanıcı iki adımlı doğrulamayla oturum açtı",

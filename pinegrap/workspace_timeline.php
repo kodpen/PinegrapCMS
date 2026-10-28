@@ -31,7 +31,6 @@ pg_page_shell([
     ]) . '
 <main id="content" class="container-fluid p-0">
     <div class="ws-shell">
-        ' . ws_screen_rail($viewer, 'timeline') . '
         <div class="ws-shell-main">
             <div class="row">
                 <div class="col-12">

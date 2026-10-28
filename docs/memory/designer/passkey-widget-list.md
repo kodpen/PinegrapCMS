@@ -23,9 +23,10 @@ description: Passkeys in the designed account_security widget (PR #1843, #2279):
 ## How does an account without TOTP add one? (PR #2279)
 - As on the classic page: password + a code e-mailed to the account (`email_code`). Flag `passkey_asks_email_code`; a button bound to `passkey_send_code` becomes `type="button" data-pg-passkey-send`, which the script wires to `PgPasskey.sendEmailCode()` (sentence into `[data-pg-passkey-sent]`, else the message). The first passkey's recovery codes replace the form (`showRecoveryCodes()`).
 - Only a tree with a control named `email_code` offers it (`_pg_sec_tree_has_email_code()`); a tree saved before keeps `passkey_needs_mfa` (`pg_sw_passkey_add_state()`).
+- New recovery codes: the `mfa_email_recovery` form (core/passkey-without-totp.md).
 - Device rows: `__device_passkey` (the passkey that opened the session), flag `device_by_passkey`, `__passkey_id` filled so a `passkey_remove` button there removes it; the proof flags apply in device rows too.
 
 ## What was not verified?
-- Unit tests only (`tests/widget_lists_passkeys_test.php`, the editor twin test): no browser authenticator, no designer canvas round.
+- Unit tests only (`tests/widget_lists_passkeys_test.php`, the twin test); no browser or canvas run.
 
 Related: docs/memory/core/passkey-account-section.md, docs/memory/designer/account-widget-forms.md, docs/memory/designer/widget-lists.md

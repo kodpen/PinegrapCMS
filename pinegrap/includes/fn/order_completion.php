@@ -174,3 +174,639 @@ function pg_order_complete($order_id, array $values, array $documents = array())
 
     return $order_number;
 }
+
+/**
+ * The addresses a receipt is copied to: the store's order address first,
+ * then each product's receipt BCC address in line order, once each, the
+ * ones validate_email_address() accepts. Pure.
+ *
+ * @param string   $store_address     ECOMMERCE_EMAIL_ADDRESS
+ * @param string[] $product_addresses products.order_receipt_bcc_email_address of each line
+ * @return string[]
+ */
+function pg_order_receipt_bcc_list($store_address, array $product_addresses)
+{
+    $addresses = array();
+
+    if ((string) $store_address !== '') {
+        $addresses[] = (string) $store_address;
+    }
+
+    foreach ($product_addresses as $address) {
+        $address = (string) $address;
+
+        if (($address !== '') && !in_array($address, $addresses) && validate_email_address($address)) {
+            $addresses[] = $address;
+        }
+    }
+
+    return $addresses;
+}
+
+/**
+ * E-mails the receipt of a completed order: one copy to the customer with
+ * the BCC addresses, or, for an order that opened an account, the customer's
+ * copy on its own (it carries the set password link) and one copy to each
+ * BCC address (pg_order_receipt_copies()). The BCC addresses come from the
+ * order's lines. Queued, never sent in the request.
+ *
+ * @param int        $order_id
+ * @param string|int $order_number
+ * @param array      $receipt        the checkout page's receipt settings:
+ *                                   email (1 = send), subject, format
+ *                                   (plain_text or html), header, footer, page_id
+ * @param string     $customer_email the billing e-mail address
+ * @param bool       $new_account    the order opened an account whose link
+ *                                   the customer's copy carries
+ * @return void
+ */
+function pg_order_complete_receipt($order_id, $order_number, array $receipt, $customer_email, $new_account)
+{
+    $order_id = (int) $order_id;
+
+    if (($order_id <= 0) || (($receipt['email'] ?? '') != 1)) {
+        return;
+    }
+
+    $format = (string) ($receipt['format'] ?? '');
+    $header = (string) ($receipt['header'] ?? '');
+    $footer = (string) ($receipt['footer'] ?? '');
+    $subject = (string) ($receipt['subject'] ?? '');
+
+    $product_addresses = array();
+    $result = db_q(
+        "SELECT products.order_receipt_bcc_email_address
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE order_items.order_id = ?" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC", array($order_id)) or output_error('Query failed.');
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $product_addresses[] = (string) ($row['order_receipt_bcc_email_address'] ?? '');
+    }
+
+    $bcc_email_addresses = pg_order_receipt_bcc_list(ECOMMERCE_EMAIL_ADDRESS, $product_addresses);
+
+    foreach (pg_order_receipt_copies($customer_email, $bcc_email_addresses, (bool) $new_account) as $receipt_copy) {
+        pg_order_receipt_audience($receipt_copy['audience']);
+
+        if ($format == 'plain_text') {
+            $body = '';
+
+            // A header starts the body, followed by a blank line.
+            if ($header != '') {
+                $body .= $header . "\n" . "\n";
+            }
+
+            include_once(PG_FUNCTIONS_DIR . '/get_order_receipt_in_plain_text.php');
+
+            $body .= get_order_receipt_in_plain_text($order_id);
+
+            // A footer ends the body, after a blank line.
+            if ($footer != '') {
+                $body .= "\n" . "\n" . $footer;
+            }
+
+        } else {
+            require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+            // The order receipt page's HTML; a page built in the visual editor
+            // draws the order with its order view widget, which is told the
+            // order here (there is no ?order_id= in an e-mail).
+            $body = get_page_content($receipt['page_id'] ?? '', $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
+                array('order_id' => $order_id));
+
+            // The receipt reads in the language the order was placed in.
+            if (function_exists('pg_tr_email')) {
+                $body = pg_tr_email($body);
+            }
+        }
+
+        pg_order_receipt_audience('screen');
+
+        email(array(
+            'to' => $receipt_copy['to'],
+            'bcc' => $receipt_copy['bcc'],
+            'from_name' => ORGANIZATION_NAME,
+            'from_email_address' => EMAIL_ADDRESS,
+            'subject' => (function_exists('pg_tr_text') ? pg_tr_text($subject) : $subject) . $order_number,
+            'format' => $format,
+            'body' => $body,
+            // The customer's copy may carry the set password link, which
+            // must stay out of the failure log and the delivery-failed notice.
+            'secret' => (($receipt_copy['audience'] === 'customer') && $new_account),
+            // The checkout documents the customer accepted go with the
+            // receipt as they were kept with the order.
+            'attachments' => pg_legal_documents_attachments($order_id, $order_number),
+            'queue' => true));
+    }
+}
+
+/**
+ * The date reached by counting transit days from $start, $start included:
+ * $direction -1 walks back (a ship date from the arrival date), 1 walks
+ * forward (a delivery date from the ship date). A Sunday or Saturday the
+ * shipping method does not carry on, and an excluded date of the method,
+ * is not counted. Returns the date on which day $days + 1 is counted. Pure.
+ *
+ * @param string   $start     Y-m-d
+ * @param int      $days      transit days
+ * @param int      $direction -1 or 1
+ * @param bool     $sunday    transit on Sunday
+ * @param bool     $saturday  transit on Saturday
+ * @param string[] $excluded  Y-m-d dates the method does not carry on
+ * @return string Y-m-d
+ */
+function pg_order_transit_date($start, $days, $direction, $sunday, $saturday, array $excluded)
+{
+    $step = ($direction < 0) ? '-1 day' : '+1 day';
+    $date = '';
+    $count = 0;
+
+    while ($count <= $days) {
+        $date = ($date === '') ? (string) $start : date('Y-m-d', strtotime($step, strtotime($date)));
+
+        $day_name = date('l', strtotime($date));
+
+        if (
+            (($day_name != 'Sunday') || $sunday)
+            && (($day_name != 'Saturday') || $saturday)
+            && !in_array($date, $excluded)
+        ) {
+            $count++;
+        }
+    }
+
+    return $date;
+}
+
+/**
+ * A ship date moved by a ship date adjustment (days, negative is earlier),
+ * never before the order date. Pure.
+ *
+ * @param string $ship_date  Y-m-d
+ * @param int    $adjustment days
+ * @param string $order_date Y-m-d
+ * @return string Y-m-d
+ */
+function pg_order_ship_date_adjusted($ship_date, $adjustment, $order_date)
+{
+    $adjustment = (int) $adjustment;
+
+    if ($adjustment == 0) {
+        return $ship_date;
+    }
+
+    $ship_date = date('Y-m-d', strtotime((($adjustment < 0) ? $adjustment : '+' . $adjustment) . ' day', strtotime($ship_date)));
+
+    return ($ship_date < $order_date) ? $order_date : $ship_date;
+}
+
+/**
+ * Writes each recipient's ship and estimated delivery dates, and, for an
+ * order whose customer auto-registration created ('new') or found
+ * ('existing') an account, adds the recipients to that account's address
+ * book (an existing account only gains a name it does not have, so one
+ * customer never overwrites another's book). A recipient whose ship date
+ * cannot be worked out keeps its dates and goes on to the next.
+ *
+ * @param int    $order_id
+ * @param int    $order_date        unix time the order was placed
+ * @param string $auto_registration '', 'new' or 'existing'
+ * @param int    $user_id           the account auto-registration used
+ * @return void
+ */
+function pg_order_complete_ship_dates($order_id, $order_date, $auto_registration, $user_id)
+{
+    $order_id = (int) $order_id;
+
+    if (!ECOMMERCE_SHIPPING || ($order_id <= 0)) {
+        return;
+    }
+
+    // The excluded transit dates of every shipping method, read once.
+    $excluded_transit_dates = array();
+
+    foreach (db_items("SELECT shipping_method_id, date FROM excluded_transit_dates") as $excluded_transit_date_item) {
+        $excluded_transit_dates[$excluded_transit_date_item['shipping_method_id']][] = $excluded_transit_date_item['date'];
+    }
+
+    $ship_tos = db_items(
+        "SELECT
+            ship_tos.id,
+            ship_tos.ship_to_name,
+            ship_tos.salutation,
+            ship_tos.first_name,
+            ship_tos.last_name,
+            ship_tos.company,
+            ship_tos.address_1,
+            ship_tos.address_2,
+            ship_tos.city,
+            ship_tos.state,
+            ship_tos.zip_code,
+            ship_tos.country,
+            ship_tos.address_type,
+            ship_tos.phone_number,
+            ship_tos.arrival_date,
+            shipping_methods.id AS shipping_method_id,
+            shipping_methods.base_transit_days,
+            shipping_methods.adjust_transit,
+            shipping_methods.transit_on_sunday,
+            shipping_methods.transit_on_saturday,
+            countries.id AS country_id,
+            countries.transit_adjustment_days
+        FROM ship_tos
+        LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
+        LEFT JOIN countries ON ship_tos.country = countries.code
+        WHERE ship_tos.order_id = '" . $order_id . "'");
+
+    foreach ($ship_tos as $ship_to) {
+        // The address book comes before the dates, because the dates below
+        // skip to the next recipient when no ship date can be worked out.
+        if (
+            $auto_registration == 'new'
+            or (
+                $auto_registration == 'existing'
+                and !db(
+                    "SELECT id FROM address_book
+                    WHERE
+                        user = '" . e($user_id) . "'
+                        AND ship_to_name = '" . e($ship_to['ship_to_name']) . "'")
+            )
+        ) {
+            db(
+                "INSERT INTO address_book (
+                    user,
+                    ship_to_name,
+                    salutation,
+                    first_name,
+                    last_name,
+                    company,
+                    address_1,
+                    address_2,
+                    city,
+                    state,
+                    zip_code,
+                    country,
+                    address_type,
+                    phone_number)
+                VALUES (
+                    '" . e($user_id) . "',
+                    '" . e($ship_to['ship_to_name']) . "',
+                    '" . e($ship_to['salutation']) . "',
+                    '" . e($ship_to['first_name']) . "',
+                    '" . e($ship_to['last_name']) . "',
+                    '" . e($ship_to['company']) . "',
+                    '" . e($ship_to['address_1']) . "',
+                    '" . e($ship_to['address_2']) . "',
+                    '" . e($ship_to['city']) . "',
+                    '" . e($ship_to['state']) . "',
+                    '" . e($ship_to['zip_code']) . "',
+                    '" . e($ship_to['country']) . "',
+                    '" . e($ship_to['address_type']) . "',
+                    '" . e($ship_to['phone_number']) . "')");
+        }
+
+        $method_excluded = $excluded_transit_dates[$ship_to['shipping_method_id']] ?? array();
+        $transit_days = (int) $ship_to['base_transit_days'];
+
+        // Transit days to the recipient's country, when the method adds them.
+        if (($ship_to['adjust_transit'] == 1) && ($ship_to['country_id'] != '')) {
+            $transit_days += (int) $ship_to['transit_adjustment_days'];
+        }
+
+        $ship_date = '';
+
+        // Arrival at once: the ship date follows from the longest
+        // preparation time of the recipient's products.
+        if ($ship_to['arrival_date'] == '0000-00-00') {
+            $preparation_time = db(
+                "SELECT MAX(products.preparation_time)
+                FROM order_items
+                LEFT JOIN products ON order_items.product_id = products.id
+                WHERE order_items.ship_to_id = '" . e($ship_to['id']) . "'");
+
+            require_once(PG_FUNCTIONS_DIR . '/shipping.php');
+
+            $response = get_ship_date(array(
+                'preparation_time' => $preparation_time,
+                'shipping_method' => array('id' => $ship_to['shipping_method_id'])));
+
+            if ($response['status'] == 'error') {
+                continue;
+            }
+
+            $ship_date = $response['ship_date'];
+
+        // A requested arrival date: work back from it by the transit time.
+        } else if ($ship_to['shipping_method_id'] != '') {
+            $ship_date = pg_order_transit_date($ship_to['arrival_date'], $transit_days, -1, ($ship_to['transit_on_sunday'] == 1), ($ship_to['transit_on_saturday'] == 1), $method_excluded);
+
+            // A ship date adjustment for the zip code prefix and method applies
+            // when the requested date is an active arrival date of the store.
+            if (
+                db_value(
+                    "SELECT COUNT(*)
+                    FROM arrival_dates
+                    WHERE
+                        (status = 'enabled')
+                        AND (start_date <= CURRENT_DATE())
+                        AND (concat(end_date, ' " . ECOMMERCE_END_OF_DAY_TIME . "') > NOW())
+                        AND (arrival_date = '" . e($ship_to['arrival_date']) . "')")
+                > 0
+            ) {
+                $adjustment = db_value(
+                    "SELECT adjustment
+                    FROM ship_date_adjustments
+                    WHERE
+                        (zip_code_prefix = '" . escape(mb_substr($ship_to['zip_code'], 0, 3)) . "')
+                        AND (shipping_method_id = '" . e($ship_to['shipping_method_id']) . "')");
+
+                if ($adjustment) {
+                    $ship_date = pg_order_ship_date_adjusted($ship_date, $adjustment, date('Y-m-d', (int) $order_date));
+                }
+            }
+        }
+
+        // Arrival at once with a known method: the delivery date is the ship
+        // date plus the transit time. Otherwise it is the requested date.
+        if ($ship_to['arrival_date'] == '0000-00-00' and $ship_to['shipping_method_id']) {
+            $delivery_date = pg_order_transit_date($ship_date, $transit_days, 1, ($ship_to['transit_on_sunday'] == 1), ($ship_to['transit_on_saturday'] == 1), $method_excluded);
+        } else {
+            $delivery_date = $ship_to['arrival_date'];
+        }
+
+        db_q("UPDATE ship_tos SET ship_date = ?, delivery_date = ? WHERE id = ?",
+            array((string) $ship_date, (string) $delivery_date, (int) $ship_to['id']));
+    }
+}
+
+/**
+ * The end date of a membership or a folder access bought now: days x
+ * quantity added to the current end when it is still ahead, else to today.
+ * An empty end (none yet) counts as past. Pure.
+ *
+ * @param string $end      Y-m-d or ''
+ * @param int    $days     days one unit gives
+ * @param int    $quantity units bought
+ * @param string $today    Y-m-d
+ * @return string Y-m-d
+ */
+function pg_order_extended_until($end, $days, $quantity, $today)
+{
+    $from = ((string) $end <= (string) $today) ? $today : $end;
+
+    return date('Y-m-d', strtotime($from) + ($days * $quantity * 86400));
+}
+
+/**
+ * Whether a folder access purchase writes the user's access row: not over
+ * edit rights (2), nor over a private access that never ends. Pure.
+ *
+ * @param string $rights          aclfolder_rights, '' for no row
+ * @param string $expiration_date the row's expiration date, '' for no row
+ * @return bool
+ */
+function pg_order_folder_access_extends($rights, $expiration_date)
+{
+    return ($rights != 2) && (($rights != 1) || ($expiration_date != '0000-00-00'));
+}
+
+/**
+ * Takes an order line's quantity off its product's stock, when the product
+ * tracks stock and has some, marks it out of stock when this sale emptied it
+ * (once: notification and page cache), and announces the change
+ * (pg_product_stock_changed(): updated_since stamp, inventory.changed,
+ * stock.low on the crossing, the marketplace queue).
+ *
+ * The first line of a product reads its stock again right before the
+ * decrement (the line was read before the payment, and a sale or restock
+ * made meanwhile would otherwise be the 'before' the stock.low crossing is
+ * decided from); a later line of the same product (another recipient)
+ * carries on from what the line above left, kept in $stock_left.
+ *
+ * @param array  $line       an order line joined to its product: product_id,
+ *                           product_name, short_description, quantity,
+ *                           inventory, inventory_quantity
+ * @param array  $stock_left product id => stock left, carried between lines
+ * @param string $actor      user name on the out-of-stock notification
+ * @return void
+ */
+function pg_order_complete_line_stock(array $line, array &$stock_left, $actor)
+{
+    $product_id = $line['product_id'];
+    $inventory = $line['inventory'];
+    $inventory_quantity = $line['inventory_quantity'];
+
+    if (isset($stock_left[$product_id])) {
+        $inventory = 1;
+        $inventory_quantity = $stock_left[$product_id];
+    } else {
+        $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+
+        if ($stock_now) {
+            $inventory = $stock_now['inventory'];
+            $inventory_quantity = $stock_now['inventory_quantity'];
+        }
+    }
+
+    if (($inventory != 1) || ($inventory_quantity == 0)) {
+        return;
+    }
+
+    db_q("UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?",
+        array((string) $line['quantity'], (string) $product_id)) or output_error('Query failed.');
+
+    // Out of stock from the stock left after this line, not from the stock
+    // read before: the column is unsigned and the session sql_mode is not
+    // strict, so a sale through the stock leaves 0. The out_of_stock guard
+    // makes the flag and the warning happen once per product.
+    db_q(
+        "UPDATE products SET
+            out_of_stock = '1',
+            out_of_stock_timestamp = UNIX_TIMESTAMP()
+        WHERE
+            (id = ?)
+            AND (inventory_quantity <= 0)
+            AND (out_of_stock != '1')",
+        array((string) $product_id)) or output_error('Query failed.');
+
+    if (mysqli_affected_rows(db::$con) > 0) {
+        // The product shows as sold out from now on: every page the page
+        // cache keeps is made old once the order is through.
+        if (function_exists('pg_page_cache_mark_dirty')) {
+            pg_page_cache_mark_dirty();
+        }
+
+        create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$line['product_name'] . ' - ' . $line['short_description'], 'product_id'=>$product_id, 'user'=>$actor));
+    }
+
+    // Queued, not sent: a completion never waits on somebody else's server.
+    // The stock left is read back, because the decrement happened in the
+    // UPDATE.
+    $stock_left[$product_id] = pg_product_stock_changed(
+        $product_id,
+        (int) $inventory_quantity,
+        null,
+        'checkout');
+}
+
+/**
+ * For an order line that reserves a calendar event (calendars on,
+ * reservations still on for the event): takes the quantity off the event's
+ * remaining spots while the event still limits them (a first reservation
+ * starts the count from the initial spots), and creates the event's
+ * reserved auto e-mail campaigns for the contact.
+ *
+ * @param array $line       calendar_event_id, recurrence_number, reservations,
+ *                          limit_reservations, number_of_initial_spots, quantity
+ * @param int   $contact_id
+ * @return void
+ */
+function pg_order_complete_line_reservation(array $line, $contact_id)
+{
+    $calendar_event_id = $line['calendar_event_id'];
+    $recurrence_number = $line['recurrence_number'];
+    $quantity = $line['quantity'];
+
+    if ((CALENDARS != TRUE) || ($calendar_event_id == '') || ($line['reservations'] != 1)) {
+        return;
+    }
+
+    if ($line['limit_reservations'] == 1) {
+        $result = db_q(
+            "SELECT calendar_event_id
+            FROM remaining_reservation_spots
+            WHERE
+                (calendar_event_id = ?)
+                AND (recurrence_number = ?)",
+            array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
+
+        if (mysqli_num_rows($result) > 0) {
+            db_q(
+                "UPDATE remaining_reservation_spots
+                SET number_of_remaining_spots = (number_of_remaining_spots - ?)
+                WHERE
+                    (calendar_event_id = ?)
+                    AND (recurrence_number = ?)",
+                array((int) $quantity, (string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
+
+        // No record yet: the initial spots less the spots this line reserves.
+        } else {
+            db_q(
+                "INSERT INTO remaining_reservation_spots (
+                    calendar_event_id,
+                    recurrence_number,
+                    number_of_remaining_spots)
+                VALUES (
+                    ?,
+                    ?,
+                    ?)",
+                array((string) $calendar_event_id, (string) $recurrence_number, (string) ($line['number_of_initial_spots'] - $quantity))) or output_error('Query failed.');
+        }
+    }
+
+    create_auto_email_campaigns(array(
+        'action' => 'calendar_event_reserved',
+        'action_item_id' => $calendar_event_id,
+        'calendar_event_recurrence_number' => $recurrence_number,
+        'contact_id' => $contact_id));
+}
+
+/**
+ * For a membership renewal line: gives the contact a member id (the order's
+ * reference code) when it has none, and moves the membership's expiration
+ * date on by the line's days x quantity (pg_order_extended_until()) for
+ * every contact with that member id.
+ *
+ * @param array  $line           membership_renewal (days), quantity
+ * @param int    $contact_id
+ * @param string $reference_code the order's reference code
+ * @return bool true when the line renewed a membership
+ */
+function pg_order_complete_line_membership(array $line, $contact_id, $reference_code)
+{
+    if (!$line['membership_renewal']) {
+        return false;
+    }
+
+    $result = db_q("SELECT member_id, expiration_date FROM contacts WHERE id = ?", array((string) $contact_id)) or output_error('Query failed');
+    $row = mysqli_fetch_assoc($result);
+    $member_id = $row['member_id'];
+
+    if (!$member_id) {
+        $member_id = $reference_code;
+        $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
+        db_q("UPDATE contacts SET member_id = ? WHERE id = ?", array((string) $member_id, (string) $contact_id)) or output_error('Query failed');
+        pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
+    }
+
+    $new_expiration_date = pg_order_extended_until($row['expiration_date'], $line['membership_renewal'], $line['quantity'], date('Y-m-d'));
+
+    $audit_members = pg_audit_fetch_by('contacts', 'member_id', $member_id);
+    db_q("UPDATE contacts SET expiration_date = ? WHERE member_id = ?", array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
+    pg_audit_site_record_many('update', 'contacts', $audit_members);
+
+    return true;
+}
+
+/**
+ * For a line that grants private access: writes the user's access row for
+ * the product's folder (pg_order_folder_access_extends() decides; a limited
+ * access ends days x quantity on, pg_order_extended_until()), and sets the
+ * product's send-to page as the user's home page.
+ *
+ * @param array $line    grant_private_access, private_folder, private_days,
+ *                       send_to_page, quantity
+ * @param int   $user_id
+ * @return void
+ */
+function pg_order_complete_line_folder_access(array $line, $user_id)
+{
+    if (!$line['grant_private_access']) {
+        return;
+    }
+
+    $user_id = (int) $user_id;
+    $private_folder = (int) $line['private_folder'];
+
+    $row = db_item(
+        "SELECT
+            aclfolder_rights AS rights,
+            expiration_date
+        FROM aclfolder
+        WHERE
+            (aclfolder_user = '$user_id')
+            AND (aclfolder_folder = '$private_folder')");
+
+    // A first purchase finds no access row yet.
+    $rights = $row['rights'] ?? '';
+    $expiration_date = $row['expiration_date'] ?? '';
+
+    if (pg_order_folder_access_extends($rights, $expiration_date)) {
+        // The row is replaced, not updated: there may be none.
+        db(
+            "DELETE FROM aclfolder
+            WHERE
+                (aclfolder_user = '$user_id')
+                AND (aclfolder_folder = '$private_folder')");
+
+        $new_expiration_date = $line['private_days'] ? pg_order_extended_until($expiration_date, $line['private_days'], $line['quantity'], date('Y-m-d')) : '';
+
+        db(
+            "INSERT INTO aclfolder (
+                aclfolder_user,
+                aclfolder_folder,
+                aclfolder_rights,
+                expiration_date)
+            VALUES (
+                '$user_id',
+                '$private_folder',
+                '1',
+                '" . e($new_expiration_date) . "')");
+    }
+
+    if ($line['send_to_page']) {
+        db_q("UPDATE user SET user_home = ? WHERE user_id = ?", array((string) $line['send_to_page'], (string) $user_id)) or output_error('Query failed');
+    }
+}

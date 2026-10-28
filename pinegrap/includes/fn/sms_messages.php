@@ -32,7 +32,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The events that send a message, in the order the card lists them.
  *
  * @return array event => kind (pg_sms_kinds()), label, text (the built-in
- *               template), fields (the ^^name^^ fields it may use)
+ *               template), fields (the ^^name^^ fields it may use), note
+ *               (optional: what switching it on changes)
  */
 function pg_sms_message_events()
 {
@@ -63,6 +64,25 @@ function pg_sms_message_events()
             'label'  => lang('Product back in stock'),
             'text'   => lang('^^store^^: ^^product^^, which you asked us about, is back in stock. ^^url^^'),
             'fields' => array('store', 'product', 'url'),
+        ),
+        // The one-time code a cash-on-delivery order is confirmed with
+        // (includes/fn/sms_codes.php): sent before the order exists, so it
+        // has no order number.
+        'cod_code' => array(
+            'kind'   => 'otp',
+            'label'  => lang('Cash-on-delivery confirmation code'),
+            'text'   => lang('^^store^^: Your code to confirm your cash-on-delivery order is ^^code^^. Do not share it with anyone.'),
+            'fields' => array('store', 'code'),
+            'note'   => lang('While this is on, an order paid by offline payment (not one put on account) is placed only with the code texted to its billing phone number, which must be a mobile number.'),
+        ),
+        // A member's sign-in code, asked for at the second step in place of
+        // the authenticator app's code.
+        'signin_code' => array(
+            'kind'   => 'otp',
+            'label'  => lang('Sign-in code'),
+            'text'   => lang('^^store^^: Your sign-in code is ^^code^^. Do not share it with anyone.'),
+            'fields' => array('store', 'code'),
+            'note'   => lang('While this is on, a member account (User role) with two-step verification may ask for a code to its contact\'s mobile phone number instead of the code from its app. Staff accounts are never offered it.'),
         ),
     );
 }
@@ -191,12 +211,17 @@ function pg_sms_message_settings_decide($post, $before)
             continue;
         }
 
-        $unknown = array_diff(pg_sms_message_template_fields($text), $definition['fields']);
+        $used = pg_sms_message_template_fields($text);
+        $unknown = array_diff($used, $definition['fields']);
 
         if ($unknown) {
             $marks['sms_msg_' . $event . '_text'] = lang(array(
                 'string' => 'Unknown field {var:1}. This message can use: {var:2}',
                 'vars'   => array(h('^^' . reset($unknown) . '^^'), h(pg_sms_message_field_list($definition['fields'])))));
+
+        // A code's message without the code would confirm nothing.
+        } elseif (($text !== '') && in_array('code', $definition['fields'], true) && !in_array('code', $used, true)) {
+            $marks['sms_msg_' . $event . '_text'] = lang(array('string' => 'The message must contain {var:1}.', 'vars' => array(h('^^code^^'))));
         }
     }
 
@@ -308,11 +333,32 @@ function pg_sms_message_settings_fields()
                                                 <label class="" for="' . h($name) . 'on">' . h($definition['label']) . '</label>
                                             </div>
                                             <textarea name="' . h($name) . 'text" id="' . h($name) . 'text" class="form-control mt-3" rows="2" maxlength="' . (int) pg_sms_message_max_length() . '">' . h($text) . '</textarea>
-                                            <div class="form-text">' . lang(array('string' => 'Fields: {var:1}', 'vars' => array(h(pg_sms_message_field_list($definition['fields']))))) . '</div>
+                                            <div class="form-text">' . lang(array('string' => 'Fields: {var:1}', 'vars' => array(h(pg_sms_message_field_list($definition['fields']))))) . '</div>' . (isset($definition['note']) ? '
+                                            <div class="form-text">' . h($definition['note']) . '</div>' : '') . '
                                         </div>';
     }
 
     return $html;
+}
+
+/**
+ * One event's message with its fields filled in: the site's template, or the
+ * built-in one while the template is empty.
+ *
+ * @param string     $event    pg_sms_message_events()
+ * @param array      $fields   name => value; store is added when missing
+ * @param array|null $settings pg_sms_message_settings(), read when null
+ * @return string
+ */
+function pg_sms_message_text($event, $fields, $settings = null)
+{
+    $definitions = pg_sms_message_events();
+    $settings = is_array($settings) ? $settings : pg_sms_message_settings();
+    $template = (isset($settings[$event]) && ($settings[$event]['text'] !== '')) ? $settings[$event]['text'] : $definitions[$event]['text'];
+
+    $fields += array('store' => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '');
+
+    return pg_sms_message_render($template, $fields);
 }
 
 /**
@@ -339,13 +385,9 @@ function pg_sms_message_queue($event, $to, $fields, $reference)
         return false;
     }
 
-    $template = ($settings[$event]['text'] !== '') ? $settings[$event]['text'] : $definitions[$event]['text'];
-
-    $fields += array('store' => defined('ORGANIZATION_NAME') ? ORGANIZATION_NAME : '');
-
     // News of an order or of stock is no use days late: a queue held up that
     // long (the general job stopped) drops it instead.
-    $queued = pg_sms_enqueue($to, pg_sms_message_render($template, $fields), $definitions[$event]['kind'], array(
+    $queued = pg_sms_enqueue($to, pg_sms_message_text($event, $fields, $settings), $definitions[$event]['kind'], array(
         'reference'  => $reference,
         'expires_at' => time() + 2 * 86400,
     ));

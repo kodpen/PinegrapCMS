@@ -254,7 +254,8 @@ function test_product_stock_explorer_bulk_edit_announces_the_change()
 function test_product_stock_site_writers_call_the_helper()
 {
 	$writers = array(
-		'submit_order.php'               => 'checkout',
+		// The checkout's stock write is pg_order_complete_line_stock().
+		'includes/fn/order_completion.php' => 'checkout',
 		'includes/local_sale.php'        => 'local_sale',
 		'product_builder.php'            => 'panel',
 		'barcode_decrease_inventory.php' => 'barcode',
@@ -376,7 +377,8 @@ function test_product_stock_events_crossing_depends_on_the_fresh_before()
 // product reads the stock again right before its decrement and passes that.
 function test_product_stock_checkout_reads_the_stock_before_the_decrement()
 {
-	$block = product_stock_events_test_block(product_stock_events_test_source('submit_order.php'), '$stock_left = array();', "'checkout');");
+	// The checkout's line stock stage (pg_order_complete_line_stock()).
+	$block = product_stock_events_test_block(product_stock_events_test_source('includes/fn/order_completion.php'), 'function pg_order_complete_line_stock(', "'checkout');");
 	$select = strpos($block, "SELECT inventory, inventory_quantity FROM products WHERE id = '");
 	$decrement = strpos($block, "UPDATE products SET inventory_quantity = (inventory_quantity - ?)");
 
