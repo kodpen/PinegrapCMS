@@ -83,9 +83,9 @@ if (!$_POST) {
                                         <div class="col-12 md:col-4  my-3">
                                             <label for="order" class="form-label" data-bs-content="' . lang('Display order of this Folder to other Folders') . '" title="' . lang('Sorting') . '">' . lang('Sorting') . ' (?)</label>
                                             <div class="input-group number-controls">
-                                                <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                 <input class="form-control text-center border-start-0 border-end-0" value="" type="text" name="order" id="order" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
-                                                <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
 
                                             </div>
                                         </div>
@@ -132,7 +132,7 @@ if (!$_POST) {
                         </div>
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>

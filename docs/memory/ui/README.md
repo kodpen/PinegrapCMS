@@ -128,6 +128,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
+- panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks and the product screen (variant matrix, advanced row, image chip remove, attribute dialog), and the tests that pin them
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it
 - panel-validation-state.md: Invalid and valid fields in the panel on Bootstrap 6: why v6's own state was invisible, the panel rules on --pg-danger/--pg-success, focus ring, what stays on the bridge

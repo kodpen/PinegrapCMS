@@ -62,7 +62,7 @@ if (!$_POST) {
                 <form name="form" action="edit_shipping_method.php" method="post">
                     ' . get_token_field() . '
                     ' . pg_shipping_method_form_cards(pg_shipping_method_form_row_values($shipping_method, implode(',', $excluded_transit_dates)), pg_shipping_method_zone_options_for($id)) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

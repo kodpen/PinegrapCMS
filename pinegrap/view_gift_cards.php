@@ -373,7 +373,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_gift_card.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">

@@ -93,7 +93,7 @@ if (!$_POST) {
                     <input type="hidden" id="last_shipping_cutoff_number" name="last_shipping_cutoff_number" value="0" />
                     ' . pg_arrival_date_form_cards($arrival_date_row, $output_shipping_cutoffs_for_javascript) . '
                     ' . pg_fields_script() . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>

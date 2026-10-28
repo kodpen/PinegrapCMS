@@ -1309,9 +1309,9 @@ if (!$_POST) {
                     
                     $output_shipped_quantity_field = '
                         <div class="input-group number-controls">
-                            <button class="btn material-icons minus border border-end-0 pg-print-none" type="button">remove</button>
+                            <button class="btn material-icons minus border border-end-0 pg-print-none" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                             ' . $output_shipped_quantity_field . '
-                            <button class="btn material-icons plus border border-start-0 pg-print-none" type="button">add</button>
+                            <button class="btn material-icons plus border border-start-0 pg-print-none" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
                         </div>';
 
 
@@ -2689,7 +2689,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap pg-print-none">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             ' . $output_mark_paid_button . '
                             ' . $output_gateway_buttons . '
                             ' . $output_cancel_button . '
@@ -2880,7 +2880,7 @@ if (!$_POST) {
                     <div class=" list-group order-list-group my-7">
                         ' . $output_order_details . ' 
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center pg-print-none">
                                 ' . $output_save_button . '

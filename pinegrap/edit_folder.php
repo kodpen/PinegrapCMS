@@ -84,7 +84,7 @@ if (empty($_POST['name'])) {
         $send_to = '&send_to=' . h(escape_javascript(urlencode($_REQUEST['send_to'])));
     }
 
-    $duplicate = '<nav id="button_bar" class="navigation " aria-label="Button Bar">
+    $duplicate = '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_folder.php?id=' . h($_GET['id']) . '' . $send_to . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
@@ -248,9 +248,9 @@ if (empty($_POST['name'])) {
                                             <div class="col-12 md:col-4  my-3">
                                                 <label for="order" class="form-label" data-bs-content="' . lang('Display order of this Folder to other Folders') . '" title="' . lang('Sorting') . '">' . lang('Sorting') . ' (?)</label>
                                                 <div class="input-group number-controls">
-                                                    <button class="btn material-icons minus border border-end-0" type="button">remove</button>
+                                                    <button class="btn material-icons minus border border-end-0" type="button" aria-label="' . h(lang('Decrease')) . '">remove</button>
                                                     <input class="form-control text-center border-start-0 border-end-0"  value="' . $folder_order . '" type="text" name="order" id="order" maxlength="9" inputmode="numeric" data-inputmask-alias="decimal"  data-inputmask-placeholder="0"/>
-                                                    <button class="btn material-icons plus border border-start-0" type="button">add</button>
+                                                    <button class="btn material-icons plus border border-start-0" type="button" aria-label="' . h(lang('Increase')) . '">add</button>
     
                                                 </div>
                                             </div>
@@ -295,7 +295,7 @@ if (empty($_POST['name'])) {
                             </div>
                         </div>
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '">      
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
