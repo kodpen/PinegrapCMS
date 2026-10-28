@@ -1,6 +1,6 @@
 ---
 name: affiliate-sign-up-widget
-description: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, what is left out.
+description: The Affiliate Sign Up Form widget (classic "affiliate sign up form" page type): handler and page row, controls by name, prefill, terms, confirmation, what is left out.
 module: widgets_affiliate_sign_up
 ---
 
@@ -13,6 +13,10 @@ module: widgets_affiliate_sign_up
 ## How is the form filled?
 - First visit: the contact's business address, company and website (`pg_aff_prefill()`, "http://" without a website), the site's default country. After a refused post: the liveform's values; the Messages node `affiliate_sign_up_form` prints its errors.
 - Country and state as the shipping address widget does them (`_pg_sa_state_controls()`, `pg_sa_state_script()`). The terms box is dropped without a terms page, required with one. Flags `has_terms`, `no_terms`; tokens `__submit_button_label`, `__terms_url`.
+
+## What happens once the application is sent?
+- A next page (the widget's or the row's): the visitor goes there and its content is the e-mail they get, as before.
+- None, on a designed page (since step 5d, PR #2697; decided in #2436 answer 1b): the form posts `pg_widget_id`; `affiliate_sign_up_form.php` reads that widget's settings (`pg_member_widget_cfg()`), leaves the liveform `screen=confirm` and the notice `pg_member_confirmation_notice()` (its `confirmation_message`, else "Thank you. Your affiliate application has been sent.") and returns to `current_page_id`. The widget then keeps its design, drops its controls and draws no form (as forgot password does). The e-mail stays the classic confirmation screen. The legacy page still goes to `affiliate_sign_up_confirmation.php`.
 
 ## What is left out?
 - No PHP default tree: only the JS starter. Like the classic page it does not check that the affiliate programme is on.

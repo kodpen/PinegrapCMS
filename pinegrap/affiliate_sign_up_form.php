@@ -448,11 +448,23 @@ if (!isset($_POST['submit'])) {
 
         // remove liveform because we don't need it anymore
         $liveform->remove_form('affiliate_sign_up_form');
-        
+
+        // A designed page (the affiliate sign-up widget names itself in
+        // pg_widget_id) with no next page keeps the visitor: it shows the
+        // widget's confirmation message in place of the form.
+        $widget_cfg = (!$next_page_id && $current_page_id)
+            ? pg_member_widget_cfg($_POST['pg_widget_id'] ?? 0, 'affiliate_sign_up_form') : null;
+
         // if a next page was supplied, forward user to specific page that was supplied
         if ($next_page_id) {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($next_page_id));
             
+        } elseif ($widget_cfg !== null) {
+            $confirmed = new liveform('affiliate_sign_up_form');
+            $confirmed->assign_field_value('screen', 'confirm');
+            $confirmed->add_notice(pg_member_confirmation_notice($widget_cfg, lang('Thank you. Your affiliate application has been sent.')));
+            header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($current_page_id));
+
         // else a next page was not supplied, so forward user to general screen
         } else {
             header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/affiliate_sign_up_confirmation.php');

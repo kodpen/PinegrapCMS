@@ -143,7 +143,9 @@ function _pg_aff_page_settings($page_id, $cfg, $write)
 // a terms page) and the submit button.
 // Tokens: ^^__submit_button_label^^, ^^__terms_url^^.
 // Flags: pg_aff_flags(). Errors: liveform 'affiliate_sign_up_form'.
-// cfg: terms_page_id, submit_button_label, next_page_id.
+// cfg: terms_page_id, submit_button_label, next_page_id, confirmation_message
+// (shown on this page once the application is sent, when no next page is
+// set; the handler reads it through pg_widget_id).
 function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
 {
     $widget_id = (int)$widget_id;
@@ -163,6 +165,20 @@ function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $c
     if ($label === '') $label = lang('Sign Up');
 
     $lf = new liveform('affiliate_sign_up_form');
+    // Sent without a next page: the handler came back here with the
+    // confirmation notice. The design stays; its controls, the terms link
+    // and the form go, as on the other sign-up widgets' confirmation.
+    if ($mode !== 'edit' && (string)$lf->get_field_value('screen') === 'confirm') {
+        _pg_member_drop_all_controls($tree);
+        _eo_apply_visibility_bindings($tree, pg_aff_flags(false));
+        _pg_member_drop_empty_links($tree, array('__terms_url' => ''));
+        pg_cf_link_labels($tree);
+        _pg_inject_messages_node($tree, 'affiliate_sign_up_form');
+        $split = _split_widget_tree($tree);
+        $rendered = str_replace('<!--pg-loop-slot-->', '', trim(_render_tree_node($split['static_tree'], 0, 0)));
+        $lf->remove();
+        return _pg_member_apply_tokens($rendered, array('__submit_button_label' => '', '__terms_url' => ''));
+    }
     $names = array_keys(pg_aff_prefill(null));
     if (!$lf->field_in_session('submit')) {
         $contact = null;
@@ -211,6 +227,9 @@ function _render_system_widget_affiliate_sign_up_form($tree_json, $widget_id, $c
     $rendered = _pg_member_form_wrap($rendered . pg_sa_state_script($form_id, $states, $zip), _pg_acct_software_path() . '/affiliate_sign_up_form.php', array(
         'current_page_id' => $page_id,
         'next_page_id'    => (int)($settings['next_page_id'] ?? 0),
+        // Which widget drew the form: its confirmation message, when there
+        // is no next page.
+        'pg_widget_id'    => $widget_id,
     ), 'pg-affiliate-sign-up-form');
     $rendered = preg_replace('/^<form /', '<form id="' . h($form_id) . '" ', $rendered, 1);
     return _pg_member_apply_tokens($rendered, array(
