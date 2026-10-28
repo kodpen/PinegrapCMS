@@ -19,6 +19,7 @@
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/designer_region_form.php');
 
 if (!isset($_POST['name'])) {
     print 
@@ -38,33 +39,7 @@ if (!isset($_POST['name'])) {
                 
                 <form name="form" action="add_designer_region.php" method="post">
                     ' . get_token_field() . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 md:col-6 my-3">
-                                            <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Designer Region'))) . '</label>
-                                            <div class="input-group">
-                                                <div class="input-group-text">' . h('<cregion>') . '</div>
-                                                <input name="name" id="name" type="text" class="form-control" maxlength="100" />
-                                                <div class="input-group-text">' . h('</cregion>') . '</div>
-                                            </div>
-                                        </div>
-                                        <h5 class="mt-12">' . lang('Shared Content to appear on associated Pages') . '</h5>
-                                        <div class="col-12 my-3">
-                                            <label for="name" class="form-label">' . lang('HTML Code Snippet') . '</label>
-                                            <textarea name="content" id="code" rows="30" cols="60" wrap="off"></textarea>
-                                            ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'mixed')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_designer_region_form_card() . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -84,13 +59,13 @@ if (!isset($_POST['name'])) {
     
     include_once('liveform.class.php');
     
-    $_POST['name'] = trim($_POST['name']);
+    list($name, $content) = pg_designer_region_form_values($_POST);
 
     $query = "INSERT INTO cregion (cregion_name, cregion_content, cregion_designer_type, cregion_user, cregion_timestamp) "
             ."VALUES (?, ?, 'yes', ?, UNIX_TIMESTAMP())";
     // insert row into region table
-    $result = db_q($query, array((string) ($_POST['name'] ?? ''), (string) ($_POST['content'] ?? ''), (int) $user['id'])) or output_error('Query failed');
-    log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('designer region'),$_POST['name']))), $_SESSION['sessionusername']);
+    $result = db_q($query, array($name, $content, (int) $user['id'])) or output_error('Query failed');
+    log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('designer region'), $name))), $_SESSION['sessionusername']);
     $notice = lang(array('string'=>'{var:1} was created successfully','vars'=>lang('Designer Region') ));
     
     $liveform_view_styles = new liveform('view_regions');
