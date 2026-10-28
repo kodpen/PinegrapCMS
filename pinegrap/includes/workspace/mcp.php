@@ -2062,9 +2062,16 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
     $tools = ws_mcp_tools($server);
 
     if (empty($tools)) {
-        return '<div class="ws-empty py-5"><i class="bi bi-tools" aria-hidden="true"></i>' . h((int) $server['tools_at'] > 0
-            ? lang('The server lists no tools.')
-            : lang('The tools have not been read yet. Ask the server for them with the button above.')) . '</div>';
+        // Only an administrator gets the refresh button.
+        if ((int) $server['tools_at'] > 0) {
+            $empty = lang('The server lists no tools.');
+        } else {
+            $empty = $admin
+                ? lang('The tools have not been read yet. Ask the server for them with the button above.')
+                : lang('The tools have not been read yet. An administrator can ask the server for them.');
+        }
+
+        return '<div class="ws-empty py-5"><i class="bi bi-tools" aria-hidden="true"></i>' . h($empty) . '</div>';
     }
 
     $rules = ws_mcp_tool_rules($server);
@@ -2143,12 +2150,17 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         ? lang(array('string' => 'Turn on every tool the server says nothing about as one that reads only? Do it only if you know none of them changes anything: they run without asking for everybody who may ask @{var:1}, with their own account on that service or else the site\'s one account there.', 'vars' => $server['alias']))
         : lang(array('string' => 'Turn on every tool the server says nothing about as one that reads only? Do it only if you know none of them changes anything: everybody who may ask @{var:1} works with the site\'s one account on that service.', 'vars' => $server['alias']));
 
+    // The switches and Save are an administrator's only.
+    $none_on = $admin
+        ? lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.', 'vars' => $server['alias']))
+        : lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. An administrator can turn on the ones that may be used.', 'vars' => $server['alias']));
+
     return '
         <form method="post" action="' . h($self_url) . '">
             ' . get_token_field() . '
             <input type="hidden" name="ws_action" value="mcp_tools">
             <input type="hidden" name="mcp_id" value="' . (int) $server['id'] . '">
-            ' . (empty($on) ? '<div class="alert theme-warning small py-3 mb-3">' . h(lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.', 'vars' => $server['alias']))) . '</div>' : '') . '
+            ' . (empty($on) ? '<div class="alert theme-warning small py-3 mb-3">' . h($none_on) . '</div>' : '') . '
             ' . (function_exists('ws_mcp_agent_settings_field') ? ws_mcp_agent_settings_field($server, $admin) : '') . '
             <div class="d-flex align-items-center gap-3 mb-3">
                 <div class="small fw-semibold ws-grow">' . h(lang(array('string' => 'Tools ({var:1} of {var:2} turned on)', 'vars' => array(count($on), count($tools)))))
