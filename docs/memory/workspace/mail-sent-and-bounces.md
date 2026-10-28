@@ -20,4 +20,4 @@ description: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to 
 - A thread message under the card (top level when the card is gone); `ws_mail_card_html()` draws badge "Not delivered", "To …" and the server's words. Status `bounce`: the `.eml` upload says so, the reader takes it (`ws_mail_fetch_outcome()`). The conversation's status and times do not change.
 
 ## Tests?
-- `tests/workspace_mail_sent_test.php` (DSN fixtures, copy plan, form fields, the bounce card, wiring) and `tests/imap_client_test.php` (LIST, sent folder, APPEND against a scripted server). Neither the copy nor a real bounce was run against a server in the cloud sessions (PR #?).
+- `tests/workspace_mail_sent_test.php` (DSN fixtures, copy plan, form fields, the bounce card, wiring) and `tests/imap_client_test.php` (LIST, sent folder, APPEND against a scripted server). Neither the copy nor a real bounce was run against a server in the cloud sessions (PR #2885).
