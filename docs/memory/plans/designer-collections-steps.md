@@ -15,7 +15,9 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C2 — collection flag and field kinds (Q1, Q2). Done, #1997:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
 
-- **C3 — typed inputs.** Number (`type=number`, server numeric check), image (`accept`, preview, `pg_img_responsive_html()` on output), reference picker (select filled at render from the target's records; server accepts only a live code of the target), product/page pickers; `edit_submitted_form.php` shows the same.
+- **C3 — typed inputs. Done, #2601:** number (`type=number`, normalised server check), image (`accept`, extension check), reference pick list filled from the target's records (server accepts only a code of the target), on the site form and Add / Edit Submitted Form (`designer/collection-inputs.md`).
+
+- **C3b — remaining inputs.** Radio button and check box references drawn from the target's records, then held to them by `pg_coll_check_field()`; image preview on the form; product and page pickers (new kinds, VARCHAR needs no migration). `pg_img_responsive_html()` on image output goes with C4.
 
 - **C4 — list/detail by kind.** C1's `ref` defaults from the field; numeric sort for number; taxonomy filter "references" valued from the address (`?category=news` by address name, `form-list-url-filters.md` rules); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image).
 

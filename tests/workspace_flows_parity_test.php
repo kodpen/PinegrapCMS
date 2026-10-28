@@ -2583,6 +2583,7 @@ function workspace_flows_parity_table()
 			array(array('item.when', 'item.next', 'label sa_next', 'item.repeats', 'item.joins', 'item.on_event', 'item.trigger_only'), 1, 'card: when it runs and next, with the icon of its kind'),
 			array(array('item.staff', 'label sa_staff_only'), 1, 'card: someone who is not staff sees its name, time and state only'),
 			array(array('item.conditions', 'item.action_text', 'item.follow'), 1, 'card: its conditions, step and follow-ups in words'),
+			array(array('item.flow', 'item.flow.id'), 1, 'card of a converted action: Edit opens its flow on the canvas; no Duplicate or read-only drawing'),
 			array(array('follow.on', 'follow.label', 'follow.text', 'follow.target'), 1, 'card: each follow-up, by outcome, in words, a chain icon when it starts another action'),
 			array(array('item.starters', 'starter.name', 'label sa_started_by'), 1, 'card: the actions that start it (ws_scheduled_starters())'),
 			array(array('item.last', 'item.last.status', 'item.last.label', 'item.last.time', 'item.last.text', 'label sa_last'), 1, 'card: its last run: how it went, when, what it did'),

@@ -27,6 +27,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * column: the column holding the contact id (table: when the key is not the
  *         table, type: column => value when the column also names other
  *         kinds of record).
+ * mirror: a contacts column naming the holder's row back
+ *         (contacts.erp_account_id, as erp_account_link_contact() keeps it),
+ *         set on the contact that stays when a row moves to it.
  * merge:  move     merge_contacts() re-points the merged contacts' rows to
  *                  the contact that stays;
  *         one      as move, but a group of duplicates with more than one
@@ -42,7 +45,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                  ERP accounts) or the person's users;
  *         none     not reached by the erasure (Workspace records).
  *
- * @return array  key => column, merge, erase, optional table and type
+ * @return array  key => column, merge, erase, optional table, type, mirror
  */
 function pg_contact_holders()
 {
@@ -50,7 +53,7 @@ function pg_contact_holders()
         'orders'                       => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'scope'),
         'forms'                        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'scope'),
         'email_recipients'             => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
-        'erp_accounts'                 => array('column' => 'contact_id', 'merge' => 'one', 'erase' => 'scope'),
+        'erp_accounts'                 => array('column' => 'contact_id', 'merge' => 'one', 'erase' => 'scope', 'mirror' => 'erp_account_id'),
         'opt_in'                       => array('column' => 'contact_id', 'merge' => 'groups', 'erase' => 'find'),
         'contacts_contact_groups_xref' => array('column' => 'contact_id', 'merge' => 'groups', 'erase' => 'find'),
         'consent_log'                  => array('column' => 'contact_id', 'merge' => 'keep', 'erase' => 'find'),
@@ -129,6 +132,51 @@ function pg_contact_holders_move($merged_ids, $keep_id)
         }
 
         db_q("UPDATE " . $table . " SET " . $holder['column'] . " = ? WHERE " . $where, $values) or output_error(lang('Query failed.'));
+
+        if (isset($holder['mirror']) && pg_schema_has('contacts', $holder['mirror'])) {
+            $row_id = (int) db_value("SELECT id FROM " . $table . " WHERE " . $holder['column'] . " = '" . $keep_id . "' LIMIT 1");
+
+            if ($row_id > 0) {
+                db_q("UPDATE contacts SET " . $holder['mirror'] . " = ? WHERE id = ?", array((string) $row_id, (string) $keep_id)) or output_error(lang('Query failed.'));
+            }
+        }
+    }
+}
+
+/**
+ * The trail's rows before a merge: the contact that stays and the contacts
+ * merged away, read before anything is written.
+ *
+ * @param int   $keep_id
+ * @param array $merged_ids
+ * @return array  keep => row, merged => id => row
+ */
+function pg_contact_merge_audit_before($keep_id, $merged_ids)
+{
+    return array(
+        'keep'   => pg_audit_fetch('contacts', (int) $keep_id),
+        'merged' => pg_audit_fetch_many('contacts', array_map('intval', (array) $merged_ids)),
+    );
+}
+
+/**
+ * The trail's lines of one merge: a delete line per contact merged away
+ * (its row stays in the line's before side) and one merge line for the
+ * contact that stays, its changes and the ids merged into it.
+ *
+ * @param int   $keep_id
+ * @param array $before  pg_contact_merge_audit_before()
+ * @return void
+ */
+function pg_contact_merge_audit($keep_id, array $before)
+{
+    pg_audit_record_many('delete', 'contacts', $before['merged']);
+
+    $after = pg_audit_fetch('contacts', (int) $keep_id);
+
+    if ($after) {
+        $after['merged_ids'] = implode(',', array_keys($before['merged']));
+        pg_audit('merge', 'contact', (int) $keep_id, $before['keep'], $after, pg_audit_label_of('contacts', $after));
     }
 }
 
@@ -300,6 +348,7 @@ function merge_contacts($contacts, &$refused = 0)
                     $child['timestamp'] = $orphans_to_merge[0]['timestamp'];
                     $child['user'] = $orphans_to_merge[0]['user'];
                 }
+                $audit_before = pg_contact_merge_audit_before($child['id'], array_column($orphans_to_merge, 'id'));
                 // re-point the merged contacts' records before the contacts are deleted
                 pg_contact_holders_move(array_column($orphans_to_merge, 'id'), $child['id']);
                 // update child's contact record with new opt in status, last modified date, and last modified user
@@ -416,6 +465,8 @@ function merge_contacts($contacts, &$refused = 0)
                         }
                     }
                 }
+                // the trail's lines once the merge is written
+                pg_contact_merge_audit($child['id'], $audit_before);
             }
             // else if this is an orphan that hasn't been processed yet then process a merge for an orphan
         } elseif (in_array($contact['id'], $processed_contact_ids) == false) {
@@ -516,6 +567,7 @@ function merge_contacts($contacts, &$refused = 0)
                         $sql_columns_values[] = (string) $remaining_orphans_field_to_update;
                     }
                 }
+                $audit_before = pg_contact_merge_audit_before($remaining_orphan['id'], array_column($orphans_to_merge, 'id'));
                 // re-point the merged contacts' records before the contacts are deleted
                 pg_contact_holders_move(array_column($orphans_to_merge, 'id'), $remaining_orphan['id']);
                 // update remaining orphan's contact record with data from orphans, new last mod date and opt status
@@ -632,6 +684,8 @@ function merge_contacts($contacts, &$refused = 0)
                         }
                     }
                 }
+                // the trail's lines once the merge is written
+                pg_contact_merge_audit($remaining_orphan['id'], $audit_before);
             }
         }
     }
@@ -1172,9 +1226,11 @@ function pg_checkout_contact_tax_fill(array $card, string $number, string $offic
  * @param string $number   Typed at checkout
  * @param string $office   Typed at checkout
  * @param int    $user_id  The signed-in customer, recorded as the card's last editor
+ * @param bool   $audit    False for a contact this request made, whose create
+ *                         line is written once it is filled in
  * @return bool  True when the card took the number
  */
-function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $office, int $user_id): bool
+function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $office, int $user_id, bool $audit = true): bool
 {
     if ($contact_id <= 0) {
         return false;
@@ -1198,13 +1254,21 @@ function pg_checkout_fill_contact_tax(int $contact_id, string $number, string $o
         $set[] = $column . " = '" . e($value) . "'";
     }
 
+    $audit_before = $audit ? pg_audit_fetch('contacts', $contact_id) : array();
+
     // The empty-number condition again: a card that took a number since it
     // was read keeps it.
     db("UPDATE contacts
         SET " . implode(', ', $set) . ", user = '" . $user_id . "', timestamp = UNIX_TIMESTAMP()
         WHERE id = '" . $contact_id . "' AND tax_number = ''");
 
-    return mysqli_affected_rows(db::$con) > 0;
+    $filled = mysqli_affected_rows(db::$con) > 0;
+
+    if ($filled && $audit) {
+        pg_audit_site_record('update', 'contacts', $contact_id, $audit_before);
+    }
+
+    return $filled;
 }
 
 /**

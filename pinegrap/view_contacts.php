@@ -147,15 +147,10 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_year['stop_day'] = '31';
     $increase_year['stop_year'] = (int)($_SESSION['software']['view_contacts']['start_year'] ?? '') + 1;
 
-    $decrease_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') - 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $decrease_month['new_month'] = date('m', $decrease_month['new_time']);
-    $decrease_month['new_year'] = date('Y', $decrease_month['new_time']);
-    $decrease_month['start_month'] = $decrease_month['new_month'];
-    $decrease_month['start_day'] = '01';
-    $decrease_month['start_year'] = $decrease_month['new_year'];
-    $decrease_month['stop_month'] = $decrease_month['new_month'];
-    $decrease_month['stop_day'] = date('t', $decrease_month['new_time']);
-    $decrease_month['stop_year'] = $decrease_month['new_year'];
+    // The arrows of the month unit step from the last month on screen
+    // (pg_list_period_month_steps()).
+    $month_steps = pg_list_period_month_steps($_SESSION['software']['view_contacts'] ?? array());
+    $decrease_month = $month_steps['previous'];
 
     $current_month['new_month'] = date('m');
     $current_month['new_year'] = date('Y');
@@ -166,15 +161,7 @@ if ($filter != 'all_duplicate_contacts') {
     $current_month['stop_day'] = date('t');
     $current_month['stop_year'] = $current_month['new_year'];
 
-    $increase_month['new_time'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? '') + 1, 1, (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $increase_month['new_month'] = date('m', $increase_month['new_time']);
-    $increase_month['new_year'] = date('Y', $increase_month['new_time']);
-    $increase_month['start_month'] = $increase_month['new_month'];
-    $increase_month['start_day'] = '01';
-    $increase_month['start_year'] = $increase_month['new_year'];
-    $increase_month['stop_month'] = $increase_month['new_month'];
-    $increase_month['stop_day'] = date('t', $increase_month['new_time']);
-    $increase_month['stop_year'] = $increase_month['new_year'];
+    $increase_month = $month_steps['next'];
 
     $decrease_week['start_date_timestamp'] = mktime(0, 0, 0, (int)($_SESSION['software']['view_contacts']['start_month'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_day'] ?? ''), (int)($_SESSION['software']['view_contacts']['start_year'] ?? ''));
     // if start date is a Sunday, use last Sunday (add 12:00:00 to prevent a bug that results in Saturday being returned)
@@ -255,12 +242,8 @@ if ($filter != 'all_duplicate_contacts') {
     $increase_day['stop_day'] = $increase_day['new_day'];
     $increase_day['stop_year'] = $increase_day['new_year'];
 
-    // Output start date range time
-    $output_date_range_time = h(get_month_name_from_number(($_SESSION['software']['view_contacts']['start_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['start_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['start_year'] ?? ''));
-    $output_date_range_time .= ' - ';
-
-    // Output end date range time
-    $output_date_range_time .= h(get_month_name_from_number(($_SESSION['software']['view_contacts']['stop_month'] ?? '')) . ' ' . ($_SESSION['software']['view_contacts']['stop_day'] ?? '') . ', ' . ($_SESSION['software']['view_contacts']['stop_year'] ?? ''));
+    // The range on screen, in the site's date order.
+    $output_date_range_time = h(pg_list_period_heading($_SESSION['software']['view_contacts'] ?? array()));
 
 // else this is the all duplicate contacts filter so hide the date range
 } else {

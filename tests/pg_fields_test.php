@@ -1031,3 +1031,18 @@ function test_pg_fields_combobox_server_search()
 	);
 	pg_assert_same(array('form-control', 'My own category', 2), $m['destroyed'], 'destroy() leaves the plain select with its value');
 }
+
+// Bootstrap 6.0.0-alpha.1's Combobox binds a second component to its own
+// toggle: the one console error of that call is dropped, and the keys the
+// combobox handles on its menu do not reach the document handler that
+// would build an unbound Menu for each of them (#2520).
+function test_pg_fields_combobox_quiets_the_menu_instance_noise()
+{
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/pg_fields.js');
+
+	pg_assert_true(strpos($source, "var INSTANCE_NOISE = \"doesn't allow more than one instance per element\";") !== false, 'the one known message');
+	pg_assert_true(strpos($source, 'var combobox = withoutInstanceNoise(function () {') !== false, 'the combobox is built inside the guard');
+	pg_assert_true(strpos($source, 'window.console.error = original;') !== false, 'console.error is restored');
+	pg_assert_true(strpos($source, 'keepMenuKeysInCombobox(combobox, toggle);') !== false, 'the menu keys stay in the combobox');
+	pg_assert_true(strpos($source, "var MENU_KEYS = { ArrowUp: 1, ArrowDown: 1, Home: 1, End: 1 };") !== false, 'only the keys the combobox handles itself');
+}

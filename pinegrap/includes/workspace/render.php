@@ -335,6 +335,78 @@ function ws_list_line($line)
 }
 
 /**
+ * A heading of a note: "# ", "## " or "### " at the very start of a line and
+ * words after it. Notes alone draw it (ws_render_body()'s $note); in a
+ * message "#" stays text. "#tag", "#### x" and an indented "# x" are none.
+ *
+ * @param string $line
+ * @return array|null level (1 to 3), text (the words after the signs)
+ */
+function ws_heading_line($line)
+{
+    if (!preg_match('/^(#{1,3})[ \t]+(\S.*)$/u', (string) $line, $match)) {
+        return null;
+    }
+
+    return array('level' => strlen($match[1]), 'text' => rtrim($match[2]));
+}
+
+/**
+ * A rule of a note: a line of three dashes or more and nothing else.
+ *
+ * @param string $line
+ * @return bool
+ */
+function ws_rule_line($line)
+{
+    return (bool) preg_match('/^[ \t]*-{3,}[ \t]*$/', (string) $line);
+}
+
+/**
+ * The headings and rules of a note's lines, by index; a line of code is
+ * neither (ws_code_fence_lines()).
+ *
+ * @param string[] $lines
+ * @return array line index => ws_heading_line(), or false for a rule
+ */
+function ws_heading_lines($lines)
+{
+    $out = array();
+    $code = ws_code_fence_lines($lines);
+
+    foreach ($lines as $index => $line) {
+        if (isset($code[$index])) {
+            continue;
+        }
+
+        $heading = ws_heading_line($line);
+
+        if ($heading !== null) {
+            $out[$index] = $heading;
+        } elseif (ws_rule_line($line)) {
+            $out[$index] = false;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A note's heading as HTML: "#" an <h2>, "##" an <h3>, "###" an <h4>, sized
+ * down by Bootstrap's classes so they sit in a note and not above the page.
+ *
+ * @param array $heading ws_heading_line()
+ * @param array $refs
+ * @return string
+ */
+function ws_heading_html($heading, $refs)
+{
+    $tag = 'h' . ($heading['level'] + 1);
+
+    return '<' . $tag . ' class="ws-heading h' . ($heading['level'] + 3) . '">' . ws_render_inline($heading['text'], $refs) . '</' . $tag . '>';
+}
+
+/**
  * The lines of a piece of running text grouped into text, bulleted lists,
  * numbered lists and quotes.
  *
@@ -632,9 +704,12 @@ function ws_check_task_html($item, $refs, $item_tasks)
  *                              => task id, its tag drawn beside the item; the
  *                              id's task:N must be in $refs) and make (the
  *                              reader may make a task of an item without one)
+ * @param bool       $note      the text is a note's: "# " to "### " lines are
+ *                              headings and a "---" line a rule (ws_heading_line(),
+ *                              ws_rule_line()); a message keeps them as text
  * @return string
  */
-function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null)
+function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc = null, $item_tasks = null, $note = false)
 {
     $body = (string) $body;
 
@@ -643,8 +718,9 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
     $cards = function_exists('ws_form_cards_html') ? ws_form_cards_html($body, $refs) : '';
 
     // Running text only - nearly every message - is drawn in one piece,
-    // unless it holds a list or a quote (ws_text_blocks()).
-    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body)) {
+    // unless it holds a list or a quote (ws_text_blocks()), or is a note
+    // with a heading or a rule.
+    if (!preg_match('/^\s*(\||[-*]\s\[[ xX]\]\s|```|:::\s)/m', $body) && !($note && preg_match('/^(#{1,3}[ \t]+\S|[ \t]*-{3,}[ \t]*$)/m', $body))) {
         $listed = false;
 
         if (preg_match('/^[ \t]*([-*][ \t]+\S|[1-9][0-9]{0,2}\.[ \t]+\S|>)/m', $body)) {
@@ -739,6 +815,19 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
                 ? ws_calc_block_html($code, $scope['seeds'][$i] ?? array(), ws_code_fence_info($line))
                 : ws_code_block_html(implode("\n", $code), $language));
             $i = $j;
+            continue;
+        }
+
+        // A note's heading or rule stands between two pieces of text.
+        if ($note && (($heading = ws_heading_line($line)) !== null)) {
+            $flush();
+            $html .= ws_heading_html($heading, $refs);
+            continue;
+        }
+
+        if ($note && ws_rule_line($line)) {
+            $flush();
+            $html .= '<hr class="ws-rule">';
             continue;
         }
 
@@ -854,15 +943,17 @@ function ws_render_body($body, $refs, $checks = null, $can_check = false, $calc 
  * into one line; a list or a quote the screen draws (ws_text_blocks()) keeps
  * an item or a quoted line a line, with the number its author wrote
  * ("- item", "1. item", "> line"). A text without one is one line, as
- * before. Where the words are stored or must stay on one line, use
+ * before. In a note a heading is a line of its own, without its signs, and a
+ * rule is none. Where the words are stored or must stay on one line, use
  * ws_plain_line().
  *
  * @param array      $viewer
  * @param string     $body
  * @param array|null $refs resolved already, to spare the queries
+ * @param bool       $note the text is a note's (ws_render_body())
  * @return string
  */
-function ws_plain_text($viewer, $body, $refs = null)
+function ws_plain_text($viewer, $body, $refs = null, $note = false)
 {
     // A formula reads as what it comes to, with the formula beside it.
     if (function_exists('ws_calc_plain')) {
@@ -911,13 +1002,31 @@ function ws_plain_text($viewer, $body, $refs = null)
         $grouped[$index] = null;
     }
 
+    $headings = $note ? ws_heading_lines($lines) : array();
+
+    foreach (array_keys($headings) as $index) {
+        $grouped[$index] = null;
+    }
+
     $out = array();
 
     foreach (ws_text_blocks($grouped) as $block) {
         if ($block['kind'] === 'text') {
-            $out[] = $plain(implode("\n", array_map(function ($index) use ($lines) {
-                return $lines[$index];
-            }, $block['lines'])));
+            // A heading or a rule ends the running text before it.
+            $run = array();
+
+            foreach ($block['lines'] as $index) {
+                if (!isset($headings[$index])) {
+                    $run[] = $lines[$index];
+                    continue;
+                }
+
+                $out[] = $plain(implode("\n", $run));
+                $out[] = ($headings[$index] !== false) ? $plain($headings[$index]['text']) : '';
+                $run = array();
+            }
+
+            $out[] = $plain(implode("\n", $run));
             continue;
         }
 
@@ -940,11 +1049,12 @@ function ws_plain_text($viewer, $body, $refs = null)
  * @param array      $viewer
  * @param string     $body
  * @param array|null $refs
+ * @param bool       $note the text is a note's (ws_plain_text())
  * @return string
  */
-function ws_plain_line($viewer, $body, $refs = null)
+function ws_plain_line($viewer, $body, $refs = null, $note = false)
 {
-    return trim(preg_replace('/\s+/u', ' ', ws_plain_text($viewer, $body, $refs)));
+    return trim(preg_replace('/\s+/u', ' ', ws_plain_text($viewer, $body, $refs, $note)));
 }
 
 /**

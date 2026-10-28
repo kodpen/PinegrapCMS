@@ -11,7 +11,7 @@ description: The credential-free discovery document (.well-known/pinegrap.json a
 
 ## When is device_signin true?
 - When `api_device_app_check()` would let a sign-in through: API on, `api_devices_ready()`, `api_device_app('')` active and not past `expires_at`, and the caller's address admitted by its allow list. The allow-list test is `api_ip_allowlist_admits($list, $ip)`, the boolean `api_check_ip_allowlist()` now calls.
-- `pairing` = `device_signin` and a pairing table; no such table exists, so it is false.
+- `pairing` = `device_signin` and the `api_device_pairings` table (`api_pairing_ready()`): true once the 11.0.70 step has run (`api/api-device-pairing.md`).
 
 ## Where is it wired?
 - `router.php`: `.well-known/pinegrap.json` beside the OAuth names, with `PG_API_ENTRY`, no session, `init.php` and the API bootstrap, then `api_discovery_well_known()`: plain JSON, never through `api_run()`, so it answers with the API off and over http.

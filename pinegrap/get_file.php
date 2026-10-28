@@ -569,6 +569,7 @@ if ($file['attachment'] == 1) {
                     page.page_id AS custom_form_page_id,
                     page.page_folder AS custom_form_folder_id,
                     form_fields.name AS attachment_field_name,
+                    form_fields.rss_field AS attachment_field_rss_field,
                     forms.id,
                     forms.user_id AS submitter_user_id,
                     forms.form_editor_user_id
@@ -591,6 +592,11 @@ if ($file['attachment'] == 1) {
             // so check if the user has view access to a form list view or form item view,
             // that shows the attachment.
             } else {
+                // The form's RSS media field counts as printed by every view of the
+                // record: the software publishes that field's address as the record's
+                // picture (og:image, the feed's enclosure) wherever the record is shown.
+                $attachment_field_media = ((string) $submitted_form['attachment_field_rss_field'] === 'media');
+
                 // Get all form list views that might show the attachment.
                 $form_list_views = db_items(
                     "SELECT
@@ -615,7 +621,7 @@ if ($file['attachment'] == 1) {
                     // then continue to check if the visitor should have access to
                     // view attachment.
                     if (
-                        (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_list_view['layout']) != 0)
+                        ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_list_view['layout']) != 0))
                         && (check_view_access($form_list_view['folder_id']) == true)
                     ) {
                         // If there is a viewer filter for the form list view
@@ -711,7 +717,7 @@ if ($file['attachment'] == 1) {
                         // then continue to check if the visitor should have access to
                         // view attachment.
                         if (
-                            (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0)
+                            ($attachment_field_media || (preg_match('/\^\^' . preg_quote($submitted_form['attachment_field_name'], '/') . '\^\^/i', $form_item_view['layout']) != 0))
                             && (check_view_access($form_item_view['folder_id']) == true)
                         ) {
                             // If submitter security is enabled for the form item view,
@@ -1421,8 +1427,11 @@ function escape($string) {
 
 function log_activity($description, $user)
 {
+    // The address as includes/fn/forms.php records it: the visitor behind a
+    // trusted proxy as the firewall resolves it, else the peer
+    // (includes/authentication.php, loaded above).
     $query = "INSERT INTO log (log_description, log_ip, log_user, log_timestamp) "
-            ."VALUES ('" . escape($description) . "', '" . escape($_SERVER['REMOTE_ADDR']) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
+            ."VALUES ('" . escape($description) . "', '" . escape(pg_auth_request_address()) . "', '" . escape($user) . "', UNIX_TIMESTAMP())";
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     
     // get a random number between 1 and 100 in order to determine if we should delete old log entries

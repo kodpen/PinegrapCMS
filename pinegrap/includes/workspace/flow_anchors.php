@@ -307,6 +307,37 @@ function ws_flow_anchor($flow_id)
 }
 
 /**
+ * Does the flow carry out a converted scheduled action? Read once a request
+ * for every flow: lists ask it of each flow they show.
+ *
+ * @param int  $flow_id
+ * @param bool $forget read again (after a conversion)
+ * @return bool
+ */
+function ws_flow_converted($flow_id, $forget = false)
+{
+    static $ids = null;
+
+    if ($forget) {
+        $ids = null;
+    }
+
+    if (((int) $flow_id <= 0) || !function_exists('ws_scheduled_anchor_ready') || !ws_scheduled_anchor_ready()) {
+        return false;
+    }
+
+    if ($ids === null) {
+        $ids = array();
+
+        foreach ((array) db_items("SELECT flow_id FROM ws_scheduled_actions WHERE anchor = 'converted' AND flow_id > 0") as $row) {
+            $ids[(int) $row['flow_id']] = true;
+        }
+    }
+
+    return isset($ids[(int) $flow_id]);
+}
+
+/**
  * Writes a flow's anchor from the box that starts its live version, as the
  * flow is published: made, or changed in place (its id, lock and history
  * kept), active with the rule's next time. A flow started by hand has no
@@ -564,6 +595,36 @@ function ws_flow_anchor_run_status($state)
 }
 
 /**
+ * Why a run of a converted action counts as skipped: the sentence of a
+ * condition box (one of the action's conditions) that left on no, '' when
+ * every condition held. Pure.
+ *
+ * @param array|null $graph the run's graph
+ * @param array[]    $steps ws_flow_run_steps()
+ * @return string
+ */
+function ws_flow_anchor_skip_reason($graph, $steps)
+{
+    $conditions = array();
+
+    foreach ((array) ($graph['nodes'] ?? array()) as $node) {
+        if ((string) ($node['kind'] ?? '') === 'condition') {
+            $conditions[(string) $node['id']] = true;
+        }
+    }
+
+    foreach ((array) $steps as $step) {
+        if (isset($conditions[(string) $step['node_id']]) && ((string) $step['status'] === 'done') && ((string) $step['outcome'] === 'no')) {
+            $text = ws_flow_result_text((string) ($step['result'] ?? ''));
+
+            return ($text !== '') ? $text : lang('A condition did not hold.');
+        }
+    }
+
+    return '';
+}
+
+/**
  * Writes the end of a run a converted action started back to that action's
  * run (its context's anchor_id and sched_run): the outcome, a line naming
  * the run, the moment; a single action whose run failed reads failed. Then
@@ -593,6 +654,14 @@ function ws_flow_anchor_run_ended($run, $state)
         return;
     }
 
+    // A condition that did not hold skipped the action, as its rules did
+    // before it was converted, with the reason.
+    $skipped = ($status === 'done') ? ws_flow_anchor_skip_reason(ws_flow_run_graph($run), ws_flow_run_steps($run['id'])) : '';
+
+    if ($skipped !== '') {
+        $status = 'skipped';
+    }
+
     $said = array(
         'done'      => 'flow run {var:1} finished',
         'failed'    => 'flow run {var:1} failed',
@@ -601,6 +670,10 @@ function ws_flow_anchor_run_ended($run, $state)
     $steps = json_decode((string) $kept['detail'], true);
     $steps = is_array($steps) ? $steps : array();
     $steps[] = array('step' => 'flow', 'ok' => $status === 'done', 'text' => lang(array('string' => $said[$state], 'vars' => (int) $run['id'])));
+
+    if ($skipped !== '') {
+        $steps[] = array('step' => 'rules', 'ok' => false, 'text' => $skipped);
+    }
 
     db("UPDATE ws_scheduled_runs SET status = '" . e($status) . "', finished_at = '" . time() . "',
             detail = '" . e(json_encode($steps, JSON_UNESCAPED_UNICODE)) . "'

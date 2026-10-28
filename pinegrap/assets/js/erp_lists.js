@@ -53,7 +53,7 @@
         mark(row);
         title.textContent = '';
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
         pgUI.drawer.show(panel);
 
         fetch(endpoint + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id), {

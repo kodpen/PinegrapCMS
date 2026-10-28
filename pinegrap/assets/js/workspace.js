@@ -3046,6 +3046,7 @@
             placeholder: options.placeholder || '',
             previews: !!options.previews,
             slashInserts: options.slashInserts,
+            headings: !!options.headings,
             pasteFiles: options.pasteFiles,
             onInput: function () {
                 field.pickerCheck();
@@ -17459,9 +17460,16 @@
             }
         };
 
+        // A converted action is changed on its flow's canvas, where its
+        // conditions, step and follow-ups are boxes.
         if (item.can_edit) {
             var edit = button('btn btn-sm btn-text theme-secondary', t('edit'), 'bi-pencil');
             edit.addEventListener('click', function () {
+                if (item.flow) {
+                    window.location.href = 'workspace_flows.php?flow=' + encodeURIComponent(item.flow.id);
+                    return;
+                }
+
                 scheduledForm(null, item, function (fresh) { refresh({ item: fresh }); });
             });
             tools.appendChild(edit);
@@ -17491,19 +17499,23 @@
             tools.appendChild(run);
         }
 
-        // A copy to start a new one from.
-        var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
-        copy.addEventListener('click', function () {
-            var data = JSON.parse(JSON.stringify(item.data || {}));
+        // A copy to start a new one from; a converted action's form data is
+        // its flow's boxes, which its flow keeps.
+        if (!item.flow) {
+            var copy = button('btn btn-sm btn-text theme-secondary', t('sa_duplicate'), 'bi-copy');
+            copy.addEventListener('click', function () {
+                var data = JSON.parse(JSON.stringify(item.data || {}));
 
-            data.name = t('sa_copy_of', data.name || item.name);
-            scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
-        });
-        tools.appendChild(copy);
+                data.name = t('sa_copy_of', data.name || item.name);
+                scheduledForm(item.channel ? { channel_id: item.channel.id } : {}, null, function (fresh) { refresh({ item: fresh }); }, { key: '', data: data });
+            });
+            tools.appendChild(copy);
+        }
 
         // The action drawn read-only on the flow canvas: in the Scheduled
-        // actions section of Flows, where workspace_flow.js is loaded.
-        if ((CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
+        // actions section of Flows, where workspace_flow.js is loaded. A
+        // converted one opens as its flow (Edit).
+        if (!item.flow && (CFG.mode === 'flows') && window.PGWsFlow && window.PGWsFlow.showAction) {
             var canvas = button('btn btn-sm btn-text theme-secondary', t('sa_show_canvas'), 'bi-diagram-3');
             canvas.addEventListener('click', function () {
                 scheduledGraph(item.id);
@@ -22742,6 +22754,7 @@
                 ['undo', 'redo'],
                 ['bold', 'italic', 'strike', 'highlight'],
                 ['bullets', 'numbers', 'quote'],
+                ['heading1', 'heading2', 'heading3', 'rule'],
                 blocks,
                 tags,
                 [picker, tool('bi-paperclip', t('notes_attach'), function () { picker.click(); }), emoji]
@@ -22815,6 +22828,8 @@
                 previews: true,
                 // "/" lists the inserts of the box (PGWsEditor).
                 slashInserts: { insertLabel: t('insert_to_note') },
+                // Headings and rules, which a note draws and a message does not.
+                headings: true,
                 // A picture pasted into the note is attached, as a dropped one.
                 pasteFiles: function (files) { attach(files); },
                 onKeydown: function (event) {
@@ -23384,13 +23399,51 @@
             openInbox(function () {});
         });
 
+        // A companion bundle (workspace_flow.js, workspace_board_channel.js)
+        // is a defer script of its own and may still be downloading when
+        // ws_bootstrap answers: its global is then missing, and the screen
+        // stayed on "Loading" until a reload. Every defer script runs before
+        // DOMContentLoaded, so the start waits for that event; once the page
+        // is complete a missing global means the script did not load, and
+        // the fallback runs instead, once.
+        function whenCompanion(name, callback, fallback) {
+            var settled = false;
+
+            function attempt() {
+                if (settled) {
+                    return;
+                }
+
+                if (window[name]) {
+                    settled = true;
+                    callback();
+                } else if (document.readyState === 'complete') {
+                    settled = true;
+                    fallback();
+                }
+            }
+
+            attempt();
+
+            if (!settled) {
+                window.addEventListener('DOMContentLoaded', attempt);
+                window.addEventListener('load', attempt);
+            }
+        }
+
         api('ws_bootstrap').then(function (data) {
             BOOT = data;
 
             var root = document.getElementById('ws-root');
 
             if (CFG.mode === 'channels' && root) {
-                app.start(root);
+                // The Board tab needs workspace_board_channel.js at draw
+                // time; without the script the channel still opens, boardless.
+                whenCompanion('PGWsChannelBoard', function () {
+                    app.start(root);
+                }, function () {
+                    app.start(root);
+                });
             } else if (CFG.mode === 'tasks' && root) {
                 startTasks(root);
             } else if (CFG.mode === 'board' && root) {
@@ -23401,10 +23454,14 @@
                 startTimeline(root);
             } else if (CFG.mode === 'notes' && root) {
                 startNotes(root);
-            } else if (CFG.mode === 'flows' && root && window.PGWsFlow) {
+            } else if (CFG.mode === 'flows' && root) {
                 // The canvas lives in workspace_flow.js; it takes the team
                 // from here for its people picker.
-                window.PGWsFlow.start(root, BOOT);
+                whenCompanion('PGWsFlow', function () {
+                    window.PGWsFlow.start(root, BOOT);
+                }, function () {
+                    root.textContent = t('script_missing');
+                });
             }
 
             // What runs where no scheduler does (repeating tasks, requests to

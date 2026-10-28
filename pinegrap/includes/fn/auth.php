@@ -565,7 +565,11 @@ function pg_member_register($form, $opts = array())
     $contact_id = (int) mysqli_insert_id(db::$con);
 
     // Every contact with this address carries the same consent answer.
+    $audit_same_address = pg_audit_fetch_by('contacts', 'email_address', $email);
+    unset($audit_same_address[$contact_id]);
     db("UPDATE contacts SET opt_in = '" . e($opt_in) . "' WHERE email_address = '" . e($email) . "'");
+    pg_audit_site_record('create', 'contacts', $contact_id);
+    pg_audit_site_record_many('update', 'contacts', $audit_same_address);
 
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']
@@ -826,6 +830,7 @@ function pg_member_activate($form, $opts = array())
     // address becomes the one the member just typed; the one it had is kept
     // for the consent log below.
     $previous_email = (string) db_value("SELECT email_address FROM contacts WHERE id = '" . $contact_id . "'");
+    $audit_before = pg_audit_fetch('contacts', $contact_id);
 
     db("UPDATE contacts
         SET
@@ -834,7 +839,11 @@ function pg_member_activate($form, $opts = array())
             opt_in = '" . e($opt_in) . "'" . $extra_set . "
         WHERE id = '" . $contact_id . "'");
 
+    $audit_same_address = pg_audit_fetch_by('contacts', 'email_address', $email);
+    unset($audit_same_address[$contact_id]);
     db("UPDATE contacts SET opt_in = '" . e($opt_in) . "' WHERE email_address = '" . e($email) . "'");
+    pg_audit_site_record('update', 'contacts', $contact_id, $audit_before);
+    pg_audit_site_record_many('update', 'contacts', $audit_same_address);
 
     $group_id = (isset($opts['contact_group_id']) && (int) $opts['contact_group_id'] > 0)
         ? (int) $opts['contact_group_id']

@@ -155,18 +155,18 @@ function test_payment_paypal_driver_is_shipped()
 	pg_assert_same('PayPal Checkout', pg_payment_return_method('paypal_return'));
 	pg_assert_true(pg_payment_is_return_mode('paypal_return'));
 
-	foreach (array('authorize', 'complete', 'refund', 'cancel', 'partial_refund') as $what) {
+	foreach (array('authorize', 'complete', 'refund', 'cancel', 'notify', 'partial_refund') as $what) {
 		pg_assert_true(pg_payment_can('paypal', $what), $what);
 	}
 
-	foreach (array('prepare', 'capture', 'notify', 'hosted_fields', 'recurring') as $what) {
+	foreach (array('prepare', 'capture', 'hosted_fields', 'recurring') as $what) {
 		pg_assert_false(pg_payment_can('paypal', $what), $what);
 	}
 
 	$names = array_map(function ($field) {
 		return $field['name'] . ':' . $field['type'] . ($field['required'] ? '!' : '') . '=' . $field['default'];
 	}, pg_payment_fields('paypal'));
-	pg_assert_same(array('client_id:text!=', 'client_secret:secret!=', 'mode:select=live'), $names);
+	pg_assert_same(array('client_id:text!=', 'client_secret:secret!=', 'mode:select=live', 'webhook_id:text='), $names);
 }
 
 function test_payment_paypal_method_in_the_checkout_lists()

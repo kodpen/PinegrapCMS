@@ -418,7 +418,7 @@ if (mysqli_num_rows($result) > 0) {
     $percent_complete = round($percent_complete, 0);
 
     echo
-    output_header_secure(array('title'=>lang('Modify Pages'),'icon'=>'page')) . '
+    output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
     <meta http-equiv="refresh" content="1;url=' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/send_email_campaign.php?id=' . h(urlencode($_GET['id'])) . get_token_query_string_field() . '">
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
@@ -511,7 +511,7 @@ if (mysqli_num_rows($result) > 0) {
             'contact_id' => $contact_id));
     }
     echo
-    output_header_secure(array('title'=>lang('Modify Pages'),'icon'=>'page')) . '
+    output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
             <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
