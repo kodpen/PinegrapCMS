@@ -324,7 +324,7 @@ foreach ($push_subscriptions as $subscription) {
                 ? '<span class="badge bg-subtle-success fg-emphasis-success fw-light">' . h(lang('Signed in')) . '</span>'
                 : '<span class="badge bg-subtle-secondary fg-secondary fw-light" title="' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '">' . h(lang('Signed out')) . '</span>'))
         . '</td>'
-        . '<td class="align-middle">' . h(date('Y-m-d H:i', (int) $subscription['created_timestamp'])) . '</td>'
+        . '<td class="align-middle">' . h(get_absolute_time(array('timestamp' => (int) $subscription['created_timestamp']))) . '</td>'
         . '<td class="align-middle">' . $status . '</td>'
         . '<td class="align-middle text-end">'
         . '<div class="d-inline-flex gap-1">'
@@ -368,9 +368,9 @@ foreach ($sessions as $s) {
         . '</td>'
         . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[(int) $s['user_id']]) ? $identity_providers[(int) $s['user_id']] : array(), $s['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . h((string) $s['ip_address']) . '</td>'
-        . '<td class="align-middle">' . h(date('Y-m-d H:i', (int) $s['created_at'])) . '</td>'
+        . '<td class="align-middle">' . h(get_absolute_time(array('timestamp' => (int) $s['created_at']))) . '</td>'
         . '<td class="align-middle">' . $last . '</td>'
-        . '<td class="align-middle">' . h(date('Y-m-d H:i', (int) $s['expires_at'])) . '</td>'
+        . '<td class="align-middle">' . h(get_absolute_time(array('timestamp' => (int) $s['expires_at']))) . '</td>'
         . '<td class="align-middle text-end">'
         . '<div class="d-inline-flex gap-1">'
         . ($pin_column

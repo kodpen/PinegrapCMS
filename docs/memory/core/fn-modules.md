@@ -60,7 +60,7 @@ description: Generated from the module field of the memory files: each includes/
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
 - `translate`: [[error-screen-language-and-status]]
-- `user_list`: [[server-paged-lists]]
+- `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
 - `waf_rescue`: [[waf-self-rescue]]

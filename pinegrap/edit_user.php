@@ -357,7 +357,7 @@ if (!$_POST) {
     $output_reset_password_form   = '';
 
     if ($id != USER_ID) {
-        $output_reset_password_button = '<a class="btn btn-sm btn-outline theme-warning rounded-pill px-5" href="#" onclick="event.preventDefault(); pgConfirm({title:\'' . lang('Reset & Send Password') . '\', message:\'' . lang('Are you sure you want to reset the user\'s password and email a new password to the user?') . '\', confirmText:\'' . lang('Reset & Send Password') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'warning\'}).then(function(ok){if(ok) document.reset_password_form.submit();}); return false;"><i class="bi bi-key me-1"></i>' . lang('Reset & Send Password') . '</a>';
+        $output_reset_password_button = pg_user_form_reset_password_button();
 
         $output_reset_password_form =
             '<form name="reset_password_form" action="reset_password.php" method="post">'
@@ -790,8 +790,8 @@ if (!$_POST) {
                 . '<div class="pg-session-text">'
                 . '<div class="pg-session-name">' . h(pg_user_agent_label($edit_user_session['user_agent'])) . $edit_user_session_tags . '</div>'
                 . '<div class="pg-session-meta">' . h((string) $edit_user_session['ip_address'])
-                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => date('Y-m-d H:i', (int) $edit_user_session['created_at']))))
-                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => date('Y-m-d H:i', (int) $edit_user_session['expires_at']))))
+                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['created_at'])))))
+                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['expires_at'])))))
                 . '</div></div>'
                 . '<div class="pg-session-actions">' . $edit_user_session_pin_button
                 . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
@@ -916,7 +916,7 @@ if (!$_POST) {
         : 0;
 
     $output_password_note = ($password_changed_at > 0)
-        ? lang(array('string' => 'Last changed {var:1}', 'vars' => date('d.m.Y', $password_changed_at)))
+        ? lang(array('string' => 'Last changed {var:1}', 'vars' => get_absolute_time(array('timestamp' => $password_changed_at, 'type' => 'date'))))
         : lang('Change date not recorded');
 
     $output_identity_rows = $user_identities
@@ -1246,7 +1246,7 @@ if (!$_POST) {
                                                 <label class="" for="badge">' . lang('Show badge next to username') . '</label>
                                             </div>
                                             <div class="collapse ms-7 mt-1 mb-3' . (($badge_checked != '') ? ' show' : '') . '" id="badge_row" style="max-width:22rem">
-                                                <input value="' . h($badge_label) . '" type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" size="20" maxlength="100" />
+                                                <input value="' . h($badge_label) . '" type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" aria-label="' . h(lang('Badge Label')) . '" class="form-control form-control-sm" size="20" maxlength="100" />
                                                 ' . $output_badge_label_info . '
                                             </div>
                                         </div>
@@ -1266,7 +1266,7 @@ if (!$_POST) {
 
                     ' . $permission_ui['panels'] . '
 
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="bi bi-floppy me-3"></span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

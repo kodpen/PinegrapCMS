@@ -3147,8 +3147,8 @@ function get_acl_folder_tree($type, $parent_folder_id = 0, $level = 0, $folders 
                     . '<button type="button" class="pg-acl-expiry-add" aria-expanded="false"><i class="bi bi-calendar-plus"></i><span>' . h(lang('Add an expiry')) . '</span></button>'
                     . '<span class="pg-acl-expiry-field">'
                         . '<span class="pg-acl-expiry-label">' . lang('Expiration Date') . '</span>'
-                        . '<input type="text" class="form-control form-control-sm pg-acl-expiry-input" id="view_' . $folder['id'] . '_expiration_date" name="view_' . $folder['id'] . '_expiration_date" value="' . $output_expiration_date . '" maxlength="10"' . (($output_expiration_date_style != '') ? ' style="color: red"' : '') . ' onfocus="this.style.color = \'\'" />'
-                        . '<button type="button" class="pg-acl-expiry-clear" title="' . h(lang('Remove the expiry')) . '"><i class="bi bi-x-lg"></i></button>'
+                        . '<input type="text" class="form-control form-control-sm pg-acl-expiry-input" id="view_' . $folder['id'] . '_expiration_date" name="view_' . $folder['id'] . '_expiration_date" value="' . $output_expiration_date . '" maxlength="10" aria-label="' . h(lang(array('string' => 'Expiration date of {var:1}', 'vars' => (string) $folder['name']))) . '"' . (($output_expiration_date_style != '') ? ' style="color: red"' : '') . ' onfocus="this.style.color = \'\'" />'
+                        . '<button type="button" class="pg-acl-expiry-clear" title="' . h(lang('Remove the expiry')) . '" aria-label="' . h(lang('Remove the expiry')) . '"><i class="bi bi-x-lg"></i></button>'
                     . '</span>'
                     . '</span>';
             }

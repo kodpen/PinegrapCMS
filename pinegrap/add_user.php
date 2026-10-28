@@ -210,7 +210,7 @@ if (!$_POST) {
                                         <label class="" for="badge">' . lang('Show badge next to username') . '</label>
                                     </div>
                                     <div class="collapse ms-7 mt-1 mb-3" id="badge_row" style="max-width:22rem">
-                                        <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" class="form-control form-control-sm" value="" size="20" maxlength="100" />
+                                        <input type="text" name="badge_label" placeholder="' . $output_badge_label_placeholder . '" id="badge_label" aria-label="' . h(lang('Badge Label')) . '" class="form-control form-control-sm" value="" size="20" maxlength="100" />
                                         ' . $output_badge_label_info . '
                                     </div>
                                     <div class="form-field">
@@ -226,7 +226,7 @@ if (!$_POST) {
 
                     ' . $permission_ui['panels'] . '
 
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
