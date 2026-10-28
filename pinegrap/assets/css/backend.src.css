@@ -19,6 +19,16 @@
   --bs-btn-active-bg: transparent;
   --bs-btn-disabled-bg: transparent;
 }
+/* v6 buttons centre their content with flexbox, so text-start/text-end
+   (text-align) no longer move it as they did on v5's inline-block button.
+   :where() keeps the specificity of .btn alone: a panel rule on the
+   button's own class and the justify-content utilities still win. */
+.btn:where(.text-start) {
+  justify-content: flex-start;
+}
+.btn:where(.text-end) {
+  justify-content: flex-end;
+}
 /* v5's card: block body and header, v5 paddings and cap tint, children
    keep their own margins (v6 zeroes them and spaces them with a gap). */
 .card {
