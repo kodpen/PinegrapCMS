@@ -77,7 +77,7 @@ if (!defined('PG_INIT_LOADED')) {
                         <td class="align-middle text-start text-nowrap">
                             <a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_offer.php?id=<?=$offer['id']?>" title="<?=lang('Edit')?>"><i class="bi bi-pencil"></i></a>
                             <a class="m-1 btn-data-control btn btn-outline theme-secondary border-2" href="edit_offer.php?duplicate=<?=$offer['id']?>" title="<?=lang('Duplicate')?>"><i class="bi bi-copy"></i></a>
-                            <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>"><i class="bi bi-power"></i></button>
+                            <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 pg-offer-toggle" data-id="<?=$offer['id']?>" title="<?=$offer['enabled'] ? lang('Disable offer') : lang('Enable offer')?>" aria-label="<?=$offer['enabled'] ? h(lang('Disable offer')) : h(lang('Enable offer'))?>"><i class="bi bi-power" aria-hidden="true"></i></button>
                         </td>
                         <td class="align-middle">
                             <a class="fw-semibold pg-link-body-emphasis text-decoration-none" href="edit_offer.php?id=<?=$offer['id']?>"><?=h($offer['code'])?></a>
@@ -96,7 +96,7 @@ if (!defined('PG_INIT_LOADED')) {
                                 <?php else: ?>
                                     <span class="badge rounded-pill bg-subtle-danger fg-emphasis-danger border border-subtle-danger fw-normal"><i class="bi bi-exclamation-triangle" aria-hidden="true"></i> <?=lang('No result')?></span>
                                 <?php endif ?>
-                                <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-1 fg-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i></span><?php endif ?>
+                                <?php if ($offer['upsell']): ?><span class="badge rounded-pill bg-1 fg-secondary border fw-normal" title="<?=lang('Up-sell message')?>"><i class="bi bi-chat-square-text" aria-hidden="true"></i><span class="visually-hidden"><?=lang('Up-sell message')?></span></span><?php endif ?>
                             </div>
                         </td>
                         <td class="align-middle text-nowrap">
@@ -211,9 +211,10 @@ if (!defined('PG_INIT_LOADED')) {
         }
 
         // The backend turns every title into a hover popover, so the button's
-        // label lives in the popover instance once the page has loaded.
+        // label lives in the popover instance once the page has loaded; the
+        // spoken name is the aria-label, which nothing else updates.
         function relabel(btn, text) {
-            btn.attr('title', text).attr('data-bs-original-title', text);
+            btn.attr('title', text).attr('data-bs-original-title', text).attr('aria-label', text);
             var popover = window.pgUI ? pgUI.popover.find(btn[0]) : null;
             if (popover) {
                 popover.hide();
