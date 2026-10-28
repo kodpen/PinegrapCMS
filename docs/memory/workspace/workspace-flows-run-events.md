@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-run-events
-description: Webhook events of flow runs (A7; cancelled PR #2406's follow-up): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
+description: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
 ---
 
 ## Which events, from where?
