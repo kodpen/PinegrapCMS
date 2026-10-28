@@ -439,6 +439,11 @@
             named.id = named.id || (el.id + '_label');
             toggle.setAttribute('aria-labelledby', named.id);
         }
+        // Bootstrap 6's .collapse clips overflow-y, so a menu placed inside a
+        // switch panel would be cut off at the panel's edge: place it fixed.
+        if (el.closest && el.closest('.collapse')) {
+            toggle.setAttribute('data-bs-strategy', 'fixed');
+        }
         var combobox = window.pgUI.combobox.get(toggle, {
             multiple: multiple,
             search: search,

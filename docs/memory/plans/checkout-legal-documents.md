@@ -1,6 +1,6 @@
 ---
 name: checkout-legal-documents
-description: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: KVKK at registration, designer KVKK node, order view link to the kvkk copy
+description: Plan (approved 2026-10-19): pre-information form, distance sales contract, checkout KVKK built; left: designer KVKK node, order view link to the kvkk copy
 ---
 
 ## Why?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19): pre-information form, distance sales co
 1. Done: settings, templates, `order_documents`, checkboxes on all three checkouts, cart page, server check (commerce/order-legal-documents.md, checkout-legal-checkboxes.md).
 2. Done (PR #570): designer bindings (designer/express-order-legal-documents.md).
 3. Done: receipt attachments, panel card, kept-copy page, `GET /orders/{id}/documents`; order view links (PR #736, commerce/order-view-legal-documents.md).
-4. Done (PR #2346): checkout KVKK notice link and optional consent box, kept as type `kvkk` (commerce/checkout-kvkk-notice.md; the notice is a page, not a template, for the config row's room). Left: 4b the registration form's KVKK lines (no order: needs a place to keep the answer, likely the consent log alone); 4c a designer node/token for the KVKK lines (injected meanwhile) and the order view link to the kvkk copy.
+4. Done (PR #2346): checkout KVKK notice link and optional consent box, kept as type `kvkk` (commerce/checkout-kvkk-notice.md; the notice is a page, not a template, for the config row's room). Done (PR #2397, decided in #2403): 4b the sign-up forms' KVKK lines, consent in the consent log only. Left: 4c a designer node/token for the KVKK lines (injected meanwhile) and the order view link to the kvkk copy.
 5. Done (PR #798): a site installed from the Turkish starter starts with the switch on; its template columns stay NULL and read the built-ins (commerce/order-legal-documents.md). Done (PR #816): the last day of the right of withdrawal on the order view and the panel card, the latest delivery's deadline (commerce/order-withdrawal-deadline.md).
 6. Done (PR #648): the document link posts the typed billing fields and payment method to the document page, in its own window (commerce/checkout-legal-checkboxes.md).
 
@@ -27,4 +27,4 @@ description: Plan (approved 2026-10-19): pre-information form, distance sales co
 - Should the contract PDF be produced (dompdf is already vendored for ERP) or is HTML enough? Start with HTML; PDF later if customers ask.
 
 ## Where to start?
-- Step 4b/4c (KVKK): read commerce/checkout-kvkk-notice.md first. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.
+- Step 4c (KVKK): read commerce/checkout-kvkk-notice.md first. Express-order totals stay untouchable: the checkout part only wraps the renderers' output.

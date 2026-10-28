@@ -1,6 +1,6 @@
 ---
 name: merge-review
-description: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, leaves minor ones (no follow-up issue), digs deeper only for access, payments, SQL, schema
+description: Rule (2026-10-25): the merging session reviews each PR once, fixes only blocking findings, digs deeper for access, payments, SQL, schema; an architect decision counts as the owner's
 ---
 
 ## How deep is the review before a merge?
@@ -14,6 +14,10 @@ description: Rule (2026-10-25): the merging session reviews each PR once, fixes 
 
 ## Who fixes a PR that is sent back?
 - A small blocker (a few lines, clear fix) is fixed by the merging session on the branch itself before the train. A larger one gets one comment on the PR naming it and the PR stays out of the train. The session that opened it stays subscribed until the merge (`working-mode.md`), so the comment wakes it: it pushes the fix and marks it ready again; when it has ended, a new session does (nobody else is on the branch).
+
+## Does a PR resting on an architect decision wait for the owner?
+- No. A `Karar:` / `Decision:` comment on an `architect` issue counts as the owner's approval (owner, 2026-10-28): the architect asks the owner in its own window, in Turkish, and records the answer. The merging session does not check who decided, does not hold the PR and does not ask the owner; on 2026-10-27/28 it held 15 ready PRs for hours over decisions already recorded.
+- When the merging session is unsure what to do (a decision that looks missing, a clash, a rule that seems to contradict a PR), it opens an `architect` issue (`architect-asking.md`) instead of waiting or asking the owner, lands the rest of the train, and acts on the answer.
 
 ## What else stays the merging session's job?
 - The PR body cleanup and footer removal (`pr-footer-and-trailers.md`), the title of each PR's merge commit in the train (`<PR title> (#n)`), the `changelog.txt` lines (`merge-train.md`), and marking the plan steps a PR finishes when its author could not write the PR number.

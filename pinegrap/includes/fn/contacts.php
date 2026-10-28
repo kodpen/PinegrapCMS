@@ -17,9 +17,127 @@
 if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
-// This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view
-function merge_contacts($contacts)
+/**
+ * Every place a contact's id is kept, the one list the contact merge and the
+ * personal data erasure share. tests/contact_holders_test.php lays it against
+ * every contact_id (and user_contact) column of the install schema and
+ * against pg_privacy_erase_tables(), so a new table cannot be missed by
+ * either.
+ *
+ * column: the column holding the contact id (table: when the key is not the
+ *         table, type: column => value when the column also names other
+ *         kinds of record).
+ * merge:  move     merge_contacts() re-points the merged contacts' rows to
+ *                  the contact that stays;
+ *         one      as move, but a group of duplicates with more than one
+ *                  contact holding a row is not merged (a contact has one
+ *                  ERP account);
+ *         groups   merge_contacts()'s own contact group and opt-in step;
+ *         keep     left as it is: the consent log is proof of what that
+ *                  record answered;
+ *         survivor never names a merged contact: a contact a user holds is
+ *                  always the one that stays.
+ * erase:  find     pg_privacy_erase_tables() finds the rows by contact_ids;
+ *         scope    found through pg_privacy_erase_scope() (orders, forms,
+ *                  ERP accounts) or the person's users;
+ *         none     not reached by the erasure (Workspace records).
+ *
+ * @return array  key => column, merge, erase, optional table and type
+ */
+function pg_contact_holders()
 {
+    return array(
+        'orders'                       => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'scope'),
+        'forms'                        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'scope'),
+        'email_recipients'             => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
+        'erp_accounts'                 => array('column' => 'contact_id', 'merge' => 'one', 'erase' => 'scope'),
+        'opt_in'                       => array('column' => 'contact_id', 'merge' => 'groups', 'erase' => 'find'),
+        'contacts_contact_groups_xref' => array('column' => 'contact_id', 'merge' => 'groups', 'erase' => 'find'),
+        'consent_log'                  => array('column' => 'contact_id', 'merge' => 'keep', 'erase' => 'find'),
+        'user'                         => array('column' => 'user_contact', 'merge' => 'survivor', 'erase' => 'scope'),
+        'ws_channels'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'ws_channels_customer'         => array('table' => 'ws_channels', 'column' => 'customer_id', 'type' => array('customer_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
+        'ws_refs'                      => array('column' => 'ref_id', 'type' => array('ref_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
+        'ws_approvals'                 => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
+        'ws_ai_changes'                => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
+    );
+}
+
+/**
+ * The contacts of a group of duplicates that hold a row of a holder whose
+ * merge is "one"; more than one of them refuses the merge.
+ *
+ * @param array $contact_ids  the contact that stays and the merged ones
+ * @return array  holder key => contact ids holding a row
+ */
+function pg_contact_merge_conflicts($contact_ids)
+{
+    $contact_ids = array_values(array_unique(array_map('intval', (array) $contact_ids)));
+    $conflicts = array();
+
+    foreach (pg_contact_holders() as $key => $holder) {
+        $table = isset($holder['table']) ? $holder['table'] : $key;
+
+        if (($holder['merge'] !== 'one') || !$contact_ids || !pg_schema_has($table, $holder['column'])) {
+            continue;
+        }
+
+        $holding = db_values(
+            "SELECT DISTINCT " . $holder['column'] . " FROM " . $table . " WHERE " . $holder['column'] . " IN (" . implode(',', $contact_ids) . ")"
+        );
+
+        if (count((array) $holding) > 1) {
+            $conflicts[$key] = array_map('intval', (array) $holding);
+        }
+    }
+
+    return $conflicts;
+}
+
+/**
+ * Re-points the rows of every "move" and "one" holder from the merged
+ * contacts to the contact that stays. Runs before the merged contacts are
+ * deleted, so a merge stopped half-way leaves no row naming a deleted
+ * contact that the next merge would not move.
+ *
+ * @param array $merged_ids  the contacts merged away
+ * @param int   $keep_id     the contact that stays
+ * @return void
+ */
+function pg_contact_holders_move($merged_ids, $keep_id)
+{
+    $keep_id = (int) $keep_id;
+    $merged_ids = array_values(array_diff(array_unique(array_map('intval', (array) $merged_ids)), array(0, $keep_id)));
+
+    if (($keep_id <= 0) || !$merged_ids) {
+        return;
+    }
+
+    foreach (pg_contact_holders() as $key => $holder) {
+        $table = isset($holder['table']) ? $holder['table'] : $key;
+
+        if (!in_array($holder['merge'], array('move', 'one'), true) || !pg_schema_has($table, $holder['column'])) {
+            continue;
+        }
+
+        $where = $holder['column'] . " IN (" . implode(',', $merged_ids) . ")";
+        $values = array((string) $keep_id);
+
+        foreach (isset($holder['type']) ? $holder['type'] : array() as $type_column => $type_value) {
+            $where .= " AND " . $type_column . " = ?";
+            $values[] = $type_value;
+        }
+
+        db_q("UPDATE " . $table . " SET " . $holder['column'] . " = ? WHERE " . $where, $values) or output_error(lang('Query failed.'));
+    }
+}
+
+// This function merges duplicate contacts together and then forwards the user back to the all duplicate contacts view.
+// Every record that names a merged contact is re-pointed to the contact that stays (pg_contact_holders()); a group
+// of duplicates where more than one contact has an ERP account is left as it is and counted in $refused.
+function merge_contacts($contacts, &$refused = 0)
+{
+    $refused = 0;
     $child_contacts = array();
     $organized_contacts = array();
     /*** Start contacts array organization: ***/
@@ -126,6 +244,11 @@ function merge_contacts($contacts)
                     $processed_contact_ids[] = $orphan['id'];
                 }
             }
+            // a group where more than one contact has an ERP account is not merged: one of the accounts would have to go
+            if ((count($orphans_to_merge) > 0) && pg_contact_merge_conflicts(array_merge(array($child['id']), array_column($orphans_to_merge, 'id')))) {
+                $refused++;
+                $orphans_to_merge = array();
+            }
             // if there are orphans to merge, then run the logic to merge them
             if (count($orphans_to_merge) > 0) {
                 $orphans_to_merge_sort_order = array();
@@ -177,6 +300,8 @@ function merge_contacts($contacts)
                     $child['timestamp'] = $orphans_to_merge[0]['timestamp'];
                     $child['user'] = $orphans_to_merge[0]['user'];
                 }
+                // re-point the merged contacts' records before the contacts are deleted
+                pg_contact_holders_move(array_column($orphans_to_merge, 'id'), $child['id']);
                 // update child's contact record with new opt in status, last modified date, and last modified user
                 $query = "UPDATE contacts
 
@@ -306,6 +431,11 @@ function merge_contacts($contacts)
                     $processed_contact_ids[] = $orphan['id'];
                 }
             }
+            // a group where more than one contact has an ERP account is not merged: one of the accounts would have to go
+            if ((count($orphans_to_merge) > 1) && pg_contact_merge_conflicts(array_column($orphans_to_merge, 'id'))) {
+                $refused++;
+                $orphans_to_merge = array();
+            }
             // if there are orphans to merge, then run the logic to merge them
             if (count($orphans_to_merge) > 0) {
                 $orphans_to_merge_sort_order = array();
@@ -386,6 +516,8 @@ function merge_contacts($contacts)
                         $sql_columns_values[] = (string) $remaining_orphans_field_to_update;
                     }
                 }
+                // re-point the merged contacts' records before the contacts are deleted
+                pg_contact_holders_move(array_column($orphans_to_merge, 'id'), $remaining_orphan['id']);
                 // update remaining orphan's contact record with data from orphans, new last mod date and opt status
                 $query = "UPDATE contacts
 

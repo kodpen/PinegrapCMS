@@ -1534,6 +1534,9 @@ function get_order_preview($properties) {
 
                 $output_surcharge_message = '';
 
+                // What the card is charged: the total, with the surcharge when one is added.
+                $card_charge_total = $grand_total;
+
                 // If a credit card surcharge is enabled and a non-recurring transaction is required
                 // (i.e. total is greater than 0), then deal with surcharge.
                 if (
@@ -1555,6 +1558,7 @@ function get_order_preview($properties) {
                     }
 
                     $grand_total_with_surcharge = $grand_total + $surcharge;
+                    $card_charge_total = $grand_total_with_surcharge;
 
                     $output_unconverted_total = '';
 
@@ -1637,6 +1641,15 @@ function get_order_preview($properties) {
 				
 
 
+                // A card driver that takes the card in the payment service's own fields
+                // (Stripe's Payment Element) draws its box in place of the card table:
+                // assets/js/payment_hosted.js moves it into the marked section, hides
+                // the table and switches its inputs off. The inputs stay in the page
+                // for the checkout's own script; the surcharge message stays shown.
+                $output_hosted_card = _eo_hosted_card_html((int) round($card_charge_total * 100));
+                $output_hosted_card_open = ($output_hosted_card !== '') ? '<div data-pg-eo-cc-fields>' : '';
+                $output_hosted_card_close = ($output_hosted_card !== '') ? '</div>' : '';
+
                 $output_payment_methods .=
                     '<div class="payment data" style="margin-bottom: 1em">
                         <div style="margin-bottom: 10px">' .
@@ -1644,6 +1657,7 @@ function get_order_preview($properties) {
                             '<label for="payment_method_credit_debit_card"> Credit/Debit Card</label>
                         </div>
                         <div id="credit_debit_card_fields" class="credit_debit_card" style="margin-top: .25em">
+                            ' . $output_hosted_card . $output_hosted_card_open . '
                             <table>
                                 <tr>
                                     <td
@@ -1705,6 +1719,7 @@ function get_order_preview($properties) {
 								' . $installment_output . $threeds_output . '
 
                             </table>
+                            ' . $output_hosted_card_close . '
                             <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.payment.min.js"></script>
                             ' . $output_surcharge_message . '
                         </div>
@@ -3273,6 +3288,12 @@ function get_order_preview($properties) {
 
                     // Use jQuery.payment library to enhance payment card fields
                     $system .= '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery.payment.min.js"></script>';
+
+                    // A card driver that takes the card in the payment service's own fields
+                    // (Stripe's Payment Element) prints its box with the system output;
+                    // assets/js/payment_hosted.js moves it into the layout's card section
+                    // and switches the layout's card inputs off.
+                    $system .= _eo_hosted_card_html((int) round((($total_with_surcharge > 0) ? $total_with_surcharge : $total) * 100));
                 }
 
                 // If PayPal Express Checkout payment method should be shown, then prepare.

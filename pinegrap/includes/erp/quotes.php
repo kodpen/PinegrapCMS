@@ -80,7 +80,7 @@ function erp_quote_statuses()
         'accepted' => array(lang('Accepted'), 'success'),
         'rejected' => array(lang('Rejected'), 'danger'),
         'invoiced' => array(lang('Invoiced'), 'info'),
-        'cancelled' => array(lang('Cancelled'), 'dark'),
+        'cancelled' => array(lang('Cancelled'), 'inverse'),
     );
 }
 

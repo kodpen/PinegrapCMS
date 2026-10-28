@@ -112,18 +112,64 @@
         return details;
     }
 
+    var CARD_INPUTS = ['card_number', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'cardholder'];
+
+    function cardInputs(form) {
+        var inputs = [];
+
+        CARD_INPUTS.forEach(function (name) {
+            form.querySelectorAll('input[name="' + name + '"], select[name="' + name + '"]').forEach(function (input) {
+                inputs.push(input);
+            });
+        });
+
+        return inputs;
+    }
+
+    // The card section of a layout that does not mark it (a custom layout
+    // saved before the mark, the designer's Order Preview): the smallest
+    // element holding every card input (the card row inside .credit_debit_card),
+    // out of a table to the table's container, and only when it holds no
+    // other field of the form. null when there is no such element: the box
+    // then stays where it was printed.
+    function unmarkedCardSection(form, inputs) {
+        var holdsAll = function (node) {
+            return inputs.every(function (input) {
+                return node.contains(input);
+            });
+        };
+        var node = inputs.length ? inputs[0].parentNode : null;
+
+        while (node && (node !== form) && !holdsAll(node)) {
+            node = node.parentNode;
+        }
+
+        while (node && (node !== form) && /^(TABLE|THEAD|TBODY|TFOOT|TR|TD|TH)$/.test(node.tagName)) {
+            node = node.parentNode;
+        }
+
+        if (!node || (node === form) || !form.contains(node)) {
+            return null;
+        }
+
+        var others = Array.prototype.filter.call(node.querySelectorAll('input[name], select[name], textarea[name]'), function (field) {
+            return CARD_INPUTS.indexOf(field.getAttribute('name')) === -1;
+        });
+
+        return others.length ? null : node;
+    }
+
     // The site's own card inputs are not the card: they are switched off (not
     // posted, not required) and their section shows only the service's box.
+    // They stay in the page: the checkout's own script reads them.
     function takeCardSection(form, box) {
-        var section = form.querySelector('[data-pg-eo-cc-fields]');
-        var names = ['card_number', 'expiration', 'expiration_month', 'expiration_year', 'card_verification_number', 'cardholder'];
+        var inputs = cardInputs(form);
+        var section = form.querySelector('[data-pg-eo-cc-fields]') || unmarkedCardSection(form, inputs);
 
-        names.forEach(function (name) {
-            form.querySelectorAll('input[name="' + name + '"]').forEach(function (input) {
-                input.disabled = true;
-                input.removeAttribute('required');
-                input.removeAttribute('data-pg-cc-required');
-            });
+        inputs.forEach(function (input) {
+            input.disabled = true;
+            input.removeAttribute('required');
+            input.removeAttribute('data-pg-cc-required');
         });
 
         if (!section || section.contains(box)) {

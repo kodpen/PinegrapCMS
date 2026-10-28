@@ -193,12 +193,12 @@ function pg_list_cell($html, $class = 'align-middle')
  * A list row as table markup.
  *
  * @param array $row array('class' => row classes, 'cells' => list of
- *                   pg_list_cell())
+ *                   pg_list_cell()[, 'id' => the row's id attribute])
  * @return string
  */
 function pg_list_row_html($row)
 {
-    $output = '<tr class="' . h($row['class'] ?? '') . '">';
+    $output = '<tr' . (isset($row['id']) ? ' id="' . h($row['id']) . '"' : '') . ' class="' . h($row['class'] ?? '') . '">';
 
     foreach ($row['cells'] as $cell) {
         $output .= '<td' . (($cell['class'] !== '') ? ' class="' . h($cell['class']) . '"' : '') . '>' . $cell['html'] . '</td>';
@@ -209,8 +209,9 @@ function pg_list_row_html($row)
 
 /**
  * A list row as DataTables takes it from the server: the cells' content by
- * column number, the row's classes in DT_RowClass and the cells' classes in
- * DT_RowData, which backend.src.js puts back on the cells it draws.
+ * column number, the row's classes in DT_RowClass, its id (when it has one)
+ * in DT_RowId and the cells' classes in DT_RowData, which backend.src.js puts
+ * back on the cells it draws.
  *
  * @param array $row as pg_list_row_html() takes it
  * @return array
@@ -226,6 +227,10 @@ function pg_list_row_data($row)
     }
 
     $data['DT_RowClass'] = (string) ($row['class'] ?? '');
+
+    if (isset($row['id'])) {
+        $data['DT_RowId'] = (string) $row['id'];
+    }
     $data['DT_RowData'] = array('pgCells' => $classes);
 
     return $data;

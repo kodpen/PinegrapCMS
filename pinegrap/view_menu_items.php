@@ -307,16 +307,18 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                     </div>
                 </div>
             </nav>
+            <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/sortablejs/Sortable.min.js"></script>
             <script>
             (function() {
                 var menuId = ' . (int)$_GET['id'] . ';
                 var saveUrl = \'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php\';
+                var sortableReady = false;
 
                 $(\'#toggle_reorder\').on(\'click\', function() {
                     $(\'#menu_items_table_card\').hide();
                     $(\'#reorder_panel\').show();
                     $(\'#reorder_actions\').show();
-                    if (!$(\'#sortable_tree .sort-group\').hasClass(\'ui-sortable\')) {
+                    if (!sortableReady) {
                         initSortable();
                     }
                 });
@@ -338,19 +340,24 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                     });
                 }
 
+                // SortableJS (assets/lib/sortablejs/): every level is one list in
+                // a shared group, so an item can move to another level; the
+                // moved item and its children are indented for the new level.
                 function initSortable() {
-                    $(\'#sortable_tree .sort-group\').sortable({
-                        handle: \'.sort-drag-handle\',
-                        items: \'> .sort-item\',
-                        connectWith: \'.sort-group\',
-                        tolerance: \'pointer\',
-                        cursor: \'grabbing\',
-                        revert: 150,
-                        placeholder: \'sort-placeholder\',
-                        receive: function(event, ui) {
-                            var newLevel = getGroupLevel($(this));
-                            updateIndentation(ui.item, newLevel);
-                        }
+                    sortableReady = true;
+                    $(\'#sortable_tree .sort-group\').each(function() {
+                        Sortable.create(this, {
+                            group: \'menu-items\',
+                            handle: \'.sort-drag-handle\',
+                            draggable: \'.sort-item\',
+                            ghostClass: \'sort-placeholder\',
+                            animation: 150,
+                            fallbackOnBody: true,
+                            swapThreshold: 0.65,
+                            onAdd: function(evt) {
+                                updateIndentation($(evt.item), getGroupLevel($(evt.to)));
+                            }
+                        });
                     });
                 }
 

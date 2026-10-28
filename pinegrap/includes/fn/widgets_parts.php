@@ -65,6 +65,7 @@ function pg_sw_default_part_tokens()
             array('__comment_stars_html', 'pg_sw_part_comment_stars'),
         ),
         'shopping_cart' => array(
+            array('__item_form_data_html', 'pg_sw_part_cart_item_form'),
             array('__item_gift_card_html', 'pg_sw_part_cart_item_gift_card'),
             array('__item_recurring_schedule_html', 'pg_sw_part_cart_item_schedule'),
         ),
@@ -150,6 +151,7 @@ function pg_sw_default_loop_tail_parts()
             array(array('__item_gift_card_html', 'order.item_gift_cards'), 'pg_sw_part_order_item_gift_card'),
         ),
         'shopping_cart' => array(
+            array(array('__item_form_data_html', 'cart.item_forms'), 'pg_sw_part_cart_item_form'),
             array(array('__item_gift_card_html', 'cart.item_gift_cards'), 'pg_sw_part_cart_item_gift_card'),
             array(array('__item_recurring_schedule_html', 'cart.item_schedule'), 'pg_sw_part_cart_item_schedule'),
         ),

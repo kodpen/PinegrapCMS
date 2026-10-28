@@ -21,6 +21,13 @@
  * escapes, formats and filters it once like any field. The editor's twin is
  * _swRefSpec() in style_designer.js.
  *
+ * A form is marked as a collection (custom_form_pages.collection, 11.0.43)
+ * and each field may carry a kind beyond its type (form_fields.collection_kind)
+ * and, for a reference, the form it points into (reference_page_id). The
+ * canvas is the record: the kind sits on the control (props._cf.kind,
+ * props._cf.ref) and the design save writes the columns
+ * (pg_cf_sync_page_form()).
+ *
  * Only complete records are read, and never a field kept for staff only.
  * The values print as stored: the translation extracts a widget's own
  * records only, so a lookup of another form's text would find nothing and
@@ -293,4 +300,89 @@ function pg_coll_ref_fill($refs, &$by_form, $by_form_source)
             if ($value !== null) $by_form[$id][$token] = $value;
         }
     }
+}
+
+/**
+ * Whether the collections columns are there (2026.11.0, 11.0.43):
+ * custom_form_pages.collection, form_fields.collection_kind and
+ * form_fields.reference_page_id. Before the upgrade runs, nothing reads or
+ * writes them and every form behaves as before.
+ *
+ * @return bool
+ */
+function pg_coll_ready()
+{
+    static $ready = null;
+    if ($ready === null) {
+        $ready = pg_schema_has('custom_form_pages', 'collection')
+            && pg_schema_has('form_fields', 'collection_kind')
+            && pg_schema_has('form_fields', 'reference_page_id');
+    }
+    return $ready;
+}
+
+/**
+ * The kinds a field of a collection may have beyond its type, and the field
+ * types each one is given to. A text, a rich text, a date, a file or an
+ * option set is the field's type itself; these say what the type cannot:
+ * a number, an image, a reference to another form's records. The editor's twin is _CF_KINDS in
+ * style_designer.js.
+ *
+ * @return array kind => field types
+ */
+function pg_coll_kinds()
+{
+    return array(
+        'number'    => array('text box'),
+        'image'     => array('file upload'),
+        'reference' => array('text box', 'pick list', 'radio button', 'check box'),
+    );
+}
+
+/**
+ * The kind a field is written with: $kind when it is one of pg_coll_kinds()
+ * given to the field's $type, else ''. A field that changes type loses a
+ * kind its new type cannot have.
+ *
+ * @param mixed  $kind
+ * @param string $type
+ * @return string
+ */
+function pg_coll_field_kind($kind, $type)
+{
+    $kinds = pg_coll_kinds();
+    $kind  = is_string($kind) ? strtolower(trim($kind)) : '';
+    if (!isset($kinds[$kind]) || !in_array((string)$type, $kinds[$kind], true)) return '';
+    return $kind;
+}
+
+/**
+ * The form a reference field points into, as written: a positive page id
+ * for a field of kind 'reference', else 0. Whether that page holds a form
+ * is the caller's check (pg_coll_reference_target()).
+ *
+ * @param string $kind pg_coll_field_kind()
+ * @param mixed  $page_id
+ * @return int
+ */
+function pg_coll_field_reference($kind, $page_id)
+{
+    if ($kind !== 'reference') return 0;
+    if (is_int($page_id)) return max(0, $page_id);
+    if (is_string($page_id) && ctype_digit($page_id)) return (int)$page_id;
+    return 0;
+}
+
+/**
+ * $page_id when it holds a form (a custom_form_pages row), else 0. A
+ * reference that points nowhere is written as none.
+ *
+ * @param int $page_id
+ * @return int
+ */
+function pg_coll_reference_target($page_id)
+{
+    $page_id = (int)$page_id;
+    if ($page_id <= 0) return 0;
+    return db_value("SELECT COUNT(*) FROM custom_form_pages WHERE page_id = '$page_id'") ? $page_id : 0;
 }

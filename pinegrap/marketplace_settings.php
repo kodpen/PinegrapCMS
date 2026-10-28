@@ -2297,7 +2297,7 @@ echo '
 			<input type="hidden" name="mp_action" value="create">
 			<div class="dialog-header">
 				<h5 class="dialog-title"><i class="bi bi-shop me-3"></i>' . lang('Connect a Marketplace') . '</h5>
-				<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>
+				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
 				<div class="mb-5">
@@ -2351,7 +2351,7 @@ if ($selected) {
 		<input type="hidden" name="account_id" value="' . $selected_id . '">
 		<div class="drawer-header border-bottom">
 			<h5 class="drawer-title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
-			<button type="button" class="btn-close" data-bs-dismiss="drawer"></button>
+			<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 		</div>
 		<div class="drawer-body">
 			<div class="mb-5">

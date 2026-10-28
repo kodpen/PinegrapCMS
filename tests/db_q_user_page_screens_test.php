@@ -126,7 +126,7 @@ function db_q_user_page_screens_test_built($text)
 
 function test_db_q_user_page_screens_value_queries_use_db_q()
 {
-	$expected = array('edit_user.php' => 33, 'add_user.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 30, 'edit_page.php' => 30);
+	$expected = array('edit_user.php' => 21, 'add_user.php' => 2, 'includes/forms/user_form.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 30, 'edit_page.php' => 30);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
@@ -158,7 +158,7 @@ function test_db_q_user_page_screens_value_queries_use_db_q()
 // elements as the SQL text has placeholders.
 function test_db_q_user_page_screens_values_fit_placeholders()
 {
-	foreach (array('edit_user.php', 'add_user.php', 'import_users.php', 'edit_pages.php', 'edit_page.php') as $path) {
+	foreach (array('edit_user.php', 'add_user.php', 'includes/forms/user_form.php', 'import_users.php', 'edit_pages.php', 'edit_page.php') as $path) {
 		foreach (db_q_user_page_screens_test_calls($path) as $call) {
 			if ($call['call'] !== 'db_q' || strpos($call['values'], 'array(') !== 0) {
 				continue;

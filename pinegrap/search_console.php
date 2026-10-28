@@ -423,6 +423,14 @@ if (!$linked) {
 				var color = function (name, fallback) { return (styles.getPropertyValue(name) || "").trim() || fallback; };
 				var locale = document.documentElement.lang || undefined;
 				var format = function (value) { return Number(value).toLocaleString(locale, { maximumFractionDigits: 0 }); };
+				// Chart.js cannot parse the light-dark() text of a custom property, so the
+				// panel ink is resolved to an rgb() value through a probe element.
+				var probe = document.createElement("span");
+				probe.style.color = "var(--pg-fg-2)";
+				document.body.appendChild(probe);
+				var ink = getComputedStyle(probe).color;
+				probe.remove();
+				var grid = "rgba(128,128,128,.2)";
 				new Chart(canvas, {
 					type: "line",
 					data: {
@@ -436,12 +444,13 @@ if (!$linked) {
 						maintainAspectRatio: false,
 						interaction: { mode: "index", intersect: false },
 						plugins: {
-							legend: { position: "bottom" },
+							legend: { position: "bottom", labels: { color: ink } },
 							tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ": " + format(ctx.parsed.y); } } }
 						},
 						scales: {
-							clicks: { position: "left", beginAtZero: true, ticks: { callback: function (value) { return format(value); } } },
-							impressions: { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { callback: function (value) { return format(value); } } }
+							x: { ticks: { color: ink }, grid: { color: grid } },
+							clicks: { position: "left", beginAtZero: true, grid: { color: grid }, ticks: { color: ink, callback: function (value) { return format(value); } } },
+							impressions: { position: "right", beginAtZero: true, grid: { color: grid, drawOnChartArea: false }, ticks: { color: ink, callback: function (value) { return format(value); } } }
 						}
 					}
 				});

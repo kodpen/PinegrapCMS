@@ -394,7 +394,7 @@ names before the first table is built.
 @@ assets/js/backend.src.js
 <<<
     var options = {};
-    options["language"] = {
+    // The panel language's DataTables 2 texts from the local copy; English
 ===
     // DataTables' Bootstrap 5 integration names v5 classes for the controls
     // it builds; the panel runs Bootstrap 6.
@@ -412,7 +412,7 @@ names before the first table is built.
     }
 
     var options = {};
-    options["language"] = {
+    // The panel language's DataTables 2 texts from the local copy; English
 >>>
 
 The product builder's switch helper builds its input class in code.
@@ -584,7 +584,7 @@ dropped modal box.
 <<<
             '<a href="#" class="link-light text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
 ===
-            '<a href="#" class="fg-white text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+            '<a href="#" class="fg-reset text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
 >>>
 
 @@ assets/js/backend.src.js
@@ -601,8 +601,8 @@ dropped modal box.
     // .dialog.pg-sm -- the box the sidebar, the pane and the drawer
 >>>
 
-The panel's switch knob: dark when on, blue while focused (v5 drew it
-with --bs-form-switch-bg). The .danger switch variant is not used.
+The panel's switch knob: dark when on, blue while focused and off (v5 drew
+it with --bs-form-switch-bg; v6 reads only --bs-switch-indicator-bg). The .danger switch variant is not used.
 
 @@ assets/css/backend.src.css
 <<<
@@ -614,11 +614,14 @@ with --bs-form-switch-bg). The .danger switch variant is not used.
 }
 
 ===
-.switch:focus-within {
-  --bs-switch-indicator-bg: #64b5f6;
+/* v6's .switch::before reads only --bs-switch-indicator-bg: a checked thumb
+   takes the dark on-accent ink against the light blue track, and the blue
+   focus knob is kept for unchecked switches, where the track is not blue. */
+.switch:has(input:checked) {
+  --bs-switch-indicator-bg: var(--pg-on-accent);
 }
-.switch {
-  --bs-switch-checked-indicator-bg: #1a1c1e;
+.switch:focus-within:not(:has(input:checked)) {
+  --bs-switch-indicator-bg: var(--pg-primary);
 }
 
 >>>
