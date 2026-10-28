@@ -80,6 +80,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_audit_retention();        // 11.0.47
 	upgrade_2026_11_0_kvkk_notice();            // 11.0.48
 	upgrade_2026_11_0_reference_price_rule();   // 11.0.49
+	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
 
 }
 
@@ -1895,6 +1896,28 @@ function upgrade_2026_11_0_workspace_flows() {
 	install_add_index('ws_scheduled_actions', 'idx_flow', "INDEX idx_flow (flow_id)");
 
 	install_note('Workspace: the tables that will keep the flows drawn on the Workspace canvas, their published versions and their runs are added. Nothing changes in the Workspace with this update.');
+
+}
+
+// Which scheduled actions are a flow's anchor (2026.11.0, 11.0.88;
+// includes/workspace/flow_anchors.php).
+//
+// ws_scheduled_actions.anchor says what a row with a flow_id is: 'hidden'
+// is the row a flow's start box writes (at a time, on an event, on a join),
+// left out of every list, card, history and report; 'converted' is a
+// scheduled action now carried out by a flow, which keeps its id, card,
+// history and news; '' is a scheduled action of its own. Every row that
+// starts a flow today is a hidden anchor, so the UPDATE marks them; it only
+// touches rows still unmarked and runs again harmlessly. The column comes
+// after the flows step that added flow_id and before scheduled actions are
+// converted into flows. A VARCHAR, so a later value needs no MODIFY.
+function upgrade_2026_11_0_workspace_scheduled_anchor() {
+
+	install_add_column('ws_scheduled_actions', 'anchor', "VARCHAR(12) NOT NULL DEFAULT ''");
+
+	db("UPDATE ws_scheduled_actions SET anchor = 'hidden' WHERE flow_id <> 0 AND anchor = ''");
+
+	install_note('Workspace: the scheduled actions that start a flow are marked as such, so they stay out of the list of scheduled actions. Nothing changes in the Workspace with this update.');
 
 }
 

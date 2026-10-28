@@ -1017,6 +1017,44 @@ function ws_step_settlement($ok, $failed_routed)
 }
 
 /**
+ * The scheduled action a step box writes as (what ws_scheduled_fill() and
+ * ws_scheduled_do() read of it). A run a converted action started is that
+ * action: its id, card, channel, name and runs, so {{run}}, a record's
+ * "by the scheduled action", a chain's source and a decision under its card
+ * read as before it was converted. Any other run is the flow's name as the
+ * run started and the run's number for {{run}}; a change posts its decision
+ * under a scheduled action's card in that action's channel, and such a box
+ * has neither: its run's result says what it changed. Pure.
+ *
+ * @param array      $run     ws_flow_runs row
+ * @param array      $context ws_flow_run_context()
+ * @param array|null $anchor  ws_scheduled() of the context's anchor_id
+ * @return array id, message_id, channel_id, name, run_count, last_run_at
+ */
+function ws_step_action_row($run, $context, $anchor)
+{
+    if (is_array($anchor) && ws_scheduled_anchor_converted($anchor) && ((int) $anchor['id'] === (int) ($context['anchor_id'] ?? 0))) {
+        return array(
+            'id'          => (int) $anchor['id'],
+            'message_id'  => (int) ($anchor['message_id'] ?? 0),
+            'channel_id'  => (int) ($anchor['channel_id'] ?? 0),
+            'name'        => (string) $anchor['name'],
+            'run_count'   => max(0, (int) ($anchor['run_count'] ?? 0) - 1),
+            'last_run_at' => (int) ($anchor['last_run_at'] ?? 0),
+        );
+    }
+
+    return array(
+        'id'          => 0,
+        'message_id'  => 0,
+        'channel_id'  => 0,
+        'name'        => (string) ($context['flow_name'] ?? ''),
+        'run_count'   => max(0, (int) $run['id'] - 1),
+        'last_run_at' => 0,
+    );
+}
+
+/**
  * Carries out a step box this request claimed, with the owner's rights now:
  * writes that it began, checks the step again, fills in the values of the
  * boxes before it and does it.
@@ -1068,18 +1106,15 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $context = ws_flow_run_context($run);
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
-    // What ws_scheduled_fill() reads of the action: the flow's name as the
-    // run started, and the run's number for {{run}}. A change posts its
-    // decision under a scheduled action's card in that action's channel; a
-    // box has neither, its run's result says what it changed.
-    $row = array(
-        'id'          => 0,
-        'message_id'  => 0,
-        'channel_id'  => 0,
-        'name'        => (string) ($context['flow_name'] ?? ''),
-        'run_count'   => max(0, (int) $run['id'] - 1),
-        'last_run_at' => 0,
-    );
+    $anchor = ((int) ($context['anchor_id'] ?? 0) > 0) ? ws_scheduled((int) $context['anchor_id']) : null;
+
+    // The action's run that started this one has already counted as its
+    // last: "since the last run" counts from the run before it.
+    if ($anchor) {
+        $anchor['last_run_at'] = (int) db_value("SELECT MAX(started_at) FROM ws_scheduled_runs
+            WHERE action_id = '" . (int) $anchor['id'] . "' AND id < '" . (int) ($context['sched_run'] ?? 0) . "'");
+    }
+    $row = ws_step_action_row($run, $context, $anchor);
 
     $action = ws_step_fill_action($kind, $check['action'], $values);
 
@@ -1095,9 +1130,10 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         'depth'           => (int) ($run['depth'] ?? 0),
         'idempotency_key' => ws_step_idempotency_key($run['id'], $step['node_id'], $step['pass'] ?? 0),
         'flow'            => array('id' => (int) $run['flow_id'], 'run' => (int) $run['id'], 'box' => (string) $step['node_id']),
-        // A scheduled action a box starts carries no source action; the
-        // depth of the run still counts in its chain.
-        'run_id'          => 0,
+        // A scheduled action a box starts names the converted action whose
+        // run this is, else no source action; the depth of the run still
+        // counts in its chain.
+        'run_id'          => ((int) $row['id'] > 0) ? (int) ($context['sched_run'] ?? 0) : 0,
     );
 
     // What started the run: the texts' {{record}}, {{newcomer}} and the

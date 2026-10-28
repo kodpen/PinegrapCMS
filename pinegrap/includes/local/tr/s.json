@@ -2110,6 +2110,7 @@
     "Started at {var:1}": "Başlangıç: {var:1}",
     "Started by": "Başlatan",
     "Started by hand": "Elle başlatılır",
+    "Started by hand.": "Elle başlatıldı.",
     "Started by the flow “{var:1}”.": "“{var:1}” akışı tarafından başlatıldı.",
     "Started by {var:1}": "{var:1} başlattı",
     "Started by {var:1}.": "{var:1} başlattı.",
