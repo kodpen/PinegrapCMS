@@ -18,7 +18,7 @@ description: An application proposes a flow as a draft card ({type: flow} in wor
 - Publishing stays the person's own session (#1708 rule).
 
 ## What happens to {type: scheduled}?
-- Still taken, unchanged, for clients that send it (`workspace-scheduled-draft-proposals.md`); the schema text names flow first. Existing scheduled cards keep opening as flows.
+- Still taken for clients that send it, and kept as this same flow card since C5b (#2852): `workspace-scheduled-draft-proposals.md`. Older scheduled cards keep opening as flows.
 
 ## API
 - `GET /workspace/changes?type=flow` lists them; record.type flow, fields the card's lines.
