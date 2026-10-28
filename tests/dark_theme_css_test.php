@@ -26,7 +26,7 @@ function dark_theme_css_source()
 // The body of the first rule whose selector is exactly $selector.
 function dark_theme_css_rule($source, $selector)
 {
-	if (preg_match('/(?:^|\})\s*' . preg_quote($selector, '/') . '\s*\{([^}]*)\}/', $source, $match) !== 1) {
+	if (preg_match('/(?:^|\}|\*\/)\s*' . preg_quote($selector, '/') . '\s*\{([^}]*)\}/', $source, $match) !== 1) {
 		return '';
 	}
 
