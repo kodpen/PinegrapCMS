@@ -124,7 +124,7 @@ if ($contact_groups) {
 
     foreach ($contact_groups as $contact_group) {
         if ($contact_group['email_subscription']) {
-            $email_subscription = '<span class="material-icons">task_alt</span>';
+            $email_subscription = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
 
             if ($contact_group['email_subscription_type'] == 'open') {
                 $email_subscription_type = '<span class="badge fw-light theme-primary">' . lang('Open') . '</span>';
@@ -192,7 +192,7 @@ print
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             ' . $output_add_contact_group_button . '
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_contact_groups.php', $sort_columns, $sort_levels, $sort_default) . '

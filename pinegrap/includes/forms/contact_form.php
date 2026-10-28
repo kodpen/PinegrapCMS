@@ -312,7 +312,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                                         </div>
                                         <div class="col-12 my-3">
                                             <label for="description" class="form-label">' . lang('Description') . '</label>
-                                            <textarea type="text" name="description" id="description" class="form-control" maxlength="50" >' . pg_contact_form_value($values, 'description') . '</textarea>
+                                            <textarea type="text" name="description" id="description" class="form-control">' . pg_contact_form_value($values, 'description') . '</textarea>
                                         </div>
                                     </div>
                                 </div>
