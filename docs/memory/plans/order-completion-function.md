@@ -16,7 +16,7 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
 - A2 (L), steps of about 1,000 product lines: each moves the next part of the tail into session-free functions of `includes/fn/order_completion.php` (`commerce/order-completion.md`), called by `submit_order()` where the code stood (same order of writes). `tests/order_completion_test.php` pins that order.
   - A2a: done (#2638).
   - A2b: done (#2687): `pg_order_complete_receipt()`, `pg_order_complete_ship_dates()`.
-  - A2c: auto e-mail campaigns (`order_completed`, needs the order's contact) and the per-product loop of `submit_order()` (stock, reservations, memberships, folders, gift cards issued, campaigns, product forms, comments): about 1,650 lines, may split again.
+  - A2c, per-product loop, functions called per line: A2c1 stock, reservations, membership renewal, private folder access; A2c2 gift cards issued; A2c3 the line's variable fields and product forms; A2c4 comments, e-mailed page, line campaigns, the `order_completed` campaigns.
   - A2d: after the loop: private access, rewards, contact groups, abandoned campaigns, visitor record, log, notification, ERP invoice. Then the writes still before the lock (key code use, gift card redemption, auto-registration, affiliate commission) are settled: run once behind the lock, or kept with the visitor's request where only the visitor's request can do them (card redemption needs the posted codes); the step names which. The gift card error mail goes with the redemption. Last, `pg_order_complete()` calls the stage functions in order, so one call completes the whole order.
   - Stays in `submit_order()`: the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the redirect.
 - A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
@@ -25,5 +25,5 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
 - For A3: the receipt e-mail's settings (on, subject, format, header, footer, page) live on the checkout page (`order_preview_pages` / `express_order_pages`), and the order does not name the page it was placed from. A3 needs them without the visitor; if that takes a column, it is an architect question first.
 
 ## Where to start?
-- A2c: the stage functions in `includes/fn/order_completion.php` and its call in `submit_order.php`; `tests/order_completion_test.php`.
+- A2c2: the stage functions in `includes/fn/order_completion.php` and its call in `submit_order.php`; `tests/order_completion_test.php`.
 - `commerce/payment-callback.md`, `commerce/order-status-moves.md`.
