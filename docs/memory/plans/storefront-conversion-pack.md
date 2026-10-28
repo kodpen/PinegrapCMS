@@ -26,7 +26,7 @@ description: Plan (approved 2026-10-19; reviews, review e-mail, rating tokens, w
 2c. Review form, `__reviews` (M): the comments widget is the list and form on a `catalog detail` page (#2678, #2799). Templates' product pages are `standard` pages with a catalog_item_view widget: page comments, ungated. Cut:
 - 2c1. (PR #2817) Done: `designer/comments-widget-product-page.md`.
 - 2c2. (PR #2840) Done: same file.
-- 2c3a. (PR #2857) Photo reviews: setting, gate, image check, forms, classic and moderation thumbnails (`commerce/product-review-photos.md`).
+- 2c3a. (PR #2859) Photo reviews: setting, gate, image check, forms, classic and moderation thumbnails (`commerce/product-review-photos.md`).
 - 2c3b. The comments widget's photo thumbnail: row flag, default layout in three places, canvas (same file).
 6. Bundles: `storefront-bundles-design.md`; owner review (#2425).
 
