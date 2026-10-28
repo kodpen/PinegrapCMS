@@ -27,6 +27,9 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - bootstrap-6-redesign.md: Steps B10-B12 of plans/bootstrap-6-panel.md: token tuning, the redesign of legacy form screens and tables, jQuery UI out of the panel; decisions and open points
 - claude-code-channel.md: SHELVED plan for Claude as a live channel member through a Claude Code channel plugin (C1–C5): reuse of the routine queue, slices, open questions 5–12, security
 - code-audit-2026-10-followups.md: Architecture items from the 2026-10-19 audit that no other plan holds: one outgoing HTTP wrapper, an explicit "who may write PHP" rule; CI checks (PR #673) and nested named functions (PR #972) done
+- datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
+- datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
+- datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
 - designable-comments-contract.md: Contract of the planned comments widget (2026-10-23): what is stored where, token, flag and control names, thread order, the security rules every slice of designable-comments keeps
 - designable-comments.md: Plan (1-19, 3b and 20a done; 20b-20c open): comments as a designable system widget kind; the steps of slice 20 (product and event threads) and where to start
 - designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
