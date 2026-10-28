@@ -1422,6 +1422,7 @@
     "Connected with an authorization code": "Yetki koduyla bağlandı",
     "Connected with the user name and password": "Kullanıcı adı ve parolayla bağlandı",
     "Connected. The description was loaded with your credentials.": "Bağlandı. Tanım kimlik bilgilerinizle yüklendi.",
+    "Connected: {var:1} e-mails in {var:2}.": "Bağlanıldı: {var:2} klasöründe {var:1} e-posta var.",
     "Connecting applications is not switched on for this site.": "Bu sitede uygulama bağlama açık değil.",
     "Connecting applications with OAuth is switched on": "OAuth ile uygulama bağlama açıldı",
     "Connecting cancelled": "Bağlama iptal edildi",

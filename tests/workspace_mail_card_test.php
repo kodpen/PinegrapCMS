@@ -94,7 +94,10 @@ function test_workspace_mail_box_input()
 	$ok = ws_mail_box_input(array('name' => ' Support ', 'address' => ' Support@Example.COM ', 'channel_id' => '4', 'auth_server' => 'MX.Google.com', 'enabled' => '1'));
 
 	pg_assert_true($ok['ok'], 'a full form');
-	pg_assert_same(array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1), $ok['values'], 'cleaned');
+	pg_assert_same(array(
+		'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
+		'provider' => '', 'host' => '', 'port' => 993, 'user' => '', 'password' => '', 'folder' => 'INBOX', 'after_fetch' => 'seen', 'move_folder' => '',
+	), $ok['values'], 'cleaned; no server is an .eml-only box');
 
 	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => '');
 
@@ -126,11 +129,88 @@ function test_workspace_mail_settings_card_is_on_the_screen()
 {
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/workspace_settings.php');
 
-	pg_assert_contains("case 'mail_box_save':\n        case 'mail_eml':\n            ws_mail_settings_post(\$viewer, \$action, \$liveform);", $screen, 'its posts');
+	pg_assert_contains("case 'mail_box_save':\n        case 'mail_eml':\n        case 'mail_test':\n            ws_mail_settings_post(\$viewer, \$action, \$liveform);", $screen, 'its posts');
 	pg_assert_contains("' . ws_mail_settings_card(\$self_url, \$viewer) . '", $screen, 'its card');
 
 	$settings = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 
 	pg_assert_contains('enctype="multipart/form-data"', $settings, 'the .eml form uploads a file');
 	pg_assert_contains("is_uploaded_file((string) \$file['tmp_name'])", $settings, 'only an uploaded file is read');
+}
+
+function test_workspace_mail_box_input_server()
+{
+	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'enabled' => '1');
+	$gmail = ws_mail_box_input(array_merge($base, array('provider' => 'gmail', 'user' => ' support@example.com ', 'password' => ' app pass ')));
+
+	pg_assert_true($gmail['ok'], 'a provider alone is enough');
+	pg_assert_same('imap.gmail.com', $gmail['values']['host'], 'its server filled');
+	pg_assert_same(993, $gmail['values']['port']);
+	pg_assert_same('mx.google.com', $gmail['values']['auth_server'], 'its checking server filled');
+	pg_assert_same('support@example.com', $gmail['values']['user']);
+	pg_assert_same(' app pass ', $gmail['values']['password'], 'a password is kept as typed');
+
+	$typed = ws_mail_box_input(array_merge($base, array('provider' => 'gmail', 'host' => 'IMAP.Example.com', 'port' => '1993', 'auth_server' => 'mx.example.com', 'user' => 'u')));
+	pg_assert_same(array('imap.example.com', 1993, 'mx.example.com'), array($typed['values']['host'], $typed['values']['port'], $typed['values']['auth_server']), 'what was typed wins');
+
+	pg_assert_same('', ws_mail_box_input(array_merge($base, array('provider' => 'nope')))['values']['provider'], 'an unknown provider is none');
+	pg_assert_same(lang('The IMAP server is a host name such as imap.gmail.com, with a port from 1 to 65535.'), ws_mail_box_input(array_merge($base, array('host' => 'localhost', 'user' => 'u')))['error']);
+	pg_assert_same(lang('The IMAP server is a host name such as imap.gmail.com, with a port from 1 to 65535.'), ws_mail_box_input(array_merge($base, array('host' => 'imap.example.com', 'port' => '70000', 'user' => 'u')))['error']);
+	pg_assert_same(lang('Enter the user name the mailbox signs in with.'), ws_mail_box_input(array_merge($base, array('host' => 'imap.example.com')))['error']);
+	pg_assert_same(lang('The password cannot be kept as typed.'), ws_mail_box_input(array_merge($base, array('host' => 'imap.example.com', 'user' => 'u', 'password' => "a\nb")))['error']);
+
+	$server = array_merge($base, array('host' => 'imap.example.com', 'user' => 'u'));
+	pg_assert_same('seen', ws_mail_box_input(array_merge($server, array('after_fetch' => 'other', 'move_folder' => 'Done')))['values']['after_fetch'], 'seen unless move');
+	pg_assert_same('', ws_mail_box_input(array_merge($server, array('move_folder' => 'Done')))['values']['move_folder'], 'no move folder without move');
+	pg_assert_same(lang('Name the folder to read and, to move mail after reading, the folder it goes to.'), ws_mail_box_input(array_merge($server, array('after_fetch' => 'move')))['error']);
+	pg_assert_same(lang('Mail cannot be moved into the folder it is read from.'), ws_mail_box_input(array_merge($server, array('after_fetch' => 'move', 'move_folder' => 'inbox')))['error']);
+	pg_assert_true(ws_mail_box_input(array_merge($server, array('after_fetch' => 'move', 'move_folder' => "\xC4\xB0\xC5\x9Flendi", 'folder' => 'Support')))['ok'], 'a Turkish folder name');
+
+	foreach (ws_mail_providers() as $key => $provider) {
+		pg_assert_true(($provider['host'] === '') || pg_imap_host_valid($provider['host']), $key . ' server is a host name');
+		pg_assert_true($provider['hint'] !== '', $key . ' says what it needs');
+	}
+}
+
+function test_workspace_mail_authserv_id()
+{
+	pg_assert_same('mx.google.com', ws_mail_authserv_id("Authentication-Results: mx.google.com;\r\n       dkim=pass header.i=@example.com;\r\n       dmarc=pass (p=NONE) header.from=example.com\r\n"));
+	pg_assert_same('mx.zohomail.com', ws_mail_authserv_id("authentication-results:\r\n\tMX.Zohomail.com 1 (version);\r\n dmarc=pass\r\n"), 'folded, a version and a comment');
+	pg_assert_same('mx.google.com', ws_mail_authserv_id("Authentication-Results: mx.google.com; spf=pass\r\nAuthentication-Results: forged.example; dmarc=pass\r\n"), 'the topmost one');
+	pg_assert_same('', ws_mail_authserv_id("Authentication-Results: spf=pass (sender IP is 192.0.2.1) smtp.mailfrom=example.com; dmarc=pass\r\n"), 'a header without an id');
+	pg_assert_same('', ws_mail_authserv_id("Subject: hi\r\n"));
+}
+
+function test_workspace_mail_box_test_and_errors()
+{
+	$box = array('id' => 1, 'folder' => 'INBOX', 'after_fetch' => 'seen', 'settings' => '{"host":""}', 'checked_at' => 0, 'last_error' => '');
+	pg_assert_same('no_server', ws_mail_box_test($box)['error'], 'nothing to test without a server');
+
+	$box['settings'] = json_encode(array('host' => 'imap.example.com', 'user' => 'u', 'secret' => 'not:sealed'));
+	pg_assert_same('no_password', ws_mail_box_test($box)['error'], 'an unreadable password is never sent');
+
+	pg_assert_same(lang('The server refused the user name or password.') . ' ' . lang('Gmail and Google Workspace take an app password here, not the account\'s own password.') . ' ' . lang(array('string' => 'The server said: {var:1}', 'vars' => 'Invalid')),
+		ws_mail_error_text('auth', 'Invalid', 'imap.gmail.com'), 'the Gmail hint and the server\'s words');
+	pg_assert_same(lang('The server ended the conversation unexpectedly.'), ws_mail_error_text('protocol', '', 'imap.example.com'));
+	pg_assert_same('auth|Invalid credentials', ws_mail_last_error('auth', 'Invalid credentials'));
+	pg_assert_true(strlen(ws_mail_last_error('auth', str_repeat("\xC5\x9F", 200))) <= 255, 'cut to the column');
+	pg_assert_true((bool) preg_match('//u', ws_mail_last_error('auth', str_repeat("\xC5\x9F", 200))), 'no half character');
+
+	pg_assert_same(h(lang('Not checked yet')), ws_mail_box_check_line($box));
+	pg_assert_contains(h(ws_mail_error_text('tls', '', 'imap.example.com')), ws_mail_box_check_line(array_merge($box, array('checked_at' => 1700000000, 'last_error' => 'tls|'))), 'the kept error in words');
+	pg_assert_contains('fg-success', ws_mail_box_check_line(array_merge($box, array('checked_at' => 1700000000))));
+	pg_assert_same(h(lang('Not read from a server')), ws_mail_box_check_line(array_merge($box, array('settings' => ''))));
+}
+
+function test_workspace_mail_box_form_never_draws_the_password()
+{
+	$box = array('id' => 3, 'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 0, 'folder' => 'INBOX', 'after_fetch' => 'move', 'enabled' => 1,
+		'settings' => json_encode(array('host' => 'imap.example.com', 'user' => 'u', 'secret' => 'SEALEDVALUE:iv', 'move_folder' => 'Done', 'provider' => 'zoho')));
+	$html = ws_mail_box_form('workspace_settings.php', $box, array());
+
+	pg_assert_true(strpos($html, 'SEALEDVALUE') === false, 'the sealed password is not printed');
+	pg_assert_contains('name="password" id="ws_mail_3_password" value="" autocomplete="new-password" placeholder="' . h(lang('Stored. Type a new one to replace it.')) . '"', $html);
+	pg_assert_contains('<option value="zoho" selected>', $html);
+	pg_assert_contains('<option value="move" selected>', $html);
+	pg_assert_contains('value="imap.example.com"', $html);
 }
