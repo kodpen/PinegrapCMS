@@ -386,10 +386,11 @@ if ($_POST) {
             $anchor = '#ws-voice';
             break;
 
-        // Mailboxes and an .eml brought in by hand
+        // Mailboxes, their connection test and an .eml brought in by hand
         // (includes/workspace/mail_settings.php).
         case 'mail_box_save':
         case 'mail_eml':
+        case 'mail_test':
             ws_mail_settings_post($viewer, $action, $liveform);
             $anchor = '#ws-mail';
             break;

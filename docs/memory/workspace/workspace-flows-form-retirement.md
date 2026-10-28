@@ -19,7 +19,7 @@ description: Retiring the scheduled actions form (merge plan R1-R4): the functio
 
 ## Which starters does the flow gallery lack?
 - welcome (join) and the five event ones (`order_event`, `form_event`, `stock_event`, `overdue_event`, `approval_event`): in the gallery since R1 (a flow fills `{{newcomer}}`, `{{channel}}`, `{{record}}` since #2205).
-- forms, orders ("since the last run") and chain (started by another action): issue #2753 question 2 (R1b).
+- forms, orders and chain: in the gallery since R1b (#2787) with flow semantics (#2753 answer 2a): `workspace-flows-template-format.md`. None is missing now.
 
 ## How big is each step?
 - R1 about 300 lines (flow_templates.php), R2 50-150, R3a about 900, R3b about 970, R4 about 700 (routes 85, save 95, draft saved 35, config and strings about 150, styles about 330). `.min.js` rebuilt each time, not counted.

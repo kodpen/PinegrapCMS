@@ -2138,6 +2138,7 @@
     "Started again, it goes on from {var:1}: the dates it wrote and those that passed while it was stopped are not written.": "Yeniden başlatılırsa {var:1} tarihinden devam eder: yazdığı tarihler ve durduğu sürede geçen tarihler yazılmaz.",
     "Started at {var:1}": "Başlangıç: {var:1}",
     "Started by": "Başlatan",
+    "Started by a “Start a flow” box of another flow; says which flow finished and what it did.": "Başka bir akışın “Bir akış başlat” kutusuyla başlar; hangi akışın bittiğini ve ne yaptığını söyler.",
     "Started by hand": "Elle başlatılır",
     "Started by hand.": "Elle başlatıldı.",
     "Started by the flow “{var:1}”.": "“{var:1}” akışı tarafından başlatıldı.",

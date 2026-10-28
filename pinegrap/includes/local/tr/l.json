@@ -261,6 +261,7 @@
     "Leave the discussion? You will no longer read it.": "Tartışmadan ayrılınsın mı? Artık okuyamazsınız.",
     "Leave the note": "Paylaşımdan çık",
     "Leave the number empty for no reminder.": "Hatırlatma istemiyorsanız sayıyı boş bırakın.",
+    "Leave the server empty to bring mail in only as .eml files. A chosen service fills an empty server and checking server.": "Postaları yalnızca .eml dosyası olarak almak için sunucuyu boş bırakın. Seçilen hizmet boş sunucu ve denetleyen sunucu alanlarını doldurur.",
     "Leave the {var:1} amount empty to have it worked out from the rate; type it when the receipt prints it, so the books carry the same figure. Switch off \"Tax taken back\" for a receipt whose tax cannot be deducted: it then counts as cost.": "{var:1} tutarını orandan hesaplatmak için boş bırakın; fişte yazıyorsa aynen girin ki kayıtlar fişle aynı olsun. Vergisi indirilemeyen bir fiş için \"Vergi indirilir\" seçeneğini kapatın; o zaman vergi de maliyete sayılır.",
     "Leave this channel? You can join it again at any time.": "Bu kanaldan ayrılınsın mı? İstediğiniz zaman yeniden katılabilirsiniz.",
     "Leave this note? It is no longer shown to you; its owner can share it again.": "Bu paylaşımdan çıkılsın mı? Not artık size görünmez; sahibi yeniden paylaşabilir.",

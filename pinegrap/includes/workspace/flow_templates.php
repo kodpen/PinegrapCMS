@@ -30,8 +30,9 @@
  * Beside them, templates a scheduled action has no form for: tasks that
  * wait for each other, a wait between boxes, approvals and their outcomes.
  *
- * Templates whose counts or events the person may not read, or whose texts
- * a flow cannot fill yet (a count "since the last run"), are not offered.
+ * Templates whose counts or events the person may not read are not offered.
+ * A flow counts new forms and orders over the last day, not since its last
+ * run, so those templates run once a day and their texts say so.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -249,6 +250,34 @@ function ws_flow_templates($fill)
             'edges' => array(array('start', 'any', 'next'), array('any', 'tell', 'yes')));
     }
 
+    // A flow counts the last day, so the forms and orders come once a day
+    // where the scheduled ones looked every hour since their last run.
+    if ($has('forms_new')) {
+        $out[] = array('key' => 'forms', 'category' => 'site', 'icon' => 'bi-ui-checks',
+            'title' => lang('New form submissions every day'),
+            'help' => lang('Every morning says how many forms were submitted in the last day, when there are any.'),
+            'boxes' => array(
+                'start' => $start($tomorrow, '09:00', 'daily') + array('setting' => array('time', 'time')),
+                'any'   => $count('forms_new'),
+                'tell'  => $tell(lang('{{count:forms_new}} new form submissions in the last day.')),
+            ),
+            'edges' => array(array('start', 'any', 'next'), array('any', 'tell', 'yes')));
+    }
+
+    // In the evening, so the day's sales are the day's.
+    if ($has('orders_new') && $has('sales_today')) {
+        $out[] = array('key' => 'orders', 'category' => 'sales', 'icon' => 'bi-bag-check',
+            'title' => lang('New orders to a chat service'),
+            'help' => lang('Every evening sends the orders of the last day and the day\'s sales to a chat service, when there are any.'),
+            'boxes' => array(
+                'start' => $start($today, '18:00', 'daily') + array('setting' => array('time', 'time')),
+                'any'   => $count('orders_new'),
+                'tell'  => array('kind' => 'webhook', 'config' => array('url' => '', 'format' => 'text',
+                    'text' => lang('{{count:orders_new}} new orders in the last day. Sales today: {{count:sales_today}}.')), 'setting' => array('url', 'url')),
+            ),
+            'edges' => array(array('start', 'any', 'next'), array('any', 'tell', 'yes')));
+    }
+
     // On the first of every month, a task to write the monthly report.
     $out[] = array('key' => 'monthly', 'category' => 'team', 'icon' => 'bi-calendar-month',
         'title' => lang('Monthly report task'),
@@ -259,6 +288,18 @@ function ws_flow_templates($fill)
                 'channel_id' => $channel, 'due_in' => 5, 'priority' => 'high'), 'setting' => array('person', 'assignees')),
         ),
         'edges' => array(array('start', 'task', 'next')));
+
+    // A step of a chain: started by a "Start a flow" box of another flow,
+    // whose name and last sentence it is handed ({{source}},
+    // {{source_result}}).
+    $out[] = array('key' => 'chain', 'category' => 'team', 'icon' => 'bi-diagram-3',
+        'title' => lang('A step of a chain'),
+        'help' => lang('Started by a “Start a flow” box of another flow; says which flow finished and what it did.'),
+        'boxes' => array(
+            'start' => array('kind' => 'manual', 'config' => array('subject' => '')),
+            'tell'  => $tell(lang('{{source}} finished: {{source_result}}')),
+        ),
+        'edges' => array(array('start', 'tell', 'next')));
 
     // A channel greets the people who join it and asks who they are: any
     // public channel, the greeting posted in the one joined.

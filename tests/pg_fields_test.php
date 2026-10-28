@@ -92,6 +92,7 @@ function FakeElement(doc, tag, attrs) {
     this.textContent = this.attributes.text || '';
     this.selected = 'selected' in this.attributes;
     this.disabled = 'disabled' in this.attributes;
+    this.style = {};
     var self = this;
     this.classList = {
         add: function (c) { if (!this.contains(c)) { self.className = (self.className + ' ' + c).trim(); } },
@@ -689,6 +690,105 @@ function main() {
     lib.doc.head.children[0].dispatchEvent({ type: 'load' });
     out.dp_late = { tags: tags, before: drawnBefore, after: ld.pgFieldKind, calls: lib.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
+    // Each field keeps its own store: native inputs ISO, a 24-hour text
+    // time, a wrapper of month, day and year selects.
+    var md = load({ format: 'd/m/yy', labels: [{ 'for': 'nd', text: 'Due' }], fields: [
+        ['input', { id: 'nd', type: 'date', 'data-pg-date': '', value: '2026-10-26', min: '2026-01-01', max: '2026-12-31T23:59' }],
+        ['input', { id: 'ndt', type: 'datetime-local', 'data-pg-datetime': '', value: '2026-10-26T17:05' }],
+        ['input', { id: 'nt', type: 'time', 'data-pg-time': '', value: '17:05' }],
+        ['input', { id: 'ht', 'data-pg-time': 'hh:mm', value: '09:30' }],
+        ['div', { id: 'range', 'data-pg-date-selects': '' }]
+    ] });
+    var range = md.doc.querySelector('#range'), rangeLabel = md.doc.create('label', { text: 'Start' }), group = md.doc.create('div', { 'class': 'input-group' });
+    var sel = function (name, values, chosen) {
+        var el = md.doc.create('select', { name: name, 'class': 'form-control my-1' });
+        values.forEach(function (v) { var o = md.doc.create('option', v === chosen ? { value: v, selected: '' } : { value: v }); el.appendChild(o); });
+        return el;
+    };
+    var nums = function (n) { var a = []; for (var i = 1; i <= n; i++) { a.push(('0' + i).slice(-2)); } return a; };
+    var sm = sel('start_month', nums(12), '03'), sd = sel('start_day', nums(31), '05'), sy = sel('start_year', ['2024', '2025', '2026'], '2026');
+    range.appendChild(rangeLabel);
+    range.appendChild(sm);
+    group.appendChild(sd);
+    group.appendChild(sy);
+    range.appendChild(group);
+    // The popup goes into a dialog 400 wide; the field sits near its right edge.
+    var host = md.doc.create('dialog', {});
+    host.getBoundingClientRect = function () { return { top: 0, left: 0 }; };
+    host.clientTop = 0; host.clientLeft = 0; host.scrollTop = 0; host.scrollLeft = 0; host.clientWidth = 400;
+    md.win.pgUI.overlayHost = function () { return host; };
+    md.win.pgFields.init();
+    var mq = function (id) { return md.doc.querySelector('#' + id); }, picks = [];
+    [sm, sd, sy].forEach(function (x) { x.addEventListener('change', function () { picks.push(x.getAttribute('name') + '=' + x.value); }); });
+
+    var nd = mq('nd'), ndBox = nd.nextSibling, ndOpts = ndBox.instance.opts;
+    out.store_date = { box: [ndBox.className, ndBox.value, ndBox.getAttribute('aria-labelledby')], bounds: [ndOpts.dateMin, ndOpts.dateMax], layout: ndOpts.layouts || null };
+    ndBox.instance.pick('2026-11-02');
+    out.store_date.picked = [nd.value, ndBox.value, ndBox.instance.hidden];
+    ndBox.value = 'x';
+    ndBox.dispatchEvent({ type: 'change' });
+    out.store_date.junk = nd.value;
+    ndBox.value = '3/4/2026';
+    ndBox.dispatchEvent({ type: 'change' });
+    out.store_date.typed = [nd.value, md.win.pgDatePicker.get(nd)];
+    md.win.pgDatePicker.set(nd, '2026-05-06');
+    out.store_date.set = [nd.value, ndBox.value];
+    // The popup stays inside the dialog: 350 from its left, 300 wide.
+    ndBox.getBoundingClientRect = function () { return { left: 350, bottom: 40 }; };
+    var popup = ndBox.instance.open();
+    popup.offsetWidth = 300;
+    ndBox.instance.open();
+    out.store_date.placed = [popup.parentNode === host, popup.style.left, popup.style.top];
+
+    var ndt = mq('ndt'), ndtBox = ndt.nextSibling;
+    out.store_datetime = { box: ndtBox.value };
+    ndtBox.instance.setTime('08:00');
+    out.store_datetime.time = [ndt.value, md.win.pgDateTimeField.get(ndt)];
+    md.win.pgDateTimeField.set(ndt, '2027-01-02 23:45');
+    out.store_datetime.set = [ndt.value, ndtBox.value];
+
+    var nt = mq('nt'), ntBox = nt.nextSibling;
+    out.store_time = { box: ntBox.value };
+    ntBox.instance.setTime('06:30');
+    out.store_time.time = nt.value;
+    ntBox.value = 'abc';
+    ntBox.dispatchEvent({ type: 'change' });
+    out.store_time.junk = nt.value;
+    md.win.pgDateTimeField.set(nt, '13:45');
+    out.store_time.set = [nt.value, ntBox.value, md.win.pgDateTimeField.get(nt)];
+
+    var ht = mq('ht'), htBox = ht.nextSibling;
+    out.store_hhmm = { box: htBox.value };
+    htBox.instance.setTime('21:15');
+    out.store_hhmm.time = [ht.value, htBox.value];
+    htBox.value = 'zz';
+    htBox.dispatchEvent({ type: 'change' });
+    out.store_hhmm.junk = [ht.value, md.win.pgDateTimeField.get(ht)];
+
+    var rBox = range.children[1], rOpts = rBox.instance.opts;
+    out.selects = {
+        box: [rBox.tagName, rBox.className, rBox.value, rBox.getAttribute('aria-labelledby'), rangeLabel.id],
+        hidden: [sm.className, sd.className, sy.className, sy.getAttribute('tabindex')],
+        bounds: [rOpts.dateMin, rOpts.dateMax],
+        get: md.win.pgDatePicker.get(range)
+    };
+    rBox.instance.pick('2025-12-24');
+    out.selects.picked = [sm.value, sd.value, sy.value, rBox.value, picks.slice()];
+    rBox.value = '1/1/2030';
+    rBox.dispatchEvent({ type: 'change' });
+    out.selects.outside = [rBox.value, sy.value];
+    md.win.pgDatePicker.set(range, '2024-02-29');
+    out.selects.set = [sm.value, sd.value, sy.value, rBox.value, md.win.pgDatePicker.get(range)];
+    md.win.pgFields.destroy(range);
+    out.selects.destroyed = [range.children.indexOf(rBox), sm.className, sy.getAttribute('tabindex')];
+
+    // A field a script builds is drawn by passing it to pgFields.init().
+    md.calls.length = 0;
+    var built = md.doc.create('input', { id: 'built', 'data-pg-date': '', value: '1/2/2026' });
+    md.doc.all.filter(function (n) { return n.tagName === 'FORM'; })[0].appendChild(built);
+    md.win.pgFields.init(built);
+    out.built = [built.pgFieldKind, md.calls.map(function (c) { return c[0] + ':' + c[1]; })];
+
     return out;
 }
 
@@ -1177,4 +1277,66 @@ function test_pg_fields_combobox_quiets_the_menu_instance_noise()
 	pg_assert_true(strpos($source, 'window.console.error = original;') !== false, 'console.error is restored');
 	pg_assert_true(strpos($source, 'keepMenuKeysInCombobox(combobox, toggle);') !== false, 'the menu keys stay in the combobox');
 	pg_assert_true(strpos($source, "var MENU_KEYS = { ArrowUp: 1, ArrowDown: 1, Home: 1, End: 1 };") !== false, 'only the keys the combobox handles itself');
+}
+
+function test_pg_fields_each_field_keeps_its_own_store()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array(
+			'box' => array('form-control pg-date-box', '26/10/2026', 'nd_label'),
+			'bounds' => array('2026-01-01', '2026-12-31'),
+			'layout' => null,
+			'picked' => array('2026-11-02', '2/11/2026', 1),
+			'junk' => '',
+			'typed' => array('2026-04-03', '2026-04-03'),
+			'set' => array('2026-05-06', '6/5/2026'),
+			'placed' => array(true, '100px', '40px'),
+		),
+		$r['store_date'],
+		'a native date input is the hidden ISO store of a box in the site order; min and max bound the calendar; text it cannot hold leaves it empty; the popup stays inside the dialog\'s right edge'
+	);
+	pg_assert_same(
+		array('box' => '26/10/2026 5:05 PM', 'time' => array('2026-10-26T08:00', '2026-10-26 08:00'), 'set' => array('2027-01-02T23:45', '2/1/2027 11:45 PM')),
+		$r['store_datetime'],
+		'a datetime-local input keeps Y-m-d\TH:i'
+	);
+	pg_assert_same(
+		array('box' => '5:05 PM', 'time' => '06:30', 'junk' => '', 'set' => array('13:45', '1:45 PM', '13:45')),
+		$r['store_time'],
+		'a native time input keeps H:i whatever the clock the box shows'
+	);
+	pg_assert_same(
+		array('box' => '9:30 AM', 'time' => array('21:15', '9:15 PM'), 'junk' => array('zz', '')),
+		$r['store_hhmm'],
+		'data-pg-time="hh:mm" keeps a 24-hour text time; text that is no time posts as typed for the server to refuse'
+	);
+}
+
+function test_pg_fields_date_selects_and_built_fields()
+{
+	$r = pg_fields_test_result();
+	if (!$r) {
+		return;
+	}
+
+	pg_assert_same(
+		array(
+			'box' => array('INPUT', 'form-control pg-date-box my-1', '5/3/2026', 'start_month_label', 'start_month_label'),
+			'hidden' => array('form-control my-1 pg-field-native', 'form-control my-1 pg-field-native', 'form-control my-1 pg-field-native', '-1'),
+			'bounds' => array('2024-01-01', '2026-12-31'),
+			'get' => '2026-03-05',
+			'picked' => array('12', '24', '2025', '24/12/2025', array('start_year=2025', 'start_month=12', 'start_day=24')),
+			'outside' => array('24/12/2025', '2025'),
+			'set' => array('02', '29', '2024', '29/2/2024', '2024-02-29'),
+			'destroyed' => array(-1, 'form-control my-1', null),
+		),
+		$r['selects'],
+		'month, day and year selects stay posted and hidden behind one box named by the wrapper\'s label; the year list bounds the calendar; a pick writes the three selects with a change each; a year outside the list is taken back'
+	);
+	pg_assert_same(array('date', array('calendar:built')), $r['built'], 'a field a script builds is drawn by pgFields.init(field)');
 }

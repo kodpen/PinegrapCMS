@@ -389,6 +389,8 @@
     "Folder name": "Klasör adı",
     "Folder of the entry (empty for a page or a file)": "İçeriğin klasörü (sayfa veya dosya için boş)",
     "Folder on the server": "Sunucudaki klasör",
+    "Folder to move to": "Taşınacak klasör",
+    "Folder to read": "Okunacak klasör",
     "Folder to upload File": "Dosya yüklenecek klasör",
     "Folder to upload image": "Görsel yüklenecek klasör",
     "Folder tree": "Klasör ağacı",

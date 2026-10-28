@@ -211,8 +211,12 @@
             host.appendChild(cal);
         }
         var f = box.getBoundingClientRect(), h = host.getBoundingClientRect();
+        var left = f.left - h.left - host.clientLeft + host.scrollLeft;
+        // A field near the right edge of a narrow dialog: the calendar stays
+        // inside it rather than being cut off.
+        var right = host.scrollLeft + host.clientWidth - (cal.offsetWidth || 0);
         cal.style.top = (f.bottom - h.top - host.clientTop + host.scrollTop) + 'px';
-        cal.style.left = Math.max(0, f.left - h.left - host.clientLeft + host.scrollLeft) + 'px';
+        cal.style.left = Math.max(0, Math.min(left, right)) + 'px';
     }
 
     function monthOf(iso) {
@@ -314,6 +318,7 @@
     //   options.time           the time it shows ('17:05'; midnight without)
     //   options.locale         month and day names ('tr', 'en')
     //   options.firstWeekday   0 Sunday, 1 Monday
+    //   options.dateMin / dateMax  '2026-01-01': no day before / after it
     //   options.onPick(iso, hhmm)  a day was clicked or the time moved: the
     //                          shown date ('' for none) and time ('' in date mode)
     //   options.host(box)      the element the popup goes into
@@ -395,6 +400,12 @@
         };
         if (settings().labels) {
             calendarOptions.labels = settings().labels;
+        }
+        if (o.dateMin) {
+            calendarOptions.dateMin = o.dateMin;
+        }
+        if (o.dateMax) {
+            calendarOptions.dateMax = o.dateMax;
         }
         if (mode !== 'date') {
             calendarOptions.selectionTimeMode = timeMode;
