@@ -19503,6 +19503,44 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-data.wsf-dim {
   opacity: .25;
 }
+/* Drawing a thread (T2): the dots of a draft take the pointer; while a
+   thread is on its way the fields it may go into are lit and the one
+   under the pointer is filled. */
+.wsf-data-live {
+  pointer-events: auto;
+  cursor: crosshair;
+}
+.wsf-data-unused .wsf-data-ring {
+  border-style: dashed;
+}
+.wsf-data-unused {
+  opacity: .75;
+}
+.wsf-data-live:hover .wsf-data-ring,
+.wsf-data-out.wsf-data-hot .wsf-data-ring {
+  background: var(--wsf-tone);
+  color: var(--pg-bg-body);
+}
+.wsf-data-target {
+  pointer-events: auto;
+  cursor: copy;
+  border-style: dashed;
+  border-color: var(--ws-accent);
+  color: var(--ws-accent);
+  box-shadow: 0 0 0 2px rgba(var(--ws-accent-rgb), .25);
+}
+.wsf-data-target.wsf-data-hot {
+  border-style: solid;
+  background: var(--ws-soft);
+}
+.wsf-binding .wsf-data.wsf-dim.wsf-data-target {
+  opacity: 1;
+}
+.wsf-edge-temp.wsf-temp-thread {
+  stroke: var(--ws-accent);
+  stroke-width: 1;
+  stroke-dasharray: none;
+}
 .wsf-threads-off .wsf-thread,
 .wsf-threads-off .wsf-data {
   display: none;

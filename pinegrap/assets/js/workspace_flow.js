@@ -200,6 +200,8 @@
         view: { x: 40, y: 40, k: 1 },
         outline: false,
         threads: true,      // the data threads shown (the "Data threads" toggle)
+        binding: null,      // a thread on its way: { from, token } until a field takes it
+        dotTap: null,       // the last tap on a value dot, for the second
         dirty: false,
         changes: 0,         // counts every change, to tell one made while a request ran
         saving: null,
@@ -1571,6 +1573,7 @@
         state.problems = flow.problems || [];
         state.warnings = flow.warnings || [];
         state.selected = null;
+        state.binding = null;
         state.dirty = false;
         state.saveError = '';
         state.conflict = '';
@@ -2098,7 +2101,6 @@
             ui.svg.appendChild(group);
         });
 
-        drawData();
         markSelected();
         markProblems();
     }
@@ -2106,19 +2108,21 @@
     // ── Data threads ───────────────────────────────────────────────────
 
     // The fields of a box a run fills with values, as ws_flow_node_texts()
-    // reads them, with the words the side panel names them by. A condition
-    // reads the one value its rule compares (fieldTexts()).
+    // reads them, with the words the side panel names them by and the most
+    // they hold. A condition reads the one value its rule compares
+    // (fieldTexts()). The fields that decide where something goes (addresses,
+    // recipients) are not among them, so a value never goes there.
     var VALUE_FIELDS = {
-        task: [['title', 'fl_title'], ['description', 'fl_description']],
-        post: [['body', 'fl_post_body']],
-        email: [['subject', 'fl_email_subject'], ['body', 'fl_email_body']],
-        notify: [['text', 'fl_notify_text']],
-        task_open: [['title', 'fl_title'], ['description', 'fl_description']],
-        webhook: [['text', 'fl_post_body']],
-        task_digest: [['subject', 'fl_email_subject'], ['intro', 'fl_digest_intro']],
-        report: [['title', 'fl_report_title']],
-        checkin: [['question', 'fl_checkin_question']],
-        approval: [['title', 'fl_title'], ['text', 'fl_description']]
+        task: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
+        post: [['body', 'fl_post_body', 4000]],
+        email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
+        notify: [['text', 'fl_notify_text', 500]],
+        task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
+        webhook: [['text', 'fl_post_body', 4000]],
+        task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
+        report: [['title', 'fl_report_title', 160]],
+        checkin: [['question', 'fl_checkin_question', 500]],
+        approval: [['title', 'fl_title', 200], ['text', 'fl_description', 4000]]
     };
 
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
@@ -2143,6 +2147,82 @@
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
         });
+    }
+
+    // The fields of a box one more value may go into: every one of its
+    // kind, a condition's only while it compares no value yet.
+    function openFields(node) {
+        var config = node.config || {};
+
+        if (node.kind === 'condition') {
+            var rule = config.rule || {};
+
+            return ((rule.type === 'value') && !rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: '', max: 0 }] : [];
+        }
+
+        return (VALUE_FIELDS[node.kind] || []).map(function (item) {
+            return { key: item[0], label: t(item[1]), text: (typeof config[item[0]] === 'string') ? config[item[0]] : '', max: item[2] };
+        });
+    }
+
+    // Where a value of a box may go: the open fields of every box that may
+    // read it from that box (valueSources(), so the boxes after it, and any
+    // box for what started the run), except those already holding it.
+    function bindTargets(from, token) {
+        var out = [];
+
+        state.graph.nodes.forEach(function (node) {
+            var source = valueSources(node)[token];
+
+            if (!source || (source.node.id !== from)) {
+                return;
+            }
+
+            openFields(node).forEach(function (item) {
+                if (item.text.indexOf(token) === -1) {
+                    out.push({ node: node, key: item.key, label: item.label, text: item.text, max: item.max });
+                }
+            });
+        });
+
+        return out;
+    }
+
+    // A value put into a field at its end, after a space, as "Add value"
+    // writes it as a chip; a condition compares it, its comparison back to
+    // "is" when that does not fit the value's type.
+    function bindValue(from, token, to, key) {
+        var target = bindTargets(from, token).filter(function (item) { return (item.node.id === to) && (item.key === key); })[0];
+
+        if (!target) {
+            return false;
+        }
+
+        var node = target.node;
+        var source = valueSources(node)[token];
+
+        if (key === 'rule') {
+            node.config.rule.ref = token;
+
+            if (VALUE_OPS[(source.value.type === 'number') ? 'number' : 'text'].indexOf(node.config.rule.op) === -1) {
+                node.config.rule.op = 'eq';
+            }
+        } else {
+            var text = target.text + ((target.text && !/\s$/.test(target.text)) ? ' ' : '') + token;
+
+            if (text.length > target.max) {
+                K.toast(t('fl_thread_full'), 'secondary');
+                return false;
+            }
+
+            node.config[key] = text;
+        }
+
+        refreshNode(node);
+        drawSettings();
+        announce(t('fl_thread_bound', nameOf(source.node) + ' › ' + source.value.label, nameOf(node) + ' › ' + target.label));
+
+        return true;
     }
 
     // One thread for each value a field of a box holds, read from the
@@ -2219,9 +2299,10 @@
         });
 
         var threads = dataThreads();
+        var binding = state.binding;
         var rows = {};
         var row = function (id) {
-            return (rows[id] = rows[id] || { fields: [], outs: [], ends: {} });
+            return (rows[id] = rows[id] || { fields: [], outs: [], ends: {}, labels: {}, values: {}, open: {} });
         };
         var slot = function (id, part, key) {
             var item = rows[id];
@@ -2262,7 +2343,42 @@
                 add(leaving, thread.from + ' ' + thread.token, thread);
                 add(reaching, thread.to + ' ' + thread.field, thread);
                 add(pairs, thread.from + ' ' + thread.to, thread);
+                from.values[thread.token] = from.values[thread.token] || thread;
             }
+
+            into.labels[thread.field] = into.labels[thread.field] || thread;
+        });
+
+        // In a draft a thread may start from any value of the box selected,
+        // and from every dot already drawn.
+        var live = (state.edit && !state.run && state.selected && (state.selected.type === 'node')) ? nodeById(state.selected.id) : null;
+
+        if (live) {
+            boxValues(live).forEach(function (value) {
+                var item = row(live.id);
+
+                if (item.outs.indexOf(value.token) === -1) {
+                    item.outs.push(value.token);
+                    item.ends[value.token] = [live.id];
+                    item.values[value.token] = { value: value.label, type: THREAD_TONES[value.type] ? value.type : 'text', tone: 0, unused: true };
+                }
+            });
+        }
+
+        // A thread being drawn: every field it may go into lights up.
+        var targets = binding ? bindTargets(binding.from, binding.token) : [];
+
+        targets.forEach(function (target) {
+            var item = row(target.node.id);
+
+            if (item.fields.indexOf(target.key) === -1) {
+                item.fields.push(target.key);
+                item.ends[target.key] = [target.node.id];
+                item.labels[target.key] = { fieldLabel: target.label, type: 'text', tone: 0 };
+            }
+
+            item.ends[target.key].push(binding.from);
+            item.open[target.key] = true;
         });
 
         Object.keys(rows).forEach(function (id) {
@@ -2274,24 +2390,35 @@
             }
 
             rows[id].fields.forEach(function (key) {
-                var into = threads.filter(function (thread) { return (thread.to === id) && (thread.field === key); });
-                var chip = el('span', 'wsf-data wsf-data-field ' + toneClass(into[0]) + (into.some(function (thread) { return !thread.from; }) ? ' wsf-data-bad' : ''), into[0].fieldLabel);
+                var bad = threads.some(function (thread) { return (thread.to === id) && (thread.field === key) && !thread.from; });
+                var label = rows[id].labels[key];
+                var chip = el('span', 'wsf-data wsf-data-field ' + toneClass(label) + (bad ? ' wsf-data-bad' : '') + (rows[id].open[key] ? ' wsf-data-target' : ''), label.fieldLabel);
 
                 chip.style.left = slot(id, 'field', key) + 'px';
                 chip.setAttribute('data-ends', rows[id].ends[key].join(' '));
                 chip.setAttribute('aria-hidden', 'true');
+
+                if (rows[id].open[key]) {
+                    chip.setAttribute('data-bind', id + ' ' + key);
+                }
+
                 box.appendChild(chip);
             });
 
             rows[id].outs.forEach(function (token) {
-                var given = threads.filter(function (thread) { return (thread.from === id) && (thread.token === token); });
-                var dot = el('span', 'wsf-data wsf-data-out ' + toneClass(given[0]));
+                var value = rows[id].values[token];
+                var dot = el('span', 'wsf-data wsf-data-out ' + toneClass(value) + (value.unused ? ' wsf-data-unused' : ''));
 
-                dot.appendChild(el('span', 'wsf-data-ring', (given[0].type === 'number') ? '#' : 'T'));
-                dot.appendChild(el('span', 'wsf-data-label', given[0].value));
+                dot.appendChild(el('span', 'wsf-data-ring', (value.type === 'number') ? '#' : 'T'));
+                dot.appendChild(el('span', 'wsf-data-label', value.value));
                 dot.style.left = slot(id, 'out', token) + 'px';
                 dot.setAttribute('data-ends', rows[id].ends[token].join(' '));
                 dot.setAttribute('aria-hidden', 'true');
+
+                if (state.edit && !state.run) {
+                    liveDot(dot, node, token);
+                }
+
                 box.appendChild(dot);
             });
         });
@@ -2342,6 +2469,113 @@
         });
 
         markThreads();
+
+        return targets.length;
+    }
+
+    // A dot a thread may be drawn from: dragged to a field chip, tapped twice
+    // (or its menu's Fork, a long press on a touch screen) to choose the
+    // field with the next tap; the menu's "Pass to a field…" asks for it.
+    function liveDot(dot, node, token) {
+        dot.classList.add('wsf-data-live');
+        dot.setAttribute('data-node', node.id);
+        dot.setAttribute('data-token', token);
+        dot.title = t('fl_thread_dot');
+
+        if (state.binding && (state.binding.from === node.id) && (state.binding.token === token)) {
+            dot.classList.add('wsf-data-hot');
+        }
+
+        if (K.onContext) {
+            K.onContext(dot, function () {
+                return [
+                    { label: t('fl_thread_fork'), icon: 'bi-bezier2', action: function () { startBinding(node.id, token); } },
+                    { label: t('fl_thread_pass'), icon: 'bi-keyboard', action: function () { askBind(node, token); } }
+                ];
+            });
+        }
+    }
+
+    // A thread on its way from a value: the fields it may go into light up
+    // until one is chosen, the thread is let go, or Esc.
+    function startBinding(from, token, quiet) {
+        state.binding = { from: from, token: token };
+        ui.viewport.classList.add('wsf-binding');
+
+        if (!drawData()) {
+            K.toast(t('fl_thread_none'), 'secondary');
+            endBinding();
+            return false;
+        }
+
+        if (!quiet) {
+            announce(t('fl_thread_pick'));
+        }
+
+        return true;
+    }
+
+    function endBinding() {
+        if (!state.binding) {
+            return;
+        }
+
+        state.binding = null;
+        ui.viewport.classList.remove('wsf-binding');
+        drawData();
+    }
+
+    // A thread followed by the pointer: from the dot, hanging as a drawn one.
+    function hangingPath(x1, y1, x2, y2) {
+        return 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + 10 + 0.06 * Math.abs(x2 - x1)) + ' ' + x2 + ' ' + y2;
+    }
+
+    // "Pass a value to a field" for the keyboard (V) and a dot's menu: one of
+    // the box's values into a field it may go into.
+    function askBind(node, token) {
+        if (!state.edit || state.run || !node) {
+            return;
+        }
+
+        var values = boxValues(node);
+        var body = el('div');
+        var value = K.select(values.map(function (item) { return [item.token, item.label]; }), token || (values[0] ? values[0].token : ''));
+        var into = K.select([], '');
+        var fill = function () {
+            K.clear(into);
+            bindTargets(node.id, value.value).forEach(function (target) {
+                var option = el('option', '', nameOf(target.node) + ' › ' + target.label);
+
+                option.value = target.node.id + ' ' + target.key;
+                into.appendChild(option);
+            });
+        };
+
+        if (values.length) {
+            fill();
+        }
+
+        if (!into.options.length) {
+            K.toast(t('fl_thread_none'), 'secondary');
+            return;
+        }
+
+        value.className = into.className = 'form-control';
+        value.addEventListener('change', fill);
+        body.appendChild(field(t('fl_cond_value_ref'), value));
+        body.appendChild(field(t('fl_thread_field'), into));
+
+        K.ask(t('fl_thread_title', nameOf(node)), t('fl_thread_add'), false, body).then(function (yes) {
+            if (yes && into.value) {
+                var parts = into.value.split(' ');
+
+                bindValue(node.id, value.value, parts[0], parts[1]);
+            }
+
+            state.selected = { type: 'node', id: node.id };
+            markSelected();
+            focusSelected();
+        });
     }
 
     // With a box selected its threads are drawn at full colour, the others
@@ -2493,7 +2727,7 @@
     function markSelected() {
         var selected = state.selected;
 
-        markThreads();
+        drawData();
 
         Array.prototype.forEach.call(ui.layer.querySelectorAll('.wsf-selected'), function (node) {
             node.classList.remove('wsf-selected');
@@ -3288,7 +3522,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'arrows', 'connect', 'delete', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'arrows', 'connect', 'thread', 'delete', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -7125,12 +7359,45 @@
         }
 
         var target = event.target;
-        var box = target.closest('[data-node]');
+        var box = target.closest('.wsf-node[data-node]');
         var edge = target.closest('.wsf-edge');
+        var dot = target.closest('.wsf-data-live');
+        var bind = target.closest('[data-bind]');
+        var ring = dot ? dot.querySelector('.wsf-data-ring').getBoundingClientRect() : null;
         var drag = { id: event.pointerId, sx: event.clientX, sy: event.clientY, moved: false, kind: 'pan', vx: state.view.x, vy: state.view.y };
+
+        // A thread waiting for its field: a lit field takes it, anything
+        // else lets it go.
+        if (state.binding && bind && !state.space && (event.button !== 1)) {
+            var place = bind.getAttribute('data-bind').split(' ');
+
+            bindValue(state.binding.from, state.binding.token, place[0], place[1]);
+            endBinding();
+            delete state.pointers[event.pointerId];
+            event.preventDefault();
+            return;
+        }
+
+        if (state.binding && !(dot && (dot.getAttribute('data-node') === state.binding.from) && (dot.getAttribute('data-token') === state.binding.token))) {
+            endBinding();
+        }
 
         if (state.space || (event.button === 1)) {
             drag.kind = 'pan';
+        } else if (dot) {
+            drag.kind = 'thread';
+            drag.from = nodeById(dot.getAttribute('data-node'));
+            drag.token = dot.getAttribute('data-token');
+            drag.start = canvasPoint(ring.left + ring.width / 2, ring.bottom);
+            event.preventDefault();
+
+            if (!state.selected || (state.selected.type !== 'node') || (state.selected.id !== drag.from.id)) {
+                select({ type: 'node', id: drag.from.id });
+            }
+
+            if (box) {
+                box.focus({ preventScroll: true });
+            }
         } else if (state.edit && target.closest('.wsf-port-out') && box) {
             drag.kind = 'connect';
             drag.from = nodeById(box.getAttribute('data-node'));
@@ -7215,6 +7482,24 @@
             drag.item.y = coord(drag.iy + dy / state.view.k);
             place(drag.node, drag.item);
             drawEdges();
+        } else if (drag.kind === 'thread') {
+            if (!state.binding && !startBinding(drag.from.id, drag.token, true)) {
+                state.drag = null;
+                return;
+            }
+
+            var end = canvasPoint(event.clientX, event.clientY);
+            var hit = document.elementFromPoint(event.clientX, event.clientY);
+            var hot = hit && hit.closest ? hit.closest('[data-bind]') : null;
+
+            ui.temp.setAttribute('d', hangingPath(drag.start.x, drag.start.y, end.x, end.y));
+            ui.temp.classList.add('wsf-temp-thread');
+            ui.temp.classList.remove('d-none');
+            Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-data-target.wsf-data-hot'), function (node) { node.classList.remove('wsf-data-hot'); });
+
+            if (hot) {
+                hot.classList.add('wsf-data-hot');
+            }
         } else if (drag.kind === 'connect') {
             var point = canvasPoint(event.clientX, event.clientY);
             var under = document.elementFromPoint(event.clientX, event.clientY);
@@ -7250,6 +7535,37 @@
 
         state.drag = null;
         ui.viewport.classList.remove('wsf-panning');
+
+        if (drag.kind === 'thread') {
+            ui.temp.classList.add('d-none');
+            ui.temp.classList.remove('wsf-temp-thread');
+
+            if (drag.moved) {
+                var hit = document.elementFromPoint(event.clientX, event.clientY);
+                var into = hit && hit.closest ? hit.closest('[data-bind]') : null;
+
+                if (into && state.binding && (event.type === 'pointerup')) {
+                    var place = into.getAttribute('data-bind').split(' ');
+
+                    bindValue(drag.from.id, drag.token, place[0], place[1]);
+                }
+
+                endBinding();
+            } else {
+                // The second tap on a dot (the captured pointer sends no
+                // dblclick) starts the thread; the next tap on a field ends it.
+                var at = Date.now();
+
+                if (state.dotTap && (state.dotTap.token === drag.token) && (state.dotTap.from === drag.from.id) && (at - state.dotTap.time < 450)) {
+                    state.dotTap = null;
+                    startBinding(drag.from.id, drag.token);
+                } else {
+                    state.dotTap = { from: drag.from.id, token: drag.token, time: at };
+                }
+            }
+
+            return;
+        }
 
         if (drag.kind === 'connect') {
             var under = document.elementFromPoint(event.clientX, event.clientY);
@@ -7298,6 +7614,8 @@
 
         state.drag = null;
         ui.temp.classList.add('d-none');
+        ui.temp.classList.remove('wsf-temp-thread');
+        endBinding();
         ui.viewport.classList.remove('wsf-panning');
         Array.prototype.forEach.call(ui.boxes.querySelectorAll('.wsf-target'), function (node) { node.classList.remove('wsf-target'); });
 
@@ -7348,6 +7666,10 @@
             removeSelected();
         } else if (((key === 'c') || (key === 'C')) && !event.ctrlKey && !event.metaKey && selected && (selected.type === 'node')) {
             askConnect(nodeById(selected.id));
+        } else if (((key === 'v') || (key === 'V')) && !event.ctrlKey && !event.metaKey && selected && (selected.type === 'node')) {
+            askBind(nodeById(selected.id));
+        } else if ((key === 'Escape') && state.binding) {
+            endBinding();
         } else if ((key === 'Enter') && selected) {
             focusField();
         } else if ((key === '+') || (key === '=')) {
