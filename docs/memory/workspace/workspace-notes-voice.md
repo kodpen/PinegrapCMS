@@ -3,7 +3,7 @@ name: workspace-notes-voice
 description: A recording made in a Workspace note (V6): the note toolbar's microphone, kept as a note file through ws_note_file and linked at the caret, players under the text, no transcript
 ---
 
-## How is a recording made in a note? (V6)
+## How is a recording made in a note? (V6, #2871)
 - The note's toolbar has a microphone ("Record a voice note") beside Attach, only with `PGWsVoice.supported()` (secure context, MediaRecorder) and only on a note the person may change. `recordVoice()` runs the same recorder as the channel box (`PGWsVoice.start()`): the red dot, time, Stop and Discard in a row (`.ws-nb-voice`) above the text, the 5-minute cap, the `voice-YYYYMMDD-HHMMSS.weba/.ogg/.m4a` name.
 - Stop hands the file to the note's `attach()`: saved first, then `ws_note_file` → `ws_note_file_store_bytes()` keeps it in the note's folder like a dropped file (same refusals, size cap, readers), and `insertLink()` writes `[voice-….weba](url)` where the caret was. Leaving the note or opening another drops a running recording (its row left the page).
 
