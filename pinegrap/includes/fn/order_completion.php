@@ -1089,3 +1089,288 @@ function pg_order_complete_line_gift_cards(array $line, $order_id, $created_user
         log_activity('auto campaign was created because gift card was ordered (' . output_gift_card_code($code) . ')', $actor);
     }
 }
+
+/**
+ * The variables an order line's submitted form, comment and e-mailed page
+ * can use (^^billing_first_name^^, ^^order_number^^, ^^quantity^^ ...), from
+ * the order row. Pure.
+ *
+ * @param array $order    the order's billing_* columns, custom_field_1,
+ *                        custom_field_2, po_number, total (minor units),
+ *                        order_number, order_date (Unix time)
+ * @param int   $quantity the line's quantity
+ * @return array list of array('name', 'data'[, 'type']) for replace_variables()
+ */
+function pg_order_line_variable_fields(array $order, $quantity)
+{
+    $fields = array();
+
+    foreach (array(
+        'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
+        'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number',
+        'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number') as $name) {
+        $fields[] = array('name' => $name, 'data' => $order[$name]);
+    }
+
+    $fields[] = array('name' => 'total', 'data' => sprintf("%01.2lf", $order['total'] / 100));
+    $fields[] = array('name' => 'order_number', 'data' => $order['order_number']);
+    $fields[] = array('name' => 'order_date_and_time', 'data' => date('Y-m-d H:i:s', $order['order_date']), 'type' => 'date and time');
+    $fields[] = array('name' => 'quantity', 'data' => $quantity);
+
+    $plural = ($quantity != 1);
+    $fields[] = array('name' => 'quantity_plural_suffix', 'data' => $plural ? 's' : '');
+    $fields[] = array('name' => 'quantity_plural_suffix_es', 'data' => $plural ? 'es' : '');
+
+    return $fields;
+}
+
+/**
+ * The product form answers of an order line as variables, one list per unit
+ * (quantity number); a field with several values (a check box group) holds
+ * them joined by commas. Pure.
+ *
+ * @param array $items form_data rows in id order: quantity_number,
+ *                     form_field_id, data, name, type
+ * @return array quantity number => list of array('name', 'data', 'type')
+ */
+function pg_order_product_form_fields(array $items)
+{
+    $forms = array();
+
+    foreach ($items as $item) {
+        $quantity_number = (int) $item['quantity_number'];
+        $field_id = $item['form_field_id'];
+
+        if (isset($forms[$quantity_number][$field_id])) {
+            $forms[$quantity_number][$field_id]['data'] .= ', ' . $item['data'];
+        } else {
+            $forms[$quantity_number][$field_id] = array('name' => $item['name'], 'data' => $item['data'], 'type' => $item['type']);
+        }
+    }
+
+    foreach ($forms as $quantity_number => $form) {
+        $forms[$quantity_number] = array_values($form);
+    }
+
+    return $forms;
+}
+
+/**
+ * Reads an order line's product form answers (pg_order_product_form_fields()).
+ *
+ * @param int $order_item_id
+ * @return array quantity number => list of variable fields
+ */
+function pg_order_line_product_form_fields($order_item_id)
+{
+    return pg_order_product_form_fields(db_items(
+        "SELECT
+            quantity_number,
+            form_field_id,
+            data,
+            name,
+            type
+        FROM form_data
+        WHERE
+            (order_item_id = '" . (int) $order_item_id . "')
+            AND (name != '')
+        ORDER BY id ASC"));
+}
+
+/**
+ * Which unit's product form fills the variables of a unit's submitted form
+ * or comment: the unit's own form, else the first unit's; 0 for none. Pure.
+ *
+ * @param int   $quantity_number
+ * @param array $product_forms   pg_order_product_form_fields()
+ * @return int
+ */
+function pg_order_product_form_number($quantity_number, array $product_forms)
+{
+    if (($quantity_number != 1) && isset($product_forms[$quantity_number])) {
+        return (int) $quantity_number;
+    }
+
+    return isset($product_forms[1]) ? 1 : 0;
+}
+
+/**
+ * Replaces the order's variables in a text, then the unit's product form
+ * variables when it has a product form.
+ *
+ * @param string     $content
+ * @param array      $variable_fields pg_order_line_variable_fields()
+ * @param array|null $product_form    the unit's product form fields, null for none
+ * @return string
+ */
+function pg_order_line_fill($content, array $variable_fields, $product_form)
+{
+    $content = replace_variables(array(
+        'content' => $content,
+        'fields' => $variable_fields,
+        'format' => 'plain_text'));
+
+    if ($product_form !== null) {
+        $content = replace_variables(array(
+            'content' => $content,
+            'fields' => $product_form,
+            'format' => 'plain_text'));
+    }
+
+    return $content;
+}
+
+/**
+ * The form_data type a submitted form value is stored as: a date, date and
+ * time or time field keeps its type, a rich text area is html, else
+ * standard. Pure.
+ *
+ * @param string $field_type form_fields.type
+ * @param mixed  $wysiwyg    form_fields.wysiwyg
+ * @return string
+ */
+function pg_order_form_data_type($field_type, $wysiwyg)
+{
+    if (in_array($field_type, array('date', 'date and time', 'time'), true)) {
+        return $field_type;
+    }
+
+    return (($field_type == 'text area') && ($wysiwyg == 1)) ? 'html' : 'standard';
+}
+
+/**
+ * For a line whose product updates a submitted form: finds the oldest
+ * submitted form of the product's custom form page whose "where" field holds
+ * the line's "where" value (variables filled from the order and the unit's
+ * product form), and writes the product's update fields into it. A field
+ * whose value is ^^quantity^^ adds the line's quantity to a number already
+ * there.
+ *
+ * @param array      $line            product_id, quantity, submit_form_update,
+ *                                    submit_form_update_where_field, _where_value,
+ *                                    submit_form_custom_form_page_id
+ * @param array      $variable_fields pg_order_line_variable_fields()
+ * @param array|null $product_form    the unit's product form fields, null for none
+ * @param string     $user_id         written as the form's last modifier
+ * @param bool       $pretty_urls     whether the form page uses pretty URLs
+ * @return int the updated submitted form's id, 0 when none was updated
+ */
+function pg_order_complete_line_form_update(array $line, array $variable_fields, $product_form, $user_id, $pretty_urls)
+{
+    if (!$line['submit_form_update'] || !$line['submit_form_update_where_field']) {
+        return 0;
+    }
+
+    $where_field = $line['submit_form_update_where_field'];
+    $where_value = $line['submit_form_update_where_value'];
+
+    // The "where" value may name the order's or the product form's values
+    // (a reference code the buyer typed).
+    if ($where_value != '') {
+        $where_value = pg_order_line_fill($where_value, $variable_fields, $product_form);
+    }
+
+    if ($where_field == 'reference_code') {
+        $sql_where = "(reference_code = '" . e($where_value) . "')";
+    } else {
+        $field_value = "(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '" . e($where_field) . "') LIMIT 1)";
+
+        // A blank value also matches a form without the field.
+        if ($where_value == '') {
+            $sql_where = "(($field_value = '') OR ($field_value IS NULL))";
+        } else {
+            $sql_where = "($field_value = '" . e($where_value) . "')";
+        }
+    }
+
+    // The oldest match, so a submitted form inventory is used from its
+    // oldest form on.
+    $submitted_form_id = db_value(
+        "SELECT id
+        FROM forms
+        WHERE
+            (page_id = '" . e($line['submit_form_custom_form_page_id']) . "')
+            AND $sql_where
+        ORDER BY submitted_timestamp
+        LIMIT 1");
+
+    if (!$submitted_form_id) {
+        return 0;
+    }
+
+    db(
+        "UPDATE forms
+        SET
+            last_modified_user_id = '" . e($user_id) . "',
+            last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE id = '$submitted_form_id'");
+
+    $submit_form_fields = db_items(
+        "SELECT
+            product_submit_form_fields.form_field_id,
+            product_submit_form_fields.value,
+            form_fields.name,
+            form_fields.type,
+            form_fields.wysiwyg
+        FROM product_submit_form_fields
+        LEFT JOIN form_fields ON product_submit_form_fields.form_field_id = form_fields.id
+        WHERE
+            (form_fields.id IS NOT NULL)
+            AND (product_submit_form_fields.product_id = '" . (int) $line['product_id'] . "')
+            AND (product_submit_form_fields.action = 'update')
+            AND (form_fields.type != 'information')
+            AND (form_fields.type != 'file upload')");
+
+    foreach ($submit_form_fields as $submit_form_field) {
+        $value = '';
+
+        // ^^quantity^^ counts up: the line's quantity is added to the number
+        // already there.
+        if ($submit_form_field['value'] == '^^quantity^^') {
+            $old_quantity = db_value(
+                "SELECT data
+                FROM form_data
+                WHERE
+                    (form_id = '$submitted_form_id')
+                    AND (form_field_id = '" . $submit_form_field['form_field_id'] . "')");
+
+            if (is_numeric($old_quantity) == true) {
+                $value = $old_quantity + $line['quantity'];
+            }
+        }
+
+        if ($value == '') {
+            $value = pg_order_line_fill($submit_form_field['value'], $variable_fields, $product_form);
+        }
+
+        $form_data_type = pg_order_form_data_type($submit_form_field['type'], $submit_form_field['wysiwyg']);
+
+        db(
+            "DELETE FROM form_data
+            WHERE
+                (form_id = '$submitted_form_id')
+                AND (form_id != '0')
+                AND (form_field_id = '" . $submit_form_field['form_field_id'] . "')");
+
+        db(
+            "INSERT INTO form_data (
+                form_id,
+                form_field_id,
+                data,
+                name,
+                type)
+            VALUES (
+                '$submitted_form_id',
+                '" . $submit_form_field['form_field_id'] . "',
+                '" . escape($value) . "',
+                '" . escape($submit_form_field['name']) . "',
+                '$form_data_type')");
+    }
+
+    if ($pretty_urls == true) {
+        update_submitted_form_address_name($submitted_form_id);
+    }
+
+    return (int) $submitted_form_id;
+}
