@@ -400,6 +400,79 @@
         return match ? shape('number', parseInt(match[2], 10), match[1], match[3]) : null;
     }
 
+    // Autoformat: the list a line's words before the caret open once a space
+    // ends them: "- " or "* " a bullet, "1. " a number, "> " a quote; null
+    // for any other line. Only an unindented first item: an indent or a
+    // number other than 1 makes a list the server draws as text.
+    function autoList(line) {
+        var match = /^([-*]|1\.|>)[  ]$/.exec(String(line || ''));
+
+        if (!match) {
+            return null;
+        }
+
+        return (match[1] === '>') ? 'quote' : ((match[1] === '1.') ? 'number' : 'bullet');
+    }
+
+    // Autoformat: the highlight a line's words before the caret have just
+    // closed, as { length, words } (length: the pair with its signs), or
+    // null. The pairs are read from the line's start as inlineNodes() reads
+    // them, so only a pair the server draws becomes a mark: in "==a==b=="
+    // the first pair is the highlight and the "==" typed last stays text.
+    // next: the character after the caret; a third "=" makes no pair.
+    function autoMark(line, next) {
+        var text = String(line || '');
+        var pattern = /(^|[^=])==([^=\s](?:[^=\n]{0,298}[^=\s])?)==(?!=)/g;
+        var match;
+        var last = null;
+
+        if (next === '=') {
+            return null;
+        }
+
+        while ((match = pattern.exec(text)) !== null) {
+            last = match;
+        }
+
+        if (!last || (last.index + last[0].length !== text.length)) {
+            return null;
+        }
+
+        return { length: last[0].length - last[1].length, words: last[2] };
+    }
+
+    // Whether autoformat is on for the viewer: on unless they turned it off
+    // in the shortcut sheet, kept in this browser as the other Workspace
+    // view choices are.
+    var AUTOFORMAT_KEY = 'ws-autoformat';
+    var autoformatHeld = null;
+
+    function autoformatOn() {
+        if (autoformatHeld !== null) {
+            return autoformatHeld;
+        }
+
+        try {
+            return window.localStorage.getItem(AUTOFORMAT_KEY) !== 'off';
+        } catch (error) {
+            return true;
+        }
+    }
+
+    function autoformatSet(on) {
+        autoformatHeld = !!on;
+
+        try {
+            if (on) {
+                window.localStorage.removeItem(AUTOFORMAT_KEY);
+            } else {
+                window.localStorage.setItem(AUTOFORMAT_KEY, 'off');
+            }
+        } catch (error) {
+            // Storage refused (a private window): the choice lasts this page.
+        }
+    }
+
     // The lines of running text grouped into text and lists: the twin of
     // ws_text_blocks(). Only a shape that cannot have meant anything else is
     // a list; every other shape stays text, as the server draws it. lines:
@@ -1902,7 +1975,10 @@
             }
         }
 
-        var typed = document.createTextNode(text);
+        // A plain space at the edge of its own node collapses, and the
+        // browser then types the next letters into the mark beside it: the
+        // space is kept as a no-break one, which the box writes as a space.
+        var typed = document.createTextNode(text.replace(/^ | $/g, '\u00a0'));
         var top = typed;
 
         TYPED_MARKS.forEach(function (name) {
@@ -3072,8 +3148,9 @@
         return rows;
     }
 
-    // The shortcut sheet (Ctrl+/), by the surface; Escape or its close
-    // button takes the focus back to the surface, at the caret it had.
+    // The shortcut sheet (Ctrl+/), by the surface, with the autoformat
+    // switch under a writing box's keys; Escape or its close button takes
+    // the focus back to the surface, at the caret it had.
     function openKeys(surface) {
         var range = selectionRange();
         var saved = (range && surface.contains(range.startContainer)) ? range.cloneRange() : null;
@@ -3123,6 +3200,24 @@
 
         table.appendChild(body);
         tip.appendChild(table);
+
+        // The viewer's own switch for the autoformat of the writing boxes.
+        if (editor) {
+            var field = el('div', 'form-field mt-2 mb-0');
+            var input = el('input', '');
+            var caption = el('label', 'small', t('keys_autoformat'));
+
+            input.type = 'checkbox';
+            input.id = 'ws-autoformat-' + Math.random().toString(36).slice(2);
+            input.setAttribute('role', 'switch');
+            input.checked = autoformatOn();
+            caption.htmlFor = input.id;
+            input.addEventListener('change', function () { autoformatSet(input.checked); });
+            field.appendChild(el('div', 'switch')).appendChild(input);
+            field.appendChild(caption);
+            field.appendChild(el('div', 'form-text mt-0', keyLabel(t('keys_autoformat_help'), MAC)));
+            tip.appendChild(field);
+        }
 
         tip.addEventListener('keydown', function (event) {
             if (event.key === 'Escape') {
@@ -3373,12 +3468,18 @@
 
         bindSurface(node, false);
 
-        node.addEventListener('input', function () {
+        node.addEventListener('input', function (event) {
             if (!self.history.quiet) {
                 self.recordLater();
             }
 
             self.tidy();
+
+            // The autoformat's change has told the box's owner already.
+            if (!self.history.quiet && self.autoformat(event)) {
+                return;
+            }
+
             self.fenceCheck();
             self.slashCheck(event);
 
@@ -4430,6 +4531,78 @@
                     line.anchor.parentNode.insertBefore(shown, line.anchor.nextSibling);
                 }
             }
+        },
+
+        // Autoformat as the viewer types: "==words==" just closed becomes a
+        // highlight, "- ", "* ", "1. " or "> " at a line's start a list or a
+        // quote (autoMark(), autoList()). The typed text is kept as a step
+        // first, so one undo gives it back. Only for letters typed one by
+        // one: not a paste or a drop, not a word an IME is composing (its
+        // nodes are left alone), not in code, a link, a cell or a card, and
+        // not where the viewer turned it off. true when it formatted.
+        autoformat: function (event) {
+            var self = this;
+            var data = event ? event.data : '';
+            var range = selectionRange();
+
+            if (!event || (event.inputType !== 'insertText') || event.isComposing || self.node.wsComposing || !autoformatOn()
+                || ((data !== '=') && (data !== ' ') && (data !== '\u00a0')) || self.caretBlocked() || (range.startContainer.nodeType !== 3)) {
+                return false;
+            }
+
+            var before = self.beforeCaret();
+            var line = before.slice(before.lastIndexOf('\n') + 1);
+            var caret = range.startContainer;
+            var offset = range.startOffset;
+
+            if (data === '=') {
+                var found = autoMark(line, caret.nodeValue.charAt(offset));
+                var spot = found ? placeOf(self.node, before.length - found.length) : null;
+
+                // The pair and its words in the caret's own text, outside any
+                // highlight.
+                if (!spot || (spot[0] !== caret) || (offset - spot[1] !== found.length) || markOf(caret, self.node, 'highlight')) {
+                    return false;
+                }
+
+                return self.change(function () {
+                    caret.splitText(offset);
+
+                    var pair = caret.splitText(spot[1]);
+                    var mark = el('mark', '', found.words);
+
+                    pair.parentNode.replaceChild(mark, pair);
+                    select(mark.firstChild, found.words.length, mark.firstChild, found.words.length);
+
+                    // What is typed next goes after the highlight, not in it.
+                    toggleWaiting(self.node, selectionRange(), 'highlight');
+
+                    return true;
+                });
+            }
+
+            var kind = autoList(line);
+            var start = kind ? placeOf(self.node, before.length - line.length) : null;
+
+            if (!start || self.inListItem()) {
+                return false;
+            }
+
+            var typed = document.createRange();
+
+            typed.setStart(start[0], start[1]);
+            typed.setEnd(caret, offset);
+
+            if (plainOf(typed.cloneContents()) !== line.replace(/\u00a0/g, ' ')) {
+                return false;
+            }
+
+            return self.change(function () {
+                typed.deleteContents();
+                select(typed.startContainer, typed.startOffset, typed.startContainer, typed.startOffset);
+
+                return toggleList(self.node, kind);
+            });
         },
 
         // ``` typed at the start of a line opens the code window.

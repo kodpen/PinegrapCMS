@@ -28,4 +28,4 @@ description: ==x== as a highlight (<mark>): the pair rule, old shapes that stay 
 - `ws_note_import_inline()` (notes_io.php) keeps `==x==` as written (it used to make it `**x**`).
 
 ## What is still open?
-- Autoformat (typing `==x==` making the mark) waits on question 3 of plans/workspace-composer-tools.md.
+- Autoformat (typing `==x==` making the mark): workspace-editor-autoformat.md.
