@@ -171,3 +171,65 @@ function test_widget_passkeys_send_code_button()
 	pg_assert_true(preg_match('#<button class="send" type="button" data-pg-passkey-send(="")?>#', $out) === 1, 'a plain marked button: ' . $out);
 	pg_assert_true(strpos($out, 'name="x"') === false, 'its own name is dropped');
 }
+
+// Only the add form's email_code field says adding is offered without two-step
+// verification: the new recovery codes form carries a field of that name too.
+function test_widget_passkeys_email_code_field_of_the_add_form_only()
+{
+	$field = _widget_pk_box('input', 'ec', array(), array('_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'name', 'value' => 'email_code'))));
+	$tree = _widget_pk_tree();
+	$tree['children'][] = _widget_pk_box('form', 'recovery', array($field), array('_bindings' => array('action' => 'account_security_form')));
+	pg_assert_false(_pg_sec_tree_has_email_code($tree), 'the recovery form\'s field');
+	$tree['children'][1]['children'][] = _widget_pk_box('div', 'group', array($field));
+	pg_assert_true(_pg_sec_tree_has_email_code($tree), 'nested in the add form');
+}
+
+// New recovery codes by e-mail: for an account whose second factor is its
+// passkeys, never with TOTP on, while codes are shown or for an operator.
+function test_widget_passkeys_email_recovery_state()
+{
+	pg_assert_true(pg_sw_mfa_email_recovery(true, false, false, 2), 'passkeys, no TOTP');
+	pg_assert_false(pg_sw_mfa_email_recovery(true, false, true, 2), 'TOTP on: its own regenerate');
+	pg_assert_false(pg_sw_mfa_email_recovery(true, false, false, 0), 'no passkey: no second factor');
+	pg_assert_false(pg_sw_mfa_email_recovery(true, true, false, 2), 'fresh codes shown');
+	pg_assert_false(pg_sw_mfa_email_recovery(false, false, false, 2), 'an operator, or no tables');
+}
+
+// The recovery Send the code button is a plain marked button, never a submit;
+// the regenerate button posts its action.
+function test_widget_passkeys_recovery_send_button()
+{
+	$tree = _widget_pk_tree();
+	$tree['children'][] = _widget_pk_box('form', 'recovery', array(
+		_widget_pk_box('button', 'send', array(), array('text' => 'Send',
+			'_attrs' => array(array('name' => 'type', 'value' => 'submit'), array('name' => 'name', 'value' => 'x')),
+			'_bindings' => array('action' => 'mfa_recovery_send_code'))),
+		_widget_pk_box('button', 'go', array(), array('text' => 'New', '_bindings' => array('action' => 'mfa_recovery_regenerate'))),
+	), array('_bindings' => array('action' => 'account_security_form', 'eo_visible_if' => 'mfa_email_recovery')));
+
+	$out = _widget_pk_finished($tree, array('mfa_email_recovery' => true), 7, 7);
+	pg_assert_true(preg_match('#<button class="send" type="button" data-pg-recovery-send(="")?>#', $out) === 1, 'a plain marked button: ' . $out);
+	pg_assert_contains('name="pg_security_action" value="mfa_recovery_regenerate"', $out, 'the regenerate action');
+
+	$out = _widget_pk_finished($tree, array('mfa_email_recovery' => false), 7, 7);
+	pg_assert_false(strpos($out, 'data-pg-recovery-send') !== false, 'not offered: no form');
+	pg_assert_contains('body.append("purpose", "recovery");', (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/passkeys.php'), 'the code is asked for new recovery codes');
+	pg_assert_contains("if (strpos(\$rendered, 'data-pg-recovery-send') !== false) \$rendered .= pg_mfa_recovery_send_script();", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php'), 'its script comes with the button');
+}
+
+// The editor's starter tree offers the new recovery codes form under its flag,
+// with the e-mailed code field, its Send button, the sentence's place and the
+// regenerate button; its email_code field leaves the add form's rule alone.
+function test_widget_passkeys_starter_tree_recovery_form()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$at = strpos($js, "asForm(_sdT('New Codes by E-mail Form'), 'mfa_email_recovery'");
+	pg_assert_true($at !== false, 'the form under its flag');
+	$form = substr($js, (int) $at, 3000);
+	foreach (array("_bindings: { text: '__mfa_recovery_left_text' }", "asPassword('_rc_password')", "{ name: 'name', value: 'email_code' }",
+		"_bindings: { action: 'mfa_recovery_send_code' }", "{ name: 'data-pg-recovery-sent', value: '' }",
+		"asButton(_sdT('New recovery codes'), 'mfa_recovery_regenerate'") as $needle) {
+		pg_assert_contains($needle, $form, $needle);
+	}
+	pg_assert_contains("['mfa_recovery_send_code',  _sdT(", $js, 'the action is offered');
+}

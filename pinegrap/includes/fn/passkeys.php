@@ -1795,6 +1795,63 @@ function pg_passkey_add_texts()
 }
 
 /**
+ * The script of the account security widget's new recovery codes form, for
+ * an account whose second factor is its passkeys: a [data-pg-recovery-send]
+ * button (wired by _pg_sec_apply_action_bindings()) has passkey.php e-mail
+ * the code asked for new recovery codes (purpose=recovery), the way the
+ * classic page's button does; its sentence goes to the form's
+ * [data-pg-recovery-sent] element, or one added after the button. It needs
+ * no passkey support from the browser.
+ *
+ * @return string
+ */
+function pg_mfa_recovery_send_script()
+{
+    $json = JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT;
+
+    return '<script>
+        (function () {
+            if (!window.fetch || !window.FormData) {
+                return;
+            }
+            var failed = ' . json_encode(lang('The e-mail could not be sent. Please try again later.'), $json) . ';
+            var url = ' . json_encode(PATH . SOFTWARE_DIRECTORY . '/passkey.php', $json | JSON_UNESCAPED_SLASHES) . ';
+            Array.prototype.forEach.call(document.querySelectorAll("[data-pg-recovery-send]"), function (send) {
+                var form = send.form;
+                if (!form) {
+                    return;
+                }
+                var sent = form.querySelector("[data-pg-recovery-sent]");
+                if (!sent) {
+                    sent = document.createElement("div");
+                    sent.className = "small mt-2";
+                    sent.setAttribute("role", "status");
+                    send.parentNode.insertBefore(sent, send.nextSibling);
+                }
+                send.addEventListener("click", function () {
+                    var token = form.elements.namedItem("token");
+                    var body = new FormData();
+                    body.append("action", "email_code");
+                    body.append("purpose", "recovery");
+                    body.append("token", token ? token.value : "");
+                    send.disabled = true;
+                    sent.textContent = "";
+                    fetch(url, { method: "POST", body: body, credentials: "same-origin" }).then(function (response) {
+                        return response.json();
+                    }).then(function (answer) {
+                        sent.textContent = (answer && answer.message) || failed;
+                    }).catch(function () {
+                        sent.textContent = failed;
+                    }).then(function () {
+                        send.disabled = false;
+                    });
+                });
+            });
+        })();
+        </script>';
+}
+
+/**
  * The script of the account security widget's add a passkey forms
  * (form[data-pg-passkey-add], wired by _pg_sec_apply_action_bindings()):
  * each form stays hidden until the browser can make passkeys, else a

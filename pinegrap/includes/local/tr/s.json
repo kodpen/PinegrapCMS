@@ -751,6 +751,7 @@
     "Send the approved quote to the customer": "Onaylanan teklifi müşteriye gönder",
     "Send the code": "Kodu gönder",
     "Send the code by e-mail (add a passkey form)": "Kodu e-postayla gönder (geçiş anahtarı ekleme formu)",
+    "Send the code by e-mail (new recovery codes form)": "Kodu e-postayla gönder (yeni kurtarma kodları formu)",
     "Send the comment": "Yorumu gönder",
     "Send the contact ids to add, to remove, or both.": "Eklenecek, çıkarılacak ya da her iki türden kişi kimliklerini gönderin.",
     "Send the customer the request-received e-mail ({var:1})": "Müşteriye talebin alındığını bildiren e-postayı gönder ({var:1})",

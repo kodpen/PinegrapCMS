@@ -1099,22 +1099,38 @@ function pg_sw_list_passkey_rows($user_id, $passkeys, $date_format)
 }
 
 // Whether the widget's tree holds the field of the code e-mailed for adding
-// a passkey (a control named email_code). An account without two-step
-// verification adds one only with that code; a tree saved before the field
-// existed keeps offering two-step verification first.
-function _pg_sec_tree_has_email_code($node)
+// a passkey (a control named email_code in the add a passkey form). An
+// account without two-step verification adds one only with that code; a
+// tree saved before the field existed keeps offering two-step verification
+// first. The new recovery codes form has a field of that name too, which
+// says nothing about adding. $in_add: $node is inside the add form.
+function _pg_sec_tree_has_email_code($node, $in_add = false)
 {
     if (!is_array($node)) return false;
-    foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
-        if (is_array($a) && isset($a['name'], $a['value']) && strtolower((string)$a['name']) === 'name'
-            && (string)$a['value'] === 'email_code') return true;
+    $b = (isset($node['props']['_bindings']) && is_array($node['props']['_bindings'])) ? $node['props']['_bindings'] : array();
+    if (isset($b['action']) && (string)$b['action'] === 'passkey_add_form') $in_add = true;
+    if ($in_add) {
+        foreach ((isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array() as $a) {
+            if (is_array($a) && isset($a['name'], $a['value']) && strtolower((string)$a['name']) === 'name'
+                && (string)$a['value'] === 'email_code') return true;
+        }
     }
     if (!empty($node['children']) && is_array($node['children'])) {
         foreach ($node['children'] as $child) {
-            if (_pg_sec_tree_has_email_code($child)) return true;
+            if (_pg_sec_tree_has_email_code($child, $in_add)) return true;
         }
     }
     return false;
+}
+
+// Whether the account security widget offers new recovery codes for the
+// password and a code e-mailed for that purpose: the account's second factor
+// is its passkeys (no TOTP; pg_mfa_recovery_proof()), the two-step tables
+// exist, nobody is signed in as the member and no fresh codes are being
+// shown. The classic page's rule (pg_passkey_account_section()).
+function pg_sw_mfa_email_recovery($live, $show_codes, $mfa_enabled, $passkey_count)
+{
+    return $live && !$show_codes && (pg_mfa_recovery_proof($mfa_enabled, (int)$passkey_count > 0) === 'email');
 }
 
 // The add a passkey flags of the account security widget, by the rules of
@@ -1144,6 +1160,10 @@ function pg_sw_passkey_add_state($live, $site_ok, $mfa_ready, $mfa_enabled, $ema
 //   button _bindings.action = 'passkey_send_code' -> in the add form, sends
 //          the code e-mailed for adding a passkey without two-step
 //          verification (a plain button, data-pg-passkey-send)
+//   button _bindings.action = 'mfa_recovery_send_code' -> in the new
+//          recovery codes form of an account whose second factor is its
+//          passkeys, sends the code e-mailed for them (a plain button,
+//          data-pg-recovery-send)
 //   button _bindings.action = a pg_sw_account_security_actions() value -> a
 //          submit button carrying it; revoke_device carries the row's device
 //          as pg_revoke_device, passkey_rename and passkey_remove the row's
@@ -1197,6 +1217,17 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
             $node['props']['btnElement'] = 'button';
             $node['props']['btnType']    = 'button';
             $set_attrs($node, $managed, array('data-pg-passkey-send' => ''));
+        }
+    } elseif ($action === 'mfa_recovery_send_code') {
+        // Sends the code for new recovery codes (pg_mfa_recovery_send_script()):
+        // a plain button in the new recovery codes form, never a submit.
+        $managed = array('type' => 1, 'name' => 1, 'value' => 1, 'formnovalidate' => 1, 'data-pg-recovery-send' => 1);
+        if ($type === 'semantic' && $tag === 'button') {
+            $set_attrs($node, $managed, array('type' => 'button', 'data-pg-recovery-send' => ''));
+        } elseif ($type === 'component' && isset($node['props']['componentType']) && $node['props']['componentType'] === 'btn') {
+            $node['props']['btnElement'] = 'button';
+            $node['props']['btnType']    = 'button';
+            $set_attrs($node, $managed, array('data-pg-recovery-send' => ''));
         }
     } elseif ($action !== '' && in_array($action, pg_sw_account_security_actions(), true)) {
         $carried = array('revoke_device' => array('pg_revoke_device', '^^__device_selector^^'),
@@ -1267,11 +1298,16 @@ function _pg_sec_apply_action_bindings(&$node, $ctx, &$found)
 // this site or at this address), passkey_asks_password and
 // passkey_asks_code (the proofs adding and removing ask for),
 // passkey_asks_email_code (adding asks for the e-mailed code: two-step
-// verification is off). Tokens: ^^__passkey_notice^^ (why adding is not
+// verification is off), mfa_email_recovery (new recovery codes for the
+// password and a code e-mailed for them: the account's second factor is its
+// passkeys; a button bound to mfa_recovery_send_code sends that code and
+// its sentence goes to the form's [data-pg-recovery-sent] element). Tokens: ^^__passkey_notice^^ (why adding is not
 // offered: the site, the address or the limit),
 // ^^__site_name^^, ^^__passkey_count^^,
 // ^^__device_count^^, ^^__mfa_status_text^^, ^^__mfa_enabled_since^^,
-// ^^__mfa_recovery_remaining^^, ^^__mfa_key^^, ^^__mfa_key_uri^^,
+// ^^__mfa_recovery_remaining^^ (also for mfa_email_recovery),
+// ^^__mfa_recovery_left_text^^ (for mfa_email_recovery: "{n} recovery codes
+// left. New codes replace them."), ^^__mfa_key^^, ^^__mfa_key_uri^^,
 // ^^__mfa_qr^^ (inline SVG), ^^__recovery_codes^^,
 // ^^__recovery_codes_download_url^^, ^^__signin_connect_buttons^^ (the
 // "Connect ..." buttons, HTML; pg_signin_connect_buttons()), ^^__login_url^^,
@@ -1299,6 +1335,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
             'passkeys_shown' => false, 'has_passkeys' => false, 'no_passkeys' => false, 'passkey_can_change' => false,
             'passkey_can_add' => false, 'passkey_needs_mfa' => false, 'passkey_limit' => false, 'passkey_unavailable' => false,
             'passkey_asks_password' => false, 'passkey_asks_code' => false, 'passkey_asks_email_code' => false,
+            'mfa_email_recovery' => false,
         );
         return _pg_acct_render_signed_out($tree, $cfg, $sec_no_state, array(), 'my_account_profile');
     }
@@ -1382,6 +1419,10 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     $pk_live  = $pk_shown && !$impersonated;
     $pk_proofs = pg_passkey_reauth_fields($algo, $enabled, true);
     $pk_state  = pg_sw_passkey_add_state($pk_live, $pk_site['ok'], $mfa_ready, $enabled, _pg_sec_tree_has_email_code($tree), $pk_count);
+    // New recovery codes for an account whose second factor is its passkeys;
+    // the count of the codes left is shown with them.
+    $email_recovery = pg_sw_mfa_email_recovery($live && $pk_table, $show_codes, $enabled, pg_mfa_has_passkey($user_id) ? $pk_count : 0);
+    if ($email_recovery) $remaining = (string)pg_mfa_recovery_remaining($user_id);
 
     $codes_text = implode("\n", $codes);
     $codes_download = $show_codes ? 'data:text/plain;charset=utf-8,' . rawurlencode($codes_text . "\n") : '';
@@ -1433,6 +1474,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         'passkey_asks_password' => $pk_proofs['password'],
         'passkey_asks_code'     => $pk_proofs['code'],
         'passkey_asks_email_code' => $pk_proofs['email'],
+        'mfa_email_recovery'    => $email_recovery,
     ));
 
     // Device rows see the passkey flags too: a Remove button beside a
@@ -1487,6 +1529,7 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
     if ($found > 0) {
         $rendered .= pg_cf_validation_script();
         if (strpos($rendered, 'data-pg-passkey-add') !== false) $rendered .= pg_passkey_add_form_script();
+        if (strpos($rendered, 'data-pg-recovery-send') !== false) $rendered .= pg_mfa_recovery_send_script();
     } else {
         $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/account_security.php',
             array('return_to' => $self), 'pg-account-security-form');
@@ -1502,6 +1545,8 @@ function _render_system_widget_account_security($tree_json, $widget_id, $cfg = a
         '__mfa_status_text'             => $status_text,
         '__mfa_enabled_since'           => $since,
         '__mfa_recovery_remaining'      => $remaining,
+        '__mfa_recovery_left_text'      => $email_recovery ? lang(array(
+            'string' => '{var:1} recovery codes left. New codes replace them.', 'vars' => $remaining)) : '',
         '__mfa_key'                     => $pending ? pg_mfa_format_secret($secret) : '',
         '__mfa_key_uri'                 => $key_uri,
         '__mfa_qr'                      => $qr,
