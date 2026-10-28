@@ -25,7 +25,10 @@ module: audit_view
 ## What does the API give?
 - `GET /audit-log` (`includes/api/resources/audit_log.php`, scope `system:read`: roles 0-1 may grant it, assistant keys are made without it): the same filters through `pg_audit_view_filters()` / `pg_audit_view_where()`, `from`/`to` as moments, cursor by id, newest first. An `action`, `entity_type` or `request_id` the screen would drop is 422, never an unfiltered answer. `before`/`after` are the sides decoded as stored, null when empty.
 
+## Does it replace the Site Log?
+- No. The free-text `log_activity()` and `view_log.php` stay and keep feeding the Activity card; `audit_log` is the structured record beside them.
+
 ## How long are lines kept?
 - 2 years by default, set on the Security screen; the general job removes older ones: `core/privacy-log-retention.md`.
 
-Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-writers.md, docs/memory/plans/privacy-data-pack-audit-log.md
+Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-writers.md

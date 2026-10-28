@@ -35,7 +35,7 @@ description: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: ta
 - Built (F4a): steps.php, workspace/workspace-flows-steps.md; webhook `Idempotency-Key` from run, node, pass (`ws_step_idempotency_key()`). Left: change, row save `effect` at once; a stale begun step fails and its owner retries or skips it (F5a).
 
 ## API and MCP?
-- Built (workspace-flows-runner.md); /resume, /versions: PR #2234 (workspace-flows-versions.md). More: plans/workspace-flows-api.md.
+- Built (workspace-flows-runner.md); /resume, /versions: PR #2234 (workspace-flows-versions.md).
 
 ## Where to start?
 - Built: F1 #1503, F3a #1551 (workspace-flows-runner.md).

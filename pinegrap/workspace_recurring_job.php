@@ -100,6 +100,12 @@ if (ws_enabled() && function_exists('ws_threads_purge')) {
     ws_threads_purge();
 }
 
+// Original .eml files of incoming mail past their 30 days
+// (includes/workspace/mail.php).
+if (ws_enabled() && function_exists('ws_mail_eml_sweep')) {
+    ws_mail_eml_sweep();
+}
+
 // Task reminders whose time has come, and the tasks that went overdue; the
 // general job looks on every tick as well (includes/workspace/reminders.php).
 if (ws_enabled() && function_exists('ws_task_reminders_run')) {

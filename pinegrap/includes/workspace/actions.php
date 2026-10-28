@@ -1265,6 +1265,11 @@ function ws_handle_action($action, $request)
         case 'ws_bootstrap':
             $me = ws_people(array($viewer['id']));
 
+            // A screen that printed the Workspace list's data with the page
+            // (ws_side_inline()) already holds the channels, groups,
+            // discussions and inbox count: they are not read twice.
+            $lean = !empty($request['lean']);
+
             return ws_action_ok(array(
                 'me'          => ($me[$viewer['id']] ?? array()) + array('rights' => array(
                     'assign'   => $viewer['assign'],
@@ -1275,10 +1280,10 @@ function ws_handle_action($action, $request)
                 )),
                 'people'      => ws_team_members(),
                 'departments' => array_values(ws_departments(true)),
-                'channels'    => ws_channels_for($viewer),
-                'groups'      => ws_groups_for($viewer),
-                'threads'     => ws_threads_for($viewer),
-                'inbox'       => ws_inbox_unread_count($viewer['id']),
+                'channels'    => $lean ? null : ws_channels_for($viewer),
+                'groups'      => $lean ? null : ws_groups_for($viewer),
+                'threads'     => $lean ? null : ws_threads_for($viewer),
+                'inbox'       => $lean ? null : ws_inbox_unread_count($viewer['id']),
                 'statuses'    => ws_task_statuses(),
                 'priorities'  => ws_task_priorities(),
                 'ref_types'   => ws_ref_types($viewer),
@@ -1298,6 +1303,17 @@ function ws_handle_action($action, $request)
                 'mcp'         => function_exists('ws_mcp_boot') ? ws_mcp_boot() : array(),
                 'now'         => time(),
             ));
+
+        // The Workspace list of the main menu, asked for the first time its
+        // panel opens on a page that did not print it (ws_side_payload()).
+        // It only reads: the person is not marked as looking at the
+        // workspace (no ws_sync_seen()), so their push messages still come.
+        case 'ws_side':
+            if (!headers_sent()) {
+                header('Cache-Control: private, no-store');
+            }
+
+            return ws_action_ok(ws_side_payload($viewer, ''));
 
         case 'ws_channels':
             return ws_action_ok(array(

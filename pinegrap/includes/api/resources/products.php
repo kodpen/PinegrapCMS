@@ -1283,6 +1283,14 @@ function api_products_delete($params) {
 
 	}
 
+	// A component of a bundle stays, in the shop and out of the bin, until
+	// it is taken out of the bundle.
+	if (pg_bundle_is_component($id)) {
+
+		api_fail(409, 'product_in_bundle', lang('This product is part of a bundle. Take it out of the bundle before deleting it.'));
+
+	}
+
 	if (!$permanent) {
 
 		if (!api_catalog_bin_ready()) {
@@ -1328,13 +1336,6 @@ function api_products_delete($params) {
 		}
 
 		api_ok(array('id' => $id, 'deleted' => false, 'recycled' => true));
-
-	}
-
-	// A component of a bundle stays until it is taken out of the bundle.
-	if (pg_bundle_is_component($id)) {
-
-		api_fail(409, 'product_in_bundle', lang('This product is part of a bundle. Take it out of the bundle before deleting it.'));
 
 	}
 

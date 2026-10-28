@@ -9,6 +9,9 @@ module: privacy_retention
 - `consent_log`: history past 3 years (the plan's fixed period; no setting). The newest line of each person + channel + purpose is never removed, however old: it is the answer in force and its proof (`pg_consent_log_current()` reads exactly that line). A cookie line with no person (no token, user or contact) proves nothing about anybody and goes at 3 years like the rest.
 - "Same person" is the exact triple `person_token`, `user_id`, `contact_id`: a line written later with only the token does not supersede one with token and user, so in doubt a line is kept, never removed.
 
+## What about contacts, form submissions and orders?
+- Not built. If retention for them is added (inactive contacts, form submissions and orders anonymised after N years), it is opt-in and off by default.
+
 ## Who removes them?
 - `job.php` calls `pg_privacy_retention_due()` / `pg_privacy_retention_run(5)` (`includes/fn/privacy_retention.php`): once a day, five seconds a tick, audit lines first (`DELETE … WHERE created_at < cutoff LIMIT 1000` on `idx_created`), then consent ids from `pg_consent_log_trim_query()` deleted by id (MySQL refuses a DELETE whose subquery reads the same table). The state file `data/temp/privacy_retention.json` is written only when both are through, so a backlog goes over the next ticks. A failed statement ends the pass and it is asked again.
 - A pass that removed lines writes one Site Log line. The removal itself is not an audit line.
@@ -20,4 +23,4 @@ module: privacy_retention
 ## Tests?
 - `tests/privacy_retention_test.php`: the input rule, the cutoff, the consent query's conditions, the bounds.
 
-Related: docs/memory/core/audit-trail-screen.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/privacy-data-pack-audit-log.md
+Related: docs/memory/core/audit-trail-screen.md, docs/memory/core/consent-log-and-audit-trail.md

@@ -1,6 +1,6 @@
 ---
 name: order-completion
-description: pg_order_complete() (#2638): the session-free completion of an incomplete order, its once-only lock, what it writes, what submit_order() still does itself, the plan's next steps
+description: pg_order_complete() (#2638) and its stage functions (#2687): the session-free completion of an incomplete order, the once-only lock, what each writes, what submit_order() still does itself
 module: order_completion
 ---
 
@@ -17,8 +17,13 @@ module: order_completion
 - `pg_order_drop_saved_lines()`, the order number (`LOCK TABLES next_order_number WRITE`, read, advance, unlock, `UPDATE orders SET order_number`), `pg_legal_documents_store()`, `api_webhook_enqueue('order.created')`, `pg_sms_order_received()`. Returns the order number.
 - A failed query ends the request (`output_error`), as before.
 
+## Which stage functions follow it? (#2687)
+- `submit_order()` calls them where the code stood, so the order of writes is unchanged; the plan's last A2 step makes `pg_order_complete()` call them.
+- `pg_order_complete_receipt($order_id, $number, $receipt, $customer_email, $new_account)`: `$receipt` is the checkout page's receipt settings (email, subject, format, header, footer, page_id). BCC from the order's lines (`pg_order_receipt_bcc_list()`, pure: store address first, each valid product address once). The renderers still read the session for a new account's link; a request without a visitor has none.
+- `pg_order_complete_ship_dates($order_id, $order_date, $auto_registration, $user_id)`: address book entries (`new`/`existing`), ship and delivery dates (`pg_order_transit_date()`, `pg_order_ship_date_adjusted()`, pure).
+
 ## What stays in submit_order()?
-- Everything after the SMS until A2b–A2d move it (gift card error mail, receipt e-mail, ship dates, the per-product loop, rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
+- Everything not moved yet (gift card error mail, auto e-mail campaigns, the per-product loop, rewards, contact groups, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
 - `submit_order()` builds the values from its own variables (card, ERP account, offer code, tracking/UTM arrays replace the old `$sql_*` fragments).
 
 ## How is it tested?

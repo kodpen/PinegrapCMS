@@ -4314,6 +4314,10 @@ function ws_change_write_product($viewer, $action, $record, $values)
         // The same move every panel screen makes (pg_catalog_bin_product()),
         // product.deleted with recycled: true and the marketplace queue
         // included.
+        if (pg_bundle_is_component($id)) {
+            return array('ok' => false, 'error' => lang('This product is part of a bundle. Take it out of the bundle before deleting it.'), 'id' => 0);
+        }
+
         if (ws_change_binned('product')) {
             pg_catalog_bin_product($id, (int) $viewer['id']);
 
@@ -4329,9 +4333,7 @@ function ws_change_write_product($viewer, $action, $record, $values)
         // The panel's own deletion: the row, its images, group links, zones,
         // attributes, barcodes, form fields, keywords, SEO findings, and the
         // product.deleted webhook.
-        if (!pg_pb_delete_product($id)) {
-            return array('ok' => false, 'error' => lang('This product is part of a bundle. Take it out of the bundle before deleting it.'), 'id' => 0);
-        }
+        pg_pb_delete_product($id);
 
         ws_change_log(lang(array('string' => 'product ({var:1}) was deleted', 'vars' => array($record['name']))));
 

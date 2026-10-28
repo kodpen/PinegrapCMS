@@ -40,16 +40,19 @@ function order_completion_test_function_text($path, $name)
 }
 
 // submit_order() from the payment driver branch to the end of the file, with
-// pg_order_complete()'s body put where submit_order() calls it.
+// the body of each completion function put where submit_order() calls it.
 function order_completion_test_tail()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
-	$call = strpos($tail, 'pg_order_complete(');
+	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	if ($call !== false) {
-		$body = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete');
-		$tail = substr($tail, 0, $call) . $body . substr($tail, $call);
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates') as $name) {
+		$call = strpos($tail, $name . '(');
+
+		if ($call !== false) {
+			$tail = substr($tail, 0, $call) . order_completion_test_function_text($module, $name) . substr($tail, $call);
+		}
 	}
 
 	return $tail;
@@ -84,6 +87,7 @@ function test_order_completion_tail_writes_in_order()
 		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] ="),
 		'receipt e-mail' => array('pg_legal_documents_attachments('),
 		'address book' => array('"INSERT INTO address_book ('),
+		'ship and delivery dates' => array("delivery_date = '", 'delivery_date = ?'),
 		'stock' => array('UPDATE products SET inventory_quantity = (inventory_quantity - ?)'),
 		'stock announced' => array('pg_product_stock_changed('),
 		'gift cards issued' => array('"INSERT INTO gift_cards ('),
@@ -208,4 +212,51 @@ function test_order_completion_columns_cover_the_checkout()
 	pg_assert_same(array(), array_values(array_diff($checkout, pg_order_complete_columns())), 'none missing');
 	pg_assert_false(in_array('status', pg_order_complete_columns(), true), 'not the status');
 	pg_assert_false(in_array('order_number', pg_order_complete_columns(), true), 'not the number');
+}
+
+function test_order_completion_submit_order_calls_the_stage_functions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_same(1, substr_count($source, 'pg_order_complete_receipt('), 'the receipt e-mail');
+	pg_assert_same(1, substr_count($source, 'pg_order_complete_ship_dates('), 'the ship dates');
+	pg_assert_same(0, substr_count($source, 'INSERT INTO address_book'), 'no address book write of its own');
+	pg_assert_same(0, substr_count($source, 'get_order_receipt_in_plain_text('), 'no receipt of its own');
+}
+
+function test_order_completion_receipt_bcc_list()
+{
+	pg_assert_same(
+		array('shop@example.com', 'maker@example.com', 'other@example.com'),
+		pg_order_receipt_bcc_list('shop@example.com', array('maker@example.com', '', 'shop@example.com', 'not an address', 'maker@example.com', 'other@example.com')),
+		'the store first, then each valid product address once, in line order'
+	);
+	pg_assert_same(array('maker@example.com'), pg_order_receipt_bcc_list('', array('maker@example.com')), 'no store address');
+	pg_assert_same(array(), pg_order_receipt_bcc_list('', array()), 'nobody');
+}
+
+function test_order_completion_transit_date_backwards_from_arrival()
+{
+	// Arrival Thursday 2026-12-24, 2 transit days, no weekend transit: the
+	// arrival day counts, then each counted day before it.
+	pg_assert_same('2026-12-22', pg_order_transit_date('2026-12-24', 2, -1, false, false, array()), 'Thu, Wed, Tue');
+	// Arrival Monday: the weekend is skipped.
+	pg_assert_same('2026-12-03', pg_order_transit_date('2026-12-07', 2, -1, false, false, array()), 'Mon, Fri, Thu');
+	pg_assert_same('2026-12-05', pg_order_transit_date('2026-12-07', 2, -1, true, true, array()), 'Mon, Sun, Sat');
+	pg_assert_same('2026-12-02', pg_order_transit_date('2026-12-07', 2, -1, false, false, array('2026-12-04')), 'an excluded date is skipped');
+}
+
+function test_order_completion_transit_date_forwards_from_ship_date()
+{
+	pg_assert_same('2026-12-08', pg_order_transit_date('2026-12-04', 2, 1, false, false, array()), 'Fri, Mon, Tue');
+	pg_assert_same('2026-12-04', pg_order_transit_date('2026-12-04', 0, 1, false, false, array()), 'no transit days');
+	pg_assert_same('2026-12-09', pg_order_transit_date('2026-12-04', 2, 1, false, false, array('2026-12-08')), 'an excluded date is skipped');
+}
+
+function test_order_completion_ship_date_adjustment()
+{
+	pg_assert_same('2026-12-01', pg_order_ship_date_adjusted('2026-12-03', -2, '2026-11-20'), 'earlier');
+	pg_assert_same('2026-12-05', pg_order_ship_date_adjusted('2026-12-03', 2, '2026-11-20'), 'later');
+	pg_assert_same('2026-11-20', pg_order_ship_date_adjusted('2026-11-21', -3, '2026-11-20'), 'never before the order date');
+	pg_assert_same('2026-12-03', pg_order_ship_date_adjusted('2026-12-03', 0, '2026-11-20'), 'no adjustment');
 }

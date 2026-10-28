@@ -130,6 +130,8 @@ function ws_flow_kinds()
     // Values written by hand, given to the boxes that read them (flow_values.php).
     if (function_exists('ws_flow_constants_normalize')) {
         $kinds['constants'] = array('label' => lang('Constants'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array(), 'pure' => true);
+        $kinds['value'] = array('label' => lang('Derived value'), 'trigger' => false, 'outcomes' => array(), 'step' => false,
+            'outputs' => array(array('key' => 'value', 'type' => 'text', 'label' => lang('Value'))), 'pure' => true);
     }
 
     // The steps of a scheduled action, each a box of its own (steps.php).
@@ -319,6 +321,9 @@ function ws_flow_config_normalize($kind, $config)
         case 'constants':
             return function_exists('ws_flow_constants_normalize') ? ws_flow_constants_normalize($config) : array();
 
+        case 'value':
+            return function_exists('ws_flow_derived_normalize') ? ws_flow_derived_normalize($config) : array();
+
         case 'schedule':
         case 'event':
         case 'join':
@@ -464,6 +469,11 @@ function ws_flow_node_texts($node)
         return ((($rule['type'] ?? '') === 'value') && is_string($rule['ref'] ?? null) && ($rule['ref'] !== '')) ? array($rule['ref']) : array();
     }
 
+    // A derived value box reads its two inputs.
+    if ($kind === 'value') {
+        return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null), 'is_string'));
+    }
+
     $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
     $out = array();
 
@@ -493,6 +503,10 @@ function ws_flow_node_fields($node, $kinds)
     // text, outcome or status.
     if ($kind === 'constants') {
         return function_exists('ws_flow_constants_outputs') ? array_column(ws_flow_constants_outputs($node['config']), 'key') : array();
+    }
+
+    if ($kind === 'value') {
+        return array('value');
     }
 
     $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
@@ -748,9 +762,19 @@ function ws_flow_graph_check($graph)
             }
         }
 
+        if ($node['kind'] === 'value') {
+            foreach (ws_flow_derived_problems($node['config'], $name) as $text) {
+                $problems[] = ws_flow_problem('bad_config', $id, null, $text);
+            }
+        }
+
         if (($node['kind'] === 'start_flow') && ((int) ($node['config']['flow_id'] ?? 0) <= 0)) {
             $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} needs the flow to start.', 'vars' => $name)));
         }
+    }
+
+    foreach ((function_exists('ws_flow_derived_loops') ? ws_flow_derived_loops($nodes) : array()) as $id) {
+        $problems[] = ws_flow_problem('bad_config', $id, null, lang(array('string' => 'The box {var:1} reads its own value, through other value boxes: it cannot be worked out.', 'vars' => ws_flow_box_name($nodes[$id]))));
     }
 
     if (empty($triggers)) {
@@ -943,7 +967,10 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
                 }
             }
         }
-        $before = ws_flow_boxes_before($into, (string) $id);
+        // A value box has no place among the arrows: what it reads is
+        // checked at the boxes that read it.
+        $pure_reader = !empty($kinds[$node['kind']]['pure']);
+        $before = $pure_reader ? array() : ws_flow_boxes_before($into, (string) $id);
 
         foreach ($refs as $ref => $parts) {
             list($box, $field) = $parts;
@@ -951,16 +978,39 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
 
             if (($other === null) || !isset($kinds[$other['kind']])) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the flow has no box {var:3}.', 'vars' => array($name, $ref, $box))));
-            } elseif (!isset($before[$box]) && empty($kinds[$other['kind']]['pure'])) {
+            } elseif (!$pure_reader && !isset($before[$box]) && empty($kinds[$other['kind']]['pure'])) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $ref, ws_flow_box_name($other)))));
             } elseif (!in_array($field, ws_flow_node_fields($other, $kinds), true)) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $ref, ws_flow_box_name($other), $field))));
-            } elseif (empty($kinds[$other['kind']]['pure'])) {
+            } elseif (!$pure_reader && empty($kinds[$other['kind']]['pure'])) {
                 $sure = $sure ?? ws_flow_sure_before($next, $always);
 
                 if (isset($sure[$id]) && !isset($sure[$id][$box])) {
                     $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} may not run before it; the value is then empty.', 'vars' => array($name, $ref, ws_flow_box_name($other)))), true);
                 }
+            }
+        }
+
+        // A derived value is worked out when its reader runs, from the boxes
+        // it reads: those must come before the reader as if it read them.
+        $sources = ($pure_reader || !function_exists('ws_flow_derived_sources')) ? array() : ws_flow_derived_sources($nodes, array_unique(array_column($refs, 0)));
+
+        foreach ($sources as $box => $via) {
+            $other = $nodes[$box];
+
+            if (!isset($kinds[$other['kind']]) || !empty($kinds[$other['kind']]['pure']) || !empty($kinds[$other['kind']]['trigger'])) {
+                continue;
+            }
+
+            if (!isset($before[$box])) {
+                $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box does not come before {var:1}.', 'vars' => array($name, ws_flow_box_name($nodes[$via]), ws_flow_box_name($other)))));
+                continue;
+            }
+
+            $sure = $sure ?? ws_flow_sure_before($next, $always);
+
+            if (isset($sure[$id]) && !isset($sure[$id][$box])) {
+                $problems[] = ws_flow_problem('skippable_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads the value box {var:2}, which reads the box {var:3}; that box may not run before {var:1}, and its values are then empty.', 'vars' => array($name, ws_flow_box_name($nodes[$via]), ws_flow_box_name($other)))), true);
             }
         }
     }
@@ -2085,6 +2135,16 @@ function ws_flow_js_strings()
         'fl_constants_add'    => lang('Add a value'),
         'fl_constants_remove' => ws_js_template('Remove {var:1}', 1),
         'fl_constants_help'   => lang('This box has no arrows: each value reaches the boxes that read it by a data thread, the same in every run.'),
+        'fl_kind_value'       => lang('Derived value'),
+        'fl_derived_rule'     => lang('Rule'),
+        'fl_derived_a'        => lang('Value it works from'),
+        'fl_derived_b'        => lang('With'),
+        'fl_derived_days'     => lang('Days to add'),
+        'fl_derived_op'       => lang('Comparison'),
+        'fl_derived_places'   => lang('Decimal places'),
+        'fl_derived_format'   => lang('Date shape'),
+        'fl_derived_value'    => lang('Value'),
+        'fl_derived_help'     => lang('This box has no arrows: its value is worked out from the values it reads each time a box reads it. A comparison gives 1 when it holds, else 0; a value the rule cannot read gives an empty value.'),
         'fl_thread_dot'       => lang('Drag to a field, or double-click and choose the field'),
         'fl_thread_fork'      => lang('Fork'),
         'fl_thread_pass'      => lang('Pass to a field…'),
@@ -2465,6 +2525,7 @@ function ws_flow_js_strings()
         'fl_run_template_show' => lang('Show the template'),
         'fl_run_template_hide' => lang('Hide the template'),
         'fl_run_value_empty'  => lang('Empty'),
+        'fl_run_value_derived' => lang('worked out as the box read it'),
         'fl_run_value_pending' => lang('Not given yet'),
         'fl_run_value_skipped' => lang('Empty: the box was skipped'),
         'fl_run_value_unreached' => lang('Empty: the box was not reached'),
@@ -2622,6 +2683,7 @@ function ws_flow_js_config($viewer, $mode)
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,
         'subjects' => $subjects,
+        'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
     );
 }

@@ -1557,6 +1557,28 @@ function submit_order($type) {
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($pre_save_hook_code != '')) {
         eval(prepare_for_eval($pre_save_hook_code));
     }
+
+    // A cash-on-delivery order is placed only with the code texted to its
+    // billing phone number (the SMS Messages card's cod_code event). Checked
+    // last, once nothing else stops the order, so a right code is not used
+    // up by a submit that comes back for another reason; a code sent to
+    // another number than the order's reads as expired.
+    $sms_code_posted = (isset($_POST['sms_code']) && is_string($_POST['sms_code'])) ? $_POST['sms_code'] : '';
+    $liveform->assign_field_value('sms_code', '');
+
+    if (
+        !pg_payment_is_return_mode($_GET['mode'] ?? '')
+        && (($nonrecurring_transaction == TRUE) || ($recurring_transaction == TRUE))
+        && ($liveform->check_form_errors() == FALSE)
+        && ($liveform->check_form_notices() == FALSE)
+        && pg_sms_cod_applies($liveform->get_field_value('payment_method'), $erp_on_account_requested, pg_sms_code_on('cod'))
+    ) {
+        $sms_code_refusal = pg_sms_code_verify('cod', 'order:' . (int) ($_SESSION['ecommerce']['order_id'] ?? 0), (string) $billing_phone_number, $sms_code_posted);
+
+        if ($sms_code_refusal !== '') {
+            $liveform->mark_error(($sms_code_refusal === 'number') ? 'billing_phone_number' : 'sms_code', pg_sms_code_sentence($sms_code_refusal));
+        }
+    }
     
     // if an error or notice exists, then send user back to previous screen
     if (($liveform->check_form_errors() == TRUE) || ($liveform->check_form_notices() == TRUE)) {
@@ -5920,400 +5942,26 @@ function submit_order($type) {
     $_SESSION['software']['order_number'] = $order_number;
     $_SESSION['software']['order_total'] = sprintf("%01.2lf", $total / 100);
     
-    // if an order receipt is set to be e-mailed, then do that
-    if ($order_receipt_email == 1) {
-        
-        // initialize array for storing all e-mail addresses that the order receipt should be BCC'd to
-        $bcc_email_addresses = array();
-        
-        // if there is a ECOMMERCE_EMAIL_ADDRESS then add it to the array
-        if (ECOMMERCE_EMAIL_ADDRESS != '') {
-            $bcc_email_addresses[] = ECOMMERCE_EMAIL_ADDRESS;
-        }
-        
-        // loop through all products to get order receipt bcc e-mail addresses
-        foreach ($products as $product) {
-            // if there is an order receipt bcc e-mail address
-            // and if it is not already in the array,
-            // and if it is valid, then add e-mail address to array
-            if (
-                ($product['order_receipt_bcc_email_address'] != '')
-                && (in_array($product['order_receipt_bcc_email_address'], $bcc_email_addresses) == false)
-                && (validate_email_address($product['order_receipt_bcc_email_address']) == TRUE)
-            ) {
-                $bcc_email_addresses[] = $product['order_receipt_bcc_email_address'];
-            }
-        }        
+    // E-mail the receipt, when the checkout page sends one
+    // (includes/fn/order_completion.php).
+    pg_order_complete_receipt(
+        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+        $order_number,
+        array(
+            'email' => $order_receipt_email,
+            'subject' => $order_receipt_email_subject,
+            'format' => $order_receipt_email_format,
+            'header' => $order_receipt_email_header,
+            'footer' => $order_receipt_email_footer,
+            'page_id' => $order_receipt_email_page_id,
+        ),
+        $billing_email_address,
+        pg_order_new_account_email() !== ''
+    );
 
-        // An order that opened an account sends the customer's copy on its
-        // own: it carries the set password link, which the store's BCC
-        // addresses must not receive. They get a copy each that only names
-        // the account. Any other order goes out once, with the BCC.
-        $receipt_copies = pg_order_receipt_copies($billing_email_address, $bcc_email_addresses, pg_order_new_account_email() !== '');
-
-        foreach ($receipt_copies as $receipt_copy) {
-            pg_order_receipt_audience($receipt_copy['audience']);
-
-            // if the format of the e-mail should be plain text, then prepare that
-            if ($order_receipt_email_format == 'plain_text') {
-                $body = '';
-
-                // if there is a header, then start body with header and a blank line for spacing
-                if ($order_receipt_email_header != '') {
-                    $body .=
-                        $order_receipt_email_header . "\n" .
-                        "\n";
-                }
-
-                include_once('get_order_receipt_in_plain_text.php');
-
-                $body .= get_order_receipt_in_plain_text(($_SESSION['ecommerce']['order_id'] ?? ''));
-
-                // if there is a footer, then end body with a blank line for spacing and then the footer
-                if ($order_receipt_email_footer != '') {
-                    $body .=
-                        "\n" .
-                        "\n" .
-                        $order_receipt_email_footer;
-                }
-
-            // else the format of the e-mail should be HTML, so prepare that
-            } else {
-
-                require_once(dirname(__FILE__) . '/get_page_content.php');
-
-                // get order receipt page HTML for e-mail; a page built in the
-                // visual editor draws the order with its order view widget, which
-                // is told the order here (there is no ?order_id= in an e-mail)
-                $body = get_page_content($order_receipt_email_page_id, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true,
-                    array('order_id' => (int)($_SESSION['ecommerce']['order_id'] ?? 0)));
-
-                // The receipt reads in the language the order was placed in.
-                if (function_exists('pg_tr_email')) {
-                    $body = pg_tr_email($body);
-                }
-
-            }
-
-            pg_order_receipt_audience('screen');
-
-            email(array(
-                'to' => $receipt_copy['to'],
-                'bcc' => $receipt_copy['bcc'],
-                'from_name' => ORGANIZATION_NAME,
-                'from_email_address' => EMAIL_ADDRESS,
-                'subject' => (function_exists('pg_tr_text') ? pg_tr_text($order_receipt_email_subject) : $order_receipt_email_subject) . $order_number,
-                'format' => $order_receipt_email_format,
-                'body' => $body,
-                // The customer's copy may carry the set password link, which
-                // must stay out of the failure log and the delivery-failed notice.
-                'secret' => (($receipt_copy['audience'] === 'customer') && (pg_order_new_account_email() !== '')),
-                // The checkout documents the customer accepted go with the
-                // receipt as they were kept with the order.
-                'attachments' => pg_legal_documents_attachments((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_number),
-                'queue' => true));
-        }
-    }
-
-    // If shipping is enabled, then update ship date & delivery date, and user's address book (for
-    // auto-registration) for recipients.
-
-    if (ECOMMERCE_SHIPPING) {
-
-        // Get excluded transit dates before we loop through the ship tos
-        // so we only have to run one query.
-        $excluded_transit_date_items = db_items(
-            "SELECT
-                shipping_method_id,
-                date
-            FROM excluded_transit_dates");
-
-        $excluded_transit_dates = array();
-
-        // Loop through the raw excluded transit date data in order to prepare
-        // an array that we can use to easily look up transit dates for a shipping method.
-        foreach ($excluded_transit_date_items as $excluded_transit_date_item) {
-            // If an item has not been added for this shipping method yet, then create array for it.
-            if (isset($excluded_transit_dates[$excluded_transit_date_item['shipping_method_id']]) == false) {
-                $excluded_transit_dates[$excluded_transit_date_item['shipping_method_id']] = array();
-            }
-
-            $excluded_transit_dates[$excluded_transit_date_item['shipping_method_id']][] = $excluded_transit_date_item['date'];
-        }
-
-        // Get all ship tos in order to update dates.
-        $ship_tos = db_items(
-            "SELECT
-                ship_tos.id,
-                ship_tos.ship_to_name,
-                ship_tos.salutation,
-                ship_tos.first_name,
-                ship_tos.last_name,
-                ship_tos.company,
-                ship_tos.address_1,
-                ship_tos.address_2,
-                ship_tos.city,
-                ship_tos.state,
-                ship_tos.zip_code,
-                ship_tos.country,
-                ship_tos.address_type,
-                ship_tos.phone_number,
-                ship_tos.arrival_date,
-                shipping_methods.id AS shipping_method_id,
-                shipping_methods.base_transit_days,
-                shipping_methods.adjust_transit,
-                shipping_methods.transit_on_sunday,
-                shipping_methods.transit_on_saturday,
-                countries.id AS country_id,
-                countries.transit_adjustment_days
-            FROM ship_tos
-            LEFT JOIN shipping_methods ON ship_tos.shipping_method_id = shipping_methods.id
-            LEFT JOIN countries ON ship_tos.country = countries.code
-            WHERE ship_tos.order_id = '" . e(($_SESSION['ecommerce']['order_id'] ?? '')) . "'");
-
-        // Loop through the ship tos in order to update address book and dates for each recipient
-        foreach ($ship_tos as $ship_to) {
-
-            // If auto-registration was used in order to create a new user or connect order to
-            // an existing user and the existing user does not already have this same recipient,
-            // then add recipient to user's address book, so when the user logs in, in the future,
-            // his/her address book will contain this recipient. We don't update existing address
-            // book recipients for an existing user, because this customer was not authenticated via
-            // auto-registration, so we don't know if he/she should be allowed to update the address
-            // book.  We want to prevent one customer from clobbering the address book of a
-            // different customer.
-            //
-            // It is important that we update the address book before updating dates below, because
-            // the date logic below uses a continue call which skips to the next recipient.
-
-            if (
-                $auto_registration_type == 'new'
-                or (
-                    $auto_registration_type == 'existing'
-                    and !db(
-                        "SELECT id FROM address_book
-                        WHERE
-                            user = '" . e($user_id) . "'
-                            AND ship_to_name = '" . e($ship_to['ship_to_name']) . "'")
-                )
-            ) {
-                db(
-                    "INSERT INTO address_book (
-                        user,
-                        ship_to_name,
-                        salutation,
-                        first_name,
-                        last_name,
-                        company,
-                        address_1,
-                        address_2,
-                        city,
-                        state,
-                        zip_code,
-                        country,
-                        address_type,
-                        phone_number)
-                    VALUES (
-                        '" . e($user_id) . "',
-                        '" . e($ship_to['ship_to_name']) . "',
-                        '" . e($ship_to['salutation']) . "',
-                        '" . e($ship_to['first_name']) . "',
-                        '" . e($ship_to['last_name']) . "',
-                        '" . e($ship_to['company']) . "',
-                        '" . e($ship_to['address_1']) . "',
-                        '" . e($ship_to['address_2']) . "',
-                        '" . e($ship_to['city']) . "',
-                        '" . e($ship_to['state']) . "',
-                        '" . e($ship_to['zip_code']) . "',
-                        '" . e($ship_to['country']) . "',
-                        '" . e($ship_to['address_type']) . "',
-                        '" . e($ship_to['phone_number']) . "')");
-            }
-
-            $ship_date = '';
-
-            // If the arrival date is at once, then determine the ship date
-            // by looking at the order date and preparation time for the products.
-            if ($ship_to['arrival_date'] == '0000-00-00') {
-
-                // Get the maximum preparation time by looking for the product in this ship to
-                // that has the greatest preparation time.
-                $preparation_time = db(
-                    "SELECT MAX(products.preparation_time)
-                    FROM order_items
-                    LEFT JOIN products ON order_items.product_id = products.id
-                    WHERE order_items.ship_to_id = '" . e($ship_to['id']) . "'");
-
-                require_once(dirname(__FILE__) . '/shipping.php');
-
-                $response = get_ship_date(array(
-                    'preparation_time' => $preparation_time,
-                    'shipping_method' => array('id' => $ship_to['shipping_method_id'])));
-
-                // If there was an error getting the ship date, then skip to the next recipient.
-                if ($response['status'] == 'error') {
-                    continue;
-                }
-
-                $ship_date = $response['ship_date'];
-
-            // Otherwise the arrival date is not at once, so if a shipping method was found,
-            // then work backwards from arrival date, using the transit time, in order to calculate the ship date.
-            } else if ($ship_to['shipping_method_id'] != '') {
-
-                // Start the total shipping days off with the base transit days for the shipping method.
-                $total_shipping_days = $ship_to['base_transit_days'];
-
-                // If adjust transit is enabled for the shipping method,
-                // and a country was found, then also add transit adjustment days
-                // for the recipient's country.
-                if (($ship_to['adjust_transit'] == 1) && ($ship_to['country_id'] != '')) {
-                    $total_shipping_days += $ship_to['transit_adjustment_days'];
-                }
-
-                $date = '';
-                $count = 0;
-
-                while ($count <= $total_shipping_days) {
-                    // If date is blank, then set date to arrival date.
-                    if ($date == '') {
-                        $date = $ship_to['arrival_date'];
-                        
-                    // Otherwise date is not blank, so set date to previous day.
-                    } else {
-                        $date = date('Y-m-d', strtotime('-1 day', strtotime($date)));
-                    }
-                    
-                    $day_name = date('l', strtotime($date));
-                    
-                    // If date is not an excluded date, then increase count
-                    if (
-                        (($day_name != 'Sunday') || ($ship_to['transit_on_sunday'] == 1))
-                        && (($day_name != 'Saturday') || ($ship_to['transit_on_saturday'] == 1))
-                        &&
-                        (
-                            (isset($excluded_transit_dates[$ship_to['shipping_method_id']]) == false)
-                            || (in_array($date, $excluded_transit_dates[$ship_to['shipping_method_id']]) == false)
-                        )
-                    ) {
-                        $count++;
-                    }
-                }
-
-                $ship_date = $date;
-
-                // If the arrival date that the customer requested is equal to
-                // an active arrival date in the system, then continue to check if
-                // the ship date should be adjusted.
-                if (
-                    db_value(
-                        "SELECT COUNT(*)
-                        FROM arrival_dates
-                        WHERE
-                            (status = 'enabled')
-                            AND (start_date <= CURRENT_DATE())
-                            AND (concat(end_date, ' " . ECOMMERCE_END_OF_DAY_TIME . "') > NOW())
-                            AND (arrival_date = '" . $ship_to['arrival_date'] . "')")
-                    > 0
-                ) {
-                    $zip_code_prefix = mb_substr($ship_to['zip_code'], 0, 3);
-
-                    // Check if there is a ship date adjustment for the zip code prefix
-                    // and shipping method.
-                    $adjustment = db_value(
-                        "SELECT adjustment
-                        FROM ship_date_adjustments
-                        WHERE
-                            (zip_code_prefix = '" . escape($zip_code_prefix) . "')
-                            AND (shipping_method_id = '" . $ship_to['shipping_method_id'] . "')");
-
-                    // If an adjustment was found then adjust the ship date.
-                    if ($adjustment) {
-                        // If the adjustment is negative then adjust the ship date into the past.
-                        if ($adjustment < 0) {
-                            $ship_date = date('Y-m-d', strtotime($adjustment . ' day', strtotime($ship_date)));
-
-                        // Otherwise the adjustment is positive,
-                        // so adjust the ship date into the future.
-                        } else {
-                            $ship_date = date('Y-m-d', strtotime('+' . $adjustment . ' day', strtotime($ship_date)));
-                        }
-
-                        $order_date_for_comparison = date('Y-m-d', $order_date);
-
-                        // If the adjusted ship date is before the order date,
-                        // then set it to the order date.
-                        if ($ship_date < $order_date_for_comparison) {
-                            $ship_date = $order_date_for_comparison;
-                        }
-                    }
-                }
-            }
-
-            // Now that we know the ship date, let's figure out the estimated delivery date.
-
-            $delivery_date = '';
-
-            // If the requested arrival date is at once, and we found the shipping method, then
-            // determine the estimated delivery date by looking at the ship date and transit time.
-            if ($ship_to['arrival_date'] == '0000-00-00' and $ship_to['shipping_method_id']) {
-
-                // Start the total shipping days off with the base transit days for the shipping
-                // method.
-                $total_shipping_days = $ship_to['base_transit_days'];
-
-                // If adjust transit is enabled for the shipping method, and a country was found,
-                // then also add transit adjustment days for the recipient's country.
-                if ($ship_to['adjust_transit'] and $ship_to['country_id']) {
-                    $total_shipping_days += $ship_to['transit_adjustment_days'];
-                }
-
-                $date = '';
-                $count = 0;
-
-                while ($count <= $total_shipping_days) {
-
-                    // If date is blank, then set starting date to ship date.
-                    if ($date == '') {
-                        $date = $ship_date;
-                        
-                    // Otherwise date is not blank, so set date to next day.
-                    } else {
-                        $date = date('Y-m-d', strtotime('+1 day', strtotime($date)));
-                    }
-                    
-                    $day_name = date('l', strtotime($date));
-                    
-                    // If date is not an excluded date, then increase count
-                    if (
-                        (($day_name != 'Sunday') || ($ship_to['transit_on_sunday'] == 1))
-                        && (($day_name != 'Saturday') || ($ship_to['transit_on_saturday'] == 1))
-                        &&
-                        (
-                            (isset($excluded_transit_dates[$ship_to['shipping_method_id']]) == false)
-                            || (in_array($date, $excluded_transit_dates[$ship_to['shipping_method_id']]) == false)
-                        )
-                    ) {
-                        $count++;
-                    }
-                }
-
-                $delivery_date = $date;
-
-            // Otherwise the requested arrival date is not at once, so set the estimated delivery
-            // date to the requested arrival date (e.g. Christmas).
-            } else {
-                $delivery_date = $ship_to['arrival_date'];
-            }
-
-            // Update the dates for the ship to.
-            db(
-                "UPDATE ship_tos SET
-                    ship_date = '" . e($ship_date) . "',
-                    delivery_date = '" . e($delivery_date) . "'
-                WHERE id = '" . $ship_to['id'] . "'");
-        }
-    }
+    // Each recipient's ship and delivery dates, and the address book of an
+    // account auto-registration created or found.
+    pg_order_complete_ship_dates((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_date, $auto_registration_type, $user_id);
 
     // Check if there are auto e-mail campaigns that should be created based on an order being completed.
     create_auto_email_campaigns(array(

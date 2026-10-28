@@ -172,3 +172,42 @@ function test_classic_style_managed_files_dedupes_and_keeps_module()
 	pg_assert_true(!empty($out[0]['module']));
 	pg_assert_same('css', $out[1]['type']);
 }
+
+function test_classic_style_folder_styles()
+{
+	$folders = array(
+		array('folder_id' => 1, 'folder_parent' => 0, 'folder_style' => 7, 'folder_level' => 0),
+		array('folder_id' => 2, 'folder_parent' => 1, 'folder_style' => 0, 'folder_level' => 1),
+		array('folder_id' => 3, 'folder_parent' => 2, 'folder_style' => 0, 'folder_level' => 2),
+		array('folder_id' => 4, 'folder_parent' => 1, 'folder_style' => 9, 'folder_level' => 1),
+		array('folder_id' => 5, 'folder_parent' => 4, 'folder_style' => 0, 'folder_level' => 2),
+		// A parent that is not there, and two folders naming each other.
+		array('folder_id' => 6, 'folder_parent' => 99, 'folder_style' => 0, 'folder_level' => 1),
+		array('folder_id' => 7, 'folder_parent' => 8, 'folder_style' => 0, 'folder_level' => 1),
+		array('folder_id' => 8, 'folder_parent' => 7, 'folder_style' => 0, 'folder_level' => 1),
+	);
+	$styles = pg_classic_style_folder_styles($folders);
+	pg_assert_same(7, $styles[1], 'the root folder\'s own style');
+	pg_assert_same(7, $styles[2], 'from the parent');
+	pg_assert_same(7, $styles[3], 'from the grandparent');
+	pg_assert_same(9, $styles[4], 'a folder\'s own style wins');
+	pg_assert_same(9, $styles[5], 'from the nearest folder with one');
+	pg_assert_same(0, $styles[6], 'a missing parent');
+	pg_assert_same(0, $styles[7], 'a loop');
+	pg_assert_same(0, $styles[8], 'a loop');
+
+	$bare = pg_classic_style_folder_styles(array(array('folder_id' => '1', 'folder_parent' => '0', 'folder_style' => '0', 'folder_level' => '0')));
+	pg_assert_same(array(1 => 0), $bare, 'a root folder with no style');
+}
+
+function test_classic_style_folder_page_tree()
+{
+	$t = pg_classic_style_folder_page_tree(array('cssClass' => 'home  dark', 'title' => 'Site'), 12, 'Frame', 'wide home');
+	pg_assert_same('wide home dark', $t['props']['cssClass'], 'the design classes first, each once');
+	pg_assert_same('Site', $t['props']['title']);
+	pg_assert_same('shared_ref', $t['children'][0]['type']);
+	pg_assert_same(12, $t['children'][0]['props']['sharedId']);
+
+	$plain = pg_classic_style_folder_page_tree(array(), 3, 'Frame', '');
+	pg_assert_same(pg_classic_style_page_tree(array(), 3, 'Frame'), $plain, 'no classes: the style\'s own page tree');
+}

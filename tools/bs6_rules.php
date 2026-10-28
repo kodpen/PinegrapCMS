@@ -798,6 +798,7 @@ function bs6_site_functions()
 		'includes/fn/design_themes.php' => array('pg_design_looks'),
 		'includes/fn/passkeys.php' => array('pg_passkey_account_section', 'pg_passkey_add_form_script'),
 		'includes/fn/returns.php' => array('pg_return_actions_html', 'pg_return_badge_class', 'pg_return_form_html', 'pg_returns_list_html'),
+		'includes/fn/sms_codes.php' => array('pg_sms_cod_field_html'),
 	);
 }
 

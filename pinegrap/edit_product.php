@@ -98,6 +98,11 @@ if ($_POST) {
 
         $deleted_name = $product['name'];
 
+        if (pg_bundle_is_component($product_id)) {
+            $liveform->mark_error('', lang('This product is part of a bundle. Take it out of the bundle before deleting it.'));
+            go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
+        }
+
         $audit_before = pg_audit_fetch('products', $product_id);
 
         // To the Recycle Bin, as the Catalog Manager deletes: a product deleted
@@ -113,10 +118,7 @@ if ($_POST) {
 
         } else {
 
-            if (!pg_pb_delete_product($product_id)) {
-                $liveform->mark_error('', lang('This product is part of a bundle. Take it out of the bundle before deleting it.'));
-                go(PATH . SOFTWARE_DIRECTORY . '/edit_product.php?id=' . $product_id);
-            }
+            pg_pb_delete_product($product_id);
 
             $deleted_message = array('string' => 'product ({var:1}) was deleted', 'vars' => array($deleted_name));
         }
