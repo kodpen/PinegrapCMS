@@ -36,9 +36,9 @@ if (isset($_GET['stylesheet']) && ($_GET['stylesheet'] === 'css')) {
     exit();
 }
 
-require_once(dirname(__FILE__) . '/get_sitemap_info.php');
-
-$sitemap_info = get_sitemap_info();
+// Kept between requests until a write may change it (includes/fn/seo.php).
+$sitemap_info = pg_sitemap_info_cached();
 
 header('Content-type: text/xml');
+header('X-Pinegrap-Cache: ' . $sitemap_info['cache']);
 echo pg_sitemap_add_stylesheet($sitemap_info['content'], PATH . 'sitemap.xml?stylesheet=css&v=' . rawurlencode(VERSION));
