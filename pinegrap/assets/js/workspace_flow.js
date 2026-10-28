@@ -2651,8 +2651,13 @@
                 var line = el('li', toneClass(thread) + (thread.from ? '' : ' wsf-data-bad'));
                 var text = t('fl_thread_line', thread.fieldLabel, thread.label);
 
+                // A run shown: the value the thread brought in it.
                 if (!thread.from) {
                     text += ' ' + t('fl_values_missing');
+                } else if (state.run) {
+                    var value = runValue(thread);
+
+                    text = t('fl_run_pair', text, value.note || value.text);
                 } else if (thread.skipped) {
                     text += ' (' + t('fl_values_skipped') + ')';
                 }
@@ -6827,6 +6832,12 @@
             wrap.appendChild(el('p', 'small wsf-run-result', step.result));
         }
 
+        var reads = runReads(node);
+
+        if (reads) {
+            wrap.appendChild(reads);
+        }
+
         if (step && step.task_id) {
             wrap.appendChild(taskLink(step, node, 'btn btn-sm btn-outline theme-secondary', 'step-task'));
         }
@@ -6933,6 +6944,128 @@
         }
 
         return box;
+    }
+
+    // The value a thread brought in the run shown, as the server fills it
+    // (ws_step_node_values()): the box's sentence, outcome and status, else
+    // the value it kept (steps[].outputs); a constants box's row. A box not
+    // reached or skipped gives nothing. What started the run is not in the
+    // run's answer: unknown, named rather than given.
+    function runValue(thread) {
+        var match = /^\{\{node\.([a-z0-9_]+)\.([a-z0-9_]+)\}\}$/.exec(thread.token);
+
+        if (!thread.from) {
+            return { text: '', note: t('fl_values_missing') };
+        }
+
+        if (!match) {
+            return { text: '', note: t('fl_run_value_trigger'), unknown: true };
+        }
+
+        var node = nodeById(match[1]);
+        var key = match[2];
+
+        if (node && (node.kind === 'constants')) {
+            var row = ((node.config || {}).rows || []).filter(function (item) { return item.key === key; })[0];
+
+            return row ? { text: String(row.value) } : { text: '', note: t('fl_run_value_empty') };
+        }
+
+        var step = stepOf(match[1]);
+
+        if (!step) {
+            return { text: '', note: t('fl_run_value_unreached') };
+        }
+
+        if (step.status === 'skipped') {
+            return { text: '', note: t('fl_run_value_skipped') };
+        }
+
+        var value = (key === 'text') ? step.result : (((key === 'outcome') || (key === 'status')) ? step[key] : (step.outputs || {})[key]);
+
+        if ((value === null) || (value === undefined) || (value === '')) {
+            return { text: '', note: t((['done', 'failed'].indexOf(step.status) < 0) ? 'fl_run_value_pending' : 'fl_run_value_empty') };
+        }
+
+        return { text: String(value) };
+    }
+
+    // A field as the run filled it: each value in place of its reference,
+    // nothing for one the run gave none, a value of what started the run
+    // named in brackets.
+    function runFilled(text, threads) {
+        return text.replace(VALUE_TOKEN, function (token) {
+            var thread = threads.filter(function (item) { return item.token === token; })[0];
+            var value = thread ? runValue(thread) : { text: '' };
+
+            return value.unknown ? '[' + thread.label + ']' : value.text;
+        });
+    }
+
+    // What a box of the run received, field by field: each thread into it
+    // with its value, the field as filled once the box ran, and the field
+    // as written (its template) on request. Null for a box that reads
+    // nothing.
+    function runReads(node) {
+        var threads = dataThreads().filter(function (thread) { return thread.to === node.id; });
+        var step = stepOf(node.id);
+        var ran = !!step && (['running', 'waiting', 'done', 'failed'].indexOf(step.status) >= 0);
+        var shown = state.runTemplates = state.runTemplates || {};
+
+        if (!threads.length) {
+            return null;
+        }
+
+        var wrap = el('div', 'wsf-run-reads mt-3');
+
+        wrap.appendChild(el('div', 'form-label small fw-semibold mb-1', t('fl_run_values')));
+
+        fieldTexts(node).forEach(function (item) {
+            var reads = threads.filter(function (thread) { return thread.field === item.key; });
+            var id = node.id + '.' + item.key;
+
+            if (!reads.length) {
+                return;
+            }
+
+            var list = el('ul', 'wsf-outline-reads list-unstyled small');
+
+            wrap.appendChild(el('div', 'small fw-semibold', item.label));
+            list.setAttribute('aria-label', item.label);
+            reads.forEach(function (thread) {
+                var value = runValue(thread);
+                var line = el('li', toneClass(thread) + (thread.from ? '' : ' wsf-data-bad'));
+
+                line.appendChild(K.icon(thread.from ? 'bi-arrow-return-right' : 'bi-exclamation-triangle', 'wsf-outline-read-icon'));
+                line.appendChild(el('span', '', thread.label + ': '));
+                line.appendChild(el('span', value.note ? 'fst-italic' : 'fg-body wsf-run-result', value.note || value.text));
+                list.appendChild(line);
+            });
+            wrap.appendChild(list);
+
+            if (ran) {
+                wrap.appendChild(el('div', 'small fg-secondary', t('fl_run_filled')));
+                wrap.appendChild(el('p', 'small mb-1 wsf-run-result', runFilled(item.text, reads)));
+            }
+
+            var toggle = K.button('btn btn-sm btn-link p-0 mb-2', t(shown[id] ? 'fl_run_template_hide' : 'fl_run_template_show'));
+
+            toggle.setAttribute('aria-expanded', shown[id] ? 'true' : 'false');
+            toggle.setAttribute('data-refocus', 'run-template-' + id);
+            toggle.addEventListener('click', function () {
+                shown[id] = !shown[id];
+                state.refocus = 'run-template-' + id;
+                drawSettings();
+                refocus();
+            });
+            wrap.appendChild(toggle);
+
+            if (shown[id]) {
+                wrap.appendChild(el('p', 'small fg-secondary font-monospace mb-2 wsf-run-result', item.text));
+            }
+        });
+
+        return wrap;
     }
 
     // The run read again drawn where it shows: the boxes in place, the

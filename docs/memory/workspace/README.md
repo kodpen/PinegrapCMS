@@ -94,7 +94,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
 - workspace-flows-run-events.md: Webhook events of flow runs (A7): workspace.flow.run.finished, .failed, .waiting; where each is announced once, the body, words only in public channels, what is never announced
 - workspace-flows-run-values.md: What GET /workspace/flow-runs/{id} gives per box beyond its status (A5, #2284): threads_in as the walk reads them, outputs from the result's data, what a reader without edit does not get
-- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, how it is read again, what a failed read shows
+- workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): thirteen step kinds run by ws_scheduled_do(), outcomes, owner rights, {{node.ID.FIELD}}, never twice

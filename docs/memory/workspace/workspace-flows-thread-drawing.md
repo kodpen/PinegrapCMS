@@ -27,4 +27,4 @@ description: Data threads on the Flows canvas (T1, T2): read from the fields, ch
 - Test `test_workspace_flows_canvas_thread_binds_into_the_fields_after`.
 
 ## What is left?
-- Value boxes (T3), threads in the run view (T4); the red dashed thread of a deleted box.
+- The derived value box (T3); the red dashed thread of a deleted box. Threads in the run view: workspace-flows-run-view.md.
