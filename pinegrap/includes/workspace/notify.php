@@ -40,6 +40,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | task_reminder | task_overdue | meeting_soon (reminders.php)
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  *                         | flow_shared (a flow was shared with one: flow_shares.php)
+ *                         | wtable_shared (a workflow table was shared with one: wtable_shares.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
@@ -372,6 +373,19 @@ function ws_inbox_describe($viewer, $row)
                 'body'  => $notice ? (string) $notice['text'] : '',
                 'url'   => $base . 'workspace_flows.php',
                 'icon'  => 'bi-diagram-3',
+            );
+
+        // A workflow table was shared with the person (wtable_shares.php):
+        // the sentence that names the table and what they may do with it
+        // sits beside the inbox row, as for a flow shared.
+        case 'wtable_shared':
+            $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
+
+            return array(
+                'title' => lang(array('string' => '{var:1} shared a table with you', 'vars' => $actor)),
+                'body'  => $notice ? (string) $notice['text'] : '',
+                'url'   => $base . 'workspace.php',
+                'icon'  => 'bi-table',
             );
 
         // Without a card in a channel, the list of scheduled actions: in

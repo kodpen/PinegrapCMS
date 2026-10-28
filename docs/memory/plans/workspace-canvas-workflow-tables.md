@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745, T1b #2794): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1c #2745 #2794 #2820): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -21,7 +21,7 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745, T1b #27
    - T1a types and store core — done, #2745 (decided in #2746; workspace/workflow-tables.md): types, cell checks, limits, step 11.0.110, `ws_wtable_access()`, create/rename/delete of tables and columns.
    - T1b rows — done, #2794 (workspace/workflow-table-rows.md): person and record-link cells refused (`not_writable_yet`).
    - T1b2 privacy reader — done, #2808 (workspace/workflow-tables.md): the export and erasure read person and link cells (`pg_privacy_wtable_rows()`); `ws_wtable_row_closed_types()` empty.
-   - T1c shares (person view/edit, channel view; access already reads them), `ws_notify()`, `ws_inbox_reach_lost()`/`_regained()`, flows of a table whose owner is gone pause.
+   - T1c shares — done, #2820 (workspace/workflow-table-shares.md): person view/edit, channel view, `wtable_shared` bell line; no inbox reach change (no table column in `ws_inbox`); `ws_wtable_flow_gate()` for F6's table boxes.
    - T1d API and MCP (`ws_openapi_objects()`, dry_run through `*_check()`), `workspace.wtable.*` webhooks on a public channel card.
    - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
 4. T2 Board view (the channel Board tab component) by a status column.
@@ -33,4 +33,4 @@ description: Plan (2026-10-23, S1 #1708, S2 #1858, S2b #1987, T1a #2745, T1b #27
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1c shares in progress (includes/workspace/wtable_shares.php), then T1d API and MCP.
+- T1d API and MCP (the shares' `*_check()` in wtable_shares.php), then T1e screen.

@@ -39,6 +39,7 @@
     "Table of ordered items": "Sipariş edilen ürünlerin tablosu",
     "Table scan": "Tarama",
     "Table · {var:1} columns, {var:2} rows": "Tablo · {var:1} sütun, {var:2} satır",
+    "Table “{var:1}” · {var:2}": "Tablo “{var:1}” · {var:2}",
     "Tables": "Tablolar",
     "Tables on MyISAM": "MyISAM'daki Tablolar",
     "Tables over the size limit are not converted by the upgrade; they are listed afterwards and can be converted one by one from the Database Engine screen.": "Boyut sınırını aşan tablolar yükseltme sırasında dönüştürülmez; sonrasında listelenir ve Veritabanı Motoru ekranından tek tek dönüştürülebilir.",
