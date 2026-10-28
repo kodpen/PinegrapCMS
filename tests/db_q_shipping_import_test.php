@@ -134,7 +134,7 @@ function db_q_shipping_import_test_files()
 		'shipping_method.php' => 7,
 		'shipping.php' => 6,
 		'edit_zone.php' => 9,
-		'includes/forms/zone_form.php' => 4,
+		'includes/forms/zone_form.php' => 2,
 		'edit_arrival_date.php' => 7,
 		'view_commissions.php' => 4,
 		'includes/settings/commerce.save.php' => 3,
