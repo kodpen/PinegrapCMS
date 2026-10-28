@@ -1908,7 +1908,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
     $show_close = (!isset($options['close'])) || ($options['close'] == true);
     $start_hidden = (!isset($options['hidden'])) || ($options['hidden'] == true);
 
-    $empty = array('css' => '', 'button' => '', 'panel' => '', 'score' => array('value' => NULL, 'hex' => '#adb5bd'));
+    $empty = array('css' => '', 'button' => '', 'panel' => '', 'score' => array('value' => NULL, 'hex' => '#adb5bd', 'band' => 'none'));
     $page_id = (int) $page_id;
 
     if (!$page_id) {
@@ -1948,15 +1948,26 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
     $score = $scored ? (int) $row['seo_score'] : 0;
     $hex = $scored ? pg_seo_score_hex($score) : '#adb5bd';
 
+    // The hex is a fill: the ring and the dots. Yellow and orange are too
+    // light for the figure on a light ground, so the figure takes its band's
+    // text shade from the stylesheet (the .pg_seo_band_* rules below, the
+    // panel's accent inks in the toolbar), readable in both themes.
+    $band = 'none';
+
+    if ($scored) {
+        $band_color = pg_seo_score_color($score);
+        $band = ($band_color['class'] !== '') ? $band_color['class'] : 'orange';
+    }
+
     // pathLength normalises the circumference to 100 so the dash array is the
     // percentage itself, whatever radius this ends up drawn at.
     $button =
-        '<button type="button" id="software_seo_toggle" title="' . h(lang('SEO Score') . ($scored ? ': ' . $score . '/100' : '')) . '">
+        '<button type="button" id="software_seo_toggle" class="pg_seo_band_' . $band . '" title="' . h(lang('SEO Score') . ($scored ? ': ' . $score . '/100' : '')) . '">
             <svg width="26" height="26" viewBox="0 0 36 36" aria-hidden="true">
-                <circle cx="18" cy="18" r="15.5" fill="none" stroke="#00000022" stroke-width="3.2"></circle>
+                <circle class="pg_seo_ring_track" cx="18" cy="18" r="15.5" fill="none" stroke="#00000022" stroke-width="3.2"></circle>
                 <circle cx="18" cy="18" r="15.5" fill="none" stroke="' . $hex . '" stroke-width="3.2" stroke-linecap="round"
                     pathLength="100" stroke-dasharray="' . ($scored ? $score : 0) . ' 100" transform="rotate(-90 18 18)"></circle>
-                <text x="18" y="19" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="' . $hex . '"
+                <text x="18" y="19" text-anchor="middle" dominant-baseline="middle" font-size="13" font-weight="700" fill="currentColor"
                     font-family="system-ui,-apple-system,Segoe UI,Roboto,sans-serif">' . ($scored ? $score : '&#8211;') . '</text>
             </svg>
         </button>
@@ -2091,7 +2102,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
     $panel =
         '<div id="software_seo_panel"' . ($start_hidden ? ' hidden' : '') . '>
             <div class="pg_seo_tb_top">
-                <span class="pg_seo_tb_total" style="color:' . $hex . '">' . ($scored ? $score . '/100' : '&#8211;') . '</span>
+                <span class="pg_seo_tb_total pg_seo_band_' . $band . '">' . ($scored ? $score . '/100' : '&#8211;') . '</span>
                 <span class="pg_seo_tb_title">' . h(lang('SEO Score')) . '</span>
                 ' . ($show_close
                     ? '<button type="button" id="software_seo_close" title="' . h(lang('Close')) . '">&#215;</button>'
@@ -2166,21 +2177,24 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 margin-right: 0;
                 width: 32px;
                 height: 40px;
-                background: #fff;
+                background: var(--pg-sp-bg);
                 border: 0;
                 border-radius: 0;
                 padding: 0;
                 line-height: 0;
                 cursor: pointer;
             }
+            #software_seo_toggle .pg_seo_ring_track{ stroke: var(--pg-sp-track); }
             #software_pinegrap_button_container.collapsed #software_seo_toggle{
                 display: none;
             }
-            /* Every colour in this panel and in the page block below it comes
-               from these, so the dark set is one override rather than a second
-               copy of the stylesheet. The class is put on by the panel script,
-               which reads the same key the admin screens store their choice
-               in - the site and the toolbar are one origin, so it can. */
+            /* Every colour in this panel, in the page block below it and in
+               the button box (get_page.php) comes from these, so the dark set
+               is one override rather than a second copy of the stylesheet. The
+               class is put on by the panel script and the box script, which
+               read the same key the admin screens store their choice in - the
+               site and the toolbar are one origin, so they can. */
+            #software_pinegrap_button_container,
             #software_seo_panel{
                 --pg-sp-bg: #fff;
                 --pg-sp-fg: #212529;
@@ -2193,7 +2207,12 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 --pg-sp-link: #0d6efd;
                 --pg-sp-track: #00000014;
                 --pg-sp-shadow: #00000022;
-
+                --pg-sp-success: #2e7d32;
+                --pg-sp-warning: #8a6d00;
+                --pg-sp-orange: #a65200;
+                --pg-sp-danger: #c62828;
+            }
+            #software_seo_panel{
                 position: fixed;
                 top: 50px;
                 right: 0;
@@ -2213,6 +2232,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 text-align: left;
                 box-shadow: 0 6px 18px var(--pg-sp-shadow);
             }
+            #software_pinegrap_button_container.pg_seo_tb_dark,
             #software_seo_panel.pg_seo_tb_dark{
                 --pg-sp-bg: #1b1f23;
                 --pg-sp-fg: #dee2e6;
@@ -2225,7 +2245,17 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 --pg-sp-link: #6ea8fe;
                 --pg-sp-track: #ffffff1a;
                 --pg-sp-shadow: #00000066;
+                --pg-sp-success: #a5d6a7;
+                --pg-sp-warning: #ffe082;
+                --pg-sp-orange: #ffb74d;
+                --pg-sp-danger: #ef9a9a;
             }
+            /* Score figures: 4.5:1 on the panel and box ground in both sets. */
+            .pg_seo_band_success{ color: var(--pg-sp-success); }
+            .pg_seo_band_warning{ color: var(--pg-sp-warning); }
+            .pg_seo_band_orange{ color: var(--pg-sp-orange); }
+            .pg_seo_band_danger{ color: var(--pg-sp-danger); }
+            .pg_seo_band_none{ color: var(--pg-sp-muted); }
             #software_seo_panel[hidden]{ display: none; }
             .pg_seo_tb_top{
                 display: flex;
@@ -2254,11 +2284,11 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
             .pg_seo_tb_gbar{ flex: 1 1 auto; height: 4px; background: var(--pg-sp-track); border-radius: 2px; overflow: hidden; }
             .pg_seo_tb_gbar i{ display: block; height: 100%; }
             .pg_seo_tb_gscore{ flex: 0 0 22px; text-align: right; font-weight: 600; }
-            .pg_seo_tb_gweight{ flex: 0 0 30px; text-align: right; color: var(--pg-sp-faint); }
+            .pg_seo_tb_gweight{ flex: 0 0 30px; text-align: right; color: var(--pg-sp-muted); }
             .pg_seo_tb_row{ display: flex; align-items: flex-start; gap: 6px; padding: 3px 0; border-bottom: 1px solid var(--pg-sp-line-soft); }
             .pg_seo_tb_dot{ flex: 0 0 7px; width: 7px; height: 7px; border-radius: 50%; margin-top: 4px; }
             .pg_seo_tb_text{ flex: 1 1 auto; }
-            .pg_seo_tb_points{ flex: 0 0 auto; color: var(--pg-sp-faint); }
+            .pg_seo_tb_points{ flex: 0 0 auto; color: var(--pg-sp-muted); }
             .pg_seo_tb_actions{ display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
             .pg_seo_tb_btn{
                 flex: 1 1 auto;
@@ -2279,7 +2309,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
         'css' => $css . $info['css'],
         'button' => $button,
         'panel' => $panel,
-        'score' => array('value' => ($scored ? $score : NULL), 'hex' => $hex));
+        'score' => array('value' => ($scored ? $score : NULL), 'hex' => $hex, 'band' => $band));
 }
 
 // Thin progress bar with the score at its side, drawn under the record name

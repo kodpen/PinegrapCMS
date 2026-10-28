@@ -5924,7 +5924,7 @@ function pg_page_info_block($page_id, $style_id, $user, $send_to = null)
  * @param int    $style_id style the page is being rendered with
  * @param array  $user     row from validate_user() / initialize_user()
  * @param string $send_to  address the screens should return to
- * @param array  $score    value (int or null) and hex, from pg_seo_page_toolbar()
+ * @param array  $score    value (int or null), hex and band, from pg_seo_page_toolbar()
  * @return array html, css
  */
 function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score = null)
@@ -5977,7 +5977,10 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
     }
 
     $value = (is_array($score) && isset($score['value'])) ? $score['value'] : NULL;
-    $hex = (is_array($score) && !empty($score['hex'])) ? $score['hex'] : '#adb5bd';
+
+    // The band names the figure's text shade below; the score's hex is a
+    // fill and too light for text on the light bar.
+    $band = (is_array($score) && !empty($score['band'])) ? $score['band'] : 'none';
 
     $score_title = lang('SEO Score') . (($value === NULL) ? '' : ': ' . (int) $value . '/100');
 
@@ -5985,7 +5988,7 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
         '<span class="pg-pbar-sep" aria-hidden="true"></span>
         <button type="button" class="pg-pbar-btn pg-pbar-score no-popover" data-pg-page-view="panel"
             title="' . h($score_title . ' — ' . lang('Page Panel')) . '" aria-label="' . h(lang('Page Panel')) . '">
-            <span style="color:' . h($hex) . '">' . (($value === NULL) ? '&#8211;' : (int) $value) . '</span>
+            <span class="pg-pbar-band-' . h($band) . '">' . (($value === NULL) ? '&#8211;' : (int) $value) . '</span>
             <i class="bi bi-chevron-down" aria-hidden="true"></i>
         </button>';
 
@@ -6048,6 +6051,11 @@ function pg_page_action_bar($page_id, $style_id, $user, $send_to = null, $score 
             #pg_page_bar .pg-pbar-btn i{ line-height: 1; }
             #pg_page_bar .pg-pbar-score{ width: auto; min-width: 30px; gap: 2px; padding: 0 5px 0 6px; font-size: 12px; font-weight: 700; }
             #pg_page_bar .pg-pbar-score i{ font-size: 10px; color: var(--pg-fg-2); }
+            #pg_page_bar .pg-pbar-band-success{ color: var(--pg-success-fg-emphasis); }
+            #pg_page_bar .pg-pbar-band-warning{ color: var(--pg-warning-fg-emphasis); }
+            #pg_page_bar .pg-pbar-band-orange{ color: color-mix(in srgb, #fd7e14 55%, var(--pg-fg-emphasis)); }
+            #pg_page_bar .pg-pbar-band-danger{ color: var(--pg-danger-fg-emphasis); }
+            #pg_page_bar .pg-pbar-band-none{ color: var(--pg-fg-2); }
             .pg-pbar-sep{
                 flex: 0 0 auto;
                 width: 1px;

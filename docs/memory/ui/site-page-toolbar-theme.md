@@ -23,5 +23,6 @@ description: The editor toolbar over a site page (toolbar.php in #software_toolb
 ## How is the open or closed state remembered?
 - `frontend.src.js` (`send_toolbar_state()`) posts `update_toolbar_properties` the moment the bar opens or closes (fetch with `keepalive`, jQuery as the fallback); `get_page.php` opens the bar when the session flag is on. It was sent only on `beforeunload` with a synchronous request, which Chromium refuses during page dismissal, so the bar always opened closed on the next page (#2518). `frontend.min.js` is the hand-made twin: rebuilt with terser like the panel bundles.
 
-## What is not covered here?
-- The buttons `get_page.php` injects into the site page itself (`#software_pinegrap_button_container`, the SEO ring) live in the 5.3.8 site page with their own CSS and do not read the panel theme.
+## How do the score figures and the button box stay readable?
+- The score's hex (`pg_seo_score_hex()`) is a fill for the ring and dots only; yellow was 1.5:1 as text. The figure carries its band (`score['band']`: success, warning, orange, danger, none): `.pg_seo_band_*` reads `--pg-sp-<band>` (seo.php: own light and dark inks; toolbar.php: the panel's `-fg-emphasis` tokens), the page bar's `.pg-pbar-band-*` reads the panel tokens. Points and weights use `--pg-sp-muted`, not the half-transparent `-faint`. #2519.
+- The button box over a site page (`#software_pinegrap_button_container`, 5.3.8 page, own CSS) shares the SEO panel's `--pg-sp-*` set and takes `pg_seo_tb_dark` from the stored panel theme, like the SEO panel; its pink icons have a lighter dark variant. `tests/seo_score_contrast_test.php` checks the ratios.
