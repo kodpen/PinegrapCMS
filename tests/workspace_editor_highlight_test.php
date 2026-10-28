@@ -103,7 +103,7 @@ function workspace_editor_highlight_test_run($steps)
 		$script .= $part;
 	}
 
-	foreach (array('el', 'cleanUrl', 'inlineNodes', 'wrapLines', 'serializeChildren', 'serializeNode', 'listKind', 'isFormula') as $name) {
+	foreach (array('el', 'cleanUrl', 'inlineNodes', 'wrapLines', 'serializeChildren', 'serializeNode', 'headingLevel', 'lineBlock', 'listKind', 'isFormula') as $name) {
 		$part = workspace_editor_highlight_test_function($name);
 		pg_assert_true($part !== '', $name . ' is found');
 		$script .= $part;

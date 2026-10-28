@@ -8,6 +8,7 @@
  *   submitted_form_list_rows   a page of the submitted forms list
  *                              (view_submitted_forms.php)
  *   contact_list_rows          a page of the contacts list (view_contacts.php)
+ *   product_list_rows          a page of the products list (view_products.php)
  *
  * Each action answers DataTables' page request (includes/fn/list_paging.php)
  * behind the gate of the screen it pages.
@@ -130,6 +131,41 @@ function pg_panel_contact_list_rows($request, $action)
         $filter,
         $groups,
         pg_contact_list_filter($user, $filter, $groups),
+        pg_list_search_terms($request['search'] ?? ''),
+        pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
+
+    if ($page === false) {
+        http_response_code(500);
+        respond(array('status' => 'error', 'message' => lang('Query failed.')));
+    }
+
+    return pg_list_rows_answer($request['draw'] ?? 0, $page['total'], $page['filtered'], $page['rows']);
+}
+
+function pg_panel_product_list_rows($request, $action)
+{
+    // Kept global: helpers read the session user through `global $user`;
+    // see includes/panel/actions.php.
+    global $user;
+
+    // The general gate has checked the session (any_role). The screen's own
+    // gate is validate_ecommerce_access(), answered here in JSON.
+    $user = validate_user();
+
+    if (((int) $user['role'] > 2) && ($user['manage_ecommerce'] != true)) {
+        http_response_code(403);
+        respond(array('status' => 'error', 'message' => lang('Access denied')));
+    }
+
+    validate_token();
+
+    // The list's cells are the product screen's (pg_pb_list_cells()).
+    require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
+    require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_list.php');
+
+    // The sort is the one the screen kept in the session.
+    $page = pg_product_list_page(
+        pg_product_list_site_view(pg_product_list_filter_name($request['filter'] ?? '')),
         pg_list_search_terms($request['search'] ?? ''),
         pg_list_page_window($request['start'] ?? 0, $request['length'] ?? 100));
 
