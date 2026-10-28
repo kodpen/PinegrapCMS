@@ -120,7 +120,7 @@ if (!defined('PG_INIT_LOADED')) {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3">
-                            <iframe src="pi.php" class="bg-1 rounded-4 w-100" onload="resizeIframe(this)"></iframe>
+                            <iframe src="pi.php" title="<?=h(lang('PHP information'))?>" class="bg-1 rounded-4 w-100" onload="resizeIframe(this)"></iframe>
                         </div>
                     </div>
                 </div>

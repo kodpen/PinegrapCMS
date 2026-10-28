@@ -1015,7 +1015,7 @@ function ws_scheduled_draft_proposal_input($change, $channel_id)
     $change = is_array($change) ? $change : array();
 
     if ((string) ($change['action'] ?? 'draft') !== 'draft') {
-        return $fail(lang('A scheduled action is proposed with the action draft: the person opens it in its form and saves it.'));
+        return $fail(lang('A scheduled action is proposed with the action draft: the person opens it as a new flow and publishes it.'));
     }
 
     $sent = $change['data'] ?? null;
@@ -1056,10 +1056,11 @@ function ws_scheduled_draft_proposal_input($change, $channel_id)
  * A scheduled action an application proposes, as the row of its card: the
  * save rehearsed with the person it is proposed to (ws_scheduled_save_check(),
  * the panel's and the API's own check), so a step they could not save is
- * refused now; then kept as Pinegrap AI's drafts are, a ws_ai_changes row of
- * record_type 'scheduled', action 'draft', holding what the check read in the
- * shape the form opens it in. Nothing is scheduled: the person opens it in
- * the form and saves it in their own name.
+ * refused now; then the flow it becomes rehearsed as POST /workspace/flows
+ * rehearses one (ws_flow_save_check()) and kept as a proposed flow is, a
+ * ws_ai_changes row of record_type 'flow', action 'draft'
+ * (ws_flow_draft_proposal_row()). Nothing is scheduled: the person opens it
+ * as a new draft flow and publishes it in their own name.
  *
  * @param int   $asker_id   the person it is proposed to
  * @param mixed $change     the change, as sent
@@ -1078,14 +1079,14 @@ function ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id)
         return $fail($input['error']);
     }
 
-    if (!ws_scheduled_ready()) {
+    if (!ws_scheduled_ready() || !function_exists('ws_flows_ready') || !ws_flows_ready()) {
         return $fail(lang('This site cannot take proposed changes yet: its database has to be upgraded.'));
     }
 
     $viewer = function_exists('ws_ai_viewer') ? ws_ai_viewer((int) $asker_id) : null;
 
     if (!$viewer || !ws_can_schedule($viewer)) {
-        return $fail(lang('The person this is proposed to cannot schedule actions, so it cannot be proposed.'));
+        return $fail(lang('The person this is proposed to cannot build flows, so a flow cannot be proposed.'));
     }
 
     $checked = ws_scheduled_save_check($viewer, $input['data'] + array('id' => 0, 'channel_id' => $input['channel_id'], 'note_id' => 0));
@@ -1094,18 +1095,55 @@ function ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id)
         return $fail(($checked['field'] !== '') ? $checked['field'] . ': ' . $checked['error'] : $checked['error']);
     }
 
-    // The form reads a draft as it reads a saved action, so the draft is kept
-    // as the check read it, in that shape (ws_scheduled_form_data()): a record
-    // named by its own name, money in minor units, the addresses as a list.
-    // Nothing else the application sent reaches the form.
+    // The flow is made from what the check read, in the shape the form opens
+    // a saved action in (ws_scheduled_form_data()): a record named by its own
+    // name, money in minor units, the addresses as a list. Nothing else the
+    // application sent reaches the flow. A flow lives only in a public or
+    // private channel the person reads, else it has no home.
+    $here = ws_channel($input['channel_id']);
+    $home = ($here && in_array((string) $here['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $here)) ? (int) $here['id'] : 0;
+    $snapshot = ws_scheduled_draft_flow_snapshot(ws_scheduled_form_data($viewer, $checked['row']), $home, $input['notes'], ws_scheduled_money_metrics());
+    $flow = ws_flow_save_check($viewer, $snapshot['data']);
+
+    if (!$flow['ok']) {
+        return $fail(($flow['field'] !== '') ? $flow['field'] . ': ' . $flow['error'] : $flow['error']);
+    }
+
+    $snapshot['data']['name'] = $flow['sets']['name'];
+    $snapshot['data']['graph'] = $flow['graph'];
+
     return array('ok' => true, 'error' => '', 'row' => array(
-        'type'      => 'scheduled',
+        'type'      => 'flow',
         'action'    => 'draft',
         'record_id' => 0,
         'fields'    => array(),
         'reason'    => '',
-        'snapshot'  => array('sentence' => '', 'data' => ws_scheduled_form_data($viewer, $checked['row']), 'notes' => $input['notes'], 'channel_id' => $input['channel_id']),
+        'snapshot'  => $snapshot,
     ));
+}
+
+/**
+ * A checked scheduled action as the snapshot of a flow draft card (pure), as
+ * ws_flow_draft_proposal_row() keeps one: the flow's name, home and graph
+ * (ws_scheduled_draft_flow_input()), the notes followed by what the flow
+ * keeps otherwise, so the card tells them before it is opened.
+ *
+ * @param array    $data  the action as the form reads it (ws_scheduled_form_data())
+ * @param int      $home  the flow's home channel, 0 for none
+ * @param string[] $notes the reason the application gave
+ * @param string[] $money the counts in money (ws_scheduled_money_metrics())
+ * @return array sentence, data (name, channel_id, graph), notes, channel_id
+ */
+function ws_scheduled_draft_flow_snapshot($data, $home, $notes, $money)
+{
+    $input = ws_scheduled_draft_flow_input(array('data' => $data), $money);
+
+    return array(
+        'sentence'   => '',
+        'data'       => array('name' => $input['name'], 'channel_id' => (int) $home, 'graph' => $input['graph']),
+        'notes'      => array_values(array_merge((array) $notes, (array) $input['left'])),
+        'channel_id' => (int) $home,
+    );
 }
 
 /**

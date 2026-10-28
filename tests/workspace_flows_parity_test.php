@@ -2550,7 +2550,7 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
 			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, 'an action saved from a form opened with a draft marks the draft\'s card applied; the card opens a flow since slice 4c2'),
 			array(array('draft kind scheduled in ws_scheduled_draft_flow_open'), 4, 'AI drafts on the canvas (4c2): a draft card opens as a new flow (ws_flow_graph_from_scheduled()) and is marked applied with the flow'),
-			array(array('draft kind scheduled in ws_changes_input', 'draft kind scheduled in ws_scheduled_draft_proposal_row'), 4, 'AI drafts on the canvas: an application\'s proposed draft, rehearsed by the save\'s check and kept as Pinegrap AI\'s are'),
+			array(array('draft kind scheduled in ws_changes_input'), 4, 'AI drafts on the canvas: an application\'s proposed scheduled action, rehearsed by the save\'s check, is kept as a flow draft card (ws_scheduled_draft_proposal_row(), C5b)'),
 		),
 		'links_in' => array(
 			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
