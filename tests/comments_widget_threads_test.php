@@ -135,7 +135,7 @@ function test_comments_widget_threads_review_flags()
 
 	$odd = comments_widget_threads_test_flags(array('signed_in' => true, 'review_refusal' => array('reviewed')));
 	pg_assert_true($odd['can_comment'], 'a refusal that is not a string is none');
-	pg_assert_same(23, count($odd), 'still 23 flags');
+	pg_assert_same(25, count($odd), 'still 25 flags');
 }
 
 // -- the renderer ----------------------------------------------------------------
@@ -174,4 +174,51 @@ function test_comments_widget_threads_renderer_refusals()
 
 	pg_assert_contains("if (\$item === null) {\n            return '';", $body, 'no item: nothing');
 	pg_assert_contains("if (!\$verified['accept']) {\n                return '';", $body, 'a refused item: nothing');
+}
+
+// -- the item's own flags and name (slice 20b) ---------------------------------
+
+// is_item_thread and is_review_thread follow the facts, in an e-mail and the
+// search index too; a review thread is an item thread.
+function test_comments_widget_threads_item_flags()
+{
+	$f = 'comments_widget_threads_test_flags';
+
+	pg_assert_false($f(array())['is_item_thread'] || $f(array())['is_review_thread'], 'a page\'s own thread');
+	pg_assert_true($f(array('item' => true))['is_item_thread'], 'an item');
+	pg_assert_false($f(array('item' => true))['is_review_thread'], 'a group or an event is no review thread');
+	pg_assert_true($f(array('review' => true))['is_item_thread'] && $f(array('review' => 1))['is_review_thread'], 'a product\'s reviews');
+	pg_assert_true($f(array('review' => true, 'email' => true))['is_review_thread'], 'in an e-mail');
+	pg_assert_true($f(array('item' => '1', 'search_index' => true))['is_item_thread'], 'in the search index');
+	pg_assert_false($f(array('item' => '0', 'review' => ''))['is_item_thread'], 'empty values are off');
+}
+
+// The name a visitor reads: a product's or group's title as text, else its
+// name; an event's name; nothing for any other thread.
+function test_comments_widget_threads_item_label()
+{
+	pg_assert_same('Linen Shirt', pg_comment_item_label('product', array('short_description' => '<p>Linen <b>Shirt</b></p>', 'name' => 'SKU-1')), 'a product\'s title as text');
+	pg_assert_same('SKU-1', pg_comment_item_label('product', array('short_description' => ' <br> ', 'name' => ' SKU-1 ')), 'else its name');
+	pg_assert_same('Shirts & Tops', pg_comment_item_label('product_group', array('short_description' => 'Shirts &amp; Tops', 'name' => 'shirts')), 'a group, entities read');
+	pg_assert_same('Open <Day>', pg_comment_item_label('calendar_event', array('name' => "Open\n <Day>", 'short_description' => 'ignored')), 'an event\'s name, raw');
+	pg_assert_same('', pg_comment_item_label('page', array('name' => 'x')), 'a page thread has none');
+	pg_assert_same('', pg_comment_item_label('submitted_form', array('name' => 'x')), 'nor a record');
+	pg_assert_same('', pg_comment_item_label('product', false), 'an item that is gone');
+	pg_assert_same('', pg_comment_item_label('product', array('name' => array('x'))), 'a value that is not text');
+	pg_assert_same('', pg_comment_item_name('', 0), 'no thread, no read');
+	pg_assert_same('', pg_comment_item_name('submitted_form', 5), 'a record, no read');
+	pg_assert_same('', pg_comment_item_name('product', 0), 'no id, no read');
+}
+
+// The renderer gives the flags their facts and the name its token.
+function test_comments_widget_threads_item_wiring()
+{
+	$body = comments_widget_threads_test_renderer();
+
+	pg_assert_contains("'item' => (\$post_type !== '') && (\$post_type !== 'submitted_form'),", $body, 'an item thread');
+	pg_assert_contains("'review' => !empty(\$read['review']),", $body, 'the read decides the review thread');
+	pg_assert_contains("'__comments_item_name' => pg_comment_item_name(\$post_type, \$post_id),", $body, 'the item\'s name');
+	$off = pg_comments_mode_off_bindings('recent');
+	pg_assert_true(in_array('__comments_item_name', $off['tokens'], true), 'a list of recent comments has no item name');
+	pg_assert_true(in_array('is_item_thread', $off['flags'], true) && in_array('is_review_thread', $off['flags'], true), 'nor the thread\'s flags');
 }

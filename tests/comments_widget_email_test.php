@@ -297,9 +297,7 @@ function test_comments_widget_email_thread_flags()
 
 	foreach (array('open' => $all, 'closed' => array('allow_new' => false) + $all) as $name => $facts) {
 		$flags = pg_comments_widget_thread_flags($facts);
-		pg_assert_same(23, count($flags), $name . ': 23 thread flags');
-		$keys = array_keys($flags);
-		pg_assert_same('is_email', end($keys), $name . ': is_email last');
+		pg_assert_same(25, count($flags), $name . ': 25 thread flags');
 
 		foreach ($flags as $flag => $value) {
 			pg_assert_same(in_array($flag, $true, true), $value, $name . ': ' . $flag);

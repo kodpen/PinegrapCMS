@@ -11689,7 +11689,7 @@ const StyleDesigner = (function () {
 
     // ── Comments widget: the canvas states ────────────────────────────────
     // The canvas twin of pg_comments_widget_thread_flags()
-    // (widgets_comments.php): the 23 thread flags from the same facts, line
+    // (widgets_comments.php): the 25 thread flags from the same facts, line
     // for line. tests/comments_widget_designer_test.php compares the two
     // under Node; a flag added there is added here.
     function _sdCommentsThreadFlags(facts) {
@@ -11709,8 +11709,10 @@ const StyleDesigner = (function () {
         var email = on('email');
         var allowNew = on('allow_new');
         var signedIn = on('signed_in') && !search && !email;
-        var mustSignIn = allowNew && !on('signed_in') && on('require_login') && !search && !email;
-        var canComment = allowNew && !mustSignIn && !search && !email;
+        var refusal = (typeof facts.review_refusal === 'string') ? facts.review_refusal : '';
+        var mustSignIn = allowNew && !on('signed_in') && (on('require_login') || (refusal === 'sign_in')) && !search && !email;
+        var reviewClosed = allowNew && (refusal === 'not_bought' || refusal === 'reviewed') && !search && !email;
+        var canComment = allowNew && !mustSignIn && !reviewClosed && !search && !email;
         var count = whole('count', 0);
         var mode = (typeof facts.featured_mode === 'string') ? facts.featured_mode : 'first';
         var nameMode = (typeof facts.name_mode === 'string') ? facts.name_mode : '';
@@ -11718,8 +11720,8 @@ const StyleDesigner = (function () {
         var canWatch = on('watching_on') && signedIn && !on('submitter_notified');
 
         return {
-            comments_open: allowNew && !email,
-            comments_closed: !allowNew && !email,
+            comments_open: allowNew && !reviewClosed && !email,
+            comments_closed: (!allowNew || reviewClosed) && !email,
             can_comment: canComment,
             must_sign_in: mustSignIn,
             is_signed_in: signedIn,
@@ -11740,7 +11742,9 @@ const StyleDesigner = (function () {
             is_watching: canWatch && on('is_watcher'),
             not_watching: canWatch && !on('is_watcher'),
             can_manage_watchers: on('watching_on') && signedIn && on('manage_watchers'),
-            is_email: email
+            is_email: email,
+            is_item_thread: on('item') || on('review'),
+            is_review_thread: on('review')
         };
     }
 
@@ -11760,11 +11764,12 @@ const StyleDesigner = (function () {
                     '__comments_show_all_url', '__comments_show_featured_url', '__login_url', '__comment_author_name', '__reply_to_name',
                     '__watcher_count_text', '__comment_anchor', '__comment_file_name', '__comment_file_url', '__comment_file_size',
                     '__comment_seller_reply_html', '__comment_seller_reply_date', '__comment_reply_url', '__comment_parent_id',
-                    '__comment_parent_name', '__comment_parent_url', '__comment_quote', '__comment_depth', '__comment_reply_count'],
+                    '__comment_parent_name', '__comment_parent_url', '__comment_quote', '__comment_depth', '__comment_reply_count',
+                    '__comments_item_name'],
                 flags: ['comments_open', 'comments_closed', 'can_comment', 'must_sign_in', 'featured_view', 'has_featured', 'name_is_typed',
                     'name_is_chosen', 'name_is_fixed', 'rating_on', 'files_on', 'watching_on', 'is_replying', 'is_watching', 'not_watching',
                     'can_manage_watchers', 'is_email', 'comment_is_reply', 'comment_has_quote', 'comment_has_replies', 'comment_has_file',
-                    'comment_is_verified', 'comment_has_seller_reply']
+                    'comment_is_verified', 'comment_has_seller_reply', 'is_item_thread', 'is_review_thread']
             };
         }
         return {
@@ -11808,6 +11813,12 @@ const StyleDesigner = (function () {
             states.push(['staff', _sdT('Staff')]);
             return states;
         }
+        // A product's reviews add the customer who has not bought it; any
+        // other page shows a product's reviews as one more state, so a node
+        // only they show can be drawn and picked.
+        var review = (_sdCommentsPageThread() === 'product')
+            ? ['not_bought', _sdT('Not a buyer')]
+            : ['review', _sdT('Product reviews')];
         return [
             ['comments', _sdT('Comments')],
             ['replying', _sdT('Replying')],
@@ -11815,11 +11826,33 @@ const StyleDesigner = (function () {
             ['member', _sdT('Member')],
             ['sign_in', _sdT('Sign in')],
             ['closed', _sdT('Closed')],
+            review,
             ['staff', _sdT('Staff')],
             ['email', _sdT('E-mail')]
         ];
     }
     var _sdCommentsCanvasState = 'comments';
+
+    // The thread a comments widget shows on the page on screen, as
+    // pg_comment_address_item() picks it: a catalog detail page a product's
+    // reviews (a product in the address; a group there reads like a
+    // catalog page's), a catalog page a product group's comments, a
+    // calendar event view page an event's; any other page its own or its
+    // record's ('').
+    function _sdCommentsPageThread() {
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        var type = (p && typeof p.page_type === 'string') ? p.page_type : '';
+        return { 'catalog detail': 'product', 'catalog': 'group', 'calendar event view': 'event' }[type] || '';
+    }
+
+    // The thread a canvas state draws: the page's, a product's for the
+    // review states, none for a comment e-mail (an e-mail about an item
+    // keeps its fixed markup).
+    function _sdCommentsStateThread(state) {
+        if (state === 'email') return '';
+        if (state === 'review' || state === 'not_bought') return 'product';
+        return _sdCommentsPageThread();
+    }
 
     // The state a widget is drawn in: the one picked when the widget offers
     // it (a thread's 'replying' is no state of a list), else its first.
@@ -11882,15 +11915,26 @@ const StyleDesigner = (function () {
     // the page's settings switch on and off (stars, attachments, watching)
     // is always on here: switched off it fades (_sdCommentsBindingOff()),
     // it is never hidden.
+    // A product's reviews are read by a signed-in customer who bought it
+    // (a visitor is asked to sign in, pg_review_eligibility()); they are
+    // never featured.
     function _sdCommentsCanvasFacts(state, cfg) {
         cfg = cfg || {};
+        var thread = _sdCommentsStateThread(state);
         var facts = {
             allow_new: true, signed_in: false, require_login: false, count: 3,
             featured_mode: (typeof cfg.featured === 'string' && cfg.featured !== '') ? cfg.featured : 'first',
             has_featured: true, name_mode: 'typed',
             rating_on: true, files_on: true, watching_on: true,
-            pages: (parseInt(cfg.per_page, 10) > 0) ? 2 : 1
+            pages: (parseInt(cfg.per_page, 10) > 0) ? 2 : 1,
+            item: thread !== '', review: thread === 'product'
         };
+        if (facts.review) {
+            facts.featured_mode = 'none';
+            facts.has_featured = false;
+            facts.signed_in = (state !== 'sign_in');
+            facts.name_mode = (_getCmtVal('pg_comments_select_name') === '1') ? 'chosen' : 'fixed';
+        }
         if (state === 'replying') {
             facts.replying = true;
         } else if (state === 'empty') {
@@ -11899,7 +11943,10 @@ const StyleDesigner = (function () {
             facts.signed_in = true;
             facts.name_mode = (_getCmtVal('pg_comments_select_name') === '1') ? 'chosen' : 'fixed';
         } else if (state === 'sign_in') {
-            facts.require_login = true;
+            if (facts.review) facts.review_refusal = 'sign_in';
+            else facts.require_login = true;
+        } else if (state === 'not_bought') {
+            facts.review_refusal = 'not_bought';
         } else if (state === 'closed') {
             facts.allow_new = false;
         } else if (state === 'staff') {
@@ -12217,13 +12264,15 @@ const StyleDesigner = (function () {
         var staff = !!thread.is_staff;
         var threaded = (cfg.layout === 'threaded');
         var label = String(_getCmtVal('pg_comments_label') || _sdT('Comment'));
+        // A product's reviews show only verified purchases.
+        var verified = !!thread.is_review_thread;
         var flags = function (over) {
             var f = {
                 comment_is_root: true, comment_is_reply: false, comment_is_featured: false,
                 comment_is_pending: false, comment_is_own_pending: false, comment_is_scheduled: false,
                 comment_has_quote: false, comment_has_replies: false, comment_has_rating: false,
                 comment_has_file: false, comment_has_badge: false, comment_has_seller_reply: false,
-                comment_is_verified: false, comment_can_edit: staff
+                comment_is_verified: verified, comment_can_edit: staff
             };
             Object.keys(over).forEach(function (k) { f[k] = over[k]; });
             return f;
@@ -12530,7 +12579,17 @@ const StyleDesigner = (function () {
             return _getCmtVal('pg_comments_message') || _sdT('Be kind and stay on topic.');
         }
         if (fieldName === '__comments_closed_message') {
+            // The refusal a product's review form gives a customer who has
+            // not bought it (pg_review_refusal_message()).
+            if (_sdCommentsCanvasState === 'not_bought') return _sdT('Only customers who bought this product can review it.');
             return _getCmtVal('pg_comments_closed_message') || _sdT('We\'re sorry. New comments are no longer being accepted.');
+        }
+        if (fieldName === '__comments_item_name') {
+            return {
+                product: _sdT('Linen Shirt'),
+                group: _sdT('Summer Collection'),
+                event: _sdT('Spring Open Day')
+            }[_sdCommentsStateThread(_sdCommentsCanvasState)] || '';
         }
         if (fieldName === '__comments_label') {
             return _getCmtVal('pg_comments_label') || _sdT('Comment');
@@ -32915,6 +32974,22 @@ const StyleDesigner = (function () {
         );
     }
 
+    // Which thread a comments widget shows on the page on screen
+    // (_sdCommentsPageThread()), in words; '' for a page's own thread.
+    function _sdCommentsPageThreadText() {
+        var thread = _sdCommentsPageThread();
+        if (thread === 'product') {
+            return _sdT('On this catalog detail page it shows the comments of the product or product group in the address. A product\'s are reviews: verified purchases only, newest first, written by a customer who bought it. E-mails about them keep the fixed comment markup.');
+        }
+        if (thread === 'group') {
+            return _sdT('On this catalog page it shows the comments of the product group in the address, else of the page\'s own group. E-mails about them keep the fixed comment markup.');
+        }
+        if (thread === 'event') {
+            return _sdT('On this calendar event view page it shows the comments of the event in the address. E-mails about them keep the fixed comment markup.');
+        }
+        return '';
+    }
+
     // The comments widget's canvas: which visitor's state it draws, and the
     // sample comments after the card (the canvas's real-records switch).
     function _sdCommentsCanvasSect(sid, cfg) {
@@ -32922,12 +32997,15 @@ const StyleDesigner = (function () {
         var opts = _sdCommentsCanvasStates(cfg).map(function (s) {
             return '<option value="' + s[0] + '"' + (s[0] === current ? ' selected' : '') + '>' + esc(s[1]) + '</option>';
         }).join('');
-        var samplesText = (_swKindOf(cfg) === 'comments_recent')
+        var recent = (_swKindOf(cfg) === 'comments_recent');
+        var samplesText = recent
             ? _sdT('After the card you design, the canvas shows sample comments as this list shows them: one on a record and one on a page, both awaiting approval in a list of comments awaiting approval, and in the member\'s own list one more of theirs awaiting approval. They cannot be selected and are not saved.')
             : _sdT('After the card you design, the canvas shows three sample comments: a reply, one awaiting approval, one with stars and a file. They cannot be selected and are not saved.');
+        var threadText = recent ? '' : _sdCommentsPageThreadText();
         return sect('bi-collection', _sdT('Canvas Preview'),
             row(_sdT('Canvas shows'),
-                '<select class="form-control form-control-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>'
+                '<select class="form-control form-control-sm" id="sd-cmt-canvas-state" data-sw-id="' + sid + '">' + opts + '</select>' +
+                (threadText ? '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.4">' + esc(threadText) + '</div>' : '')
             ) +
             row(_sdT('Sample comments'),
                 '<div class="form-field m-0"><div class="switch"><input class="" type="checkbox" role="switch" id="sd-sw-ghosts"' + (_sdGhostsOn ? ' checked' : '') + '></div></div>' +
@@ -32967,6 +33045,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-prop-row">' +
                         '<div style="font-size:.66rem;color:#888;line-height:1.3">' +
                             esc(_sdT('Puts the design\'s Comments widget in place of this fixed block: the same comments, watchers and settings, in a layout you design. Back to the fixed block undoes it.')) +
+                            (_sdCommentsPageThread() ? ' ' + esc(_sdCommentsPageThreadText()) : '') +
                         '</div>' +
                     '</div>';
             }
@@ -39754,7 +39833,8 @@ const StyleDesigner = (function () {
             ['__comments_closed_message', _sdT('Message while new comments are closed')],
             ['__comment_author_name',     _sdT('The name a member comments under ("Posting as")')],
             ['__reply_to_name',           _sdT('Name of the comment the form answers ("Replying to")')],
-            ['__watcher_count_text',      _sdT('How many people are told of a new comment')]
+            ['__watcher_count_text',      _sdT('How many people are told of a new comment')],
+            ['__comments_item_name',      _sdT('Name of the product, product group or event the comments are about')]
         ]},
         { label: _sdT('Links (href)'), tokens: [
             ['__comments_show_all_url',      _sdT('Show all comments (featured filter only; the link drops otherwise)')],
@@ -42302,6 +42382,8 @@ const StyleDesigner = (function () {
             ['not_watching',             _sdT('The visitor may ask to be told of new comments')],
             ['can_manage_watchers',      _sdT('The visitor may manage who is told of new comments')],
             ['is_email',                 _sdT('Drawn in a comment e-mail')],
+            ['is_item_thread',           _sdT('The comments are about a product, product group or event')],
+            ['is_review_thread',         _sdT('The comments are a product\'s reviews (verified purchases only)')],
             ['comment_is_featured',      _sdT('Row: featured')],
             ['comment_is_pending',       _sdT('Row: not published yet')],
             ['comment_is_own_pending',   _sdT('Row: the visitor\'s own, awaiting approval')],
