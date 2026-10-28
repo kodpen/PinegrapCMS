@@ -16,7 +16,7 @@ description: The Team devices switch in Settings › API (includes/api/device_sw
 ## What is the ceiling?
 - `workspace:write`, `tasks:write`, `orders:read`, `meta:read`, `customers:read`, `products:read` through `api_scopes_normalise()` (`api_device_switch_ceiling()`). Module scopes are valid only while the module is on, so a site that turns the Workspace on later gains them on its next save. Each person still gets only their own rights (`api_device_scopes()`).
 
-## What is not in it yet?
-- QR pairing (`POST /auth/pair`, table `api_device_pairings`, decided #2470) comes in its own PR (#1640).
+## How does a person pair a device once it is on?
+- With a password at `POST /auth/login`, or with a QR code from `device_pairing.php` at `POST /auth/pair` (`api/api-device-pairing.md`).
 
-Tests: `tests/api_device_switch_test.php`. Issue #1640.
+Tests: `tests/api_device_switch_test.php`. Issue #1640, PR #2612.

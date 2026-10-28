@@ -87,6 +87,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_main_host_redirect();     // 11.0.52
 	upgrade_2026_11_0_blogposting_author();     // 11.0.53
 	upgrade_2026_11_0_workspace_scheduled_anchor(); // 11.0.88
+	upgrade_2026_11_0_api_device_pairings();    // 11.0.70
 
 }
 
@@ -2742,5 +2743,33 @@ function upgrade_2026_11_0_blogposting_author() {
 	install_add_column('custom_form_pages', 'schema_author', "VARCHAR(64) NOT NULL DEFAULT 'contact'");
 
 	install_note('Custom forms: the author named in the structured data of a record page is now chosen per form in the form settings, next to Enable Pretty URLs: the contact of the record as before, the site as an organization, or a field of the form. Nothing changes until a form picks one.');
+
+}
+
+// Pairing codes for team devices (2026.11.0, 11.0.70; includes/api/pairing.php).
+//
+// A person signed in to the panel shows a one-time code as a QR; the team app
+// scans it and exchanges it at POST /auth/pair for a device session. A code
+// lives five minutes and works once. Only its HMAC is kept (code_hash), so a
+// copy of the table signs nobody in. Rows are bound to the person and to the
+// device application; device_id is the session the exchange made.
+function upgrade_2026_11_0_api_device_pairings() {
+
+	install_create_table('api_device_pairings', "CREATE TABLE api_device_pairings (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		app_id INT UNSIGNED NOT NULL DEFAULT 0,
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		code_hash CHAR(64) NOT NULL DEFAULT '',
+		created_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		expires_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		used_timestamp INT UNSIGNED NOT NULL DEFAULT 0,
+		device_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_ip VARCHAR(45) NOT NULL DEFAULT '',
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_code_hash (code_hash),
+		KEY idx_user (user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Team devices can now be paired by scanning a code the person shows in the panel, without typing a password on the phone.');
 
 }
