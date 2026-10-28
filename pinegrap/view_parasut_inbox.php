@@ -190,7 +190,7 @@ function _parasut_status_badge($status) {
         'paid'         => ['bg-success',            lang('Paid')],
         'partially_paid' => ['bg-info fg-black',   lang('Partially Paid')],
         'cancelled'    => ['bg-secondary',          lang('Cancelled')],
-        'deleted'      => ['bg-black',               lang('Deleted')],
+        'deleted'      => ['bg-black fg-white',      lang('Deleted')],
     ];
     $info  = $map[$status] ?? ['bg-secondary', ucfirst(str_replace('_', ' ', $status))];
     return '<span class="badge ' . $info[0] . '">' . h($info[1]) . '</span>';

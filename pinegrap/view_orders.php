@@ -2551,7 +2551,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                         $output_shipping_tracking_icons = '
                         <button type="button" class="btn-data-control m-1 btn btn-outline theme-success border-2 position-relative" title="' . lang('Shipment Tracking') . '" onclick="window.location.href=\'' . $output_link_url . '#trackin_number_from_view_orders\'">
                             <i class="bi bi-truck"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-white opacity-75 fg-success">
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill badge-subtle theme-success">
                                 ' . $i . '
                             </span>
                         </button>';

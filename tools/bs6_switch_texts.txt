@@ -584,7 +584,7 @@ dropped modal box.
 <<<
             '<a href="#" class="link-light text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
 ===
-            '<a href="#" class="fg-white text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
+            '<a href="#" class="fg-reset text-decoration-none" data-on="' + action + '" data-index="' + index + '" data-id="' + id + '" title="' + esc(L.remove) + '">&times;</a></span>';
 >>>
 
 @@ assets/js/backend.src.js
