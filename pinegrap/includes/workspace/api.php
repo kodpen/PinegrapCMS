@@ -151,6 +151,8 @@ function ws_openapi_objects()
         'WorkspacePlanRow'    => 'ws_api_plan_row_schema',
         'WorkspaceTaskNote'   => 'ws_api_task_note_schema',
         'WorkspaceClaudeRequest'  => 'ws_api_claude_request_schema',
+        'WorkspaceClaudeBrief'    => 'ws_api_claude_brief_schema',
+        'WorkspaceClaudeInstructions' => 'ws_api_claude_instructions_schema',
         'WorkspaceChannelContext' => 'ws_api_channel_context_schema',
         'WorkspaceContextThread'  => 'ws_api_context_thread_schema',
         'WorkspaceContextMessage' => 'ws_api_context_message_schema',

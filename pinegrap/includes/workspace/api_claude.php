@@ -55,6 +55,37 @@ function ws_claude_api_routes()
             'description' => 'For the application chosen for Claude in the Workspace Settings only. status open (the default) is what is waiting to be claimed, oldest first; all is the latest 50 of every state. message.text is the request with every tag spelled out.',
             'params'      => array(
                 array('name' => 'status', 'in' => 'query', 'type' => 'enum', 'values' => array('open', 'running', 'answered', 'failed', 'cancelled', 'all'), 'default' => 'open'),
+                array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version of the prompt pasted into the routine, as the instructions say to send it. Left out, the Workspace Settings say the routine still runs a prompt pasted before it read its instructions from the site.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.claude.instructions',
+            'method'      => 'GET',
+            'path'        => '/workspace/claude/instructions',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_claude_instructions',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceClaudeInstructions',
+            'summary'     => 'What the routine does, from the site',
+            'description' => 'For the application chosen for Claude in the Workspace Settings only. text is the routine\'s instructions for this site as it is now: the queue, the endpoints, the answer\'s shape and the rules. The short prompt pasted into the routine reads it at the start of every run and sends its own version; version is the one this site hands out, and outdated is true when the version sent is older or missing, which the Workspace Settings show until the prompt is copied again.',
+            'params'      => array(
+                array('name' => 'version', 'in' => 'query', 'type' => 'int', 'min' => 0, 'description' => 'The version written in the pasted prompt.'),
+            ),
+        ),
+
+        array(
+            'id'          => 'workspace.claude.requests.brief',
+            'method'      => 'GET',
+            'path'        => '/workspace/claude/requests/{id}/brief',
+            'scope'       => 'workspace:read',
+            'handler'     => 'ws_api_claude_brief',
+            'mcp'         => false,
+            'returns'     => 'WorkspaceClaudeBrief',
+            'summary'     => 'What a request is about, as the site briefs its own assistant',
+            'description' => 'text is the briefing Pinegrap AI is given for a request, written for Claude: who asked, now, the note, the task or the channel it came from (a discussion with the message it talks over, the message a reply answers), the people, the request and the language of the answer, then the rules. A request from the Visual Page Editor carries the page or the selected element, its CSS and the request. What people wrote stands inside <<<name>>> and <<<end name>>> lines, a mark inside the text made harmless. Read as the person who asked reads it. 409 when the request can no longer be worked on there (the channel closed to Claude, the message that asked deleted).',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
             ),
         ),
 
@@ -587,6 +618,53 @@ function ws_api_claude_record($params)
     api_ok(ws_api_claude_record_present($read));
 }
 
+function ws_api_claude_instructions($params)
+{
+    ws_api_claude_guard();
+
+    $sent = $params['version'] ?? null;
+
+    ws_claude_note_version($sent);
+
+    api_ok(array(
+        'version'  => WS_CLAUDE_BOOTSTRAP_VERSION,
+        'outdated' => (ws_claude_version_state($sent, WS_CLAUDE_BOOTSTRAP_VERSION) !== 'current'),
+        'text'     => ws_claude_routine_prompt(),
+    ));
+}
+
+// What ws_api_claude_instructions() returns.
+function ws_api_claude_instructions_schema()
+{
+    return array('version' => 'integer', 'outdated' => 'boolean', 'text' => 'string');
+}
+
+function ws_api_claude_brief($params)
+{
+    ws_api_claude_guard();
+
+    $row = ws_api_claude_request_or_404($params['id']);
+    $asker = ws_ai_viewer((int) $row['requested_by']);
+
+    if (!$asker) {
+        api_fail(409, 'closed', lang('The person who asked is no longer a member of the workspace.'));
+    }
+
+    $briefing = ws_ai_briefing($row, $asker, 'claude');
+
+    if (!$briefing['ok']) {
+        api_fail(409, 'closed', $briefing['error']);
+    }
+
+    api_ok(array('request_id' => (int) $row['id'], 'text' => $briefing['text']));
+}
+
+// What ws_api_claude_brief() returns.
+function ws_api_claude_brief_schema()
+{
+    return array('request_id' => 'integer', 'text' => 'string');
+}
+
 function ws_api_claude_request_or_404($id)
 {
     // Claude's requests only: the ones to Pinegrap AI are answered by the
@@ -605,6 +683,12 @@ function ws_api_claude_requests_list($params)
     $viewer = ws_api_claude_guard();
 
     ws_claude_watchdog();
+
+    // A routine that sends no version runs the whole prompt pasted before
+    // the instructions came from the site: the settings card says so.
+    if (($params['version'] ?? null) === null) {
+        ws_claude_note_version(null);
+    }
 
     $status = (string) ($params['status'] ?? 'open');
 

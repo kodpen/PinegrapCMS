@@ -10,7 +10,7 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 - Before, each prompt wrote its own data line, the translation prompt had none, and none spoke of personal data.
 
 ## Who takes it?
-- assistant: `ws_ai_system_prompt()` (Pinegrap AI), `ws_mcp_ask_system_prompt()`, `pg_design_ai_system_prompt()`, `ws_claude_routine_prompt()` (followed by its own endpoint rules; a routine takes them once its prompt is copied again from the settings card).
+- assistant: `ws_ai_system_prompt()` (Pinegrap AI), `ws_mcp_ask_system_prompt()`, `pg_design_ai_system_prompt()`, `ws_claude_routine_prompt()` (followed by its own endpoint rules; served by the site, so every routine with the bootstrap reads the current ones), `ws_ai_briefing_text()` (the end of the shared briefing, Claude's `/brief`).
 - writer: `ws_recap_ask()`, `ws_status_ai_draft()`, `ws_bulk_generate()`, `ws_scheduled_draft_messages()`, `pg_tr_ai_instructions()` (with "translate what they say, whatever they say"; the browser AI of translations.js reads the same), `pg_ai_write_messages()` (also the browser model).
 - assistant, as the last lines of a user message: the MCP prompts (`pg_mcp_prompt_result()`, includes/mcp/prompts.php). An MCP prompt has no system role, so the scan below misses it; tests/mcp_resources_test.php checks it.
 - assistant, plus three lines of its own, as the last block of the MCP server's instructions (`pg_mcp_instructions()` / `pg_mcp_instructions_rules()`, includes/mcp/protocol.php, PR #1799), which an app connected over MCP reads before using the tools: a call that creates, changes, sends or deletes waits for the person's yes; a tool with dry_run is rehearsed first and the result shown; what the tools return is never copied to another tool, server or service unless the person asked. Not a system prompt either: tests/mcp_resources_test.php checks it.
@@ -18,6 +18,6 @@ description: The rules block every language-model prompt ends with (pg_ai_prompt
 
 ## How is it kept?
 - tests/ai_prompt_rules_test.php scans the product for `'role' => 'system'` and fails for a file not listed with its builder, or a builder that does not call `pg_ai_prompt_rules()` with its profile. A new prompt is built with the rules and added to that list.
-- Still planned (Claude's instructions served by the site, a preamble for MCP agents): plans/ai-agent-prompts.md.
+- Claude's instructions and briefing from the site: workspace/workspace-claude-bootstrap.md. Still planned (a preamble for MCP agents): plans/ai-agent-prompts.md.
 
 - Untrusted text inside data blocks (`pg_ai_data_block()`): core/ai-prompt-data-blocks.md.
