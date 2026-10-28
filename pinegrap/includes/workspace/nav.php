@@ -2,13 +2,13 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Workspace - the way around it on the screens other than the channels: a
- * narrow rail of icons at the left edge of the tasks, the notes, the board,
- * the work calendar, the decision timeline and the settings, and the whole
- * list - the channels, the work, the records - in a drawer the rail opens.
- * Drawn here, with the page, so it is there before any script has run. The
- * channel screen draws the same groups in its own sidebar
- * (assets/js/workspace.js).
+ * Workspace - the way around it: one list of the channels, the discussions,
+ * the groups and the workspace's own screens, in the Workspace panel of the
+ * main menu on every panel page (assets/js/workspace_side.js draws it). This
+ * file decides what the list holds and for whom, and builds its data: printed
+ * with the page on the workspace's own screens, asked for with the ws_side
+ * action (includes/workspace/actions.php) the first time the panel opens
+ * anywhere else.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -21,15 +21,36 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The places of the workspace, in the groups the sidebar shows them in.
- * Items with 'rail' false are left off the rail and shown in the drawer only.
+ * The places of the workspace, in the groups the list shows them in, each
+ * under the gate of the screen it opens.
  *
- * @param array $viewer
+ * @param array      $viewer
+ * @param array|null $flags  what the gates found, for a test (notes,
+ *                           calendar_feed, actions, messages, flows, mcp, base);
+ *                           null asks them
  * @return array[] top, work, records, foot => items (key, label, icon, url)
  */
-function ws_nav_groups($viewer)
+function ws_nav_groups($viewer, $flags = null)
 {
-    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+    if ($flags === null) {
+        $flags = array(
+            'notes'         => function_exists('ws_notes_ready') && ws_notes_ready(),
+            'calendar_feed' => function_exists('ws_calendar_feed_ready') && ws_calendar_feed_ready(),
+            // Staff's scheduled actions, until Flows lists them
+            // (ws_flows_scheduled()); their scheduled messages stay here.
+            'actions'       => function_exists('ws_can_schedule') && ws_can_schedule($viewer)
+                && !(function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)),
+            'messages'      => function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer),
+            // Staff draw flows, and whoever may run a channel's live flow
+            // finds it here too (flows.php).
+            'flows'         => function_exists('ws_flows_nav_visible') && ws_flows_nav_visible($viewer),
+            // Each person's own accounts on the MCP servers and their tool
+            // forms, while a server is on (mcp_form.php).
+            'mcp'           => function_exists('ws_mcp_active_servers') && (bool) ws_mcp_active_servers(),
+        );
+    }
+
+    $base = isset($flags['base']) ? (string) $flags['base'] : OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
 
     $groups = array(
         'top' => array(
@@ -38,46 +59,47 @@ function ws_nav_groups($viewer)
         ),
         'work' => array(
             array('key' => 'tasks', 'label' => lang('My Tasks'), 'icon' => 'bi-check2-square', 'url' => $base . 'workspace_tasks.php'),
-            array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php'),
-            array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php'),
-            array('key' => 'calendar', 'label' => lang('Work Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php'),
-            array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php', 'rail' => false),
         ),
         'records' => array(
             array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php'),
-            array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived', 'rail' => false),
+            array('key' => 'archived', 'label' => lang('Archived channels'), 'icon' => 'bi-archive', 'url' => $base . 'workspace.php?view=home&panel=archived'),
         ),
         'foot' => array(),
     );
 
-    if ($viewer['role'] < 3) {
-        $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit', 'rail' => false);
+    if (!empty($flags['notes'])) {
+        $groups['work'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
     }
 
-    // Scheduled actions are staff's (scheduled.php); everybody else finds
-    // their own scheduled messages on the same screen. Once Flows lists
-    // staff's actions (ws_flows_scheduled()), the Flows entry below is theirs.
-    if (function_exists('ws_can_schedule') && ws_can_schedule($viewer)) {
-        if (!(function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer))) {
-            $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
-        }
-    } elseif (function_exists('ws_can_schedule_messages') && ws_can_schedule_messages($viewer)) {
-        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    $groups['work'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
+    $groups['work'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');
+
+    if (!empty($flags['calendar_feed'])) {
+        $groups['work'][] = array('key' => 'calendar_feed', 'label' => lang('Calendar subscription'), 'icon' => 'bi-calendar-plus', 'url' => $base . 'workspace_calendar_feed.php');
     }
 
-    // Flows: staff draw them, and whoever may run a channel's live flow
-    // finds it here too (flows.php).
-    if (function_exists('ws_flows_nav_visible') && ws_flows_nav_visible($viewer)) {
+    if (!empty($flags['flows'])) {
         $groups['work'][] = array('key' => 'flows', 'label' => lang('Flows'), 'icon' => 'bi-diagram-3', 'url' => $base . 'workspace_flows.php');
     }
 
-    // Each person's own accounts on the MCP servers and their tool forms,
-    // while a server is on (mcp_form.php).
-    if (function_exists('ws_mcp_active_servers') && ws_mcp_active_servers()) {
-        $groups['work'][] = array('key' => 'mcp', 'label' => lang('My MCP connections'), 'icon' => 'bi-plug', 'url' => $base . 'workspace_mcp.php', 'rail' => false);
+    // Scheduled actions are staff's (scheduled.php); everybody else finds
+    // their own scheduled messages on the same screen.
+    if (!empty($flags['actions'])) {
+        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled actions'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
+    } elseif (!empty($flags['messages'])) {
+        $groups['work'][] = array('key' => 'scheduled', 'label' => lang('Scheduled messages'), 'icon' => 'bi-alarm', 'url' => $base . 'workspace.php?view=scheduled');
     }
 
-    if ($viewer['settings']) {
+    if (!empty($flags['mcp'])) {
+        $groups['work'][] = array('key' => 'mcp', 'label' => lang('My MCP connections'), 'icon' => 'bi-plug', 'url' => $base . 'workspace_mcp.php');
+    }
+
+    // The private channels' audit is staff's (ws_viewer(): role below 3).
+    if ((int) $viewer['role'] < 3) {
+        $groups['records'][] = array('key' => 'audit', 'label' => lang('Private channels'), 'icon' => 'bi-shield-lock', 'url' => $base . 'workspace.php?view=home&panel=audit');
+    }
+
+    if (!empty($viewer['settings'])) {
         $groups['foot'][] = array('key' => 'settings', 'label' => lang('Workspace Settings'), 'icon' => 'bi-sliders', 'url' => $base . 'workspace_settings.php');
     }
 
@@ -98,227 +120,190 @@ function ws_nav_group_titles()
 }
 
 /**
- * The rail and its drawer, for the left edge of a workspace screen.
+ * Which place of the workspace a screen is, by its file: the list marks it,
+ * carries its data in the page and opens by itself there.
  *
- * @param array  $viewer
- * @param string $current the key of the screen shown (tasks, notes, board, calendar, timeline, flows, mcp, settings)
+ * @param string $script the screen's path or file name ($_SERVER['SCRIPT_NAME'])
+ * @return string the key of ws_nav_groups(), 'channels' for the channel
+ *                screen, '' for any other file
+ */
+function ws_side_screen($script)
+{
+    $screens = array(
+        'workspace.php'               => 'channels',
+        'workspace_tasks.php'         => 'tasks',
+        'workspace_notes.php'         => 'notes',
+        'workspace_board.php'         => 'board',
+        'workspace_calendar.php'      => 'calendar',
+        'workspace_calendar_feed.php' => 'calendar_feed',
+        'workspace_timeline.php'      => 'timeline',
+        'workspace_flows.php'         => 'flows',
+        'workspace_mcp.php'           => 'mcp',
+        'workspace_settings.php'      => 'settings',
+        // A template is written from the settings (templates.php).
+        'workspace_template.php'      => 'settings',
+    );
+
+    $file = basename(str_replace('\\', '/', (string) $script));
+
+    return $screens[$file] ?? '';
+}
+
+/**
+ * The places as the list draws them: the groups in their order, each item
+ * with only what the browser needs.
+ *
+ * @param array $groups ws_nav_groups()
+ * @return array top, work, records, foot => [key, label, icon, url, inbox]
+ */
+function ws_side_nav($groups)
+{
+    $out = array();
+
+    foreach (array('top', 'work', 'records', 'foot') as $group) {
+        $out[$group] = array();
+
+        foreach ((array) ($groups[$group] ?? array()) as $item) {
+            $out[$group][] = array(
+                'key'   => (string) $item['key'],
+                'label' => (string) $item['label'],
+                'icon'  => (string) $item['icon'],
+                'url'   => (string) $item['url'],
+                'inbox' => !empty($item['inbox']),
+            );
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The keys of the words the list uses (assets/js/workspace_side.js), each
+ * read from the screen's own set so a word is written in one place.
+ *
+ * @return string[]
+ */
+function ws_side_js_keys()
+{
+    return array(
+        'search_messages', 'new_channel', 'tour_start', 'pal_shortcut', 'pal_open', 'pinned', 'pin', 'unpin',
+        'th_section', 'th_show_all', 'th_show_fewer', 'my_channels', 'other_channels', 'no_channels',
+        'side_expand', 'side_collapse', 'grp_expand', 'grp_collapse', 'grp_access', 'grp_empty', 'grp_new',
+        'more', 'loading', 'error_generic',
+    );
+}
+
+/**
+ * The words of the list, translated.
+ *
+ * @return array key => text
+ */
+function ws_side_js_strings()
+{
+    $all = array_merge(
+        ws_js_strings(),
+        ws_threads_js_strings(),
+        ws_groups_js_strings(),
+        function_exists('ws_palette_js_strings') ? ws_palette_js_strings() : array(),
+        function_exists('ws_tour_js_strings') ? ws_tour_js_strings() : array()
+    );
+
+    $out = array();
+
+    foreach (ws_side_js_keys() as $key) {
+        if (isset($all[$key])) {
+            $out[$key] = (string) $all[$key];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * Everything the list draws, for one person: their channels, discussions and
+ * groups as the channel screen gets them (ws_bootstrap), the places their
+ * rights open and the words.
+ *
+ * Only the access functions choose what is in it - ws_channels_for() (public
+ * channels and the private ones the person is in), ws_groups_for() (for
+ * anybody but staff only the groups holding such a channel),
+ * ws_threads_for() (the person's own discussions in channels they still
+ * read) and ws_nav_groups() - so the browser draws what it gets and hides
+ * nothing itself.
+ *
+ * @param array  $viewer ws_viewer()
+ * @param string $screen ws_side_screen() of the page, '' elsewhere
+ * @return array empty for anybody the workspace does not let in
+ */
+function ws_side_payload($viewer, $screen)
+{
+    if (empty($viewer['member'])) {
+        return array();
+    }
+
+    return array(
+        'v'        => 1,
+        'screen'   => (string) $screen,
+        'urls'     => array('workspace' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php'),
+        'inbox'    => ws_inbox_unread_count((int) $viewer['id']),
+        'nav'      => ws_side_nav(ws_nav_groups($viewer)),
+        'titles'   => ws_nav_group_titles(),
+        'channels' => ws_channels_for($viewer),
+        'groups'   => ws_groups_for($viewer),
+        'threads'  => ws_threads_for($viewer),
+        'strings'  => ws_side_js_strings(),
+    );
+}
+
+/**
+ * The list's place in the Workspace panel of the main menu: an empty box
+ * with grey rows standing for the list, which the script fills.
+ *
+ * @param array $args api (the panel's api.php), target ('_parent' in the
+ *                    page toolbar's frame), auto (open the panel by itself),
+ *                    loading, error, retry (the words shown before the words
+ *                    of the list have arrived)
  * @return string
  */
-function ws_screen_rail($viewer, $current)
+function ws_side_markup($args)
 {
-    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
-    $groups = ws_nav_groups($viewer);
-    $titles = ws_nav_group_titles();
-    $channels = ws_channels_for($viewer);
-    $inbox = ws_inbox_unread_count((int) $viewer['id']);
+    $attributes = ' data-ws-side-api="' . h((string) ($args['api'] ?? '')) . '"'
+        . ' data-ws-side-loading="' . h((string) ($args['loading'] ?? '')) . '"'
+        . ' data-ws-side-error="' . h((string) ($args['error'] ?? '')) . '"'
+        . ' data-ws-side-retry="' . h((string) ($args['retry'] ?? '')) . '"';
 
-    $badge = function ($link) use ($inbox) {
-        return (!empty($link['inbox']) && ($inbox > 0)) ? $inbox : 0;
-    };
-
-    $rail_item = function ($link) use ($current, $badge) {
-        $count = $badge($link);
-
-        return '<a class="ws-rail-item' . (($link['key'] === $current) ? ' active' : '') . '" href="' . h($link['url']) . '" title="' . h($link['label']) . '" aria-label="' . h($link['label']) . '"'
-            . ' data-ws-nav="' . h($link['key']) . '"'
-            . (!empty($link['inbox']) ? ' data-ws-inbox="1"' : '')
-            . (($link['key'] === $current) ? ' aria-current="page"' : '') . '>'
-            . '<i class="bi ' . h($link['icon']) . '" aria-hidden="true"></i>'
-            . (($count > 0) ? '<span class="ws-rail-badge">' . (($count > 99) ? '99+' : (int) $count) . '</span>' : '')
-            . '</a>';
-    };
-
-    $list_item = function ($link) use ($current, $badge) {
-        $count = $badge($link);
-
-        return '<a class="ws-channel-link' . (($link['key'] === $current) ? ' active' : '') . '" href="' . h($link['url']) . '"'
-            . ' data-ws-nav="' . h($link['key']) . '"'
-            . (!empty($link['inbox']) ? ' data-ws-inbox="1"' : '') . '>'
-            . '<i class="bi ' . h($link['icon']) . '" aria-hidden="true"></i>'
-            . '<span class="ws-channel-name">' . h($link['label']) . '</span>'
-            . (($count > 0) ? '<span class="ws-count ws-count-mention">' . (int) $count . '</span>' : '')
-            . '</a>';
-    };
-
-    $channel_link = function ($channel) use ($base) {
-        // The brief's icon, with the mark of the channel's kind in its corner
-        // when it was chosen (channel_icons.php).
-        $icon = ws_icon_badged_html($channel['icon'], $channel['icon_badge'], 'ws-ch-icon');
-        $count = '';
-
-        if ($channel['mentions']) {
-            $count = '<span class="ws-count ws-count-mention">' . (int) $channel['mentions'] . '</span>';
-        } elseif ($channel['unread'] && ($channel['notify'] !== 'none')) {
-            $count = '<span class="ws-count">' . (($channel['unread'] > 99) ? '99+' : (int) $channel['unread']) . '</span>';
-        }
-
-        return '<a class="ws-channel-link' . ($channel['unread'] ? ' ws-unread' : '') . ($channel['joined'] ? '' : ' ws-notjoined') . '" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '"'
-            . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
-            . $icon
-            . '<span class="ws-channel-name">' . h($channel['name']) . '</span>' . $count . '</a>';
-    };
-
-    $pinned = array();
-    $mine = array();
-    $others = array();
-
-    // Channels in a group are listed under it (pinned ones stay pinned).
-    $group_rows = ws_groups_for($viewer);
-    $known_groups = array();
-
-    foreach ($group_rows as $group) {
-        $known_groups[$group['id']] = true;
+    if (($args['target'] ?? '') !== '') {
+        $attributes .= ' data-ws-side-target="' . h((string) $args['target']) . '"';
     }
 
-    $in_group = array();
-
-    foreach ($channels as $channel) {
-        if (!$channel['pinned'] && ($channel['group_id'] > 0) && isset($known_groups[$channel['group_id']])) {
-            $in_group[$channel['group_id']][] = $channel;
-            continue;
-        }
-
-        if (!$channel['joined']) {
-            $others[] = $channel;
-        } elseif ($channel['pinned']) {
-            $pinned[] = $channel;
-        } else {
-            $mine[] = $channel;
-        }
+    if (!empty($args['auto'])) {
+        $attributes .= ' data-pg-menu-auto';
     }
 
-    // ── the rail ──
+    $rows = str_repeat('<div class="ws-skeleton-row" aria-hidden="true"><span class="ws-skeleton-dot"></span><span class="ws-skeleton-bar"></span></div>', 6);
 
-    $rail = '<nav class="ws-rail" aria-label="' . h(lang('Workspace')) . '">'
-        . '<button type="button" class="ws-rail-item ws-rail-open" data-bs-toggle="drawer" data-bs-target="#ws-nav-drawer" aria-controls="ws-nav-drawer" title="' . h(lang('Open the menu')) . '" aria-label="' . h(lang('Open the menu')) . '">'
-        . '<i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i></button>'
-        // The search box of the whole workspace (assets/js/workspace_palette.js).
-        . '<button type="button" class="ws-rail-item ws-rail-search" data-ws-palette="1" title="' . h(lang('Search the workspace (Ctrl+K)')) . '" aria-label="' . h(lang('Search the workspace')) . '">'
-        . '<i class="bi bi-search" aria-hidden="true"></i></button>';
+    return '<div id="ws-menu-side" class="ws-menu-side" data-ws-side' . $attributes . '>'
+        . '<div class="ws-skeleton ws-side-loading" role="status" aria-busy="true"><span class="visually-hidden">' . h((string) ($args['loading'] ?? '')) . '</span>' . $rows . '</div>'
+        . '</div>';
+}
 
-    foreach ($groups['top'] as $link) {
-        $rail .= $rail_item($link);
+/**
+ * The list's data in the page, for the script to draw at once.
+ *
+ * @param array $payload ws_side_payload()
+ * @return string '' for an empty payload or one that cannot be written
+ */
+function ws_side_inline($payload)
+{
+    if (empty($payload)) {
+        return '';
     }
 
-    $rail .= '<span class="ws-rail-sep" aria-hidden="true"></span>';
+    $json = json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
-    // The pinned channels by their first letter, or by the icon they were
-    // given; the channel screen itself opens on the first of them.
-    foreach (array_slice($pinned, 0, 8) as $channel) {
-        $initial = !empty($channel['icon_chosen'])
-            ? ws_icon_badged_html($channel['icon'], $channel['icon_badge'])
-            : h(pg_initials_upper(mb_substr(ltrim((string) $channel['name'], '#'), 0, 1)));
-
-        $rail .= '<a class="ws-rail-item ws-rail-channel" href="' . h($base . 'workspace.php?channel=' . (int) $channel['id']) . '" title="#' . h($channel['name']) . '" aria-label="#' . h($channel['name']) . '"'
-            . (($channel['hex'] !== '') ? ' style="--ws-ch: ' . h($channel['hex']) . '" data-ws-colored="1"' : '') . '>'
-            . '<span class="ws-rail-initial">' . $initial . '</span>'
-            . (($channel['unread'] || $channel['mentions']) ? '<span class="ws-rail-dot' . ($channel['mentions'] ? ' ws-rail-dot-mention' : '') . '"></span>' : '')
-            . '</a>';
+    if (!is_string($json) || ($json === '')) {
+        return '';
     }
 
-    $rail .= '<a class="ws-rail-item" href="' . h($base . 'workspace.php') . '" title="' . h(lang('Channels')) . '" aria-label="' . h(lang('Channels')) . '"><i class="bi bi-chat-square-text" aria-hidden="true"></i></a>';
-
-    foreach (array('work', 'records') as $group) {
-        $rail .= '<span class="ws-rail-sep" aria-hidden="true"></span>';
-
-        foreach ($groups[$group] as $link) {
-            if (!isset($link['rail']) || $link['rail']) {
-                $rail .= $rail_item($link);
-            }
-        }
-    }
-
-    $rail .= '<span class="ws-rail-grow"></span>';
-
-    foreach ($groups['foot'] as $link) {
-        $rail .= $rail_item($link);
-    }
-
-    $rail .= '</nav>';
-
-    // ── the drawer: the whole list ──
-
-    $section = function ($title, $items) {
-        return '<div class="ws-side-section">' . (($title !== '') ? '<div class="ws-side-title"><span>' . h($title) . '</span></div>' : '') . $items . '</div>';
-    };
-
-    $top = '<button type="button" class="ws-channel-link" data-ws-palette="1">'
-        . '<i class="bi bi-search" aria-hidden="true"></i>'
-        . '<span class="ws-channel-name">' . h(lang('Search the workspace')) . '</span></button>';
-
-    foreach ($groups['top'] as $link) {
-        $top .= $list_item($link);
-    }
-
-    $list = $section('', $top);
-
-    if (!empty($pinned)) {
-        $list .= $section(lang('Pinned'), implode('', array_map($channel_link, $pinned)));
-    }
-
-    // The groups, one inside another, each with its channels; a group with
-    // nothing to show in it is left out here.
-    $children = array();
-
-    foreach ($group_rows as $group) {
-        $children[$group['parent_id']][] = $group;
-    }
-
-    $draw_group = function ($group, $depth) use (&$draw_group, $children, $in_group, $channel_link) {
-        $inner = implode('', array_map($channel_link, $in_group[$group['id']] ?? array()));
-
-        foreach ($children[$group['id']] ?? array() as $child) {
-            $inner .= $draw_group($child, $depth + 1);
-        }
-
-        if ($inner === '') {
-            return '';
-        }
-
-        return '<div class="ws-side-group' . (($depth > 0) ? ' ws-side-subgroup' : '') . '"' . (($group['hex'] !== '') ? ' style="--ws-group: ' . h($group['hex']) . '"' : '') . '>'
-            . '<div class="ws-side-title ws-group-title"><span><i class="bi bi-folder2 me-1 ws-group-icon" aria-hidden="true"></i>' . h($group['name']) . '</span></div>'
-            . $inner . '</div>';
-    };
-
-    foreach ($children[0] ?? array() as $group) {
-        $drawn = $draw_group($group, 0);
-
-        if ($drawn !== '') {
-            $list .= '<div class="ws-side-section">' . $drawn . '</div>';
-        }
-    }
-
-    $list .= $section(lang('My channels'), empty($mine) ? '<div class="small fg-secondary px-3">' . h(lang('No channels yet.')) . '</div>' : implode('', array_map($channel_link, $mine)));
-
-    if (!empty($others)) {
-        $list .= $section(lang('Other channels'), implode('', array_map($channel_link, $others)));
-    }
-
-    foreach (array('work', 'records') as $group) {
-        $items = '';
-
-        foreach ($groups[$group] as $link) {
-            $items .= $list_item($link);
-        }
-
-        $list .= $section($titles[$group], $items);
-    }
-
-    $foot = '';
-
-    foreach ($groups['foot'] as $link) {
-        $foot .= $list_item($link);
-    }
-
-    $drawer = '<dialog class="drawer drawer-start ws-nav-drawer" id="ws-nav-drawer" aria-labelledby="ws-nav-drawer-title">'
-        . '<div class="drawer-header border-bottom">'
-        . '<h5 class="drawer-title" id="ws-nav-drawer-title"><i class="bi bi-clipboard2-check me-3" aria-hidden="true"></i>' . h(lang('Workspace')) . '</h5>'
-        . '<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>'
-        . '</div>'
-        . '<div class="drawer-body p-0 d-flex flex-column">'
-        . '<div class="ws-side-scroll">' . $list . '</div>'
-        . (($foot !== '') ? '<div class="ws-side-foot">' . $foot . '</div>' : '')
-        . '</div></dialog>';
-
-    return $rail . $drawer;
+    return '<script type="application/json" id="ws-side-data">' . $json . '</script>';
 }

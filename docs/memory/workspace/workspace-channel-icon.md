@@ -19,7 +19,7 @@ description: A Workspace channel's own icon (ws_channels.icon, 11.0.81): the cur
 - Only when a chosen icon replaces the kind's: `bi-lock` (private), `bi-door-open` (guest), `bi-person` (customer: `customer_type` or `contact_id`); a public channel has none. CSS `.ws-icon-badged` / `.ws-icon-badge` (backend.src.css, beside `.ws-swatch`). Icons stay `aria-hidden`; the name is the label.
 
 ## Where is it drawn?
-- Sidebar and header (`channelIcon()` in workspace.js), the drawer's list and the rail (`nav.php`: a pinned channel with its own icon shows it instead of its initial), Ctrl+K results (`ws_palette_channels()` `badge`), the # pickers and channel chips (`ws_refs_resolve()` sets `badge` on a channel ref; `ws_chip_html()`, `chipNode()`, `drawPicker()`), the file manager's "Send to a channel" (`ws_library_channels()`).
+- The main menu's Workspace list (`channelIcon()` in workspace_side.js) and the channel header (`channelIcon()` in workspace.js), Ctrl+K results (`ws_palette_channels()` `badge`), the # pickers and channel chips (`ws_refs_resolve()` sets `badge` on a channel ref; `ws_chip_html()`, `chipNode()`, `drawPicker()`), the file manager's "Send to a channel" (`ws_library_channels()`).
 - Places that draw lock/hash from `private` alone (home, inbox, acks, approvals) were left as they are.
 
 ## How is it chosen?

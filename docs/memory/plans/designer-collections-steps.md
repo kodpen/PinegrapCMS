@@ -15,13 +15,15 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C2 — collection flag and field kinds (Q1, Q2). Done, #1997:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
 
-- **C3 — typed inputs. Done, #2601:** number (`type=number`, normalised server check), image (`accept`, extension check), reference pick list filled from the target's records (server accepts only a code of the target), on the site form and Add / Edit Submitted Form (`designer/collection-inputs.md`).
+- **C3 — typed inputs. Done, #2601:** number, image and reference pick list inputs with their server checks (`designer/collection-inputs.md`).
 
 - **C3b — radio and check box references, image preview. Done, #2694** (`designer/collection-inputs.md`).
 
 - **C3c — product and page pickers.** New kinds `product` and `page` (VARCHAR needs no migration) in `pg_coll_kinds()` **and** its twin `_CF_KINDS` in `assets/js/style_designer.js` (a test compares them, so the step needs that file free); a pick list of products / pages held to them on the server.
 
-- **C4 — list/detail by kind.** C1's `ref` defaults from the field; numeric sort for number; taxonomy filter "references" valued from the address (`?category=news` by address name, `form-list-url-filters.md` rules); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image).
+- **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`). Image output already gets `pg_img_responsive_html()` (every widget's output).
+
+- **C4b — detail by kind.** C1's `ref` defaults from the field (needs `style_designer.js`); "records that reference this one" on a detail page; product/page reference tokens (name, link, price, image) after C3c.
 
 - **C5 — slug field and feeds.** A slug field feeds `update_submitted_form_address_name()`; RSS `category` and JSON-LD print a reference's label, not its code.
 

@@ -964,6 +964,10 @@
         var menu = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop');
         var body = el('div', 'popover-body');
 
+        // Opened from the Workspace list in the main menu, it is part of the
+        // menu: a click in it leaves the widened rail open (backend.src.js).
+        menu.setAttribute('data-pg-menu-hold', '');
+
         menu.setAttribute('role', 'menu');
 
         list.forEach(function (item) {
@@ -1892,6 +1896,7 @@
 
         var box = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop ws-float' + (className ? ' ' + className : ''));
 
+        box.setAttribute('data-pg-menu-hold', '');
         box.appendChild(content);
         box.style.left = '0px';
         box.style.top = '0px';
@@ -2042,17 +2047,32 @@
     // The way back to the channel list on a phone, where the list and the
     // channel take turns on the screen. A back arrow with its name, so it is
     // not read as a second main menu button under the panel's own.
-    function channelsToggle(root) {
-        var toggle = el('button', 'ws-channels-toggle md:d-none');
+    // The way to the channel list where the main menu's Workspace list is
+    // out of sight (backend.src.css shows it there): the menu's drawer on a
+    // phone, the menu slid in over the screen while it is hidden.
+    function channelsToggle() {
+        var toggle = el('button', 'ws-channels-toggle');
 
         toggle.type = 'button';
         toggle.title = t('channels_show');
         toggle.setAttribute('aria-label', toggle.title);
         toggle.appendChild(icon('bi-chevron-left'));
         toggle.appendChild(el('span', 'ws-channels-toggle-label', t('channels')));
-        toggle.addEventListener('click', function () { root.classList.add('ws-show-side'); });
+        toggle.addEventListener('click', function () {
+            if (window.PGWsSide) {
+                window.PGWsSide.reveal({ focus: true });
+            }
+        });
 
         return toggle;
+    }
+
+    // The main menu's current entry and its row's hint follow an address
+    // changed without a page load.
+    function menuAddressChanged() {
+        if (window.pgMenu) {
+            window.pgMenu.refreshCurrent();
+        }
     }
 
     // Gives a node its menu: right click, and a long press on a phone. A part
@@ -5331,8 +5351,6 @@
         // An earlier version of the conversation open on the screen
         // (includes/workspace/eras.php), or null for the current one.
         era: null,
-        // Every discussion listed in the sidebar, not only the first few.
-        threadsAll: false,
         fit: function () {},
 
         start: function (root) {
@@ -5342,14 +5360,20 @@
             root.classList.add('ws-app');
             root.innerHTML = '';
 
-            self.side = el('aside', 'ws-side');
+            // The list of channels is the Workspace panel of the main menu
+            // (assets/js/workspace_side.js); where the menu has none, a box
+            // of its own stands in, so the drag and drop code always has one.
+            self.side = document.getElementById('ws-menu-side') || el('div');
             self.center = el('section', 'ws-center');
-            root.appendChild(self.side);
             root.appendChild(self.center);
             self.bindDrop();
             self.bindFit();
 
-            self.drawSide();
+            // From here the list answers in place: a channel, a discussion,
+            // the overview open on this screen.
+            if (window.PGWsSide) {
+                window.PGWsSide.attach(self.sideHooks());
+            }
 
             var query = params();
             var target = parseInt(query.channel || CFG.open_channel || 0, 10);
@@ -5377,6 +5401,25 @@
                 self.showScheduled(false, (query.part === 'messages') ? 'messages' : '');
             } else {
                 self.showHome(false);
+            }
+
+            // What the list in the main menu leaves for from a page without
+            // this screen: the search of the messages, a new channel, the
+            // search box of the whole workspace. Answered once, then taken
+            // out of the address so a reload does not ask again.
+            if (query.search || (query['new'] === 'channel') || query.palette) {
+                if (query.search) {
+                    self.search(String(query.search));
+                } else if (query['new'] === 'channel') {
+                    channelForm(null, {}, function (id) { self.reloadChannels(id); });
+                } else if (window.PGWsPalette) {
+                    window.PGWsPalette.open();
+                }
+
+                if (!target && window.history && window.history.replaceState) {
+                    window.history.replaceState(null, '', CFG.urls.workspace + '?view=home');
+                    menuAddressChanged();
+                }
             }
 
             // Back from connecting an account to an MCP server, or asked by a
@@ -5439,340 +5482,70 @@
             });
         },
 
-        // ── Sidebar ──
+        // ── The list of channels: the main menu's Workspace panel ──
 
+        // Drawn by assets/js/workspace_side.js from BOOT through the hooks
+        // below; every change to the channels, groups or discussions asks
+        // for it again here.
         drawSide: function () {
+            if (window.PGWsSide) {
+                window.PGWsSide.redraw();
+            }
+        },
+
+        // What the list answers on this screen instead of leaving for an
+        // address, and the tools it has only here.
+        sideHooks: function () {
             var self = this;
-            var before = self.side.querySelector('.ws-side-scroll');
-            var beforeSearch = self.side.querySelector('.ws-side-head input[type="search"]');
-            var keep = {
-                top: before ? before.scrollTop : 0,
-                search: beforeSearch ? beforeSearch.value : '',
-                focused: !!(beforeSearch && document.activeElement === beforeSearch)
-            };
-            var side = clear(self.side);
-
-            var head = el('div', 'ws-side-head');
-            var search = el('input', 'form-control form-control-sm rounded-pill');
-            search.type = 'search';
-            search.placeholder = t('search_messages');
-            search.setAttribute('aria-label', search.placeholder);
-            search.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    self.search(search.value);
-                }
-            });
-            head.appendChild(search);
-
-            var add = button('btn btn-sm btn-solid theme-primary rounded-pill', '', 'bi-plus-lg', t('new_channel'));
-            add.addEventListener('click', function () {
-                channelForm(null, {}, function (id) { self.reloadChannels(id); });
-            });
-
-            // The workspace's own tour (includes/workspace/tour.php), played
-            // again from here.
-            if (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) {
-                var tour = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-signpost-split', t('tour_start'));
-
-                tour.setAttribute('data-ws-tour', '1');
-                tour.addEventListener('click', function () {
-                    // The tour points at links in these sections.
-                    var shutParts = self.closedSections();
-
-                    if (shutParts.work || shutParts.records) {
-                        self.closeSection('work', false);
-                        self.closeSection('records', false);
-                        self.drawSide();
-                    }
-
-                    window.PgTour.start(window.PG_TOUR.key);
-                });
-                head.appendChild(tour);
-            }
-
-            // The search box of the whole workspace (workspace_palette.js).
-            if (window.PGWsPalette) {
-                var find = button('btn btn-sm btn-text theme-secondary rounded-pill', '', 'bi-search', t('pal_shortcut'));
-
-                find.setAttribute('data-ws-palette', '1');
-                head.appendChild(find);
-            }
-
-            head.appendChild(add);
-            side.appendChild(head);
-
-            var scroll = el('div', 'ws-side-scroll');
-            side.appendChild(scroll);
-
-            // Each part of the workspace has its own colour in the list; the
-            // channels take theirs.
-            var navKeys = {
-                'bi-house': 'home', 'bi-inbox': 'inbox', 'bi-check2-square': 'tasks', 'bi-journal-text': 'notes',
-                'bi-calendar-week': 'board', 'bi-calendar3': 'calendar', 'bi-alarm': 'scheduled', 'bi-clock-history': 'timeline',
-                'bi-archive': 'archived', 'bi-shield-lock': 'audit', 'bi-sliders': 'settings', 'bi-diagram-3': 'flows'
-            };
-
-            function link(box, label, iconName, handler, badge, active) {
-                var item = el('button', 'ws-channel-link' + (active ? ' active' : ''));
-                item.type = 'button';
-
-                if (navKeys[iconName]) {
-                    item.setAttribute('data-ws-nav', navKeys[iconName]);
-                }
-
-                item.appendChild(icon(iconName));
-                item.appendChild(el('span', 'ws-channel-name', label));
-
-                if (badge) {
-                    item.appendChild(el('span', 'ws-count ws-count-mention', badge));
-                }
-
-                item.addEventListener('click', function () {
-                    self.root.classList.remove('ws-show-side');
-                    handler();
-                });
-                box.appendChild(item);
-            }
-
-            var closedParts = self.closedSections();
-
-            // A heading that opens and closes its section; closed, it still
-            // says how much is new inside.
-            function sectionToggle(head, key, title, iconName, shut, badge) {
-                var toggle = el('button', 'ws-side-toggle');
-
-                toggle.type = 'button';
-                toggle.setAttribute('aria-expanded', shut ? 'false' : 'true');
-                toggle.title = shut ? t('side_expand') : t('side_collapse');
-                toggle.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
-
-                if (iconName) {
-                    toggle.appendChild(icon(iconName));
-                }
-
-                toggle.appendChild(el('span', 'ws-side-toggle-name', title));
-                toggle.addEventListener('click', function () {
-                    self.closeSection(key, !shut);
-                    self.drawSide();
-                });
-                head.appendChild(toggle);
-
-                if (shut && badge) {
-                    head.appendChild(badge);
-                }
-            }
-
-            function countBadge(count, mention) {
-                return count ? el('span', 'ws-count' + (mention ? ' ws-count-mention' : ''), count > 99 ? '99+' : count) : null;
-            }
-
-            // What is new in a list of channels: the mentions when there are
-            // any, otherwise the unread messages of the channels not muted.
-            function channelsBadge(list) {
-                var mentions = 0;
-                var unread = 0;
-
-                list.forEach(function (channel) {
-                    mentions += channel.mentions || 0;
-
-                    if (channel.notify !== 'none') {
-                        unread += channel.unread || 0;
-                    }
-                });
-
-                return mentions ? countBadge(mentions, true) : countBadge(unread, false);
-            }
-
-            // A section of links; null when it is closed and nothing goes in.
-            function group(title, key) {
-                var box = el('div', 'ws-side-section');
-                var shut = !!(key && closedParts[key]);
-
-                if (title && key) {
-                    var head = el('div', 'ws-side-title');
-
-                    sectionToggle(head, key, title, '', shut, null);
-                    box.appendChild(head);
-                } else if (title) {
-                    box.appendChild(el('div', 'ws-side-title', title));
-                }
-
-                scroll.appendChild(box);
-                return shut ? null : box;
-            }
-
-            var top = group('');
-            link(top, t('home'), 'bi-house', function () { self.showHome(true); }, 0, self.view === 'home');
-            link(top, t('inbox'), 'bi-inbox', function () {
-                openInbox(function () { self.sync(); });
-            }, BOOT.inbox || 0);
-
-            // Groups of channels (includes/workspace/groups.php): a channel in
-            // a group is listed under it, one group inside another; a pinned
-            // channel stays pinned.
-            var groups = BOOT.groups || [];
-            var groupKnown = {};
             var manage = !!(CFG.groups && CFG.groups.manage);
 
-            groups.forEach(function (group) { groupKnown[group.id] = group; });
-
-            function inGroup(channel) {
-                return !channel.pinned && channel.group_id && groupKnown[channel.group_id];
-            }
-
-            var joined = BOOT.channels.filter(function (channel) { return channel.joined; });
-            var pinned = joined.filter(function (channel) { return channel.pinned; });
-            var mine = joined.filter(function (channel) { return !channel.pinned && !inGroup(channel); });
-            var others = BOOT.channels.filter(function (channel) { return !channel.joined && !inGroup(channel); });
-            var byGroup = {};
-
-            BOOT.channels.forEach(function (channel) {
-                if (inGroup(channel)) {
-                    (byGroup[channel.group_id] = byGroup[channel.group_id] || []).push(channel);
-                }
-            });
-
-            function channelLink(channel, box, sortable) {
-                var link = el('button', 'ws-channel-link'
-                    + ((self.channel && self.channel.id === channel.id) ? ' active' : '')
-                    + (channel.unread ? ' ws-unread' : '')
-                    + (channel.joined ? '' : ' ws-notjoined'));
-                link.type = 'button';
-                link.setAttribute('data-ws-channel', channel.id);
-
-                // The channel's own colour on its sign.
-                if (channel.hex) {
-                    link.style.setProperty('--ws-ch', channel.hex);
-                    link.setAttribute('data-ws-colored', '1');
-                }
-
-                if (sortable) {
-                    self.makeSortable(link, box, channel);
-                } else if (manage) {
-                    // Not in the person's own order, but staff can still drag
-                    // it into a group.
-                    self.makeDraggable(link, channel);
-                }
-
-                link.appendChild(channelIcon(channel, 'ws-ch-icon'));
-                link.appendChild(el('span', 'ws-channel-name', channel.name));
-
-                if (channel.notify === 'none') {
-                    link.appendChild(icon('bi-bell-slash', 'fg-secondary'));
-                }
-
-                if (channel.mentions) {
-                    link.appendChild(el('span', 'ws-count ws-count-mention', channel.mentions));
-                } else if (channel.unread && channel.notify !== 'none') {
-                    link.appendChild(el('span', 'ws-count', channel.unread > 99 ? '99+' : channel.unread));
-                }
-
-                // A pin at the end of the line, shown on hover (and always
-                // on a pinned channel).
-                if (channel.joined) {
-                    var pin = el('span', 'ws-pin' + (channel.pinned ? ' ws-pinned' : ''));
-                    pin.setAttribute('role', 'button');
-                    pin.title = channel.pinned ? t('unpin') : t('pin');
-                    pin.appendChild(icon(channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
-                    pin.addEventListener('click', function (event) {
-                        event.stopPropagation();
-                        self.pinChannel(channel, !channel.pinned);
-                    });
-                    link.appendChild(pin);
-                }
-
-                link.addEventListener('click', function () {
-                    self.root.classList.remove('ws-show-side');
-                    self.open(channel.id, 0);
-                });
-
-                onContext(link, function () { return self.channelActions(channel); });
-
-                return link;
-            }
-
-            function section(title, list, sortable, iconName, dropOut, key) {
-                var box = el('div', 'ws-side-section' + (sortable ? ' ws-sortable' : ''));
-                var head = el('div', 'ws-side-title');
-                var shut = !!closedParts[key];
-
-                sectionToggle(head, key, title, iconName, shut, channelsBadge(list));
-                box.appendChild(head);
-
-                // A channel dropped on the heading comes out of its group.
-                if (dropOut && manage) {
-                    self.dropTarget(head, 0, null);
-                }
-
-                // Closed, a section still shows the one that is on the screen.
-                if (shut) {
-                    list.forEach(function (channel) {
-                        if (self.channel && self.channel.id === channel.id) {
-                            box.appendChild(channelLink(channel, box, false));
-                        }
-                    });
-                } else {
-                    list.forEach(function (channel) {
-                        box.appendChild(channelLink(channel, box, sortable));
-                    });
-
-                    if (!list.length) {
-                        box.appendChild(emptyState('channels', t('no_channels'), 'ws-empty-side'));
+            return {
+                data: function () {
+                    return { channels: BOOT.channels || [], groups: BOOT.groups || [], threads: BOOT.threads || [], inbox: BOOT.inbox || 0 };
+                },
+                current: function () {
+                    return { view: self.view || '', channel: self.channel ? self.channel.id : 0, thread: self.openThreadId() };
+                },
+                manage: manage,
+                nav: {
+                    home: function () { self.showHome(true); },
+                    inbox: function () { openInbox(function () { self.sync(); }); },
+                    scheduled: function () { self.showScheduled(true); },
+                    archived: function () { self.showArchived(); },
+                    audit: function () { self.showAudit(); }
+                },
+                openChannel: function (id) { self.open(id, 0); },
+                openThread: function (thread) { self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true }); },
+                search: function (text) { self.search(text); },
+                newChannel: function () {
+                    channelForm(null, {}, function (id) { self.reloadChannels(id); });
+                },
+                palette: function () {
+                    if (window.PGWsPalette) {
+                        window.PGWsPalette.open();
                     }
-                }
+                },
+                // The workspace's own tour (includes/workspace/tour.php): it
+                // points at entries of the work and records sections.
+                tour: (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) ? function () {
+                    window.PGWsSide.openSections(['work', 'records']);
+                    window.PgTour.start(window.PG_TOUR.key);
+                } : null,
+                pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
+                decorateChannel: function (link, channel, box, sortable) {
+                    if (sortable) {
+                        self.makeSortable(link, box, channel);
+                    } else if (manage) {
+                        // Not in the person's own order, but staff can still
+                        // drag it into a group.
+                        self.makeDraggable(link, channel);
+                    }
 
-                scroll.appendChild(box);
-            }
-
-            var closed = self.closedGroups();
-            var children = self.groupTree();
-
-            function groupBox(group, parent, depth) {
-                var box = el('div', 'ws-side-group' + (depth ? ' ws-side-subgroup' : ''));
-                var head = el('div', 'ws-side-title ws-group-title');
-                var inner = el('div', 'ws-group-inner ws-sortable');
-                var shut = !!closed[group.id];
-                var toggleButton = el('button', 'ws-group-toggle');
-                var channels = byGroup[group.id] || [];
-                var kids = children[group.id] || [];
-
-                box.setAttribute('data-ws-group-box', group.id);
-
-                if (group.hex) {
-                    box.style.setProperty('--ws-group', group.hex);
-                }
-
-                toggleButton.type = 'button';
-                toggleButton.setAttribute('aria-expanded', shut ? 'false' : 'true');
-                toggleButton.title = shut ? t('grp_expand') : t('grp_collapse');
-                toggleButton.appendChild(icon(shut ? 'bi-chevron-right' : 'bi-chevron-down', 'ws-group-chevron'));
-                toggleButton.appendChild(icon(shut ? 'bi-folder2' : 'bi-folder2-open', 'ws-group-icon'));
-                toggleButton.appendChild(el('span', 'ws-group-name', group.name));
-
-                // Closed, a group still says there is something new inside.
-                var unread = self.groupUnread(group.id);
-
-                if (shut && unread) {
-                    toggleButton.appendChild(el('span', 'ws-count', unread > 99 ? '99+' : unread));
-                }
-
-                if (manage && group.access) {
-                    var key = el('span', 'ws-group-access');
-                    key.title = t('grp_access');
-                    key.appendChild(icon('bi-key'));
-                    key.appendChild(document.createTextNode(String(group.access)));
-                    toggleButton.appendChild(key);
-                }
-
-                toggleButton.addEventListener('click', function () {
-                    self.closeGroup(group.id, !shut);
-                    self.drawSide();
-                });
-                head.appendChild(toggleButton);
-                head.setAttribute('data-ws-group', group.id);
-
-                if (manage) {
+                    onContext(link, function () { return self.channelActions(channel); });
+                },
+                decorateGroup: function (head, group) {
                     var more = button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more'));
+
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
                         var rect = more.getBoundingClientRect();
@@ -5782,177 +5555,11 @@
                     onContext(head, function () { return self.groupActions(group); });
                     self.makeGroupDraggable(head, group);
                     self.dropTarget(head, group.id, group);
-                }
-
-                box.appendChild(head);
-
-                if (!shut) {
-                    channels.forEach(function (channel) {
-                        inner.appendChild(channelLink(channel, inner, channel.joined));
-                    });
-
-                    kids.forEach(function (child) {
-                        groupBox(child, inner, depth + 1);
-                    });
-
-                    if (!channels.length && !kids.length) {
-                        var empty = el('div', 'small fg-secondary px-3 ws-group-empty', manage ? t('grp_empty') : t('no_channels'));
-
-                        if (manage) {
-                            self.dropTarget(empty, group.id, null);
-                        }
-
-                        inner.appendChild(empty);
-                    }
-
-                    box.appendChild(inner);
-                }
-
-                parent.appendChild(box);
-            }
-
-            if (pinned.length) {
-                section(t('pinned'), pinned, true, 'bi-pin-angle', false, 'pinned');
-            }
-
-            // The open discussions the person is in (threads.php); none, no
-            // section. The open one and those of the open channel come
-            // first, then the unread ones, then the latest; a few are shown
-            // until the rest are asked for.
-            var THREADS_SHOWN = 5;
-            var openThread = self.openThreadId();
-            var hereId = self.channel ? self.channel.id : 0;
-            var rank = function (item) {
-                return (item.thread.id === openThread) ? 0 : ((item.thread.channel_id === hereId) ? 1 : (item.thread.unread ? 2 : 3));
+                },
+                dropTarget: function (node, groupId, group) { self.dropTarget(node, groupId, group); },
+                newGroup: function () { self.groupForm(null, {}); },
+                emptyState: function (kind, text, extra) { return emptyState(kind, text, extra); }
             };
-            var threads = (BOOT.threads || []).map(function (thread, index) {
-                return { thread: thread, index: index };
-            }).sort(function (a, b) {
-                return (rank(a) - rank(b)) || (a.index - b.index);
-            }).map(function (item) { return item.thread; });
-
-            if (threads.length) {
-                var talks = el('div', 'ws-side-section ws-side-threads');
-                var talksHead = el('div', 'ws-side-title');
-                // Closed, it lists none, not even the open one: that one has
-                // its own panel beside the channel and opens again with the
-                // address (&thread=), so keeping it left the section looking
-                // open after every click and every reload.
-                var talksShut = !!closedParts.threads;
-                var talksUnread = threads.reduce(function (sum, thread) { return sum + (thread.unread || 0); }, 0);
-
-                sectionToggle(talksHead, 'threads', t('th_section'), 'bi-chat-square-dots', talksShut, countBadge(talksUnread, false));
-                talks.appendChild(talksHead);
-
-                (talksShut ? [] : (self.threadsAll ? threads : threads.slice(0, THREADS_SHOWN))).forEach(function (thread) {
-                    var item = el('button', 'ws-channel-link ws-thread-link' + (self.openThreadId() === thread.id ? ' active' : '') + (thread.unread ? ' ws-unread' : ''));
-                    item.type = 'button';
-                    item.title = thread.title + ' · #' + thread.channel;
-                    item.appendChild(icon('bi-chat-square-dots', 'ws-ch-icon'));
-
-                    var names = el('span', 'ws-channel-name');
-                    names.appendChild(el('span', 'ws-thread-link-title', thread.title));
-                    names.appendChild(el('small', 'ws-thread-link-channel', '#' + thread.channel));
-                    item.appendChild(names);
-
-                    if (thread.unread) {
-                        item.appendChild(el('span', 'ws-count', thread.unread > 99 ? '99+' : thread.unread));
-                    }
-
-                    item.addEventListener('click', function () {
-                        self.root.classList.remove('ws-show-side');
-                        self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true });
-                    });
-                    talks.appendChild(item);
-                });
-
-                if (!talksShut && (threads.length > THREADS_SHOWN)) {
-                    var more = button('btn btn-sm btn-link pg-link-secondary ws-side-more', self.threadsAll ? t('th_show_fewer') : t('th_show_all', threads.length));
-
-                    more.addEventListener('click', function () {
-                        self.threadsAll = !self.threadsAll;
-                        self.drawSide();
-                    });
-                    talks.appendChild(more);
-                }
-
-                scroll.appendChild(talks);
-            }
-
-            if ((children[0] || []).length || manage) {
-                var groupSection = el('div', 'ws-side-section ws-side-groups');
-
-                (children[0] || []).forEach(function (group) {
-                    groupBox(group, groupSection, 0);
-                });
-
-                if (manage) {
-                    var newGroup = button('btn btn-sm btn-link pg-link-secondary ws-group-new', t('grp_new'), 'bi-folder-plus');
-                    newGroup.addEventListener('click', function () { self.groupForm(null, {}); });
-                    groupSection.appendChild(newGroup);
-                }
-
-                scroll.appendChild(groupSection);
-            }
-
-            section(t('my_channels'), mine, true, '', true, 'mine');
-
-            if (others.length) {
-                section(t('other_channels'), others, false, '', true, 'others');
-            }
-
-            var work = group(t('nav_work'), 'work');
-
-            if (work) {
-                link(work, t('my_tasks'), 'bi-check2-square', function () { window.location.href = CFG.urls.tasks; });
-
-                if (CFG.notes) {
-                    link(work, t('nav_notes'), 'bi-journal-text', function () { window.location.href = CFG.urls.notes; });
-                }
-                link(work, t('planning_board'), 'bi-calendar-week', function () { window.location.href = CFG.urls.board; });
-                link(work, t('work_calendar'), 'bi-calendar3', function () { window.location.href = CFG.urls.calendar; });
-
-                if (CFG.flows && CFG.flows.nav) {
-                    link(work, t('fl_nav'), 'bi-diagram-3', function () { window.location.href = CFG.urls.flows; });
-                }
-
-                // Staff's scheduled actions, until Flows lists them; their
-                // scheduled messages stay here.
-                var actionsHere = !!CFG.scheduled && !(CFG.flows && CFG.flows.scheduled);
-
-                if (actionsHere || CFG.scheduled_messages) {
-                    link(work, actionsHere ? t('sa_title') : t('sm_title'), 'bi-alarm', function () { self.showScheduled(true); }, 0, self.view === 'scheduled');
-                }
-            }
-
-            var records = group(t('nav_records'), 'records');
-
-            if (records) {
-                link(records, t('nav_timeline'), 'bi-clock-history', function () { window.location.href = CFG.urls.timeline; });
-                link(records, t('archived_channels'), 'bi-archive', function () { self.showArchived(); });
-
-                if (BOOT.me.rights.staff) {
-                    link(records, t('private_channels_audit'), 'bi-shield-lock', function () { self.showAudit(); });
-                }
-            }
-
-            // The settings stay at the foot of the sidebar, however long the
-            // list of channels grows.
-            if (BOOT.me.rights.settings) {
-                var foot = el('div', 'ws-side-foot');
-                link(foot, t('workspace_settings'), 'bi-sliders', function () { window.location.href = CFG.urls.settings; });
-                side.appendChild(foot);
-            }
-
-            scroll.scrollTop = keep.top;
-
-            if (keep.search) {
-                search.value = keep.search;
-            }
-
-            if (keep.focused) {
-                search.focus();
-            }
         },
 
         // ── The pinned message (includes/workspace/pins.php) ──
@@ -6471,14 +6078,6 @@
             };
         },
 
-        groupUnread: function (id) {
-            var tree = this.groupTreeIds(id);
-
-            return (BOOT.channels || []).reduce(function (sum, channel) {
-                return sum + ((tree.indexOf(channel.group_id) !== -1 && !channel.pinned && channel.joined && channel.notify !== 'none') ? (channel.unread || 0) : 0);
-            }, 0);
-        },
-
         // Tree options for a select, indented; one group and what is inside
         // it left out (a group cannot go inside itself).
         groupOptions: function (skipId) {
@@ -6497,57 +6096,6 @@
             })(0, 0);
 
             return out;
-        },
-
-        // Which groups are closed in the list: this person's, on this browser.
-        closedGroups: function () {
-            try {
-                return JSON.parse(window.localStorage.getItem('ws-groups-closed') || '{}') || {};
-            } catch (error) {
-                return {};
-            }
-        },
-
-        closeGroup: function (id, shut) {
-            var closed = this.closedGroups();
-
-            if (shut) {
-                closed[id] = 1;
-            } else {
-                delete closed[id];
-            }
-
-            try {
-                window.localStorage.setItem('ws-groups-closed', JSON.stringify(closed));
-            } catch (error) {
-                // Not kept: the group opens again next time.
-            }
-        },
-
-        // Which sections of the sidebar are closed: this person's, on this
-        // browser.
-        closedSections: function () {
-            try {
-                return JSON.parse(window.localStorage.getItem('ws-side-closed') || '{}') || {};
-            } catch (error) {
-                return {};
-            }
-        },
-
-        closeSection: function (key, shut) {
-            var closed = this.closedSections();
-
-            if (shut) {
-                closed[key] = 1;
-            } else {
-                delete closed[key];
-            }
-
-            try {
-                window.localStorage.setItem('ws-side-closed', JSON.stringify(closed));
-            } catch (error) {
-                // Not kept: the section opens again next time.
-            }
         },
 
         groupActions: function (group) {
@@ -7193,7 +6741,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            head.appendChild(channelsToggle(self.root));
+            head.appendChild(channelsToggle());
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -7223,6 +6771,7 @@
 
             if (asked && window.history && window.history.replaceState) {
                 window.history.replaceState(null, '', CFG.urls.workspace + '?view=scheduled');
+                menuAddressChanged();
             }
 
             if (part === 'messages') {
@@ -7263,7 +6812,7 @@
 
             var center = clear(self.center);
             var head = el('div', 'ws-head');
-            head.appendChild(channelsToggle(self.root));
+            head.appendChild(channelsToggle());
 
             var title = el('div', 'ws-head-title');
             var h = el('h2');
@@ -7281,6 +6830,7 @@
 
             if (asked && window.history && window.history.replaceState) {
                 window.history.replaceState(null, '', CFG.urls.workspace + '?view=home');
+                menuAddressChanged();
             }
 
             var serial = self.homeSerial = (self.homeSerial || 0) + 1;
@@ -7551,6 +7101,7 @@
             var thread = this.openThreadId();
 
             window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + this.channel.id + ((this.tab === 'board') ? '&view=board' : '') + (thread ? '&thread=' + thread : ''));
+            menuAddressChanged();
         },
 
         // Has the channel a Board tab (assets/js/workspace_board_channel.js)?
@@ -7691,6 +7242,12 @@
             var empty = el('div', 'ws-empty m-auto');
             empty.appendChild(icon('bi-chat-square-text'));
             empty.appendChild(document.createTextNode(t('pick_channel')));
+
+            // Where the menu's list is out of sight, the way to it.
+            var toggle = channelsToggle();
+
+            toggle.classList.add('mt-3');
+            empty.appendChild(toggle);
             center.appendChild(empty);
         },
 
@@ -7782,6 +7339,7 @@
 
                 if (window.history && window.history.replaceState) {
                     window.history.replaceState(null, '', CFG.urls.workspace + '?channel=' + channelId + (self.era ? '&era=' + self.era.id : '') + ((self.tab === 'board') ? '&view=board' : ''));
+                    menuAddressChanged();
                 }
 
                 self.schedule();
@@ -7983,7 +7541,7 @@
 
             // Header: name, topic, the customer, the people, the tools.
             var head = el('div', 'ws-head');
-            head.appendChild(channelsToggle(self.root));
+            head.appendChild(channelsToggle());
 
             // The channel's colour on its icon tile and a thin stripe.
             if (channel.hex) {
@@ -15023,8 +14581,7 @@
         var dragWidth = 0;
 
         function clampWidth(px) {
-            var side = main.side.getBoundingClientRect().width;
-            var max = Math.max(THREAD_MIN, main.root.clientWidth - side - CENTER_MIN);
+            var max = Math.max(THREAD_MIN, main.root.clientWidth - CENTER_MIN);
 
             return Math.min(max, Math.max(THREAD_MIN, Math.round(px)));
         }
@@ -23361,43 +22918,22 @@
             }, true);
         }
 
-        // The inbox links of the rail and its drawer are drawn with the page,
-        // so they are taken over at once rather than once the screen has
-        // loaded: a click before that would leave for the channels screen
-        // and open the inbox there, which is the long way round. The inbox
-        // needs nothing the start-up brings.
-        document.addEventListener('click', function (event) {
-            var inboxLink = event.target.closest('[data-ws-inbox]');
-            var paletteLink = event.target.closest('[data-ws-palette]');
+        // The main menu's Workspace list (workspace_side.js) opens the inbox
+        // and the search box on this screen at once, before the start-up
+        // below is back: the inbox needs nothing it brings. The channel
+        // screen hands in the rest once it has started (app.sideHooks()).
+        var inline = (CFG.mode !== 'record' && window.PGWsSide) ? window.PGWsSide.inline() : null;
 
-            // The magnifier of the rail, its drawer and the channel list.
-            if (paletteLink && window.PGWsPalette) {
-                event.preventDefault();
-
-                var navDrawer = document.getElementById('ws-nav-drawer');
-
-                if (navDrawer && window.pgUI && pgUI.drawer.isOpen(navDrawer)) {
-                    pgUI.drawer.hide(navDrawer);
+        if ((CFG.mode !== 'record') && window.PGWsSide) {
+            window.PGWsSide.attach({
+                nav: { inbox: function () { openInbox(function () {}); } },
+                palette: function () {
+                    if (window.PGWsPalette) {
+                        window.PGWsPalette.open();
+                    }
                 }
-
-                window.PGWsPalette.open();
-                return;
-            }
-
-            if (!inboxLink) {
-                return;
-            }
-
-            event.preventDefault();
-
-            var drawer = document.getElementById('ws-nav-drawer');
-
-            if (drawer && window.pgUI && pgUI.drawer.isOpen(drawer)) {
-                pgUI.drawer.hide(drawer);
-            }
-
-            openInbox(function () {});
-        });
+            });
+        }
 
         // A companion bundle (workspace_flow.js, workspace_board_channel.js)
         // is a defer script of its own and may still be downloading when
@@ -23431,8 +22967,17 @@
             }
         }
 
-        api('ws_bootstrap').then(function (data) {
+        // The channels, groups, discussions and inbox count came with the
+        // page when the menu's list printed them: not read twice.
+        api('ws_bootstrap', inline ? { lean: 1 } : {}).then(function (data) {
             BOOT = data;
+
+            if (inline) {
+                BOOT.channels = inline.channels || [];
+                BOOT.groups = inline.groups || [];
+                BOOT.threads = inline.threads || [];
+                BOOT.inbox = inline.inbox || 0;
+            }
 
             var root = document.getElementById('ws-root');
 

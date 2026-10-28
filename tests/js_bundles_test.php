@@ -80,6 +80,17 @@ function test_js_bundles_workspace_runs_last()
 	pg_assert_same('assets/js/workspace_editor.js', $sources[0], 'the writing box first');
 }
 
+// The Workspace list of the main menu is loaded on every panel page of the
+// team, so it is a small file of its own and never part of the workspace's
+// set (workspace.min.js, 655 KB), which only the workspace's screens load.
+function test_js_bundles_side_list_stands_alone()
+{
+	$bundles = pg_js_bundles();
+
+	pg_assert_same(array('assets/js/workspace_side.js'), $bundles['assets/js/workspace_side.min.js'] ?? null);
+	pg_assert_false(in_array('assets/js/workspace_side.js', $bundles['assets/js/workspace.min.js'], true), 'not in the workspace set');
+}
+
 // Running minified (the default when ENVIRONMENT_SUFFIX is not 'src') the
 // page loads the .min.js alone; a name that is not a bundle loads nothing.
 function test_js_bundle_files_pick_the_minified_file()

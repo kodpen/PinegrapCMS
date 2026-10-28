@@ -22,5 +22,5 @@ description: Parity rows of plans/workspace-flows-scheduled-merge.md: every sche
 - Record writes (3): `ws_change_source()` kind scheduled names the action; the run logs a line.
 - Screen (1): state chips, "in #channel / in note"; card (non-staff: name, time, state), follow-ups, starters, last run, Edit, Pause/Resume, Run now, Duplicate, History, Cancel; in the list, under its message, in the note strip; decision under it; form (18 templates, AI sentence, next runs); routes and `pg_panel_actions()` rows kept.
 - Entry points (1, 4): list, composer insert menu (not discussions), notes; propose_scheduled_action, drafts of kind scheduled: slice 4 (4c2 #2323: a draft card opens a new flow).
-- Links in (1): ?view=scheduled, rail (`ws_nav_groups()`) and sidebar entries ("Scheduled messages" for others), scheduled_failed without a card, scheduled_message (staff: the link names the Messages tab), tour step.
+- Links in (1): ?view=scheduled, the main menu's Workspace list (`ws_nav_groups()`, answered in place on the channel screen; "Scheduled messages" for others), scheduled_failed without a card, scheduled_message (staff: the link names the Messages tab), tour step.
 - API (5): public inbox kinds scheduled_notice (with its text), scheduled_failed.

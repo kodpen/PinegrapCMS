@@ -114,6 +114,11 @@ function pg_mfa_screen_blocked($username)
 }
 
 $error = '';
+$notice = '';
+
+// A member with a second factor may have a code texted to its contact's
+// mobile number instead (pg_sms_signin_offered()): '' when not offered.
+$sms_number = ($mode === 'verify') ? pg_sms_signin_number($user_id) : '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
@@ -178,6 +183,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
+    } elseif (($mode === 'verify') && ($action === 'sms_send')) {
+
+        // Sends are limited per account, number and address
+        // (pg_sms_code_limits()); a code sent again replaces the older one.
+        if ($sms_number === '') {
+            $error = pg_sms_code_sentence('no_number');
+        } else {
+            $sent = pg_sms_code_send('signin', 'user:' . $user_id, $sms_number);
+
+            if ($sent['error'] === '') {
+                log_activity(lang('sign-in code sent by SMS'), $username);
+
+                // Shown after the redirect, so a reload does not send again.
+                $_SESSION['software']['mfa_sms_notice'] = pg_sms_code_sentence('', $sent['masked']);
+
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/mfa.php');
+                exit();
+            } else {
+                $error = pg_sms_code_sentence($sent['error']);
+            }
+        }
+
+    } elseif (($mode === 'verify') && ($action === 'sms_verify')) {
+
+        // A texted code counts as an attempt the same way as the app's code,
+        // and passes the second step exactly as it does.
+        if (pg_mfa_attempt_blocked($user_id)) {
+            $error = pg_mfa_screen_blocked($username);
+        } elseif ($sms_number === '') {
+            $error = pg_sms_code_sentence('no_number');
+        } else {
+            $refusal = pg_sms_code_verify('signin', 'user:' . $user_id, $sms_number, $code);
+
+            if ($refusal !== '') {
+                log_activity(lang('access denied (sign-in code sent by SMS not accepted)'), $username);
+                $error = pg_sms_code_sentence($refusal);
+            } else {
+                pg_mfa_attempt_clear($user_id);
+
+                log_activity(lang('user signed in with a code sent by SMS'), $username);
+
+                pg_mfa_screen_complete($user_id, $username, $send_to, $remember);
+            }
+        }
+
     } elseif (($mode === 'setup') && ($action === 'setup_confirm') && empty($pending['codes'])) {
 
         if (pg_mfa_attempt_blocked($user_id)) {
@@ -209,6 +259,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 // -- screens -----------------------------------------------------------------
 
+if (isset($_SESSION['software']['mfa_sms_notice'])) {
+    $notice = ($error === '') ? (string) $_SESSION['software']['mfa_sms_notice'] : '';
+    unset($_SESSION['software']['mfa_sms_notice']);
+}
+
 $form_action = h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/mfa.php');
 
 $hidden = get_token_field() . '<input type="hidden" name="send_to" value="' . h($send_to) . '"/>';
@@ -216,6 +271,10 @@ $hidden = get_token_field() . '<input type="hidden" name="send_to" value="' . h(
 $messages = ($error !== '')
     ? '<div class="alert theme-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($error) . '</div>'
     : '';
+
+if ($notice !== '') {
+    $messages .= '<div class="alert theme-success" role="status"><i class="bi bi-check-circle-fill me-3" aria-hidden="true"></i>' . h($notice) . '</div>';
+}
 
 $cancel_button = '<button type="submit" name="pg_mfa_action" value="cancel" class="btn btn-outline theme-secondary w-100 mt-3" formnovalidate="formnovalidate">' . h(lang('Cancel')) . '</button>';
 
@@ -370,6 +429,32 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             </script>';
     }
 
+    // A code by SMS, for a member that may ask for one: a button that sends
+    // it and, once one was sent in this session, the field it is typed in.
+    $sms_block = '';
+
+    if ($sms_number !== '') {
+        $sms_block = '<form name="mfa_sms_send" action="' . $form_action . '" method="post" class="mb-5">
+                ' . $hidden . '
+                <button type="submit" name="pg_mfa_action" value="sms_send" class="btn btn-outline theme-secondary w-100" formnovalidate="formnovalidate"><i class="bi bi-chat-dots me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send a code by SMS to {var:1}', 'vars' => array(pg_sms_code_masked($sms_number))))) . '</button>
+            </form>';
+
+        if (pg_sms_signin_sent($user_id)) {
+            $sms_block .= '<form name="mfa_sms_verify" action="' . $form_action . '" method="post" autocomplete="off" class="mb-5">
+                ' . $hidden . '
+                <div class="mb-3">
+                    <label for="mfa_sms" class="form-label">' . h(lang('Code sent by SMS')) . '</label>
+                    <div class="otp pg-otp-fluid otp-lg" data-bs-otp="" data-bs-groups="[3,3]">
+                        <input type="text" id="mfa_sms" name="code" class="otp-input" maxlength="6" required="required" inputmode="numeric" autocomplete="one-time-code" spellcheck="false" autofocus="autofocus"/>
+                    </div>
+                </div>
+                <button type="submit" name="pg_mfa_action" value="sms_verify" class="btn btn-solid theme-primary w-100">' . h(lang('Verify')) . '</button>
+            </form>';
+        }
+
+        $sms_block .= '<p class="text-center fg-secondary small my-5">' . h(lang('or')) . '</p>';
+    }
+
     // Recovery mode first when the authenticator keys cannot be read, or
     // when the refused code was a recovery code.
     $recovery_mode = !pg_mfa_available() || (($error !== '') && (pg_mfa_code_kind($code ?? '') === 'recovery'));
@@ -379,6 +464,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys, or one of your recovery codes, to finish signing in.')) . '</p>
             ' . $messages . '
             ' . $passkey_block . '
+            ' . $sms_block . '
             <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
                 ' . $hidden . '
                 ' . pg_mfa_screen_code_field('recovery', true) . '
@@ -390,6 +476,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             '<p class="fg-secondary mb-5">' . h(lang('Use one of your passkeys to finish signing in.')) . '</p>
             ' . $messages . '
             ' . $passkey_block . '
+            ' . $sms_block . '
             <form name="mfa_cancel" action="' . $form_action . '" method="post">
                 ' . $hidden . '
                 ' . $cancel_button . '
@@ -400,6 +487,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             ' . (pg_mfa_available() ? '' : '<div class="alert theme-warning" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h(lang('The site cannot read authenticator keys right now; use one of your recovery codes, or ask the site owner.')) . '</div>') . '
             ' . $messages . '
             ' . $passkey_block . '
+            ' . $sms_block . '
             <form name="mfa_verify" action="' . $form_action . '" method="post" autocomplete="off">
                 ' . $hidden . '
                 ' . pg_mfa_screen_code_field('totp', !$recovery_mode) . '

@@ -13,7 +13,7 @@ description: How the cookie notice's answers reach consent_log: consent_answer.p
 
 ## Who is the person on a row?
 - Anonymous: none (only ip and user agent, as `pg_consent_log_record()` takes them from the request). Signed in: `USER_ID` and the person token of `USER_EMAIL_ADDRESS` (`initialize_user()`, loaded by id, so a rename does not lose it). While staff ghost a customer the row has no person: the answer is the staff member's.
-- No id is kept in the cookie, so anonymous rows of one browser cannot be tied together; asked of the owner in the PR.
+- No id is kept in the cookie, so anonymous rows of one browser cannot be tied together; decided so (#2435): each row stands alone.
 
 ## How is the endpoint protected?
 - `consent_answer.php` (root, URL-called): POST only (405), `pg_consent_answer_same_origin($_SERVER)` instead of a form token, because a cached page carries none (403): `Sec-Fetch-Site` must be `same-origin` when sent, otherwise the `Origin` host and port must equal `Host`; neither header is refused. Writes nothing while the setting is off or before 11.0.16.

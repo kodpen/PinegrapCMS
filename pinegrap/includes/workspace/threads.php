@@ -590,7 +590,7 @@ function ws_threads_for($viewer)
         INNER JOIN ws_threads t ON t.channel_id = c.id AND t.closed_at = 0
         INNER JOIN ws_channels p ON p.id = t.parent_channel_id AND p.archived_at = 0
         WHERE m.user_id = '" . $me . "'
-        ORDER BY c.last_message_at DESC
+        ORDER BY c.last_message_at DESC, c.id DESC
         LIMIT 50") as $row) {
 
         // A discussion of a channel the person no longer reads waits until

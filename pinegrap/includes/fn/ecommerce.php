@@ -2310,6 +2310,12 @@ function pg_catalog_bin_product($product_id, $user_id, $parent_id = 0)
         return false;
     }
 
+    // A component of a bundle stays in the shop until it is taken out of
+    // the bundle (includes/fn/bundles.php).
+    if (pg_bundle_is_component($product_id)) {
+        return false;
+    }
+
     foreach (pg_catalog_bin_statements('product', $product_id, array($product_id), $parent_id, $user_id) as $statement) {
         db($statement);
     }

@@ -5,7 +5,7 @@ module: sms_codes
 ---
 
 ## What is built?
-- `includes/fn/sms_codes.php`, plan step 3b: the shared code (pure, `tests/sms_codes_test.php`) and the cash-on-delivery code (#2669, decided in #2670). The member sign-in code (decided in #2672: an alternative to the app code at `mfa.php` verify for role 3 with a factor, event `signin_code`) is the next PR.
+- `includes/fn/sms_codes.php`, plan step 3b: the shared code (pure, `tests/sms_codes_test.php`), the cash-on-delivery code (#2669, decided in #2670) and the member sign-in code (decided in #2672).
 - Purposes `cod` and `signin` (`pg_sms_code_purposes()`); six digits (`pg_sms_code_new()`), ten minutes (`pg_sms_code_lifetime()`).
 
 ## Which orders need the COD code?
@@ -16,6 +16,9 @@ module: sms_codes
 - `pg_sms_cod_field_html()`: code field and "Send the code", shown by its own script while `Offline Payment` is chosen (radio or the hidden single method). Classic order preview and express order in the payment methods; custom layouts and the designer order preview through `$system`; the designer express order after both payment sections (a second copy removes itself).
 - The button posts `sms_code.php` (`purpose=cod`, token, the form's `billing_phone_number` if any, else the order's): JSON `ok, error, message`; token 403 (`pg_sms_code_token_ok()`), only the session's `incomplete` order, `off` 409, `number` 400, `limit` 429, `send` 503.
 - Sends limited by firewall buckets (`pg_sms_code_limits()`): 3 per subject in 10 min, 5 per number and 10 per address an hour; a refused send counts.
+
+## Who gets a sign-in code?
+- `pg_sms_signin_offered()`: role 3 with a factor (`pg_mfa_has_factor()`), a mobile number on the linked contact (`user.user_contact` → `contacts.mobile_phone`), event `signin_code` on. Staff (0-2) never; the code is no factor of its own (`pg_mfa_has_factor()`, `/auth/login`, ShipWorks, account page proofs, recovery unchanged). `mfa.php` verify: `sms_send` (PRG, notice in the session) and `sms_verify`, which shares `pg_mfa_attempt_blocked()` and passes as the app code does.
 
 ## How is a code kept and checked?
 - `pg_sms_code_keep(&$store, $purpose, $subject, $number, $code, $now)`: SHA-256 of purpose, subject (`order:12`, `user:5`), E.164 number and code, never the code; one per purpose, a newer replaces the older. Refuses an unknown purpose, an empty subject or number.

@@ -5987,270 +5987,29 @@ function submit_order($type) {
         $quantity = $product['quantity'];
         $product_price = sprintf("%01.2lf", $product['price'] / 100);
         $contact_group_id = $product['contact_group_id'];
-        $membership_renewal = $product['membership_renewal'];
-        $grant_private_access = $product['grant_private_access'];
-        $private_folder = $product['private_folder'];
-        $private_days = $product['private_days'];
-        $send_to_page = $product['send_to_page'];
-        $inventory = $product['inventory'];
-        $inventory_quantity = $product['inventory_quantity'];
-        $out_of_stock = $product['out_of_stock'];
-        $calendar_event_id = $product['calendar_event_id'];
-        $recurrence_number = $product['recurrence_number'];
-        $reservations = $product['reservations'];
-        $limit_reservations = $product['limit_reservations'];
-        $number_of_initial_spots = $product['number_of_initial_spots'];
 
-        // $products was read before the payment call, so the first row of a
-        // product reads its stock again right before the decrement: a sale
-        // or a restock made meanwhile would otherwise be the 'before' the
-        // stock.low crossing is decided from (two parallel checkouts both
-        // announced it, a restock during payment hid it). Later rows of the
-        // same product carry on from what the row above left; $stock_left
-        // is only set for a product that tracks stock.
-        if (isset($stock_left[$product_id])) {
-            $inventory = 1;
-            $inventory_quantity = $stock_left[$product_id];
-        } else {
-            $stock_now = db_item("SELECT inventory, inventory_quantity FROM products WHERE id = '" . (int) $product_id . "' LIMIT 1");
+        // Stock and a calendar event's spots (includes/fn/order_completion.php).
+        pg_order_complete_line_stock($product, $stock_left, $_SESSION['sessionusername'] ?? '');
+        pg_order_complete_line_reservation($product, $contact_id);
 
-            if ($stock_now) {
-                $inventory = $stock_now['inventory'];
-                $inventory_quantity = $stock_now['inventory_quantity'];
-            }
-        }
-
-        // if inventory is enabled for this product and the inventory quantity is not already zero then decrement inventory quantity
-        if (($inventory == 1) && ($inventory_quantity != 0)) {
-            // the single quotes around the quantity are necessary in order to prevent MySQL from doing strange things
-            $query = "UPDATE products SET inventory_quantity = (inventory_quantity - ?) WHERE id = ?";
-            $result = db_q($query, array((string) $quantity, (string) $product_id)) or output_error('Query failed.');
-
-            // Mark the product out of stock from the stock left after this
-            // row, not from $inventory_quantity: that value was read before
-            // the loop, so the second row of the same product (another
-            // recipient) or a row above the stock never equals it. The column
-            // is unsigned and the session sql_mode is not strict, so a sale
-            // through the stock leaves 0. The out_of_stock guard makes the
-            // flag and the warning happen once per product.
-            $result = db_q(
-                "UPDATE products SET
-                    out_of_stock = '1',
-                    out_of_stock_timestamp = UNIX_TIMESTAMP()
-                WHERE
-                    (id = ?)
-                    AND (inventory_quantity <= 0)
-                    AND (out_of_stock != '1')",
-                array((string) $product_id)) or output_error('Query failed.');
-
-            if (mysqli_affected_rows(db::$con) > 0) {
-                // The product shows as sold out from now on: every page the
-                // page cache keeps is made old once the order is through.
-                if (function_exists('pg_page_cache_mark_dirty')) {
-                    pg_page_cache_mark_dirty();
-                }
-
-                create_notification(array('action'=>'out_stock', 'type'=>'warning', 'title'=>$name . ' - ' . $short_description , 'product_id'=>$product_id, 'user'=>$_SESSION['sessionusername'] ?? ''));
-            }
-
-            // Sold here, so the outside has to be told: the product's stamp
-            // moves for updated_since listings, inventory.changed (and
-            // stock.low on the crossing) is announced and the marketplace is
-            // queued. Queued, not sent: a checkout must never wait on
-            // somebody else's server. The stock left is read back, because
-            // the decrement happened in the UPDATE.
-            $stock_left[$product_id] = pg_product_stock_changed(
-                $product_id,
-                (int) $inventory_quantity,
-                null,
-                'checkout');
-        }
-        
-        
-        // if calendars is enabled
-        // and this order item is for a calendar event reservation,
-        // and reservations is still enabled for the calendar event,
-        // then determine if we should decrement number of remaining spots,
-        // and also create auto e-mail campaigns if necessary.
-        if (
-            (CALENDARS == TRUE)
-            && ($calendar_event_id != '')
-            && ($reservations == 1)
-        ) {
-            // If limit reservations is still enabled,
-            // then decrement number of remaining spots by the quantity.
-            if ($limit_reservations == 1) {
-                // check if there is an existing remaining spots record
-                $query =
-                    "SELECT calendar_event_id
-                    FROM remaining_reservation_spots
-                    WHERE
-                        (calendar_event_id = ?)
-                        AND (recurrence_number = ?)";
-                $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
-                
-                // if a remaining spots record was found then decrement it by the quantity
-                if (mysqli_num_rows($result) > 0) {
-                    $query =
-                        "UPDATE remaining_reservation_spots
-                        SET number_of_remaining_spots = (number_of_remaining_spots - ?)
-                        WHERE
-                            (calendar_event_id = ?)
-                            AND (recurrence_number = ?)";
-                    $result = db_q($query, array((int) $quantity, (string) $calendar_event_id, (string) $recurrence_number)) or output_error('Query failed.');
-                    
-                // else a remaining spots record was not found, so create new
-                // record using number of initial spots less the spots this
-                // row reserves (the UPDATE branch above takes the quantity too)
-                } else {
-                    $number_of_remaining_spots = $number_of_initial_spots - $quantity;
-                    
-                    $query =
-                        "INSERT INTO remaining_reservation_spots (
-                            calendar_event_id,
-                            recurrence_number,
-                            number_of_remaining_spots)
-                        VALUES (
-                            ?,
-                            ?,
-                            ?)";
-                    $result = db_q($query, array((string) $calendar_event_id, (string) $recurrence_number, (string) $number_of_remaining_spots)) or output_error('Query failed.');
-                }
-            }
-
-            // Check if there are auto e-mail campaigns that should be created based on this calendar event being reserved.
-            create_auto_email_campaigns(array(
-                'action' => 'calendar_event_reserved',
-                'action_item_id' => $calendar_event_id,
-                'calendar_event_recurrence_number' => $recurrence_number,
-                'contact_id' => $contact_id));
-        }
-        
         // if contact group has not already been added to array, add it to array
         if (in_array($contact_group_id, $contact_groups) == false) {
             $contact_groups[] = $contact_group_id;
         }
 
-        // if product is a membership renewal product
-        if ($membership_renewal) {
-            // get member id for user
-            $query = "SELECT member_id, expiration_date " .
-                     "FROM contacts " .
-                     "WHERE id = ?";
-            $result = db_q($query, array((string) $contact_id)) or output_error('Query failed');
-            $row = mysqli_fetch_assoc($result);
-            $member_id = $row['member_id'];
-            $expiration_date = $row['expiration_date'];
-
-            // if user does not have a member id, set member id to the order's reference code and set new member id for user
-            if (!$member_id) {
-                $member_id = $reference_code;
-                $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
-                $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
-                $result = db_q($query, array((string) $member_id, (string) $contact_id)) or output_error('Query failed');
-                pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
-            }
-
-            // get current date
-            $current_date = date('Y-m-d');
-
-            // if expiration date is in the past or is today, then add the number of membership days to current date
-            if ($expiration_date <= $current_date) {
-                $new_expiration_date = date('Y-m-d', strtotime($current_date) + ($membership_renewal * $quantity * 86400));
-
-            // else expiration date is in the future, so add the number of membership days to expiration date
-            } else {
-                $new_expiration_date = date('Y-m-d', strtotime($expiration_date) + ($membership_renewal * $quantity * 86400));
-            }
-
-            // update expiration date for member
-            $audit_members = pg_audit_fetch_by('contacts', 'member_id', $member_id);
-            $query = "UPDATE contacts SET expiration_date = ? WHERE member_id = ?";
-            $result = db_q($query, array((string) $new_expiration_date, (string) $member_id)) or output_error('Query failed');
-            pg_audit_site_record_many('update', 'contacts', $audit_members);
-            
-            // if a membership contact group is selected and membership contact group has not already been added to the array,
-            // then add membership contact group to array, so that contact is added to contact group
-            if ((MEMBERSHIP_CONTACT_GROUP_ID != 0) && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)) {
-                $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
-            }
+        // A membership renewal adds the contact to the membership contact
+        // group, when one is selected.
+        if (
+            pg_order_complete_line_membership($product, $contact_id, $reference_code)
+            && (MEMBERSHIP_CONTACT_GROUP_ID != 0)
+            && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)
+        ) {
+            $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
         }
 
-        // if product grants private access, give user access to private folder and assign send_to_page for user
-        if ($grant_private_access) {
-            // Get access control values for this user and folder.
-            $row = db_item(
-                "SELECT 
-                    aclfolder_rights AS rights,
-                    expiration_date
-                FROM aclfolder
-                WHERE
-                    (aclfolder_user = '$user_id')
-                    AND (aclfolder_folder = '$private_folder')");
+        // Private folder access and the send-to page.
+        pg_order_complete_line_folder_access($product, $user_id);
 
-            // A first purchase finds no access row yet.
-            $rights = $row['rights'] ?? '';
-            $expiration_date = $row['expiration_date'] ?? '';
-
-            // If the user does not have edit rights and does not have infinite private rights already,
-            // then continue to give user private access or extend it.
-            if (
-                ($rights != 2)
-                && 
-                (
-                    ($rights != 1)
-                    || ($expiration_date != '0000-00-00')
-                )
-            ) {
-                // Delete existing access control record if one exists, so we can add a new one.
-                db(
-                    "DELETE FROM aclfolder
-                    WHERE
-                        (aclfolder_user = '$user_id')
-                        AND (aclfolder_folder = '$private_folder')");
-
-                $new_expiration_date = '';
-
-                // If the private access is limited in length, then prepare new expiration date.
-                if ($private_days) {
-                    // Get current date.
-                    $current_date = date('Y-m-d');
-
-                    // If no existing access control record was found or the existing expiration date is in the past or is today,
-                    // then add the number of private days to current date.
-                    if (
-                        ($expiration_date == '')
-                        || ($expiration_date <= $current_date)
-                    ) {
-                        $new_expiration_date = date('Y-m-d', strtotime($current_date) + ($private_days * $quantity * 86400));
-
-                    // Otherwise the expiration date is in the future, so add the number of private days to the expiration date.
-                    } else {
-                        $new_expiration_date = date('Y-m-d', strtotime($expiration_date) + ($private_days * $quantity * 86400));
-                    }
-                }
-
-                // Add access control record in order to give user private access.
-                db(
-                    "INSERT INTO aclfolder (
-                        aclfolder_user,
-                        aclfolder_folder,
-                        aclfolder_rights,
-                        expiration_date)
-                    VALUES (
-                        '$user_id',
-                        '$private_folder',
-                        '1',
-                        '$new_expiration_date')");
-            }
-
-            // if a send to page is set for this product, set send to page for user
-            if ($send_to_page) {
-                $query = "UPDATE user SET user_home = ? WHERE user_id = ?";
-                $result = db_q($query, array((string) $send_to_page, (string) $user_id)) or output_error('Query failed');
-            }
-        }
-        
         // if the reward program is enabled,
         // and this product gives reward points,
         // and the visitor is logged in,

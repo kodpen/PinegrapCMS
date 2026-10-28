@@ -39607,6 +39607,7 @@ const StyleDesigner = (function () {
             ['__mfa_status_text',             _sdT('Status sentence ("on since …, n recovery codes left")')],
             ['__mfa_enabled_since',           _sdT('Turned on (date)')],
             ['__mfa_recovery_remaining',      _sdT('Recovery codes left')],
+            ['__mfa_recovery_left_text',      _sdT('Recovery codes left, as a sentence (new codes by e-mail)')],
             ['__mfa_key',                     _sdT('Key to add by hand (groups of four)')],
             ['__mfa_key_uri',                 _sdT('Key link (otpauth://)')],
             ['__mfa_qr',                      _sdT('QR code of the key (HTML)')],
@@ -42084,7 +42085,8 @@ const StyleDesigner = (function () {
             ['passkey_unavailable',   _sdT('Passkeys cannot be used on this site or at this address')],
             ['passkey_asks_password', _sdT('Adding or removing a passkey asks for the password')],
             ['passkey_asks_code',     _sdT('Adding or removing a passkey asks for a code from the authenticator app')],
-            ['passkey_asks_email_code', _sdT('Adding a passkey asks for a code sent by e-mail (two-step verification is off)')]
+            ['passkey_asks_email_code', _sdT('Adding a passkey asks for a code sent by e-mail (two-step verification is off)')],
+            ['mfa_email_recovery',    _sdT('New recovery codes for the password and a code sent by e-mail (the passkeys are the second factor)')]
         ],
         account_invoices: [
             ['has_documents',      _sdT('There are documents to list')],
@@ -42415,6 +42417,7 @@ const StyleDesigner = (function () {
                 aOpts.push(['passkey_rename',          _sdT('Rename the passkey (passkey list)')]);
                 aOpts.push(['passkey_remove',          _sdT('Remove the passkey (passkey list)')]);
                 aOpts.push(['passkey_send_code',       _sdT('Send the code by e-mail (add a passkey form)')]);
+                aOpts.push(['mfa_recovery_send_code',  _sdT('Send the code by e-mail (new recovery codes form)')]);
             }
             if (region === 'order_view') {
                 aOpts.push(['order_cancel_submit', _sdT('Cancel the order (cancellation form)')]);
@@ -61465,6 +61468,31 @@ const StyleDesigner = (function () {
                             _attrs: [{ name: 'type', value: 'submit' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'text-danger small mt-2', customName: _sdT('Message'),
                             _attrs: [{ name: 'role', value: 'alert' }, { name: 'data-pg-passkey-message', value: '' }] })
+                    ]),
+                    // New recovery codes for an account whose second factor
+                    // is its passkeys: the password and a code e-mailed for
+                    // them. The Send button is wired by its binding; its
+                    // sentence goes to the data-pg-recovery-sent element.
+                    asForm(_sdT('New Codes by E-mail Form'), 'mfa_email_recovery', 'mt-4', [
+                        createNode('content', { contentType: 'heading', tag: 'h6', text: _sdT('New recovery codes'), cssClass: 'mb-2' }),
+                        createNode('content', { contentType: 'paragraph', text: _sdT('10 recovery codes left. New codes replace them.'), cssClass: 'mb-3',
+                            _bindings: { text: '__mfa_recovery_left_text' } }),
+                        asPassword('_rc_password'),
+                        createNode('semantic', { tag: 'div', cssClass: 'mb-3', customName: _sdT('E-mailed Code') }, [
+                            createNode('semantic', { tag: 'label', cssClass: 'form-label', text: _sdT('Code we e-mail you'), customName: _sdT('Label'),
+                                _attrs: [{ name: 'for', value: asId + '_rc_email_code' }] }),
+                            createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap gap-2', customName: _sdT('Code and Button') }, [
+                                createNode('semantic', { tag: 'input', cssClass: 'form-control w-auto', customName: _sdT('Code Field'),
+                                    _attrs: [{ name: 'type', value: 'text' }, { name: 'id', value: asId + '_rc_email_code' }, { name: 'name', value: 'email_code' },
+                                        { name: 'required', value: '' }, { name: 'inputmode', value: 'numeric' }, { name: 'autocomplete', value: 'one-time-code' },
+                                        { name: 'maxlength', value: '12' }, { name: 'spellcheck', value: 'false' }] }),
+                                createNode('semantic', { tag: 'button', cssClass: 'btn btn-outline-secondary', text: _sdT('Send the code'), customName: _sdT('Send Button'),
+                                    _attrs: [{ name: 'type', value: 'button' }], _bindings: { action: 'mfa_recovery_send_code' } })
+                            ]),
+                            createNode('semantic', { tag: 'div', cssClass: 'form-text', customName: _sdT('Sent'),
+                                _attrs: [{ name: 'role', value: 'status' }, { name: 'data-pg-recovery-sent', value: '' }] })
+                        ]),
+                        asButton(_sdT('New recovery codes'), 'mfa_recovery_regenerate', 'btn btn-outline-secondary', _sdT('New Codes Button'))
                     ])
                 ]);
                 return _swAcctPage(_sdT('Account Security Card'), '10', '8', [

@@ -461,6 +461,10 @@ function pg_preloader_markup()
             // A main menu row that opens its panel stays on the page; its
             // address is only for a new tab (backend.src.js, initMenuPanels()).
             if (a.hasAttribute('data-pg-menu-panel')) return;
+            // A link a script answers on this page (the Workspace list on
+            // the channel screen opens a channel in place): this listener
+            // runs first, so it cannot wait for that script's preventDefault.
+            if (a.hasAttribute('data-pg-no-curtain')) return;
             // A link the settings dialog answers is not a navigation, and a
             // curtain over a page that stays put has to be waited out. Asked
             // of the dialog rather than matched here, so there is one list of
@@ -2613,7 +2617,7 @@ function pg_menu_mode_button($state)
                         <button type="button" id="menu_mode_toggle" class="btn btn-link pg-link-body-emphasis no-popover" aria-controls="menu" aria-expanded="' . (($state !== 'hidden') ? 'true' : 'false') . '" aria-label="' . h($label) . '" title="' . h($label) . ' (Ctrl+D)" data-label-view="' . h(lang('Menu view')) . '" data-label-collapsed="' . h($names['collapsed']) . '" data-label-expanded="' . h($names['expanded']) . '" data-label-hidden="' . h($names['hidden']) . '" data-label-show="' . h(lang('Show menu')) . '" data-label-hide="' . h(lang('Hide menu')) . '">
                             <i class="bi bi-layout-sidebar-inset pg-mt-collapsed" aria-hidden="true"></i>
                             <i class="bi bi-square-half pg-mt-expanded" aria-hidden="true"></i>
-                            <i class="bi bi-square pg-mt-hidden" aria-hidden="true"></i>
+                            <i class="bi bi-layout-sidebar pg-mt-hidden" aria-hidden="true"></i>
                             <i class="bi bi-layout-sidebar pg-mt-shut" aria-hidden="true"></i>
                             <i class="bi bi-layout-sidebar-inset pg-mt-open" aria-hidden="true"></i>
                         </button>
@@ -3043,6 +3047,8 @@ function output_menu($properties = false)
     // nothing is pinned yet, and the second level of Site Settings.
     $menu_panels_unattached = array();
     $menu_panels_nested = '';
+    // What follows the rows and panels: the Workspace list's data and script.
+    $menu_tail = '';
 
     $toolbar = '';
     if (isset($properties['toolbar'])) {
@@ -3654,21 +3660,34 @@ function output_menu($properties = false)
             // Mentions, assignments and invitations not yet looked at.
             $menu_items[23]['badge'] = ws_inbox_unread_count((int) $user['id']);
             $menu_items[23]['badge_title'] = lang(array('string' => '{var:1} new item(s) for you', 'vars' => $menu_items[23]['badge']));
-            $menu_items[23]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-hash bi-me-2\'>' . lang('Channels') . '</a>';
-            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_tasks.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-check2-square bi-me-2\'>' . lang('My Tasks') . '</a>';
+            // The panel holds the Workspace list - the channels, discussions,
+            // groups and the workspace's screens - drawn by
+            // assets/js/workspace_side.js (includes/workspace/nav.php). It
+            // starts empty, so the row opens a panel by the flag rather than
+            // by counting its links.
+            $menu_items[23]['panel'] = true;
+            $ws_side_screen = ($toolbar == true) ? '' : ws_side_screen($_SERVER['SCRIPT_NAME'] ?? '');
+            $menu_items[23]['data-bs-content'] = ws_side_markup(array(
+                'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
+                'target'  => ($toolbar == true) ? '_parent' : '',
+                // The workspace's own screens open the panel by themselves
+                // while the menu shows its labels (backend.src.js).
+                'auto'    => ($ws_side_screen !== ''),
+                'loading' => lang('Loading…'),
+                'error'   => lang('Something went wrong. Please try again.'),
+                'retry'   => lang('Try again'),
+            ));
 
-            if (function_exists('ws_notes_ready') && ws_notes_ready()) {
-                $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_notes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-journal-text bi-me-2\'>' . lang('My Notes') . '</a>';
+            // The list's data comes with the page only on the workspace's
+            // own screens, which open it at once and have passed
+            // ws_screen_gate(); anywhere else it is asked for (ws_side) the
+            // first time the panel opens, so a page that never opens it
+            // pays nothing for it.
+            if ($ws_side_screen !== '') {
+                $menu_tail .= ws_side_inline(ws_side_payload(ws_viewer($user), $ws_side_screen));
             }
 
-            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_board.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar-week bi-me-2\'>' . lang('Planning Board') . '</a>';
-            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_calendar.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-calendar3 bi-me-2\'>' . lang('Work Calendar') . '</a>';
-            $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_timeline.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-clock-history bi-me-2\'>' . lang('Decision Timeline') . '</a>';
-
-            if ($ws_menu_rights['settings']) {
-                $menu_items[23]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-                $menu_items[23]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_settings.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-sliders bi-me-2\'>' . lang('Workspace Settings') . '</a>';
-            }
+            $menu_tail .= pg_js_bundle_tags('assets/js/workspace_side.min.js');
 
             // My Notes pinned to the menu by the person (the pin button of the
             // notes screen): a row of its own, drawn right under the workspace.
@@ -3874,6 +3893,8 @@ function output_menu($properties = false)
         case 'workspace_flows.php':
         case 'workspace_mcp.php':
         case 'workspace_settings.php':
+        case 'workspace_template.php':
+        case 'workspace_calendar_feed.php':
             $active_menu = 23;
             break;
         case 'workspace_notes.php':
@@ -4137,7 +4158,7 @@ function output_menu($properties = false)
         }
 
         $menu_panel_id = '';
-        if (pg_menu_row_opens_panel($menu_panel_entries, $options['href'])) {
+        if (pg_menu_row_has_panel($options, $menu_panel_entries)) {
             $menu_panel_id = 'menu_panel_' . $options['id'];
         }
 
@@ -4199,7 +4220,8 @@ function output_menu($properties = false)
     // The rows, then the panels they open; backend.src.js shows one of the
     // two at a time.
     return '<div class="pg-menu-main list-group list-group-flush" style="--bs-list-group-bg:transparent;">' . $output_all_menu_items . '</div>'
-        . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '');
+        . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '')
+        . $menu_tail;
 }
 
 /**
@@ -4372,6 +4394,24 @@ function pg_menu_row_opens_panel($entries, $row_href)
     }
 
     return !(($target === $row_href) || (substr($target, -(strlen($row_href) + 1)) === '/' . $row_href));
+}
+
+/**
+ * Whether a row of the main menu opens a panel: a row that asks for one
+ * ('panel', for a panel a script fills, such as the Workspace list), or one
+ * whose entries make it one (pg_menu_row_opens_panel()).
+ *
+ * @param array  $options the row, as output_menu() built it
+ * @param string $entries the row's entries
+ * @return bool
+ */
+function pg_menu_row_has_panel($options, $entries)
+{
+    if (!empty($options['panel']) && (trim((string) $entries) !== '')) {
+        return true;
+    }
+
+    return pg_menu_row_opens_panel($entries, isset($options['href']) ? $options['href'] : '');
 }
 
 /**
@@ -6198,7 +6238,8 @@ function pg_version_srcset($value, $version_of)
  * The workspace's own scripts are one file: every workspace screen and the
  * Workspace drawer of a record load the same set, so the browser fetches and
  * compiles it once for all of them. The scripts only some screens load
- * (the search box, the channel board, the tour) stay files of their own.
+ * (the search box, the channel board, the tour) stay files of their own, and
+ * so does the Workspace list of the main menu, which every panel page loads.
  *
  * @return array '<bundle>.min.js' => array('<source>.js', ...)
  */
@@ -6226,6 +6267,9 @@ function pg_js_bundles()
         'assets/js/workspace_tour.min.js'          => array('assets/js/workspace_tour.js'),
         'assets/js/workspace_flow.min.js'          => array('assets/js/workspace_flow.js'),
         'assets/js/workspace_guest.min.js'         => array('assets/js/workspace_guest.js'),
+        // The Workspace list of the main menu, on every panel page of the
+        // team: small, and apart from the workspace's own set.
+        'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
     );

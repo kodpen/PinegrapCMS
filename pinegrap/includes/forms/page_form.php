@@ -2674,7 +2674,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
                             <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>
@@ -2700,7 +2700,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" title="' . lang(array('string'=>'Select/Deselect All') ) . '" type="checkbox"></div>
+                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
                             <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
                         </div>
                     </div>

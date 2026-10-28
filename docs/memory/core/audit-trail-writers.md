@@ -33,4 +33,4 @@ description: Which save paths write audit_log rows, how they read the row before
 ## Personal data?
 - A deleted order or user keeps its whole row in `before_json` (card fields masked) until the person is erased.
 
-Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-workspace.md, docs/memory/core/consent-log-and-audit-trail.md, docs/memory/plans/privacy-data-pack-audit-log.md
+Related: docs/memory/core/audit-trail-stored-values.md, docs/memory/core/audit-trail-workspace.md, docs/memory/core/consent-log-and-audit-trail.md

@@ -124,7 +124,9 @@ function db_q_submit_order_forms_test_built($text)
 
 function test_db_q_submit_order_forms_value_queries_use_db_q()
 {
-	$expected = array('submit_order.php' => 67, 'includes/fn/forms.php' => 20);
+	// The order line stages (stock, reservations, membership, folder access)
+	// took 8 of submit_order.php's db_q() calls to includes/fn/order_completion.php.
+	$expected = array('submit_order.php' => 59, 'includes/fn/forms.php' => 20);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;

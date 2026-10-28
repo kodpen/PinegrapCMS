@@ -9,7 +9,7 @@ description: The /workspace/scheduled-actions routes were removed before 2026.11
 
 ## Why were they removed?
 - Owner decision (2026-10-27, `workflow/decisions-made-product.md`): scheduled work is a flow with a time, event or join start, so it goes through the flow routes (`/workspace/flows`, `workspace-flows-store.md`). The rule of #1708 moved with it: only the person, from their own team devices session, publishes, changes live or resumes a flow.
-- More flow routes come in their place, not the same ones: `plans/workspace-flows-api.md`.
+- More flow routes came in their place, not the same ones: workspace-flows-api-filters.md, workspace-flows-catalogue.md, workspace-flows-versions.md, workspace-flows-run-values.md, workspace-flows-api-templates.md, workspace-flows-run-events.md.
 
 ## What stays?
 - `/workspace/scheduled-messages` (api_threads.php): a person's "Send later" messages are not flows.

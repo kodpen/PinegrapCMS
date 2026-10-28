@@ -75,6 +75,15 @@ function pg_sms_message_events()
             'fields' => array('store', 'code'),
             'note'   => lang('While this is on, an order paid by offline payment (not one put on account) is placed only with the code texted to its billing phone number, which must be a mobile number.'),
         ),
+        // A member's sign-in code, asked for at the second step in place of
+        // the authenticator app's code.
+        'signin_code' => array(
+            'kind'   => 'otp',
+            'label'  => lang('Sign-in code'),
+            'text'   => lang('^^store^^: Your sign-in code is ^^code^^. Do not share it with anyone.'),
+            'fields' => array('store', 'code'),
+            'note'   => lang('While this is on, a member account (User role) with two-step verification may ask for a code to its contact\'s mobile phone number instead of the code from its app. Staff accounts are never offered it.'),
+        ),
     );
 }
 

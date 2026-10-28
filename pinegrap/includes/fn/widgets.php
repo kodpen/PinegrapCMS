@@ -1240,12 +1240,18 @@ function pg_sw_url_filter_query($state, $with_page = true)
 // `inexact` unless one of the records it found holds every value byte for
 // byte (the `exact` condition). Only text stored in the data is printed,
 // so a crafted link cannot put its own words on the page, its title or its
-// social card. '' otherwise.
+// social card. A reference value prints the label of the record it named
+// (`labels`), also text found in the data. '' otherwise.
 function pg_sw_url_filter_value($filter_sql, $total_records)
 {
     if (!is_array($filter_sql) || empty($filter_sql['params']) || !is_array($filter_sql['params'])) return '';
     if (!empty($filter_sql['inexact']) || (int)$total_records <= 0) return '';
-    return implode(', ', array_map('strval', $filter_sql['params']));
+    $labels = (isset($filter_sql['labels']) && is_array($filter_sql['labels'])) ? $filter_sql['labels'] : array();
+    $values = array();
+    foreach ($filter_sql['params'] as $name => $value) {
+        $values[] = isset($labels[$name]) ? (string)$labels[$name] : (string)$value;
+    }
+    return implode(', ', $values);
 }
 
 // The page number a list adds to the page's canonical: the later page it
@@ -1367,7 +1373,8 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 {
     $custom = array();
     $rows = db_items(
-        "SELECT id, name, type, multiple
+        "SELECT id, name, type, multiple"
+         . (pg_coll_ready() ? ", collection_kind, reference_page_id" : ", '' AS collection_kind, 0 AS reference_page_id") . "
          FROM form_fields
          WHERE page_id = '" . (int)$custom_form_page_id . "'
            AND type != 'information'
@@ -1421,10 +1428,17 @@ function pg_sw_filter_form_fields($custom_form_page_id)
 // before it prints a value (pg_sw_url_filter_value()). Compared by size, a
 // value PHP reads as a number but that is not a plain decimal (1e400, .5)
 // matches nothing rather than reaching the SQL unquoted.
+//
+// A collection's reference field compared with "is (not) equal to" takes
+// the record the value names by address name or code
+// (pg_coll_reference_lookup(): ?category=news) and compares its code; a
+// text box of several codes is compared by membership. An address value
+// that names a record prints that record's label (`labels`, name => text)
+// instead of the value; the canonical keeps the value.
 function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = null)
 {
     $out = array('where' => '', 'tokens' => array(), 'missing' => 0, 'invalid' => 0,
-                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '');
+                 'params' => array(), 'inexact' => false, 'address' => 0, 'exact' => '', 'labels' => array());
     if (!is_array($filters) || !$filters) return $out;
 
     $operators = array(
@@ -1503,6 +1517,17 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
             $field_id = (int)$custom[$key]['id'];
             $type     = (string)$custom[$key]['type'];
 
+            $reference = null;
+            if (($operator === 'is equal to' || $operator === 'is not equal to') && $value !== ''
+                && pg_coll_field_kind(isset($custom[$key]['collection_kind']) ? $custom[$key]['collection_kind'] : '', $type) === 'reference'
+                && !empty($custom[$key]['reference_page_id'])) {
+                $reference = pg_coll_reference_lookup((int)$custom[$key]['reference_page_id'], $value);
+                if ($reference !== null) {
+                    $value = $reference['code'];
+                    if ($url_param !== '') $out['labels'][$url_param] = $reference['label'];
+                }
+            }
+
             // A multi-select pick list or a check box keeps one row per
             // chosen value, so "is (not) equal to" counts the matching rows
             // and every other operator reads the values joined together —
@@ -1519,6 +1544,11 @@ function pg_sw_form_list_filter_sql($custom_form_page_id, $filters, $request = n
                 } else {
                     $operand_1 = "(SELECT GROUP_CONCAT(form_data.data ORDER BY form_data.id ASC SEPARATOR ', ') FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id'))";
                 }
+            } elseif ($reference !== null && $type === 'text box') {
+                $operand_1 = pg_coll_reference_holds_sql("(SELECT form_data.data FROM form_data WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id') LIMIT 1)", $value);
+                if ($url_param !== '') $exact_sql = $operand_1;
+                $value     = '1';
+                $dynamic   = '';
             } elseif ($type === 'file upload') {
                 $operand_1 = "(SELECT files.name FROM form_data LEFT JOIN files ON form_data.file_id = files.id WHERE (form_data.form_id = forms.id) AND (form_data.form_field_id = '$field_id') LIMIT 1)";
             } else {
@@ -1810,16 +1840,22 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             pg_sfv_stats_ready()
         );
         if ($counter !== null) return ($counter === '') ? null : array('sql' => $counter, 'join' => '');
-        $fid = (int)db_value(
-            "SELECT id FROM form_fields
+        $row = db_item(
+            "SELECT id, type" . (pg_coll_ready() ? ", collection_kind" : ", '' AS collection_kind") . "
+             FROM form_fields
              WHERE page_id = '" . e($custom_form_page_id) . "'
                AND name = '" . e($field) . "'
              LIMIT 1"
         );
+        $fid = $row ? (int)$row['id'] : 0;
         if ($fid <= 0) return null;
         $join = "LEFT JOIN form_data $alias
                    ON $alias.form_id = forms.id
                   AND $alias.form_field_id = '$fid'";
+        // A collection's number field sorts as a number, empty ones last.
+        if (pg_coll_field_kind($row['collection_kind'], (string)$row['type']) === 'number') {
+            return array('sql' => pg_coll_number_order_sql($alias, $direction), 'join' => $join);
+        }
         return array('sql' => "$alias.data $direction", 'join' => $join);
     };
 
