@@ -1,6 +1,6 @@
 ---
 name: country-names-display
-description: Country names on screen: pg_geo_country_label() (lang() of the stored name, else intl by code) and pg_geo_sort_by_label() order every country list in the current language; the stored names and codes are untouched (#2522)
+description: Country names on screen: pg_geo_country_label() (lang() of the stored name, else intl by code) and pg_geo_sort_by_label() name and order every country list in the current language (#2522)
 ---
 
 ## How is a stored country named on screen?
