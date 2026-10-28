@@ -753,6 +753,9 @@ define('MAX_IMAGE_PREVIEW_LARGE', (int) ($row['max_image_preview_large'] ?? 0) =
 // Page requests on another host name go to config.hostname with a 301
 // (2026.11.0, 11.0.52; get_page.php). Off before the upgrade.
 define('MAIN_HOST_REDIRECT', (int) ($row['main_host_redirect'] ?? 0) == 1);
+// A product review may carry one image (2026.11.0, 11.0.57;
+// includes/fn/reviews.php). Off before the upgrade.
+define('REVIEW_PHOTOS', (int) ($row['review_photos'] ?? 0) == 1);
 
 // Open Graph and structured data settings (2026.4.4). Read with a fallback so
 // an installation that takes the code without running the database upgrade

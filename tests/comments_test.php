@@ -304,7 +304,7 @@ function test_comments_thread_add_comment_wiring()
 	// INSERT, with the form state dropped before the error page, so the
 	// refused item and the typed text do not reach the form of the next item.
 	$item_refusal = strpos($add, "if (\$comment_thread['refusal'] === 'item')");
-	$review_gate = strpos($add, 'pg_review_gate_applies($item_type, $item_id)');
+	$review_gate = strpos($add, '$is_product_review = pg_review_gate_applies($item_type, $item_id)');
 
 	pg_assert_same(1, substr_count($add, "\$comment_thread['refusal'] === 'item'"), 'the item refusal is answered in one place');
 	pg_assert_true(($item_refusal !== false) && ($review_gate !== false) && ($page_refusal < $item_refusal) && ($item_refusal < $review_gate) && ($item_refusal < $insert), 'the item refusal after the other refusals, before the review gate and the INSERT');

@@ -260,7 +260,7 @@ foreach ($comments as $comment) {
                 <td class="align-middle text-center">' . $output_featured_check_mark . '</td>
                 <td class="align-middle"><span class="badge theme-primary fw-light">'.$output_date_and_time.'</span></td>
                 <td class="align-middle text-center">' . $output_publishcancel_check_mark . '</td>
-                <td class="align-middle"><p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p></td>
+                <td class="align-middle">' . (pg_comment_file_is_image($comment['file_name'] ?? '') ? '<img src="' . h(OUTPUT_PATH . encode_url_path($comment['file_name'])) . '" alt="' . h(lang('Photo')) . '" loading="lazy" class="img-thumbnail float-start me-2" style="width: 50px; height: 50px; object-fit: cover">' : '') . '<p>' . h(truncate($comment['message'], 84, $dots = "...")) . '</p></td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' =>  $comment['created_timestamp'])) . $created_username . '</td>
             </tr>';
     }
