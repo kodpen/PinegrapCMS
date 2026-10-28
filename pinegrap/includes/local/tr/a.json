@@ -1994,6 +1994,8 @@
     "Also allow User to delete pages in selected folders": "Ayrıca Kullanıcının seçili klasörlerdeki sayfaları silmesine izin ver",
     "Also allow User to publish calendar events for selected calendars": "Ayrıca Kullanıcının seçili takvimler için takvim etkinliklerini yayınlamasına izin ver",
     "Also allow User to view card data": "Ayrıca Kullanıcının kart verilerini görüntülemesine izin ver",
+    "Also convert the page that takes this style from its folder": "Stili klasöründen alan sayfayı da dönüştür",
+    "Also convert the {var:1} pages that take this style from their folder": "Stili klasöründen alan {var:1} sayfayı da dönüştür",
     "Also duplicate Product Groups inside this Product Group": "Ayrıca bu Ürün Grubu içindeki Ürün Gruplarını çoğalt",
     "Also duplicate Products inside this Product Group": "Ayrıca bu Ürün Grubu içindeki Ürünleri çoğalt",
     "Also e-mail it to": "Şu adreslere de e-postayla gönder",
