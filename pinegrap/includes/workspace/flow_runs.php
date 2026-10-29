@@ -1044,6 +1044,46 @@ function ws_flow_task_description($description, $marker)
 }
 
 /**
+ * The title and description a task box opens its task with, filled as a
+ * task opened without waiting fills them: the {{node.<id>.<field>}} and
+ * {{trigger.<field>}} values (ws_step_fill_nodes(), escaped as a message's),
+ * then the run's {{date}}, {{record}} and the rest through $fill. The title
+ * is one line, at most as long as a box's title. Pure but for $fill.
+ *
+ * @param array         $config the box's settings: title, description
+ * @param array         $values ws_step_run_values(), empty for no run
+ * @param callable|null $fill   text => text, ws_scheduled_fill() with the run's context; null leaves those tokens
+ * @return array title, description, texts (key, text), empty (tokens filled in empty)
+ */
+function ws_flow_task_texts($config, $values, $fill = null)
+{
+    $target = ws_step_fill_target('task', array());
+    $tried = array('action' => array(), 'texts' => array(), 'empty' => array());
+
+    foreach (array('title', 'description') as $key) {
+        $text = (string) ($config[$key] ?? '');
+        $tried['action'][$key] = ws_step_fill_nodes($text, $values, $target);
+        $tried['texts'][] = array('key' => $key, 'text' => $tried['action'][$key]);
+        $tried['empty'] = array_values(array_unique(array_merge($tried['empty'], ws_step_fill_missing($text, $values))));
+    }
+
+    // The same texts a task opened without waiting has its run fill.
+    if ($fill !== null) {
+        $tried = ws_step_try_scheduled('task_open', $tried, $fill);
+    }
+
+    $title = mb_substr(trim((string) preg_replace('/[\x00-\x1F\x7F]+/u', ' ', $tried['action']['title'])), 0, 200);
+    $description = (string) $tried['action']['description'];
+
+    return array(
+        'title'       => $title,
+        'description' => $description,
+        'texts'       => array(array('key' => 'title', 'text' => $title), array('key' => 'description', 'text' => $description)),
+        'empty'       => $tried['empty'],
+    );
+}
+
+/**
  * The name a box goes by in the line of its task: its label, or its id; a
  * name another box of the graph also goes by gets the box's id beside it, so
  * the line of one box never matches the task of another.
@@ -2476,24 +2516,25 @@ function ws_flow_step_task_people($owner, $config, $run, $department_id)
 
 /**
  * The task a box's first try opened before its request died, found by its
- * owner, title and the last line of its description (ws_flow_task_marker(),
- * which names the run and the box), opened since the box became ready. A
+ * owner and the last line of its description (ws_flow_task_marker(), which
+ * names the run and the box), opened since the box became ready; not by its
+ * title, whose filled values ({{time}}, a record's name) may read otherwise
+ * now. A
  * task another box of the run already holds is never taken, and of two the
  * newest is. The line is matched as it is: a backslash, % or _ in a name is
  * no pattern.
  *
  * @param array  $owner
  * @param int    $run_id
- * @param string $title
  * @param string $marker
  * @param int    $since  when the box became ready
  * @return int the task, 0 for none
  */
-function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
+function ws_flow_step_task_find($owner, $run_id, $marker, $since)
 {
     return (int) db_value("SELECT id FROM ws_tasks
         WHERE created_at >= '" . (int) $since . "'
-        AND creator_id = '" . (int) $owner['id'] . "' AND title = '" . e($title) . "'
+        AND creator_id = '" . (int) $owner['id'] . "'
         AND description LIKE '%" . e(addcslashes($marker, '\\%_')) . "'
         AND NOT EXISTS (SELECT 1 FROM ws_flow_run_steps
             WHERE ws_flow_run_steps.run_id = '" . (int) $run_id . "' AND ws_flow_run_steps.effect = CONCAT('task:', ws_tasks.id))
@@ -2523,12 +2564,24 @@ function ws_flow_step_task_find($owner, $run_id, $title, $marker, $since)
 function ws_flow_step_task($run, $flow, $step, $node, $owner)
 {
     $config = $node['config'];
-    $title = (string) $config['title'];
     $context = ws_flow_run_context($run);
-    $marker = ws_flow_task_marker((string) ($context['flow_name'] ?? $flow['name']), (int) $run['id'], ws_flow_box_unique_name(ws_flow_run_graph($run), $node));
+    $graph = ws_flow_run_graph($run);
+
+    // The title and description filled as a step box's texts are: the
+    // values of the boxes before it and of what started the run with the
+    // owner's rights now, then the run's {{date}}, {{record}} and the rest.
+    $values = ws_step_run_values($run, $graph, $owner, $context);
+    $fill = array('viewer' => $owner, 'row' => ws_step_action_row($run, $context, ws_step_run_anchor($context))) + ws_step_trigger_context($context);
+    $texts = ws_flow_task_texts($config, $values, function ($text) use ($fill) {
+        return ws_scheduled_fill($text, $fill);
+    });
+
+    // A title that was only values the run left empty: the box's name.
+    $title = ($texts['title'] !== '') ? $texts['title'] : ws_flow_box_name($node);
+    $marker = ws_flow_task_marker((string) ($context['flow_name'] ?? $flow['name']), (int) $run['id'], ws_flow_box_unique_name($graph, $node));
     $channel_id = ws_flow_run_channel_id($run);
     $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
-    $task_id = ((int) $step['attempt'] > 1) ? ws_flow_step_task_find($owner, (int) $run['id'], $title, $marker, (int) $step['ready_at']) : 0;
+    $task_id = ((int) $step['attempt'] > 1) ? ws_flow_step_task_find($owner, (int) $run['id'], $marker, (int) $step['ready_at']) : 0;
     $adopted = ($task_id > 0);
     $unassigned = false;
 
@@ -2547,7 +2600,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
 
         $made = ws_task_create($owner, array(
             'title'         => $title,
-            'description'   => ws_flow_task_description($config['description'], $marker),
+            'description'   => ws_flow_task_description($texts['description'], $marker),
             'priority'      => (string) $config['priority'],
             'due_date'      => (string) ws_flow_due_date($step['ready_at'], $config['due_in']),
             'department_id' => $people['department_id'],

@@ -502,7 +502,8 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     }
 
     db("UPDATE ws_mail_items SET message_id = '" . (int) $message . "' WHERE id = '" . $item_id . "'");
-    db("UPDATE ws_mail_conversations SET last_out_at = '" . $now . "',
+    // Answered: the conversation waits for the customer, whose next mail opens it again.
+    db("UPDATE ws_mail_conversations SET last_out_at = '" . $now . "', status = 'waiting', closed_at = 0,
             first_reply_at = IF(first_reply_at = 0, '" . $now . "', first_reply_at), updated_at = '" . $now . "'
         WHERE id = '" . $conversation_id . "'");
 

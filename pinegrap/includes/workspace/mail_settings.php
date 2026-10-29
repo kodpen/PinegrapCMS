@@ -494,6 +494,13 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         return;
     }
 
+    $auto = ws_mail_auto_reply_input($_POST);
+
+    if (!$auto['ok']) {
+        $liveform->add_error($auto['error']);
+        return;
+    }
+
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
 
@@ -529,7 +536,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
 
     $set = "name = '" . e($values['name']) . "', address = '" . e($values['address']) . "', channel_id = '" . (int) $values['channel_id'] . "',
         settings = '" . e(json_encode($settings)) . "', folder = '" . e($values['folder']) . "', after_fetch = '" . e($values['after_fetch']) . "',
-        reply_via = '" . e($values['reply_via']) . "',
+        reply_via = '" . e($values['reply_via']) . "', auto_reply = '" . (int) $auto['auto_reply'] . "', auto_reply_text = '" . e($auto['auto_reply_text']) . "',
         enabled = '" . (int) $values['enabled'] . "', updated_at = '" . $now . "'";
 
     if ($box) {
@@ -594,6 +601,7 @@ function ws_mail_box_form($self_url, $box, $channels)
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
+                ' . ws_mail_auto_reply_fields($prefix, $box) . '
                 <div class="md:col-12">
                     <div class="form-field">
                         <div class="switch"><input type="checkbox" name="enabled" value="1" id="' . $prefix . 'enabled"' . ((!$box || (int) $box['enabled'] === 1) ? ' checked' : '') . '></div>

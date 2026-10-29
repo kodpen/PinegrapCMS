@@ -382,6 +382,9 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'ack'         => $deleted ? null : ($extra['acks'][$id] ?? null),
         // The conversation a mail card answers by e-mail (mail_reply.php), 0 for none.
         'mail_reply'  => ($mail && !$deleted && function_exists('ws_mail_reply_offer')) ? ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post) : 0,
+        // Its status and holder, for the same reader (mail_status.php), null for none.
+        'mail_state'  => ($mail && !$deleted && function_exists('ws_mail_state_offer'))
+            ? ws_mail_state_offer($extra['mail'][(int) $row['sender_id']] ?? null, ws_mail_reply_offer($row, $extra['mail'][(int) $row['sender_id']] ?? null, $can_post), (int) $viewer['id']) : null,
         // The same test as ws_ack_can_request(), from what is known already.
         'ack_can_request' => $can_post && !$deleted && function_exists('ws_acks_ready') && ws_acks_ready()
             && in_array($row['kind'], array('message', 'note', 'decision'), true) && in_array($row['sender_kind'], array('user', 'app'), true)

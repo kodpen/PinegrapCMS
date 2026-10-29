@@ -4,7 +4,7 @@ description: "Add value" in a Flows box's side panel (data-passing D6): the text
 ---
 
 ## Which fields have it?
-- The texts a run fills (`texts` of `ws_step_kinds()`): post body, e-mail subject and body, notify text, task_open description, webhook text, digest subject and intro, report title, check-in question, approval text. `valueField()` in workspace_flow.js; it replaced the `fl_values_help` hint (now `fl_values_hint`). Titles (the box label) and the waiting task box (it fills no values at run time) keep a plain input.
+- The texts a run fills (`texts` of `ws_step_kinds()`): post body, e-mail subject and body, notify text, task_open and task box description, webhook text, digest subject and intro, report title, check-in question, approval text. `valueField()` in workspace_flow.js; it replaced the `fl_values_help` hint (now `fl_values_hint`). Titles (the box label) keep a plain input.
 
 ## What does the list offer?
 - `valueGroups(node)`: what started the run first (`trigger_outputs` of `ws_flow_js_config()`: the start kind's, an event box's by its event), then every box before the box along the arrows in `orderedNodes()` order with text, outcome, status and its `outputs` (a web check's by mode, a report's counts as `ws_step_outputs()` keys them). A start that gives nothing (manual, schedule) is left out; so are later boxes and the box itself.

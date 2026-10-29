@@ -2539,7 +2539,7 @@ function pg_designer_settings_framework_rows($ctx)
 function pg_designer_pick_page_modal()
 {
     return '
-        <dialog class="dialog dialog-scrollable" id="sdPickPageModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+        <dialog class="dialog dialog-scrollable" id="sdPickPageModal" data-bs-theme="dark" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-files me-3"></span>' . lang('Select Page') . '</h5>
                         <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
@@ -2566,7 +2566,7 @@ function pg_designer_pick_page_modal()
 function pg_designer_import_modal()
 {
     return '
-        <dialog class="dialog" id="sdImportModal" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
+        <dialog class="dialog" id="sdImportModal" data-bs-theme="dark" style="background:#1e2127; color:#c9d1d9; border:1px solid #30363d;">
                     <div class="dialog-header" style="border-color:#30363d;">
                         <h5 class="dialog-title fs-md"><span class="bi bi-file-earmark-code me-3"></span>' . lang('Import HTML / ZIP') . '</h5>
                         <button type="button" class="btn-close fg-white" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>

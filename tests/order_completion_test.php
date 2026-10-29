@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -104,11 +104,15 @@ function test_order_completion_tail_writes_in_order()
 		'comment e-mails' => array('send_comment_email_to_administrators('),
 		'page e-mailed' => array("'Product Information'"),
 		'product campaigns' => array("'action' => 'product_ordered'"),
+		'private access' => array('ECOMMERCE_PRIVATE_FOLDER_ID'),
 		'reward points' => array('UPDATE user SET user_reward_points = ?'),
+		'reward membership' => array('UPDATE contacts SET expiration_date = ? WHERE id = ?'),
+		'reward e-mail' => array('ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
 		'visitor record' => array('UPDATE visitors'),
 		'activity log' => array("lang('Order was completed')"),
+		'new_order notification' => array("'action' => 'new_order'"),
 		'ERP invoice' => array('pg_erp_auto_invoice('),
 		'cart emptied' => array("unset(\$_SESSION['ecommerce']['order_id']);"),
 	);
@@ -524,4 +528,35 @@ function test_order_completion_email_page_bcc()
 {
 	pg_assert_same('a@example.com', pg_order_email_page_bcc('a@example.com', 'shop@example.com'), 'the product\'s');
 	pg_assert_same('shop@example.com', pg_order_email_page_bcc('', 'shop@example.com'), 'else the store\'s');
+}
+
+function test_order_completion_submit_order_finishes_through_the_stage_functions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	foreach (array('pg_order_line_reward_points', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+	}
+
+	pg_assert_same(0, substr_count($source, 'aclfolder'), 'no folder access write of its own');
+	pg_assert_same(0, substr_count($source, 'user_reward_points'), 'no reward points of its own');
+	pg_assert_same(0, substr_count($source, 'UPDATE email_campaigns'), 'no campaign cancel of its own');
+	pg_assert_same(0, substr_count($source, 'UPDATE visitors'), 'no visitor write of its own');
+	pg_assert_same(0, substr_count($source, "'new_order'"), 'no notification of its own');
+}
+
+function test_order_completion_reward_membership_until()
+{
+	pg_assert_same('0000-00-00', pg_order_reward_membership_until('2026-12-01', 0, '2026-11-10'), 'no days: lifetime');
+	pg_assert_same('2026-12-31', pg_order_reward_membership_until('2026-12-01', 30, '2026-11-10'), 'a future end moves on');
+	pg_assert_same('2026-12-10', pg_order_reward_membership_until('2026-11-01', 30, '2026-11-10'), 'a past end starts from today');
+	pg_assert_same('2026-12-10', pg_order_reward_membership_until('', 30, '2026-11-10'), 'no end yet starts from today');
+	pg_assert_same('2026-12-10', pg_order_reward_membership_until('0000-00-00', 30, '2026-11-10'), 'a lifetime membership gets the days from today, as before');
+}
+
+function test_order_completion_line_reward_points()
+{
+	pg_assert_same(15, pg_order_line_reward_points(array('reward_points' => '5', 'quantity' => '3'), true), 'points times quantity');
+	pg_assert_same(0, pg_order_line_reward_points(array('reward_points' => '5', 'quantity' => '3'), false), 'the program is off');
+	pg_assert_same(0, pg_order_line_reward_points(array('reward_points' => '0', 'quantity' => '3'), true), 'a product without points');
 }

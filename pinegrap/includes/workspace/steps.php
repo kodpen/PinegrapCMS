@@ -1140,6 +1140,26 @@ function ws_step_run_anchor($context)
 }
 
 /**
+ * The values a box of a run fills into its texts: those of the boxes the run
+ * has settled so far, of what started it with the owner's rights now
+ * (ws_step_trigger_values_for()), and of the value boxes.
+ *
+ * @param array $run     ws_flow_runs row
+ * @param array $graph   the run's graph
+ * @param array $owner   the flow's owner, as the workspace sees their rights
+ * @param array $context ws_flow_run_context()
+ * @return array ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ */
+function ws_step_run_values($run, $graph, $owner, $context)
+{
+    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
+        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
+    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
+
+    return ws_flow_pure_values($graph, $values) + $values;
+}
+
+/**
  * Carries out a step box this request claimed, with the owner's rights now:
  * writes that it began, checks the step again, fills in the values of the
  * boxes before it and does it.
@@ -1186,11 +1206,8 @@ function ws_step_run($run, $step, $node, $graph, $owner)
         return;
     }
 
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
     $context = ws_flow_run_context($run);
-    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
-    $values = ws_flow_pure_values($graph, $values) + $values;
+    $values = ws_step_run_values($run, $graph, $owner, $context);
 
     $anchor = ws_step_run_anchor($context);
     $row = ws_step_action_row($run, $context, $anchor);
@@ -1412,8 +1429,12 @@ function ws_flow_box_try($viewer, $flow, $data)
         case 'manual':
             return array('outcome' => 'next', 'said' => lang('The flow starts when somebody runs it.')) + $answer;
 
+        // Its title and description as the run opens the task with them.
         case 'task':
-            $title = ws_step_fill_nodes((string) ($node['config']['title'] ?? ''), $values, ws_step_fill_target('task', array()));
+            $texts = ws_flow_task_texts($node['config'], $values, ($fill !== null) ? function ($text) use ($fill) {
+                return ws_scheduled_fill($text, $fill);
+            } : null);
+            $title = $texts['title'];
 
             $hours = function_exists('ws_flow_timeout_hours') ? ws_flow_timeout_hours($node['config']) : 0;
 
@@ -1421,8 +1442,8 @@ function ws_flow_box_try($viewer, $flow, $data)
                 'said'  => ($hours > 0)
                     ? lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled, at most {var:2} hours.', 'vars' => array($title, $hours)))
                     : lang(array('string' => 'Opens the task “{var:1}” and waits until it is done or cancelled.', 'vars' => $title)),
-                'texts' => array(array('key' => 'title', 'text' => $title)),
-                'empty' => ws_step_fill_missing((string) ($node['config']['title'] ?? ''), $values),
+                'texts' => $texts['texts'],
+                'empty' => $texts['empty'],
             ) + $answer;
 
         case 'end':

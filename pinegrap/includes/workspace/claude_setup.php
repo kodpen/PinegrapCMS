@@ -249,7 +249,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
                 array('claude.ai/code/routines', 'New routine', 'Pinegrap Workspace', 'Instructions')
             ),
             'extra' => '<a class="btn btn-sm btn-outline theme-secondary mb-3" href="https://claude.ai/code/routines" target="_blank" rel="noopener"><i class="bi bi-box-arrow-up-right me-1" aria-hidden="true"></i>claude.ai/code/routines</a>'
-                . $copy('ws-claude-prompt', $prompt, 8),
+                . $copy('ws-claude-prompt', $prompt, 8, lang('The prompt for the routine')),
         ),
         array(
             'art'   => 'environment',
@@ -259,7 +259,7 @@ function ws_claude_setup_guide($base, $host, $prompt, $copy)
                 array('Instructions', 'Default', 'Add cloud environment', 'Network access', 'Custom', 'Allowed domains', 'Create environment')
             ),
             'more'  => ws_claude_setup_credentials_text(),
-            'extra' => $copy('ws-claude-host', $host),
+            'extra' => $copy('ws-claude-host', $host, 1, lang('Domain')),
         ),
         array(
             'art'   => 'trigger',

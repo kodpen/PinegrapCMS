@@ -257,7 +257,7 @@ function test_workspace_mail_box_form_sending_fields()
 
 function test_workspace_mail_sent_answer_is_drawn_as_sent()
 {
-	$item = workspace_mail_card_test_item(array('direction' => 'out', 'from_email' => 'support@shop.test', 'to_list' => 'ayse@example.com', 'auth' => 'pass'));
+	$item = workspace_mail_card_test_item(array('direction' => 'out', 'user_id' => 5, 'from_email' => 'support@shop.test', 'to_list' => 'ayse@example.com', 'auth' => 'pass'));
 	$html = ws_mail_card_html(array('id' => 101, 'file_id' => 0, 'body' => 'On its way.'), $item);
 
 	pg_assert_contains(h(lang('Sent by e-mail')), $html);
