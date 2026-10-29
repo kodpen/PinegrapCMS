@@ -116,8 +116,8 @@ foreach ($rows as $row) {
             </td>
             <td class="align-middle text-nowrap" data-order="' . h($row['issue_date']) . '">' . h(prepare_form_data_for_output($row['issue_date'], 'date')) . '</td>
             <td class="align-middle text-nowrap chart_label">' . h($row['gib_number']) . '</td>
-            <td style="max-width:280px" class="align-middle text-truncate">
-                <div class="text-truncate">' . h($row['supplier_title']) . '</div>
+            <td style="max-width:280px" class="align-middle text-wrap text-break">
+                <div class="text-break">' . h($row['supplier_title']) . '</div>
                 <div class="small fg-secondary">' . h($row['supplier_tax_number']) . '</div>
             </td>
             <td class="align-middle text-nowrap">' . h(erp_edoc_inbox_type_label($row['invoice_type'])) . '<div class="small fg-secondary">' . h($row['profile']) . '</div></td>

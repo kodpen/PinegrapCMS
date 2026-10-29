@@ -50,7 +50,7 @@ foreach ($rows as $row) {
         <tr>
             <td class="text-nowrap"><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_purchase_order.php?id=' . (int) $row['id'] . '">' . h((string) $row['full_number']) . '</a></td>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['issue_date'])) . '">' . h(prepare_form_data_for_output((string) $row['issue_date'], 'date')) . '</td>
-            <td style="max-width:280px" class="text-truncate">' . h((string) $row['account_title']) . '</td>
+            <td style="max-width:280px" class="text-break">' . h((string) $row['account_title']) . '</td>
             <td class="text-nowrap' . ($late ? ' fg-danger' : '') . '" data-sort="' . h(str_replace('-', '', $expected)) . '">'
                 . (($expected > '0000-00-00') ? h(prepare_form_data_for_output($expected, 'date')) : '<span class="fg-secondary">—</span>')
                 . ($late ? ' <span class="badge theme-danger">' . lang('Late') . '</span>' : '') . '</td>
