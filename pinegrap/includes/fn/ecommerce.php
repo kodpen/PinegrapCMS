@@ -9969,20 +9969,38 @@ function pg_key_code_active($key_code, $today)
 /**
  * The key code list's cells a quick edit changes, drawn the one way the list
  * and the answer to an edit both use: the code coloured by whether it works
- * today, the enabled mark and the last change.
+ * today with the reason under it when it does not, the enabled mark and the
+ * last change.
  *
- * @param array  $key_code a row as pg_key_code_active() reads it, with
+ * @param array  $key_code a row as pg_key_code_active() reads it, with code,
  *                         last_modified_timestamp and last_modified_username
  *                         (empty when nobody is recorded)
  * @param string $today    Y-m-d
- * @return array 'code' => array('class'), 'enabled' and 'last_modified' => array('html', 'class')
+ * @return array 'code', 'enabled' and 'last_modified' => array('html', 'class')
  */
 function pg_key_code_list_cells($key_code, $today)
 {
     $username = (string) ($key_code['last_modified_username'] ?? '');
+    $active = pg_key_code_active($key_code, $today);
+    $expires = (string) $key_code['expiration_date'];
+    $reason = '';
+
+    // The code's own state first: the offer matters only once the code works.
+    if (!$active) {
+        if (empty($key_code['enabled'])) {
+            $reason = lang('Disabled');
+        } elseif (($expires !== '0000-00-00') && ($expires < $today)) {
+            $reason = lang('Expired');
+        } else {
+            $reason = lang('Offer not running');
+        }
+    }
 
     return array(
-        'code'          => array('class' => 'chart_label align-middle ' . (pg_key_code_active($key_code, $today) ? 'status_enabled fg-success' : 'status_disabled fg-danger')),
+        'code'          => array(
+            'html'  => h((string) ($key_code['code'] ?? '')) . (($reason !== '') ? pg_list_status_word($reason) : ''),
+            'class' => 'chart_label align-middle ' . ($active ? 'status_enabled fg-success' : 'status_disabled fg-danger'),
+        ),
         'enabled'       => array('html' => !empty($key_code['enabled']) ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'class' => 'align-middle text-center'),
         'last_modified' => array(
             'html'  => get_relative_time(array('timestamp' => $key_code['last_modified_timestamp']))

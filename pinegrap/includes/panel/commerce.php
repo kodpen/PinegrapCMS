@@ -976,7 +976,7 @@ function pg_panel_get_unselected_products($request, $action)
             '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $product['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($product['name'])))) . '"/></td>' .
             '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $output_image_column .
-            '<td class="chart_label align-middle ' . $status_class . '">' . h($product['name']) . '</td>' .
+            '<td class="chart_label align-middle ' . $status_class . '">' . h($product['name']) . (($product['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
             '<td class="align-middle ' . $status_class . '">' . h($product['short_description']) . '</td>' .
             '<td class="align-middle text-end">' . prepare_amount($product['price']) . '</td>' .
             '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $product['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $product['name']) . '" style="text-align: right;width:60px;" /></td>' .

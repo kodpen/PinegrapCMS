@@ -1404,6 +1404,20 @@ function pg_list_edit_reply($data, $status = 200)
 
 
 /**
+ * A short line under a list cell's coloured text that names the state the
+ * colour stands for (Disabled, Expired …), so the state is not told by the
+ * green or red alone.
+ *
+ * @param string $text translated, not escaped
+ * @return string
+ */
+function pg_list_status_word($text)
+{
+    return '<div class="small fg-secondary">' . h($text) . '</div>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a

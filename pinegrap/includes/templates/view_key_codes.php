@@ -64,9 +64,7 @@ if (!defined('PG_INIT_LOADED')) {
 									<td class="align-middle text-start">
                 					    <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="<?=lang(array('string'=>'Edit'))?>" onclick="window.location.href='edit_key_code.php?id=<?=$key_code['id']?>'"><i class="bi bi-pencil"></i></button>
                 					</td>
-									<td class="<?=$key_code['cells']['code']['class']?>" data-pg-cell="code">
-										<?=h($key_code['code'])?>
-									</td>
+									<td class="<?=$key_code['cells']['code']['class']?>" data-pg-cell="code"><?=$key_code['cells']['code']['html']?></td>
 									<td class="align-middle">
 										<?php if ($key_code['offer_id']): ?>
 										<a class="btn btn-link pg-link-secondary py-0 mb-3 badge" href="edit_offer.php?id=<?=$key_code['offer_id']?>" title="<?=lang('Edit Offer')?>">
