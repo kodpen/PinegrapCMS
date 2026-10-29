@@ -19,6 +19,7 @@
 // set memory limit to unlimited
 ini_set('memory_limit', '-1');
 include('init.php');
+require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -161,31 +162,6 @@ if (!$_POST) {
         $output_contact_groups = '<div class="alert theme-danger"><p>' . lang('You do not have access to any contact groups with subscribers.') . '</p></div>';
     }
     
-    // only set when the e-mail campaign job is available, but always output below
-    $output_start_time = '';
-
-    // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
-    if (email_campaign_job_enabled()) {
-        $output_start_time =
-            '<div class="col-12">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('E-Mail Message Delivery Schedule') . '
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
-                                <input value="" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
-                                <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
-                                ' . get_date_time_picker_format() . pg_fields_script() . '
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>';
-        }
-
     print
     
     pg_page_shell(
@@ -209,141 +185,71 @@ if (!$_POST) {
                 <form name="form" action="add_email_campaign.php" method="post" >
                     ' . get_token_field() . '
                     <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message') . '
+                        ' . pg_email_campaign_message_card(
+                            pg_email_campaign_subject_row(''),
+                            pg_email_campaign_format_row(
+                                '<div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="format_plain_text" name="format" value="plain_text" data-bs-target="#email_format_plain_text_row"' . $output_format_plain_text_checked . ' />
+                                    <label for="format_plain_text">' . lang('Plain Text') . '</label>
                                 </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                            <input type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />
+                                <div class="form-field  d-inline-grid me-5">
+                                    <input class="radio collapse-switcher" type="radio" id="format_html" name="format" value="html"  data-bs-target="#email_format_html_row"' . $output_format_html_checked . '/>
+                                    <label for="format_html">' . lang('HTML') . '</label>
+                                </div>
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
+                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
+                                    <div class="popover-body">
+                                        <div class="row">
+                                            <div class="col-12 my-1">
+                                              <label for="email_body" class="form-label">' . lang('Body') . '</label>
+                                              <textarea name="body" id="email_body" placeholder="' . lang('Type E-mail body here') . '..." class="form-control" style="width: 99%; height: 300px">' . $output_body . '</textarea>
+                                            </div>
                                         </div>
-                                        <div class="col-12 my-1">
-                                            <div class="col-12">
-                                                <label class="form-label">' . lang('Format') . '</label>
+                                    </div>
+                                </div>
+                                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
+                                    <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
+                                    <div class="popover-body">
+                                        <div class="row">
+                                            <div class="col-12 sm:col-8 my-1">
+                                                <label class="form-label" for="page_id">' . lang('Page') . '</label>
+                                                <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
                                             </div>
-                                            <div class="form-field  d-inline-grid me-5">
-                                                <input class="radio collapse-switcher" type="radio" id="format_plain_text" name="format" value="plain_text" data-bs-target="#email_format_plain_text_row"' . $output_format_plain_text_checked . ' />
-                                                <label for="format_plain_text">' . lang('Plain Text') . '</label> 
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5">
-                                                <input class="radio collapse-switcher" type="radio" id="format_html" name="format" value="html"  data-bs-target="#email_format_html_row"' . $output_format_html_checked . '/>
-                                                <label for="format_html">' . lang('HTML') . '</label>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
+                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
+                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
                                                         <div class="col-12 my-1">
-                                                          <label for="email_body" class="form-label">' . lang('Body') . '</label>
-                                                          <textarea name="body" id="email_body" placeholder="' . lang('Type E-mail body here') . '..." class="form-control" style="width: 99%; height: 300px">' . $output_body . '</textarea>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100"  id="email_format_html_row">
-                                                <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
-                                                <div class="popover-body">
-                                                    <div class="row">
-                                                        <div class="col-12 sm:col-8 my-1">
-                                                            <label class="form-label" for="page_id">' . lang('Page') . '</label>
-                                                            <select class="form-control collapse-if-selected" id="page_id" name="page_id" onchange="document.getElementById(\'body_preview_iframe\').src = \'' . OUTPUT_PATH . '\' + this.options[this.selectedIndex].firstChild.nodeValue + \'?edit=no&email=true\';" data-bs-target="#body_preview_row"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Page')) )) . '-</option>' . $output_page_options . '</select>
-                                                        </div>
-                                                        <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="body_preview_row">
-                                                            <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
-                                                            <div class="popover-body">
-                                                                <div class="row">
-                                                                    <div class="col-12 my-1">
-                                                                        <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                        <iframe id="body_preview_iframe" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
+                                                            <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
+                                                            <iframe id="body_preview_iframe" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                         </div>
                                                     </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                </div>
+                                </div>'
+                            )
+                        ) . pg_email_campaign_card(
+                            lang('E-Mail Message To My Contact Groups'),
+                            '<div class="col-12 my-3">
+                                ' . $output_contact_groups . '
                             </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message To My Contact Groups') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-3">
-                                            ' . $output_contact_groups . '
-                                        </div>
-                                        <div class="col-12 my-3">
-                                            <div class="alert theme-secondary row justify-content-between">
-                                                <div class="col-auto">
-                                                <p>' . lang('Also send message to the following e-mail address') . ': </p>
-                                                </div>
-                                                <div class="col-12 col-6 lg:col-4">
-                                                    <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
-                                                </div>
-                                            </div>
-                                        </div>
+                            <div class="col-12 my-3">
+                                <div class="alert theme-secondary row justify-content-between">
+                                    <div class="col-auto">
+                                    <p>' . lang('Also send message to the following e-mail address') . ': </p>
+                                    </div>
+                                    <div class="col-12 col-6 lg:col-4">
+                                        <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('E-Mail Message From') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-6 xl:col-12 my-3">
-                                            <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                            <input value="' . h(ORGANIZATION_NAME) . '" type="text" class="form-control" id="from_name" name="from_name" />
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="row">
-                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                    <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                    <input value="' . h($user['email_address']) .'" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
-                                                </div>
-                                                <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                    <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
-                                                    <input value="' . h($user['email_address']) .'" type="text" class="form-control text-end" id="reply_email_address" name="reply_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        ' . $output_start_time . '
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 my-5">
-                                            <label class="form-label">' . lang('Purpose') . '</label>
-                                            <div class="form-field">
-                                                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial" checked="checked">
-                                                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
-                                            </div>
-                                            <div class="form-field">
-                                                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional">
-                                                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </div>'
+                        ) . pg_email_campaign_from_card(array(
+                            'from_name' => ORGANIZATION_NAME,
+                            'from_email_address' => $user['email_address'],
+                            'reply_email_address' => $user['email_address'],
+                        )) . pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial') . '
                     </div>
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
                         <div class="container">
