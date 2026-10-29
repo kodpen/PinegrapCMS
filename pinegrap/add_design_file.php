@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
  * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
@@ -19,6 +19,7 @@
 include('init.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 if (!$_POST) {
     $max_file_uploads = ini_get('max_file_uploads');
@@ -149,32 +150,9 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('File Access Control') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-control" id="folder" name="folder">' . select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0) . '</select>
-                                    </div>
-                                   
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder(isset($_GET['id']) ? $_GET['id'] : '', 0)) . '
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Description') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
-                                        <textarea class="form-control" id="description" name="description" rows="1"></textarea>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' . pg_design_file_form_description_card('', true) . '
                         </div>
                     </div>         
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">

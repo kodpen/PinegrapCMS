@@ -1,6 +1,6 @@
 <?php
 /**
- * PineGrap - Enterprise Website Platform
+ * Pinegrap - Enterprise Website Platform
  *
  * Originally developed as LiveSite by Camelback Web Architects.
  * Since 2017, maintained and evolved by Erdal Güral (Kodpen) under the name PineGrap.
@@ -22,6 +22,7 @@ include_once('liveform.class.php');
 $liveform_view_design_files = new liveform('view_design_files');
 $liveform = new liveform('edit_design_file');
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -180,29 +181,11 @@ if (empty($_POST['name'])) {
         $output_edit_file_button = '<button type="button" value="' . $edit_file_button_value . '" class="btn my-1 btn-solid theme-primary" OnClick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/' . $edit_file_button_location)) . '\'"><span class="material-icons me-3">edit</span><span class="pg-btn-label">' . $edit_file_button_label . '</span></button>';
     }
 
-    $output_theme_rows = '';
+    // A CSS file shows the Theme switch; a system theme cannot change it.
+    $theme_row = null;
 
-    // If this is a CSS file, then output theme property.
     if (mb_strtolower($file_type) == 'css') {
-        $output_theme_checked = '';
-
-        if ($theme == 1) {
-            $output_theme_checked = ' checked="checked"';
-        }
-
-        $output_theme_disabled = '';
-
-        if ($system_theme == true) {
-            $output_theme_disabled = ' disabled="disabled"';
-        }
-
-        $output_theme_rows =
-            '<div class="col-12 my-5">
-                <div class="form-field">
-                    <div class="switch"><input class="" type="checkbox" id="theme" name="theme" value="1"' . $output_theme_checked . $output_theme_disabled . '></div>
-                    <label class="" for="theme" data-bs-content="' . lang('Check if Design File should be included on All Themes screen and in Theme preview') . '" title="" data-bs-original-title="' . lang('Theme') . '">' . lang('Theme') . ' (?)</label>
-                </div>
-            </div>';
+        $theme_row = array('checked' => ($theme == 1), 'disabled' => ($system_theme == true));
     }
     
     echo
@@ -266,38 +249,9 @@ if (empty($_POST['name'])) {
                                 </div>
                             </div> 
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('File Access Control') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-control" id="folder" name="folder">' . select_folder($file_folder) . '</select>
-                                    </div>
-                                    <div class="col-12 my-5">
-                                        <div class="form-field">
-                                            <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1" checked="checked"></div>
-                                            <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
-                                        </div>
-                                    </div>
-                                    ' . $output_theme_rows . '
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder($file_folder), array('design' => true, 'theme' => $theme_row)) . '
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Description') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
-                                        <textarea class="form-control" id="description" name="description" style="min-height:85px;">' . h($file_description) . '</textarea>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' . pg_design_file_form_description_card($file_description) . '
                         </div>
                     </div>
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
