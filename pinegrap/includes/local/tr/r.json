@@ -287,6 +287,7 @@
     "Record as an expense": "Gider olarak kaydet",
     "Record deleted successfully.": "Kayıt başarıyla silindi.",
     "Record does not match its seal": "Kayıt mührüyle uyuşmuyor",
+    "Record field: {var:1}": "Kayıt alanı: {var:1}",
     "Record filters": "Kayıt filtreleri",
     "Record filters apply only while the list reads a single page with a Form Item View: with the pages chosen now, it shows no comment. Choose one such page, or delete the filters.": "Kayıt filtreleri yalnızca liste Form Öğesi Görünümü olan tek bir sayfayı okurken uygulanır: şu an seçili sayfalarla hiçbir yorum göstermez. Böyle tek bir sayfa seçin ya da filtreleri silin.",
     "Record for {var:1}": "{var:1} için kaydet",
