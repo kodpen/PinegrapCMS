@@ -13,7 +13,9 @@ description: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer c
 ## How are the states coloured?
 - Bootstrap colours only `.active` items (node and the line to the next `.active` item), in the item's `theme-*` or primary.
 - edit_offer marks every item `.active`; `offer_editor.js` `step()` swaps `theme-success` (answered), `theme-danger` (the offer cannot do anything yet) or `theme-secondary` (neither; Options always).
-- Installer and ERP import: finished steps `.active.theme-success`, the current one `.active` with `aria-current="step"`, later ones plain. The installer's finished node shows a check (`.done::before`).
+- Installer and ERP import: finished steps `.active.theme-success`, the current one `.active`, later ones plain. The installer's finished node shows a check (`.done::before`).
+
+- Installer focus, live status, 'Completed' and the announced run: `installer-wizard-a11y.md`.
 
 ## What does `.pg-stepper-cards` change, and why?
 - The stepper sizes rows evenly (`grid-auto-rows: 1fr`) and its text column to the content: one tall card would stretch every step and a wide one overflow. The block sets `grid-auto-rows: auto`, a `minmax(0, 1fr)` column, `--bs-stepper-align-items: start`, and moves the node and the line to sit level with the card header.

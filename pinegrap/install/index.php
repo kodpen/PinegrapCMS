@@ -2511,7 +2511,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					)) . '
 					<label class="small" for="reinstall_software">' . lang('Reinstall anyway and delete the data') . '</label>
 				</div>
-				<div class="small fg-danger mt-1 d-none" id="pg_reinstall_message">' . lang('Please verify that you want to reinstall.') . '</div>
+				<div class="small fg-danger mt-1 d-none" id="pg_reinstall_message" role="alert">' . lang('Please verify that you want to reinstall.') . '</div>
 			</div>
 		</div>';
 
@@ -3022,7 +3022,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			color: inherit;
 		}
 		.pg-install-step:hover { background: var(--pg-bg-2); }
-		.stepper-item[aria-current="step"] .pg-install-step { background: var(--pg-bg-2); border-color: var(--pg-border-color); }
+		.pg-install-step[aria-current="step"] { background: var(--pg-bg-2); border-color: var(--pg-border-color); }
 		.pg-source {
 			display: flex;
 			gap: .75rem;
@@ -3176,9 +3176,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					' . (($upgrade_option == true) ? '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="pg_back_to_upgrade"><i class="bi bi-arrow-left me-1"></i>' . lang('Software upgrade') . '</button>' : '') . '
 				</div>
 				<div class="d-flex align-items-center gap-5 mb-5" id="pg_progress_row">
-					<span class="small fg-secondary text-nowrap">' . lang('Step') . ' <b id="pg_step_number">1</b> / 6</span>
-					<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_progress_bar" style="width:17%;"></div></div>
-					<span class="small fg-secondary text-nowrap" id="pg_step_title">' . lang('Source') . '</span>
+					<span class="visually-hidden" id="pg_step_status" role="status">' . h(lang('Step') . ' ' . str_replace(array('{var:1}', '{var:2}'), array('1', '6'), lang('{var:1} of {var:2}')) . ': ' . lang('Source')) . '</span>
+					<span class="small fg-secondary text-nowrap" aria-hidden="true">' . lang('Step') . ' <b id="pg_step_number">1</b> / 6</span>
+					<div class="progress flex-grow-1" style="height:7px;" aria-hidden="true"><div class="progress-bar" id="pg_progress_bar" style="width:17%;"></div></div>
+					<span class="small fg-secondary text-nowrap" id="pg_step_title" aria-hidden="true">' . lang('Source') . '</span>
 				</div>
 				<form method="post" enctype="multipart/form-data" id="install_form" style="margin: 0px">
     	  	  	  	' . get_token_field() . '
@@ -3195,23 +3196,23 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						<div class="pg-wizard-grid">
 							<nav class="pg-rail">
 								<ol class="stepper pg-install-steps" id="pg_rail">
-									<li class="stepper-item active" aria-current="step">
-										<button type="button" class="pg-install-step" data-step="1"><span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small fg-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span></button>
+									<li class="stepper-item active">
+										<button type="button" class="pg-install-step" data-step="1" aria-current="step"><span><span class="d-block fw-semibold">' . lang('Source') . '</span><span class="d-block small fg-secondary">' . lang('Starter site, server backup or a zip file') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 									<li class="stepper-item">
-										<button type="button" class="pg-install-step" data-step="2"><span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small fg-secondary">' . lang('Language of the control panel') . '</span></span></button>
+										<button type="button" class="pg-install-step" data-step="2"><span><span class="d-block fw-semibold">' . lang('Software Language') . '</span><span class="d-block small fg-secondary">' . lang('Language of the control panel') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 									<li class="stepper-item">
-										<button type="button" class="pg-install-step" data-step="3"><span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small fg-secondary">' . lang('Starter site or a design template') . '</span></span></button>
+										<button type="button" class="pg-install-step" data-step="3"><span><span class="d-block fw-semibold">' . lang('Site Design') . '</span><span class="d-block small fg-secondary">' . lang('Starter site or a design template') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 									<li class="stepper-item">
-										<button type="button" class="pg-install-step" data-step="4"><span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small fg-secondary">' . lang('MySQL connection information') . '</span></span></button>
+										<button type="button" class="pg-install-step" data-step="4"><span><span class="d-block fw-semibold">' . lang('Database') . '</span><span class="d-block small fg-secondary">' . lang('MySQL connection information') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 									<li class="stepper-item">
-										<button type="button" class="pg-install-step" data-step="5"><span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small fg-secondary">' . lang('The first administrator account') . '</span></span></button>
+										<button type="button" class="pg-install-step" data-step="5"><span><span class="d-block fw-semibold">' . lang('Administrator') . '</span><span class="d-block small fg-secondary">' . lang('The first administrator account') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 									<li class="stepper-item">
-										<button type="button" class="pg-install-step" data-step="6"><span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small fg-secondary">' . lang('Summary and installation') . '</span></span></button>
+										<button type="button" class="pg-install-step" data-step="6"><span><span class="d-block fw-semibold">' . lang('Installation') . '</span><span class="d-block small fg-secondary">' . lang('Summary and installation') . '</span></span><span class="visually-hidden pg-step-done-text" hidden>' . lang('Completed') . '</span></button>
 									</li>
 								</ol>
 							</nav>
@@ -3634,14 +3635,14 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 											<button type="button" class="btn btn-outline theme-secondary pg-previous"><i class="bi bi-arrow-left me-1"></i>' . lang('Back') . '</button>
 										</div>
 
-										<div class="d-none" id="pg_run_area">
+										<div class="d-none" id="pg_run_area" tabindex="-1" role="region" aria-label="' . h(lang('Progress')) . '">
 											<div class="d-flex align-items-center gap-5 mt-5 mb-3">
 												<span class="small fg-secondary font-monospace" id="pg_run_percent">%0</span>
-												<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_run_bar" style="width:0;"></div></div>
-												<span class="small fg-secondary text-truncate" style="max-width:14rem;" id="pg_run_now">' . lang('Please Wait') . '</span>
+												<div class="progress flex-grow-1" style="height:7px;" aria-hidden="true"><div class="progress-bar" id="pg_run_bar" style="width:0;"></div></div>
+												<span class="small fg-secondary text-truncate" style="max-width:14rem;" id="pg_run_now" role="status">' . lang('Please Wait') . '</span>
 											</div>
 											<div class="pg-install-console" id="pg_run_console"></div>
-											<div id="pg_run_result"></div>
+											<div id="pg_run_result" tabindex="-1"></div>
 										</div>
 									</div>
 								</div>
@@ -3739,7 +3740,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if (!console_element) { return; }
 			if (pg_install_seen_steps[index]) { return; }
 			pg_install_seen_steps[index] = true;
-			var mark = (state === "warning") ? "<span class=\"pg-warning\">&#9650;</span>" : ((state === "error") ? "<span class=\"pg-error\">&#10007;</span>" : "<span class=\"pg-ok\">&#10003;</span>");
+			var mark = (state === "warning") ? "<span class=\"pg-warning\"><span aria-hidden=\"true\">&#9650;</span><span class=\"visually-hidden\">' . escape_javascript(lang('Warning')) . '</span></span>" : ((state === "error") ? "<span class=\"pg-error\"><span aria-hidden=\"true\">&#10007;</span><span class=\"visually-hidden\">' . escape_javascript(lang('Error')) . '</span></span>" : "<span class=\"pg-ok\" aria-hidden=\"true\">&#10003;</span>");
 			var line = document.createElement("div");
 			var safe = document.createElement("span");
 			safe.textContent = label;
@@ -3768,7 +3769,20 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			pg_install_finished = true;
 			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
 			$("#pg_run_result").html(html);
+			pg_install_focus_result();
 			pg_install_apply_design();
+		}
+
+		// The run hides the buttons that started it, so focus moves into the run area.
+		function pg_install_focus_run() {
+			var area = document.getElementById("pg_run_area");
+			if (area) { area.focus(); }
+		}
+
+		// A result (done, stopped, failed) is read out from where focus lands.
+		function pg_install_focus_result() {
+			var result = document.getElementById("pg_run_result");
+			if ((result) && (result.children.length > 0)) { result.focus(); }
 		}
 
 		var pg_install_started_at = new Date().getTime();
@@ -3898,6 +3912,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				"<div class=\"small mt-3\">' . escape_javascript(lang('The versions before it are recorded, and every step can be run again: start the upgrade once more and it continues from here. If the same statement fails again, the message above says what the database objected to.')) . '</div>" +
 				"<div class=\"d-flex gap-3 flex-wrap mt-3\"><button type=\"button\" class=\"btn btn-solid theme-primary\" onclick=\"pg_install_retry();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Try again')) . '</button></div>" +
 				"</div></div>");
+			pg_install_focus_result();
 		}
 
 		// Runs the same request again.  The server continues from the last version it recorded.
@@ -3977,6 +3992,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			$("#pg_run_now").text("' . escape_javascript(lang('Please Wait')) . '");
 			$("#pg_run_area").removeClass("d-none");
 			$("#pg_upgrade_actions").addClass("d-none");
+			pg_install_focus_run();
 			$("#pg_upgrade_backup_row").addClass("d-none");
 			$("#pg_install_mode_card").closest(".card").addClass("d-none");
 			pg_upgrade_add_line("' . escape_javascript(lang('Connected to the database')) . '", pg_upgrade_database, "ok");
@@ -4123,6 +4139,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				(refresh_only ? "" : "<button type=\"button\" class=\"btn btn-solid theme-primary\" onclick=\"pg_upgrade_resume();\"><i class=\"bi bi-arrow-repeat me-1\"></i>' . escape_javascript(lang('Continue')) . '</button>") +
 				"<a class=\"btn btn-outline theme-secondary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a>" +
 				"</div></div></div>");
+			pg_install_focus_result();
 		}
 
 		function pg_upgrade_session_lost(message) {
@@ -4137,11 +4154,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				"<div class=\"small mt-1\">' . escape_javascript(lang('The versions that were applied are recorded. Sign in again and open this screen; the upgrade continues from the version that was recorded last.')) . '</div>" +
 				"<div class=\"d-flex gap-3 flex-wrap mt-3\"><a class=\"btn btn-solid theme-primary\" href=\"" + window.location.pathname + "\"><i class=\"bi bi-arrow-clockwise me-1\"></i>' . escape_javascript(lang('Refresh')) . '</a></div>" +
 				"</div></div>");
+			pg_install_focus_result();
 		}
 
 		function pg_install_stream_failed(message) {
 			if (pg_install_poll_timer) { clearInterval(pg_install_poll_timer); }
 			$("#pg_run_result").html("<div class=\"alert theme-danger d-flex gap-3 mt-5 mb-0\"><i class=\"bi bi-exclamation-triangle-fill\"></i><div>" + message + "</div></div>");
+			pg_install_focus_result();
 		}
 
 		// The install form is one long form, and the wizard only changes how it is presented.
@@ -4157,11 +4176,16 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			6: "' . escape_javascript(lang('Installation')) . '"
 		};
 
+		var pg_install_step_word = "' . escape_javascript(lang('Step')) . '";
+
+		var pg_install_step_count = "' . escape_javascript(lang('{var:1} of {var:2}')) . '";
+
 		// Every step checks its own fields before the wizard moves on, so nobody lands on the
 		// summary with an empty database or administrator.  Going back is always allowed.
 		function pg_install_check_step(step) {
 			var problems = [];
 			$("#install_fields .is-invalid").removeClass("is-invalid");
+			$("#install_fields [aria-invalid]").removeAttr("aria-invalid");
 
 			if (step === 1) {
 				if (!$("#install_from_folder").val()) {
@@ -4171,7 +4195,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 			if (step === 2) {
 				if (!$("#default_software_language").val()) {
-					$("#default_software_language").addClass("is-invalid");
+					$("#default_software_language").addClass("is-invalid").attr("aria-invalid", "true");
 					problems.push("' . escape_javascript(lang('Default Language is required.')) . '");
 				}
 			}
@@ -4184,7 +4208,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				};
 				$.each(database_fields, function(field, message) {
 					if (!$.trim($("#" + field).val())) {
-						$("#" + field).addClass("is-invalid");
+						$("#" + field).addClass("is-invalid").attr("aria-invalid", "true");
 						problems.push(message);
 					}
 				});
@@ -4200,16 +4224,16 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				};
 				$.each(administrator_fields, function(field, message) {
 					if (!$.trim($("#" + field).val())) {
-						$("#" + field).addClass("is-invalid");
+						$("#" + field).addClass("is-invalid").attr("aria-invalid", "true");
 						problems.push(message);
 					}
 				});
 				if ($.trim($("#admin_email_address").val()) && ($.trim($("#admin_email_address").val()) !== $.trim($("#admin_confirm_email_address").val()))) {
-					$("#admin_email_address, #admin_confirm_email_address").addClass("is-invalid");
+					$("#admin_email_address, #admin_confirm_email_address").addClass("is-invalid").attr("aria-invalid", "true");
 					problems.push("' . escape_javascript(lang('The two administrator e-mail addresses you entered did not match.')) . '");
 				}
 				if ($("#admin_password").val() && ($("#admin_password").val() !== $("#admin_confirm_password").val())) {
-					$("#admin_password, #admin_confirm_password").addClass("is-invalid");
+					$("#admin_password, #admin_confirm_password").addClass("is-invalid").attr("aria-invalid", "true");
 					problems.push("' . escape_javascript(lang('The two administrator passwords you entered did not match.')) . '");
 				}
 			}
@@ -4245,12 +4269,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if (problems.length === 0) { return; }
 			var list = "";
 			$.each(problems, function(index, message) { list += "<div>" + message + "</div>"; });
-			panel.prepend("<div class=\"alert theme-danger small d-flex gap-3 pg-step-problem\"><i class=\"bi bi-exclamation-triangle\"></i><div>" + list + "</div></div>");
+			panel.prepend("<div class=\"alert theme-danger small d-flex gap-3 pg-step-problem\" role=\"alert\"><i class=\"bi bi-exclamation-triangle\" aria-hidden=\"true\"></i><div>" + list + "</div></div>");
 		}
 
-		function pg_install_set_step(step) {
+		// move_focus is true when a person changed the step (Continue, Back, the rail): the
+		// panel that held the focused button is hidden, so focus goes to the new step.
+		function pg_install_set_step(step, move_focus) {
 			if (step < 1) { step = 1; }
 			if (step > 6) { step = 6; }
+			var refused = false;
 
 			// walk forward one step at a time, so the first step with a problem is the one we stop on
 			if (step > pg_install_step) {
@@ -4259,6 +4286,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					if (problems.length > 0) {
 						pg_install_show_problems(check, problems);
 						step = check;
+						refused = true;
 						break;
 					}
 					pg_install_show_problems(check, []);
@@ -4269,6 +4297,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					}
 				}
 			}
+			var previous_step = pg_install_step;
 			pg_install_step = step;
 			$(".pg-step-panel").removeClass("active");
 			$(".pg-step-panel[data-panel=" + step + "]").addClass("active");
@@ -4277,14 +4306,31 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				var item = $(this).closest(".stepper-item");
 				item.toggleClass("active", number <= step);
 				item.toggleClass("done theme-success", number < step);
-				if (number === step) { item.attr("aria-current", "step"); } else { item.removeAttr("aria-current"); }
+				$(this).find(".pg-step-done-text").prop("hidden", number >= step);
+				if (number === step) { $(this).attr("aria-current", "step"); } else { $(this).removeAttr("aria-current"); }
 			});
 			$("#pg_step_number").text(step);
 			$("#pg_step_title").text(pg_install_step_titles[step]);
+			$("#pg_step_status").text(pg_install_step_word + " " + pg_install_step_count.replace("{var:1}", step).replace("{var:2}", 6) + ": " + pg_install_step_titles[step]);
 			$("#pg_progress_bar").css("width", Math.round(step * 100 / 6) + "%");
 			$("#install_submit_nav").toggleClass("d-none", step !== 6);
 			if (step === 3) { pg_install_update_design(); }
 			if (step === 6) { pg_install_update_review(); }
+
+			// a refused step: its first marked field, else the header of the refused panel, else
+			// (nothing to point at on the same step) focus stays and the alert speaks
+			if (move_focus === true) {
+				var invalid = $(".pg-step-panel[data-panel=" + step + "] [aria-invalid]").first();
+				if ((refused) && (invalid.length > 0) && (invalid.is(":visible"))) {
+					invalid.trigger("focus");
+					return;
+				}
+				if ((!refused) || (step !== previous_step)) {
+					var header = $(".pg-step-panel[data-panel=" + step + "] .card-header").first();
+					header.attr("tabindex", "-1");
+					if (header.length > 0) { header[0].focus({ preventScroll: true }); }
+				}
+			}
 			$("html, body").animate({ scrollTop: 0 }, 200);
 		}
 
@@ -4515,15 +4561,15 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			$(".pg-install #install_fields").closest("form").addClass("pg-wizard-on");
 
 			$(".pg-install-step").on("click", function() {
-				pg_install_set_step(parseInt($(this).attr("data-step"), 10));
+				pg_install_set_step(parseInt($(this).attr("data-step"), 10), true);
 			});
 
 			$(".pg-install-next").on("click", function() {
-				pg_install_set_step(pg_install_step + 1);
+				pg_install_set_step(pg_install_step + 1, true);
 			});
 
 			$(".pg-previous").on("click", function() {
-				pg_install_set_step(pg_install_step - 1);
+				pg_install_set_step(pg_install_step - 1, true);
 			});
 
 			$("#pg_install_mode_card").on("click", function() {
@@ -4674,6 +4720,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 				if ((!upgrading) && (!$("#pg_reinstall_box").hasClass("d-none")) && (!$("#reinstall_software").is(":checked"))) {
 					event.preventDefault();
 					$("#pg_reinstall_message").removeClass("d-none");
+					$("#reinstall_software").trigger("focus");
 					$("#pg_reinstall_box")[0].scrollIntoView({ behavior: "smooth", block: "center" });
 					return false;
 				}
@@ -4704,6 +4751,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 					$("#pg_reinstall_box").addClass("d-none");
 					$(".pg-install-step").prop("disabled", true);
 				}
+				pg_install_focus_run();
 				return true;
 			});
 
@@ -6711,8 +6759,8 @@ function start_install_stream() {
 		</div>
 		<div class="d-flex align-items-center gap-5 mb-5">
 			<span class="small fg-secondary font-monospace" id="pg_stream_percent">%0</span>
-			<div class="progress flex-grow-1" style="height:7px;"><div class="progress-bar" id="pg_stream_bar" style="width:0;"></div></div>
-			<span class="small fg-secondary text-truncate" style="max-width:16rem;" id="pg_stream_now">' . lang('Please Wait') . '</span>
+			<div class="progress flex-grow-1" style="height:7px;" aria-hidden="true"><div class="progress-bar" id="pg_stream_bar" style="width:0;"></div></div>
+			<span class="small fg-secondary text-truncate" style="max-width:16rem;" id="pg_stream_now" role="status">' . lang('Please Wait') . '</span>
 		</div>
 		<div class="pg-install-console mb-7" id="pg_stream_console"></div>
 	</div>
@@ -6748,7 +6796,7 @@ function start_install_stream() {
 			if (host) { host.pg_install_stream_step(index, seconds, label, detail, state, percent); return; }
 			var console_element = document.getElementById("pg_stream_console");
 			if (!console_element) { return; }
-			var mark = (state === "warning") ? "<span class=\"pg-warning\">&#9650;</span>" : ((state === "error") ? "<span class=\"pg-error\">&#10007;</span>" : "<span class=\"pg-ok\">&#10003;</span>");
+			var mark = (state === "warning") ? "<span class=\"pg-warning\"><span aria-hidden=\"true\">&#9650;</span><span class=\"visually-hidden\">' . escape_javascript(lang('Warning')) . '</span></span>" : ((state === "error") ? "<span class=\"pg-error\"><span aria-hidden=\"true\">&#10007;</span><span class=\"visually-hidden\">' . escape_javascript(lang('Error')) . '</span></span>" : "<span class=\"pg-ok\" aria-hidden=\"true\">&#10003;</span>");
 			var line = document.createElement("div");
 			line.innerHTML = "<span class=\"pg-time\">[" + seconds + " s]</span> " + mark + " " +
 				pg_install_stream_escape(label) +
