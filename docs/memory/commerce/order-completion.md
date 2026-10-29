@@ -6,7 +6,7 @@ module: order_completion
 
 ## What is it?
 - `pg_order_complete($order_id, $values, $documents, $context)` in `includes/fn/order_completion.php`: makes a cart an order, every stage in one call (#2972). Fed by the order id, the column values the caller settled, the legal document types accepted and `$context`; never `$_SESSION`, `$_POST` or the liveform (a test reads the module for them).
-- Written so the visitor's return and a payment service's message (A3, `plans/order-completion-function.md`) complete through the same code.
+- The visitor's return and a payment service's message (`pg_order_complete_from_payment()`, #3021, `order-completion-from-payment.md`) complete through the same code.
 
 ## What is the lock?
 - The first write is `UPDATE orders SET … status = 'complete' WHERE id = ? AND status = 'incomplete'` (`pg_order_complete_query()`, pure). `mysqli_affected_rows() < 1` → returns null and writes nothing more: of two requests completing one order exactly one goes on.

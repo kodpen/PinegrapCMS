@@ -11,9 +11,12 @@
  * telling the people who run the site: a payment that went through for an
  * order still incomplete, a refund or a dispute made on the service's own
  * screen each write a line to the activity log and raise an operations alert
- * (pg_ops_alert()). The one change made to an order is recording the payment
+ * (pg_ops_alert()). Two changes are made to an order: recording the payment
  * of an order placed with its payment pending (pg_order_payment_pending())
- * once the service reports it settled, for the amount the order totals.
+ * once the service reports it settled, for the amount the order totals; and
+ * completing an order still incomplete whose own payment the service reports
+ * taken, for its total in the store's currency, when the visitor left before
+ * coming back (pg_order_complete_from_payment()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -107,6 +110,31 @@ function pg_payment_notify_order($answer)
 }
 
 /**
+ * Whether a payment a notify() answer reports is the incomplete order's own,
+ * whole: the order keeps that payment id as its transaction id (written when
+ * the visitor was sent to the service), the amount equals orders.total in
+ * integer hundredths, and the currency is the store's. Pure.
+ *
+ * @param array  $answer         pg_payment_answer() of notify()
+ * @param array  $order          pg_payment_notify_order()
+ * @param string $store_currency
+ * @return bool
+ */
+function pg_payment_notify_matches_order($answer, $order, $store_currency)
+{
+    $transaction_id = (string) ($answer['transaction_id'] ?? '');
+    $currency = (isset($answer['raw']['currency']) && is_string($answer['raw']['currency'])) ? strtoupper($answer['raw']['currency']) : '';
+
+    return ($transaction_id !== '')
+        && ((string) ($order['transaction_id'] ?? '') === $transaction_id)
+        && isset($answer['amount']) && is_int($answer['amount'])
+        && isset($order['total']) && is_numeric($order['total'])
+        && ($answer['amount'] === (int) round((float) $order['total']))
+        && ($currency !== '')
+        && ($currency === strtoupper((string) $store_currency));
+}
+
+/**
  * What the store does with a notify() answer for the order it names. Pure:
  * the caller writes the log lines and raises the alert.
  *
@@ -120,21 +148,25 @@ function pg_payment_notify_order($answer)
  *   recorded       a payment for an order placed with its payment pending,
  *                  for the order's total: 200, a log line, and the caller
  *                  marks the order paid (mark_paid)
- *   alerted        a payment for an order still incomplete, a pending
- *                  payment for another amount, a refund, a cancellation or a
- *                  dispute: 200, a log line and an alert
+ *   complete       a payment taken or authorized for an order still
+ *                  incomplete, which is the order's own payment id, for its
+ *                  total, in the store's currency: 200, and the caller
+ *                  completes the order (complete) and writes the log line
+ *   alerted        a payment for an order still incomplete that does not
+ *                  match it, a pending payment for another amount, a refund,
+ *                  a cancellation or a dispute: 200, a log line and an alert
  *
- * An incomplete order is never completed here.
- *
- * @param string     $key    driver key
- * @param array      $answer pg_payment_answer() of notify()
- * @param array|null $order  pg_payment_notify_order()
+ * @param string     $key            driver key
+ * @param array      $answer         pg_payment_answer() of notify(); the
+ *                                   payment's currency in raw.currency
+ * @param array|null $order          pg_payment_notify_order()
+ * @param string     $store_currency the store's currency code
  * @return array http (status code), status, log (lines), alert (detail, '' for none),
- *               mark_paid (bool)
+ *               mark_paid (bool), complete (bool)
  */
-function pg_payment_notify_outcome($key, $answer, $order)
+function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
 {
-    $outcome = array('http' => 200, 'status' => '', 'log' => array(), 'alert' => '', 'mark_paid' => false);
+    $outcome = array('http' => 200, 'status' => '', 'log' => array(), 'alert' => '', 'mark_paid' => false, 'complete' => false);
 
     if (empty($answer['success'])) {
         if (!empty($answer['raw']['ignored'])) {
@@ -181,7 +213,15 @@ function pg_payment_notify_outcome($key, $answer, $order)
             return $outcome;
         }
 
-        $line .= ' for order #' . $order_id . ', which is still incomplete. The order was not completed: check the payment on ' . pg_payment_log_name($key) . '\'s own screen.';
+        if (pg_payment_notify_matches_order($answer, $order, $store_currency)) {
+            $outcome['status'] = 'complete';
+            $outcome['log'] = array($line . ' for order #' . $order_id . ', which was still incomplete. The order was completed from the message.');
+            $outcome['complete'] = true;
+
+            return $outcome;
+        }
+
+        $line .= ' for order #' . $order_id . ', which is still incomplete, but not for its own payment, its total or the store\'s currency. The order was not completed: check the payment on ' . pg_payment_log_name($key) . '\'s own screen.';
     } else {
         $line .= ' for order #' . $order_id . '. The order was not changed.';
     }
@@ -245,7 +285,26 @@ function pg_payment_callback_receive()
 
     $answer = pg_payment_call($key, 'notify', array(pg_payment_request_headers($_SERVER), (string) $body));
     $order = $answer['success'] ? pg_payment_notify_order($answer) : null;
-    $outcome = pg_payment_notify_outcome($key, $answer, $order);
+    $outcome = pg_payment_notify_outcome($key, $answer, $order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '');
+
+    // The completion runs before the log line, which names its result: the
+    // order's number, another request completing it first (nothing), or a
+    // refusal, which alerts like any payment that does not match its order.
+    if ($outcome['complete']) {
+        $completion = pg_order_complete_from_payment((int) $order['id'], (string) $answer['status']);
+
+        if ($completion['status'] === 'completed') {
+            $outcome['status'] = 'completed';
+            $outcome['log'][0] .= ' Order number: ' . $completion['order_number'] . '.';
+        } elseif ($completion['status'] === 'nothing') {
+            $outcome['status'] = 'nothing';
+            $outcome['log'] = array();
+        } else {
+            $outcome['status'] = 'alerted';
+            $outcome['log'] = array(str_replace('The order was completed from the message.', 'The order was not completed: ' . $completion['reason'] . '. Check the payment on ' . pg_payment_log_name($key) . '\'s own screen.', $outcome['log'][0]));
+            $outcome['alert'] = $outcome['log'][0];
+        }
+    }
 
     foreach ($outcome['log'] as $line) {
         log_activity($line, 'SYSTEM');

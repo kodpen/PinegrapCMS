@@ -1020,7 +1020,7 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
         return (isset($object[$name]) && is_string($object[$name])) ? $object[$name] : '';
     };
     $currency = $text('currency');
-    $raw = array('signature' => 'valid', 'event' => $type, 'id' => $text('id'));
+    $raw = array('signature' => 'valid', 'event' => $type, 'id' => $text('id'), 'currency' => strtoupper($currency));
 
     switch ($type) {
         case 'payment_intent.succeeded':

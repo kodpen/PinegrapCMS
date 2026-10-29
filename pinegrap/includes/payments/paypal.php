@@ -931,6 +931,6 @@ function pg_payment_paypal_notify_with($headers, $body, $settings, $http)
         'order_reference' => (preg_match('/^[1-9][0-9]{0,18}$/', $custom_id) === 1) ? $custom_id : $raw['id'],
         'amount'          => (($currency === $settings['currency']) && ($value !== '')) ? pg_payment_hundredths($value) : null,
         'log'             => array($line),
-        'raw'             => $raw,
+        'raw'             => $raw + array('currency' => $currency),
     );
 }

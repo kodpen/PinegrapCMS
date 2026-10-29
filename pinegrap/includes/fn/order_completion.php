@@ -42,6 +42,426 @@ function pg_order_complete_columns()
 }
 
 /**
+ * The query of an order's lines joined to their products and events, in id
+ * order, without the lines saved for later: what the completion's stages
+ * read of each line. One placeholder, the order id.
+ *
+ * @return string
+ */
+function pg_order_lines_sql()
+{
+    return
+        "SELECT
+            order_items.id as order_item_id,
+            order_items.ship_to_id,
+            order_items.product_id,
+            order_items.product_name,
+            order_items.quantity,
+            order_items.price,
+            order_items.tax_total," . (pg_schema_has('order_items', 'tax_rate') ? "
+            order_items.tax_rate AS line_tax_rate," : "") . "
+            order_items.recurring_payment_period,
+            order_items.recurring_number_of_payments,
+            order_items.recurring_start_date,
+            order_items.recurrence_number,
+            order_items.add_watcher,
+            products.id,
+            products.enabled,
+            products.short_description,
+            products.price AS product_price,
+            products.recurring,
+            products.sage_group_id,
+            products.required_product,
+            products.commissionable,
+            products.commission_rate_limit,
+            products.order_receipt_bcc_email_address,
+            products.contact_group_id,
+            products.membership_renewal,
+            products.grant_private_access,
+            products.private_folder,
+            products.private_days,
+            products.send_to_page,
+            products.email_page,
+            products.email_bcc,
+            products.inventory,
+            products.inventory_quantity,
+            products.out_of_stock,
+            products.reward_points,
+            products.gift_card,
+            products.gift_card_email_subject,
+            products.gift_card_email_format,
+            products.gift_card_email_body,
+            products.gift_card_email_page_id,
+            products.submit_form,
+            products.submit_form_custom_form_page_id,
+            products.submit_form_quantity_type,
+            products.submit_form_create,
+            products.submit_form_update,
+            products.submit_form_update_where_field,
+            products.submit_form_update_where_value,
+            products.add_comment,
+            products.add_comment_page_id,
+            products.add_comment_message,
+            products.add_comment_name,
+            products.add_comment_only_for_submit_form_update,
+            calendar_events.id as calendar_event_id,
+            calendar_events.reservations,
+            calendar_events.limit_reservations,
+            calendar_events.number_of_initial_spots
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
+        WHERE order_items.order_id = ?" . pg_order_item_active_sql() . "
+        ORDER BY order_items.id ASC";
+}
+
+/**
+ * The query of a checkout page's settings: its terms page name, offline
+ * payment, auto-registration, hooks, receipt settings and next page. One
+ * placeholder, the page id. Pure.
+ *
+ * @param string $type_value order_preview or express_order
+ * @return string|null null for another type
+ */
+function pg_order_checkout_page_sql($type_value)
+{
+    if (!in_array($type_value, array('order_preview', 'express_order'), true)) {
+        return null;
+    }
+
+    return
+        "SELECT
+            page.page_name,
+            " . $type_value . "_pages.offline_payment_always_allowed,
+            " . $type_value . "_pages.auto_registration,
+            " . $type_value . "_pages.pre_save_hook_code,
+            " . $type_value . "_pages.post_save_hook_code,
+            " . $type_value . "_pages.order_receipt_email,
+            " . $type_value . "_pages.order_receipt_email_subject,
+            " . $type_value . "_pages.order_receipt_email_format,
+            " . $type_value . "_pages.order_receipt_email_header,
+            " . $type_value . "_pages.order_receipt_email_footer,
+            " . $type_value . "_pages.order_receipt_email_page_id,
+            " . $type_value . "_pages.next_page_id
+        FROM " . $type_value . "_pages
+        LEFT JOIN page ON " . $type_value . "_pages.terms_page_id = page.page_id
+        WHERE " . $type_value . "_pages.page_id = ?";
+}
+
+/**
+ * The settings table name part of a checkout page type. Pure.
+ *
+ * @param string $page_type page.page_type
+ * @return string order_preview, express_order or '' for another type
+ */
+function pg_order_checkout_type_value($page_type)
+{
+    switch ((string) $page_type) {
+        case 'order preview':
+            return 'order_preview';
+
+        case 'express order':
+            return 'express_order';
+    }
+
+    return '';
+}
+
+/**
+ * The receipt settings and auto-registration switch a completion from a
+ * payment service's message uses: the checkout page's own, read with
+ * pg_order_checkout_page_sql(); for no page (0, deleted, another type) a
+ * plain-text receipt with a fixed subject and the order number, no header
+ * or footer, always sent, and no account. Pure.
+ *
+ * @param array|null $page_row the checkout page's settings row
+ * @return array receipt (pg_order_complete_receipt()), auto_registration (bool)
+ */
+function pg_order_payment_page_settings($page_row)
+{
+    if (!is_array($page_row) || ($page_row === array())) {
+        return array(
+            'receipt' => array(
+                'email' => 1,
+                'subject' => lang('Order Receipt #'),
+                'format' => 'plain_text',
+                'header' => '',
+                'footer' => '',
+                'page_id' => 0,
+            ),
+            'auto_registration' => false,
+        );
+    }
+
+    return array(
+        'receipt' => array(
+            'email' => $page_row['order_receipt_email'] ?? '',
+            'subject' => $page_row['order_receipt_email_subject'] ?? '',
+            'format' => $page_row['order_receipt_email_format'] ?? '',
+            'header' => $page_row['order_receipt_email_header'] ?? '',
+            'footer' => $page_row['order_receipt_email_footer'] ?? '',
+            'page_id' => $page_row['order_receipt_email_page_id'] ?? '',
+        ),
+        'auto_registration' => !empty($page_row['auto_registration']),
+    );
+}
+
+/**
+ * The checkout page settings row of the page an order names, null for none:
+ * 0, a page that is gone or a page of another type.
+ *
+ * @param int $page_id orders.checkout_page_id
+ * @return array|null
+ */
+function pg_order_checkout_page_row($page_id)
+{
+    $page_id = pg_order_checkout_page_id($page_id);
+
+    if ($page_id <= 0) {
+        return null;
+    }
+
+    $result = db_q("SELECT page_type FROM page WHERE page_id = ?", array((string) $page_id)) or output_error('Query failed.');
+    $page = mysqli_fetch_assoc($result);
+    $sql = pg_order_checkout_page_sql(pg_order_checkout_type_value(is_array($page) ? $page['page_type'] : ''));
+
+    if ($sql === null) {
+        return null;
+    }
+
+    $result = db_q($sql, array((string) $page_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    return is_array($row) ? $row : null;
+}
+
+/**
+ * The lines a completion charges today, split from those whose recurring
+ * payments start later, by the test submit_order() puts its lines through
+ * (pg_order_line_charged_today()). Pure.
+ *
+ * @param array  $lines         pg_order_lines_sql() rows
+ * @param string $today         Y-m-d
+ * @param bool   $clearcommerce the ClearCommerce gateway charges recurring lines itself
+ * @return array nonrecurring (charged today), recurring (every recurring line),
+ *               subtotal (minor units of the lines charged today)
+ */
+function pg_order_lines_charged(array $lines, $today, $clearcommerce)
+{
+    $split = array('nonrecurring' => array(), 'recurring' => array(), 'subtotal' => 0);
+
+    foreach ($lines as $line) {
+        if (pg_order_line_charged_today(!empty($line['recurring']), $line['recurring_start_date'] ?? '', 0, $today, $clearcommerce)) {
+            $split['nonrecurring'][] = $line;
+            $split['subtotal'] += (int) round((float) ($line['price'] ?? 0)) * (int) ($line['quantity'] ?? 0);
+        }
+
+        if (!empty($line['recurring'])) {
+            $split['recurring'][] = $line;
+        }
+    }
+
+    return $split;
+}
+
+/**
+ * The column values a completion from a payment service's message writes:
+ * what the checkout kept on the order before the visitor was sent away
+ * (pg_order_payment_started_query()), the order date, the commission and,
+ * for a key code standing for an offer code, that code. Pure.
+ *
+ * @param array      $order        the orders row
+ * @param string     $status       the service's answer: paid or authorized
+ * @param int        $now
+ * @param int|string $user_id      the order's account (0 or '' for none)
+ * @param mixed      $commission   pg_order_commission(), '' with no affiliate
+ * @param array|null $key_code     pg_order_key_code()
+ * @param bool       $page_column  orders.checkout_page_id exists
+ * @return array column => value
+ */
+function pg_order_payment_completion_values(array $order, $status, $now, $user_id, $commission, $key_code, $page_column)
+{
+    $values = array(
+        'payment_method' => (string) ($order['payment_method'] ?? ''),
+        'subtotal' => (int) ($order['subtotal'] ?? 0),
+        'discount' => (int) ($order['discount'] ?? 0),
+        'tax' => (int) ($order['tax'] ?? 0),
+        'shipping' => (int) ($order['shipping'] ?? 0),
+        'gift_card_discount' => (int) ($order['gift_card_discount'] ?? 0),
+        'surcharge' => (int) ($order['surcharge'] ?? 0),
+        'total' => (int) ($order['total'] ?? 0),
+        'commission' => $commission,
+        'order_date' => (int) $now,
+        'user_id' => $user_id,
+    );
+
+    if ($key_code && (($key_code['report'] ?? '') == 'offer_code')) {
+        $values['special_offer_code'] = $key_code['offer_code'];
+    }
+
+    $values += array(
+        'last_modified_timestamp' => (int) $now,
+        'transaction_id' => (string) ($order['transaction_id'] ?? ''),
+        'paid_at' => pg_order_checkout_paid_at((string) ($order['payment_method'] ?? ''), (string) ($order['transaction_id'] ?? ''), (string) $status, (int) $now),
+        'affiliate_code' => (string) ($order['affiliate_code'] ?? ''),
+    );
+
+    if ($page_column) {
+        $values['checkout_page_id'] = pg_order_checkout_page_id($order['checkout_page_id'] ?? 0);
+    }
+
+    return $values;
+}
+
+/**
+ * Completes an incomplete order from a payment service's message, after the
+ * visitor left: the values the checkout kept on the order before sending the
+ * visitor away, the lines, the receipt and auto-registration switch of the
+ * checkout page the order names (none: a plain-text receipt, no account),
+ * an existing account with the billing e-mail linked when that switch is on
+ * (no account is opened), the legal documents with the acceptance the
+ * visitor gave; then pg_order_complete() and the ERP invoice of a paid order.
+ *
+ * The caller has checked that the message's payment is the order's own, for
+ * its total, in the store's currency. Refused (nothing written) when the
+ * order holds no kept values (sent away before they were kept) or its lines
+ * no longer add up to the kept subtotal (the cart changed after the visitor
+ * was sent away).
+ *
+ * @param int    $order_id
+ * @param string $status the service's answer: paid or authorized
+ * @return array status: completed (order_number), nothing (another request
+ *               completed it, or it is no longer incomplete) or refused
+ *               (reason, for the log)
+ */
+function pg_order_complete_from_payment($order_id, $status)
+{
+    $order_id = (int) $order_id;
+    $page_column = pg_schema_has('orders', 'checkout_page_id');
+    $legal_column = pg_schema_has('orders', 'legal_acceptance');
+
+    $result = db_q(
+        "SELECT
+            id, status, user_id, contact_id,
+            billing_salutation, billing_first_name, billing_last_name, billing_company,
+            billing_address_1, billing_address_2, billing_city, billing_state,
+            billing_zip_code, billing_country, billing_phone_number, billing_fax_number,
+            billing_email_address, custom_field_1, custom_field_2, po_number,
+            reference_code, special_offer_code, affiliate_code, payment_method,
+            subtotal, discount, tax, shipping, gift_card_discount, surcharge, total,
+            transaction_id, IFNULL(INET_NTOA(NULLIF(ip_address, 0)), '') AS ip_text"
+            . ($page_column ? ', checkout_page_id' : '')
+            . ($legal_column ? ', legal_acceptance' : '') . "
+        FROM orders
+        WHERE id = ?", array((string) $order_id)) or output_error('Query failed.');
+    $order = mysqli_fetch_assoc($result);
+
+    if (!is_array($order) || ($order['status'] !== 'incomplete')) {
+        return array('status' => 'nothing');
+    }
+
+    if ((string) $order['payment_method'] === '') {
+        return array('status' => 'refused', 'reason' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)');
+    }
+
+    $result = db_q(pg_order_lines_sql(), array((string) $order_id)) or output_error('Query failed.');
+    $lines = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $lines[] = $row;
+    }
+
+    $charged = pg_order_lines_charged($lines, date('Y-m-d'), (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'));
+
+    if (($lines === array()) || ($charged['subtotal'] !== (int) $order['subtotal'])) {
+        return array('status' => 'refused', 'reason' => 'the order\'s items changed after the visitor was sent to pay');
+    }
+
+    $settings = pg_order_payment_page_settings(pg_order_checkout_page_row($page_column ? $order['checkout_page_id'] : 0));
+
+    // The checkout page's auto-registration switch holds whichever request
+    // completes the order: the account with the billing e-mail gets a guest's
+    // order. None is opened here.
+    $user_id = (int) $order['user_id'];
+    $auto_registration = '';
+
+    if (($user_id <= 0) && $settings['auto_registration'] && ((string) $order['billing_email_address'] !== '')) {
+        $result = db_q("SELECT user_id FROM user WHERE user_email = ?", array((string) $order['billing_email_address'])) or output_error('Query failed.');
+        $user = mysqli_fetch_assoc($result);
+
+        if (is_array($user) && ((int) $user['user_id'] > 0)) {
+            $user_id = (int) $user['user_id'];
+            $auto_registration = 'existing';
+        }
+    }
+
+    $affiliate_rate = null;
+
+    if ((AFFILIATE_PROGRAM == true) && ((string) $order['affiliate_code'] !== '')) {
+        $affiliate_rate = pg_order_affiliate_rate($order['affiliate_code']);
+    }
+
+    $commission = ($affiliate_rate !== null)
+        ? pg_order_commission($charged['nonrecurring'], $affiliate_rate, (int) $order['discount'], (int) $order['subtotal'], (int) $order['gift_card_discount'], (int) $order['total'] - (int) $order['surcharge'])
+        : '';
+
+    $key_code = pg_order_key_code($order['special_offer_code']);
+
+    // The recipient that gave up the shipping's minor units at checkout
+    // (pg_order_charges_reachable()) keeps the cost the order was charged,
+    // as submit_order() writes it before its completion.
+    $result = db_q("SELECT SUM(shipping_cost) AS shipping FROM ship_tos WHERE order_id = ?", array((string) $order_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+    $shipping_less = (int) ($row['shipping'] ?? 0) - (int) $order['shipping'];
+
+    if ($shipping_less > 0) {
+        db_q(
+            "UPDATE ship_tos SET shipping_cost = shipping_cost - ?
+            WHERE order_id = ? AND shipping_cost >= ?
+            ORDER BY id DESC LIMIT 1", array((string) $shipping_less, (string) $order_id, (string) $shipping_less)) or output_error('Query failed.');
+    }
+
+    $now = time();
+    $legal = pg_order_legal_acceptance_read($legal_column ? $order['legal_acceptance'] : null, (string) $order['ip_text'], $now);
+
+    $order_number = pg_order_complete(
+        $order_id,
+        pg_order_payment_completion_values($order, $status, $now, ($user_id > 0) ? $user_id : '', $commission, $key_code, $page_column),
+        $legal['types'],
+        array(
+            'lines' => $lines,
+            'order' => array_intersect_key($order, array_flip(array(
+                'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+                'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
+                'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number',
+                'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number'))),
+            'contact_id' => (int) $order['contact_id'],
+            'reference_code' => (string) $order['reference_code'],
+            'receipt' => $settings['receipt'],
+            'new_account' => false,
+            'auto_registration' => $auto_registration,
+            'key_code' => $key_code,
+            'affiliate_rate' => $affiliate_rate,
+            'recurring_products' => $charged['recurring'],
+            'created_user_id' => 0,
+            'actor' => '',
+            'visitor_id' => 0,
+            'legal_acceptance' => array('ip' => $legal['ip'], 'user_agent' => $legal['user_agent'], 'at' => $legal['at']),
+        )
+    );
+
+    if ($order_number === null) {
+        return array('status' => 'nothing');
+    }
+
+    // A store that invoices paid orders on their own gets this one's invoice,
+    // after the answer is sent.
+    pg_erp_auto_invoice($order_id, 'order_paid', true);
+
+    return array('status' => 'completed', 'order_number' => $order_number);
+}
+
+/**
  * The checkout page id an order records: the page's id when the posted value
  * names one by digits only, else 0 (no page). Pure.
  *
@@ -60,24 +480,82 @@ function pg_order_checkout_page_id($page_id)
 }
 
 /**
+ * What orders.legal_acceptance keeps of the legal documents a visitor
+ * accepted before being sent to the payment service: the types (preinfo,
+ * contract, kvkk), the visitor's address and browser, and when. Pure.
+ *
+ * @param string[] $types
+ * @param string   $ip
+ * @param string   $user_agent
+ * @param int      $at
+ * @return string JSON
+ */
+function pg_order_legal_acceptance_json(array $types, $ip, $user_agent, $at)
+{
+    return (string) json_encode(array(
+        'types' => array_values(array_intersect(array('preinfo', 'contract', 'kvkk'), $types)),
+        'ip' => substr((string) $ip, 0, 45),
+        'user_agent' => mb_substr((string) $user_agent, 0, 255),
+        'at' => (int) $at,
+    ));
+}
+
+/**
+ * The legal acceptance a completion from a payment service's message stores
+ * the documents with: orders.legal_acceptance as the visitor's redirect wrote
+ * it, else (NULL or unreadable: an order started before step 11.0.121) the
+ * two documents the checkout requires accepted, no KVKK consent, the
+ * order's IPv4 address ('' for none), no browser, now. Pure.
+ *
+ * @param string|null $json        orders.legal_acceptance
+ * @param string      $order_ip    the order's address as text ('' for none)
+ * @param int         $now
+ * @return array types, ip, user_agent, at
+ */
+function pg_order_legal_acceptance_read($json, $order_ip, $now)
+{
+    $data = is_string($json) ? json_decode($json, true) : null;
+
+    if (!is_array($data) || !isset($data['types']) || !is_array($data['types'])) {
+        return array('types' => array('preinfo', 'contract'), 'ip' => (string) $order_ip, 'user_agent' => '', 'at' => (int) $now);
+    }
+
+    $types = array();
+
+    foreach ($data['types'] as $type) {
+        if (is_string($type) && in_array($type, array('preinfo', 'contract', 'kvkk'), true) && !in_array($type, $types, true)) {
+            $types[] = $type;
+        }
+    }
+
+    return array(
+        'types' => $types,
+        'ip' => (isset($data['ip']) && is_string($data['ip'])) ? substr($data['ip'], 0, 45) : '',
+        'user_agent' => (isset($data['user_agent']) && is_string($data['user_agent'])) ? mb_substr($data['user_agent'], 0, 255) : '',
+        'at' => (isset($data['at']) && is_int($data['at']) && ($data['at'] > 0)) ? $data['at'] : (int) $now,
+    );
+}
+
+/**
  * The UPDATE for db_q() that keeps, on an order still incomplete, what the
  * checkout settled when the visitor is sent to the payment service: the
  * payment's id, the amount it was started for, the payment method, the
- * figures the total is made of and, once step 11.0.120 has run, the
- * checkout page. A payment service's message that completes the order
+ * figures the total is made of and, once their steps have run, the
+ * checkout page (11.0.120) and the legal acceptance (11.0.121; null when the
+ * documents are off). A payment service's message that completes the order
  * after the visitor left reads them back instead of the visitor's request.
  * Figures are integer minor units. Pure.
  *
- * @param int   $order_id
- * @param array $started          pg_payment_started_order_values()
- * @param array $settled          payment_method, subtotal, discount, tax,
- *                                shipping, gift_card_discount, surcharge,
- *                                checkout_page_id
- * @param bool  $has_page_column  orders.checkout_page_id exists
+ * @param int      $order_id
+ * @param array    $started  pg_payment_started_order_values()
+ * @param array    $settled  payment_method, subtotal, discount, tax,
+ *                           shipping, gift_card_discount, surcharge,
+ *                           checkout_page_id, legal_acceptance (JSON or null)
+ * @param string[] $optional the columns of those two that exist
  * @return array|null array('sql' => string, 'params' => array); null for
  *                    no order or no payment id
  */
-function pg_order_payment_started_query($order_id, array $started, array $settled, $has_page_column)
+function pg_order_payment_started_query($order_id, array $started, array $settled, array $optional)
 {
     $order_id = (int) $order_id;
     $transaction_id = (string) ($started['transaction_id'] ?? '');
@@ -94,9 +572,18 @@ function pg_order_payment_started_query($order_id, array $started, array $settle
         $params[] = (string) (int) round((float) ($settled[$column] ?? 0));
     }
 
-    if ($has_page_column) {
+    if (in_array('checkout_page_id', $optional, true)) {
         $set[] = 'checkout_page_id = ?';
         $params[] = (string) pg_order_checkout_page_id($settled['checkout_page_id'] ?? 0);
+    }
+
+    if (in_array('legal_acceptance', $optional, true)) {
+        if (isset($settled['legal_acceptance']) && is_string($settled['legal_acceptance'])) {
+            $set[] = 'legal_acceptance = ?';
+            $params[] = $settled['legal_acceptance'];
+        } else {
+            $set[] = 'legal_acceptance = NULL';
+        }
     }
 
     $params[] = (string) $order_id;
@@ -184,6 +671,8 @@ function pg_order_complete_query($order_id, array $values)
  * - created_user_id: the signed-in user (0 for a guest or a service)
  * - actor: the signed-in user's name for the log ('' for none)
  * - visitor_id: the visit that placed the order (0 for none)
+ * - legal_acceptance: ip, user_agent, at the documents were accepted with
+ *   (none: this request's own, now)
  *
  * @param int   $order_id
  * @param array $values    column => value (pg_order_complete_columns())
@@ -245,7 +734,16 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     // Keep the checkout documents with the order as the customer saw them,
     // now that the order has its number. Only reads the order; its totals are
     // final by this point.
-    pg_legal_documents_store($order_id, array_values(array_intersect(array('preinfo', 'contract', 'kvkk'), $documents)));
+    // A payment service's message passes the visitor's address, browser and
+    // time of acceptance; the visitor's own request leaves them to the store.
+    $legal = (isset($context['legal_acceptance']) && is_array($context['legal_acceptance'])) ? $context['legal_acceptance'] : array();
+
+    pg_legal_documents_store(
+        $order_id,
+        array_values(array_intersect(array('preinfo', 'contract', 'kvkk'), $documents)),
+        $legal['ip'] ?? null,
+        $legal['user_agent'] ?? null,
+        $legal['at'] ?? null);
 
     // Tell whoever is subscribed that an order was placed, once the order
     // number exists, because that is the number every other system knows the

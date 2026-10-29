@@ -196,3 +196,10 @@ function test_payment_paypal_webhook_records_a_pending_payment()
 	pg_assert_false($outcome['mark_paid']);
 	pg_assert_contains('Do not ship it for order #438. The order was not changed.', $outcome['alert']);
 }
+
+function test_payment_paypal_webhook_answer_carries_the_currency()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/paypal.php');
+
+	pg_assert_contains("'raw'             => \$raw + array('currency' => \$currency),", $source, 'the capture\'s currency for the completion\'s check');
+}
