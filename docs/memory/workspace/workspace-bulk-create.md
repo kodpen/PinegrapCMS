@@ -1,6 +1,6 @@
 ---
 name: workspace-bulk-create
-description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, pasted list and channel file sources
+description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
 ---
 
 ## What is it?
@@ -22,11 +22,8 @@ description: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' 
 ## How is the card drawn?
 - Label "New records in bulk"; summary "Make N new records (Product), off sale unless a row puts it on sale"; sample: the first five names with their price; `bulk.create` picks the create texts in workspace.js. The decision reads "N records made, N left out, N could not be made" with up to 30 product tags.
 
-## Where do a person's own rows come from? (3b, PR #2278)
-- `bulk_sources.php`: "Make products" under a CSV/xlsx/xls/ods file of the channel, opening the pasted-list window too (`channel.bulk_products`: may post and make products). Action `ws_bulk_create_propose` → `ws_bulk_create_propose()`.
-- Out of the channel menu since #2927 (owner, 2026-10-29). The window and file button go in S3/S4 of `plans/workspace-create-command.md` (`/oluştur ürün`).
-- Table: `ws_bulk_text_table()` (tab, else `;`, else `|`); a file through `ws_bulk_file_table()` (a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's separator). `ws_bulk_table_rows()`: a first row naming a known column (`ws_bulk_header_fields()`: import names, English, Turkish) is a header, unknown columns named back; else the first cell is the name and short description, the first amount after it the price. Prices by `pg_products_import_price_cents()`.
-- The card hangs under a message of the person's own ("Product drafts: N rows from …"), `request_id 0`. Applied, `ws_bulk_step()` sets `ws_change_source()` to the person and a quiet log; decision "Bulk change by {person}: …".
+## Where do a person's own rows come from?
+- Several lines under `/create product`, or a channel's spreadsheet file: `workspace-bulk-sources.md`.
 
 ## How do the assistants propose it? (3c, PR #2286)
 - Pinegrap AI: `propose_bulk_change` takes action create and `rows` (a JSON list in a string, decoded in `ws_ai_propose_bulk()` before `ws_bulk_input()`); `ws_bulk_guide()` tells it when for whoever may make products.
