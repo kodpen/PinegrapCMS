@@ -2314,6 +2314,7 @@
     "The message is empty.": "Mesaj boş.",
     "The message is longer than {var:1} characters.": "Mesaj {var:1} karakterden uzun.",
     "The message is not signed by PayPal.": "Mesaj PayPal tarafından imzalanmamış.",
+    "The message is not signed by PayTR.": "Mesaj PayTR tarafından imzalanmamış.",
     "The message is not signed by Stripe.": "Mesaj Stripe tarafından imzalanmamış.",
     "The message is {var:1} and the account takes at most {var:2}. Send large files as a link.": "İleti {var:1} boyutunda, hesap en çok {var:2} kabul ediyor. Büyük dosyaları bağlantı olarak gönderin.",
     "The message it is about": "Tartışılan mesaj",

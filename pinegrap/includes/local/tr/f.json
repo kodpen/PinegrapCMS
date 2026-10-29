@@ -720,6 +720,7 @@
     "From purchase order {var:1}": "{var:1} numaralı satın alma siparişinden",
     "From quote {var:1}": "{var:1} numaralı tekliften",
     "From the Blog": "Blogdan",
+    "From the Information page of the PayTR Merchant Panel.": "PayTR Mağaza Paneli'nin Bilgi sayfasından.",
     "From the Journal": "Günceden",
     "From the REST API app under Apps & Credentials in the PayPal Developer Dashboard, in the same mode as below.": "PayPal Developer Dashboard'da Apps & Credentials altındaki REST API uygulamasından, aşağıdaki modla aynı modda.",
     "From the blog": "Blogdan",

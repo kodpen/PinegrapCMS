@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4c open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
+description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 4c, 5 done; 4c2 open): payment drivers beside submit_order.php; iyzico and Stripe on it; one checkout method list, then PayPal v2 and PayTR
 ---
 
 ## What did the owner decide?
@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing it: #3021.
 4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
 4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
-4c. PayTR driver (M), after #3021: it confirms payments only server to server; its iframe needs frame-src CSP.
+4c. PayTR: driver, callback, CSP done (#3036, `commerce/payment-driver-paytr.md`). 4c2 remains: instalment table, refund API.
 6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
@@ -33,4 +33,4 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 - Answered (#2407): the driver's fields on the classic checkout and express order pages too: 6b, PR #2556.
 
 ## Where to start?
-- 4c: `commerce/order-completion-from-payment.md`, then `commerce/payment-drivers.md`.
+- 4c2: `commerce/payment-driver-paytr.md`.
