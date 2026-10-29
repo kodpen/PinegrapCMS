@@ -285,7 +285,7 @@ if (isset($_GET['export'])) {
 
             // If this profile is enabled, then output check mark.
             if ($email_campaign_profile['enabled'] == 1) {
-                $output_enabled_check_mark = '<span class="material-icons">task_alt</span>';
+                $output_enabled_check_mark = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
             }
 
             switch ($email_campaign_profile['action']) {
@@ -435,7 +435,7 @@ if (isset($_GET['export'])) {
 
             $output_rows .=
             '<tr class="unselectable">
-                <td class="select-all align-middle text-start"><input class="check disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1"></td>
+                <td class="select-all align-middle text-start"><input class="check disabled" disabled="" type="checkbox" name="fake_checkbox[]" value="1" aria-label="' . h(lang(array('string'=>'Select {var:1}','vars'=>array($email_campaign_profile['name'])))) . '"></td>
 			    <td class="align-middle text-start">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_email_campaign_profile.php?id=' . $email_campaign_profile['id'] . '\'"><i class="bi bi-pencil"></i></button>
                     <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
@@ -473,9 +473,9 @@ if (isset($_GET['export'])) {
                 ' . $liveform->output_notices() . '
                
                 <div class="row mb-3 flex-wrap">
-                    <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
+                    <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_email_campaign_profile.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form class="disable_shortcut d-inline-block" method="get">
                                 <div class=" btn-group btn-group-sm flex-wrap">
