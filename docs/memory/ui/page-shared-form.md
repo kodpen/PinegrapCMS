@@ -6,7 +6,7 @@ description: The page create and edit screens share includes/forms/page_form.php
 ## Where is the page form?
 - `includes/forms/page_form.php` (gate `PG_FUNCTIONS_DIR`), loaded by `add_page.php` and `edit_page.php` together with `includes/fn/page_type_pane.php` (the type rights and the custom form check, shared with the designer's Page Type pane).
 - Drawing: `pg_page_form_type_fields()` gives the type picker and the System Options card; `pg_page_form_new_page_properties()` the defaults of a new page.
-- Saving: `pg_page_form_type_properties_from_post()`, `pg_page_form_save_type_links()`, and the helpers below. The save half moved here in the "page add/edit save path in the shared form" PR.
+- Saving: `pg_page_form_type_properties_from_post()`, `pg_page_form_save_type_links()`, and the helpers below. The save half moved here in #3024.
 
 ## Which save checks do both screens share?
 - `pg_page_form_clean_name($name, $type)`: spaces and `&` become `_`; a catalog or catalog detail name with `/` gets the error. `pg_page_form_refuse($liveform, $errors, $url)` marks the errors and redirects back; it returns only when there are none.
