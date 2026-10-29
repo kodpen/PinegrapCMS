@@ -99,6 +99,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_photo_gallery.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_affiliate_sign_up.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_comments_recent.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_gallery.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_starters.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_placement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/custom_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signature.php');

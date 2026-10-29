@@ -1,6 +1,6 @@
 ---
 name: widget-designability
-description: Plan (all done but W20b): legacy-layout power in widgets
+description: Plan (all done but W20b-2): legacy-layout power in widgets
 ---
 
 ## What is built, and why?
@@ -36,7 +36,7 @@ description: Plan (all done but W20b): legacy-layout power in widgets
 - W17 values outside widgets #2398 ([[page-record-values]]). Parts anywhere (#3074): W17a server #3085, W17b editor #3111 ([[widget-parts-anywhere]]).
 - W17 form fields by name: server half #3007, editor half #3047 ([[page-record-values]]). W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
-- W20a done #3140 ([[widget-parts-palette]]). W20b decided #3179 (`workflow/decisions-made-product-4.md`): starters as a fourth gallery source, 6 kinds first. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
+- W20a done #3140 ([[widget-parts-palette]]). W20b (#3179): W20b-1 done #3200 ([[widget-starters]]), W20b-2 open. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
 - W25 done (#2221, [[widget-condition-rows]]).
 - W26 done #2264, order view's withdrawal line #2458 ([[sentence-with-values]]).
 
@@ -44,4 +44,4 @@ description: Plan (all done but W20b): legacy-layout power in widgets
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W20b (#3179), once the verified-shipping-addresses step frees `style_designer.*`.
+- W20b-2: starters for the kinds [[widget-starters]] lists as left.
