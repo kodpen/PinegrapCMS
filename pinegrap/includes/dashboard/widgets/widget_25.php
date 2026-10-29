@@ -118,7 +118,7 @@ function pg_dashboard_widget_25($request, $user)
                 <span class="fg-secondary ms-auto flex-shrink-0" style="font-size:10px">' . get_relative_time(array('timestamp' => (int) $cm_item['created_timestamp'])) . '</span>
             </div>
             <div class="fg-secondary" style="font-size:11px;line-height:1.35">' . h($cm_preview) . '</div>
-            <div class="fg-secondary text-truncate" style="font-size:10px;opacity:.75">' . h($cm_where_text) . '</div>
+            <div class="fg-secondary text-truncate" style="font-size:10px">' . h($cm_where_text) . '</div>
         </a>';
     }
 

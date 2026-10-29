@@ -15,6 +15,7 @@ description: Panel and visual editor text and icon contrast (#2530): secondary s
 - Use the theme's emphasis ink: `--pg-success-fg-emphasis`, `--pg-danger-fg-emphasis` (Overdue in the brief, lane counts, the urgent count pill on `--pg-danger-bg-subtle`).
 - On a tint too strong for the plain ink (the visitor card's growth pills) or for a user colour, pull it toward the strongest text colour: `color-mix(in srgb, <colour> 80%, var(--pg-fg-emphasis))`. It darkens in light and lightens in dark, so one rule covers both.
 - Workspace palette tones (`ws_palette()`) are fills for white text. As a sign or label on the sidebar: group name 60%, group and channel icons 75% of the tone mixed with `--pg-fg-emphasis` (checked for all 20 tones on both themes).
+- Dashboard pills on a tint of their own tone, rows without opacity and the headline's named direction: `dashboard-pill-contrast.md`.
 - A badge on a user colour takes `pg_readable_ink_on()` (PHP) or `readableInk()` (workspace.js).
 
 ## Which literal tones were darkened?

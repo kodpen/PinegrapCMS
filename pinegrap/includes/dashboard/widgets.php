@@ -194,14 +194,17 @@ function pg_widget_headline($properties)
 
     if ($today > $yesterday) {
         $direction = 'up';
+        $direction_text = lang('Up from yesterday');
         $arrow = 'bi-caret-up-fill';
         $color = 'fg-success';
     } elseif ($today < $yesterday) {
         $direction = 'down';
+        $direction_text = lang('Down from yesterday');
         $arrow = 'bi-caret-down-fill';
         $color = 'fg-danger';
     } else {
         $direction = 'flat';
+        $direction_text = lang('Unchanged from yesterday');
         $arrow = 'bi-dash';
         $color = 'fg-secondary';
     }
@@ -211,7 +214,8 @@ function pg_widget_headline($properties)
         <div class="pg-head-line">
             <span class="pg-head-num">' . pg_format_number($today, 0) . '</span>
             <span class="pg-head-unit fg-secondary">' . $unit . '</span>
-            <i class="bi ' . $arrow . ' pg-head-dir ' . $color . '" title="' . h(lang('Compared to yesterday')) . '"></i>
+            <i class="bi ' . $arrow . ' pg-head-dir ' . $color . '" title="' . h(lang('Compared to yesterday')) . '" aria-hidden="true"></i>
+            <span class="visually-hidden">' . h($direction_text) . '</span>
             <span class="pg-head-total fg-secondary">' . lang(array(
                 'string' => 'in 7 days {var:1}',
                 'vars' => '<b>' . pg_format_number($total, 0) . '</b>',
@@ -307,7 +311,7 @@ function pg_widget_row($properties)
 
     // A real link rather than an onclick handler, so the row is reachable by
     // keyboard and opens in a new tab on middle click like any other link.
-    $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' opacity-50' : '')
+    $class = 'pg-row' . ($small ? ' pg-row-sm' : '') . ($muted ? ' fg-2' : '')
         . ($extra !== '' ? ' ' . $extra : '');
 
     if ($href !== '') {

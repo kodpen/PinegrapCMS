@@ -128,7 +128,7 @@ function pg_dashboard_widget_14($request, $user)
                     $color = '#a1a1a1';
                     $pct = 100;
                     $badge_text = lang('Over');
-                    $opacity = ' opacity-50';
+                    $row_state = ' fg-2';
                 } else {
                     $rd = (int) $remaining_days;
                     if ($rd <= 7) {
@@ -140,16 +140,16 @@ function pg_dashboard_widget_14($request, $user)
                     }
                     $pct = ($total_days > 0) ? min(100, (int) round((($total_days - $rd) / $total_days) * 100)) : 0;
                     $badge_text = $rd . ' ' . lang('days remaining');
-                    $opacity = '';
+                    $row_state = '';
                 }
                 return '
-                <div class="px-3 py-3 border-bottom' . $opacity . '">
+                <div class="px-3 py-3 border-bottom' . $row_state . '">
                     <div class="d-flex justify-content-between align-items-start mb-1">
                         <div class="d-flex align-items-center overflow-hidden me-3">
                             <i class="bi ' . $bs_icon . ' me-3 flex-shrink-0" style="color:' . $color . ';font-size:15px"></i>
                             <span class="fw-semibold text-truncate" style="font-size:13px">' . h($heading) . '</span>
                         </div>
-                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $color . '22;color:' . $color . ';font-size:10px;white-space:nowrap">' . $badge_text . '</span>
+                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $color . '22;color:color-mix(in srgb, ' . $color . ' 50%, var(--pg-fg-emphasis));font-size:10px;white-space:nowrap">' . $badge_text . '</span>
                     </div>'
                     . ($subline ? '<small class="fg-secondary d-block mb-1" style="padding-left:23px">' . h($subline) . '</small>' : '') .
                     '<div class="rounded-pill ms-1" style="height:4px;background:var(--pg-bg-2);overflow:hidden">

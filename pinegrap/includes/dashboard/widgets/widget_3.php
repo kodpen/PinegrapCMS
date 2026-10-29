@@ -179,7 +179,7 @@ function pg_dashboard_widget_3($request, $user)
                 'color' => $p['color'],
                 'badge' => '<i class="bi ' . $p['icon'] . '"></i>',
                 'name'  => $p['label'],
-                'aside' => '<span class="badge rounded-pill me-1" style="background:' . $p['color'] . '22;color:' . $p['color'] . '">' . $pg_count($p['count']) . '</span>'
+                'aside' => '<span class="badge rounded-pill me-1" style="background:' . $p['color'] . '22;color:color-mix(in srgb, ' . $p['color'] . ' 50%, var(--pg-fg-emphasis))">' . $pg_count($p['count']) . '</span>'
                     . '<span class="fw-semibold">' . ($p['count'] > 0 ? $pg_money($p['total']) : '&mdash;') . '</span>',
             ));
         }
