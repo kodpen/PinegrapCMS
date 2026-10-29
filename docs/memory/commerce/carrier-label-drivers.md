@@ -5,7 +5,7 @@ module: carrier_labels
 ---
 
 ## What is a label driver?
-- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (empty until the owner picks the aggregator) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
+- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (Geliver: `carrier-label-geliver.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
 - Required `_info()`: `carriers` (kept only when a `pg_shipping_carriers()` key) and `formats` (`pdf`, `zpl`). Optional `_fields()` (the payment field shape, `pg_payment_fields_normalize()`, switches dropped) and operations `test`, `create`, `label`, `cancel`, `track`, `pickup` (`pg_label_operations()`); `pg_label_can()` asks first.
 - The account is the last argument of every operation (`pg_label_account()`: stored values, secrets unsealed, defaults). A driver never reads the database, request or session and never writes orders or parcels.
 
@@ -27,4 +27,4 @@ module: carrier_labels
 - `pg_label_settings_decide()` (pure): only posted drivers; empty secret keeps; select outside options keeps; required only while on; no row while off with defaults.
 
 ## How was it verified?
-- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). The card was not opened on a sandbox: no real driver exists yet, so it draws nothing.
+- `tests/carrier_labels_test.php` with a test driver in the file (contract, answers, masking, row options, decide). The card was not opened on a sandbox; since #3096 it draws the Geliver driver.

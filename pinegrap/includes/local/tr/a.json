@@ -8,6 +8,7 @@
     "A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.": "Bir CSV dışa aktarımı en yeniden başlayarak en çok {var:1} satır içerir ve denetim izine yazılır.",
     "A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.": "İlk satırı sütunları adlandıran bir CSV, Excel ya da OpenDocument dosyası: her biri kendi adındaki sütunu doldurur.",
     "A CSV, Excel or OpenDocument file: its first row names the columns.": "CSV, Excel ya da OpenDocument dosyası: ilk satırı sütunları adlandırır.",
+    "A Geliver service code such as YURTICI_STANDART. Empty takes the cheapest offer.": "YURTICI_STANDART gibi bir Geliver hizmet kodu. Boş bırakılırsa en ucuz teklif alınır.",
     "A JSON object, empty for none. Put a value inside quotes: \"{{node.box.field}}\".": "Bir JSON nesnesi; yoksa boş bırakın. Bir değeri tırnak içine koyun: \"{{node.box.field}}\".",
     "A KVKK consent sentence is set": "KVKK açık rıza metni ayarlı",
     "A KVKK notice page is set": "KVKK aydınlatma sayfası ayarlı",

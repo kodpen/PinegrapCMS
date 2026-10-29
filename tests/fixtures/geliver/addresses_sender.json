@@ -1,0 +1,26 @@
+{
+  "result": true,
+  "additionalMessage": "Success",
+  "limit": 1,
+  "page": 1,
+  "totalRows": 1,
+  "totalPages": 1,
+  "data": [
+    {
+      "id": "19cf6b59-acd9-475a-961e-31586d69fc80",
+      "shortName": "Ana adres",
+      "name": "test",
+      "email": "test@gmail.com",
+      "phone": "+90555555555",
+      "address1": "Cumhuriyet Mh. 5951. Sk. No: 17",
+      "cityCode": "14",
+      "cityName": "Bolu",
+      "districtID": 107665,
+      "districtName": "Gerede",
+      "countryCode": "TR",
+      "isDefaultSenderAddress": true,
+      "isRecipientAddress": false,
+      "isActive": true
+    }
+  ]
+}

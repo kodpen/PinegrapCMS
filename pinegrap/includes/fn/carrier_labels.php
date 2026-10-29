@@ -150,7 +150,9 @@ function pg_label_function_name($key, $operation)
  */
 function pg_label_builtin_drivers()
 {
-    return array();
+    return array(
+        'geliver' => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
+    );
 }
 
 /**

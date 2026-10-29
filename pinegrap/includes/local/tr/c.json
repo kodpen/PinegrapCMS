@@ -1900,6 +1900,7 @@
     "Create/Update Submitted Form": "Gönderi Formu Oluştur/Güncelle",
     "Created": "Oluşturulma",
     "Created by {var:1}, {var:2}": "{var:1} oluşturdu, {var:2}",
+    "Created in the Geliver panel under Settings, API Tokens; it is shown only once there.": "Geliver panelinde Ayarlar, API Tokenları altında oluşturulur; orada yalnızca bir kez gösterilir.",
     "Created the administrator account": "Yönetici hesabı oluşturuldu",
     "Created when opened, then kept": "Açıldığında oluşturulur ve saklanır",
     "Created {var:1}": "Oluşturuldu: {var:1}",
