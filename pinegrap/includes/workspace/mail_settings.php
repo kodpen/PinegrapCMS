@@ -501,8 +501,16 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         return;
     }
 
+    $first = ws_mail_first_reply_input($_POST);
+
+    if (!$first['ok']) {
+        $liveform->add_error($first['error']);
+        return;
+    }
+
     $settings = ws_mail_box_settings($box);
     $settings['routes'] = $routes['routes'];
+    $settings['first_reply_hours'] = $first['hours'];
 
     // A password typed now replaces the kept one; an empty box keeps it.
     if ($values['password'] !== '') {
@@ -601,6 +609,7 @@ function ws_mail_box_form($self_url, $box, $channels)
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
+                ' . ws_mail_first_reply_field($prefix, $box) . '
                 ' . ws_mail_auto_reply_fields($prefix, $box) . '
                 <div class="md:col-12">
                     <div class="form-field">

@@ -792,6 +792,28 @@ function ws_mail_ingest($raw, $box)
             raw_path = '" . e($raw_path) . "', refused_files = '" . e(implode("\n", array_slice($refused, 0, 100))) . "'
         WHERE id = '" . $item_id . "'");
 
+    // Whoever holds an ongoing conversation hears the customer wrote again.
+    if (!$opened && ((int) $conversation['assignee_id'] > 0)) {
+        ws_notify((int) $conversation['assignee_id'], 'mail_customer', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $message_id, 'actor_id' => 0));
+    }
+
+    // The scheduled actions and flows waiting for mail (watch.php). The
+    // mail's text stays out: it is untrusted, and the card carries it.
+    if (function_exists('ws_event')) {
+        ws_event('workspace.mail.received', array(
+            'id'              => $conversation_id,
+            'conversation_id' => $conversation_id,
+            'channel_id'      => (int) $channel['id'],
+            'message_id'      => (int) $message_id,
+            'box_id'          => $box_id,
+            'new'             => $opened,
+            'customer'        => ($from_name !== '') ? $from_name : $from_email,
+            'customer_email'  => $from_email,
+            'subject'         => $subject,
+            'verified'        => ($auth === 'pass'),
+        ));
+    }
+
     // A new conversation may get the box's automatic answer (mail_status.php).
     if ($opened && function_exists('ws_mail_auto_reply')) {
         ws_mail_auto_reply($box, $item_id);
@@ -843,13 +865,24 @@ function ws_mail_items_map($rows)
 
     if ($conversation_ids) {
         $conversations = array();
+        $box_ids = array();
 
         foreach ((array) db_items("SELECT * FROM ws_mail_conversations WHERE id IN (" . implode(',', $conversation_ids) . ")") as $conversation) {
             $conversations[(int) $conversation['id']] = $conversation;
+            $box_ids[(int) $conversation['box_id']] = (int) $conversation['box_id'];
+        }
+
+        // Each box's first-response target, for the card's due word.
+        $hours = array();
+
+        foreach ((array) db_items("SELECT id, settings FROM ws_mail_boxes WHERE id IN (" . implode(',', array_merge(array(0), $box_ids)) . ")") as $box) {
+            $hours[(int) $box['id']] = function_exists('ws_mail_first_reply_hours') ? ws_mail_first_reply_hours($box) : 0;
         }
 
         foreach ($items as $id => $item) {
-            $items[$id]['conversation'] = $conversations[(int) $item['conversation_id']] ?? null;
+            $conversation = $conversations[(int) $item['conversation_id']] ?? null;
+            $items[$id]['conversation'] = $conversation;
+            $items[$id]['first_reply_hours'] = $conversation ? (int) ($hours[(int) $conversation['box_id']] ?? 0) : 0;
         }
     }
 
@@ -940,7 +973,8 @@ function ws_mail_card_html($row, $item)
         . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
         . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
         . (($card && function_exists('ws_mail_status_html'))
-            ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '')
+            ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '',
+                (int) ($item['first_reply_hours'] ?? 0), time())
             : '')
         . '</div>';
 

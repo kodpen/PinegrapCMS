@@ -101,7 +101,7 @@ function test_watch_own_events_are_kept_apart()
 		pg_assert_false(in_array($event, $recorded, true), $event . ' not kept by pg_event_record()');
 	}
 
-	pg_assert_same(5, count(ws_events_own()), 'five events');
+	pg_assert_same(6, count(ws_events_own()), 'six events');
 	pg_assert_false(ws_events_is_own('workspace.message.created'), 'a message in a public channel is the webhooks\' only');
 	pg_assert_false(ws_events_is_own('order.created'), 'a site event');
 	pg_assert_false(ws_event('workspace.task.completed', array('id' => 1)), 'nothing kept without the workspace\'s tables');
@@ -118,6 +118,7 @@ function test_watch_record_of_own_events()
 	pg_assert_same(array('channel', 3), ws_events_record_of('workspace.approval.decided', array('id' => 2, 'channel_id' => 3, 'record_type' => 'order', 'record_id' => 9)), 'a request about another record');
 	pg_assert_same(array('channel', 3), ws_events_record_of('workspace.approval.decided', array('id' => 2, 'channel_id' => 3, 'record_type' => '', 'record_id' => 0)), 'a request about nothing');
 	pg_assert_same(array('channel', 11), ws_events_record_of('workspace.guest.message', array('id' => 500, 'channel_id' => 11)), 'a guest\'s message');
+	pg_assert_same(array('channel', 12), ws_events_record_of('workspace.mail.received', array('id' => 40, 'channel_id' => 12)), 'an e-mail, by its channel');
 	pg_assert_false(ws_events_watched('workspace.task.completed'), 'never written into a watching channel');
 }
 

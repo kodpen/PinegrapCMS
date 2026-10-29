@@ -34,6 +34,7 @@ function workspace_side_test_flags($changes = array())
 		'messages'      => true,
 		'flows'         => true,
 		'mcp'           => true,
+		'mail'          => true,
 	), $changes);
 }
 
@@ -56,6 +57,7 @@ function test_workspace_side_screen_names_the_workspace_screens()
 	pg_assert_same('timeline', ws_side_screen('/pinegrap/workspace_timeline.php'));
 	pg_assert_same('flows', ws_side_screen('/pinegrap/workspace_flows.php'));
 	pg_assert_same('mcp', ws_side_screen('/pinegrap/workspace_mcp.php'));
+	pg_assert_same('mail', ws_side_screen('/pinegrap/workspace_mail.php'));
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_settings.php'));
 	pg_assert_same('settings', ws_side_screen('/pinegrap/workspace_template.php'), 'a template is written from the settings');
 	pg_assert_same('tasks', ws_side_screen('C:\\inetpub\\pinegrap\\workspace_tasks.php'), 'a Windows path');
@@ -74,7 +76,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	$staff = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_side_test_flags());
 
 	pg_assert_same(array('home', 'inbox'), workspace_side_test_keys($staff, 'top'));
-	pg_assert_same(array('tasks', 'notes', 'board', 'calendar', 'calendar_feed', 'flows', 'scheduled', 'mcp'), workspace_side_test_keys($staff, 'work'));
+	pg_assert_same(array('tasks', 'mail', 'notes', 'board', 'calendar', 'calendar_feed', 'flows', 'scheduled', 'mcp'), workspace_side_test_keys($staff, 'work'));
 	pg_assert_same(array('timeline', 'archived', 'audit'), workspace_side_test_keys($staff, 'records'));
 	pg_assert_same(array('settings'), workspace_side_test_keys($staff, 'foot'));
 	pg_assert_same('/pg/workspace.php?view=home&inbox=1', $staff['top'][1]['url']);
@@ -87,7 +89,7 @@ function test_workspace_side_nav_keeps_every_place_under_its_gate()
 	pg_assert_same(array(), $member['foot'], 'no settings without the right');
 
 	$none = ws_nav_groups(array('role' => 3, 'settings' => false), workspace_side_test_flags(array(
-		'notes' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false,
+		'notes' => false, 'calendar_feed' => false, 'actions' => false, 'messages' => false, 'flows' => false, 'mcp' => false, 'mail' => false,
 	)));
 
 	pg_assert_same(array('tasks', 'board', 'calendar'), workspace_side_test_keys($none, 'work'), 'only the screens every member has');

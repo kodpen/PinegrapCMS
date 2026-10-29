@@ -2295,7 +2295,7 @@ function workspace_flows_parity_table()
 		'events' => array(
 			array(array('order.created', 'order.status_changed', 'order.shipped', 'order.delivered', 'order.cancelled', 'order.return.requested', 'stock.low'), 3, 'event trigger box: shop events (with the shop only)'),
 			array(array('customer.created', 'customer.updated', 'form.submitted'), 3, 'event trigger box: site events'),
-			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
+			array(array('workspace.task.completed', 'workspace.task.status_changed', 'workspace.task.overdue', 'workspace.approval.decided', 'workspace.guest.message', 'workspace.mail.received'), 3, 'event trigger box: Workspace events, each checked against what the creator reads (ws_events_creator_sees())'),
 		),
 		'event_filters' => array(
 			array(array('page'), 3, 'event trigger box: which form'),
@@ -2474,7 +2474,7 @@ function workspace_flows_parity_table()
 			array(array('ws_scheduled_execute((int) $target[\'id\']) in includes/workspace/scheduled.php ws_scheduled_queue_take'), 3, 'start box, event and join trigger boxes: the waiting starts, taken in turn'),
 			array(array('ws_events_process() in includes/workspace/scheduled.php ws_scheduled_run', 'ws_events_start((int) $row[\'id\']) in includes/workspace/watch.php ws_events_process'), 3, 'event trigger box: the events kept (pg_event_record(), ws_event()) taken in on each run, each starting the actions that wait on it'),
 			array(array('ws_scheduled_joined(ws_channel($channel[\'id\'])) in includes/workspace/channels.php ws_channel_add_members', 'ws_scheduled_joined($channel) in includes/workspace/channels.php ws_channel_join'), 3, 'join trigger box: people added to a channel, or joining one'),
-			array(array('ws_event(\'workspace.task.completed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.status_changed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.overdue\') in includes/workspace/reminders.php ws_task_overdue_run', 'ws_event(\'workspace.approval.decided\') in includes/workspace/approvals.php ws_approval_settle', 'ws_event(\'workspace.guest.message\') in includes/workspace/guests.php ws_guest_send'), 3, 'event trigger box: the Workspace\'s own events, kept where they happen'),
+			array(array('ws_event(\'workspace.task.completed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.status_changed\') in includes/workspace/tasks.php ws_task_set_status', 'ws_event(\'workspace.task.overdue\') in includes/workspace/reminders.php ws_task_overdue_run', 'ws_event(\'workspace.approval.decided\') in includes/workspace/approvals.php ws_approval_settle', 'ws_event(\'workspace.guest.message\') in includes/workspace/guests.php ws_guest_send', 'ws_event(\'workspace.mail.received\') in includes/workspace/mail.php ws_mail_ingest'), 3, 'event trigger box: the Workspace\'s own events, kept where they happen'),
 		),
 		'tokens' => array(
 			array(array('{{date}}', '{{time}}', '{{weekday}}', '{{name}}', '{{run}}', '{{count:<key>}}'), 3, 'every box text (ws_scheduled_fill())'),

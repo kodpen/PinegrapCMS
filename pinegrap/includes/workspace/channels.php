@@ -930,7 +930,7 @@ function ws_channel_mark_read($channel_id, $user_id, $message_id)
 
     db("UPDATE ws_inbox SET read_at = '" . time() . "'
         WHERE user_id = '" . (int) $user_id . "' AND channel_id = '" . (int) $channel_id . "'
-        AND read_at = 0 AND ((kind IN ('mention', 'agent_answer') AND message_id <= '" . $message_id . "') OR kind = 'guest_message')");
+        AND read_at = 0 AND ((kind IN ('mention', 'agent_answer', 'mail_customer') AND message_id <= '" . $message_id . "') OR kind = 'guest_message')");
 
     if (mysqli_affected_rows(db::$con) > 0) {
         ws_bell_sync_read($user_id);

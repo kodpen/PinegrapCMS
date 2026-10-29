@@ -41,6 +41,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *                         | flow_finished (a run of one's flow ended: flow_runs.php)
  *                         | flow_shared (a flow was shared with one: flow_shares.php)
  *                         | wtable_shared (a workflow table was shared with one: wtable_shares.php)
+ *                         | mail_assigned | mail_customer (an e-mail conversation given to one, its
+ *                           customer writing again on one held: mail_status.php, mail.php)
  * @param array  $data     channel_id, message_id, task_id, note_id, event_id, actor_id; quiet: no device banner;
  *                         batch: the device is queued but not woken here - the caller
  *                         tells many people in a row and calls ws_push_batch_done();
@@ -458,6 +460,15 @@ function ws_inbox_describe($viewer, $row)
         case 'approval_answered':
             if (function_exists('ws_approval_inbox_describe')) {
                 return ws_approval_inbox_describe($viewer, $row, $actor, $base);
+            }
+            break;
+
+        // An e-mail conversation given to the person, or its customer writing
+        // again on one they hold (mail_status.php).
+        case 'mail_assigned':
+        case 'mail_customer':
+            if (function_exists('ws_mail_inbox_describe')) {
+                return ws_mail_inbox_describe($row, $actor, $channel_name, $base);
             }
             break;
 
