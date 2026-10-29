@@ -250,7 +250,11 @@ if ($sortable_html && (($user['role'] < 3) || in_array($_GET['id'], $user_editab
 }
 
 echo
-pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h($back_button_url) . '\'') ) ) . '
+pg_page_shell( array(
+    'title' => h($menu_name) . ' | ' . lang('Edit Menu'),
+    'icon' => 'design',
+    'heading' => lang('Edit Menu'),
+    'cancel'=>array('enable'=>true,'title'=>$output_back_button_label, 'onclick'=>'window.location.href=\'' . h($back_button_url) . '\'') ) ) . '
 <main id="content" class="container-fluid">
     <div class="row">
         <div class="col-12">
@@ -299,7 +303,7 @@ pg_page_shell( array('cancel'=>array('enable'=>true,'title'=>$output_back_button
                     </div>
                 </div>
             </div>
-            <nav class="buttons navigation text-center position-sticky mb-7" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="reorder buttons">
+            <nav class="buttons navigation text-center position-sticky mb-7" id="reorder_actions" style="bottom:.5rem;display:none" aria-label="' . h(lang('Reorder Buttons')) . '">
                 <div class="container">
                     <div class="btn-group flex-wrap justify-content-center">
                         <button type="button" id="save_sort_order" class="btn my-1 btn-solid theme-success"><i class="bi bi-check-lg me-3"></i><span class="pg-btn-label">' . lang('Save Order') . '</span></button>

@@ -125,6 +125,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
 - payment-driver-paypal-webhook.md: PayPal Checkout's notify(): webhook_id, PayPal's verify-webhook-signature check, CAPTURE.COMPLETED records an order awaiting payment, DENIED alerts
 - payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id
+- payment-driver-paytr.md: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed payment page, server-to-server callback with the OK answer completes the incomplete order; CSP for the frame; limits
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
 - payment-gateway-secrets.md: Legacy gateway secrets (Authorize.net key, PayPal passwords, iyzipay secret) sealed in config, drawn masked, opened in init.php; plain values still read; the 47-character limit

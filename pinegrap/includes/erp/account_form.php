@@ -808,3 +808,81 @@ function erp_account_form_check_formats($liveform, $country_code = '')
         $liveform->mark_error('title', lang('A person needs a first name and a surname. If this is a company, choose company as the taxpayer type.'));
     }
 }
+
+/**
+ * The payment term and the reminder threshold as posted, trimmed, with a
+ * value that is not whole days from 0 to 3650 marked on its field.
+ *
+ * @param liveform $liveform
+ * @return array  array($payment_days, $overdue_notify_days) as strings
+ */
+function erp_account_form_check_days($liveform)
+{
+    $payment_days = trim((string) $liveform->get_field_value('payment_days'));
+
+    if (erp_account_days_refused($payment_days)) {
+        $liveform->mark_error('payment_days', lang('Payment term must be a whole number of days, 0 to 3650.'));
+    }
+
+    $overdue_notify_days = trim((string) $liveform->get_field_value('overdue_notify_days'));
+
+    if (erp_account_days_refused($overdue_notify_days)) {
+        $liveform->mark_error('overdue_notify_days', lang('Reminder threshold must be a whole number of days, 0 to 3650.'));
+    }
+
+    return array($payment_days, $overdue_notify_days);
+}
+
+/**
+ * The card's fields as erp_account_save() takes them, without 'id' and
+ * 'created_by'. Every key is sent: the save writes some columns (contact,
+ * state, country, invoice e-mail, credit limit) only when their key is
+ * present, so a key left out would quietly keep the stored value.
+ *
+ * @param liveform $liveform
+ * @param string   $country_code  The checked country choice, '' for none
+ * @param string   $currency      The account's currency, decided by the screen
+ * @param int      $contact_id    The checked contact link, 0 for none
+ * @param string   $payment_days
+ * @param string   $overdue_days
+ * @param string   $fallback_country  Saved when no country was chosen: the
+ *                                store's when creating, '' when editing
+ * @return array
+ */
+function erp_account_form_save_fields($liveform, $country_code, $currency, $contact_id, $payment_days, $overdue_days, $fallback_country = '')
+{
+    $country_code = ($country_code !== '') ? $country_code : (string) $fallback_country;
+
+    // A Turkish address has no state: the province is the city.
+    $state = (string) $liveform->get_field_value('state');
+
+    if (($state !== '') && (erp_account_country($country_code) === 'TR')) {
+        $state = '';
+    }
+
+    return array(
+        'contact_id' => (int) $contact_id,
+        'kind' => $liveform->get_field_value('kind'),
+        'title' => $liveform->get_field_value('title'),
+        'is_person' => ($liveform->get_field_value('is_person') === '1'),
+        'tax_number' => $liveform->get_field_value('tax_number'),
+        'tax_office' => $liveform->get_field_value('tax_office'),
+        'email' => $liveform->get_field_value('email'),
+        'phone' => $liveform->get_field_value('phone'),
+        'address' => $liveform->get_field_value('address'),
+        'district' => $liveform->get_field_value('district'),
+        'city' => $liveform->get_field_value('city'),
+        'state' => $state,
+        'postcode' => $liveform->get_field_value('postcode'),
+        'country_code' => $country_code,
+        'currency' => $currency,
+        'status' => $liveform->get_field_value('status'),
+        'notes' => $liveform->get_field_value('notes'),
+        'payment_days' => (int) $payment_days,
+        'overdue_notify_days' => (int) $overdue_days,
+        'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
+        'invoice_email' => (string) $liveform->get_field_value('invoice_email'),
+        'invoice_mail' => ($liveform->get_field_value('invoice_mail') === '1'),
+        'credit_limit' => erp_kurus((string) $liveform->get_field_value('credit_limit')),
+    );
+}

@@ -223,7 +223,7 @@ function pg_audit_list_row(array $line, array $live, array $query)
     }
 
     if ($open !== '') {
-        $record .= ' <a href="' . h($open) . '" class="pg-link-secondary" title="' . h(lang('Open')) . '" aria-label="' . h(lang('Open')) . '"><i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></a>';
+        $record .= ' <a href="' . h($open) . '" class="pg-link-secondary d-inline-flex align-items-center justify-content-center p-1" style="min-width:1.5rem;min-height:1.5rem" title="' . h(lang('Open')) . '" aria-label="' . h(lang('Open')) . '"><i class="bi bi-box-arrow-up-right small" aria-hidden="true"></i></a>';
     }
 
     $fields = count(pg_audit_view_changes($line['before_json'], $line['after_json']));

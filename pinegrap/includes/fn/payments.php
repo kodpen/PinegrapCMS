@@ -137,6 +137,19 @@ function pg_payment_builtin_drivers()
             'file'     => 'paypal.php',
             'portal'   => 'https://developer.paypal.com/dashboard/applications',
         ),
+        // The visitor pays in PayTR's page, framed in the store's own page,
+        // which loads PayTR's frame resizer.
+        'paytr' => array(
+            'label'  => 'PayTR',
+            'kind'   => 'redirect',
+            'method' => 'PayTR',
+            'file'   => 'paytr.php',
+            'portal' => 'https://www.paytr.com/magaza/bilgi',
+            'csp'    => array(
+                'script-src' => array('https://www.paytr.com'),
+                'frame-src'  => array('https://www.paytr.com'),
+            ),
+        ),
     );
 }
 
@@ -1331,20 +1344,82 @@ function pg_payment_hosted_card_driver($gateway = null)
 
 /**
  * The sources the site's built-in Content-Security-Policy adds for the
- * payment driver that takes cards: the card gateway's driver while the store
- * takes cards. Asked with the config row's values, because the policy header
+ * payment drivers whose pages load from their service: the card gateway's
+ * driver while the store takes cards, and each redirect driver that frames
+ * its service's page (PayTR) while the store is on and the driver is
+ * switched on. Asked with the config row's values, because the policy header
  * is sent before the config constants are defined.
  *
- * @param string $gateway config.ecommerce_payment_gateway
- * @param bool   $card_on the store is on and takes the Credit/Debit Card method
+ * @param string $gateway  config.ecommerce_payment_gateway
+ * @param bool   $card_on  the store is on and takes the Credit/Debit Card method
+ * @param bool   $store_on the store is on
  * @return array directive => hosts
  */
-function pg_payment_csp_sources($gateway, $card_on)
+function pg_payment_csp_sources($gateway, $card_on, $store_on = false)
 {
+    $lists = array();
     $key = $card_on ? pg_payment_driver_for_gateway((string) $gateway) : '';
     $definition = ($key !== '') ? pg_payment_driver($key) : null;
 
-    return ($definition !== null) ? $definition['csp'] : array();
+    if ($definition !== null) {
+        $lists[] = $definition['csp'];
+    }
+
+    if ($store_on) {
+        foreach (pg_payment_drivers() as $redirect_key => $redirect) {
+            if (($redirect['kind'] === 'redirect') && ($redirect['csp'] !== array()) && pg_payment_redirect_switched_on($redirect_key)) {
+                $lists[] = $redirect['csp'];
+            }
+        }
+    }
+
+    return pg_payment_csp_merge($lists);
+}
+
+/**
+ * Several drivers' sources as one: each directive's hosts in order, once.
+ * Pure.
+ *
+ * @param array $lists directive => hosts, one per driver
+ * @return array directive => hosts
+ */
+function pg_payment_csp_merge($lists)
+{
+    $merged = array();
+
+    foreach ((array) $lists as $list) {
+        foreach ((array) $list as $directive => $hosts) {
+            foreach ((array) $hosts as $host) {
+                if (!isset($merged[$directive]) || !in_array($host, $merged[$directive], true)) {
+                    $merged[$directive][] = $host;
+                }
+            }
+        }
+    }
+
+    return $merged;
+}
+
+/**
+ * Whether a redirect driver's switch is on, read on its own: the policy
+ * header is sent before the site's key is known, so the sealed settings are
+ * not opened for it. A driver on config columns has no connect_apps switch.
+ *
+ * @param string $key
+ * @return bool
+ */
+function pg_payment_redirect_switched_on($key)
+{
+    $definition = pg_payment_driver($key);
+
+    if (($definition === null) || ($definition['settings'] !== 'connect')
+        || !function_exists('pg_connect_schema_ready') || !pg_connect_schema_ready()) {
+        return false;
+    }
+
+    $row = db_item("SELECT enabled FROM connect_apps WHERE provider = '" . e(pg_payment_settings_key($key)) . "'");
+
+    return is_array($row) && ((int) $row['enabled'] === 1);
 }
 
 /**

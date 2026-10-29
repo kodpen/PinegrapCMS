@@ -96,6 +96,22 @@ function erp_account_country($country_code = '')
 }
 
 /**
+ * Whether a payment term or reminder threshold is refused. Either is whole
+ * days from 0 to 3650: ten years is more than any trade or reminder needs.
+ * An empty value is not refused (no term). Shared by the account screens
+ * and the CSV import, which say why in their own words.
+ *
+ * @param string $value  The value as given, already trimmed where the caller trims
+ * @return bool
+ */
+function erp_account_days_refused($value)
+{
+    $value = (string) $value;
+
+    return ($value !== '') && ((preg_match('/^[0-9]{1,4}$/', $value) !== 1) || ((int) $value > 3650));
+}
+
+/**
  * A country's name from the store's country list, or the code when the list
  * does not know it.
  *

@@ -1465,6 +1465,7 @@
     "Add the provider edge addresses to Trusted Proxies below, otherwise every visitor will appear to share one IP address.": "Sağlayıcının uç sunucu adreslerini aşağıdaki Güvenilen Vekil Sunucular alanına ekleyin, aksi hâlde tüm ziyaretçiler tek bir IP adresini paylaşıyor görünür.",
     "Add the redirect address below under Authorized redirect URIs.": "Aşağıdaki yönlendirme adresini Authorized redirect URIs altına ekleyin.",
     "Add the table's columns first: their names and what each holds.": "Önce tablonun sütunlarını ekleyin: adlarını ve her birinin ne tuttuğunu.",
+    "Add the webhook address above as the Notification URL in the PayTR Merchant Panel; PayTR confirms every payment only there.": "Yukarıdaki webhook adresini PayTR Mağaza Paneli'nde Bildirim URL'si olarak ekleyin; PayTR her ödemeyi yalnızca oraya bildirir.",
     "Add the webhook address above to the same REST API app with the events Payment capture completed and Payment capture denied, and copy its webhook ID here; without it PayPal's messages are refused.": "Yukarıdaki webhook adresini aynı REST API uygulamasına Payment capture completed ve Payment capture denied olaylarıyla ekleyin ve webhook kimliğini buraya kopyalayın; kimlik olmadan PayPal'ın mesajları reddedilir.",
     "Add them as new notes": "Yeni not olarak ekle",
     "Add this TXT record to your DNS:": "Bu TXT kaydını DNS'nize ekleyin:",

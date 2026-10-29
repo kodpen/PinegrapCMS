@@ -6,6 +6,7 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 ## What is it?
 - A root endpoint a payment service's servers post to; `includes/payments/callback.php` holds the logic. No session; the driver's signature check is the only credential. POST only (405), a valid key whose driver defines `notify` (404), body up to 1 MB (413).
 - Headers come from `$_SERVER` by lowercase dashed name (`pg_payment_request_headers()`), not `getallheaders()`.
+- The answer is JSON `{status}`; a driver's `reply` (PayTR's `OK`) goes out as `text/plain` instead on a 200 (`pg_payment_callback_reply()`, #3036).
 - The address: `pg_payment_callback_url($key)`; every driver with `notify()` shows it read-only on its settings fields ("Webhook Address").
 
 ## How is the order found?

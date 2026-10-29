@@ -57,6 +57,9 @@ if (!$_POST) {
     // output the page
     print
     pg_page_shell( array(
+        'title' => h($file_name) . ' | ' . lang('Edit JS'),
+        'icon' => 'design',
+        'heading' => lang('Edit JS'),
         'cancel'=>array('enable'=>'true','url'=>pg_safe_back_url(isset($_REQUEST['send_to']) ? $_REQUEST['send_to'] : '', 'view_design_files.php')),
         'breadcrumb' => array(
             array('label' => lang('All Design Files'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_design_files.php'),

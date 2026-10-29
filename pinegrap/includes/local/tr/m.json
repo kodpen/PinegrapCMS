@@ -427,6 +427,7 @@
     "Merchant ID": "Tüccar Kimliği",
     "Merchant Key": "Tüccar Anahtarı",
     "Merchant Login": "Tüccar Girişi",
+    "Merchant Salt": "Mağaza Parola (Salt)",
     "Merge": "Birleştir",
     "Merge Selected": "Seçilenleri Birleştir",
     "Merged": "Birleşmiş",
