@@ -187,6 +187,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-date-stores.md: What each hooked date/time field keeps (site text, ISO on native inputs, a 24-hour text time, month/day/year selects), how the box writes it, min/max bounds, fields a script builds
 - pg-datepicker.md: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js calendar, time row in the same popup: own parse, hidden store, clock, keys, theme, dialogs, drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
+- pg-fields-speech.md: Screen readers and panel combobox/chip fields (pg_fields.js v6): toggle name and value, listbox options, no-match line, hidden select out of Tab, focused chip deleted, named remove buttons
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width layout fixes (#3006): v6 .input-group does not wrap (Shipping Method base rate tiers), Login Region code fields without a fixed width
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard

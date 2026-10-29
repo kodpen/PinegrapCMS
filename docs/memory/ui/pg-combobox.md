@@ -4,12 +4,12 @@ description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggl
 ---
 
 ## How is a combobox field drawn?
-- `drawCombobox()` in `assets/js/pg_fields.js` keeps the `<select>` as the posted store (`name[]`, liveform, `required`) and hides it with `.pg-combobox-native` (visually hidden, still validated). After it: a `<button class="form-control combobox-toggle pg-combobox">` and a `.menu.pg-combobox-menu` with a `.menu-item[data-bs-value]` per option and a `.menu-header` per `<optgroup>`. Then `pgUI.combobox.get(toggle, {multiple, search, placeholder})`.
-- The toggle takes the select's classes except `form-control`, `select2` (`form-control-sm`, `is-invalid` carry over) and is named by the field's `<label for>` (`aria-labelledby`). From 8 options on the menu has a search box; its words ("Search", "No results found") come from `pg_fields_script()` (`data-pg-search-label`, `data-pg-no-results-label`). The menu is at least as wide as the toggle (set on `show`).
+- `drawCombobox()` in `assets/js/pg_fields.js` keeps the `<select>` as the posted store (`name[]`, liveform, `required`) and hides it with `.pg-combobox-native` (visually hidden, still validated, `tabindex=-1`). After it: a `<button class="form-control combobox-toggle pg-combobox">` and a `.menu.pg-combobox-menu` holding a `[role=listbox]` with a `.menu-item[data-bs-value][role=option]` per option and a `[role=group]` with a `.menu-header` per `<optgroup>`. Then `pgUI.combobox.get(toggle, {multiple, search, placeholder})`.
+- The toggle takes the select's classes except `form-control`, `select2` (`form-control-sm`, `is-invalid` carry over); its name and value, the listbox and the picked state: `pg-fields-speech.md`. From 8 options on the menu has a search box; its words ("Search", "No results found") come from `pg_fields_script()` (`data-pg-search-label`, `data-pg-no-results-label`). The menu is at least as wide as the toggle (set on `show`).
 
 ## Why are the chosen items marked in the markup?
 - Combobox posts only through its own hidden input (not used: no `name`) and fires `change.bs.combobox` only on a pick. Items carry `.selected` before it is created, so drawing fires nothing. A pick writes the options' `selected` and fires the select's native bubbling `change`: the ERP account fields re-rate taxes on it (`erp_invoice_editor.js`).
-- The toggle text is ours: the chosen texts joined with ", " (Bootstrap writes an English "N selected" for several), the placeholder when nothing or the empty value is chosen.
+- The toggle text is ours: the chosen texts joined with ", " (Bootstrap writes an English "N selected" for several), the placeholder (`data-placeholder`, else the empty option's text) when nothing or the empty value is chosen.
 - `pgCombobox.set()` and `pgCombobox.refresh()` (after a script added options: `erp_account_quick.js`) dispose and draw again.
 
 ## What replaced select2's clear button and new entries?
@@ -24,4 +24,4 @@ description: data-pg-combobox on Bootstrap 6 Combobox (B9b, #2243, #2362): toggl
 - Inside a `.collapse` (a switch panel, which v6 clips with `overflow-y:clip`) the toggle gets `data-bs-strategy="fixed"`, so the menu is not cut off at the panel's edge: the product builder's "Allowed Zones" in "Shippable" (#2585).
 - Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`, `test_pg_fields_combobox_server_search`), `tests/pg_ui_test.php`.
 
-Related: docs/memory/ui/pg-combobox-server-search.md
+Related: docs/memory/ui/pg-combobox-server-search.md, docs/memory/ui/pg-fields-speech.md

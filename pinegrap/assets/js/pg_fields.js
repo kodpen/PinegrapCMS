@@ -324,6 +324,10 @@
         item.type = 'button';
         item.className = 'menu-item';
         item.setAttribute('data-bs-value', option.value);
+        // An option of the listbox, so a screen reader says whether it is
+        // picked (a plain button has no selected state).
+        item.setAttribute('role', 'option');
+        item.setAttribute('aria-selected', 'false');
         // An empty value is the "nothing chosen" item, which takes the
         // place of select2's clear button: it reads as the placeholder and is
         // never shown as the choice.
@@ -359,9 +363,46 @@
 
     function showComboboxText(el) {
         var value = el.pgComboboxToggle.querySelectorAll('.combobox-value')[0], text = comboboxText(el);
-        value.textContent = text || el.getAttribute('data-placeholder') || '';
+        value.textContent = text || comboboxPlaceholder(el);
         value.className = 'combobox-value' + (text ? '' : ' combobox-placeholder');
     }
+
+    // What the toggle reads while nothing is chosen: data-placeholder, else
+    // the empty option's own text ("Choose an account"), not a blank box.
+    function comboboxPlaceholder(el) {
+        if (el.getAttribute('data-placeholder')) {
+            return el.getAttribute('data-placeholder');
+        }
+        for (var i = 0; i < el.options.length; i++) {
+            if (el.options[i].value === '' && el.options[i].textContent.trim()) {
+                return el.options[i].textContent.trim();
+            }
+        }
+        return '';
+    }
+
+    // The picked state of every option follows its .selected class after a
+    // pick: Bootstrap writes aria-selected on the item it toggles only.
+    function syncComboboxSelected(list) {
+        var items = list.querySelectorAll('.menu-item');
+        for (var i = 0; i < items.length; i++) {
+            items[i].setAttribute('aria-selected', items[i].classList.contains('selected') ? 'true' : 'false');
+        }
+    }
+
+    // The options sit in a listbox (Bootstrap's own items are buttons with
+    // no role); it lays them out as the menu does, the gap included.
+    function comboboxList(className, role) {
+        var list = document.createElement('div');
+        list.className = className;
+        list.setAttribute('role', role);
+        list.style.display = 'flex';
+        list.style.flexDirection = 'column';
+        list.style.gap = 'var(--bs-menu-gap)';
+        return list;
+    }
+
+    var comboboxCount = 0;
 
     // A toggle and a .menu after the hidden <select>, an item per option and
     // a header per option group; the chosen items are marked in the markup,
@@ -369,6 +410,7 @@
     // native change, which the ERP account fields re-rate taxes on.
     function drawCombobox(el) {
         var multiple = !!el.multiple, toggle = document.createElement('button'), menu = document.createElement('div');
+        var base = (el.id || ('pg_combobox_' + (++comboboxCount))) + '_combobox', placeholder = comboboxPlaceholder(el);
         var classes = ['form-control', 'combobox-toggle', 'pg-combobox'], own = String(el.className || '').split(/\s+/);
         for (var i = 0; i < own.length; i++) {
             if (own[i] && !COMBOBOX_SKIP[own[i]]) {
@@ -378,8 +420,12 @@
         toggle.type = 'button';
         toggle.className = classes.join(' ');
         toggle.disabled = !!el.disabled;
+        toggle.id = base;
+        toggle.setAttribute('aria-haspopup', 'listbox');
+        toggle.setAttribute('aria-controls', base + '_list');
         var shown = document.createElement('span');
         shown.className = 'combobox-value';
+        shown.id = base + '_value';
         toggle.appendChild(shown);
         toggle.insertAdjacentHTML('beforeend', CARET);
         menu.className = 'menu pg-combobox-menu';
@@ -406,9 +452,10 @@
             menu.appendChild(status);
             if (el.id) {
                 menu.id = el.id + '_menu';
-                query.setAttribute('aria-controls', menu.id);
             }
+            query.setAttribute('aria-controls', base + '_list');
         }
+        var said = null;
         if (search) {
             var box = document.createElement('div'), input = document.createElement('input'), none = document.createElement('div');
             box.className = 'combobox-search';
@@ -417,37 +464,72 @@
             input.setAttribute('autocomplete', 'off');
             input.setAttribute('placeholder', label('search', 'Search'));
             input.setAttribute('aria-label', label('search', 'Search'));
+            input.setAttribute('aria-controls', base + '_list');
             box.appendChild(input);
             menu.appendChild(box);
             none.className = 'combobox-no-results d-none';
             none.textContent = label('no-results', 'No results');
             menu.appendChild(none);
+            // Bootstrap only shows the line above; a search that matches
+            // nothing is said here.
+            said = document.createElement('div');
+            said.className = 'visually-hidden';
+            said.setAttribute('role', 'status');
+            said.setAttribute('aria-live', 'polite');
+            menu.appendChild(said);
+        }
+        var list = comboboxList('pg-combobox-list', 'listbox');
+        list.id = base + '_list';
+        if (multiple) {
+            list.setAttribute('aria-multiselectable', 'true');
         }
         var children = el.children;
         for (var j = 0; j < children.length; j++) {
             var child = children[j];
             if (child.tagName === 'OPTGROUP') {
-                var header = document.createElement('div');
+                var group = comboboxList('pg-combobox-group', 'group'), header = document.createElement('div');
                 header.className = 'menu-header';
+                header.id = base + '_group' + j;
                 header.textContent = child.getAttribute('label') || '';
-                menu.appendChild(header);
+                group.setAttribute('aria-labelledby', header.id);
+                group.appendChild(header);
                 for (var k = 0; k < child.children.length; k++) {
-                    menu.appendChild(comboboxItem(child.children[k], multiple, el.getAttribute('data-placeholder')));
+                    group.appendChild(comboboxItem(child.children[k], multiple, placeholder));
                 }
+                list.appendChild(group);
             } else if (child.tagName === 'OPTION') {
-                menu.appendChild(comboboxItem(child, multiple, el.getAttribute('data-placeholder')));
+                list.appendChild(comboboxItem(child, multiple, placeholder));
             }
         }
+        menu.appendChild(list);
         el.classList.add('pg-combobox-native');
+        // The posted select is out of the Tab order: people reach the toggle.
+        el.pgComboboxTabindex = el.getAttribute('tabindex');
+        el.setAttribute('tabindex', '-1');
         el.parentNode.insertBefore(menu, el.nextSibling);
         el.parentNode.insertBefore(toggle, menu);
         el.pgComboboxToggle = toggle;
         el.pgComboboxMenu = menu;
-        // The field's label names the toggle, which is what people reach.
-        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null;
+        el.pgComboboxList = list;
+        // The toggle, which is what people reach, is named by the field's
+        // label, else by the select's own aria-labelledby or aria-label,
+        // followed by the chosen value it shows; the listbox by the same name.
+        var named = el.id ? document.querySelector('label[for="' + el.id + '"]') : null, names = '';
         if (named) {
             named.id = named.id || (el.id + '_label');
-            toggle.setAttribute('aria-labelledby', named.id);
+            names = named.id;
+        } else if (el.getAttribute('aria-labelledby')) {
+            names = el.getAttribute('aria-labelledby');
+        } else if (el.getAttribute('aria-label')) {
+            toggle.setAttribute('aria-label', el.getAttribute('aria-label'));
+            names = toggle.id;
+        }
+        if (names) {
+            toggle.setAttribute('aria-labelledby', names + ' ' + shown.id);
+            list.setAttribute('aria-labelledby', names);
+        }
+        if (el.getAttribute('aria-describedby')) {
+            toggle.setAttribute('aria-describedby', el.getAttribute('aria-describedby'));
         }
         // Bootstrap 6's .collapse clips overflow-y, so a menu placed inside a
         // switch panel would be cut off at the panel's edge: place it fixed.
@@ -458,7 +540,7 @@
             return window.pgUI.combobox.get(toggle, {
                 multiple: multiple,
                 search: search,
-                placeholder: el.getAttribute('data-placeholder') || ''
+                placeholder: placeholder
             });
         });
         keepMenuKeysInCombobox(combobox, toggle);
@@ -482,14 +564,39 @@
                 if (!multiple && !Object.keys(chosen).length) {
                     el.value = '';
                 }
+                syncComboboxSelected(list);
                 showComboboxText(el);
                 fireChange(el);
             }),
-            // The menu is at least as wide as its field.
+            // The menu is at least as wide as its field; Bootstrap empties
+            // the search box on opening, so nothing is left to say.
             window.pgUI.combobox.on(toggle, 'show', function () {
                 menu.style.minWidth = toggle.offsetWidth + 'px';
+                if (said) {
+                    said.textContent = '';
+                }
             })
         ];
+        // Bootstrap filters the items on input before this listener runs.
+        if (said) {
+            var filtered = function () {
+                said.textContent = none.classList.contains('d-none') ? '' : none.textContent;
+            };
+            input.addEventListener('input', filtered);
+            offs.push(function () { input.removeEventListener('input', filtered); });
+        }
+        // A click on the label would focus the hidden select (label[for]
+        // stays on it: the required marker reads it); it goes to the toggle.
+        if (named) {
+            var toToggle = function (event) {
+                event.preventDefault();
+                if (!toggle.disabled) {
+                    toggle.focus();
+                }
+            };
+            named.addEventListener('click', toToggle);
+            offs.push(function () { named.removeEventListener('click', toToggle); });
+        }
         // Bootstrap opens a combobox from its click data API, which needs
         // data-bs-toggle="combobox"; that attribute would also let its
         // DOMContentLoaded pass create an instance with the default options,
@@ -501,7 +608,7 @@
         toggle.addEventListener('click', open);
         offs.push(function () { toggle.removeEventListener('click', open); });
         if (source) {
-            offs = offs.concat(serverSearch(el, menu, query, status, toggle));
+            offs = offs.concat(serverSearch(el, list, query, status, toggle));
         }
         el.pgComboboxOff = function () {
             offs.forEach(function (off) { off(); });
@@ -539,33 +646,33 @@
     // stored choice marked, the typed text last when data-pg-free-text), an
     // older answer arriving late is dropped. Opening shows the stored
     // choice and the empty item. Returns the listeners' off functions.
-    function serverSearch(el, menu, query, status, toggle) {
+    function serverSearch(el, list, query, status, toggle) {
         var source = el.getAttribute('data-pg-source'), timer = null, asked = 0, aborter = null;
         var min = parseInt(el.getAttribute('data-pg-min-length'), 10) || 0, free = el.hasAttribute('data-pg-free-text');
-        var placeholder = el.getAttribute('data-placeholder');
+        var placeholder = comboboxPlaceholder(el);
 
         var say = function (text) {
             status.textContent = text || '';
             status.className = 'pg-combobox-status' + (text ? '' : ' d-none');
         };
-        var items = function (list) {
-            var old = menu.querySelectorAll('.menu-item');
+        var items = function (found) {
+            var old = list.querySelectorAll('.menu-item');
             for (var i = 0; i < old.length; i++) {
-                menu.removeChild(old[i]);
+                list.removeChild(old[i]);
             }
-            list.forEach(function (item) { menu.appendChild(item); });
+            found.forEach(function (item) { list.appendChild(item); });
         };
         // The select's own options: the empty item and the stored choice.
         var stored = function () {
-            var list = [];
+            var found = [];
             for (var i = 0; i < el.options.length; i++) {
-                list.push(comboboxItem(el.options[i], !!el.multiple, placeholder));
+                found.push(comboboxItem(el.options[i], !!el.multiple, placeholder));
             }
-            items(list);
+            items(found);
             say(label('type', 'Type to search...'));
         };
         var answer = function (text, data) {
-            var results = (data && data.results) ? data.results : [], list = [], seen = {};
+            var results = (data && data.results) ? data.results : [], found = [], seen = {};
             if (data && data.error) {
                 items([]);
                 say(String(data.error));
@@ -577,13 +684,13 @@
                     return;
                 }
                 seen[id] = true;
-                list.push(comboboxItem({ value: id, textContent: String(r.text === undefined ? id : r.text), selected: el.value === id }, false, placeholder));
+                found.push(comboboxItem({ value: id, textContent: String(r.text === undefined ? id : r.text), selected: el.value === id }, false, placeholder));
             });
             if (free && !seen[text]) {
-                list.push(comboboxItem({ value: text, textContent: text, selected: el.value === text }, false, placeholder));
+                found.push(comboboxItem({ value: text, textContent: text, selected: el.value === text }, false, placeholder));
             }
-            items(list);
-            say(list.length ? '' : label('no-results', 'No results'));
+            items(found);
+            say(found.length ? '' : label('no-results', 'No results'));
         };
         var ask = function () {
             timer = null;
@@ -627,7 +734,7 @@
                 return;
             }
             event.preventDefault();
-            var first = menu.querySelectorAll('.menu-item')[0];
+            var first = list.querySelectorAll('.menu-item')[0];
             if (first && !first.disabled) {
                 first.click();
             }
@@ -672,10 +779,16 @@
                     node.parentNode.removeChild(node);
                 }
             });
+            if (el.pgComboboxTabindex === null || el.pgComboboxTabindex === undefined) {
+                el.removeAttribute('tabindex');
+            } else {
+                el.setAttribute('tabindex', el.pgComboboxTabindex);
+            }
         }
         el.classList.remove('pg-combobox-native');
         el.pgComboboxToggle = null;
         el.pgComboboxMenu = null;
+        el.pgComboboxList = null;
         el.pgComboboxOff = null;
     }
 
@@ -693,11 +806,40 @@
         return (tag && tag.getAttribute(attr)) || fallback;
     }
 
+    // Each remove button says which chip it removes ("Remove: red"), or a
+    // screen reader's browse mode reads "red Remove, blue Remove".
     function labelDismissButtons(box) {
         var buttons = box.querySelectorAll('.chip-dismiss'), text = label('remove', 'Remove');
         for (var i = 0; i < buttons.length; i++) {
-            buttons[i].setAttribute('aria-label', text);
+            var value = buttons[i].parentNode ? buttons[i].parentNode.getAttribute('data-bs-chip-value') : '';
+            buttons[i].setAttribute('aria-label', value ? text + ': ' + value : text);
         }
+    }
+
+    // Chips gives every chip a Tab stop but deletes only the selected ones:
+    // a chip reached from the keyboard becomes the selection, so Delete
+    // removes the chip that has the focus. A press is left to Chips' own
+    // click, which selects with Ctrl and Shift as well.
+    function selectFocusedChip(box, chips) {
+        var pressed = false;
+        var press = function () { pressed = true; };
+        var release = function () { pressed = false; };
+        var focused = function (event) {
+            var chip = event.target && event.target.closest ? event.target.closest('.chip') : null, byPress = pressed;
+            pressed = false;
+            if (byPress || !chip || chip.classList.contains('active')) {
+                return;
+            }
+            chips.selectChip(chip);
+        };
+        box.addEventListener('mousedown', press);
+        box.addEventListener('click', release);
+        box.addEventListener('focusin', focused);
+        return function () {
+            box.removeEventListener('mousedown', press);
+            box.removeEventListener('click', release);
+            box.removeEventListener('focusin', focused);
+        };
     }
 
     // A .chip-input box after the hidden input, holding a chip per stored
@@ -745,11 +887,16 @@
         el.pgChipsBox = box;
         var chips = window.pgUI.chips.get(box, { separator: sep });
         labelDismissButtons(box);
-        el.pgChipsOff = window.pgUI.chips.on(box, 'change', function () {
+        var offFocus = selectFocusedChip(box, chips);
+        var offChange = window.pgUI.chips.on(box, 'change', function () {
             labelDismissButtons(box);
             el.value = chips.getValues().join(sep);
             fireChange(el);
         });
+        el.pgChipsOff = function () {
+            offFocus();
+            offChange();
+        };
     }
 
     function removeChips(el) {
