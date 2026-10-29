@@ -15,6 +15,6 @@ description: Accessible names of number steppers, catalog landmarks and the prod
 ## What names does the product screen give?
 - Variant matrix inputs (SKU, Short Description, Unit Price, Inventory Quantity): `cellName()` in `product_builder.js` gives "column: combination", because the visible cell label is hidden from lg up and tied to nothing.
 - The advanced row's fields have per-row ids (`pg_pb_v_gtin_<index>`, `_barcode_`, `_start_`, `_payments_`, `_period_`) and labels with `for`.
-- An image chip's remove button is in the tab order with `aria-label` "Remove image"; the CSS shows it on `:hover`, `:focus-within` and always under `@media (hover: none)`.
+- An image chip's remove button has `aria-label` "Remove image" and is hidden with `opacity: 0` (not `display: none`, which took it out of the tab order so `:focus-within` never matched); the CSS shows it on `:hover`, `:focus-within` and always under `@media (hover: none)`. The upload screens' keyboard path: `upload-keyboard.md`.
 - The New Attribute dialog and `#image_code` carry `aria-labelledby` their title; the 'No Thanks' checkbox sits in a `<label>`; an attribute card's Default Option select has a `<label for="pg_pb_attr_default_<id>">`; the barcode type select is named Barcode Type; a variant set row checkbox "Select {var:1}".
 - Pinned by `tests/product_screen_accessible_names_test.php`.
