@@ -29,6 +29,6 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 - Inputs: the two public P-256 keys, lower-case ids (P5c; P8 waits); the primary id as P2's repository variable.
 
 ## Where to start?
-- After the claim check: P3; P4 and P5a (different files: side by side only if the owner allows or the coordinator chooses); P5b, P5c, P6, P7. P2 (`.github/`, `docs/` only) may run beside a step on the same terms.
+- After the claim check: P4 and P5a (different files: side by side only if the owner allows or the coordinator chooses); P5b, P5c, P6, P7. P2 (`.github/`, `docs/` only) may run beside a step on the same terms.
 
 Related: docs/memory/platform/license-check.md

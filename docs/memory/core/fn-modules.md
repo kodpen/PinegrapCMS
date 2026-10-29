@@ -75,6 +75,7 @@ description: Generated from the module field of the memory files: each includes/
 - `submitted_form_list`: [[server-paged-lists]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
+- `vendor_api`: [[vendor-api-client]]
 - `voice_text`: [[voice-browser-to-text]]
 - `waf_log_list`: [[waf-log-paging]]
 - `waf_notice`: [[waf-ban-notice]]
