@@ -139,6 +139,7 @@
     "Give the number the count is compared with.": "Sayacın karşılaştırılacağı sayıyı yazın.",
     "Give the palette a name first.": "Önce palete bir ad verin.",
     "Give the task a title.": "Göreve bir başlık verin.",
+    "Give the template a title.": "Şablona bir başlık verin.",
     "Give this address to an AI application that speaks MCP, such as Claude or ChatGPT. It is the server's own file, so it works on every server.": "Bu adresi Claude ya da ChatGPT gibi MCP destekleyen bir yapay zeka uygulamasına verin. Sunucunun kendi dosyasıdır, bu yüzden her sunucuda çalışır.",
     "Give this address to an AI application that speaks MCP. In Claude it is the URL of a custom connector.": "Bu adresi MCP destekleyen bir yapay zeka uygulamasına verin. Claude'da özel bağlayıcının (custom connector) adresidir.",
     "Give up": "Vazgeç",

@@ -20,6 +20,7 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 ## Where is the board view?
 - `?view=board`: the rows as cards by a status column (`workflow-table-board.md`).
 - A table from a file, or rows from a file (`workflow-table-import.md`).
+- Run from table: the rows as a draft flow (`workspace-flows-from-table.md`).
 
 ## What is left out?
 - Editing in place, column reorder, row move (the store has `ws_wtable_row_move()`), a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name), a table bin.

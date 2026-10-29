@@ -9065,6 +9065,7 @@ function get_tables() {
 		'ws_mail_conversations',
 		'ws_mail_items',
 		'ws_saved_replies',
+		'ws_flow_templates',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',

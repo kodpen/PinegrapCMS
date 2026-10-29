@@ -25,7 +25,12 @@
  * One kind is no scheduled action's step: the MCP box runs a tool of a
  * connected MCP server that reads only, with the owner's account there
  * (else the site's), through the call a tool's form makes
- * (ws_mcp_tool_call()); its answer is a value for the boxes after it.
+ * (ws_mcp_tool_call()); its answer is a value for the boxes after it. A tool
+ * that changes something there asks before each call: the box asks its
+ * owner to approve the call in a channel, waits on that request as the
+ * approval box does, and makes the call with the owner's own account, never
+ * the site's, once they approve it (ws_step_mcp_ask(),
+ * ws_step_mcp_approved_call()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -69,7 +74,8 @@ define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.
  *
  * outcomes: the arrows the box may leave on, when they are not done and
  * failed (ws_step_outcomes()): an approval box waits for its request and
- * leaves on how it ended (flow_runs.php, ws_flow_approval_settlement()).
+ * leaves on how it ended (flow_runs.php, ws_flow_approval_settlement()), as
+ * an MCP box does whose call was not approved.
  *
  * @return array kind => label, type, texts, lines, outputs, outcomes (optional)
  */
@@ -109,7 +115,8 @@ function ws_step_kinds()
             'outputs' => array($number('approval_id', lang('Approval request')), $number('message_id', lang('Message'))),
             'outcomes' => array('approved', 'rejected', 'expired', 'withdrawn', 'failed')),
         'mcp'       => array('label' => lang('Run a tool of an MCP server'), 'type' => 'mcp', 'texts' => array('arguments'), 'lines' => array(),
-            'outputs' => array($text('result', lang('Answer')), $number('duration_ms', lang('Time taken (ms)')))),
+            'outputs' => array($text('result', lang('Answer')), $number('duration_ms', lang('Time taken (ms)'))),
+            'outcomes' => array('done', 'failed', 'rejected', 'expired', 'withdrawn')),
     );
 }
 
@@ -275,9 +282,11 @@ function ws_step_outcomes()
  * approval:  channel_id, title, text, approvers (up to 50), rule (any, all),
  *            closes_in ('' for no deadline, else 1 to
  *            WS_STEP_APPROVAL_CLOSES_MAX hours from when the box runs)
- * mcp:       server_id, tool (a tool of that server that reads), arguments
- *            (a JSON object as text, '' for none; one given as an object
- *            is written as its JSON)
+ * mcp:       server_id, tool (a tool of that server that is turned on),
+ *            arguments (a JSON object as text, '' for none; one given as an
+ *            object is written as its JSON), channel_id and closes_in (for a
+ *            tool that asks first: where the owner is asked to approve each
+ *            call, and the request's deadline as an approval box's)
  *
  * @param string $kind
  * @param mixed  $config
@@ -457,15 +466,18 @@ function ws_step_config_normalize($kind, $config)
 
         case 'mcp':
             $arguments = $config['arguments'] ?? '';
+            $closes_in = $config['closes_in'] ?? '';
 
             if (is_array($arguments) || is_object($arguments)) {
                 $arguments = (string) json_encode((object) $arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             }
 
             return array(
-                'server_id' => $number($config['server_id'] ?? 0),
-                'tool'      => ws_flow_line($config['tool'] ?? '', 200),
-                'arguments' => ws_flow_lines(is_scalar($arguments) ? $arguments : '', WS_STEP_MCP_ARGUMENTS_MAX),
+                'server_id'  => $number($config['server_id'] ?? 0),
+                'tool'       => ws_flow_line($config['tool'] ?? '', 200),
+                'arguments'  => ws_flow_lines(is_scalar($arguments) ? $arguments : '', WS_STEP_MCP_ARGUMENTS_MAX),
+                'channel_id' => $number($config['channel_id'] ?? 0),
+                'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
             );
     }
 
@@ -1284,7 +1296,8 @@ function ws_step_run_values($run, $graph, $owner, $context)
 /**
  * Carries out a step box this request claimed, with the owner's rights now:
  * writes that it began, checks the step again, fills in the values of the
- * boxes before it and does it.
+ * boxes before it and does it. An MCP box whose call was approved makes the
+ * call instead (ws_step_mcp_approved_call()).
  *
  * @param array $run   ws_flow_runs row
  * @param array $step  ws_flow_run_steps row, running
@@ -1295,6 +1308,12 @@ function ws_step_run_values($run, $graph, $owner, $context)
 function ws_step_run($run, $step, $node, $graph, $owner)
 {
     $kind = (string) $node['kind'];
+    $approved = ($kind === 'mcp') ? ws_flow_effect_approved_id((string) ($step['effect'] ?? '')) : 0;
+
+    if ($approved > 0) {
+        ws_step_mcp_approved_call($step, $node, $graph, $owner, $approved);
+        return;
+    }
 
     // Taken by this request alone (the claim); a row another request settled
     // meanwhile is left as it is.
@@ -1358,8 +1377,9 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     // rest, a post in the channel joined, a lead box's form submission.
     $step_context += ws_step_trigger_context($context);
 
-    // An approval's deadline counts from when the box runs.
-    if (($kind === 'approval') && ($node['config']['closes_in'] ?? '') !== '') {
+    // An approval's deadline counts from when the box runs, as does that of
+    // the request an MCP box's call asks with.
+    if (in_array($kind, array('approval', 'mcp'), true) && (($node['config']['closes_in'] ?? '') !== '')) {
         $action['closes_at'] = time() + (int) $node['config']['closes_in'] * 3600;
     }
 
@@ -1369,8 +1389,13 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $outer_depth = ws_event_depth();
     ws_event_depth((int) ($run['depth'] ?? 0));
 
-    // An MCP tool is no scheduled action's step.
-    if ($kind === 'mcp') {
+    // An MCP tool is no scheduled action's step; one that asks before each
+    // call asks the owner to approve it instead of making it.
+    $asks = ($kind === 'mcp') && !empty($action['asks']);
+
+    if ($asks) {
+        $done = ws_step_mcp_ask($owner, $action, (string) $row['name'], (int) ($run['started_by'] ?? 0));
+    } elseif ($kind === 'mcp') {
         $done = ws_step_mcp_do($owner, $action);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
@@ -1379,9 +1404,10 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     ws_event_depth($outer_depth - 1);
 
     // An approval box asked: it waits for the request to end
-    // (flow_runs.php).
-    if (($kind === 'approval') && !empty($done['ok'])) {
-        ws_flow_approval_wait($step, (int) ($done['approval_id'] ?? 0), (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done));
+    // (flow_runs.php). So does an MCP box that asked, its arguments kept
+    // beside its values for the call (ws_step_mcp_asked_arguments()).
+    if ((($kind === 'approval') || $asks) && !empty($done['ok'])) {
+        ws_flow_approval_wait($step, (int) ($done['approval_id'] ?? 0), (string) ($done['text'] ?? ''), ws_step_result_data($kind, $node['config'], $done) + array_intersect_key($done, array('call' => true)), $kind);
         return;
     }
 
@@ -1641,9 +1667,9 @@ function ws_step_mcp_arguments($text)
 
 /**
  * Why a flow may not run a tool of a server, '' when it may: the tool is
- * turned on there and runs without an approval, as one that reads only
- * (ws_mcp_form_tools()). A tool that writes asks before each call: a flow
- * does not run one. Pure.
+ * turned on there. One that reads runs at once (ws_mcp_form_tools()); one
+ * that asks before each call (ws_step_mcp_tool_asks()) waits for its
+ * owner's approval of each call. Pure.
  *
  * @param array  $server ws_mcp_servers() row: alias, auth_kind, tools, tool_rules
  * @param string $tool
@@ -1651,25 +1677,33 @@ function ws_step_mcp_arguments($text)
  */
 function ws_step_mcp_tool_problem($server, $tool)
 {
-    $on = ws_mcp_tools_on($server);
-
-    if (!isset($on[$tool])) {
+    if (!isset(ws_mcp_tools_on($server)[$tool])) {
         return lang(array('string' => 'The tool {var:1} is not turned on at @{var:2}.', 'vars' => array($tool, $server['alias'])));
-    }
-
-    if (!empty($on[$tool]['approve'])) {
-        return lang(array('string' => 'The tool {var:1} of @{var:2} asks before each call: a flow runs only the tools that read.', 'vars' => array($tool, $server['alias'])));
     }
 
     return '';
 }
 
 /**
+ * Does a tool of a server ask before each call: turned on as one that
+ * changes something there (rule approve), which only a server people sign
+ * in to with their own accounts has (ws_mcp_tools_on())? Pure.
+ *
+ * @param array  $server
+ * @param string $tool
+ * @return bool
+ */
+function ws_step_mcp_tool_asks($server, $tool)
+{
+    return !empty(ws_mcp_tools_on($server)[$tool]['approve']);
+}
+
+/**
  * What an MCP box's form on the flow canvas offers (ws_flow_js_config()):
- * each server the person may call, with the tools a flow may run there
- * (ws_mcp_form_tools(), the ones ws_step_mcp_tool_problem() accepts) and
- * the names of those that ask before each call, which the form refuses as
- * the check does. A server without a tool to run is left out. Pure.
+ * each server the person may call, with the tools that read there
+ * (ws_mcp_form_tools()) and the names of those that ask before each call,
+ * which the form does not offer. A server without a tool that reads is left
+ * out. Pure.
  *
  * @param array[]  $servers ws_mcp_active_servers()
  * @param callable $usable  function (array $server): bool, whether the
@@ -1715,13 +1749,19 @@ function ws_step_mcp_form_servers($servers, $usable)
 /**
  * Checks an MCP box with somebody's rights: the server turned on, a tool
  * of it a flow may run (ws_step_mcp_tool_problem()), an account to call it
- * with on a server people sign in to.
+ * with on a server people sign in to. A tool that asks before each call is
+ * called only with the owner's own account, never the site's: the owner
+ * approves each call, which acts in their name there (mcp.php). While the
+ * call is still to be asked ($asking), the box needs a channel where the
+ * owner may be asked to approve it (ws_approval_input()).
  *
  * @param array $viewer the flow's owner
  * @param array $config ws_step_config_normalize('mcp')
- * @return array ok, error, action (type mcp, server_id, alias, tool, arguments)
+ * @param bool  $asking false for a call already approved, asked no more
+ * @return array ok, error, action (type mcp, server_id, alias, tool,
+ *               arguments, asks, channel_id and channel_name where it asks)
  */
-function ws_step_mcp_check($viewer, $config)
+function ws_step_mcp_check($viewer, $config, $asking = true)
 {
     $refuse = function ($error) {
         return array('ok' => false, 'error' => $error, 'action' => null);
@@ -1748,19 +1788,49 @@ function ws_step_mcp_check($viewer, $config)
         return $refuse(lang('The arguments are not a JSON object.'));
     }
 
-    if (($server['auth_kind'] === 'oauth') && !ws_mcp_oauth_account($server, (int) $viewer['id'])) {
+    $asks = ws_step_mcp_tool_asks($server, $tool);
+
+    if ($asks && !ws_mcp_oauth_account($server, (int) $viewer['id'], true)) {
+        return $refuse(lang(array('string' => 'Connect your own account to @{var:1} to run it: the call runs with it.', 'vars' => $server['alias'])));
+    }
+
+    if (!$asks && ($server['auth_kind'] === 'oauth') && !ws_mcp_oauth_account($server, (int) $viewer['id'])) {
         return $refuse(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias'])));
+    }
+
+    $channel = null;
+
+    if ($asks && $asking) {
+        $channel = ((int) ($config['channel_id'] ?? 0) > 0) ? ws_channel((int) $config['channel_id']) : null;
+
+        if (!$channel) {
+            return $refuse(lang(array('string' => 'The tool {var:1} of @{var:2} asks before each call: choose the channel where you approve each call.', 'vars' => array($tool, $server['alias']))));
+        }
+
+        // The owner alone approves, in a channel they may write in.
+        $checked = ws_approval_input($viewer, $channel, array(
+            'title'     => ws_step_mcp_ask_title($tool, $server['alias']),
+            'approvers' => array((int) $viewer['id']),
+            'rule'      => 'any',
+        ));
+
+        if (!$checked['ok']) {
+            return $refuse($checked['error']);
+        }
     }
 
     return array(
         'ok'     => true,
         'error'  => '',
         'action' => array(
-            'type'      => 'mcp',
-            'server_id' => (int) $server['id'],
-            'alias'     => (string) $server['alias'],
-            'tool'      => $tool,
-            'arguments' => (string) $config['arguments'],
+            'type'         => 'mcp',
+            'server_id'    => (int) $server['id'],
+            'alias'        => (string) $server['alias'],
+            'tool'         => $tool,
+            'arguments'    => (string) $config['arguments'],
+            'asks'         => $asks,
+            'channel_id'   => $channel ? (int) $channel['id'] : 0,
+            'channel_name' => $channel ? (string) $channel['name'] : '',
         ),
     );
 }
@@ -1773,6 +1843,10 @@ function ws_step_mcp_check($viewer, $config)
  */
 function ws_step_mcp_text($action)
 {
+    if (!empty($action['asks'])) {
+        return lang(array('string' => 'Asks you in #{var:3} to approve the call, then runs the tool {var:1} of @{var:2} with your own account and keeps its answer.', 'vars' => array((string) $action['tool'], (string) $action['alias'], (string) ($action['channel_name'] ?? ''))));
+    }
+
     return lang(array('string' => 'Runs the tool {var:1} of @{var:2} and keeps its answer.', 'vars' => array((string) $action['tool'], (string) $action['alias'])));
 }
 
@@ -1794,7 +1868,8 @@ function ws_step_mcp_result($result)
 /**
  * Runs an MCP box's tool with the flow owner's own account on the server
  * when they have one, else with the site's, through the call the form
- * makes (ws_mcp_tool_call()). The box's arguments are filled already
+ * makes (ws_mcp_tool_call()); a tool that asks before each call with their
+ * own account only. The box's arguments are filled already
  * (ws_step_fill_action()). An answer the tool marks as an error fails the
  * box, its text kept.
  *
@@ -1822,7 +1897,7 @@ function ws_step_mcp_do($owner, $action)
         @set_time_limit(WS_MCP_SCREEN_TIMEOUT * 3 + 30);
     }
 
-    $call = ws_mcp_tool_call((int) $owner['id'], $server, (string) $action['tool'], $json);
+    $call = ws_mcp_tool_call((int) $owner['id'], $server, (string) $action['tool'], $json, !empty($action['asks']));
 
     if (!$call['called']) {
         return array('ok' => false, 'text' => $call['error'], 'data' => array());
@@ -1843,4 +1918,182 @@ function ws_step_mcp_do($owner, $action)
     }
 
     return array('ok' => true, 'text' => lang(array('string' => 'The tool {var:1} of @{var:2} answered.', 'vars' => array((string) $action['tool'], $server['alias']))), 'data' => $data);
+}
+
+/**
+ * The title of the request an MCP box's call asks with: the tool and the
+ * server. Pure.
+ *
+ * @param string $tool
+ * @param string $alias the server's alias
+ * @return string
+ */
+function ws_step_mcp_ask_title($tool, $alias)
+{
+    return lang(array('string' => 'Run the tool {var:1} of @{var:2}', 'vars' => array((string) $tool, (string) $alias)));
+}
+
+/**
+ * The words of the request an MCP box's call asks with: the flow, who
+ * approves it, who started the run when somebody else did, and the
+ * arguments as filled, as JSON in a block. They are shown, not sent: a tag
+ * in them stays text (<@user:5> mentions nobody) and a fence ends no block.
+ * Arguments that do not fit the room are cut at a character, and the words
+ * say how long they are. Pure.
+ *
+ * @param string $json    the arguments, a JSON object ('' for none)
+ * @param string $flow    the flow's name
+ * @param string $owner   who approves the call, by name
+ * @param string $starter who started the run, '' when the owner did
+ * @param int    $room    the most characters the words may take
+ * @return string
+ */
+function ws_step_mcp_ask_text($json, $flow, $owner, $starter, $room)
+{
+    $json = trim((string) $json);
+    $decoded = json_decode(($json === '') ? '{}' : $json);
+    $pretty = ($decoded === null) ? $json : (string) json_encode($decoded, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $text = function ($value) {
+        return str_replace('<', "<\u{2060}", (string) $value);
+    };
+    $shown = $text(str_replace('```', "'''", $pretty));
+
+    $intro = ((string) $starter !== '')
+        ? lang(array('string' => 'Flow “{var:1}”, started by {var:3}, waits for {var:2} to approve this call. It runs with their own account.', 'vars' => array($text($flow), $text($owner), $text($starter))))
+        : lang(array('string' => 'Flow “{var:1}” waits for {var:2} to approve this call. It runs with their own account.', 'vars' => array($text($flow), $text($owner))));
+    $whole = $intro . "\n```\n" . $shown . "\n```";
+
+    if (mb_strlen($whole) <= (int) $room) {
+        return $whole;
+    }
+
+    $head = $intro . "\n" . lang(array('string' => 'Only the start of the arguments fits here; the call sends all {var:1} characters of them.', 'vars' => mb_strlen($json))) . "\n```\n";
+
+    return $head . mb_substr($shown, 0, max(0, (int) $room - mb_strlen($head) - 5)) . "…\n```";
+}
+
+/**
+ * Asks the owner to approve the call of an MCP box whose tool asks before
+ * each call: a request in the box's channel (approvals.php), in the owner's
+ * name, the owner its only approver. A request tells nobody of their own
+ * asking, so the owner is told here. The arguments go back with the answer
+ * (call), to be kept with the waiting box: what is approved is what is
+ * sent. Nothing is called.
+ *
+ * @param array  $owner      the flow's owner, checked (ws_step_mcp_check())
+ * @param array  $action     ws_step_mcp_check(), filled, with closes_at
+ * @param string $flow_name  the flow's name, as the run started
+ * @param int    $starter_id who started the run
+ * @return array ok, text, data; approval_id, message_id, call (arguments)
+ */
+function ws_step_mcp_ask($owner, $action, $flow_name, $starter_id)
+{
+    $fail = function ($text) {
+        return array('ok' => false, 'text' => $text, 'data' => array());
+    };
+
+    $json = trim((string) $action['arguments']);
+    $json = ($json === '') ? '{}' : $json;
+
+    if (!is_object(json_decode($json)) || (strlen($json) > WS_STEP_MCP_ARGUMENTS_MAX)) {
+        return $fail(lang('The arguments are not a JSON object.'));
+    }
+
+    $channel = ws_channel((int) $action['channel_id']);
+
+    if (!$channel) {
+        return $fail(lang('The channel to write in is gone.'));
+    }
+
+    $title = ws_step_mcp_ask_title((string) $action['tool'], (string) $action['alias']);
+    $starter = ((int) $starter_id !== (int) $owner['id']) ? ws_person_name((int) $starter_id) : '';
+
+    // The message is the bold title, a blank line and these words.
+    $created = ws_approval_create($owner, $channel, array(
+        'title'     => $title,
+        'text'      => ws_step_mcp_ask_text($json, $flow_name, ws_person_name((int) $owner['id']), $starter, WS_MESSAGE_MAX - mb_strlen($title) - 6),
+        'approvers' => array((int) $owner['id']),
+        'rule'      => 'any',
+        'closes_at' => (int) ($action['closes_at'] ?? 0),
+    ));
+
+    if (!$created['ok']) {
+        return $fail(lang(array('string' => 'Could not ask for approval in #{var:1}: {var:2}', 'vars' => array($channel['name'], $created['error']))));
+    }
+
+    ws_notify((int) $owner['id'], 'approval_requested', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $created['message_id'], 'actor_id' => (int) $owner['id']));
+
+    return array(
+        'ok'          => true,
+        'text'        => lang(array('string' => 'asked for approval in #{var:1}', 'vars' => $channel['name'])),
+        'data'        => array(),
+        'approval_id' => (int) $created['approval_id'],
+        'message_id'  => (int) $created['message_id'],
+        'call'        => array('arguments' => $json),
+    );
+}
+
+/**
+ * The arguments an MCP box asked its owner to approve, as its waiting
+ * result keeps them (ws_step_mcp_ask()): one level down in its data, where
+ * neither a reader of the run (ws_api_flow_step_outputs()) nor a later box
+ * (ws_step_node_values()) reads them. Pure.
+ *
+ * @param mixed $stored ws_flow_run_steps.result
+ * @return string|null a JSON object, null when none is kept
+ */
+function ws_step_mcp_asked_arguments($stored)
+{
+    $result = is_string($stored) ? json_decode($stored, true) : null;
+    $json = $result['data']['call']['arguments'] ?? null;
+
+    return (is_string($json) && is_object(json_decode($json))) ? $json : null;
+}
+
+/**
+ * Makes the call of an MCP box its owner approved (ws_flow_approved_ready()),
+ * claimed by this request. It writes that it began first, from the
+ * approved effect only, so the call is made once whatever stops half way
+ * (ws_flow_stale_action()); checks the box again with the owner's rights,
+ * asking nobody now; sends the arguments that were approved, never filled
+ * again; and calls with the owner's own account. It then settles as an MCP
+ * box does; a failure tries again where the box is set to, and a new try
+ * asks again.
+ *
+ * @param array $step        ws_flow_run_steps row, running
+ * @param array $node        the box
+ * @param array $graph       the run's graph
+ * @param array $owner       the flow's owner, on the staff
+ * @param int   $approval_id the request that approved the call
+ */
+function ws_step_mcp_approved_call($step, $node, $graph, $owner, $approval_id)
+{
+    db("UPDATE ws_flow_run_steps SET effect = '" . e(WS_STEP_BEGAN . 'mcp') . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running' AND effect = '" . e(ws_flow_approved_key($approval_id)) . "'");
+
+    if ((int) mysqli_affected_rows(db::$con) !== 1) {
+        return;
+    }
+
+    $routed = ws_flow_outcome_routed($graph, $node['id'], 'failed');
+    $check = ws_step_mcp_check($owner, ws_step_config_normalize('mcp', $node['config']), false);
+    $arguments = ws_step_mcp_asked_arguments($step['result'] ?? '');
+
+    if (!$check['ok']) {
+        $done = array('ok' => false, 'text' => (string) $check['error'], 'data' => array());
+    } elseif ($arguments === null) {
+        $done = array('ok' => false, 'text' => lang('The arguments the call was approved with could not be read.'), 'data' => array());
+    } else {
+        $done = ws_step_mcp_do($owner, array('arguments' => $arguments, 'asks' => true) + $check['action']);
+    }
+
+    $data = ws_step_result_data('mcp', $node['config'], $done);
+
+    if (empty($done['ok']) && ws_flow_retry_wait($step, $node, (string) $done['text'], $data)) {
+        return;
+    }
+
+    $end = ws_step_settlement(!empty($done['ok']), $routed);
+
+    ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) $done['text'], $data);
 }
