@@ -9,6 +9,7 @@ description: The legacy page designer (page_designer.php) retired in 2026.11.0: 
 
 ## Where did each job go?
 - A classic style: "Open in the visual designer" on `view_styles.php` (`classic-style-to-design.md`); its code as text: `edit_custom_style.php` ("Edit Page Style").
+- The `<title>` a converted classic style keeps on the root: the root's Title field in the designer, shown only when the root carries one (#3140, `classic-style-import.md`).
 - Regions: `classic-regions-in-designer.md`. Design files and themes: their own screens.
 - A page's custom layout: the designer's layout tab (`layout-code-tab.md`), else `edit_page_layout.php` (`layout-editor-classic.md`).
 - Ctrl+G clicks the toolbar's `page_designer_button`, drawn for a `system` style only ("Open Style Designer", `pg_page_actions()`); on a custom style there is none, so the browser keeps the key.
@@ -23,7 +24,6 @@ description: The legacy page designer (page_designer.php) retired in 2026.11.0: 
 - `theme_designer.php` and `view_styles.php` stay while any classic style exists (#2437).
 
 ## What is left?
-- No panel field edits the root `title` a classic style brought (`classic-style-import.md`).
 - An older cell-based system style is not offered for conversion (`pg_classic_style_refusal()`); a classic style built on a PHP template file is not convertible either. Both stay classic.
 - Page regions inside the converted frame component cannot move into the page tree (`page-region-into-page-tree.md` refuses them inside a component).
 - `get_page_content.php` still prints `software_page`, `software_style` and `software_theme` for roles 0-1; only `page_designer.js` read them. Left, as the renderer is not touched.

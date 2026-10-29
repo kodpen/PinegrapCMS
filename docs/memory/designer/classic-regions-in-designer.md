@@ -24,4 +24,4 @@ description: Where each classic region type goes in the visual designer (common,
 ## What is still open?
 - A site with no visual design cannot open a component on its own.
 - Find and replace does not search shared component trees or designer page trees; site search reads no designer page tree.
-- The unread `cregion` row of a converted common region was kept "until the legacy designer retires"; the retirement removed none, and whether the rows go is not decided.
+- The unread `cregion` row of a converted common region was kept "until the legacy designer retires"; the retirement removed none, and whether the rows go is not decided (asked in #3156).
