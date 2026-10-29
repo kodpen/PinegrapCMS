@@ -17,7 +17,8 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 ## What remains?
 - Design note: answered in #3183 (store-run first; proration: none, period end only).
 - Slice 1 done (#3236): tables, the `recurring` mode and the store-mode operations in the contract, `includes/fn/subscriptions.php` (`commerce/subscriptions.md`).
-- Next slices: iyzico store mode (L: declare `'recurring' => 'store'`, answer `card_ref`, the stored-card non-3DS setting, create the row from checkout in `submit_order.php`), Stripe (M), renewal order writer + dunning + e-mails (M; also widens `email_campaigns.action`), account widget + API (M).
+- Slice 2 in progress: iyzico store mode (declare `'recurring' => 'store'` behind the stored-card renewals setting, answer `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, create the row from checkout in `submit_order.php`).
+- Next slices: Stripe (M), renewal order writer + dunning + e-mails (M; also widens `email_campaigns.action`), account widget + API (M).
 
 ## Open questions?
 - Price changes on existing subscriptions: apply at the next period only, with a notice e-mail 14 days before.
