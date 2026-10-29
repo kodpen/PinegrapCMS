@@ -20,6 +20,8 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'user');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
+
 $upload_limits = pg_upload_limits();
 
 // Whether the caller wants JSON back. Read from the query string as well as
@@ -71,19 +73,6 @@ if(isset($_GET['folder_id']) && $_GET['folder_id'] != ''){
 $output_breadcrumb_link = '<li class="breadcrumb-item"><a class="pg-link-secondary " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_files.php">' . lang('All My Files') . '</a></li>';
 
 if (!$_POST) {
-    $output_design_rows = '';
-
-    // if the user is a designer or administrator, then output design rows
-    if ($user['role'] <= 1) {
-        $output_design_rows =
-            '<div class="col-12 my-5">
-                <div class="form-field">
-                    <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"></div>
-                    <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
-                </div>
-            </div>';
-    }
-
     $max_file_uploads = ini_get('max_file_uploads');
 
     $max_file_uploads_suffix = '';
@@ -272,32 +261,11 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('File Access Control') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                        <select class="form-control" id="folder" name="folder">' . select_folder($folder_id, 0) . '</select>
-                                    </div>
-                                    ' . $output_design_rows . '
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' .
+                            pg_design_file_form_access_card(select_folder($folder_id, 0), array('design' => ($user['role'] <= 1), 'design_checked' => false)) . '
                         </div>
-                        <div class="col-12 md:col-6">
-                            <div class="card my-7 ">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Description') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="col-12 my-3">
-                                        <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
-                                        <textarea class="form-control" id="description" name="description" style="min-height:85px;"></textarea>
-                                    </div>
-                                </div>
-                            </div>
+                        <div class="col-12 md:col-6">' .
+                            pg_design_file_form_description_card() . '
                         </div>
                     </div>         
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">

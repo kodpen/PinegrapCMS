@@ -22,6 +22,8 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_file');
 validate_area_access($user, 'user');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
+
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
 // "not found" screen instead of PHP notices from the unchecked row below or
@@ -494,26 +496,6 @@ if (!isset($_POST['name'])) {
 
     }
 
-    $output_design_rows = '';
-    // if the user is a designer or administrator, then output design rows
-    if ($user['role'] <= 1) {
-        $output_design_checked = '';
-
-        // if this file is a design file, then check the design check box
-        if ($design == 1) {
-            $output_design_checked = ' checked="checked"';
-        }
-
-        $output_design_rows =
-            '<div class="col-12 my-5">
-                <div class="form-field">
-                    <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1" ' . $output_design_checked . '></div>
-                    <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
-                </div>
-            </div>';
-    }
-
-
     $output =
     pg_page_shell(
         array(
@@ -585,32 +567,11 @@ if (!isset($_POST['name'])) {
                                         </div>
                                     </div> 
                                 </div>
-                                <div class="col-12   ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('File Access Control') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="col-12 my-3">
-                                                <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                <select class="form-control" id="folder" name="folder">' . select_folder($row['folder']) . '</select>
-                                            </div>
-                                            ' . $output_design_rows . '
-                                        </div>
-                                    </div>
+                                <div class="col-12   ' . $output_no_file_editor_classes . '">' .
+                                    pg_design_file_form_access_card(select_folder($row['folder']), array('design' => ($user['role'] <= 1), 'design_checked' => ($design == 1))) . '
                                 </div>
-                                <div class="col-12  ' . $output_no_file_editor_classes . '">
-                                    <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                            ' . lang('Description') . '
-                                        </div>
-                                        <div class="card-body">
-                                            <div class="col-12 my-3">
-                                                <label for="description" class="form-label">' . lang('File Description / Photo Gallery Caption') . '</label>
-                                                <textarea class="form-control" id="description" name="description" style="min-height:85px;">' . h($row['description']) . '</textarea>
-                                            </div>
-                                        </div>
-                                    </div>
+                                <div class="col-12  ' . $output_no_file_editor_classes . '">' .
+                                    pg_design_file_form_description_card($row['description']) . '
                                 </div>
                                 ' . $output_convert_rows . '
                             </div>
