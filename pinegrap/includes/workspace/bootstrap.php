@@ -94,6 +94,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_rows.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_board.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled_convert.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/timeline.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/home.php');

@@ -19,7 +19,7 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1-T2 #2745-#2994): wor
 2. T1 tables (`ws_wtable_*`, workspace_wtables.php, API) — done: T1a store #2745, T1b rows #2794, T1b2 privacy reader #2808, T1c shares #2820, T1d1/T1d2 API #2890 #2931, T1e screen #2966 (workspace/workflow-tables*.md, workflow-table-*.md).
 3. T2 Board view (the channel Board tab component) by a status column — done, #2994 (workspace/workflow-table-board.md).
 4. T6 CSV, note-table import; JSON starters: contact pipeline, checklist. Cut:
-   - T6a a CSV/xlsx/xls/ods file into a new table (header row → columns, a type guessed per column, confirmed before the write) or appended to a table (columns matched by name), every row through `ws_wtable_row_create()`, refused rows reported with their cell errors — in progress.
+   - T6a a CSV/xlsx/xls/ods file into a new table (header row → columns, a type guessed per column, confirmed before the write) or appended to a table (columns matched by name), every row through `ws_wtable_row_create()`, refused rows reported with their cell errors — done, #3022 (workspace/workflow-table-import.md). Follow-ups: an import route in the API/MCP; one file reader with a row cap shared with `ws_bulk_file_table()` once #3014 has landed.
    - T6b a note's table block imported the same way.
    - T6c JSON starters (contact pipeline, checklist) on the New table card; check `ws_templates` first.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
