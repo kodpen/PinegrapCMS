@@ -17,6 +17,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/translate/render.php');
+
 function speculation_test_path($href)
 {
 	return pg_speculation_path($href, array('example.com', 'www.example.com'), '/', 'pinegrap');
@@ -118,14 +120,81 @@ function test_speculation_pick_limit()
 	pg_assert_same(PG_SPECULATION_MAX_URLS, count(pg_speculation_pick($paths, '/', $pages, '', false)));
 }
 
-// No block while the switch is off, for a signed-in member or staff, or on a
-// page in another language.
+// No block while the switch is off or for a signed-in member or staff; a
+// page in another language gets one (its addresses carry the prefix).
 function test_speculation_rules_wanted()
 {
-	pg_assert_true(pg_speculation_rules_wanted(true, false, false));
-	pg_assert_false(pg_speculation_rules_wanted(false, false, false), 'switch off');
-	pg_assert_false(pg_speculation_rules_wanted(true, true, false), 'signed in');
-	pg_assert_false(pg_speculation_rules_wanted(true, false, true), 'another language');
+	pg_assert_true(pg_speculation_rules_wanted(true, false));
+	pg_assert_false(pg_speculation_rules_wanted(false, false), 'switch off');
+	pg_assert_false(pg_speculation_rules_wanted(true, true), 'signed in');
+}
+
+// The prefix rule of the translation module, with a site whose pages are
+// about, shop and çay and whose languages are served under /en/ and /de/.
+function speculation_test_prefix_path($path, $prefix)
+{
+	return pg_tr_prefix_path_rule($path, $prefix, '/', array('en' => 'en', 'de' => 'de'),
+		array('about' => 1, 'shop' => 2, 'çay' => 3, 'cart' => 4), function ($rest) {
+			return false;
+		});
+}
+
+// On a page in a second language a link that already carries the page's
+// prefix names the page without it; the exclusions run on what is left.
+function test_speculation_path_drops_the_language_prefix()
+{
+	$hosts = array('example.com');
+
+	pg_assert_same('/about', pg_speculation_path('/en/about', $hosts, '/', 'pinegrap', 'en'));
+	pg_assert_same('/about', pg_speculation_path('/EN/about', $hosts, '/', 'pinegrap', 'en'));
+	pg_assert_same('/about', pg_speculation_path('https://example.com/en/about#x', $hosts, '/', 'pinegrap', 'en'));
+	pg_assert_same('/', pg_speculation_path('/en/', $hosts, '/', 'pinegrap', 'en'));
+	pg_assert_same('/', pg_speculation_path('/en', $hosts, '/', 'pinegrap', 'en'));
+	pg_assert_same('/site/about', pg_speculation_path('/site/en/about', $hosts, '/site/', 'pinegrap', 'en'));
+	pg_assert_same('/about', pg_speculation_path('/about', $hosts, '/', 'pinegrap', 'en'), 'unprefixed link');
+	pg_assert_same('/english', pg_speculation_path('/english', $hosts, '/', 'pinegrap', 'en'), 'a page whose name starts like the prefix');
+	pg_assert_same('/en/about', pg_speculation_path('/en/about', $hosts, '/', 'pinegrap'), 'default language: no prefix to drop');
+
+	foreach (array('/en/pinegrap/', '/en/pinegrap/logout.php', '/en/brochure.pdf', '/en/about?x=1', '/en/../pinegrap/x') as $href) {
+		pg_assert_same('', pg_speculation_path($href, $hosts, '/', 'pinegrap', 'en'), $href);
+	}
+}
+
+// A page in a second language lists its addresses with the language prefix,
+// once; the default language's list is left as it is.
+function test_speculation_localize()
+{
+	$paths = array('/about', '/', '/%C3%A7ay', '/shop/item');
+
+	pg_assert_same(array('/en/about', '/en/', '/en/%C3%A7ay', '/en/shop/item'),
+		pg_speculation_localize($paths, 'en', 'speculation_test_prefix_path'));
+	pg_assert_same($paths, pg_speculation_localize($paths, '', 'speculation_test_prefix_path'), 'default language');
+	pg_assert_same(array('/en/about'), pg_speculation_localize(array('/en/about'), 'en', 'speculation_test_prefix_path'), 'not doubled');
+}
+
+// The whole way on a page in English: menu links with and without the
+// prefix, an acting page and a file are left out as on the default page.
+function test_speculation_second_language_block()
+{
+	$pages = array(
+		''      => array('type' => 'standard', 'public' => true, 'home' => true),
+		'about' => array('type' => 'standard', 'public' => true, 'home' => false),
+		'shop'  => array('type' => 'catalog', 'public' => true, 'home' => false),
+		'cart'  => array('type' => 'shopping cart', 'public' => true, 'home' => false),
+	);
+
+	$paths = array();
+
+	foreach (array('/about', '/en/shop', '/en/about', '/en/cart', '/cart', '/en/files/a.pdf', '/') as $href) {
+		$path = pg_speculation_path($href, array('example.com'), '/', 'pinegrap', 'en');
+
+		if ($path !== '') {
+			$paths[] = $path;
+		}
+	}
+
+	pg_assert_same(array('/en/about', '/en/shop', '/en/'), pg_speculation_localize(
+		pg_speculation_pick($paths, '/', $pages, 'contact', false), 'en', 'speculation_test_prefix_path'));
 }
 
 // The block is one prefetch rule with a list source and moderate eagerness,
