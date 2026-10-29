@@ -612,7 +612,7 @@ function init_page_designer(properties) {
               <dialog class="dialog pg-dialog-centered" id="regionModal" aria-labelledby="regionModalLabel">
                     <div class="dialog-header">
                       <h5 class="dialog-title" id="regionModalLabel">${labels["Please choose a region type to create"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="${h(labels['Close'])}"></button>
                     </div>
                     <div class="dialog-body d-flex flex-wrap flex-column">
                           <a type="button" id="pregionButton" class="btn text-start my-1"><span class="bi fg-emphasis-primary bi-window me-3"></span> ${labels["Create Page Region"]}</a>
@@ -623,7 +623,7 @@ function init_page_designer(properties) {
               <dialog class="dialog dialog-lg pg-dialog-centered" id="editor_modal_add_designer_region" aria-labelledby="cregionModalDesignLabel">
                     <div class="dialog-header">
                       <h5 class="dialog-title" id="cregionModalDesignLabel">${labels["Create Designer Region"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="${h(labels['Close'])}"></button>
                     </div>
                     <div class="dialog-body">
                           <div class="row">
@@ -648,7 +648,7 @@ function init_page_designer(properties) {
               <dialog class="dialog dialog-lg pg-dialog-centered" id="editor_modal_add_dynamic_region" aria-labelledby="cregionModalDynamicLabel">
                     <div class="dialog-header">
                       <h5 class="dialog-title" id="cregionModalDynamicLabel">${labels["Create Dynamic Region"]}</h5>
-                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                      <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="${h(labels['Close'])}"></button>
                     </div>
                     <div class="dialog-body">
                           <div class="row">
@@ -672,10 +672,10 @@ function init_page_designer(properties) {
 
 
               
-              <dialog class="dialog dialog-lg pg-dialog-centered" id="editor_region_modal">
+              <dialog class="dialog dialog-lg pg-dialog-centered" id="editor_region_modal" aria-labelledby="editor_region_title">
                           <div class="dialog-header">
-                              <h1 class="dialog-title fs-lg" id="exampleModalLabel">${h(labels['The System Tags'])}</h1>
-                              <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>
+                              <h1 class="dialog-title fs-lg" id="editor_region_title">${h(labels['The System Tags'])}</h1>
+                              <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="${h(labels['Close'])}"></button>
                           </div>
                           <div class="dialog-body overflow-auto " style="white-space: nowrap;">
                               <code clas="text-nowrap"><p class="mb-0">&lt;head&gt;</p>

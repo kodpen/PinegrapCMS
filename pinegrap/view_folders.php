@@ -1979,9 +1979,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      Execution reuses edit_pages.php (pages), the explorer API (files) and
      edit_folder.php (each emptied folder), so every safety rule stays where
      it has always lived. -->
-<dialog class="dialog" id="folder_delete_modal" style="border-radius: 1rem;">
+<dialog class="dialog" id="folder_delete_modal" aria-labelledby="folder_delete_title" style="border-radius: 1rem;">
             <div class="dialog-header border-0">
-                <h5 class="dialog-title fg-danger"><span class="bi bi-trash me-3"></span><span id="folder_delete_title_text"><?php echo lang('Delete Folder and Contents'); ?></span></h5>
+                <h5 class="dialog-title fg-danger" id="folder_delete_title"><span class="bi bi-trash me-3"></span><span id="folder_delete_title_text"><?php echo lang('Delete Folder and Contents'); ?></span></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
             </div>
             <div class="dialog-body" id="folder_delete_body"></div>
@@ -9186,7 +9186,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             '<p class="mb-3">' + esc(L.link_once_note) + '</p>' +
             (qr ? '<div class="text-center mb-5"><div class="d-inline-block border rounded-4 p-3 bg-white" style="width:200px">' + qr + '</div></div>' : '') +
             '<div class="input-group">' +
-                '<input type="text" class="form-control font-monospace" id="sl_address" readonly value="' + esc(address) + '" />' +
+                '<input type="text" class="form-control font-monospace" id="sl_address" aria-label="' + esc(L.link_once_title) + '" readonly value="' + esc(address) + '" />' +
                 '<button type="button" class="btn btn-outline theme-primary" id="sl_address_copy"><span class="bi bi-clipboard me-1"></span>' + esc(L.link_copy) + '</button>' +
             '</div>';
 
@@ -10231,6 +10231,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return String(item.short_description || '');
     }
 
+    // The box's name is the column being edited, as the menu calls it.
+    function quickEditLabel(field) {
+
+        if (field === 'price') { return L.price; }
+        if (field === 'quantity') { return L.quantity; }
+
+        return L.short_description;
+    }
+
     // The same three as the cell draws them.
     function quickEditShown(item, field) {
 
@@ -10298,10 +10307,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // the same string as the one that goes in the box: a price is displayed
     // grouped and localised and edited plain. Cancelling has to put back what
     // was there, not what was being typed over.
-    function startCellEdit(element, original, shown, numeric, commit) {
+    function startCellEdit(element, original, shown, numeric, label, commit) {
 
         element.classList.add('is-editing');
-        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input"' +
+        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(label) + '"' +
             (numeric ? ' inputmode="decimal"' : '') + ' value="' + esc(original) + '" />';
 
         var input = element.querySelector('input');
@@ -10345,7 +10354,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var original = quickEditValue(item, field);
 
-        startCellEdit(element, original, quickEditShown(item, field), (field !== 'short_description'), function (value, restore) {
+        startCellEdit(element, original, quickEditShown(item, field), (field !== 'short_description'), quickEditLabel(field), function (value, restore) {
 
             api({ type: 'explorer_catalog_quick_edit', item_id: item.id, field: field, value: value }, function (response) {
 
@@ -10376,7 +10385,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function startInlineRename(element, original, selectBaseOnly, commit) {
         // The list truncates this span; while it holds an input it must not.
         element.classList.add('is-renaming');
-        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" value="' + esc(original) + '" />';
+        element.innerHTML = '<input type="text" class="form-control form-control-sm rename-input" aria-label="' + esc(L.rename) + '" value="' + esc(original) + '" />';
         var input = element.querySelector('input');
         input.focus();
 
@@ -10761,7 +10770,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 html += '</div>';
                 confirmButton.disabled = true;
             } else {
-                html += '<label class="form-label">' + esc(L.type_name_to_confirm) + '</label>' +
+                html += '<label class="form-label" for="folder_delete_name_input">' + esc(L.type_name_to_confirm) + '</label>' +
                     '<input type="text" id="folder_delete_name_input" class="form-control" autocomplete="off" placeholder="' + esc(response.folder.name) + '" />' +
                     '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.name_does_not_match) + '</div>';
                 confirmButton.disabled = true;
@@ -10851,7 +10860,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // ceremony without adding anything the operator did not already know.
         if (mode !== 'purge') {
 
-            html += '<label class="form-label">' + esc(fmt(L.type_word_to_confirm, [L.confirm_word])) + '</label>' +
+            html += '<label class="form-label" for="folder_delete_name_input">' + esc(fmt(L.type_word_to_confirm, [L.confirm_word])) + '</label>' +
                 '<input type="text" id="folder_delete_name_input" class="form-control" autocomplete="off" placeholder="' + esc(L.confirm_word) + '" />' +
                 '<div class="form-text fg-danger d-none" id="folder_delete_name_error">' + esc(L.word_does_not_match) + '</div>';
         }
@@ -12851,7 +12860,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             body.innerHTML =
                 '<h6 class="text-break mb-5"><span class="bi bi-folder-fill me-3 ' + folder.access_control_type + '"></span>' + esc(folder.name) + '</h6>' +
                 '<div class="mb-5">' +
-                '<label class="form-label">' + esc(L.access_control) + '</label>' +
+                '<label class="form-label" for="access_type_select">' + esc(L.access_control) + '</label>' +
                 '<select id="access_type_select" class="form-control">' + options + '</select>' +
                 inheritNote +
                 '<div class="form-text">' + esc(L.access_note) + '</div>' +

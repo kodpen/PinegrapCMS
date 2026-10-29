@@ -359,9 +359,9 @@ if (!$_POST)
             pgUI.dialog.toggle("#confirm_modal");
         });
         </script>
-        <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" data-bs-keyboard="false">
+        <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" aria-labelledby="save_option_title">
                     <div class="dialog-header">
-                        <h5 class="dialog-title" id="exampleModalLabel">' . lang('Save Option') . '</h5>
+                        <h5 class="dialog-title" id="save_option_title">' . lang('Save Option') . '</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body" style="font-size:smaller;">
@@ -383,7 +383,7 @@ if (!$_POST)
                             <div class="d-flex justify-content-end">
                                 <div class="input-group input-group-sm me-3">
                                     <button type="button" class="btn btn-sm btn-solid theme-primary" onclick="$(\'input[name=save_option]\').val(\'Keep and Save\');$(\'form#image_form\').submit();">' . lang('Keep Original And Save') . '</button>
-                                    <select class="form-control" id="save_option_item_type" name="save_option_item_type">
+                                    <select class="form-control" id="save_option_item_type" name="save_option_item_type" aria-label="' . h(lang('File Format')) . '">
                                         <option ' . $output_jpg_selected  . 'value="jpg">jpg</option>
                                         <option ' . $output_png_selected . 'value="png">png</option>
                                         <option ' . $output_webp_selected  . 'value="webp">webp</option>
