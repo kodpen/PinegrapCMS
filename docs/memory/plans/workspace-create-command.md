@@ -17,6 +17,7 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 
 ## Which steps are done?
 - S1 (#2927): the menu item is gone; tests/workspace_channel_menu_test.php guards the menu's item keys.
+- S2 in progress (branch feature/create-command-s2).
 
 ## What is open? (architect questions, not decided here)
 - Which other kinds `/oluştur` takes later (task, customer, sales quote, workflow table row…), and whether `/görev` then becomes an alias like `/ürün`.
