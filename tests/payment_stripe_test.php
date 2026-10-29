@@ -659,3 +659,320 @@ function test_payment_stripe_card_fields_in_the_answer()
 	pg_assert_same('Troy', pg_payment_stripe_card_brand('troy'));
 	pg_assert_same('', pg_payment_stripe_card_brand('unknown'));
 }
+
+/* ---------------------------------------------------------------------------
+   Store-run subscriptions
+   --------------------------------------------------------------------------- */
+
+function payment_stripe_test_subscription($changes = array())
+{
+	return array_merge(array(
+		'id'             => 7,
+		'user_id'        => 31,
+		'order_id'       => 438,
+		'driver'         => 'stripe',
+		'status'         => 'active',
+		'period'         => 'monthly',
+		'amount'         => 9900,
+		'currency'       => 'TRY',
+		'next_charge_at' => 1793000000,
+		'retry_count'    => 0,
+		'card_last4'     => '4242',
+		'card_ref'       => 'cus_Q1a|pm_1Old',
+		'return_url'     => 'https://shop.example/account',
+	), $changes);
+}
+
+function payment_stripe_test_renewal_intent($changes = array())
+{
+	return array_merge(array(
+		'id'             => 'pi_3Ren',
+		'object'         => 'payment_intent',
+		'amount'         => 9900,
+		'currency'       => 'try',
+		'status'         => 'succeeded',
+		'customer'       => 'cus_Q1a',
+		'metadata'       => array('subscription_id' => '7'),
+		'payment_method' => array('id' => 'pm_1Old', 'card' => array('brand' => 'visa', 'last4' => '4242', 'exp_month' => 12, 'exp_year' => 2030)),
+	), $changes);
+}
+
+function payment_stripe_test_wallet($ids)
+{
+	return array(200, array('object' => 'list', 'data' => array_map(function ($id) {
+		return array('id' => $id, 'object' => 'payment_method', 'customer' => 'cus_Q1a', 'card' => array('last4' => '4242'));
+	}, $ids)));
+}
+
+function payment_stripe_test_renew($answers, $subscription = array(), $settings = array())
+{
+	return pg_payment_answer('charge_renewal', pg_payment_stripe_charge_renewal_with(payment_stripe_test_subscription($subscription), payment_stripe_test_settings($settings), payment_stripe_test_http($answers)));
+}
+
+function test_payment_stripe_runs_subscriptions_in_store_mode()
+{
+	pg_assert_same('store', pg_payment_recurring_mode('stripe'));
+	pg_assert_true(pg_payment_can('stripe', 'recurring'));
+
+	foreach (array('charge_renewal', 'update_card', 'subscription_cancel') as $operation) {
+		pg_assert_true(pg_payment_can('stripe', $operation), $operation);
+	}
+}
+
+function test_payment_stripe_card_ref()
+{
+	pg_assert_same('cus_Q1a|pm_1Old', pg_payment_stripe_card_ref('cus_Q1a', 'pm_1Old'));
+	pg_assert_same(array('cus_Q1a', 'pm_1Old'), pg_payment_stripe_card_ref_parts('cus_Q1a|pm_1Old'));
+	pg_assert_same('', pg_payment_stripe_card_ref('pm_1Old', 'cus_Q1a'), 'the halves in their own order only');
+	pg_assert_same('', pg_payment_stripe_card_ref('cus_' . str_repeat('a', 120), 'pm_' . str_repeat('b', 40)), 'longer than a card_ref may be');
+	pg_assert_same(null, pg_payment_stripe_card_ref_parts('cus_Q1a'));
+	pg_assert_same(null, pg_payment_stripe_card_ref_parts('cus_Q1a|pm_1|x'));
+	pg_assert_false(pg_subscription_card_ref_is_sealed('cus_Q1a|pm_1Old'), 'a plain card_ref is never taken for a sealed one');
+}
+
+function test_payment_stripe_prepare_keeps_the_card_for_a_recurring_order()
+{
+	$client = pg_payment_answer('prepare', pg_payment_stripe_prepare_with(payment_stripe_test_order(array('recurring' => true)), 4714, payment_stripe_test_settings()))['client'];
+
+	pg_assert_same('off_session', $client['setup_future_usage']);
+
+	$plain = pg_payment_answer('prepare', pg_payment_stripe_prepare_with(payment_stripe_test_order(), 4714, payment_stripe_test_settings()))['client'];
+	pg_assert_false(isset($plain['setup_future_usage']), 'nothing kept for an order without a recurring line');
+}
+
+function test_payment_stripe_first_payment_stores_the_card()
+{
+	$answer = payment_stripe_test_authorize(array(
+		'POST /v1/customers'       => array(200, array('id' => 'cus_Q1a', 'object' => 'customer')),
+		'POST /v1/payment_intents' => array(200, payment_stripe_test_intent(array('customer' => 'cus_Q1a', 'setup_future_usage' => 'off_session'))),
+	), array(), array('recurring' => true, 'customer_id' => 31));
+	$calls = payment_stripe_test_calls();
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('cus_Q1a|pm_1', $answer['card_ref']);
+	pg_assert_same('4242', $answer['card_last4']);
+	pg_assert_same(2, count($calls));
+	pg_assert_same('/v1/customers', $calls[0]['path']);
+	pg_assert_same('ayse@example.com', $calls[0]['params']['email']);
+	pg_assert_same('438', $calls[0]['params']['metadata']['order_id']);
+	pg_assert_same('31', $calls[0]['params']['metadata']['user_id']);
+	pg_assert_same(0, strpos($calls[0]['idempotency'], 'pg-cus-'));
+	pg_assert_same('cus_Q1a', $calls[1]['params']['customer']);
+	pg_assert_same('off_session', $calls[1]['params']['setup_future_usage']);
+	pg_assert_false(strpos(json_encode($answer['log']), 'pm_1') !== false, 'the card is never logged');
+
+	// Built with the same setup_future_usage as the intent, or Stripe refuses
+	// the confirmation token.
+	$client = pg_payment_answer('prepare', pg_payment_stripe_prepare_with(payment_stripe_test_order(array('recurring' => true)), 4714, payment_stripe_test_settings()))['client'];
+	pg_assert_same($calls[1]['params']['setup_future_usage'], $client['setup_future_usage']);
+
+	$plain = payment_stripe_test_authorize(array('POST /v1/payment_intents' => array(200, payment_stripe_test_intent())));
+	$calls = payment_stripe_test_calls();
+	pg_assert_same(1, count($calls), 'no customer without a recurring line');
+	pg_assert_false(isset($calls[0]['params']['setup_future_usage']));
+	pg_assert_same('', $plain['card_ref']);
+}
+
+function test_payment_stripe_first_payment_refused_when_no_customer()
+{
+	$answer = payment_stripe_test_authorize(array(
+		'POST /v1/customers' => array(400, array('error' => array('type' => 'invalid_request_error', 'message' => 'Invalid email address'))),
+	), array(), array('recurring' => true));
+
+	pg_assert_false($answer['success']);
+	pg_assert_same(1, count(payment_stripe_test_calls()), 'no payment without the customer the card is kept for');
+}
+
+function test_payment_stripe_3d_secure_return_answers_the_stored_card()
+{
+	$state = array('payment_intent' => 'pi_3Abc', 'order_id' => '438', 'amount' => 4714);
+	$answer = pg_payment_answer('complete', pg_payment_stripe_complete_with(payment_stripe_test_order(), 4714, array(), $state, payment_stripe_test_settings(), payment_stripe_test_http(array(
+		'GET /v1/payment_intents/pi_3Abc' => array(200, payment_stripe_test_intent(array('customer' => 'cus_Q1a', 'setup_future_usage' => 'off_session'))),
+	))));
+
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('cus_Q1a|pm_1', $answer['card_ref']);
+}
+
+function test_payment_stripe_renewal_charges_the_stored_card_off_session()
+{
+	$answer = payment_stripe_test_renew(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_1Old')),
+		'POST /v1/payment_intents'                  => array(200, payment_stripe_test_renewal_intent()),
+	));
+	$calls = payment_stripe_test_calls();
+	$params = $calls[1]['params'];
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('pi_3Ren', $answer['transaction_id']);
+	pg_assert_same(9900, $answer['amount']);
+	pg_assert_same('', $answer['card_ref'], 'the same card: nothing to keep again');
+	pg_assert_same(9900, $params['amount']);
+	pg_assert_same('try', $params['currency']);
+	pg_assert_same('cus_Q1a', $params['customer']);
+	pg_assert_same('pm_1Old', $params['payment_method']);
+	pg_assert_true($params['off_session']);
+	pg_assert_true($params['confirm']);
+	pg_assert_same('automatic', $params['capture_method']);
+	pg_assert_same('7', $params['metadata']['subscription_id']);
+	pg_assert_false(isset($params['metadata']['order_id']), 'the webhook never takes a renewal for the first order');
+
+	// The same attempt asked again (a cron run cut short) is the same request
+	// to Stripe; the next attempt of the ladder is a new one.
+	$key = $calls[1]['idempotency'];
+	pg_assert_same(0, strpos($key, 'pg-renew-'));
+	payment_stripe_test_renew(array('POST /v1/payment_intents' => array(200, payment_stripe_test_renewal_intent())));
+	pg_assert_same($key, payment_stripe_test_calls()[1]['idempotency']);
+	payment_stripe_test_renew(array('POST /v1/payment_intents' => array(200, payment_stripe_test_renewal_intent())), array('retry_count' => 1));
+	pg_assert_false($key === payment_stripe_test_calls()[1]['idempotency']);
+}
+
+function test_payment_stripe_renewal_takes_the_card_the_customer_added()
+{
+	$answer = payment_stripe_test_renew(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_2New', 'pm_1Old')),
+		'POST /v1/payment_intents'                  => array(200, payment_stripe_test_renewal_intent(array('payment_method' => array('id' => 'pm_2New', 'card' => array('last4' => '5555'))))),
+		'POST /v1/payment_methods/pm_1Old/detach'   => array(200, array('id' => 'pm_1Old', 'object' => 'payment_method', 'customer' => null)),
+	));
+	$calls = payment_stripe_test_calls();
+
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('pm_2New', $calls[1]['params']['payment_method']);
+	pg_assert_same('cus_Q1a|pm_2New', $answer['card_ref']);
+	pg_assert_same('5555', $answer['card_last4']);
+	pg_assert_same('POST /v1/payment_methods/pm_1Old/detach', $calls[2]['method'] . ' ' . $calls[2]['path'], 'the replaced card is let go once the new one paid');
+}
+
+function test_payment_stripe_renewal_declined()
+{
+	$answer = payment_stripe_test_renew(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_1Old')),
+		'POST /v1/payment_intents'                  => array(402, array('error' => array('type' => 'card_error', 'code' => 'card_declined', 'decline_code' => 'insufficient_funds', 'message' => 'Your card has insufficient funds.'))),
+	));
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear'], 'a refusal is a clear answer');
+	pg_assert_same('insufficient_funds', $answer['raw']['code']);
+	pg_assert_same('Your card has insufficient funds.', $answer['error']);
+}
+
+function test_payment_stripe_renewal_needing_authentication_answers_a_confirmation_link()
+{
+	$answer = payment_stripe_test_renew(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_1Old')),
+		'POST /v1/payment_intents'                  => array(402, array('error' => array(
+			'type'           => 'card_error',
+			'code'           => 'authentication_required',
+			'message'        => 'This payment requires authentication.',
+			'payment_intent' => payment_stripe_test_renewal_intent(array('status' => 'requires_payment_method', 'id' => 'pi_3Auth')),
+		))),
+		'POST /v1/payment_intents/pi_3Auth/confirm' => array(200, payment_stripe_test_renewal_intent(array(
+			'id'          => 'pi_3Auth',
+			'status'      => 'requires_action',
+			'next_action' => array('type' => 'redirect_to_url', 'redirect_to_url' => array('url' => 'https://hooks.stripe.com/3d_secure_2/hosted?x=1')),
+		))),
+	));
+	$calls = payment_stripe_test_calls();
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('redirect', $answer['status']);
+	pg_assert_same('https://hooks.stripe.com/3d_secure_2/hosted?x=1', $answer['redirect_url']);
+	pg_assert_same('pi_3Auth', $answer['transaction_id']);
+	pg_assert_same('authentication_required', $answer['raw']['code']);
+	pg_assert_same('pm_1Old', $calls[2]['params']['payment_method']);
+	pg_assert_same('https://shop.example/account', $calls[2]['params']['return_url']);
+	pg_assert_same(0, strpos($calls[2]['idempotency'], 'pg-renew-confirm-'));
+
+	$no_link = payment_stripe_test_renew(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_1Old')),
+		'POST /v1/payment_intents'                  => array(402, array('error' => array('type' => 'card_error', 'code' => 'authentication_required', 'message' => 'This payment requires authentication.'))),
+	));
+	pg_assert_false($no_link['success']);
+	pg_assert_false($no_link['unclear']);
+	pg_assert_same('authentication_required', $no_link['raw']['code']);
+}
+
+function test_payment_stripe_renewal_unclear_answers()
+{
+	$wallet = payment_stripe_test_wallet(array('pm_1Old'));
+
+	$unreached = payment_stripe_test_renew(array('GET /v1/customers/cus_Q1a/payment_methods' => $wallet));
+	pg_assert_false($unreached['success']);
+	pg_assert_true($unreached['unclear'], 'no answer: the charge may have gone through');
+
+	$server = payment_stripe_test_renew(array('GET /v1/customers/cus_Q1a/payment_methods' => $wallet, 'POST /v1/payment_intents' => array(500, array('error' => array('type' => 'api_error', 'message' => 'Something went wrong')))));
+	pg_assert_true($server['unclear']);
+
+	$foreign = payment_stripe_test_renew(array('GET /v1/customers/cus_Q1a/payment_methods' => $wallet, 'POST /v1/payment_intents' => array(200, payment_stripe_test_renewal_intent(array('amount' => 100)))));
+	pg_assert_false($foreign['success']);
+	pg_assert_true($foreign['unclear'], 'an intent for another amount is not believed');
+
+	$processing = payment_stripe_test_renew(array('GET /v1/customers/cus_Q1a/payment_methods' => $wallet, 'POST /v1/payment_intents' => array(200, payment_stripe_test_renewal_intent(array('status' => 'processing')))));
+	pg_assert_same('pending', $processing['status']);
+
+	// The wallet not read: the stored card is charged.
+	$fallback = payment_stripe_test_renew(array('POST /v1/payment_intents' => array(200, payment_stripe_test_renewal_intent())));
+	pg_assert_same('paid', $fallback['status']);
+	pg_assert_same('pm_1Old', payment_stripe_test_calls()[1]['params']['payment_method']);
+
+	$empty = payment_stripe_test_renew(array('GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array())));
+	pg_assert_false($empty['success']);
+	pg_assert_false($empty['unclear']);
+	pg_assert_same(1, count(payment_stripe_test_calls()), 'no card left: nothing charged');
+
+	$no_card = payment_stripe_test_renew(array(), array('card_ref' => ''));
+	pg_assert_false($no_card['success']);
+	pg_assert_same(0, count(payment_stripe_test_calls()));
+}
+
+function test_payment_stripe_update_card_opens_stripes_page()
+{
+	$http = payment_stripe_test_http(array('POST /v1/checkout/sessions' => array(200, array('id' => 'cs_test_1', 'object' => 'checkout.session', 'url' => 'https://checkout.stripe.com/c/pay/cs_test_1'))));
+	$answer = pg_payment_answer('update_card', pg_payment_stripe_update_card_with(payment_stripe_test_subscription(), payment_stripe_test_settings(), $http, 1793000000));
+	$calls = payment_stripe_test_calls();
+	$params = $calls[0]['params'];
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('redirect', $answer['status']);
+	pg_assert_same('https://checkout.stripe.com/c/pay/cs_test_1', $answer['redirect_url']);
+	pg_assert_same('setup', $params['mode']);
+	pg_assert_same('cus_Q1a', $params['customer']);
+	pg_assert_same(array('card'), $params['payment_method_types']);
+	pg_assert_same('https://shop.example/account', $params['success_url']);
+	pg_assert_same('https://shop.example/account', $params['cancel_url']);
+	pg_assert_same('7', $params['setup_intent_data']['metadata']['subscription_id']);
+	pg_assert_same(0, strpos($calls[0]['idempotency'], 'pg-setup-'));
+
+	pg_assert_false(pg_payment_answer('update_card', pg_payment_stripe_update_card_with(payment_stripe_test_subscription(), payment_stripe_test_settings(), payment_stripe_test_http(), 1793000000))['success']);
+	pg_assert_false(pg_payment_answer('update_card', pg_payment_stripe_update_card_with(payment_stripe_test_subscription(array('card_ref' => '')), payment_stripe_test_settings(), payment_stripe_test_http(), 1793000000))['success']);
+}
+
+function test_payment_stripe_subscription_cancel_detaches_the_cards()
+{
+	$detached = array(200, array('object' => 'payment_method', 'customer' => null));
+	$answer = pg_payment_answer('subscription_cancel', pg_payment_stripe_subscription_cancel_with(payment_stripe_test_subscription(), payment_stripe_test_settings(), payment_stripe_test_http(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_2New', 'pm_1Old')),
+		'POST /v1/payment_methods/pm_2New/detach'   => $detached,
+		'POST /v1/payment_methods/pm_1Old/detach'   => $detached,
+	))));
+	$paths = array_map(function ($call) {
+		return $call['method'] . ' ' . $call['path'];
+	}, payment_stripe_test_calls());
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('cancelled', $answer['status']);
+	pg_assert_same(array('GET /v1/customers/cus_Q1a/payment_methods', 'POST /v1/payment_methods/pm_2New/detach', 'POST /v1/payment_methods/pm_1Old/detach'), $paths);
+
+	// The wallet not read: the stored card is let go.
+	$stored = pg_payment_answer('subscription_cancel', pg_payment_stripe_subscription_cancel_with(payment_stripe_test_subscription(), payment_stripe_test_settings(), payment_stripe_test_http(array('POST /v1/payment_methods/pm_1Old/detach' => $detached))));
+	pg_assert_same('cancelled', $stored['status']);
+
+	$refused = pg_payment_answer('subscription_cancel', pg_payment_stripe_subscription_cancel_with(payment_stripe_test_subscription(), payment_stripe_test_settings(), payment_stripe_test_http(array(
+		'GET /v1/customers/cus_Q1a/payment_methods' => payment_stripe_test_wallet(array('pm_1Old')),
+		'POST /v1/payment_methods/pm_1Old/detach'   => array(400, array('error' => array('type' => 'invalid_request_error', 'message' => 'No such PaymentMethod'))),
+	))));
+	pg_assert_false($refused['success']);
+	pg_assert_same('No such PaymentMethod', $refused['raw']['message']);
+}

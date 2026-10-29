@@ -18,7 +18,7 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - Design note: #3183 (store-run first; no proration, period end only).
 - Slice 1 done (#3236): tables, the `recurring` mode and the store-mode operations in the contract, `includes/fn/subscriptions.php` (`commerce/subscriptions.md`).
 - Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Later slices: pass `order` to `charge_renewal`, re-seal a `card_ref` it answers; future-start lines get no row yet.
-- Slice 3 (Stripe store mode) in progress.
+- Slice 3 done (#3270): Stripe store mode (`commerce/subscriptions-stripe.md`).
 - Next slices: renewal order writer + dunning + e-mails (M; also widens `email_campaigns.action`), account widget + API (M).
 
 ## Open questions?
