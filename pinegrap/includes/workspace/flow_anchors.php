@@ -13,6 +13,9 @@
  * the newcomers, takes its lock and runs it as the flow's owner; the anchor
  * is left out of every list of scheduled actions, its card, its history and
  * its report (ws_scheduled_action(), ws_scheduled_anchors_out()).
+ * A row box starts the flow when a row of one workflow table is added,
+ * changed or deleted: its rule (type row) waits for the store's
+ * workspace.wtable.row.* event, kept by ws_event() and matched in watch.php.
  * A scheduled action converted into a flow is an anchor too, marked
  * converted (ws_scheduled_actions.anchor): it stays the action it was, in
  * the lists, on its card and in its history; by hand and by a chain it
@@ -41,7 +44,127 @@ function ws_flow_anchor_kinds()
         'schedule' => array('label' => lang('At a time'), 'rule' => 'at'),
         'event'    => array('label' => lang('When something happens'), 'rule' => 'event'),
         'join'     => array('label' => lang('When somebody joins a channel'), 'rule' => 'join'),
+        'row'      => array('label' => lang('When a table row changes'), 'rule' => 'row'),
     );
+}
+
+/**
+ * What happens to a row that a row box starts its flow on, by the word its
+ * settings keep (the first is the one a new box takes), and the event the
+ * store keeps for it (ws_wtable_row_announce()).
+ *
+ * @return array what => label, event
+ */
+function ws_flow_row_whats()
+{
+    return array(
+        'created' => array('label' => lang('A row is added'), 'event' => 'workspace.wtable.row.created'),
+        'updated' => array('label' => lang('A row is changed'), 'event' => 'workspace.wtable.row.updated'),
+        'deleted' => array('label' => lang('A row is deleted'), 'event' => 'workspace.wtable.row.deleted'),
+    );
+}
+
+/**
+ * The values a row box gives {{trigger.<field>}}: the table, the row, who
+ * wrote it, then one value per column of the table (cell_<column id>, the
+ * column's name as its label), as ws_wtable_row_present() keys the cells.
+ * Pure.
+ *
+ * @param array[] $columns ws_wtable_columns() of the table: id, name, type
+ * @return array[] key, type, label
+ */
+function ws_flow_row_outputs($columns)
+{
+    $out = array(
+        array('key' => 'table_id', 'type' => 'number', 'label' => lang('Table')),
+        array('key' => 'table_name', 'type' => 'text', 'label' => lang('The name of the table')),
+        array('key' => 'row_id', 'type' => 'number', 'label' => lang('Row')),
+        array('key' => 'actor_id', 'type' => 'number', 'label' => lang('The person who did it')),
+    );
+
+    foreach ((array) $columns as $column) {
+        if ((int) ($column['id'] ?? 0) > 0) {
+            $number = in_array((string) ($column['type'] ?? ''), array('number', 'money'), true);
+            $out[] = array('key' => 'cell_' . (int) $column['id'], 'type' => $number ? 'number' : 'text', 'label' => (string) ($column['name'] ?? ''));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A cell of a row as the text {{trigger.cell_<id>}} gives: a number, a text
+ * or a person's id as it is, a ticked box 1 (not ticked empty), a record
+ * link the record's id; anything else is empty. Pure.
+ *
+ * @param mixed $value a cell of ws_wtable_row_present()
+ * @return string
+ */
+function ws_flow_row_cell_text($value)
+{
+    if (is_bool($value)) {
+        return $value ? '1' : '';
+    }
+
+    if (is_scalar($value)) {
+        return (string) $value;
+    }
+
+    if (is_array($value) && isset($value['kind'], $value['id']) && is_scalar($value['id']) && !is_bool($value['id'])) {
+        return (string) $value['id'];
+    }
+
+    return '';
+}
+
+/**
+ * The columns of a row box's table, for its values: those given, or read
+ * from the store (none where tables are not installed).
+ *
+ * @param array $config table_id, and columns when the caller read them
+ * @return array[]
+ */
+function ws_flow_row_columns($config)
+{
+    if (is_array($config['columns'] ?? null)) {
+        return $config['columns'];
+    }
+
+    $table_id = (int) ($config['table_id'] ?? 0);
+
+    return (($table_id > 0) && function_exists('ws_wtable_columns')) ? array_values(ws_wtable_columns($table_id)) : array();
+}
+
+/**
+ * The tables a row box may start a flow on, for the canvas: those the
+ * person reaches, the latest changed first, at most 200, each with its
+ * columns (id, name, type) for the values the box gives.
+ *
+ * @param array $viewer
+ * @return array[] id, name, columns
+ */
+function ws_flow_row_tables($viewer)
+{
+    if (!function_exists('ws_wtables_reached') || !ws_wtables_ready()) {
+        return array();
+    }
+
+    $tables = array();
+
+    foreach (array_slice(ws_wtables_reached($viewer, 'all'), 0, 200) as $table) {
+        $tables[(int) $table['id']] = array('id' => (int) $table['id'], 'name' => (string) $table['name'], 'columns' => array());
+    }
+
+    if (empty($tables)) {
+        return array();
+    }
+
+    foreach ((array) db_items("SELECT id, table_id, name, type FROM ws_wtable_columns
+        WHERE table_id IN ('" . implode("','", array_keys($tables)) . "') ORDER BY position, id") as $column) {
+        $tables[(int) $column['table_id']]['columns'][] = array('id' => (int) $column['id'], 'name' => (string) $column['name'], 'type' => (string) $column['type']);
+    }
+
+    return array_values($tables);
 }
 
 /**
@@ -49,10 +172,12 @@ function ws_flow_anchor_kinds()
  * the start box is set up, in the shape of a box's outputs (key, type,
  * label): an event its name, the id of its record and what its payload
  * says of it (ws_flow_event_outputs()); a join the newcomer and the channel
- * joined. Started by hand or at a time: none. Pure.
+ * joined; a row box the table, the row and its cells (ws_flow_row_outputs(),
+ * the columns read from the store unless $config gives them). Started by
+ * hand or at a time: none. Pure but for a row box's columns.
  *
  * @param string $kind   the start box's kind
- * @param array  $config ws_flow_anchor_normalize()
+ * @param array  $config ws_flow_anchor_normalize(), a row box's columns
  * @return array[] key, type, label
  */
 function ws_flow_trigger_outputs($kind, $config = array())
@@ -60,6 +185,10 @@ function ws_flow_trigger_outputs($kind, $config = array())
     $value = function ($key, $type, $label) {
         return array('key' => $key, 'type' => $type, 'label' => $label);
     };
+
+    if ($kind === 'row') {
+        return ws_flow_row_outputs(ws_flow_row_columns($config));
+    }
 
     if ($kind === 'join') {
         return array(
@@ -134,6 +263,9 @@ function ws_flow_event_outputs()
  *           until ('' or YYYY-MM-DD)
  * event:    event, page_id (a form), status ('' for any), channel_id
  * join:     channel_id (0 for any public channel)
+ * row:      table_id, what (created, updated, deleted), column_id (a change
+ *           counts only when it writes this column; 0 for any, and 0 for
+ *           what is not updated)
  *
  * @param string $kind
  * @param mixed  $config
@@ -177,6 +309,16 @@ function ws_flow_anchor_normalize($kind, $config)
 
         case 'join':
             return array('channel_id' => $number($config['channel_id'] ?? 0));
+
+        case 'row':
+            $what = (string) ($config['what'] ?? '');
+            $what = isset(ws_flow_row_whats()[$what]) ? $what : 'created';
+
+            return array(
+                'table_id'  => $number($config['table_id'] ?? 0),
+                'what'      => $what,
+                'column_id' => ($what === 'updated') ? $number($config['column_id'] ?? 0) : 0,
+            );
     }
 
     return array();
@@ -200,6 +342,10 @@ function ws_flow_anchor_problems($kind, $config, $name)
         return array(lang(array('string' => 'The box {var:1} needs what happens.', 'vars' => $name)));
     }
 
+    if (($kind === 'row') && ((int) $config['table_id'] <= 0)) {
+        return array(lang(array('string' => 'The box {var:1} needs the table.', 'vars' => $name)));
+    }
+
     return array();
 }
 
@@ -212,6 +358,17 @@ function ws_flow_anchor_problems($kind, $config, $name)
  */
 function ws_flow_anchor_rule($kind, $config)
 {
+    // A row box's rule names the store's event, so the events awaited are
+    // read from the rules as an event rule's are (ws_events_awaited()).
+    if ($kind === 'row') {
+        return array(
+            'type'      => 'row',
+            'event'     => (string) (ws_flow_row_whats()[(string) ($config['what'] ?? '')]['event'] ?? ''),
+            'table_id'  => (int) ($config['table_id'] ?? 0),
+            'column_id' => (int) ($config['column_id'] ?? 0),
+        );
+    }
+
     $rule = array('type' => (string) (ws_flow_anchor_kinds()[$kind]['rule'] ?? ''));
 
     foreach ((array) $config as $key => $value) {
@@ -241,6 +398,10 @@ function ws_flow_anchor_check($viewer, $kind, $config)
         return array('ok' => false, 'error' => lang('This kind of box cannot start a flow.'), 'rule' => null, 'next_run_at' => 0);
     }
 
+    if ($kind === 'row') {
+        return ws_flow_row_check($viewer, $config);
+    }
+
     $checked = ws_scheduled_rule_input($viewer, ws_flow_anchor_rule($kind, $config));
 
     if (!$checked['ok']) {
@@ -258,6 +419,124 @@ function ws_flow_anchor_check($viewer, $kind, $config)
     }
 
     return $checked + array('next_run_at' => $next);
+}
+
+/**
+ * Does a row rule match a row event of the same name (ws_events_rule_matches()
+ * compared the names)? A row of its table, and a change only when it wrote
+ * the rule's column, if it names one. Pure.
+ *
+ * @param array $rule    type row: event, table_id, column_id
+ * @param array $payload ws_wtable_row_flow_payload()
+ * @return bool
+ */
+function ws_flow_row_rule_matches($rule, $payload)
+{
+    $column_id = (int) ($rule['column_id'] ?? 0);
+
+    return ((int) ($rule['table_id'] ?? 0) > 0) && ((int) ($payload['table_id'] ?? 0) === (int) $rule['table_id'])
+        && (($column_id <= 0) || in_array($column_id, array_map('intval', (array) ($payload['changed'] ?? array())), true));
+}
+
+/**
+ * Why a row box may not start a flow, '' when it may. Pure.
+ *
+ * @param string $gate       ws_wtable_flow_check() of the table at view
+ * @param int    $column_id  the column a change has to write, 0 for any
+ * @param int[]  $column_ids the columns of the table
+ * @return string
+ */
+function ws_flow_row_refusal($gate, $column_id, $column_ids)
+{
+    if ($gate === 'paused') {
+        return lang('The owner of this table has left the team; it starts no flow until they are back.');
+    }
+
+    if ($gate !== '') {
+        return lang('Choose a table you may read.');
+    }
+
+    if (((int) $column_id > 0) && !in_array((int) $column_id, array_map('intval', (array) $column_ids), true)) {
+        return lang('That column is not in the table.');
+    }
+
+    return '';
+}
+
+/**
+ * Checks a row box with somebody's rights, the owner as they publish: the
+ * table read by them (ws_wtable_flow_check()), the column one of its own.
+ *
+ * @param array $viewer
+ * @param array $config ws_flow_anchor_normalize('row')
+ * @return array ok, error, rule, next_run_at
+ */
+function ws_flow_row_check($viewer, $config)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'rule' => null, 'next_run_at' => 0);
+    };
+
+    if (!function_exists('ws_wtable_flow_check') || !ws_wtables_ready() || !function_exists('ws_events_ready') || !ws_events_ready()) {
+        return $fail(lang('The workspace is not installed yet: the database has to be updated first.'));
+    }
+
+    $table_id = (int) ($config['table_id'] ?? 0);
+
+    if ($table_id <= 0) {
+        return $fail(lang('Choose a table you may read.'));
+    }
+
+    $error = ws_flow_row_refusal(ws_wtable_flow_check($viewer, $table_id, 'view'), (int) ($config['column_id'] ?? 0), array_keys(ws_wtable_columns($table_id)));
+
+    if ($error !== '') {
+        return $fail($error);
+    }
+
+    return array('ok' => true, 'error' => '', 'rule' => ws_flow_anchor_rule('row', $config), 'next_run_at' => 0);
+}
+
+/**
+ * How a row box's start reads: what happens to a row, in which table, and
+ * the column a change has to write. Pure.
+ *
+ * @param array  $config ws_flow_anchor_normalize('row')
+ * @param string $table  the table's name, '' when not known
+ * @param string $column the column's name, '' for any
+ * @return string
+ */
+function ws_flow_row_said($config, $table, $column = '')
+{
+    $what = ws_flow_row_whats()[(string) ($config['what'] ?? '')] ?? null;
+
+    if (($what === null) || ((string) $table === '')) {
+        return lang('When a table row changes');
+    }
+
+    $text = lang(array('string' => '{var:1} in “{var:2}”', 'vars' => array($what['label'], $table)));
+
+    return ((string) $column !== '') ? $text . ' · ' . $column : $text;
+}
+
+/**
+ * ws_flow_row_said() for a person: the table and the column named only
+ * when they read the table.
+ *
+ * @param array $viewer
+ * @param array $config ws_flow_anchor_normalize('row')
+ * @return string
+ */
+function ws_flow_row_start_text($viewer, $config)
+{
+    $table = function_exists('ws_wtable') ? ws_wtable((int) ($config['table_id'] ?? 0)) : null;
+
+    if (!$table || (ws_wtable_access($viewer, $table) === '')) {
+        return ws_flow_row_said($config, '');
+    }
+
+    $column = ((int) ($config['column_id'] ?? 0) > 0) ? (ws_wtable_columns((int) $table['id'])[(string) (int) $config['column_id']] ?? null) : null;
+
+    return ws_flow_row_said($config, (string) $table['name'], $column ? (string) $column['name'] : '');
 }
 
 /**
@@ -508,6 +787,16 @@ function ws_flow_anchor_start($viewer, $row, $fill)
 
     if (!$trigger || !(isset(ws_flow_anchor_kinds()[$trigger['kind']]) || ($converted && ((string) $trigger['kind'] === 'manual')))) {
         return $fail(lang('This flow is not started on its own.'));
+    }
+
+    // A row box's table is asked again as each row starts the flow: the
+    // owner reads it still, its own owner is on the team.
+    if (((string) $trigger['kind'] === 'row') && function_exists('ws_wtable_flow_check')) {
+        $refused = ws_flow_row_refusal(ws_wtable_flow_check($viewer, ws_flow_anchor_normalize('row', $trigger['config'] ?? array())['table_id'], 'view'), 0, array());
+
+        if ($refused !== '') {
+            return $fail($refused);
+        }
     }
 
     $flow_id = (int) $flow['id'];

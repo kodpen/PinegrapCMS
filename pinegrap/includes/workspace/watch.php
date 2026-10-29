@@ -30,9 +30,11 @@
  *
  * The workspace's own events start scheduled actions the same way: a task
  * completed, moved to another status or gone overdue, an approval request
- * settled, a guest writing in their room (ws_events_own()). They are kept by
- * ws_event(), called where each happens (tasks.php, reminders.php,
- * approvals.php, guests.php), and only while an active action waits for
+ * settled, a guest writing in their room, a row of a workflow table added,
+ * changed or deleted (ws_events_own(); a row only starts a flow's row box).
+ * They are kept by ws_event(), called where each happens (tasks.php,
+ * reminders.php, approvals.php, guests.php, wtable_shares.php), and only
+ * while an active action waits for
  * that event, so a site that automates none of them writes nothing more. A
  * rule may be narrowed to one channel; an action is started only by what
  * its creator may read - the task, the channel of the request, the guest's
@@ -190,6 +192,9 @@ function ws_events_own()
         'workspace.approval.decided',
         'workspace.guest.message',
         'workspace.mail.received',
+        'workspace.wtable.row.created',
+        'workspace.wtable.row.updated',
+        'workspace.wtable.row.deleted',
     );
 }
 
@@ -269,7 +274,7 @@ function ws_events_awaited($forget = false)
     if (function_exists('ws_scheduled_join_ready') && ws_scheduled_join_ready()) {
         foreach ((array) db_items("SELECT rules FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%workspace.%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && (($rule['type'] ?? '') === 'event') && ws_events_is_own($rule['event'] ?? '')) {
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true) && ws_events_is_own($rule['event'] ?? '')) {
                     $awaited[] = (string) $rule['event'];
                 }
             }
@@ -353,6 +358,12 @@ function ws_events_creator_sees($user_id, $event, $payload)
         $task = ws_task((int) ($payload['id'] ?? 0));
 
         return $task && ws_can_see_task($viewer, $task);
+    }
+
+    // A row of a workflow table: the table read, its owner on the team
+    // (ws_wtable_flow_gate()).
+    if (strpos((string) $event, 'workspace.wtable.') === 0) {
+        return function_exists('ws_wtable_flow_check') && (ws_wtable_flow_check($viewer, (int) ($payload['table_id'] ?? 0), 'view') === '');
     }
 
     $channel = ws_channel((int) ($payload['channel_id'] ?? 0));
@@ -457,20 +468,26 @@ function ws_events_watched($event)
  * Does an event rule of a scheduled action match this event? The event
  * itself, and its filters when it has them: the form (the page the form is
  * on), the status the order or the task moved to or how the approval request
- * ended (status), and the channel the workspace's event happened in.
+ * ended (status), and the channel the workspace's event happened in. A row
+ * rule (a flow's row box) matches a row of its table, and a change only
+ * when it wrote the rule's column, if it names one.
  *
- * @param array  $rule    type event: event, page_id, status, channel_id
+ * @param array  $rule    type event: event, page_id, status, channel_id; type row: event, table_id, column_id
  * @param string $event
  * @param array  $payload
  * @return bool
  */
 function ws_events_rule_matches($rule, $event, $payload)
 {
-    if (!is_array($rule) || (($rule['type'] ?? '') !== 'event') || ((string) ($rule['event'] ?? '') !== (string) $event)) {
+    if (!is_array($rule) || !in_array(($rule['type'] ?? ''), array('event', 'row'), true) || ((string) ($rule['event'] ?? '') !== (string) $event)) {
         return false;
     }
 
     $payload = (array) $payload;
+
+    if ($rule['type'] === 'row') {
+        return function_exists('ws_flow_row_rule_matches') && ws_flow_row_rule_matches($rule, $payload);
+    }
 
     if (((string) ($rule['status'] ?? '') !== '') && ((string) ($payload['status'] ?? '') !== (string) $rule['status'])) {
         return false;
@@ -612,7 +629,7 @@ function ws_events_start($event_id, $event, $payload)
 
         foreach ((array) db_items("SELECT id, rules, created_by FROM ws_scheduled_actions WHERE status = 'active'" . ws_scheduled_actions_only() . " AND rules LIKE '%\"event\"%'") as $row) {
             foreach ((array) json_decode((string) $row['rules'], true) as $rule) {
-                if (is_array($rule) && (($rule['type'] ?? '') === 'event')) {
+                if (is_array($rule) && in_array(($rule['type'] ?? ''), array('event', 'row'), true)) {
                     $waiting[(int) $row['id']] = array('rule' => $rule, 'created_by' => (int) $row['created_by']);
                 }
             }

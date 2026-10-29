@@ -702,23 +702,35 @@ function ws_step_trigger_context($context)
  * kind and event), from the run's context; a field the context lacks, or a
  * value that is not a single number or text, is empty. An event's record
  * and payload only where the owner may see the record now ($sees); its
- * name always. A run started by hand or by another flow's box declares
- * none, whatever it carries. Pure.
+ * name always. A row box's table, row and cells only where the owner reads
+ * the table now ($sees), each cell as ws_flow_row_cell_text() says it. A
+ * run started by hand or by another flow's box declares none, whatever it
+ * carries. Pure but for a row box's columns when $names lacks them.
  *
  * @param array $context ws_flow_run_context()
  * @param bool  $sees    the owner may see what the event is about
- * @param array $names   newcomer, channel: their names (ws_step_trigger_values_for())
+ * @param array $names   newcomer, channel: their names; columns: a row box's table's (ws_step_trigger_values_for())
  * @return array field => text
  */
 function ws_step_trigger_values($context, $sees, $names = array())
 {
     $kind = (string) ($context['trigger'] ?? '');
     $event = (string) ($context['event'] ?? '');
-    $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, array('event' => $event)) : array();
+    $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+    $config = array('event' => $event);
+
+    if ($kind === 'row') {
+        $config = array('table_id' => (int) ($payload['table_id'] ?? 0));
+
+        if (is_array($names['columns'] ?? null)) {
+            $config['columns'] = $names['columns'];
+        }
+    }
+
+    $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, $config) : array();
     $given = array();
 
     if ($kind === 'event') {
-        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
         $record = function_exists('ws_events_record_of') ? ws_events_record_of($event, $payload) : array('', 0);
         $given = $sees ? array('record_id' => ($record[1] > 0) ? $record[1] : null) + $payload : array();
         $given['event'] = $event;
@@ -729,6 +741,17 @@ function ws_step_trigger_values($context, $sees, $names = array())
             'channel_id'    => ((int) ($context['join_channel_id'] ?? 0) > 0) ? (int) $context['join_channel_id'] : null,
             'channel_name'  => $names['channel'] ?? null,
         );
+    } elseif (($kind === 'row') && $sees) {
+        $given = array(
+            'table_id'   => $payload['table_id'] ?? null,
+            'table_name' => $payload['table_name'] ?? null,
+            'row_id'     => $payload['row_id'] ?? null,
+            'actor_id'   => $payload['actor_id'] ?? null,
+        );
+
+        foreach ((array) ($payload['cells'] ?? array()) as $id => $value) {
+            $given['cell_' . (int) $id] = function_exists('ws_flow_row_cell_text') ? ws_flow_row_cell_text($value) : '';
+        }
     }
 
     $out = array();
@@ -763,6 +786,14 @@ function ws_step_trigger_values_for($owner, $context)
         $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
         $sees = ($right !== '') && !empty($owner[$right])
             && (!ws_events_is_own($event) || ws_events_creator_sees((int) ($owner['id'] ?? 0), $event, $payload));
+    }
+
+    // A row box: the table read by the owner now, its columns as they are.
+    if (($kind === 'row') && function_exists('ws_wtable_flow_check')) {
+        $payload = is_array($context['event_payload'] ?? null) ? $context['event_payload'] : array();
+        $table_id = (int) ($payload['table_id'] ?? 0);
+        $sees = ($table_id > 0) && (ws_wtable_flow_check($owner, $table_id, 'view') === '');
+        $names['columns'] = $sees ? array_values(ws_wtable_columns($table_id)) : array();
     }
 
     if ($kind === 'join') {

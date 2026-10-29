@@ -101,7 +101,7 @@ function test_watch_own_events_are_kept_apart()
 		pg_assert_false(in_array($event, $recorded, true), $event . ' not kept by pg_event_record()');
 	}
 
-	pg_assert_same(6, count(ws_events_own()), 'six events');
+	pg_assert_same(9, count(ws_events_own()), 'six events, and the three of a workflow table\'s rows');
 	pg_assert_false(ws_events_is_own('workspace.message.created'), 'a message in a public channel is the webhooks\' only');
 	pg_assert_false(ws_events_is_own('order.created'), 'a site event');
 	pg_assert_false(ws_event('workspace.task.completed', array('id' => 1)), 'nothing kept without the workspace\'s tables');

@@ -131,6 +131,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-references.md: The reference check of a flow (data-passing D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run; Problems list
 - workspace-flows-retry-skip.md: A failed box of a flow run tried again on its own (3d, PR #2275, retry/retry_after) or by hand or skipped (F5a, PR #2098, ws_flow_step_mend()): which boxes, owner only, double click, routes, canvas
+- workspace-flows-row-box.md: The row start box of flows (#3064): a table row added, changed or deleted starts the flow; rule type row, ws_event() in ws_wtable_row_announce(), the table gate, cells as trigger values
 - workspace-flows-run-channel.md: The channel a flow run opens its tasks in: the flow's home as the run starts, or the channel_id named on POST /workspace/flows/{id}/runs (decision #2413); ws_flow_run_channel_check(), shared with C2
 - workspace-flows-run-events.md: Webhook events of flow runs (A7, #2406): workspace.flow.run.finished, .failed, .cancelled, .waiting; where each is announced once, the body, words only in public channels, what is never announced
 - workspace-flows-run-flag.md: A flow run's flag (C1, #2903): state, duration, one-line result folded behind ▾; ws_flow_run_result_pick(), result on run reads, last_run in the flow list, runFlag() for C2
@@ -138,7 +139,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
-- workspace-flows-scheduled-ways-in.md: Scheduled work opens on the flow canvas (merge plan 4b, R2): Add › Scheduled flow, Duplicate, Edit retrying the conversion; no New on the list, no note toolbar entry
+- workspace-flows-scheduled-ways-in.md: Scheduled work opens on the flow canvas (merge plan 4b, R2): Add › Scheduled flow's mini window (C3, #3066), Duplicate, Edit retrying the conversion; no New on the list, no note toolbar entry
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP box, outcomes, owner rights, {{node.ID.FIELD}}, never twice
 - workspace-flows-store.md: Workspace flows store (graph check, API; runs: workspace-flows-runner.md): the four tables (11.0.80), graph JSON, problem codes, access, routes, why publishing is the person's own
