@@ -127,3 +127,18 @@ function test_collections_shown_record_wiring()
 	pg_assert_contains('pg_coll_shown_record_code($request)', $widgets, 'read from the shown record');
 	pg_assert_contains('$reference === null || $reference[\'code\'] !== $value', $widgets, 'a reference must name the shown record by its code');
 }
+
+// Every dynamic value the editor's filter rows offer is one the server
+// reads, and "Shown record" is offered on a list only, with no attribute.
+function test_collections_shown_record_editor()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$widgets = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+	pg_assert_true((bool) preg_match('/function _swFilterDynamicOptions\(type, withUrl\) \{(.*?)\n    \}/s', $js, $m), 'the dynamic values are found in style_designer.js');
+	pg_assert_true((bool) preg_match('/\$dynamic_values = array\((.*?)\);/s', $widgets, $s), 'the server list is found');
+	preg_match_all("/o\.push\(\['([^']+)'/", $m[1], $offered);
+	preg_match_all("/'([^']+)'/", $s[1], $known);
+	pg_assert_same(array(), array_values(array_diff($offered[1], $known[1])), 'the server reads every offered value');
+	pg_assert_contains("if (withUrl) o.push(['shown record', _sdT('Shown record')]);", $m[1], 'offered on a list only');
+	pg_assert_contains("dyn === 'url parameter' || dyn === 'shown record'", $js, 'kept and marked on a record view');
+}
