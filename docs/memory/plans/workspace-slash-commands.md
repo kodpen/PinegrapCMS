@@ -4,7 +4,7 @@ description: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #189
 ---
 
 ## What is asked? (owner, 2026-10-23)
-- More, clearer `/` commands ("I never managed to start a task from here"); after `/command ` a popup suggests, Tab writes, a space opens the next. Toolbar, insert menu, notes' `/`: plans/workspace-composer-tools.md; channel `/` commands: here.
+- More, clearer `/` commands ("I never managed to start a task from here"); after `/command ` a popup suggests, Tab writes, a space opens the next. Toolbar, insert menu, notes' `/`: workspace/workspace-composer-later.md; channel `/` commands: here.
 
 ## What is there today?
 - includes/workspace/commands.php: `ws_command_names()`, `ws_command_help()` (`BOOT.commands`, `/help`, `ws_palette_commands()`), `ws_command_run()`, `ws_command_offered()`. Tested: /price, /stock.

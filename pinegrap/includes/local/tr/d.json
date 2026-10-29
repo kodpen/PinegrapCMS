@@ -274,6 +274,7 @@
     "Delete the flow {var:1}? Nobody can open or run it any more.": "{var:1} akışı silinsin mi? Artık kimse onu açamaz ya da çalıştıramaz.",
     "Delete the reviewed translations as well": "Gözden geçirilmiş çevirileri de sil",
     "Delete the row": "Satırı sil",
+    "Delete the saved reply {var:1}?": "{var:1} kayıtlı yanıtı silinsin mi?",
     "Delete the selected element": "Seçili elemanı sil",
     "Delete the selected variant sets and all of their products? This cannot be undone.": "Seçili varyant setleri ve içlerindeki tüm ürünler silinsin mi? Bu işlem geri alınamaz.",
     "Delete the table {var:1} with its rows and shares? It cannot be brought back.": "{var:1} tablosu satırları ve paylaşımlarıyla birlikte silinsin mi? Geri getirilemez.",

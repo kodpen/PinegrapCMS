@@ -144,19 +144,9 @@ function ws_api_saved_reply_schema()
  */
 function ws_api_saved_reply_refuse($check)
 {
-    $messages = array(
-        'shortcut_invalid'  => lang('A shortcut is one word of letters, digits, - and _, at most 32 characters.'),
-        'shortcut_taken'    => lang('Another of your saved replies has this shortcut.'),
-        'title_too_long'    => lang('The title is longer than 100 characters.'),
-        'body_empty'        => lang('The reply is empty.'),
-        'body_too_long'     => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => ws_saved_reply_body_max())),
-        'nothing_to_change' => lang('Nothing to change was sent.'),
-        'limit_reached'     => lang(array('string' => 'A person may keep {var:1} saved replies.', 'vars' => WS_SAVED_REPLIES_MAX)),
-        'not_ready'         => lang('The database has to be updated first.'),
-    );
     $error = (string) $check['error'];
     $field = ((string) ($check['field'] ?? '') !== '') ? (string) $check['field'] : null;
-    $message = $messages[$error] ?? $error;
+    $message = ws_saved_reply_error_text($error);
 
     switch ((int) $check['status']) {
         case 503:

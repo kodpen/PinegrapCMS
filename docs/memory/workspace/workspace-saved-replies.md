@@ -1,6 +1,6 @@
 ---
 name: workspace-saved-replies
-description: Saved replies (ws_saved_replies, 11.0.114, slice 10a): the table, the store's checks, personal rows only, the /workspace/saved-replies routes and tools, rows deleted with their user
+description: Saved replies (ws_saved_replies, 11.0.114, #3090): the table, the store's checks, personal rows only, the /workspace/saved-replies routes and tools, rows deleted with their user
 ---
 
 ## What is kept?
@@ -19,5 +19,8 @@ description: Saved replies (ws_saved_replies, 11.0.114, slice 10a): the table, t
 - An application key writes the owner's replies as notes do: a reply is the owner's text, never posted by itself.
 - Tests: `tests/workspace_saved_replies_test.php`.
 
-## What is left? (slice 10b)
-- The composer's `;` picker (`PGWsEditor`, `workspace_editor.js`) that fills `{customer}`/`{order}`, and a list to manage them in the panel.
+## How are they put in and managed?
+- The composer's `;` list and the drawer: `workspace-saved-replies-composer.md` (#3114).
+
+## What is left?
+- Team replies: a role-3 right column (five ladder files, `pg_user_has_ws_columns()`) and reading `scope = 'team'`.

@@ -452,6 +452,18 @@ function ws_js_strings()
         'brief_recap'            => lang('Sum up what I missed'),
         'brief_recap_wait'       => lang('Pinegrap AI is reading…'),
         'brief_recap_by'         => lang('Summed up by Pinegrap AI'),
+        'replies_title'          => lang('Saved replies'),
+        'replies_none'           => lang('You have no saved replies yet. Save a text you often write, then type ; and its shortcut in a message to put it in.'),
+        'replies_not_ready'      => lang('The database has to be updated first.'),
+        'reply_new'              => lang('New saved reply'),
+        'reply_use'              => lang('Put into the message'),
+        'reply_shortcut'         => lang('Shortcut'),
+        'reply_shortcut_help'    => lang('One word typed after ; in the message box, such as ;thanks.'),
+        'reply_body'             => lang('Text'),
+        'reply_body_help'        => lang('{customer} and {order} are filled with the channel\'s customer and their latest order when the reply is put in.'),
+        'reply_delete_ask'       => ws_js_template('Delete the saved reply {var:1}?', 1),
+        'reply_deleted'          => lang('Deleted.'),
+        'saved'                  => lang('Saved.'),
     );
 }
 
@@ -838,6 +850,7 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'acks'         => ws_acks_ready(),
         'status'       => ws_status_js_config(),
         'blocks'       => ws_blocks_ready(),
+        'saved_replies' => ws_saved_replies_ready(),
         'customer'     => ws_customer_ready(),
         'templates'    => ws_templates_js_config($viewer),
         'calc'         => function_exists('ws_calc_js_config') ? ws_calc_js_config() : array(),

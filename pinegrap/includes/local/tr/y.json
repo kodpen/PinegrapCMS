@@ -207,6 +207,7 @@
     "You have logged out successfully. <a href=\"{var:1}/\">Login</a>.": "Başarıyla çıkış yaptınız. <a href=\"{var:1}/\">Giriş Yap</a>.",
     "You have no invoices yet.": "Henüz faturanız yok.",
     "You have no saved recipients yet.": "Henüz kayıtlı alıcınız yok.",
+    "You have no saved replies yet. Save a text you often write, then type ; and its shortcut in a message to put it in.": "Henüz kayıtlı yanıtınız yok. Sık yazdığınız bir metni kaydedin, sonra mesajda ; ve kısayolunu yazarak ekleyin.",
     "You have no scheduled messages.": "Zamanlanmış mesajınız yok.",
     "You have not logged in, or your session has expired. Please login.": "Oturum açmadınız veya oturumunuzun süresi dolmuş. Lütfen giriş yapınız.",
     "You have not ordered anything yet.": "Henüz bir sipariş vermediniz.",

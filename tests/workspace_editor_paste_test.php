@@ -339,14 +339,16 @@ function test_workspace_editor_paste_wiring()
 	$html = workspace_editor_lists_test_function('pasteHtml');
 	$smart = workspace_editor_lists_test_method('pasteSmart');
 	$insert = workspace_editor_lists_test_method('insertMarkup');
+	$place = workspace_editor_lists_test_method('placeBlocks');
 
 	pg_assert_true(strpos($html, "new DOMParser().parseFromString(html, 'text/html')") !== false, 'HTML is read by DOMParser');
 	pg_assert_true(strpos($html, 'pasteMarkup(doc.body)') !== false, 'only the mapped markup leaves pasteHtml()');
-	foreach (array($paste, $html, $smart, $insert) as $part) {
+	foreach (array($paste, $html, $smart, $insert, $place) as $part) {
 		pg_assert_true(strpos($part, 'innerHTML') === false && strpos($part, 'insertHTML') === false, 'pasted HTML is never inserted');
 	}
 
-	pg_assert_true(strpos($insert, 'markupNodes(blocks') !== false, 'the box builds its own nodes from the markup');
+	pg_assert_true(strpos($insert, 'self.placeBlocks(blocks') !== false, 'insertMarkup() places the blocks');
+	pg_assert_true(($place !== '') && (strpos($place, 'markupNodes(blocks') !== false), 'the box builds its own nodes from the markup');
 	pg_assert_true(strpos($smart, 'pastedUrl(text)') !== false && strpos($smart, 'linkSelection(url)') !== false, 'an address over words links them');
 	pg_assert_true(strpos($smart, 'pasteSheet(text)') !== false && strpos($smart, 'this.pasteTable(') !== false, 'a sheet range opens the table window');
 	pg_assert_true(strpos($paste, 'singleLine ? null') !== false, 'a one-line surface keeps plain paste');
