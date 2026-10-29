@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1-9 and 11 done, 10 approved in #3075): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1-9, 10a and 11 done, 10b left): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -19,16 +19,18 @@ description: Plan (2026-10-23; 1-9 and 11 done, 10 approved in #3075): one toolb
 
 ## Slices
 1. Shared toolbar, no schema: `format()`, composer undo/redo and B/I/S. PR #1554.
-2. Lists and quotes, no schema, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md); autoformat in 4.
-3. Headings `#`-`###` and `---` in notes only, no schema; the import keeps headings. Done: #2649 (workspace/workspace-text-headings.md).
-4. Highlight `==x==`, autoformat (one Ctrl+Z undo, IME guard, off switch), no schema. Done: highlight #1972, #1999 (workspace-text-highlight.md), autoformat #2590 (workspace-editor-autoformat.md).
+2. Lists and quotes, done: #1725, #1897 (workspace/workspace-text-lists.md, -editor-lists.md).
+3. Headings and `---` in notes only, done: #2649 (workspace/workspace-text-headings.md).
+4. Highlight `==x==`, autoformat. Done: highlight #1972, #1999 (workspace-text-highlight.md), autoformat #2590 (workspace-editor-autoformat.md).
 5. Link Text field, Ctrl+/ sheet, done: #2101 (workspace/workspace-editor-link-keys.md); "Aa" expanded composer, done: #2692 (workspace/workspace-composer-expanded.md); no schema.
 6. Slash inserts in notes, done: #2009 (workspace/workspace-notes-slash-inserts.md).
-7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
-8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
-9. Objects, no schema, done. 9a lone tag as a card: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task: #2158 (workspace/workspace-checklist-to-task.md).
-10. Saved replies with `{customer}`, `{order}`: `ws_saved_replies` approved (#3075, `workflow/decisions-made-schema-3.md`); `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
-11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
+7. Smart paste, done: #2018 (workspace/workspace-editor-smart-paste.md).
+8. Small aids, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
+9. Objects, done. 9a lone tag as a card: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task: #2158 (workspace/workspace-checklist-to-task.md).
+10. Saved replies with `{customer}`, `{order}`, schema decided in #3075 (b, `workflow/decisions-made-schema-3.md`); team ones later need a right column only (five ladder files, `pg_user_has_ws_columns()`).
+   - 10a: table, store, API/MCP. Done: #3090 (workspace/workspace-saved-replies.md).
+   - 10b: composer `;` picker (fills `{customer}`/`{order}` via `ws_customer_summary()`), panel list to manage replies.
+11. Rewrite with AI, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
 
 ## Which questions are answered? (#2420)
@@ -39,4 +41,4 @@ description: Plan (2026-10-23; 1-9 and 11 done, 10 approved in #3075): one toolb
 5. Dictation: not now (b); recordings and transcripts are built (workspace/workspace-voice-recording.md).
 
 ## Where to start?
-- Steps 1-9 and 11 are done. Left: 10 (saved replies, schema approved in #3075); 12 is "later".
+- Steps 1-9, 10a and 11 are done. Left: 10b (the `;` picker and the panel list, no schema); 12 is "later".
