@@ -236,6 +236,7 @@
     "Say the first day of your leave: a day, a date or +2d.": "İzninizin ilk gününü yazın: bir gün, bir tarih ya da +2g.",
     "Say what the command does.": "Komutun ne yaptığını yazın.",
     "Say what the guide helps with, such as \"Share a notebook with your team\".": "Rehberin neye yardım ettiğini söyleyin; örneğin \"Bir defteri ekibinizle paylaşın\".",
+    "Say what to create, a product or a group, like /create product Blue mug 149,90 or /create group Mugs.": "Neyin oluşturulacağını yaz, bir ürün ya da bir grup: /oluştur ürün Mavi kupa 149,90 ya da /oluştur grup Kupalar gibi.",
     "Say what you tried, what you expected and what happened instead.": "Ne denediğinizi, ne beklediğinizi ve onun yerine ne olduğunu yazın.",
     "Say what you tried, what you expected and what happened instead. Links, lists and code blocks are kept.": "Ne denediğinizi, ne beklediğinizi ve onun yerine ne olduğunu yazın. Bağlantılar, listeler ve kod blokları korunur.",
     "Say when first: a day, a time such as 14:00 or +30m, then the message.": "Önce ne zaman olacağını yazın: bir gün, 14:00 gibi bir saat ya da +30dk, ardından mesaj.",

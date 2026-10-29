@@ -2776,6 +2776,7 @@
     "The product group has been duplicated, and you are now editing the duplicate.": "Ürün grubu çoğaltıldı ve şimdi kopyayı düzenliyorsunuz.",
     "The product group is in the Recycle Bin. Restore it in the Catalog Manager or choose another product group.": "Ürün grubu Geri Dönüşüm Kutusunda. Katalog Yöneticisi'nden geri yükleyin ya da başka bir ürün grubu seçin.",
     "The product group menu": "Ürün grubu menüsü",
+    "The product group that will be created": "Oluşturulacak ürün grubu",
     "The product group tree": "Ürün grubu ağacı",
     "The product group, {var:1}, was added.": "{var:1} ürün grubu eklendi.",
     "The product group, {var:1}, was moved to the Recycle Bin.": "{var:1} ürün grubu Geri Dönüşüm Kutusuna taşındı.",

@@ -18,7 +18,10 @@
  *   /poll Which day? | Tuesday | Wednesday                   (also /oylama, /anket, /sor)
  *   /price #product 149,90                                   (also /fiyat)
  *   /stock #product 12, +5 or -3                             (also /stok)
- *   /product Blue mug 149,90 #group                          (also /ürün, /urun)
+ *   /create product Blue mug 149,90 #group                   (also /oluştur, /olustur)
+ *   /create group Mugs                                       (grup, group)
+ *   /product Blue mug 149,90 #group                          (also /ürün, /urun:
+ *                                                            /create product)
  *   /help                                                    (also /yardım, /yardim)
  *
  * A command is a shortcut, never the only way: each has a button somewhere on
@@ -90,16 +93,32 @@ function ws_command_aliases($command)
 }
 
 /**
- * The names of the commands that make a new record: /product makes a
- * product (includes/workspace/quick_edit.php, ws_quick_create_save()). Kept
- * beside ws_command_names(), the commands that act on what is there; the
- * parser reads both through ws_command_table().
+ * The names of the commands that make a new record: /create makes the kind
+ * named after it, /product is /create product
+ * (includes/workspace/quick_edit.php, ws_quick_create_save()). Kept beside
+ * ws_command_names(), the commands that act on what is there; the parser
+ * reads both through ws_command_table().
  *
  * @return array name => command
  */
 function ws_command_create_names()
 {
-    return array('urun' => 'product', 'ürün' => 'product', 'product' => 'product');
+    return array(
+        'oluştur' => 'create', 'olustur' => 'create', 'create' => 'create',
+        'urun' => 'product', 'ürün' => 'product', 'product' => 'product',
+    );
+}
+
+/**
+ * The kinds /create makes, under the words that name them after the
+ * command, read folded (ws_command_fold()): "ürün", "URUN" and "product"
+ * are the same kind.
+ *
+ * @return array word => ws_quick_create_types() value
+ */
+function ws_command_create_kinds()
+{
+    return array('urun' => 'product', 'product' => 'product', 'grup' => 'product_group', 'group' => 'product_group');
 }
 
 /**
@@ -151,8 +170,8 @@ function ws_command_assistant_ready($command)
 }
 
 /**
- * May this person use a command? /price, /stock and /product write a
- * product, so they are offered only to whoever may change products (the
+ * May this person use a command? /price, /stock, /create and /product write
+ * a product or a product group, so they are offered only to whoever may change products (the
  * e-commerce right, as add_product.php asks it); /schedule only to whoever
  * may schedule messages (scheduled_messages.php); /timer once task time is
  * kept (task_time.php); /claude and /ai only once
@@ -179,7 +198,7 @@ function ws_command_offered($viewer, $command)
         return function_exists('ws_task_time_ready') && ws_task_time_ready();
     }
 
-    if (!in_array($command, array('price', 'stock', 'product'), true) || !is_array($viewer)) {
+    if (!in_array($command, array('price', 'stock', 'create', 'product'), true) || !is_array($viewer)) {
         return true;
     }
 
@@ -194,7 +213,7 @@ function ws_command_offered($viewer, $command)
  */
 function ws_command_argument_kinds()
 {
-    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options');
+    return array('person', 'people', 'department', 'task', 'record', 'date', 'time', 'estimate', 'priority', 'status', 'amount', 'quantity', 'text', 'options', 'record_kind');
 }
 
 /**
@@ -229,7 +248,7 @@ function ws_command_turkish($language = null)
  *                (ws_command_argument_kinds()), label, optional, suggest
  *                (where the composer finds values for it: people,
  *                people_departments, tasks, records, products, dates,
- *                estimates, priorities, statuses, or '' for none), multiple (takes more
+ *                estimates, priorities, statuses, kinds, or '' for none), multiple (takes more
  *                than one), anywhere (read wherever it is written, as /task
  *                reads its people, day, estimate and priority)
  *   live         the composer asks ws_command_suggest() for a line under
@@ -381,6 +400,18 @@ function ws_commands($viewer = null)
             'args'        => array($product, $arg('quantity', 'quantity', lang('quantity'), false)),
         ),
         array(
+            'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
+            'description' => lang('Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created.'),
+            'example'     => lang('/create product Blue mug 149,90'),
+            'args'        => array(
+                $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
+                // The rest of the line: the popup stays quiet on it.
+                $arg('name', 'text', lang('name'), false, '', array('multiple' => true)),
+                $arg('price', 'amount', lang('price'), true),
+                $arg('group', 'record', lang('#group'), true, 'records', array('anywhere' => true)),
+            ),
+        ),
+        array(
             'key' => 'product', 'tr' => 'ürün', 'en' => 'product', 'label' => '/product · /ürün',
             'description' => lang('Creates a product, off sale: its name, then a price and a #group if you like. Shown to you before it is created.'),
             'example'     => lang('/product Blue mug 149,90'),
@@ -493,8 +524,8 @@ function ws_command_help($viewer = null)
  * anything is typed; the others are found as they are typed.
  *
  * @param string|null $language a language code, or null for the active one
- * @return array dates, estimates, priorities, statuses: each a list of value,
- *               meta, top
+ * @return array dates, estimates, priorities, statuses, kinds (what /create
+ *               makes): each a list of value, meta, top
  */
 function ws_command_suggestions($language = null)
 {
@@ -517,7 +548,9 @@ function ws_command_suggestions($language = null)
 
     $labels = function_exists('ws_task_priorities') ? ws_task_priorities() : array();
     $status_labels = function_exists('ws_task_statuses') ? ws_task_statuses() : array();
-    $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array());
+    $kinds = $turkish ? array('product' => 'ürün', 'product_group' => 'grup') : array('product' => 'product', 'product_group' => 'group');
+    $kind_labels = array('product' => lang('Product'), 'product_group' => lang('Product group'));
+    $out = array('dates' => array(), 'estimates' => array(), 'priorities' => array(), 'statuses' => array(), 'kinds' => array());
 
     foreach ($days as $index => $word) {
         $date = ws_parse_date_word($word, $today);
@@ -535,6 +568,10 @@ function ws_command_suggestions($language = null)
 
     foreach ($statuses as $key => $word) {
         $out['statuses'][] = array('value' => $word, 'meta' => (string) ($status_labels[$key] ?? ''), 'top' => true);
+    }
+
+    foreach ($kinds as $key => $word) {
+        $out['kinds'][] = array('value' => $word, 'meta' => $kind_labels[$key], 'top' => true);
     }
 
     return $out;
@@ -1377,6 +1414,9 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         case 'price':
         case 'stock':
             return ws_command_record_change($viewer, $channel, $split['command'], $rest, $options);
+
+        case 'create':
+            return ws_command_create($viewer, $channel, $rest, $options);
 
         case 'product':
             return ws_command_product($viewer, $channel, $rest, $options);
@@ -2591,11 +2631,96 @@ function ws_command_product_fields($parsed)
 }
 
 /**
- * /product: a new product, shown back with every value it will be created
- * with, made on confirmation through the drawer's create
- * (ws_quick_create_save()): the same rights, checks, writer, ws_ai_changes
- * row, activity log line and decision in the channel. Off sale unless the
- * card's "On sale" is ticked.
+ * The kind /create is asked for and the words after it: the first word
+ * names the kind (ws_command_create_kinds()), the rest is that kind's line.
+ *
+ * @param string $text what follows /create
+ * @return array kind (product | product_group, '' when the first word names
+ *               none), rest
+ */
+function ws_command_parse_create($text)
+{
+    $parts = preg_split('/\s+/u', trim((string) $text), 2);
+    $kinds = ws_command_create_kinds();
+    $word = ws_command_fold($parts[0]);
+
+    if (!isset($kinds[$word])) {
+        return array('kind' => '', 'rest' => trim((string) $text));
+    }
+
+    return array('kind' => $kinds[$word], 'rest' => trim((string) ($parts[1] ?? '')));
+}
+
+/**
+ * /create: the kind named after it, made through its own card - a product
+ * as /product makes it, a group by ws_command_group().
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows the command
+ * @param array  $options confirm, decision, on_sale
+ * @return array
+ */
+function ws_command_create($viewer, $channel, $text, $options)
+{
+    $parsed = ws_command_parse_create($text);
+
+    if ($parsed['kind'] === 'product') {
+        return ws_command_product($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    if ($parsed['kind'] === 'product_group') {
+        return ws_command_group($viewer, $channel, $parsed['rest'], $options);
+    }
+
+    return array('type' => 'error', 'error' => lang('Say what to create, a product or a group, like /create product Blue mug 149,90 or /create group Mugs.'));
+}
+
+/**
+ * What a /create group card creates: the rest of the line as the group's
+ * name and as its short description (the words the store shows).
+ *
+ * @param string $text what follows /create group
+ * @return array field => value, as ws_quick_create_save() takes them
+ */
+function ws_command_group_fields($text)
+{
+    $name = trim((string) preg_replace('/\s+/u', ' ', (string) $text));
+
+    return array('name' => $name, 'short_description' => $name);
+}
+
+/**
+ * /create group: a new product group, switched off, shown back and made on
+ * confirmation as /product makes a product (ws_command_create_card()).
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows /create group
+ * @param array  $options confirm, decision, on_sale
+ * @return array
+ */
+function ws_command_group($viewer, $channel, $text, $options)
+{
+    $fields = ws_command_group_fields($text);
+
+    if ($fields['name'] === '') {
+        return array('type' => 'error', 'error' => lang('Write the group\'s name after the command, like /create group Mugs.'));
+    }
+
+    // A tag would be written into the name as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', $fields['name'])) {
+        return array('type' => 'error', 'error' => lang('Write the name as plain text.'));
+    }
+
+    return ws_command_create_card($viewer, $channel, 'product_group', $fields, $options);
+}
+
+/**
+ * /product (and /create product): a new product, shown back with every
+ * value it will be created with, made on confirmation
+ * (ws_command_create_card()). Off sale unless the card's "On sale" is
+ * ticked.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -2605,6 +2730,37 @@ function ws_command_product_fields($parsed)
  */
 function ws_command_product($viewer, $channel, $text, $options)
 {
+    $parsed = ws_command_parse_product($text);
+
+    if ($parsed['name'] === '') {
+        return array('type' => 'error', 'error' => lang('Write the product\'s name after the command, like /product Blue mug 149,90.'));
+    }
+
+    // Another tag left in the name (a second group, a product) would be
+    // written into it as its markup.
+    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', $parsed['name'])) {
+        return array('type' => 'error', 'error' => lang('Write the name as plain text: only one #group may follow it.'));
+    }
+
+    return ws_command_create_card($viewer, $channel, 'product', ws_command_product_fields($parsed), $options);
+}
+
+/**
+ * The card a create command answers with, or the record it makes once
+ * confirmed, through the drawer's create (ws_quick_create_save()): the same
+ * rights, checks, writer, ws_ai_changes row, activity log line and decision
+ * in the channel. Off sale (a group switched off) unless the card's tick
+ * says otherwise.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $type    product | product_group
+ * @param array  $fields  field => value
+ * @param array  $options confirm, decision, on_sale
+ * @return array
+ */
+function ws_command_create_card($viewer, $channel, $type, $fields, $options)
+{
     $error = function ($text) {
         return array('type' => 'error', 'error' => $text);
     };
@@ -2613,23 +2769,9 @@ function ws_command_product($viewer, $channel, $text, $options)
         return $error(lang('Invalid request.'));
     }
 
-    $parsed = ws_command_parse_product($text);
-
-    if ($parsed['name'] === '') {
-        return $error(lang('Write the product\'s name after the command, like /product Blue mug 149,90.'));
-    }
-
-    // Another tag left in the name (a second group, a product) would be
-    // written into it as its markup.
-    if (preg_match('/<[#@][a-z_]+:[0-9]+>/', $parsed['name'])) {
-        return $error(lang('Write the name as plain text: only one #group may follow it.'));
-    }
-
-    $fields = ws_command_product_fields($parsed);
-
     if (!empty($options['confirm'])) {
         $fields['enabled'] = !empty($options['on_sale']);
-        $saved = ws_quick_create_save($viewer, 'product', $fields, (int) $channel['id'], !empty($options['decision']));
+        $saved = ws_quick_create_save($viewer, $type, $fields, (int) $channel['id'], !empty($options['decision']));
 
         if (!$saved['ok']) {
             return $error($saved['error']);
@@ -2641,13 +2783,13 @@ function ws_command_product($viewer, $channel, $text, $options)
             'created'    => true,
             'lines'      => $saved['lines'],
             'message_id' => $saved['decision_id'],
-            'record'     => array('type' => 'product', 'id' => $saved['id'], 'name' => $saved['name']),
+            'record'     => array('type' => $type, 'id' => $saved['id'], 'name' => $saved['name']),
         );
     }
 
     // Checked as the save will check it (a name already taken, a group
     // that is gone), so the card never offers what cannot be made.
-    $input = ws_quick_create_input($viewer, 'product', $fields, (int) $channel['id']);
+    $input = ws_quick_create_input($viewer, $type, $fields, (int) $channel['id']);
 
     if (!$input['ok']) {
         return $error($input['error']);
@@ -2658,7 +2800,7 @@ function ws_command_product($viewer, $channel, $text, $options)
     $labels = array();
 
     foreach ($input['row']['fields'] as $item) {
-        $field = ws_change_field($types['product'], (string) $item['name']);
+        $field = ws_change_field($types[$type], (string) $item['name']);
 
         // The card has a tick of its own for it.
         if (($field === null) || ($item['name'] === 'enabled')) {
@@ -2677,15 +2819,15 @@ function ws_command_product($viewer, $channel, $text, $options)
             continue;
         }
 
-        $rows[] = array('label' => (string) $field[2], 'text' => (string) ws_change_show('product', $item['name'], $item['to'], 120), 'html' => '');
+        $rows[] = array('label' => (string) $field[2], 'text' => (string) ws_change_show($type, $item['name'], $item['to'], 120), 'html' => '');
     }
 
     return array(
         'type'    => 'create_preview',
         'preview' => array(
-            'kind'    => 'product',
+            'kind'    => $type,
             'rows'    => $rows,
-            'on_sale' => (string) $types['product']['fields']['enabled'][2],
+            'on_sale' => (string) $types[$type]['fields']['enabled'][2],
         ),
         // The drawer's new mode, filled with the same values ("All fields"),
         // and the names of the records they pick.

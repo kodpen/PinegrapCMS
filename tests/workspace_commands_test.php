@@ -199,14 +199,14 @@ function test_workspace_command_registry_holds_every_name_once()
 		return $entry['key'];
 	}, ws_commands(null));
 
-	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
+	pg_assert_same(array('task', 'assign', 'done', 'postpone', 'status', 'timer', 'schedule', 'away', 'meeting', 'decision', 'note', 'plan', 'poll', 'price', 'stock', 'create', 'product', 'help'), $keys, 'the commands, in order, with no assistant set up');
 }
 
 // Every argument is typed with a known kind, says whether it may be left
 // out, and names a suggestion source the composer knows (or none).
 function test_workspace_command_registry_arguments_are_typed()
 {
-	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities', 'statuses');
+	$sources = array('', 'people', 'people_departments', 'tasks', 'records', 'products', 'dates', 'estimates', 'priorities', 'statuses', 'kinds');
 
 	foreach (ws_commands(null) as $entry) {
 		pg_assert_true(is_string($entry['description']) && ($entry['description'] !== ''), '/' . $entry['key'] . ' has a description');
@@ -313,6 +313,14 @@ function test_workspace_command_suggestions_are_read_by_the_parser()
 		}
 
 		pg_assert_same(array('todo', 'doing', 'waiting', 'done', 'cancelled'), $statuses, $language . ' statuses, every one read');
+
+		$kinds = array();
+
+		foreach ($values['kinds'] as $item) {
+			$kinds[] = ws_command_parse_create($item['value'] . ' x')['kind'];
+		}
+
+		pg_assert_same(array('product', 'product_group'), $kinds, $language . ' kinds, every one read');
 	}
 
 	pg_assert_same('bugün', ws_command_suggestions('tr')['dates'][0]['value'], 'Turkish first day');
@@ -335,6 +343,57 @@ function test_workspace_command_product_names()
 	pg_assert_same('', ws_command_unknown('/ürün Mavi kupa'), '/ürün is no unknown word');
 	pg_assert_same('/ürün', ws_command_closest('urn')[0] ?? '', '/urn is closest to /ürün');
 	pg_assert_true(ws_command_offered(null, 'product'), 'listed when nobody is named');
+}
+
+// /create (/oluştur) answers to its names in any case, with or without the
+// Turkish letters, and is offered with the product right as /product is.
+function test_workspace_command_create_names()
+{
+	pg_assert_same(array('command' => 'create', 'rest' => 'ürün Mavi kupa'), ws_command_split('/oluştur ürün Mavi kupa'), '/oluştur');
+	pg_assert_same(array('command' => 'create', 'rest' => 'grup x'), ws_command_split('/OLUŞTUR grup x'), '/OLUŞTUR in capitals');
+	pg_assert_same(array('command' => 'create', 'rest' => 'grup x'), ws_command_split('/olustur grup x'), '/olustur');
+	pg_assert_same(array('command' => 'create', 'rest' => 'group x'), ws_command_split('/create group x'), '/create');
+	pg_assert_same(array('oluştur', 'olustur', 'create'), ws_command_aliases('create'), 'the names of /create');
+	pg_assert_true(ws_command_offered(null, 'create'), 'listed when nobody is named');
+
+	$entry = null;
+
+	foreach (ws_commands(null) as $item) {
+		if ($item['key'] === 'create') {
+			$entry = $item;
+		}
+	}
+
+	pg_assert_same(array('record_kind', 'kinds'), array($entry['args'][0]['kind'], $entry['args'][0]['suggest']), 'the kind comes first, from the kinds list');
+	pg_assert_true($entry['args'][1]['multiple'], 'the name takes the rest of the line');
+}
+
+// The first word after /create names the kind, read folded; the rest is the
+// kind's own line. A word that names no kind leaves the kind empty.
+function test_workspace_command_parse_create()
+{
+	pg_assert_same(array('kind' => 'product', 'rest' => 'Mavi kupa 149,90'), ws_command_parse_create('ürün Mavi kupa 149,90'), 'ürün');
+	pg_assert_same(array('kind' => 'product', 'rest' => 'x'), ws_command_parse_create('URUN x'), 'URUN');
+	pg_assert_same(array('kind' => 'product', 'rest' => 'x'), ws_command_parse_create('Product   x'), 'Product');
+	pg_assert_same(array('kind' => 'product_group', 'rest' => 'Kupalar ve bardaklar'), ws_command_parse_create('grup Kupalar ve bardaklar'), 'grup');
+	pg_assert_same(array('kind' => 'product_group', 'rest' => ''), ws_command_parse_create('group'), 'a kind and nothing after it');
+	pg_assert_same(array('kind' => '', 'rest' => 'Mavi kupa'), ws_command_parse_create('Mavi kupa'), 'no kind');
+	pg_assert_same(array('kind' => '', 'rest' => ''), ws_command_parse_create(''), 'nothing');
+}
+
+// A /create group card makes a group named by the rest of the line, written
+// as its short description too; /create product reads as /product does.
+function test_workspace_command_group_fields()
+{
+	pg_assert_same(array('name' => 'Kupalar ve bardaklar', 'short_description' => 'Kupalar ve bardaklar'), ws_command_group_fields(" Kupalar  ve\tbardaklar "), 'the rest of the line');
+	pg_assert_same(array('name' => 'Kupa 149,90', 'short_description' => 'Kupa 149,90'), ws_command_group_fields('Kupa 149,90'), 'a group takes no price');
+	pg_assert_same(array('name' => '', 'short_description' => ''), ws_command_group_fields(''), 'nothing');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+
+	pg_assert_contains("return ws_command_product(\$viewer, \$channel, \$parsed['rest'], \$options);", $source, '/create product is /product');
+	pg_assert_contains("return ws_command_create_card(\$viewer, \$channel, 'product_group', \$fields, \$options);", $source, 'a group goes through the same card');
+	pg_assert_contains("return ws_command_create_card(\$viewer, \$channel, 'product', ws_command_product_fields(\$parsed), \$options);", $source, 'and so does a product');
 }
 
 // The words after /product: the name, then a price as the last word (with

@@ -17,7 +17,7 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 
 ## Which steps are done?
 - S1 (#2927): the menu item is gone; tests/workspace_channel_menu_test.php guards the menu's item keys.
-- S2 in progress (branch feature/create-command-s2).
+- S2 (#2967): `/oluştur` (`/create`) ürün|grup with the single card; `/ürün` runs the same function (`workspace/workspace-quick-create.md`).
 
 ## What is open? (architect questions, not decided here)
 - Which other kinds `/oluştur` takes later (task, customer, sales quote, workflow table row…), and whether `/görev` then becomes an alias like `/ürün`.
@@ -25,4 +25,4 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - The reply form of S4 when the file is someone else's message: allowed for anyone who may read it, or the poster only?
 
 ## Where to start?
-- S2. Read `workspace/README.md` key rules, workspace-bulk-create.md, workspace-quick-create.md, workspace-command-registry.md.
+- S3. Read `workspace/README.md` key rules, workspace-bulk-create.md, workspace-quick-create.md, workspace-command-registry.md.
