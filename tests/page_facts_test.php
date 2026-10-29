@@ -270,3 +270,44 @@ function test_page_facts_record_values()
 	pg_assert_contains('href="/files/a.jpg"', pg_page_facts_apply($body));
 	pg_page_record_end($inner);
 }
+
+// A form record's field by name (__record__field_<name>): printed and read
+// by a condition like an allow-listed value; a field the record lacks reads
+// as '' and does not fail the condition.
+function test_page_facts_record_fields()
+{
+	$tree = _pf_root(array(
+		array('type' => 'semantic', 'props' => array('tag' => 'p', 'text' => 'City',
+			'_bindings' => array('text' => '__record__field_city')), 'children' => array()),
+		array('type' => 'semantic', 'props' => array('tag' => 'a', 'href' => '#', 'text' => 'Site',
+			'_bindings' => array('href' => '__record__field_site')), 'children' => array()),
+		_pf_node('Istanbul', '__record__field_city', 'eq', 'Istanbul'),
+		_pf_node('No phone', '__record__field_phone', 'empty'),
+		_pf_node('Bad name', '__record__field_', 'empty'),
+	));
+	$body = _render_tree_node($tree, 0, 0);
+	pg_assert_contains('{pg-rv:__record__field_city}', $body);
+	pg_assert_contains('href="{pg-ru:__record__field_site}"', $body);
+	pg_assert_same(2, substr_count($body, '<!--pg-pf:'), 'a field token is a page condition; a bare prefix is not');
+
+	$prev = pg_page_record_begin();
+	try {
+		pg_page_record_publish('form_record', array('__field_city' => 'Istanbul', '__field_site' => 'https://x.test/', '__post_title' => 'T'));
+		$values = pg_page_record_values();
+		pg_assert_same('Istanbul', $values['__record__field_city']);
+		pg_assert_same('T', $values['__record__post_title']);
+		$out = pg_page_facts_apply($body);
+		pg_assert_contains('<p>Istanbul</p>', $out);
+		pg_assert_contains('href="https://x.test/"', $out);
+		pg_assert_contains('>Istanbul<', $out);
+		pg_assert_contains('No phone', $out, 'an absent field reads as empty');
+		pg_assert_false(strpos($out, '{pg-r') !== false);
+	} finally {
+		pg_page_record_end($prev);
+	}
+
+	$inner = pg_page_record_begin();
+	pg_page_record_publish('product', array('__field_city' => 'Ankara'));
+	pg_assert_false(isset(pg_page_record_values()['__record__field_city']), 'only a form record has fields');
+	pg_page_record_end($inner);
+}

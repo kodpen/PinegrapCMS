@@ -4,7 +4,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 ---
 
 ## What is built, and why?
-- Legacy layouts (`data/layouts/<id>.php`) branch on any value, loop nested arrays, place every piece. Widgets: one loop, fixed flags (none in 7 kinds) and tokens, server-built blocks.
+- Legacy layouts (`data/layouts/<id>.php`) branch on any value, loop nested arrays, place every piece; widgets had one loop and fixed tokens.
 - One mechanism for every kind (30 today): a finish pass in the outer callback of `_expand_system_widgets()` (page, e-mail, Preview, ghosts, nested) resolves the markers `_render_tree_node()` and `_split_widget_tree()` write. `_apply_bindings()` is not edited.
 
 ## What are the rules?
@@ -33,7 +33,8 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
 - W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330, return moves #2361, cart product form #2401 ([[widget-default-parts-cart-form]]); done.
-- W17 record values outside widgets #2398 ([[page-record-values]]); parts anywhere left. W18 done #2308 #2334 ([[page-conditions]]).
+- W17 record values outside widgets #2398 ([[page-record-values]]); parts anywhere left.
+- W17 form fields by name: server half #3007; editor half (style_designer.js _sdPageRecordOptions/_sdPageRecordValueOptions) left. W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
 - W25 done (#2221, [[widget-condition-rows]]).
