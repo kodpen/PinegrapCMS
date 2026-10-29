@@ -802,6 +802,35 @@ function pg_code_editor_attach($properties)
                     sync();';
     }
 
+    // An editable field asks before the page is left while its text differs
+    // from what the editor held when it arrived (read from the editor, which
+    // may have normalised the line ends). Left out: a field with no form
+    // (edit_page_layout.php guards its own), a field in the settings dialog
+    // (it tracks its own changes) and an editor released since. The form's
+    // own submit stops the question unless a handler prevented it; it is
+    // heard through jQuery, because the Ctrl+S fallback calls jQuery's
+    // form.submit(), which no native listener hears.
+    $guard = '';
+
+    if (empty($properties['readonly'])) {
+        $guard = '
+                    var form = field.form;
+                    if (form && !(field.closest && field.closest("#pg_settings_modal"))) {
+                        var saved = editor.getValue();
+                        var sent = null;
+                        var onSubmit = function (e) { sent = e; };
+                        if (window.jQuery) window.jQuery(form).on("submit", onSubmit);
+                        else form.addEventListener("submit", onSubmit);
+                        window.addEventListener("beforeunload", function (e) {
+                            if (window.pgCodeEditors[field.id] !== instance) return;
+                            if (sent && !(sent.isDefaultPrevented ? sent.isDefaultPrevented() : sent.defaultPrevented)) return;
+                            if (editor.getValue() === saved) return;
+                            e.preventDefault();
+                            e.returnValue = "";
+                        });
+                    }';
+    }
+
     $tools = '
                     var tools = document.createElement("div");
                     tools.className = "pg-code-field-tools gap-3";
@@ -853,7 +882,7 @@ function pg_code_editor_attach($properties)
                 if (typeof PgCodeEditor === "undefined") return;
                 PgCodeEditor.attach(field, options).then(function (instance) {
                     editor = instance;
-                    window.pgCodeEditors[field.id] = instance;' . $tools . '
+                    window.pgCodeEditors[field.id] = instance;' . $tools . $guard . '
                     // A screen that changes the editor (its language, after a
                     // choice made before it arrived) hears when it is there.
                     try { field.dispatchEvent(new CustomEvent("pgcodeeditorready", { detail: instance })); } catch (e) {}

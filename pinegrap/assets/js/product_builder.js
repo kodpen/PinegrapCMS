@@ -3039,6 +3039,75 @@
         return meta;
     }
 
+    /* ------------------------------------------------- unsaved changes */
+
+    /* A rich text field's own editor says whether it changed (CKEditor's
+       checkDirty(), the previous editor TinyMCE's isDirty()); its textarea
+       is written back only on submit, so it is left out of pbState(). */
+    function pbRichEditor(id) {
+
+        if (!id) {
+            return null;
+        }
+
+        if (window.CKEDITOR && CKEDITOR.instances && CKEDITOR.instances[id]) {
+            return { dirty: function () { return CKEDITOR.instances[id].checkDirty(); } };
+        }
+
+        var mce = window.tinyMCE || window.tinymce;
+        var editor = (mce && mce.get) ? mce.get(id) : null;
+
+        if (editor && editor.isDirty) {
+            return { dirty: function () { return editor.isDirty(); } };
+        }
+
+        return null;
+    }
+
+    /* Everything the save would send that lives in the page: the fields
+       (uploaded photos are hidden inputs), the variant rows and the
+       attribute choices held in the script. */
+    function pbState() {
+
+        return {
+            fields: $form.serializeArray(),
+            script: JSON.stringify([collectVariants(), collectAttributeMeta()])
+        };
+    }
+
+    /* The fields compared without the rich text ones, filtered on both sides
+       when compared: a rich text editor may arrive after the snapshot. */
+    function pbFields(fields) {
+
+        return JSON.stringify($.grep(fields, function (field) {
+            var element = $form[0].elements[field.name];
+            return !(element && element.tagName === 'TEXTAREA' && pbRichEditor(element.id));
+        }));
+    }
+
+    function pbChanged(snapshot) {
+
+        var now = pbState();
+
+        return (now.script !== snapshot.script) || (pbFields(now.fields) !== pbFields(snapshot.fields));
+    }
+
+    function pbRichDirty() {
+
+        var dirty = false;
+
+        $form.find('textarea').each(function () {
+            var editor = pbRichEditor(this.id);
+
+            if (editor && editor.dirty()) {
+                dirty = true;
+                return false;
+            }
+        });
+
+        return dirty;
+    }
+
     $form.on('submit', function (event) {
 
         var $name = $('#name');
@@ -3180,5 +3249,38 @@
     /* ---------------------------------------------------------- first run */
 
     renderMatrix();
+
+    /* Leaving the screen asks while the product differs from what it was
+       after the first render, except during the form's own submit; a submit
+       the checks above prevented (a blank name or SKU) still asks. Taken on
+       ready, after the other ready handlers have set the fields up. */
+    var pbSnapshot = null;
+    var pbSubmit   = null;
+
+    $form.on('submit', function (event) {
+        pbSubmit = event;
+    });
+
+    $(function () {
+        pbSnapshot = pbState();
+    });
+
+    window.addEventListener('beforeunload', function (event) {
+
+        if (pbSnapshot === null) {
+            return;
+        }
+
+        if (pbSubmit && !pbSubmit.isDefaultPrevented()) {
+            return;
+        }
+
+        if (!pbChanged(pbSnapshot) && !pbRichDirty()) {
+            return;
+        }
+
+        event.preventDefault();
+        event.returnValue = '';
+    });
 
 }(jQuery));
