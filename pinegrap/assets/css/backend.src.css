@@ -6265,6 +6265,23 @@ button.pg-check:focus-visible {
 .pg-check[aria-expanded="true"] .pg-check-caret {
   transform: rotate(180deg);
 }
+/* Touch screens: every status chip opens something, and the chip remove
+   button sits inside a chip that selects itself on a missed click. Both grow to
+   24px under a finger so a slightly-off tap does not reach the neighbour; the
+   desktop keeps its density. The visual designer's keyword box keeps its own
+   size, and the remove icon stays at Bootstrap's 1rem inside the larger button. */
+@media (pointer: coarse) {
+  .pg-checks {
+    gap: 4px;
+  }
+  .pg-checks > .pg-check {
+    min-height: 1.5rem;
+  }
+  .pg-chips:not(#styleSettingsModal .pg-chips) > .chip > .chip-dismiss {
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+  }
+}
 /* Bootstrap's own four, so a chip is the same red as every other red on the
    screen. The emphasis colours are the pair Bootstrap picks per theme, which is
    what keeps the text readable on the tint in both. */

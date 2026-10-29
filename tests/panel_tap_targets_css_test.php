@@ -61,7 +61,7 @@ function panel_tap_targets_rule($css, $selector)
 // touch screen each chip is at least 24 px tall.
 function test_panel_tap_targets_status_check_chips()
 {
-	$body = panel_tap_targets_rule(panel_tap_targets_coarse_css(), '.pg-check');
+	$body = panel_tap_targets_rule(panel_tap_targets_coarse_css(), '.pg-checks > .pg-check');
 
 	pg_assert_true(preg_match('/min-height:\s*1\.5rem/', $body) === 1, 'a .pg-check chip is at least 1.5rem tall under a coarse pointer');
 }
