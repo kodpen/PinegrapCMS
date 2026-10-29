@@ -1460,6 +1460,7 @@
     "Connect your own account to @{var:1} to run it: the call runs with it.": "Çalıştırmak için @{var:1} sunucusuna kendi hesabınızı bağlayın: çağrı onunla çalışır.",
     "Connect your own account to @{var:1}? You sign in on the service and come back here.": "@{var:1} sunucusuna kendi hesabınızı bağlamak istiyor musunuz? Hizmette giriş yapar ve buraya dönersiniz.",
     "Connect your {var:1} account": "{var:1} hesabınızı bağlayın",
+    "Connect your {var:1} account first.": "Önce {var:1} hesabınızı bağlayın.",
     "Connect {var:1}": "{var:1} uygulamasını bağla",
     "Connect {var:1} to the box that comes after it": "{var:1} kutusunu ondan sonra gelen kutuya bağlayın",
     "Connected": "Bağlı",

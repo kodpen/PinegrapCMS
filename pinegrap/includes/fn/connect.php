@@ -1210,7 +1210,7 @@ function pg_connect_refresh($row, $provider, $secret, $scopes, $key)
         // invalid_grant is the provider saying the permission itself is gone:
         // withdrawn by the person, expired, or the password changed. Anything
         // else (a timeout, a 500) is a bad moment and the next call retries.
-        if ($response['error_code'] === 'invalid_grant') {
+        if (pg_connect_grant_lost($response)) {
             pg_connect_mark_reauth($row, $response['error']);
         } else {
             db("UPDATE connect_accounts SET last_error = '" . e($response['error']) . "' WHERE id = '" . (int) $row['id'] . "'");
@@ -1238,6 +1238,25 @@ function pg_connect_refresh($row, $provider, $secret, $scopes, $key)
         WHERE id = '" . (int) $row['id'] . "'");
 
     return array('ok' => true, 'token' => $parsed['access_token'], 'error' => '');
+}
+
+/**
+ * Whether a refused renewal means the account's permission is gone.
+ * Microsoft answers invalid_grant also when nobody consented to the one
+ * resource a token was asked for (AADSTS65001, e.g. SharePoint for the
+ * OneDrive picker): the account still works for everything else, so it
+ * stays connected and the caller shows the error.
+ *
+ * @param array $response error_code, error (pg_connect_token_request())
+ * @return bool
+ */
+function pg_connect_grant_lost($response)
+{
+    if ((string) ($response['error_code'] ?? '') !== 'invalid_grant') {
+        return false;
+    }
+
+    return strpos((string) ($response['error'] ?? ''), 'AADSTS65001') === false;
 }
 
 /**
