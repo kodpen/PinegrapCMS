@@ -5030,6 +5030,77 @@ function pg_sw_submitted_form_rss_text($form_id)
     return $out;
 }
 
+// The RSS categories of one record's category field: $values are its stored
+// rows, each split at "||" (a multiple choice the legacy feed joined). A
+// reference, product or page field ($kind) holds codes or ids, split as
+// pg_coll_ref_codes() does, and prints what $label_of() returns for each
+// (null: the code itself, for a record gone since); any other field prints
+// its text. Each category once, in order.
+function pg_sw_feed_categories($values, $kind, $label_of)
+{
+    $by_reference = in_array((string)$kind, array('reference', 'product', 'page'), true);
+    $out = array();
+    foreach ((array)$values as $value) {
+        foreach (explode('||', is_scalar($value) ? (string)$value : '') as $part) {
+            $part = trim($part);
+            if ($part === '') continue;
+            $labels = array($part);
+            if ($by_reference) {
+                $labels = array();
+                foreach (pg_coll_ref_codes($part) as $code) {
+                    $label = $label_of($code);
+                    $label = ($label === null) ? '' : trim((string)$label);
+                    $labels[] = ($label !== '') ? $label : $code;
+                }
+            }
+            foreach ($labels as $label) {
+                if (!in_array($label, $out, true)) $out[] = $label;
+            }
+        }
+    }
+    return $out;
+}
+
+// The label of reference $code in field $spec (pg_coll_field_kinds()):
+// a reference's record by pg_coll_reference_lookup(), a product's or a
+// page's by pg_coll_kind_options(); null when it names nothing. Read-only
+// and cached for the request.
+function pg_sw_feed_reference_label($spec, $code)
+{
+    static $cache = array();
+    $kind    = isset($spec['kind']) ? (string)$spec['kind'] : '';
+    $page_id = isset($spec['reference_page_id']) ? (int)$spec['reference_page_id'] : 0;
+    $key     = $kind . ':' . $page_id . ':' . $code;
+    if (array_key_exists($key, $cache)) return $cache[$key];
+
+    $label = null;
+    if ($kind === 'reference') {
+        $record = pg_coll_reference_lookup($page_id, $code);
+        if ($record) $label = $record['label'];
+    } elseif ($kind === 'product' || $kind === 'page') {
+        $options = pg_coll_kind_options(array('kind' => $kind));
+        if (is_array($options) && isset($options[$code])) $label = (string)$options[$code];
+    }
+    return $cache[$key] = $label;
+}
+
+// The <category> elements of a record's category field $field_id of form
+// page $form_page_id, its stored rows $values: a reference prints its
+// label (pg_sw_feed_categories()). '' when it holds nothing.
+function pg_sw_feed_category_xml($form_page_id, $field_id, $values)
+{
+    $kinds = pg_coll_field_kinds($form_page_id);
+    $spec  = isset($kinds[(int)$field_id]) ? $kinds[(int)$field_id] : array();
+    $kind  = isset($spec['kind']) ? $spec['kind'] : '';
+    $xml   = '';
+    foreach (pg_sw_feed_categories($values, $kind, function ($code) use ($spec) {
+        return pg_sw_feed_reference_label($spec, $code);
+    }) as $category) {
+        $xml .= '<category>' . h($category) . '</category>';
+    }
+    return $xml;
+}
+
 // The channel and the items of a form widget page's feed: the newest fifty
 // complete records of the form, the widget's own filters applied, each
 // with the fields whose RSS element is title, description, media or category.
@@ -5102,12 +5173,7 @@ function pg_sw_form_feed_parts($page_id, $page_name, $page_title, $page_meta_des
         $categories = '';
         if ($category_field_id > 0) {
             $values = db_items("SELECT data FROM form_data WHERE form_id = '" . $form_id . "' AND form_field_id = '" . $category_field_id . "' ORDER BY id ASC");
-            foreach ((array)$values as $value) {
-                foreach (explode('||', (string)$value['data']) as $category) {
-                    $category = trim($category);
-                    if ($category !== '') $categories .= '<category>' . h($category) . '</category>';
-                }
-            }
+            $categories = pg_sw_feed_category_xml($form_page_id, $category_field_id, array_column((array)$values, 'data'));
         }
 
         $enclosure = '';
