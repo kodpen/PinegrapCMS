@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; steps 1-4 done, 6 Basit Kargo #3163): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; 1-4, 6 Basit Kargo, 7 Shippo done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -24,7 +24,7 @@ description: Plan (approved 2026-10-19; steps 1-4 done, 6 Basit Kargo #3163): ca
 4. Status polling job in the dispatcher, write-back through the single path (S). Done in PR #3157 (`commerce/shipment-tracking.md`).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
 6. Further aggregators as their references open: Basit Kargo done in PR #3163 (`commerce/carrier-label-basitkargo.md`; one `.zpl` per bulk run open), Kargonomi; MNG ApiZone a candidate (M each).
-7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
+7. International (#3124): Shippo done in PR #3192 (`commerce/carrier-label-shippo.md`, no customs yet); Sendcloud for the rest of Europe.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`): staff button, code into `carrier_code` and the mail, `shipment_labels.order_return_id` (S).
 
 ## Open questions?
@@ -32,4 +32,4 @@ description: Plan (approved 2026-10-19; steps 1-4 done, 6 Basit Kargo #3163): ca
 - Formats (#3123): PDF, ZPL and SVG; ZPL never sent to an external converter.
 
 ## Where to start?
-- Step 7 Shippo under way; step 8 or 5: Yurtiçi and Aras direct drivers; one with `track()` is tracked by the job as it is. Live check of the Geliver driver with the owner's test key.
+- Step 7 Sendcloud, step 8 or 5: Yurtiçi and Aras direct drivers; one with `track()` is tracked by the job as it is. Live checks of Geliver and Shippo with the owner's test keys.

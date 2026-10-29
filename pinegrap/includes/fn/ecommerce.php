@@ -8620,6 +8620,34 @@ function pg_shipping_carriers()
                 '/^91[0-9]+$/',
                 '/^[A-Za-z]{2}[0-9]+US$/')),
 
+        // The European carriers have no number patterns: DHL, DPD and Royal
+        // Mail numbers overlap the plain digits and S10 shapes above, so a
+        // parcel names them by its method code, the site default or the
+        // label service that made it.
+        'dhl' => array(
+            'name'     => 'DHL',
+            'aliases'  => array('dhl express', 'dhl paket', 'dhl germany', 'dhl_express', 'dhl_germany'),
+            'url'      => 'https://www.dhl.de/en/privatkunden/pakete-empfangen/verfolgen.html?piececode={code}',
+            'patterns' => array()),
+
+        'deutschepost' => array(
+            'name'     => 'Deutsche Post',
+            'aliases'  => array('deutsche post', 'deutsche_post'),
+            'url'      => 'https://www.deutschepost.de/de/s/sendungsverfolgung.html?piececode={code}',
+            'patterns' => array()),
+
+        'dpd' => array(
+            'name'     => 'DPD',
+            'aliases'  => array('dpd de', 'dpd uk', 'dpd_de', 'dpd_uk'),
+            'url'      => 'https://tracking.dpd.de/parcelstatus?query={code}&locale=en_DE',
+            'patterns' => array()),
+
+        'royalmail' => array(
+            'name'     => 'Royal Mail',
+            'aliases'  => array('royal mail', 'royal_mail'),
+            'url'      => 'https://www.royalmail.com/track-your-item#/tracking-results/{code}',
+            'patterns' => array()),
+
     );
 }
 

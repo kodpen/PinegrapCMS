@@ -153,6 +153,7 @@ function pg_label_builtin_drivers()
     return array(
         'geliver'    => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
         'basitkargo' => array('label' => 'Basit Kargo', 'file' => 'basitkargo.php', 'portal' => 'https://basitkargo.com/api'),
+        'shippo'     => array('label' => 'Shippo', 'file' => 'shippo.php', 'portal' => 'https://portal.goshippo.com/api-config/api'),
     );
 }
 

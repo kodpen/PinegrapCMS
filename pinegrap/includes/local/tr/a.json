@@ -20,6 +20,7 @@
     "A Pinegrap Premium licence is needed to use this feature. Contact us at {var:1}.": "Bu özellikten faydalanmak için Pinegrap Premium lisansı gerekir. {var:1} adresinden bizimle irtibata geçin.",
     "A Pinegrap site is already installed on this server": "Bu sunucuda bir Pinegrap sitesi kurulu",
     "A Services ID is written like a domain in reverse, for example com.example.signin.": "Services ID ters yazılmış bir alan adı gibidir, örneğin com.example.signin.",
+    "A Shippo service level token such as usps_priority or dhl_express_worldwide. Empty takes the cheapest rate.": "usps_priority veya dhl_express_worldwide gibi bir Shippo hizmet düzeyi kodu. Boş bırakılırsa en ucuz fiyat seçilir.",
     "A Sunday ride and the goat that judged me": "Bir pazar sürüşü ve beni yargılayan keçi",
     "A Table Built to Last a Century": "Bir Asır Dayansın Diye Yapılmış Bir Masa",
     "A Theme Type": "Bir Tema Türü",
