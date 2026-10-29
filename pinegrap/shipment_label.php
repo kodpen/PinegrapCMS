@@ -43,8 +43,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     // label_request: create-<ship_to_id>, return-<ship_to_id>,
     // cancel-<label id> and marketplace-<ship_to_id> (with
-    // label_boxes_<ship_to_id>) from the order screen; bulk_create and
-    // bulk_print with orders[] from the orders list.
+    // label_boxes_<ship_to_id>) from the order screen; bulk_create,
+    // bulk_print and bulk_zpl with orders[] from the orders list.
     $request = is_scalar($_POST['label_request'] ?? null) ? (string) $_POST['label_request'] : '';
     $orders = (isset($_POST['orders']) && is_array($_POST['orders'])) ? array_slice(array_map('intval', $_POST['orders']), 0, 500) : array();
 
@@ -59,6 +59,23 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         header('X-Content-Type-Options: nosniff');
         header('Content-Type: application/pdf');
         header('Content-Disposition: inline; filename="labels.pdf"');
+        header('Content-Length: ' . strlen($bulk['document']));
+
+        echo $bulk['document'];
+        exit;
+    }
+
+    if ($request === 'bulk_zpl') {
+        $bulk = pg_shipment_label_bulk_zpl($orders);
+
+        if (!$bulk['ok']) {
+            output_error(h($bulk['error']), 404);
+        }
+
+        foreach (pg_shipment_label_headers('zpl', 'labels', true) as $line) {
+            header($line);
+        }
+
         header('Content-Length: ' . strlen($bulk['document']));
 
         echo $bulk['document'];

@@ -46,7 +46,7 @@ function test_panel_message_lang_barcode_and_backups()
 		$source = panel_message_lang_source($path);
 		pg_assert_true(!preg_match("/'message' => '/", $source), $path . ': an endpoint message outside lang()');
 		pg_assert_contains('alert(response.message);', $source, $path);
-		pg_assert_contains("alert(\"' . escape_javascript(lang('Please try again.')) . '\");", $source, $path);
+		pg_assert_contains("alert(\"' . escape_javascript(lang('No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.')) . '\");", $source, $path);
 	}
 
 	$source = panel_message_lang_source('backups.php');

@@ -173,10 +173,7 @@ if ($panel_gate !== 'exempt') {
 
     // If a user was not found then respond with an error.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     if ($panel_gate === 'role') {
@@ -184,7 +181,7 @@ if ($panel_gate !== 'exempt') {
         if (USER_ROLE > 1) {
             respond(array(
                 'status' => 'error',
-                'message' => 'The User must have a Designer or Administrator role.'
+                'message' => lang('The User must have a Designer or Administrator role.')
             ));
         }
     }
@@ -201,6 +198,27 @@ function respond($response)
 {
     echo encode_json($response);
     exit;
+}
+
+// The answer to a request that reached a session check without a signed-in
+// user. A request that sent a user name and password had a wrong one; any
+// other request comes from a panel tab whose session ended (signed out
+// elsewhere, ended from the Sessions screen, or timed out), so it is told to
+// reload and sign in again. The exempt handlers in includes/panel/ use it too.
+function panel_login_refusal()
+{
+    if (defined('API_USERNAME')) {
+        return array(
+            'status' => 'error',
+            'message' => lang('Invalid login.')
+        );
+    }
+
+    return array(
+        'status' => 'error',
+        'code' => 'session',
+        'message' => lang('Your session has expired. Reload the page and sign in again.')
+    );
 }
 
 // A token is required to be passed in the request for session login requests
@@ -238,9 +256,11 @@ function validate_token()
         || (!is_string($token))
         || (!hash_equals($session_token, $token))
     ) {
+        // Most often a page opened before the current sign-in: its token
+        // belongs to an earlier session.
         respond(array(
             'status' => 'error',
-            'message' => 'Invalid token.'
+            'message' => lang('Your session expired. Reload the page and try again.')
         ));
     }
 }
