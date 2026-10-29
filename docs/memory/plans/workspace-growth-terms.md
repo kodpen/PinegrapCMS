@@ -19,7 +19,7 @@ description: Shared names and single owners across the Workspace growth plans (2
 ## Which single owner holds a shared piece?
 - One proposal route for every plan: `workspace.changes.propose` (POST /workspace/channels/{id}/changes, plus a task twin): plans/workspace-mcp-capabilities.md. No per-kind proposal routes.
 - Direct record writes by AI apps (one owner question): the MCP plan; catalogue and quotes follow its answer.
-- Scheduled-actions API and who may create actions: plans/workspace-canvas-workflow-tables.md (S1, S2).
+- Scheduled-actions API and who may create actions: workspace/workspace-scheduled-actions-api.md.
 - Flows (canvas, rules, process templates), their engine and step library: plans/workspace-flows.md, plans/workspace-flows-engine.md.
 - One follow-up opener `ws_followup_task_open()` (proposed): plans/workspace-crm-seams.md; quote expiry and the ERP overdue job (erp/erp-overdue-reminders.md) call it.
 - Saved replies: plans/workspace-composer-tools.md. Channel `/` commands: plans/workspace-slash-commands.md; other plans add registry entries (`/product` after its slice 2).

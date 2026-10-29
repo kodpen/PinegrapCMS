@@ -21,6 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk_sources.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 
 // Lines split on tabs (a range copied from a sheet), semicolons or bars;
 // empty lines left out.
