@@ -36,7 +36,7 @@ function test_cloud_picker_google_id_maps_to_the_drive_api()
 	}
 
 	pg_assert_true(!pg_cloud_picker_source('google', null)['ok'], 'nothing chosen');
-	pg_assert_true(!pg_cloud_picker_source('onedrive', array('id' => '1AbC-dEf_GhIjKlMnOp'))['ok'], 'an unknown provider');
+	pg_assert_true(!pg_cloud_picker_source('box', array('id' => '1AbC-dEf_GhIjKlMnOp'))['ok'], 'an unknown provider');
 }
 
 // The Chooser's direct link is read without a token, and only from
@@ -181,4 +181,107 @@ function test_cloud_picker_purpose()
 	pg_assert_same(array('https://www.googleapis.com/auth/drive.file'), $purpose['scopes']['google'], 'drive.file only');
 	pg_assert_true(!pg_connect_purpose_allows($purpose, 'google', 'site'), 'not the site\'s account');
 	pg_assert_true(pg_connect_purpose_allows($purpose, 'google', 'person'), 'a person\'s account');
+	pg_assert_same(array('https://graph.microsoft.com/Files.Read'), $purpose['scopes']['microsoft'], 'Microsoft: Files.Read only');
+	pg_assert_true(pg_connect_purpose_allows($purpose, 'microsoft', 'person'), 'a person\'s Microsoft account');
+}
+
+// A OneDrive choice is a drive id and an item id; the server reads the
+// item's metadata and its content from Graph with the person's token, never
+// from the endpoint the picker names.
+function test_cloud_picker_onedrive_choice_maps_to_graph()
+{
+	$source = pg_cloud_picker_source('onedrive', array('drive_id' => 'b!-RIj2DuyvEyV1T4NlOaMHk8XkS_I8MdF', 'item_id' => '01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K'));
+
+	pg_assert_true($source['ok'], 'a work account item');
+	pg_assert_true($source['token'], 'read with the token');
+	pg_assert_same(array('https://graph.microsoft.com/Files.Read'), $source['scopes'], 'the Graph token');
+	pg_assert_same('https://graph.microsoft.com/v1.0/drives/b!-RIj2DuyvEyV1T4NlOaMHk8XkS_I8MdF/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K?$select=name,size,file', $source['meta_url'], 'the metadata');
+	pg_assert_same('https://graph.microsoft.com/v1.0/drives/b!-RIj2DuyvEyV1T4NlOaMHk8XkS_I8MdF/items/01BYE5RZ6QN3ZWBTUFOFD3GSPGOHDJD36K/content', $source['content_url'], 'the content');
+	pg_assert_same('', $source['url'], 'the download address comes from Graph');
+
+	pg_assert_true(pg_cloud_picker_source('onedrive', array('drive_id' => 'd4648f06c91d9d3d', 'item_id' => 'D4648F06C91D9D3D!54927'))['ok'], 'a personal account item');
+
+	foreach (array(
+		array('drive_id' => '', 'item_id' => '01BYE5RZ6Q'),
+		array('drive_id' => 'abc', 'item_id' => ''),
+		array('drive_id' => '../me', 'item_id' => '01BYE5RZ6Q'),
+		array('drive_id' => 'abc', 'item_id' => '01BY/../../me/drive'),
+		array('drive_id' => 'abc', 'item_id' => 'a?x=1'),
+		array('drive_id' => 'abc', 'item_id' => 'a.b'),
+		array('drive_id' => 'abc', 'item_id' => str_repeat('a', 201)),
+		array('drive_id' => array('x'), 'item_id' => 'abc'),
+	) as $choice) {
+		pg_assert_true(!pg_cloud_picker_source('onedrive', $choice)['ok'], 'refused: ' . json_encode($choice));
+	}
+}
+
+// Personal accounts open the picker on onedrive.live.com with a OneDrive
+// token; work and school accounts on their own SharePoint host with a token
+// for that host, never for another tenant's.
+function test_cloud_picker_onedrive_personal_and_work_base()
+{
+	$personal = pg_cloud_picker_onedrive_drive(array('driveType' => 'personal', 'webUrl' => 'https://onedrive.live.com/?cid=D4648F06C91D9D3D'));
+
+	pg_assert_true($personal['ok'], 'a personal drive');
+	pg_assert_same('personal', $personal['kind'], 'personal');
+	pg_assert_same('https://onedrive.live.com/picker', $personal['picker_url'], 'the consumer picker');
+	pg_assert_same(array('OneDrive.ReadOnly'), pg_cloud_picker_onedrive_scopes($personal, ''), 'read-only OneDrive scope');
+	pg_assert_same(array('OneDrive.ReadOnly'), pg_cloud_picker_onedrive_scopes($personal, 'https://evil.example'), 'a personal token is never for another resource');
+
+	$work = pg_cloud_picker_onedrive_drive(array('driveType' => 'business', 'webUrl' => 'https://contoso-my.sharepoint.com/personal/ayse_contoso_com/Documents'));
+
+	pg_assert_true($work['ok'], 'a work drive');
+	pg_assert_same('work', $work['kind'], 'work');
+	pg_assert_same('https://contoso-my.sharepoint.com', $work['resource'], 'the SharePoint host');
+	pg_assert_same('https://contoso-my.sharepoint.com/_layouts/15/FilePicker.aspx', $work['picker_url'], 'the SharePoint picker');
+	pg_assert_same(array('https://contoso-my.sharepoint.com/.default'), pg_cloud_picker_onedrive_scopes($work, ''), 'its own host');
+	pg_assert_same(array('https://contoso.sharepoint.com/.default'), pg_cloud_picker_onedrive_scopes($work, 'https://contoso.sharepoint.com/'), 'the tenant\'s sites');
+
+	foreach (array('https://fabrikam.sharepoint.com', 'https://contoso.sharepoint.com.evil.example', 'http://contoso.sharepoint.com', 'https://graph.microsoft.com', 'https://user@contoso.sharepoint.com', 'https://contoso.sharepoint.com:444') as $resource) {
+		pg_assert_same(array(), pg_cloud_picker_onedrive_scopes($work, $resource), 'refused: ' . $resource);
+	}
+
+	foreach (array(null, array(), array('driveType' => 'business', 'webUrl' => 'https://evil.example/x'), array('driveType' => 'business', 'webUrl' => 'http://contoso-my.sharepoint.com/x'), array('driveType' => 'documentLibrary', 'webUrl' => 'https://contoso.sharepoint.com/x')) as $data) {
+		pg_assert_true(!pg_cloud_picker_onedrive_drive($data)['ok'], 'refused: ' . json_encode($data));
+	}
+}
+
+// An item without a file of its own (a OneNote notebook, a folder) has no
+// bytes to download; Graph's pre-authenticated download address is taken
+// only on Microsoft's storage hosts.
+function test_cloud_picker_onedrive_meta_and_download_host()
+{
+	$taken = pg_cloud_picker_onedrive_meta(array('name' => 'Teklif.docx', 'size' => 4096, 'file' => array('mimeType' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document')));
+
+	pg_assert_true($taken['ok'], 'a stored file');
+	pg_assert_same(4096, $taken['size'], 'its size');
+
+	$notebook = pg_cloud_picker_onedrive_meta(array('name' => 'Toplanti Notlari', 'size' => 100, 'package' => array('type' => 'oneNote')));
+
+	pg_assert_true(!$notebook['ok'], 'a OneNote notebook is refused');
+	pg_assert_contains('Toplanti Notlari', $notebook['error'], 'naming it');
+	pg_assert_true(!pg_cloud_picker_onedrive_meta(array('name' => 'Klasor', 'folder' => array('childCount' => 2)))['ok'], 'a folder');
+	pg_assert_same('x.php', pg_cloud_picker_onedrive_meta(array('name' => 'a/b/x.php', 'file' => array()))['name'], 'the last segment');
+	pg_assert_true(!pg_cloud_picker_onedrive_meta(null)['ok'], 'no answer');
+
+	foreach (array(
+		'https://contoso-my.sharepoint.com/personal/a/_layouts/15/download.aspx?UniqueId=x&tempauth=y',
+		'https://public.am3.files.1drv.com/y4m/abc',
+		'https://my.microsoftpersonalcontent.com/personal/abc/_layouts/15/download.aspx',
+	) as $url) {
+		pg_assert_true(pg_cloud_picker_onedrive_download_url($url), 'taken: ' . $url);
+	}
+
+	foreach (array('', 'http://contoso-my.sharepoint.com/a', 'https://127.0.0.1/a', 'https://sharepoint.com.evil.example/a', 'https://evilsharepoint.com/a', 'https://u@contoso.sharepoint.com/a', 'https://contoso.sharepoint.com:8443/a', 'https://graph.microsoft.com/v1.0/me') as $url) {
+		pg_assert_true(!pg_cloud_picker_onedrive_download_url($url), 'refused: ' . $url);
+	}
+}
+
+// A refresh refused because nobody consented to one resource (SharePoint)
+// leaves the account connected; any other invalid_grant asks for it again.
+function test_cloud_picker_missing_consent_keeps_the_connection()
+{
+	pg_assert_true(!pg_connect_grant_lost(array('error_code' => 'invalid_grant', 'error' => 'invalid_grant: AADSTS65001: The user or administrator has not consented to use the application.')), 'consent missing');
+	pg_assert_true(pg_connect_grant_lost(array('error_code' => 'invalid_grant', 'error' => 'invalid_grant: AADSTS70008: The refresh token has expired.')), 'expired');
+	pg_assert_true(!pg_connect_grant_lost(array('error_code' => 'temporarily_unavailable', 'error' => 'x')), 'not a grant error');
 }

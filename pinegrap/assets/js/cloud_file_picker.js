@@ -2,13 +2,14 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The cloud file picker of the Upload File screen (add_file.php): opens the
- * Google Picker or the Dropbox Chooser and sends only the chosen file's id
- * or link to add_file.php, which downloads the file on the server and stores
+ * Google Picker, the OneDrive file picker v8 or the Dropbox Chooser and
+ * sends only the chosen file's id or link to add_file.php, which downloads the file on the server and stores
  * it through the same rules as an upload (includes/fn/cloud_file_picker.php).
  *
  * The settings come from the screen as JSON (#pg_cloud_picker_config): per
  * provider what its picker needs (Google: API key and project number;
- * Dropbox: app key) and the screen's translated sentences.
+ * Dropbox: app key; OneDrive: nothing, its address and tokens come from the
+ * server when it opens) and the screen's translated sentences.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -126,19 +127,30 @@
         });
     }
 
-    // The person's own drive.file token, asked for each time the Picker
-    // opens, so a page left open for hours still gets a fresh one.
-    function googleToken() {
+    // The person's own token, asked for each time a picker opens (and the
+    // OneDrive picker asks for one per resource), so a page left open for
+    // hours still gets a fresh one.
+    function pickerToken(extra) {
         var data = new FormData();
 
         data.set('token', uploadForm().querySelector('input[name="token"]').value);
         data.set('cloud_action', 'token');
+
+        Object.keys(extra || {}).forEach(function (name) {
+            data.set(name, extra[name]);
+        });
 
         return post(data).then(function (answer) {
             if (answer.status !== 'success') {
                 throw new Error(answer.message || config.texts.failed);
             }
 
+            return answer;
+        });
+    }
+
+    function googleToken() {
+        return pickerToken().then(function (answer) {
             return answer.token;
         });
     }
@@ -169,6 +181,134 @@
                 .build()
                 .setVisible(true);
         }).catch(function (error) {
+            button.disabled = false;
+            say((error && error.message) ? error.message : config.texts.failed, true);
+        });
+    }
+
+    // The OneDrive file picker v8: Microsoft's page, opened in a window by a
+    // form POST carrying the picker's settings and a token, then talked to
+    // over a MessageChannel. The page asks for a token per resource (OneDrive
+    // for personal accounts, the SharePoint host for work and school ones),
+    // and the server answers each from the person's own connection.
+    function pickOneDrive(button) {
+        // A browser allows a new window only straight from the click.
+        var win = window.open('', 'pg_onedrive_picker', 'width=1080,height=680');
+        var channelId = String(Date.now()) + Math.random().toString(36).slice(2);
+        var port = null;
+        var watch = null;
+
+        if (!win) {
+            say(config.texts.popup_blocked, true);
+            return;
+        }
+
+        button.disabled = true;
+        say('');
+
+        function finish() {
+            window.removeEventListener('message', initialize);
+
+            if (watch) {
+                window.clearInterval(watch);
+            }
+
+            if (port) {
+                port.close();
+            }
+
+            if (!win.closed) {
+                win.close();
+            }
+        }
+
+        function reply(id, data) {
+            port.postMessage({type: 'result', id: id, data: data});
+        }
+
+        function command(message) {
+            var payload = message.data;
+
+            if (payload.type !== 'command') {
+                return;
+            }
+
+            port.postMessage({type: 'acknowledge', id: payload.id});
+
+            var request = payload.data || {};
+
+            if (request.command === 'authenticate') {
+                pickerToken({cloud_provider: 'onedrive', resource: request.resource || ''}).then(function (answer) {
+                    reply(payload.id, {result: 'token', token: answer.token});
+                }).catch(function (error) {
+                    reply(payload.id, {result: 'error', error: {code: 'unableToObtainToken', message: error.message}});
+                });
+            } else if (request.command === 'pick') {
+                var item = (request.items || [])[0];
+
+                if (!item || !item.id || !item.parentReference || !item.parentReference.driveId) {
+                    reply(payload.id, {result: 'error', error: {code: 'unusableItem', message: config.texts.failed}});
+                    return;
+                }
+
+                reply(payload.id, {result: 'success'});
+                finish();
+                send('onedrive', {drive_id: item.parentReference.driveId, item_id: item.id}, button);
+            } else if (request.command === 'close') {
+                finish();
+                button.disabled = false;
+            } else {
+                reply(payload.id, {result: 'error', error: {code: 'unsupportedCommand', message: request.command}});
+            }
+        }
+
+        function initialize(event) {
+            if ((event.source !== win) || !event.data || (event.data.type !== 'initialize') || (event.data.channelId !== channelId)) {
+                return;
+            }
+
+            port = event.ports[0];
+            port.addEventListener('message', command);
+            port.start();
+            port.postMessage({type: 'activate'});
+        }
+
+        window.addEventListener('message', initialize);
+
+        // Closed by the person: the button works again.
+        watch = window.setInterval(function () {
+            if (win.closed) {
+                finish();
+                button.disabled = false;
+            }
+        }, 500);
+
+        pickerToken({cloud_provider: 'onedrive'}).then(function (answer) {
+            var settings = {
+                sdk: '8.0',
+                entry: {oneDrive: {files: {}}},
+                authentication: {},
+                messaging: {origin: window.location.origin, channelId: channelId},
+                selection: {mode: 'single'},
+                typesAndSources: {mode: 'files', pivots: {oneDrive: true, recent: true}}
+            };
+            var query = new URLSearchParams({
+                filePicker: JSON.stringify(settings),
+                locale: document.documentElement.lang || 'en-us'
+            });
+            var form = win.document.createElement('form');
+            var input = win.document.createElement('input');
+
+            form.setAttribute('action', answer.picker_url + '?' + query.toString());
+            form.setAttribute('method', 'POST');
+            input.setAttribute('type', 'hidden');
+            input.setAttribute('name', 'access_token');
+            input.setAttribute('value', answer.token);
+            form.appendChild(input);
+            win.document.body.appendChild(form);
+            form.submit();
+        }).catch(function (error) {
+            finish();
             button.disabled = false;
             say((error && error.message) ? error.message : config.texts.failed, true);
         });
@@ -213,6 +353,8 @@
 
         if (button.getAttribute('data-pg-cloud-pick') === 'google') {
             pickGoogle(button);
+        } else if (button.getAttribute('data-pg-cloud-pick') === 'onedrive') {
+            pickOneDrive(button);
         } else if (button.getAttribute('data-pg-cloud-pick') === 'dropbox') {
             pickDropbox(button);
         }
