@@ -160,6 +160,10 @@ if ($selected_page === null) {
     $page_id = 0;
 }
 
+// The Update button says what it scans; the notes that point at it use the
+// same label.
+$update_button_label = ($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'));
+
 // Under the reviewed policy a page is indexed in the language only when
 // every text drawn on it stands approved: what each page answered the last
 // time it was drawn (one read), and for the selected page, on request, which
@@ -479,7 +483,7 @@ foreach ($rows as $row) {
 if (($language !== '') && !$rows) {
     $output_rows = '<div class="py-12 text-center fg-secondary">'
         . (($site_stats['total'] === 0)
-            ? lang('No text has been scanned yet. Press "Update translations": the pages are read and their texts are listed here.')
+            ? lang(array('string' => 'No text has been scanned yet. Press "{var:1}": the pages are read and their texts are listed here.', 'vars' => h($update_button_label)))
             : lang('No text matches the filter.'))
         . '</div>';
 }
@@ -601,7 +605,7 @@ if ($language_row) {
         $engine_note = '<div class="alert theme-secondary py-3 small mb-5 pg-tr-chrome-note"><i class="bi bi-cpu me-1" aria-hidden="true"></i>' . lang('The browser AI translates on this computer with the browser\'s built-in model, Gemini Nano (Prompt API, a recent desktop Chrome): one text at a time, with where it stands, the glossary and the style note, keeping inline HTML. A text takes a few seconds; the first run downloads the model.') . ' ' . lang('The model does not officially read every language (Turkish, for one): look its translations over before approving them.')
             . '<div class="small mt-3">' . lang('The model\'s state is shown at this browser address:') . ' <code class="user-select-all">chrome://on-device-internals</code></div></div>';
     } elseif ($engine_key === 'manual') {
-        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang('This language is translated by hand: "Update translations" scans the pages and lists the pending texts here.') . '</div>';
+        $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . lang(array('string' => 'This language is translated by hand: "{var:1}" scans the pages and lists the pending texts here.', 'vars' => h($update_button_label))) . '</div>';
     } elseif ($engine_key === 'ai') {
         $engine_note = '<div class="alert theme-secondary py-3 small mb-5"><i class="bi bi-stars me-1" aria-hidden="true"></i>' . lang('Pinegrap AI translates on the server through the site\'s own model connection, a few texts at a time with their context, the glossary and the style note. The update runs while this screen is open; the scheduled job finishes what is left.') . '</div>';
     } elseif ($engine_key === 'claude') {
@@ -752,7 +756,7 @@ echo pg_page_shell(array(
                 <ul class="menu">' . $output_language_menu . '</ul>
             </div>
             <button type="button" class="btn btn-sm btn-text theme-secondary no-popover" id="pg_tr_update"' . ($engine['ready'] ? '' : ' disabled="disabled"') . ' data-bs-toggle="tooltip" title="' . h(($page_id > 0) ? lang('Scan this page and send its pending texts to the engine') : (($group !== '') ? lang('Scan these texts and send the pending ones to the engine') : lang('Scan every page and send the pending texts to the engine'))) . '">
-                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . (($page_id > 0) ? lang('Update this page') : (($group !== '') ? lang('Update these texts') : lang('Update translations'))) . '
+                <i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . h($update_button_label) . '
             </button>
             <label class="visually-hidden" for="pg_tr_engine">' . lang('Translation engine') . '</label>
             <select class="form-control form-control-sm w-auto rounded-pill no-popover" id="pg_tr_engine" data-bs-toggle="tooltip" title="' . h(lang(array('string' => '{var:1} → {var:2} · engine', 'vars' => array($source, $language)))) . '">' . $output_engine_options . '</select>
@@ -869,7 +873,7 @@ echo pg_page_shell(array(
                         <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                     </div>
                     <div class="dialog-body">
-                        <p class="small fg-secondary">' . lang('The translations of the texts shown here are deleted, so the next "Update translations" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.') . '</p>
+                        <p class="small fg-secondary">' . lang(array('string' => 'The translations of the texts shown here are deleted, so the next "{var:1}" sends the texts to the engine again. A text that is also used elsewhere loses its translation there too.', 'vars' => h($update_button_label))) . '</p>
                         <div class="form-field mb-5">
                             <input value="1" class="check pg-tr-clear-reviewed" type="checkbox" id="pg_tr_clear_reviewed"' . (($clear_all_count > $clear_machine_count) ? '' : ' disabled="disabled"') . '/>
                             <label class="" for="pg_tr_clear_reviewed">' . lang('Delete the reviewed translations as well') . ' <span class="opacity-75">' . ($clear_all_count - $clear_machine_count) . '</span></label>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <GetAddressListResponse xmlns="http://tempuri.org/">
+      <GetAddressListResult>
+        <CustomerAddress>
+          <Adres>Caferağa Mah. Moda Cad. No:10 Kadıköy İstanbul</Adres>
+          <Sube>KADIKÖY</Sube>
+          <Bolge>İSTANBUL ANADOLU</Bolge>
+          <OlusturmaTarihi>2025-03-14T10:22:00</OlusturmaTarihi>
+          <AddressId>3301</AddressId>
+          <AddressIntegrationCode>DEPO1</AddressIntegrationCode>
+        </CustomerAddress>
+        <CustomerAddress>
+          <Adres>Kızılay Mah. Gazi Mustafa Kemal Blv. No:20 Çankaya Ankara</Adres>
+          <Sube>ÇANKAYA</Sube>
+          <Bolge>ANKARA</Bolge>
+          <OlusturmaTarihi>2026-01-05T09:00:00</OlusturmaTarihi>
+          <AddressId>3302</AddressId>
+          <AddressIntegrationCode>DEPO2</AddressIntegrationCode>
+        </CustomerAddress>
+      </GetAddressListResult>
+    </GetAddressListResponse>
+  </soap:Body>
+</soap:Envelope>
