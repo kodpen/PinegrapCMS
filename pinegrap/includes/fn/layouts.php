@@ -9,7 +9,8 @@
  * the generated one it is written to data/layouts/<page id>.php and
  * page.layout_modified is set. A hosted site neither writes nor uses the
  * file. Read and saved by the classic page designer (get_layout,
- * update_layout) and the visual designer's layout code tab (layout_code).
+ * update_layout), and through layout_code by the visual designer's layout
+ * code tab and the layout editor screen (edit_page_layout.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -221,9 +222,10 @@ function pg_layout_tab_param($page_id, array $layout_page_ids, $role, $hosted)
 // Where the form screen's "Edit Layout" link goes for a page that draws a
 // custom layout. A page whose own style is a visual design opens the style
 // designer on that page and, as Ctrl+G does (pg_layout_tab_param()), on its
-// layout tab; a page on a classic style keeps the classic page designer.
-// $page_path is the page's site path; the URL is returned unescaped.
-function pg_layout_edit_url($page_id, $page_path, $style_id, $designed, $role, $hosted)
+// layout tab; any other page opens the layout-only editor screen
+// (edit_page_layout.php), read only there on a hosted site. The URL is
+// returned unescaped.
+function pg_layout_edit_url($page_id, $style_id, $designed, $role, $hosted)
 {
     $page_id = (int) $page_id;
     $style_id = (int) $style_id;
@@ -233,7 +235,7 @@ function pg_layout_edit_url($page_id, $page_path, $style_id, $designed, $role, $
             . pg_layout_tab_param($page_id, array($page_id), $role, $hosted);
     }
 
-    return 'page_designer.php?url=' . urlencode((string) $page_path) . '&type=layout&id=' . $page_id;
+    return 'edit_page_layout.php?id=' . $page_id;
 }
 
 // The page whose layout tab the designer opens on load (?layout=1): the page

@@ -350,6 +350,7 @@ function get_help_url($properties = array())
         'generate_layout'          => 'design#create-edit-custom-style',
         'view_system_style_source' => 'design#view-system-style-source',
         'page_designer'            => 'design#page_designer',
+        'edit_page_layout'         => 'design#page_designer',
         'view_menus'               => 'design#menus',
         'add_menu'                 => 'design#create-edit-menu',
         'edit_menu'                => 'design#create-edit-menu',

@@ -343,12 +343,6 @@ if (!$_POST) {
             && ($layout_type == 'custom')
             && (USER_ROLE < 2)
         ) {
-            if (check_if_page_type_requires_from_control_panel($page_type)) {
-                $query_string_from = '?from=control_panel';
-            } else {
-                $query_string_from = '';
-            }
-
             require_once(PG_FUNCTIONS_DIR . '/includes/fn/layouts.php');
 
             // The same target as the form screen's link. A page whose own
@@ -356,7 +350,6 @@ if (!$_POST) {
             // to the designer above), so this is the classic link in practice.
             $edit_layout_url = pg_layout_edit_url(
                 $page_id,
-                PATH . encode_url_path($page_name) . $query_string_from,
                 $page_style,
                 pg_page_is_visual_design(array('page_style' => $page_style)),
                 USER_ROLE,
