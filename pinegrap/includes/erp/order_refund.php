@@ -249,7 +249,7 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                             ' . (((int) $refund_line['line_total'] < 0) ? '<div class="small fg-secondary">' . lang('Left empty or at 0, it comes back with the goods in proportion.') . '</div>' : '') . '
                                         </td>
                                         <td class="text-end text-nowrap">' . erp_quantity_out($refund_line['remaining_qty']) . '</td>
-                                        <td style="width:6.5rem"><input type="number" class="form-control form-control-sm text-end" name="refund_qty[' . $line_id . ']" data-refund-line="' . $line_id . '"' . (((int) $refund_line['line_total'] < 0) ? ' data-refund-credit="1"' : '') . ' min="0" max="' . $remaining . '" step="1" value="0" inputmode="numeric" aria-label="' . h(lang('Quantity to refund')) . '"></td>
+                                        <td style="width:6.5rem"><input type="number" class="form-control form-control-sm text-end" name="refund_qty[' . $line_id . ']" data-refund-line="' . $line_id . '"' . (((int) $refund_line['line_total'] < 0) ? ' data-refund-credit="1"' : '') . ' min="0" max="' . $remaining . '" step="1" value="0" inputmode="numeric" aria-label="' . h(lang(array('string' => 'Quantity to refund: {var:1}', 'vars' => (string) $refund_line['description']))) . '"></td>
                                         <td class="text-end text-nowrap" data-refund-line-total="' . $line_id . '">-</td>
                                     </tr>';
     }
@@ -262,7 +262,7 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
     return '
                             <input type="hidden" name="refund_mode" value="lines">
                             <p class="small fg-secondary">' . lang('Choose what came back. The amount is worked out from the lines, the same way the return invoice will be.') . '</p>
-                            ' . (($refund_uncovered > 0) ? '<div class="alert theme-warning small py-3">' . lang(array('string' => '{var:1} refunded earlier has no return invoice yet. Issue it before refunding more, so the same goods are not refunded twice.', 'vars' => BASE_CURRENCY_SYMBOL . number_format($refund_uncovered / 100, 2, '.', ','))) . ' <a href="add_erp_return.php?invoice_id=' . (int) $source['invoice_id'] . '&back_order=' . (int) $order_id . '">' . lang('Issue the return invoice') . '</a></div>' : '') . '
+                            ' . (($refund_uncovered > 0) ? '<div class="alert theme-warning small py-3">' . lang(array('string' => '{var:1} refunded earlier has no return invoice yet. Issue it before refunding more, so the same goods are not refunded twice.', 'vars' => h(erp_money_out($refund_uncovered)))) . ' <a href="add_erp_return.php?invoice_id=' . (int) $source['invoice_id'] . '&back_order=' . (int) $order_id . '">' . lang('Issue the return invoice') . '</a></div>' : '') . '
                             <div class="table-responsive">
                                 <table class="table table-sm align-middle mb-3">
                                     <thead><tr>
@@ -277,9 +277,9 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                             </div>
                             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
                                 <button type="button" class="btn btn-sm btn-outline theme-secondary" id="payment_refund_all">' . lang('Everything') . '</button>
-                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="payment_refund_total">' . BASE_CURRENCY_SYMBOL . '0.00</span></div>
+                                <div class="fw-semibold">' . lang('Refund Amount') . ': <span id="payment_refund_total">' . h(erp_money_out(0)) . '</span></div>
                             </div>
-                            <div class="small fg-secondary mt-1">' . lang('max') . ': ' . BASE_CURRENCY_SYMBOL . number_format($remaining_cents / 100, 2, '.', ',') . '</div>
+                            <div class="small fg-secondary mt-1">' . lang('max') . ': ' . h(erp_money_out($remaining_cents)) . '</div>
                             <div class="small fg-emphasis-warning d-none" id="payment_refund_capped">' . lang('The lines come to more than is left on the card (part was paid another way); the card refund stops at what is left.') . '</div>
                             <p class="form-text fg-secondary mt-3">' . (($source['source'] === 'invoice')
                                 ? lang(array('string' => 'After the refund, the return invoice against {var:1} opens with the same lines filled in; check it and save.', 'vars' => h($source['invoice_number'])))
@@ -289,8 +289,12 @@ function erp_order_refund_dialog($source, $order_id, $refunded_cents, $remaining
                                 var prices = ' . json_encode($refund_prices, JSON_HEX_TAG | JSON_HEX_AMP) . ';
                                 var max = ' . (int) $remaining_cents . ';
                                 var symbol = ' . json_encode(html_entity_decode(BASE_CURRENCY_SYMBOL, ENT_QUOTES, 'UTF-8'), JSON_HEX_TAG | JSON_HEX_AMP) . ';
+                                // Separators of the panel language, as erp_money_out()
+                                // writes the figures around them.
+                                var separators = ' . json_encode(erp_number_separators(), JSON_HEX_TAG | JSON_HEX_AMP) . ';
                                 var money = function (kurus) {
-                                    return symbol + (kurus / 100).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+                                    var parts = (Math.abs(kurus) / 100).toFixed(2).split(".");
+                                    return (kurus < 0 ? "-" : "") + symbol + parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, separators.thousands) + separators.decimal + parts[1];
                                 };
                                 var line = function (id, count) {
                                     var list = prices[id] || {};

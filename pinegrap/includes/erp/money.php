@@ -716,22 +716,26 @@ function erp_money_out_currency($kurus, $currency_code, $show_sign = true)
     $kurus = (int) $kurus;
     $currency_code = strtoupper(trim((string) $currency_code));
 
-    if ($symbols === null) {
-        $symbols = array();
-        foreach ((array) db_items("SELECT code, symbol FROM currencies") as $row) {
-            $symbols[strtoupper(trim((string) $row['code']))] = (string) $row['symbol'];
-        }
-    }
-
     $symbol = '';
     $suffix = '';
 
     if (defined('BASE_CURRENCY_CODE') && ($currency_code === strtoupper((string) BASE_CURRENCY_CODE))) {
         $symbol = (string) BASE_CURRENCY_SYMBOL;
-    } elseif (isset($symbols[$currency_code]) && (trim($symbols[$currency_code]) !== '')) {
-        $symbol = $symbols[$currency_code];
-    } else {
-        $suffix = ($currency_code !== '') ? (' ' . $currency_code) : '';
+    } elseif ($currency_code !== '') {
+        // Read only for another currency: a screen of home-currency figures
+        // needs no table read.
+        if ($symbols === null) {
+            $symbols = array();
+            foreach ((array) db_items("SELECT code, symbol FROM currencies") as $row) {
+                $symbols[strtoupper(trim((string) $row['code']))] = (string) $row['symbol'];
+            }
+        }
+
+        if (isset($symbols[$currency_code]) && (trim($symbols[$currency_code]) !== '')) {
+            $symbol = $symbols[$currency_code];
+        } else {
+            $suffix = ' ' . $currency_code;
+        }
     }
 
     // An entity such as &euro; is written as the character it stands for:

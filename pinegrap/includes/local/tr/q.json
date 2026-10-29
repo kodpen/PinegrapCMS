@@ -24,6 +24,7 @@
     "Quantity of {var:1}": "{var:1} miktarı",
     "Quantity shipped (when the shop shows it)": "Gönderilen adet (mağaza gösteriyorsa)",
     "Quantity to refund": "İade edilecek adet",
+    "Quantity to refund: {var:1}": "İade edilecek adet: {var:1}",
     "Quantity to return (order.return_delivery_lines)": "İade edilecek adet (order.return_delivery_lines)",
     "Quantity within of required quantity.": "Gerekli miktar.",
     "Quantity — default": "Miktar — varsayılan",
