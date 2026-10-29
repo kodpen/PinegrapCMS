@@ -126,8 +126,9 @@ function test_db_q_submit_order_forms_value_queries_use_db_q()
 {
 	// The order line stages (stock, reservations, membership, folder access)
 	// took 8 of submit_order.php's db_q() calls to includes/fn/order_completion.php,
-	// and the unreachable inline Iyzipay and Pay With Iyzico code took 6 more with it.
-	$expected = array('submit_order.php' => 53, 'includes/fn/forms.php' => 20);
+	// the unreachable inline Iyzipay and Pay With Iyzico code took 6 more with it,
+	// and the line comments' submitted form info took 3.
+	$expected = array('submit_order.php' => 50, 'includes/fn/forms.php' => 20);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;

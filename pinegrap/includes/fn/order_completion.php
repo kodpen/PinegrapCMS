@@ -1793,3 +1793,347 @@ function pg_order_complete_line_watcher(array $line, array $watcher, $submitted_
                 'submitted_form')");
     }
 }
+
+/**
+ * Starts the order_completed auto e-mail campaigns of the order's contact.
+ *
+ * @param int $contact_id the order's contact
+ * @return void
+ */
+function pg_order_complete_campaigns($contact_id)
+{
+    create_auto_email_campaigns(array(
+        'action' => 'order_completed',
+        'contact_id' => $contact_id));
+}
+
+/**
+ * How many submitted forms or comments an order line makes: one per unit
+ * when the product's quantity type says so, else one. The submit form
+ * quantity type applies to the add comment feature too. Pure.
+ *
+ * @param string $quantity_type products.submit_form_quantity_type
+ * @param int    $quantity      the line's quantity
+ * @return int
+ */
+function pg_order_line_unit_count($quantity_type, $quantity)
+{
+    return ($quantity_type == 'One Form per Quantity') ? (int) $quantity : 1;
+}
+
+/**
+ * The submitted form a unit's e-mailed page content names: the unit's own
+ * created or updated form, else the first unit's; 0 for none. Pure.
+ *
+ * @param int   $quantity_number
+ * @param array $forms           quantity number => array('id', 'type' => 'created'|'updated')
+ * @return int
+ */
+function pg_order_line_unit_form($quantity_number, array $forms)
+{
+    if (($quantity_number != 1) && isset($forms[$quantity_number])) {
+        return (int) $forms[$quantity_number]['id'];
+    }
+
+    return isset($forms[1]) ? (int) $forms[1]['id'] : 0;
+}
+
+/**
+ * What a unit's comment is attached to: on a form item view the unit's
+ * created or updated submitted form, else nothing. Null when the product adds
+ * a comment only for an updated form and the unit's form was not updated.
+ * Pure.
+ *
+ * @param string     $page_type          the add comment page's type
+ * @param array|null $form               the unit's array('id', 'type'), null for none
+ * @param bool       $only_for_update    products.add_comment_only_for_submit_form_update
+ * @return array|null array('item_id', 'item_type', 'updated')
+ */
+function pg_order_line_comment_target($page_type, $form, $only_for_update)
+{
+    $submitted_form_id = isset($form['id']) ? (int) $form['id'] : 0;
+    $updated = isset($form['type']) && ($form['type'] == 'updated');
+
+    if ($only_for_update && !$updated) {
+        return null;
+    }
+
+    if (($page_type == 'form item view') && $submitted_form_id) {
+        return array('item_id' => $submitted_form_id, 'item_type' => 'submitted_form', 'updated' => $updated);
+    }
+
+    return array('item_id' => 0, 'item_type' => '', 'updated' => $updated);
+}
+
+/**
+ * Adds the order line's comments to the product's add comment page, one per
+ * unit or one per line, attached to the unit's submitted form on a form item
+ * view, and sends the comment e-mails.
+ *
+ * @param array $line            add_comment, add_comment_page_id, add_comment_name,
+ *                               add_comment_message, add_comment_only_for_submit_form_update,
+ *                               submit_form_quantity_type, quantity
+ * @param array $variable_fields pg_order_line_variable_fields()
+ * @param array $product_forms   pg_order_line_product_form_fields()
+ * @param array $forms           quantity number => array('id', 'type' => 'created'|'updated')
+ * @return void
+ */
+function pg_order_complete_line_comments(array $line, array $variable_fields, array $product_forms, array $forms)
+{
+    if (!$line['add_comment'] || !$line['add_comment_page_id']) {
+        return;
+    }
+
+    $page = db_item(
+        "SELECT
+            page_id AS id,
+            page_type AS type,
+            comments_submitter_email_page_id,
+            comments_watcher_email_page_id
+        FROM page
+        WHERE page_id = '" . (int) $line['add_comment_page_id'] . "'");
+
+    if (empty($page['id'])) {
+        return;
+    }
+
+    $page_id = (int) $page['id'];
+    $form_item_view = ($page['type'] == 'form item view');
+    $number_of_comments = pg_order_line_unit_count($line['submit_form_quantity_type'], $line['quantity']);
+
+    for ($quantity_number = 1; $quantity_number <= $number_of_comments; $quantity_number++) {
+        $target = pg_order_line_comment_target(
+            $page['type'],
+            isset($forms[$quantity_number]) ? $forms[$quantity_number] : null,
+            (bool) $line['add_comment_only_for_submit_form_update']);
+
+        if ($target === null) {
+            continue;
+        }
+
+        $item_id = $target['item_id'];
+        $item_type = $target['item_type'];
+
+        // An updated form is likely ordered again to open its comments, so
+        // records that close them are removed.
+        if ($form_item_view && $target['updated']) {
+            db(
+                "DELETE FROM allow_new_comments_for_items
+                WHERE
+                    (page_id = '$page_id')
+                    AND (item_id = '$item_id')
+                    AND (item_type = 'submitted_form')");
+        }
+
+        $product_form_number = pg_order_product_form_number($quantity_number, $product_forms);
+        $product_form = $product_form_number ? $product_forms[$product_form_number] : null;
+
+        $name = pg_order_line_fill($line['add_comment_name'], $variable_fields, $product_form);
+        $message = pg_order_line_fill($line['add_comment_message'], $variable_fields, $product_form);
+
+        db(
+            "INSERT INTO comments (
+                page_id,
+                item_id,
+                item_type,
+                name,
+                message,
+                published,
+                created_timestamp,
+                last_modified_timestamp)
+             VALUES (
+                '$page_id',
+                '$item_id',
+                '$item_type',
+                '" . e($name) . "',
+                '" . e($message) . "',
+                '1',
+                UNIX_TIMESTAMP(),
+                UNIX_TIMESTAMP())");
+
+        $comment_id = mysqli_insert_id(db::$con);
+
+        // Scheduled comments set to be cancelled by a new comment are cancelled.
+        db(
+            "UPDATE comments
+            SET
+                publish_date_and_time = '',
+                publish_cancel = ''
+            WHERE
+                (publish_cancel = '1')
+                AND (page_id = '$page_id')
+                AND (item_id = '$item_id')
+                AND (item_type = '$item_type')");
+
+        // The submitted form's comment count and newest comment, keeping its views.
+        if ($item_id) {
+            $number_of_views = db_value("SELECT number_of_views FROM submitted_form_info WHERE (submitted_form_id = '$item_id') AND (page_id = '$page_id')");
+
+            $query =
+                "SELECT COUNT(*)
+                FROM comments
+                WHERE
+                    (page_id = ?)
+                    AND (item_id = ?)
+                    AND (item_type = 'submitted_form')
+                    AND (published = '1')";
+            $result = db_q($query, array((string) $page_id, (string) $item_id)) or output_error('Query failed.');
+            $row = mysqli_fetch_row($result);
+            $published_comments = $row[0];
+
+            $query = "DELETE FROM submitted_form_info WHERE (submitted_form_id = ?) AND (page_id = ?)";
+            db_q($query, array((string) $item_id, (string) $page_id)) or output_error('Query failed.');
+
+            $query =
+                "INSERT INTO submitted_form_info (
+                    submitted_form_id,
+                    page_id,
+                    number_of_views,
+                    number_of_comments,
+                    newest_comment_id)
+                 VALUES (
+                    ?,
+                    ?,
+                    ?,
+                    ?,
+                    ?)";
+            db_q($query, array((string) $item_id, (string) $page_id, (string) $number_of_views, (string) $published_comments, (string) $comment_id)) or output_error('Query failed.');
+        }
+
+        send_comment_email_to_administrators($comment_id);
+
+        if ($form_item_view && ($page['comments_submitter_email_page_id'] != '0')) {
+            send_comment_email_to_custom_form_submitter($comment_id);
+        }
+
+        if ($page['comments_watcher_email_page_id'] != '0') {
+            send_comment_email_to_watchers($comment_id);
+        }
+    }
+}
+
+/**
+ * The blind copy address of a product's e-mailed page: the product's own,
+ * else the store's. Pure.
+ *
+ * @param string $product_bcc   products.email_bcc
+ * @param string $store_address ECOMMERCE_EMAIL_ADDRESS
+ * @return string
+ */
+function pg_order_email_page_bcc($product_bcc, $store_address)
+{
+    return ($product_bcc != '') ? $product_bcc : $store_address;
+}
+
+/**
+ * E-mails the product's page to the order's billing address, with the
+ * order's variables, the product form answers and the submitted form values
+ * filled in; a "Start Quantity Row" / "End Quantity Row" comment pair repeats
+ * its content once per unit with that unit's answers.
+ *
+ * @param array  $line                  email_page, email_bcc, submit_form_custom_form_page_id, quantity
+ * @param string $billing_email_address the order's billing e-mail address
+ * @param array  $variable_fields       pg_order_line_variable_fields()
+ * @param array  $product_forms         pg_order_line_product_form_fields()
+ * @param array  $forms                 quantity number => array('id', 'type' => 'created'|'updated')
+ * @return void
+ */
+function pg_order_complete_line_email_page(array $line, $billing_email_address, array $variable_fields, array $product_forms, array $forms)
+{
+    if (!$line['email_page']) {
+        return;
+    }
+
+    $page_id = (int) $line['email_page'];
+    $form_page_id = $line['submit_form_custom_form_page_id'];
+    $first_product_form = isset($product_forms[1]) ? $product_forms[1] : null;
+
+    $subject = db_value("SELECT page_title FROM page WHERE page_id = '$page_id'");
+
+    if ($subject == '') {
+        $subject = 'Product Information';
+    } else {
+        $subject = pg_order_line_fill($subject, $variable_fields, $first_product_form);
+
+        if (isset($forms[1])) {
+            $subject = get_variable_submitted_form_data_for_content($form_page_id, $forms[1]['id'], $subject, false);
+        }
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+    $body = get_page_content($page_id, '', '', 'preview', true);
+
+    // Order-level variables, inside and outside the quantity rows.
+    $body = replace_variables(array(
+        'content' => $body,
+        'fields' => $variable_fields,
+        'format' => 'html'));
+
+    preg_match_all('/<!-- Start Quantity Row -->(.*?)<!-- End Quantity Row -->/si', $body, $matches, PREG_SET_ORDER);
+
+    foreach ($matches as $match) {
+        $content = '';
+
+        for ($quantity_number = 1; $quantity_number <= $line['quantity']; $quantity_number++) {
+            $quantity_content = $match[1];
+
+            $product_form_number = pg_order_product_form_number($quantity_number, $product_forms);
+
+            if ($product_form_number) {
+                $quantity_content = replace_variables(array(
+                    'content' => $quantity_content,
+                    'fields' => $product_forms[$product_form_number],
+                    'format' => 'html'));
+            }
+
+            $submitted_form_id = pg_order_line_unit_form($quantity_number, $forms);
+
+            if ($submitted_form_id) {
+                $quantity_content = get_variable_submitted_form_data_for_content($form_page_id, $submitted_form_id, $quantity_content);
+            }
+
+            $content .= $quantity_content;
+        }
+
+        $body = str_replace($match[0], $content, $body);
+    }
+
+    // The first unit's answers outside the quantity rows, or for a page that has none.
+    if ($first_product_form !== null) {
+        $body = replace_variables(array(
+            'content' => $body,
+            'fields' => $first_product_form,
+            'format' => 'html'));
+    }
+
+    if (isset($forms[1])) {
+        $body = get_variable_submitted_form_data_for_content($form_page_id, $forms[1]['id'], $body);
+    }
+
+    email(array(
+        'to' => $billing_email_address,
+        'bcc' => pg_order_email_page_bcc($line['email_bcc'], ECOMMERCE_EMAIL_ADDRESS),
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => $subject,
+        'format' => 'html',
+        'body' => $body,
+        'queue' => true
+    ));
+}
+
+/**
+ * Starts the product_ordered auto e-mail campaigns of the line's product.
+ *
+ * @param array $line       product_id
+ * @param int   $contact_id the order's contact
+ * @return void
+ */
+function pg_order_complete_line_campaigns(array $line, $contact_id)
+{
+    create_auto_email_campaigns(array(
+        'action' => 'product_ordered',
+        'action_item_id' => $line['product_id'],
+        'contact_id' => $contact_id));
+}

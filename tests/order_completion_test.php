@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -88,6 +88,7 @@ function test_order_completion_tail_writes_in_order()
 		'receipt e-mail' => array('pg_legal_documents_attachments('),
 		'address book' => array('"INSERT INTO address_book ('),
 		'ship and delivery dates' => array("delivery_date = '", 'delivery_date = ?'),
+		'order campaigns' => array("'action' => 'order_completed'"),
 		'stock' => array('UPDATE products SET inventory_quantity = (inventory_quantity - ?)'),
 		'stock announced' => array('pg_product_stock_changed('),
 		'reservation spots' => array('"UPDATE remaining_reservation_spots'),
@@ -99,6 +100,10 @@ function test_order_completion_tail_writes_in_order()
 		'submitted form created' => array('"INSERT INTO forms ('),
 		'submitted form e-mails' => array("'action' => 'custom_form_submitted'"),
 		'watcher added' => array('"INSERT INTO watchers ('),
+		'comment added' => array('"INSERT INTO comments ('),
+		'comment e-mails' => array('send_comment_email_to_administrators('),
+		'page e-mailed' => array("'Product Information'"),
+		'product campaigns' => array("'action' => 'product_ordered'"),
 		'reward points' => array('UPDATE user SET user_reward_points = ?'),
 		'contact groups' => array('"INSERT INTO contacts_contact_groups_xref ('),
 		'abandoned campaigns cancelled' => array('"UPDATE email_campaigns'),
@@ -459,4 +464,64 @@ function test_order_completion_form_admin_addresses()
 	pg_assert_same(array('a@example.com', 'b@example.com', 'to@example.com'), pg_order_form_admin_addresses(array('a@example.com', 'b@example.com', 'a@example.com'), 'to@example.com'), 'each option address once, then the to address');
 	pg_assert_same(array('to@example.com'), pg_order_form_admin_addresses(array('to@example.com'), 'to@example.com'), 'the to address once');
 	pg_assert_same(array(), pg_order_form_admin_addresses(array(), ''), 'nobody');
+}
+
+function test_order_completion_submit_order_adds_comments_and_pages_through_the_functions()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	foreach (array('pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+	}
+
+	pg_assert_same(0, substr_count($source, 'INSERT INTO comments'), 'no comment write of its own');
+	pg_assert_same(0, substr_count($source, 'send_comment_email_to_'), 'no comment e-mails of its own');
+	pg_assert_same(0, substr_count($source, "'Product Information'"), 'no e-mailed page of its own');
+	pg_assert_same(0, substr_count($source, "'order_completed'"), 'no order campaigns of its own');
+	pg_assert_same(0, substr_count($source, "'product_ordered'"), 'no line campaigns of its own');
+}
+
+function test_order_completion_line_unit_count()
+{
+	pg_assert_same(3, pg_order_line_unit_count('One Form per Quantity', 3), 'one per unit');
+	pg_assert_same(1, pg_order_line_unit_count('One Form per Product', 3), 'one per line');
+	pg_assert_same(1, pg_order_line_unit_count('', 5), 'one per line by default');
+}
+
+function test_order_completion_line_unit_form()
+{
+	$forms = array(1 => array('id' => 7, 'type' => 'created'), 3 => array('id' => 9, 'type' => 'updated'));
+
+	pg_assert_same(7, pg_order_line_unit_form(1, $forms), 'the first unit\'s own');
+	pg_assert_same(7, pg_order_line_unit_form(2, $forms), 'else the first unit\'s');
+	pg_assert_same(9, pg_order_line_unit_form(3, $forms), 'the unit\'s own');
+	pg_assert_same(0, pg_order_line_unit_form(2, array(3 => array('id' => 9, 'type' => 'updated'))), 'none');
+}
+
+function test_order_completion_line_comment_target()
+{
+	pg_assert_same(
+		array('item_id' => 9, 'item_type' => 'submitted_form', 'updated' => true),
+		pg_order_line_comment_target('form item view', array('id' => 9, 'type' => 'updated'), true),
+		'an updated form on a form item view');
+	pg_assert_same(null, pg_order_line_comment_target('form item view', array('id' => 7, 'type' => 'created'), true), 'only for an update: a created form adds none');
+	pg_assert_same(null, pg_order_line_comment_target('form item view', null, true), 'only for an update: no form adds none');
+	pg_assert_same(
+		array('item_id' => 7, 'item_type' => 'submitted_form', 'updated' => false),
+		pg_order_line_comment_target('form item view', array('id' => 7, 'type' => 'created'), false),
+		'a created form');
+	pg_assert_same(
+		array('item_id' => 0, 'item_type' => '', 'updated' => true),
+		pg_order_line_comment_target('standard', array('id' => 9, 'type' => 'updated'), false),
+		'another page type names no item');
+	pg_assert_same(
+		array('item_id' => 0, 'item_type' => '', 'updated' => false),
+		pg_order_line_comment_target('form item view', null, false),
+		'no form names no item');
+}
+
+function test_order_completion_email_page_bcc()
+{
+	pg_assert_same('a@example.com', pg_order_email_page_bcc('a@example.com', 'shop@example.com'), 'the product\'s');
+	pg_assert_same('shop@example.com', pg_order_email_page_bcc('', 'shop@example.com'), 'else the store\'s');
 }
