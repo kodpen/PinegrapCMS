@@ -56,6 +56,15 @@
     var maxLines = parseInt(root.getAttribute('data-max-lines'), 10) || 200;
     var textNoResults = root.getAttribute('data-text-no-results') || '';
     var textMaxLines = root.getAttribute('data-text-max-lines') || '';
+    // A polite status line for what the product search finds: the popup
+    // moves to the overlay host, and a plain line in it is not read out.
+    var liveStatus = document.createElement('div');
+    var announceTimer = null;
+    liveStatus.className = 'visually-hidden';
+    liveStatus.setAttribute('role', 'status');
+    liveStatus.setAttribute('aria-live', 'polite');
+    liveStatus.setAttribute('aria-atomic', 'true');
+    root.appendChild(liveStatus);
     var texts = {
         stock: root.getAttribute('data-text-stock') || 'In stock: {var:1}',
         noStockTracking: root.getAttribute('data-text-no-stock-tracking') || '',
@@ -708,6 +717,16 @@
         input.setAttribute('aria-expanded', 'false');
     }
 
+    // Emptied first and filled a moment later, so the same sentence twice in
+    // a row is read again.
+    function announce(text) {
+        window.clearTimeout(announceTimer);
+        liveStatus.textContent = '';
+        announceTimer = window.setTimeout(function () {
+            liveStatus.textContent = text;
+        }, 150);
+    }
+
     function resultItems() {
         return openList ? Array.prototype.slice.call(openList.menu.querySelectorAll('.menu-item')) : [];
     }
@@ -914,6 +933,7 @@
             empty.className = 'menu-text fg-secondary small';
             empty.textContent = textNoResults;
             menu.appendChild(empty);
+            announce(textNoResults);
         }
 
         products.forEach(function (product) {

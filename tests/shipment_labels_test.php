@@ -367,3 +367,75 @@ function test_shipment_label_return_is_never_a_delivery_parcel()
 	pg_assert_same(12, $request['order_return_id'], 'the request is named');
 	pg_assert_false(array_key_exists('order_return_id', $order_screen), 'an order-screen row writes no request');
 }
+
+// The customer is handed the newest active label of their request; a
+// cancelled one never.
+function test_shipment_label_customer_pick()
+{
+	$new = array('id' => 9, 'state' => 'cancelled', 'is_return' => 1, 'order_return_id' => 4);
+	$old = array('id' => 7, 'state' => 'active', 'is_return' => 1, 'order_return_id' => 4);
+
+	pg_assert_same(7, pg_shipment_label_customer_pick(array($new, $old))['id'], 'the active one under a cancelled one');
+	pg_assert_same(null, pg_shipment_label_customer_pick(array($new)), 'cancelled: none');
+	pg_assert_same(null, pg_shipment_label_customer_pick(array()), 'no label: none');
+	pg_assert_same(null, pg_shipment_label_customer_pick('nothing'), 'not a list');
+}
+
+// The link is offered while the goods are to go back, and only with a label.
+function test_shipment_label_customer_offered()
+{
+	pg_assert_true(pg_shipment_label_customer_offered('approved', true), 'approved');
+	pg_assert_true(pg_shipment_label_customer_offered('shipped', true), 'on its way: printed again');
+	pg_assert_false(pg_shipment_label_customer_offered('approved', false), 'no active label');
+
+	foreach (array('requested', 'rejected', 'received', 'refunded', 'closed', '') as $status) {
+		pg_assert_false(pg_shipment_label_customer_offered($status, true), $status);
+	}
+}
+
+// Only the order's signed-in owner, under the returns' rate limit, for a
+// return of that order that offers a label.
+function test_shipment_label_customer_refusal()
+{
+	$order = array('id' => 30, 'user_id' => 5);
+	$return = array('id' => 4, 'order_id' => 30, 'status' => 'approved');
+	$label = array('id' => 7, 'state' => 'active', 'order_return_id' => 4);
+
+	pg_assert_same(null, pg_shipment_label_customer_refusal(5, $order, $return, $label, false), 'the owner gets it');
+
+	$other = pg_shipment_label_customer_refusal(6, $order, $return, $label, false);
+	pg_assert_same(403, $other['status'], 'another customer');
+	pg_assert_same($other, pg_shipment_label_customer_refusal(6, null, null, null, false), 'the same answer whether or not the order exists');
+	pg_assert_same(403, pg_shipment_label_customer_refusal(0, array('id' => 31, 'user_id' => 0), $return, $label, false)['status'], 'signed out, a guest order');
+
+	pg_assert_same(429, pg_shipment_label_customer_refusal(5, $order, $return, $label, true)['status'], 'rate limit hit');
+	pg_assert_same(403, pg_shipment_label_customer_refusal(6, $order, $return, $label, true)['status'], 'the owner check comes first');
+
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, array('id' => 4, 'order_id' => 31, 'status' => 'approved'), $label, false)['status'], 'a return of another order');
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, null, $label, false)['status'], 'no such return');
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, $return, null, false)['status'], 'no active label');
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, $return, array('id' => 7, 'state' => 'cancelled', 'order_return_id' => 4), false)['status'], 'a cancelled label');
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, $return, array('id' => 8, 'state' => 'active', 'order_return_id' => 3), false)['status'], 'a label of another request');
+	pg_assert_same(404, pg_shipment_label_customer_refusal(5, $order, array_merge($return, array('status' => 'refunded')), $label, false)['status'], 'a request past sending');
+}
+
+// The customer's download: a PDF as is, an SVG only as a sandboxed
+// attachment (never the print page), a ZPL file saved.
+function test_shipment_label_customer_headers()
+{
+	$pdf = pg_shipment_label_customer_headers('pdf', 'label-R1');
+	pg_assert_contains('Content-Type: application/pdf', $pdf);
+	pg_assert_contains('Content-Disposition: inline; filename="label-R1.pdf"', $pdf);
+	pg_assert_contains('X-Content-Type-Options: nosniff', $pdf);
+	pg_assert_contains('Cache-Control: private, no-store', $pdf);
+
+	$svg = pg_shipment_label_customer_headers('svg', 'label-R1');
+	pg_assert_contains('Content-Type: image/svg+xml', $svg);
+	pg_assert_contains('Content-Disposition: attachment; filename="label-R1.svg"', $svg);
+	pg_assert_contains('Content-Security-Policy: sandbox', $svg);
+	pg_assert_false(in_array('Content-Type: text/html; charset=utf-8', $svg, true), 'never the print page');
+
+	$zpl = pg_shipment_label_customer_headers('zpl', 'label-R1');
+	pg_assert_contains('Content-Type: application/octet-stream', $zpl);
+	pg_assert_contains('Content-Disposition: attachment; filename="label-R1.zpl"', $zpl);
+}

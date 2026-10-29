@@ -2044,8 +2044,9 @@
 
     launcher.addEventListener('click', togglePanel);
 
-    // Escape closes an open emoji palette first, then the window. The
-    // window stays non-modal: Tab leaves it like any other part of the page.
+    // Escape closes an open emoji palette first, then the window. On a wide
+    // screen the window stays non-modal: Tab leaves it like any other part
+    // of the page.
     panel.addEventListener('keydown', function (event) {
         if (event.key !== 'Escape' || event.defaultPrevented || !state.open) {
             return;
@@ -2058,6 +2059,41 @@
         }
 
         togglePanel();
+    });
+
+    // On a phone the window fills the screen and the page under it cannot
+    // scroll, so Tab past its last control (Shift+Tab before its first)
+    // wraps round inside it instead of walking the hidden page.
+    var TABBABLE = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+
+    function tabbables() {
+        return Array.prototype.filter.call(panel.querySelectorAll(TABBABLE), function (node) {
+            return node.getClientRects().length > 0;
+        });
+    }
+
+    panel.addEventListener('keydown', function (event) {
+        if (event.key !== 'Tab' || event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey || !state.open || !isFullscreenLayout()) {
+            return;
+        }
+
+        var nodes = tabbables();
+
+        if (!nodes.length) {
+            return;
+        }
+
+        var first = nodes[0];
+        var last = nodes[nodes.length - 1];
+        var active = document.activeElement;
+
+        if (event.shiftKey && (active === first)) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && (active === last)) {
+            event.preventDefault();
+            first.focus();
+        }
     });
 
     // No timer runs while the tab is hidden; everything resumes where it

@@ -98,3 +98,14 @@ function test_chat_row_has_a_focus_ring_on_panel_tokens()
 		preg_match('/#pg-chat-root \.pg-chat-row:focus-visible \{[^}]*var\(--pg-focus-ring-width\)[^}]*var\(--pg-focus-ring-color\)/', $chat) === 1,
 		'a focused chat row draws the panel focus ring');
 }
+
+function test_chat_window_keeps_tab_inside_only_in_full_screen()
+{
+	$source = chat_backend_keyboard_source();
+	pg_assert_true(
+		preg_match("/panel\\.addEventListener\\('keydown'[^\\n]*\\n\\s*if \\(event\\.key !== 'Tab'[^\\n]*!isFullscreenLayout\\(\\)/", $source) === 1,
+		'Tab wraps inside the window only while it fills a phone screen');
+	pg_assert_contains('last.focus()', $source, 'Shift+Tab on the first control goes to the last');
+	pg_assert_contains('first.focus()', $source, 'Tab on the last control goes to the first');
+	pg_assert_true(strpos($source, 'The window stays non-modal: Tab leaves it') === false, 'the old non-modal note is gone');
+}

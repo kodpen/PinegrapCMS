@@ -21,12 +21,11 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 - G3 flow-only templates. Done (#2196): new customer, quote approval, text review (`workspace/workspace-flows-template-format.md`).
 
 - G3a Save as template, server: done (#3146): `ws_flow_templates` (11.0.115), store, panel actions (`workspace/workspace-flows-template-saved.md`).
-- G3b Save as template, client: the "Save as template" button and the gallery's edit and delete of saved cards in `assets/js/workspace_flow.js` (after the Flows look steps holding that file), with the actions of G3a.
+- G3b Save as template, client: done (#3242): the editor's ⋯ Save as template, saved cards in the gallery with edit and delete (`workspace/workspace-flows-template-saved.md`).
 
 - G1b AI start of New flow: server function done (#3119, `workspace/workspace-flow-ai-start.md`); the panel route, js flag and AI card in the client half.
 
 ## Where to start?
-- G3b once `assets/js/workspace_flow.js` is free.
 - G1b's client half: after G1b's server function, the panel route, the js flag and the AI card (`workspace/workspace-flow-ai-start.md`). Then the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
 
 ## Which questions are answered?

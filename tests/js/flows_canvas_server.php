@@ -75,6 +75,7 @@ $config = array(
 	'build'     => true,
 	'templates' => array(),
 	'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
+	'template_save' => true,
 	'steps'     => array(
 		'metrics' => array(), 'digest_only' => (object) array(), 'targets' => array(), 'changes' => (object) array(),
 		'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(),
