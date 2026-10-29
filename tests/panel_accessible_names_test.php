@@ -71,8 +71,9 @@ function test_panel_accessible_names_icon_buttons()
 	pg_assert_same(2, substr_count($source, "aria-label=\"' . h(lang('Invoice Detail')) . '\""), 'view_parasut_inbox.php: both detail buttons');
 
 	$source = panel_accessible_names_source('marketplace_products.php');
-	pg_assert_same(3, substr_count($source, "aria-label=\"' . h(lang('Previous page')) . '\""), 'marketplace_products.php: previous page links');
-	pg_assert_same(3, substr_count($source, "aria-label=\"' . h(lang('Next page')) . '\""), 'marketplace_products.php: next page links');
+	pg_assert_same(3, substr_count($source, "lang('Previous page'), 'bi-chevron-left')"), 'marketplace_products.php: previous page arrows');
+	pg_assert_same(3, substr_count($source, "lang('Next page'), 'bi-chevron-right')"), 'marketplace_products.php: next page arrows');
+	pg_assert_same(2, substr_count($source, "aria-label=\"' . h(\$label) . '\""), 'marketplace_products.php: the arrow helper names the link and the span');
 }
 
 function test_panel_accessible_names_autofill_decoy()
