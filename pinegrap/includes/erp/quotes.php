@@ -699,8 +699,9 @@ function erp_quote_mail_send($quote_id, $to, $subject, $message, $user_id)
     ));
 
     if (!$sent) {
-        erp_mail_settle($mail_id, false, $file, lang('The e-mail could not be sent. The details are in the activity log.'));
-        return array('success' => false, 'error' => lang('The e-mail could not be sent. The details are in the activity log.'));
+        $error = pg_mail_failure_sentence(lang('The e-mail could not be sent.'));
+        erp_mail_settle($mail_id, false, $file, $error);
+        return array('success' => false, 'error' => $error);
     }
 
     erp_mail_settle($mail_id, true, $file, '');

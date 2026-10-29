@@ -1515,7 +1515,7 @@ function erp_accountant_send($id, $to, $user_id = 0)
                 WHERE id = '" . (int) $id . "'");
         }
 
-        return array('success' => false, 'error' => lang('The e-mail could not be sent.'));
+        return array('success' => false, 'error' => pg_mail_failure_sentence(lang('The e-mail could not be sent.')));
     }
 
     db("UPDATE erp_accountant_packages SET sent_to = '" . escape(mb_substr($to, 0, 255)) . "', sent_at = '" . time() . "', sent_by = '" . (int) $user_id . "'

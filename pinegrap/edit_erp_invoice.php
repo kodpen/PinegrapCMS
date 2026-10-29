@@ -338,7 +338,7 @@ if ($_POST) {
                 ? lang('The invoice was e-mailed, with the official copy of the e-document.')
                 : lang('The invoice was e-mailed.'));
         } else {
-            $liveform->mark_error('mail_to', h($sent['error']));
+            $liveform->mark_error($sent['field'], h($sent['error']));
             $_SESSION['software']['erp_mail_draft'][$invoice_id] = array(
                 'to' => (string) ($_POST['mail_to'] ?? ''),
                 'subject' => (string) ($_POST['mail_subject'] ?? ''),

@@ -502,32 +502,33 @@ function erp_reconciliation_mail_html($data)
  * @param array  $options
  * @param string $to  Recipient address
  * @param int    $created_by
- * @return array ['success' => bool, 'error' => string]
+ * @return array ['success' => bool, 'error' => string, 'field' => string]
+ *               field: the form field the error belongs to ('to' or '_error')
  */
 function erp_reconciliation_send($account_id, $options, $to, $created_by = 0)
 {
     $to = trim((string) $to);
 
     if (($to === '') || !filter_var($to, FILTER_VALIDATE_EMAIL)) {
-        return array('success' => false, 'error' => lang('Please enter a valid e-mail address to send the letter to.'));
+        return array('success' => false, 'error' => lang('Please enter a valid e-mail address to send the letter to.'), 'field' => 'to');
     }
 
     $sender = erp_reconciliation_sender();
 
     if ($sender === '') {
-        return array('success' => false, 'error' => lang('The store has no e-mail address to send from. Set one under Settings.'));
+        return array('success' => false, 'error' => lang('The store has no e-mail address to send from. Set one under Settings.'), 'field' => '_error');
     }
 
     $data = erp_reconciliation_data($account_id, $options);
 
     if ($data === false) {
-        return array('success' => false, 'error' => lang('The account could not be found.'));
+        return array('success' => false, 'error' => lang('The account could not be found.'), 'field' => '_error');
     }
 
     $pdf = erp_invoice_pdf(erp_template_render(erp_reconciliation_template(), $data));
 
     if ($pdf === false) {
-        return array('success' => false, 'error' => lang('The PDF library is not installed.'));
+        return array('success' => false, 'error' => lang('The PDF library is not installed.'), 'field' => '_error');
     }
 
     $options = erp_reconciliation_options($options);
@@ -552,7 +553,7 @@ function erp_reconciliation_send($account_id, $options, $to, $created_by = 0)
     ));
 
     if (!$sent) {
-        return array('success' => false, 'error' => lang('The e-mail could not be sent. The details are in the activity log.'));
+        return array('success' => false, 'error' => pg_mail_failure_sentence(lang('The e-mail could not be sent.')), 'field' => '_error');
     }
 
     if (function_exists('erp_archive_reconciliation')) {
