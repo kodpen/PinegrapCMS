@@ -28,11 +28,12 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 7. International (#3124), done: Shippo PR #3192 (`commerce/carrier-label-shippo.md`), Sendcloud PR #3226 (`commerce/carrier-label-sendcloud.md`); no customs yet.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
    - 8a (2(a)). Done in PR #3194 (`commerce/shipment-label-returns.md`).
-   - 8b (2(c)). Done in PR #3239 (classic view). 8c: the `__returns` widget's link.
+   - 8b (2(c)). Done in PR #3239 (classic view).
+   - 8c. Done in PR #3268 (the widget's returns part).
 
 ## Open questions?
 - Answered (#3073): Geliver first (public reference and test mode); the owner confirms its prices; no aggregator-specific fields in the shipment row.
 - Formats (#3123): PDF, ZPL, SVG; ZPL never sent to a converter.
 
 ## Where to start?
-- Step 8c (#3234 has landed) or step 5 Yurtiçi/Aras drivers (one with `track()` is tracked by the job as it is). Live checks of Geliver, Shippo and Sendcloud with the owner's keys.
+- Step 5 Yurtiçi/Aras drivers (one with `track()` is tracked by the job as it is). Live checks of Geliver, Shippo and Sendcloud with the owner's keys.
