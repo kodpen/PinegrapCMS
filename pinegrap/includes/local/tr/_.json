@@ -1129,6 +1129,7 @@
     "{var:1} request{suffix:1} · peak {var:2} ms": "{var:1} istek · tepe {var:2} ms",
     "{var:1} requires {var:2}, so {var:2} has been added to your order.": "{var:2}, {var:1} için gereklidir. Bu nedenle {var:2} siparişinize eklendi.",
     "{var:1} result": "{var:1} sonuç",
+    "{var:1} result(s)": "{var:1} sonuç",
     "{var:1} results": "{var:1} sonuç",
     "{var:1} results in {var:2} tabs": "{var:2} sekmede {var:1} sonuç",
     "{var:1} retired the sign-in with the old credentials. Real-time {var:1} information stays off until the new credentials are entered here. The old values are kept but no longer used.": "{var:1}, eski kimlik bilgileriyle girişi kullanımdan kaldırdı. Yeni bilgiler buraya girilene kadar {var:1} anlık bilgileri kapalı kalır. Eski değerler saklanır ama artık kullanılmaz.",

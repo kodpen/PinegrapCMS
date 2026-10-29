@@ -1182,6 +1182,7 @@
     "The change was made.": "Değişiklik yapıldı.",
     "The changed cells are not saved. Close the window anyway?": "Değişen hücreler kaydedilmedi. Pencere yine de kapatılsın mı?",
     "The changed paragraphs are not saved. Close the window anyway?": "Değişen paragraflar kaydedilmedi. Pencere yine de kapatılsın mı?",
+    "The changes could not be saved.": "Değişiklikler kaydedilemedi.",
     "The changes of {var:1} listing(s) will be sent on the next run.": "{var:1} ilanın değişiklikleri bir sonraki çalışmada gönderilecek.",
     "The changes on this screen have not been saved. Close anyway?": "Bu ekrandaki değişiklikler kaydedilmedi. Yine de kapatılsın mı?",
     "The changes to this flow could not be saved. Leave them and go on?": "Bu akıştaki değişiklikler kaydedilemedi. Onları bırakıp devam edilsin mi?",

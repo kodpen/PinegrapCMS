@@ -152,6 +152,7 @@ echo pg_page_shell(
                 "Dynamic Region":"' . lang('Dynamic Region') . '",
                 "Save":"' . lang('Save') . '",
                 "Saved":"' . lang('Saved') . '",
+                "The changes could not be saved.":"' . escape_javascript(lang('The changes could not be saved.')) . '",
                 "Undo Changes":"' . lang('Undo Changes') . '",
                 "read-only":"' . lang('read-only') . '",
                 "System Page Style":"' . lang('System Page Style') . '",
