@@ -1015,6 +1015,8 @@ if (!$_POST) {
                 
             // else forward user to edit submitted form in backend
             } else {
+                pg_submitted_form_mark_chosen_files($liveform, $fields, $_FILES);
+
                 $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
                 if ($send_to === '/__none__') $send_to = '';
                 // A loaded revision stays loaded, so its save is still a restore.

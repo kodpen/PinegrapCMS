@@ -549,6 +549,8 @@ if (!$_POST) {
 
     // else an error does exist, so forward user back to add submitted form
     } else {
+        pg_submitted_form_mark_chosen_files($liveform, $fields, $_FILES);
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_submitted_form.php?page_id=' . urlencode($page_id));
     }
 }

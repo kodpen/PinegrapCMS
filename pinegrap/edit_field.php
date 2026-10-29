@@ -324,6 +324,19 @@ if (!$_POST) {
     $row = mysqli_fetch_assoc($result);
     $position = $row ? $row['id'] : 'top';
 
+    // A form sent back by a refused save shows what was typed. Anything else
+    // left in this screen's session (a post sent back for another field, a
+    // name error without a value) is dropped, so it never empties this
+    // field's Name box.
+    $posted = pg_field_form_session_values($liveform, $field);
+
+    if ($posted !== null) {
+        $field = pg_field_form_posted_field($field, $posted);
+        $position = $posted['position'] ?? $position;
+    } else {
+        $liveform->remove_form();
+    }
+
     // A custom form's submitted data goes with the field.
     $delete_data_warning = ($form_type == 'custom') ? lang(' and ALL SUBMITTED FORM DATA for this field') : '';
     
@@ -377,8 +390,7 @@ if (!$_POST) {
 </main>' .
     output_footer();
     
-    $liveform->unmark_errors();
-    $liveform->clear_notices();
+    $liveform->remove_form();
 
 } else {
     validate_token_field();
@@ -458,6 +470,7 @@ if (!$_POST) {
         
         // if there are errors in the liveform then send the user back to the edit field screen
         if ($liveform->check_form_errors() == true) {
+            $liveform->add_fields_to_session();
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_field.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
         }

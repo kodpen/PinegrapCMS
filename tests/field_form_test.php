@@ -174,3 +174,45 @@ function test_field_form_edit_screen_uses_shared_form()
 	pg_assert_contains('pg_field_form_layout_warning(', $source, 'keeps the custom layout warning');
 	pg_assert_contains('$designer_form', $source, 'keeps the read-only designer form view');
 }
+
+function test_field_form_posted_field()
+{
+	$stored = pg_field_form_new_field('7');
+	$stored['id'] = '12';
+	$stored['name'] = 'Terms';
+	$stored['label'] = 'Old label';
+	$stored['type'] = 'text box';
+	$stored['multiple'] = 1;
+	$stored['information'] = '<p>Old</p>';
+
+	// A sent-back form: the boxes keep what was typed, a check box that was
+	// not posted is off and one that was posted is on.
+	$field = pg_field_form_posted_field($stored, array(
+		'name' => 'Terms & Conditions',
+		'type' => 'pick list',
+		'label' => 'New label',
+		'size' => '30',
+		'default_value' => 'yes',
+		'options' => "Yes\nNo",
+		'information' => '<p>New</p>',
+		'spacing_above' => '1',
+	));
+
+	pg_assert_same('12', $field['id'], 'the id stays the stored one');
+	pg_assert_same('Terms & Conditions', $field['name'], 'name');
+	pg_assert_same('pick list', $field['type'], 'type');
+	pg_assert_same('New label', $field['label'], 'label');
+	pg_assert_same('30', $field['size'], 'size');
+	pg_assert_same('yes', $field['default_value'], 'default value');
+	pg_assert_same("Yes\nNo", $field['options'], 'choices');
+	pg_assert_same('<p>New</p>', $field['information'], 'information');
+	pg_assert_same(1, $field['spacing_above'], 'a posted check box is on');
+	pg_assert_same(0, $field['multiple'], 'a check box left out of the post is off');
+	pg_assert_same(0, $field['required'], 'required left out of the post is off');
+	pg_assert_same('7', $field['upload_folder_id'], 'a box that was not on the form keeps its value');
+	pg_assert_same(0, $field['translate_values'], 'translation left out of the post is off');
+
+	// A multiple value (never posted by these boxes) falls back to its first entry.
+	$field = pg_field_form_posted_field($stored, array('label' => array('A', 'B')));
+	pg_assert_same('A', $field['label'], 'an array value gives its first entry');
+}

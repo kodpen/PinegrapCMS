@@ -20,6 +20,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
     exit;
 }
 
+// The liveform entry that lists the file upload fields whose chosen file was
+// dropped when the form was sent back (a browser never refills a file box).
+const PG_SUBMITTED_FORM_CHOOSE_AGAIN = '__choose_file_again';
+
 /**
  * The "Form Data" fields of a custom form, with the scripts its fields need.
  *
@@ -78,6 +82,9 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
     // Prepare to keep track if whether there are file upload fields or not,
     // in order to know later if we need to output enctype for form.
     $file_upload_exists = false;
+
+    $choose_again = $liveform->get_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN);
+    $choose_again = is_array($choose_again) ? array_map('strval', $choose_again) : array();
 
     foreach ($fields as $field) {
         $field_required = '';
@@ -389,13 +396,24 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                     }
                 }
 
+                $file_attributes = array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size']);
+                $output_choose_again = '';
+
+                // The form came back with an error elsewhere: the file chosen
+                // here was not kept, so say so next to the box.
+                if (in_array((string) $field['id'], $choose_again, true)) {
+                    $file_attributes['aria-describedby'] = 'choose_again_' . $field['id'];
+                    $output_choose_again = '<div id="choose_again_' . h($field['id']) . '" class="form-text fg-warning">' . lang('The file you chose was not kept because the form was sent back. Please choose it again.') . '</div>';
+                }
+
                 $output_fields .=
                 '<div class="col-12 border py-3 my-3 ' . $row_class . '">
                     <label class="form-label">' . h($field['label']) . '</label>
                     <div class="input-group d-flex flex-row flex-wrap">
                         ' . $output_file_info . '
-                        ' . $output_upload_label . $liveform->output_field(array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size'] )) . $output_delete_option . '
+                        ' . $output_upload_label . $liveform->output_field($file_attributes) . $output_delete_option . '
                     </div>
+                    ' . $output_choose_again . '
                     ' . ($existing ? '' : $field_required) . '
                 </div>';
 
@@ -484,12 +502,44 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
         $output_fields .= pg_signature_includes();
     }
 
+    // The note shows once; the add screen keeps its values in the session.
+    if ($choose_again) {
+        $liveform->assign_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN, array());
+    }
+
     return array(
         'fields' => $output_fields,
         'wysiwyg_javascript' => $output_wysiwyg_javascript,
         // A file upload field needs a multipart post.
         'enctype' => $file_upload_exists ? ' enctype="multipart/form-data"' : '',
     );
+}
+
+/**
+ * Records the file upload fields that had a file chosen when the form is
+ * sent back with an error, so the screen can ask for the file again. A field
+ * refused for its own file name already says so and is left out.
+ *
+ * @param liveform $liveform
+ * @param array $fields  the custom form's fields (id, type)
+ * @param array $files   the posted files ($_FILES)
+ */
+function pg_submitted_form_mark_chosen_files($liveform, $fields, $files)
+{
+    $field_ids = array();
+
+    foreach ($fields as $field) {
+        if (
+            ($field['type'] == 'file upload')
+            && isset($files[$field['id']]['name'])
+            && ($files[$field['id']]['name'] != '')
+            && ($liveform->check_field_error($field['id']) == false)
+        ) {
+            $field_ids[] = (string) $field['id'];
+        }
+    }
+
+    $liveform->assign_field_value(PG_SUBMITTED_FORM_CHOOSE_AGAIN, $field_ids);
 }
 
 /**

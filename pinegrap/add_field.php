@@ -170,6 +170,15 @@ if (!$_POST) {
     $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
     $position = $row ? $row['id'] : 'top';
+
+    // A form sent back by a refused save shows what was typed.
+    $field = pg_field_form_new_field($folder_id);
+    $posted = pg_field_form_session_values($liveform, $field);
+
+    if ($posted !== null) {
+        $field = pg_field_form_posted_field($field, $posted);
+        $position = $posted['position'] ?? $position;
+    }
     
     echo
     pg_page_shell([
@@ -198,7 +207,7 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '">
                     <input type="hidden" id="' . $form_type_identifier_id . '" name="' . $form_type_identifier_id . '" value="' . h($_REQUEST[$form_type_identifier_id]) . '">
                     <input type="hidden" name="form_type" value="' . $form_type . '">
-                    ' . pg_field_form_cards($liveform, pg_field_form_new_field($folder_id), array(
+                    ' . pg_field_form_cards($liveform, $field, array(
                         'form_type' => $form_type,
                         'quiz' => $quiz,
                         'position' => $position,
@@ -220,8 +229,7 @@ if (!$_POST) {
 </main>' .
     output_footer();
     
-    $liveform->unmark_errors();
-    $liveform->clear_notices();
+    $liveform->remove_form();
     
 } else {
     validate_token_field();
@@ -234,6 +242,7 @@ if (!$_POST) {
 
     // if there are errors in the liveform then send the user back to the add field screen
     if ($liveform->check_form_errors()) {
+        $liveform->add_fields_to_session();
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_field.php?' . $form_type_identifier_id . '=' . urlencode($_POST[$form_type_identifier_id]) . $url_form_type . '&send_to=' . urlencode($_POST['send_to']));
         exit();
     }
