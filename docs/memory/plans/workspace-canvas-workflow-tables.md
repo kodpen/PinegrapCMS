@@ -24,7 +24,7 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2931): w
    - T1c shares — done, #2820 (workspace/workflow-table-shares.md): person view/edit, channel view; `ws_wtable_flow_gate()` for F6.
    - T1d1 tables, columns, rows in API/MCP — done, #2890 (workspace/workflow-tables-api.md).
    - T1d2 shares routes (as flow shares: own words, no tool), `workspace.wtable.row.*` webhooks (`channel_id` = oldest public share): done, #2931 (workspace/workflow-tables-api.md).
-   - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
+   - T1e screen workspace_wtables.php and its place in `ws_nav_groups()` — done, #2966 (workspace/workflow-tables-screen.md).
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
@@ -34,4 +34,4 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2931): w
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1e: the screen workspace_wtables.php and its place in `ws_nav_groups()`.
+- T2: the board view of a table by a status column.
