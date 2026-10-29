@@ -11263,6 +11263,7 @@ const StyleDesigner = (function () {
                     menu_sequence_region: _sdT('Menu Sequence'),
                     ad_region:            _sdT('Ad Region'),
                     tag_cloud_region:     _sdT('Tag Cloud'),
+                    google_reviews:       _sdT('Google Reviews'),
                     // Legacy aliases — normalized to form_list_view downstream
                     form_list:            _sdT('Form List View'),
                     submitted_forms_list: _sdT('Form List View'),
@@ -33664,6 +33665,7 @@ const StyleDesigner = (function () {
             var _isMenuSequence    = (_regionType === 'menu_sequence_region');
             var _isAdRegion        = (_regionType === 'ad_region');
             var _isTagCloud        = (_regionType === 'tag_cloud_region');
+            var _isGoogleReviews   = (_regionType === 'google_reviews');
             var _isCommentsRecent  = (_regionType === 'comments_recent');
 
             // Read both `custom_form_page_id` (current) and `form_page_id` (legacy) for back-compat.
@@ -34879,6 +34881,13 @@ const StyleDesigner = (function () {
                         '<select class="form-control form-control-sm" data-sw-id="' + sid + '" data-sw-cfg="search_page_name">' + _tcOpts + '</select>' +
                         '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Each keyword links to this page searching for it; without a page the widget draws no keyword.')) + '</div>'
                     )
+                );
+            }
+
+            // ── google_reviews settings ──────────────────────────────────────
+            if (_isGoogleReviews) {
+                systemSection += sect('bi-google', _sdT('Google Reviews Settings'),
+                    '<div style="font-size:.7rem;color:#888">' + esc(_sdT('The Places API key and the Place ID are set in Site Settings, Communication, Google Reviews. Without them the widget shows nothing on the site.')) + '</div>'
                 );
             }
 
@@ -38531,7 +38540,7 @@ const StyleDesigner = (function () {
         shipping_address_and_arrival: 1, shipping_method: 1, billing_information: 1,
         order_preview: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1,
         tag_cloud_region: 1, order_form: 1, folder_view: 1, photo_gallery: 1,
-        affiliate_sign_up_form: 1
+        affiliate_sign_up_form: 1, google_reviews: 1
     };
 
     // One filter word read as pg_sw_fill_parse() reads it: {name, arg} for
@@ -40510,6 +40519,31 @@ const StyleDesigner = (function () {
         ]}
     ];
 
+    // google_reviews token palette — has loop_area (one row per review, five
+    // at most). Mirrors _render_system_widget_google_reviews() in
+    // widgets_google_reviews.php.
+    var SW_GOOGLE_REVIEWS_TOKEN_GROUPS = [
+        { label: _sdT('Google Reviews'), tokens: [
+            ['__place_name',           _sdT('Business name on Google')],
+            ['__place_rating',         _sdT('Average rating (one decimal)')],
+            ['__place_review_count',   _sdT('Number of ratings on Google')],
+            ['__review_total',         _sdT('Number of reviews shown')],
+            ['__google_attribution',   _sdT('Google attribution ("Google Maps")')]
+        ]},
+        { label: _sdT('Review (loop_area)'), tokens: [
+            ['__review_author_name',   _sdT('Review author')],
+            ['__review_author_photo',  _sdT('Review author photo')],
+            ['__review_rating',        _sdT('Review rating (1 to 5)')],
+            ['__review_text',          _sdT('Review text')],
+            ['__review_relative_time', _sdT('When it was written ("2 weeks ago")')]
+        ]},
+        { label: _sdT('Links (href)'), tokens: [
+            ['__place_maps_url',       _sdT('The business on Google Maps')],
+            ['__review_author_url',    _sdT('Review author on Google Maps')],
+            ['__review_url',           _sdT('The review on Google Maps')]
+        ]}
+    ];
+
     // ad_region token palette — has loop_area (one row per ad shown).
     // Mirrors _render_system_widget_ad_region() in widgets_ad_region.php.
     var SW_AD_REGION_TOKEN_GROUPS = [
@@ -40569,7 +40603,8 @@ const StyleDesigner = (function () {
         menu_region:       SW_MENU_REGION_TOKEN_GROUPS,
         menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS,
         ad_region:         SW_AD_REGION_TOKEN_GROUPS,
-        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS
+        tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS,
+        google_reviews:    SW_GOOGLE_REVIEWS_TOKEN_GROUPS
     };
 
     // search_results token palette — has loop_area (per-result iteration).
@@ -42529,6 +42564,12 @@ const StyleDesigner = (function () {
             ['invoice_is_overdue', _sdT('Row: past its due date')],
             ['invoice_is_open',    _sdT('Row: money is still owed on it')],
             ['invoice_has_order',  _sdT('Row: made from an order')]
+        ],
+        google_reviews: [
+            ['has_reviews',      _sdT('Google has a review of the business to show')],
+            ['no_reviews',       _sdT('Google shows the business without a review')],
+            ['review_has_photo', _sdT('Row: the author has a photo')],
+            ['review_has_text',  _sdT('Row: the review has a text')]
         ],
         tag_cloud_region: [
             ['has_tags',        _sdT('The search results page has a keyword to show')],
@@ -56319,7 +56360,8 @@ const StyleDesigner = (function () {
         { type: 'menu_region',       label: _sdT('Menu'),              slug: _sdT('menu'),              icon: 'bi-menu-button-wide' },
         { type: 'menu_sequence_region', label: _sdT('Menu Sequence'),  slug: _sdT('menu-sequence'),     icon: 'bi-arrow-left-right' },
         { type: 'ad_region',         label: _sdT('Ad Region'),         slug: _sdT('ad-region'),         icon: 'bi-badge-ad' },
-        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' }
+        { type: 'tag_cloud_region',  label: _sdT('Tag Cloud'),         slug: _sdT('tag-cloud'),         icon: 'bi-tags' },
+        { type: 'google_reviews',    label: _sdT('Google Reviews'),    slug: _sdT('google-reviews'),    icon: 'bi-google' }
     ];
     // The account widgets (widgets_account.php), and those of them that show
     // one screen - their loop_area is not used.
@@ -63253,6 +63295,75 @@ const StyleDesigner = (function () {
                 ]);
             }
 
+            case 'google_reviews': {
+                // The business's Google rating, then up to five reviews as
+                // cards, then the link to the place and Google's attribution,
+                // which Google requires beside its content. Nothing of it
+                // shows on the site without a key and a Place ID. Mirrors
+                // _render_system_widget_google_reviews().
+                var grLink = function (cls, label, txt, token) {
+                    return createNode('semantic', { tag: 'a', cssClass: cls, text: txt, href: '#', target: '_blank', customName: label,
+                        _attrs: [{ name: 'rel', value: 'noopener' }], _bindings: { href: token } });
+                };
+                var grStar = function () {
+                    return createNode('semantic', { tag: 'i', cssClass: 'bi bi-star-fill text-warning', customName: _sdT('Star'),
+                        _attrs: [{ name: 'aria-hidden', value: 'true' }] });
+                };
+                return createNode('root', {}, [
+                    createNode('semantic', { tag: 'section', cssClass: '', customName: _sdT('Google Reviews'),
+                        _attrs: [{ name: 'aria-label', value: _sdT('Google Reviews') }] }, [
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center gap-2 mb-3', customName: _sdT('Rating') }, [
+                            createNode('semantic', { tag: 'h2', cssClass: 'h5 mb-0 me-2', text: _sdT('Business name'), customName: _sdT('Business name'),
+                                _bindings: { text: '__place_name' } }),
+                            grStar(),
+                            createNode('semantic', { tag: 'span', cssClass: 'fw-bold', text: '4.8', customName: _sdT('Average rating'),
+                                _bindings: { text: '__place_rating' } }),
+                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary small', customName: _sdT('Number of ratings') }, [
+                                createNode('semantic', { tag: 'span', cssClass: '', text: '120', customName: _sdT('Number'), _bindings: { text: '__place_review_count' } }),
+                                createNode('semantic', { tag: 'span', cssClass: '', text: ' ' + _sdT('ratings'), customName: _sdT('Label') })
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'row g-3', customName: _sdT('Reviews'),
+                            _bindings: { eo_visible_if: 'has_reviews' } }, [
+                            createNode('loop_area', {}, [
+                                createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 col-lg-4', customName: _sdT('Review') }, [
+                                    createNode('semantic', { tag: 'article', cssClass: 'card h-100', customName: _sdT('Card') }, [
+                                        createNode('semantic', { tag: 'div', cssClass: 'card-body', customName: _sdT('Card Body') }, [
+                                            createNode('semantic', { tag: 'div', cssClass: 'd-flex align-items-center gap-2 mb-2', customName: _sdT('Author') }, [
+                                                createNode('content', { contentType: 'image', src: '', alt: '', fluid: false, rounded: false, width: '40', height: '40',
+                                                    cssClass: 'rounded-circle flex-shrink-0 object-fit-cover',
+                                                    _attrs: [{ name: 'referrerpolicy', value: 'no-referrer' }],
+                                                    _bindings: { src: '__review_author_photo', eo_visible_if: 'review_has_photo' } }),
+                                                createNode('semantic', { tag: 'div', cssClass: 'small', customName: _sdT('Name and time') }, [
+                                                    grLink('d-block fw-semibold text-body text-decoration-none', _sdT('Review author'), _sdT('Author name'), '__review_author_url'),
+                                                    createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary', text: _sdT('2 weeks ago'), customName: _sdT('When'),
+                                                        _bindings: { text: '__review_relative_time' } })
+                                                ])
+                                            ]),
+                                            createNode('semantic', { tag: 'div', cssClass: 'mb-2 small', customName: _sdT('Review rating') }, [
+                                                grStar(),
+                                                createNode('semantic', { tag: 'span', cssClass: 'ms-1', text: '5', customName: _sdT('Rating'), _bindings: { text: '__review_rating' } }),
+                                                createNode('semantic', { tag: 'span', cssClass: '', text: '/5', customName: _sdT('Out of') })
+                                            ]),
+                                            createNode('semantic', { tag: 'p', cssClass: 'card-text', text: _sdT('Review text'), customName: _sdT('Review text'),
+                                                _bindings: { text: '__review_text', eo_visible_if: 'review_has_text' } }),
+                                            grLink('small', _sdT('The review on Google Maps'), _sdT('Read on Google Maps'), '__review_url')
+                                        ])
+                                    ])
+                                ])
+                            ])
+                        ]),
+                        createNode('semantic', { tag: 'p', cssClass: 'text-body-secondary', text: _sdT('Google shows no review of the business yet.'), customName: _sdT('No reviews'),
+                            _bindings: { eo_visible_if: 'no_reviews' } }),
+                        createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap justify-content-between align-items-center gap-2 mt-3 small', customName: _sdT('Attribution') }, [
+                            grLink('', _sdT('The business on Google Maps'), _sdT('See all reviews on Google Maps'), '__place_maps_url'),
+                            createNode('semantic', { tag: 'span', cssClass: 'text-body-secondary notranslate', text: 'Google Maps', customName: _sdT('Google attribution'),
+                                _attrs: [{ name: 'translate', value: 'no' }], _bindings: { text: '__google_attribution' } })
+                        ])
+                    ])
+                ]);
+            }
+
             case 'ad_region': {
                 // The ads of a region as a Bootstrap carousel: the loop
                 // repeats the ads (the server marks the first one active),
@@ -64211,7 +64322,7 @@ const StyleDesigner = (function () {
     // "PHP Messages" box in the middle of the header that the page never shows.
     // An e-mail shows no alerts either (_render_system_widget_account_email()).
     // A list of recent comments takes no form either (_render_system_widget_comments_recent()).
-    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1 };
+    var _SW_NO_MESSAGES = { cart_link: 1, login_region: 1, language_switcher: 1, account_invoices: 1, account_email: 1, comments_recent: 1, menu_region: 1, menu_sequence_region: 1, ad_region: 1, tag_cloud_region: 1, google_reviews: 1 };
 
     // Removes every Messages block from a tree; true when there was one.
     function _sdDropMessagesNodes(n) {
