@@ -87,7 +87,7 @@ if (($user['role'] == 3) && ($created_user_id != $user['id'])) {
 
 // if e-mail campaign status is cancelled, then output error
 if ($status == 'cancelled') {
-    output_error_in_popup(('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.'));
+    output_error_in_popup(lang('The e-mail campaign may not be sent because it is cancelled.  Please update the status in order to send the e-mail campaign.'));
 }
 
 // get next 10 e-mail recipients to send e-mail campaign to
@@ -563,9 +563,26 @@ if (mysqli_num_rows($result) > 0) {
     </main>' . output_footer_secure();
 }
 
+// Refusal inside the window's own frame (panel styles, theme, Close button),
+// not a bare page: the window reloads itself while sending, so a cancel made
+// meanwhile lands here.
 function output_error_in_popup($error_message)
 {
-    $output = '<div style="color: red">' . lang('Error') . ': ' . $error_message . '</div>';
-    print $output;
+    echo
+    output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
+    <main id="content" class="container-fluid">
+        <div class="row">
+            <div class="col-12 mt-5">
+                <div class="alert theme-danger" role="alert"><p>' . lang('Error') . ': ' . $error_message . '</p></div>
+            </div>
+        </div>
+        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+            <div class="container">
+                <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
+                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                </div>
+            </div>
+        </nav>
+    </main>' . output_footer_secure();
     exit();
 }

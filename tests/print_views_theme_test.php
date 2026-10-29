@@ -46,7 +46,7 @@ function test_print_views_theme_campaign_popups()
 	$source = print_views_theme_source('send_email_campaign.php');
 
 	pg_assert_true(strpos($source, "lang('Modify Pages')") === false, 'Modify Pages title');
-	pg_assert_same(2, substr_count($source, "output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign'))"));
+	pg_assert_same(3, substr_count($source, "output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign'))"), 'sending, sent and refusal frames');
 }
 
 function test_print_views_theme_order_labels_translated()
