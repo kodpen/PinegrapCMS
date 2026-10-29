@@ -2024,7 +2024,8 @@ function output_header($properties = false)
     $menu_navigator_attribute = '';
 
     // The button in the bar sets how the menu shows: on a phone it slides the
-    // drawer in and out, on a wide screen it walks mini, open and hidden.
+    // drawer in and out, on a wide screen it walks mini, open and hidden
+    // (open and mini only on a navigator screen, below).
     $output_menu_mode_button = '';
     $output_software_sidebar = '';
     if (isset($properties['hide_menu']) && $properties['hide_menu'] == true) {
@@ -2690,7 +2691,9 @@ function pg_menu_navigator($set = null)
  *
  * On a wide screen each click moves the menu on to the next of its three
  * states: mini (the icon rail), open (icons and labels), hidden (no column),
- * then mini again; Ctrl+D presses it. On a phone the menu is a drawer and the
+ * then mini again; on a navigator screen (pg_menu_navigator()) it only
+ * switches between open and mini, kept in softwaremenunav, and never hides
+ * the menu. Ctrl+D presses it. On a phone the menu is a drawer and the
  * button slides it in and out. Its picture is the state the menu is in: every
  * picture is printed and the stylesheet shows the one that fits the state and
  * the width, so the right one is there before any script has run. The label

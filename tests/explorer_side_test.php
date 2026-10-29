@@ -124,8 +124,14 @@ function test_explorer_side_handler_checks_and_reads_only()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/explorer_side.php');
 
-	pg_assert_true(strpos($source, '$user = validate_user();') < strpos($source, 'validate_token();'), 'the session, then the token');
-	pg_assert_true(strpos($source, 'validate_token();') < strpos($source, 'pg_explorer_side_allowed('), 'then the gate');
+	// strpos() is false for a call that is gone, and false < 0: each one is
+	// found first.
+	$session = strpos($source, '$user = validate_user();');
+	$token = strpos($source, 'validate_token();');
+	$gate = strpos($source, 'pg_explorer_side_allowed(');
+	pg_assert_true(($session !== false) && ($token !== false) && ($session < $token), 'the session, then the token');
+	pg_assert_true(($gate !== false) && ($token < $gate), 'then the gate');
+	pg_assert_true($gate < strpos($source, "require_once(PG_FUNCTIONS_DIR . '/view_folder_and_files_f.php');"), 'before any folder is read');
 	pg_assert_contains("respond(array('status' => 'error', 'message' => lang('Access denied')));", $source, 'a refusal in JSON');
 	pg_assert_contains('global $user, $folders_that_user_has_access_to;', $source, 'the globals the access checks read');
 	pg_assert_contains('pg_explorer_release_session();', $source, 'the session let go');
@@ -142,9 +148,13 @@ function test_explorer_side_in_the_menu_rows_only_under_their_gates()
 	// Inside the File Manager row's gate ((role < 3) || no_acl_check()) and
 	// the Catalog Manager row's (ECOMMERCE, USER_MANAGE_ECOMMERCE).
 	$files = strpos($menu, "pg_menu_explorer_side('files'");
+	$files_gate = strpos($menu, "if ((\$user['role'] < 3) || (no_acl_check(\$user['id']) == true)) {");
 	$catalog = strpos($menu, "pg_menu_explorer_side('catalog'");
-	pg_assert_true(($files !== false) && ($files > strpos($menu, "if ((\$user['role'] < 3) || (no_acl_check(\$user['id']) == true)) {")) && ($files < strpos($menu, '// PAGES')), 'the files tree in the File Manager row');
-	pg_assert_true(($catalog !== false) && ($catalog > strpos($menu, "\$menu_items[12]['id'] = 12;")) && ($catalog < strpos($menu, '// ECOMMERCE > Offers')), 'the catalog tree in the Catalog Manager row');
+	$store_gate = strpos($menu, "if (((ECOMMERCE === true) and ((\$user['role'] < 3) or USER_MANAGE_ECOMMERCE or USER_MANAGE_ECOMMERCE_REPORTS))) {");
+	$catalog_gate = strpos($menu, 'if (USER_MANAGE_ECOMMERCE) {', (int) $store_gate);
+	$catalog_row = strpos($menu, "\$menu_items[12]['id'] = 12;");
+	pg_assert_true(($files !== false) && ($files_gate !== false) && ($files_gate < $files) && ($files < strpos($menu, '// PAGES')), 'the files tree in the File Manager row');
+	pg_assert_true(($catalog !== false) && ($store_gate !== false) && ($catalog_gate !== false) && ($catalog_row !== false) && ($store_gate < $catalog_gate) && ($catalog_gate < $catalog_row) && ($catalog_row < $catalog) && ($catalog < strpos($menu, '// ECOMMERCE > Offers')), 'the catalog tree in the Catalog Manager row');
 	pg_assert_same(1, substr_count($menu, "pg_menu_explorer_side('files'"), 'once');
 	pg_assert_same(1, substr_count($menu, "pg_menu_explorer_side('catalog'"), 'once');
 
@@ -196,4 +206,66 @@ function test_explorer_screen_moves_its_tree_into_the_menu()
 	pg_assert_contains("'explorer_catalog.4' : 'explorer_files.4'", $source, 'tour keys raised');
 	pg_assert_false(strpos($source, 'The folder tree and the preview panel are switched on and off') !== false, 'no word of the old switch');
 	pg_assert_contains("if ((entry.at === 'tree') || (entry.at === 'all_row')) {", $source, 'tree steps skip a tree off the screen');
+}
+
+function test_explorer_side_pinned_and_recent_are_checked_by_the_server()
+{
+	// The lists come from the browser; only what this person sees goes back.
+	$handler = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/explorer_side.php');
+	pg_assert_contains("pg_explorer_side_ids(isset(\$request['shortcut_ids']) ? \$request['shortcut_ids'] : array(), 50)", $handler, 'whole-number ids, capped');
+	// The panel file is loaded by api.php only, so its source is read.
+	$folder = substr($handler, (int) strpos($handler, 'function pg_explorer_side_folder_shortcut('));
+	$folder = substr($folder, 0, (int) strpos($folder, "\n}\n"));
+	$group = substr($handler, (int) strpos($handler, 'function pg_explorer_side_group_shortcut('));
+	pg_assert_contains('!pg_explorer_folder_visible($id, $folders_that_user_has_access_to)', $folder, 'a folder only if visible');
+	pg_assert_contains('pg_recycle_folder_id(false)', $folder, 'never the bin');
+	pg_assert_contains('$map = pg_catalog_group_map();', $group, 'a live group only');
+
+	// The links tree draws them only from that answer, under its names.
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/explorer_side.js');
+	pg_assert_contains('self.drawShortcuts(lists, json.shortcuts);', $js, 'drawn from the answer');
+	pg_assert_contains('line.appendChild(self.link(id, icon, names[id], \'\'));', $js, 'under the server\'s name');
+
+	// So does the explorer screen's own pane, which is the menu panel there.
+	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+	pg_assert_contains("body: JSON.stringify({ action: 'explorer_side', token: (typeof window.software_token !== 'undefined') ? window.software_token : '', area: state.area, node_ids: [], shortcut_ids: ids.slice(0, 50) })", $explorer, 'the screen asks the same action');
+	pg_assert_contains("if (!shortcutsChecked || !(id > 0) || !shortcutNames[id]) { return; }", $explorer, 'and draws only what it confirmed');
+	pg_assert_contains("json.shortcuts.forEach(function (entry) { shortcutNames[entry.id] = String(entry.name); });", $explorer, 'adding to what the page itself showed');
+	pg_assert_contains("        shortcutNames[here.id] = here.name;\n", $explorer, 'a folder visited before the answer stays in Recent');
+	pg_assert_contains("'\" data-shortcut-id=\"' + id + '\"", $explorer, 'with the checked whole number as its id');
+	pg_assert_contains('    verifyShortcuts();', $explorer, 'asked at boot');
+}
+
+function test_explorer_side_links_tree_shows_failures_and_batches()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/explorer_side.js');
+
+	// Only words the server sent are shown; a dropped connection or a page
+	// that was not JSON gets the box's own message.
+	pg_assert_contains('return (error && error.fromServer && error.message) ? String(error.message) : \'\';', $js, 'no browser error text');
+	// A branch shows that it is loading, and why it did not, with Try again.
+	pg_assert_contains("this.drawWait(list);\n            this.ask([id], function () {", $js, 'a loading row in the branch');
+	pg_assert_contains("self.drawError(list, message, function () {\n                    self.fill(list, id);", $js, 'and a retry');
+	// Many open branches go in requests of 25, not one each.
+	pg_assert_contains('this.send(wanted.slice(start, start + NODES_PER_REQUEST), null)', $js, 'in batches');
+	pg_assert_false(strpos($js, '.slice(0, NODES_PER_REQUEST);') !== false, 'nothing dropped from a batch');
+}
+
+function test_explorer_tree_menu_keeps_the_drawer_while_it_edits()
+{
+	// The drawer's closer leaves alone a click from a layer of the menu
+	// (Rename from the tree's menu edits a row inside the drawer).
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_contains("if (e.target && e.target.closest && e.target.closest('[data-pg-menu-hold]')) {\n                return;", $js, 'the drawer stays for the tree menu');
+
+	$explorer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_folders.php');
+	pg_assert_contains("case 'tree_open': if (node) { treeMakeWay(); load(node.id, highlightTree); } break;", $explorer, 'Open folder makes way like a row click');
+	pg_assert_contains('showTreeMenu(fakeEvent, treeNodeFromRow(row));', $explorer, 'long press offers Unpublish on a published group');
+	pg_assert_contains('-webkit-user-select: none; user-select: none; }', $explorer, 'no text selection on a long press in Safari');
+}
+
+function test_frame_tour_names_the_navigator_screens()
+{
+	pg_assert_same('shell.6', PG_TOUR_SHELL_KEY, 'seen once more');
+	pg_assert_contains("On the Workspace, File Manager and Catalog Manager screens their own way around is in the menu, so there it only narrows it to its icons and back.", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/tour.php'), 'the menu step says what the button does there');
 }

@@ -884,7 +884,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The preview panel is switched on and off in this menu, and so are the views across everything -- which is how a phone reaches them. So is Watch the tour, if you would like to see this again.')));
+            'text' => lang('The preview panel is switched on and off in this menu, and the views across everything are here too. So is Watch the tour, if you would like to see this again.')));
 
 echo
     pg_page_shell(
@@ -913,14 +913,14 @@ echo
    Bootstrap theme variables so light and dark software themes both work;
    the access control colors come from backend.src.css. */
 /* One pane serves both areas; each hides the rows that are not its own. The
-   pane says its area too: on a wide screen it lives in the main menu, outside
-   #explorer_app. */
+   pane says its area too: where its row is drawn it is moved into the main
+   menu's panel at every width (the drawer on a phone), outside #explorer_app. */
 :is(#explorer_app, #explorer_tree_pane)[data-area="catalog"] .area-files { display: none !important; }
 :is(#explorer_app, #explorer_tree_pane)[data-area="files"] .area-catalog { display: none !important; }
 
 /* The tree in the File Manager's or Catalog Manager's menu panel: the menu
    gives it its width and scrolls it. */
-#menu #explorer_tree_pane { width: auto; min-width: 0; border-right: 0; overflow: visible; padding: 0 0 .5rem; user-select: none; }
+#menu #explorer_tree_pane { width: auto; min-width: 0; border-right: 0; overflow: visible; padding: 0 0 .5rem; -webkit-user-select: none; user-select: none; }
 
 /* A group or product that is not published reads as present but switched off,
    the same way an archived folder does. */
@@ -1508,15 +1508,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
-                <!-- The same shortcuts the sidebar carries, for the screens that
-                     do not show a sidebar: this menu is how a phone reaches the
-                     views across everything. It has to belong to the area it is
+                <!-- The same shortcuts the tree carries. The tree is the main
+                     menu's panel (the drawer on a phone); this menu repeats the
+                     views across everything for a screen that has no such panel
+                     (a menu the screen hides). It has to belong to the area it is
                      opened in. Offering Files inside the store switched the grid
                      to files while the sidebar, the tree and the address bar all
                      stayed in the store -- a half-changed screen. Crossing to the
                      other area is a link, the way the sidebar's bridge row is. -->
-                <!-- The way back. Under 1024px the sidebar is gone and this menu
-                     is the whole of the navigation, so the views across
+                <!-- The way back. Without the tree at hand (the drawer shut on a
+                     phone, a screen without the panel) this menu is the whole of
+                     the navigation, so the views across
                      everything cannot be the only things in it: an operator who
                      reached Pages from here looks for Folders here too, and the
                      root link in the breadcrumb is not where they were told to
@@ -7822,6 +7824,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // into a node twice -- once when the menu opens and once when an entry in
     // it runs -- and the two reading it differently is how the menu ended up
     // offering Publish for a group that was already published.
+    // The tree is the main menu's panel: when it changes the listing, the
+    // phone's drawer and a widened rail make way (pgMenu.dismiss()). Entries
+    // that act on the tree itself (rename, a new folder, pin) keep it open.
+    function treeMakeWay() {
+        if (window.pgMenu && (typeof window.pgMenu.dismiss === 'function')) {
+            window.pgMenu.dismiss();
+        }
+    }
+
     function treeNodeFromRow(row) {
 
         if (!row) { return null; }
@@ -8151,7 +8162,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 }).map(function (each) { return { id: each.id }; }), 'optimize');
                 break;
 
-            case 'tree_open': if (node) { load(node.id, highlightTree); } break;
+            case 'tree_open': if (node) { treeMakeWay(); load(node.id, highlightTree); } break;
 
             // The tree row carries the group id, which is all the edit screen
             // needs -- the group does not have to be in the listing for this.
@@ -12113,6 +12124,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         list.unshift(here);
         shortcutWrite('recent', list.slice(0, RECENT_LIMIT));
+
+        // Standing in it is proof enough that this person sees it.
+        shortcutNames[here.id] = here.name;
+
         renderShortcuts();
     }
 
@@ -12127,7 +12142,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         var pinning = (without.length === list.length);
 
-        if (pinning) { without.push({ id: id, name: name }); }
+        if (pinning) {
+            without.push({ id: id, name: name });
+
+            // Pinned from the tree or the listing, both drawn for this person.
+            shortcutNames[id] = name;
+        }
 
         shortcutWrite('pinned', without);
 
@@ -12138,6 +12158,51 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         renderShortcuts();
+    }
+
+    // Both lists live in this browser, which may have kept them for someone
+    // else or before a right was taken away: they are drawn only once the
+    // explorer_side action has answered, and only the entries it confirms for
+    // this person, under the names it gives. A place this page has itself
+    // shown them (visited, pinned) counts as confirmed, even before then.
+    var shortcutNames = {};
+    var shortcutsChecked = false;
+
+    function verifyShortcuts() {
+
+        var ids = [];
+
+        shortcutRead('pinned').concat(shortcutRead('recent').slice(0, RECENT_LIMIT)).forEach(function (entry) {
+            var id = parseInt(entry && entry.id, 10);
+
+            if ((id > 0) && (ids.indexOf(id) === -1)) { ids.push(id); }
+        });
+
+        if (!ids.length) {
+            shortcutsChecked = true;
+            renderShortcuts();
+            return;
+        }
+
+        fetch('api.php', {
+            method: 'POST',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'explorer_side', token: (typeof window.software_token !== 'undefined') ? window.software_token : '', area: state.area, node_ids: [], shortcut_ids: ids.slice(0, 50) })
+        }).then(function (response) {
+            return response.json();
+        }).then(function (json) {
+            if (json && (json.status === 'success') && Array.isArray(json.shortcuts)) {
+                json.shortcuts.forEach(function (entry) { shortcutNames[entry.id] = String(entry.name); });
+            }
+
+            shortcutsChecked = true;
+            renderShortcuts();
+        }).catch(function () {
+            shortcutsChecked = true;
+            renderShortcuts();
+        });
     }
 
     function renderShortcuts() {
@@ -12157,17 +12222,23 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var container = document.getElementById(pair[1]);
             var wrap = document.getElementById(pair[1] + '_wrap');
             var html = '';
+            var drawn = 0;
 
             list.forEach(function (entry) {
 
-                html += '<div class="tree-row' + ((live && (String(entry.id) === String(here))) ? ' active' : '') +
-                    '" data-shortcut-id="' + entry.id + '" title="' + esc(entry.name) + '">' +
+                var id = parseInt(entry && entry.id, 10);
+
+                if (!shortcutsChecked || !(id > 0) || !shortcutNames[id]) { return; }
+
+                html += '<div class="tree-row' + ((live && (String(id) === String(here))) ? ' active' : '') +
+                    '" data-shortcut-id="' + id + '" title="' + esc(shortcutNames[id]) + '">' +
                     '<span class="tree-toggle"></span><span class="bi ' + icon + ' fg-primary"></span>' +
-                    '<span class="tree-label">' + esc(entry.name) + '</span></div>';
+                    '<span class="tree-label">' + esc(shortcutNames[id]) + '</span></div>';
+                drawn++;
             });
 
             container.innerHTML = html;
-            wrap.classList.toggle('d-none', list.length === 0);
+            wrap.classList.toggle('d-none', drawn === 0);
         });
     }
 
@@ -12406,9 +12477,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.getElementById('explorer_tree_pane').addEventListener('click', function (event) {
         if (!event.target.closest('.tree-row') || event.target.closest('.tree-toggle.bi-chevron-right, [data-role="erp-toggle"], input')) { return; }
 
-        if (window.pgMenu && (typeof window.pgMenu.dismiss === 'function')) {
-            window.pgMenu.dismiss();
-        }
+        treeMakeWay();
     });
 
     // The two shortcut lists navigate the same way the tree does, and carry
@@ -15122,15 +15191,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var row = fakeEvent.target.closest && fakeEvent.target.closest('.tree-row');
         if (!row || !row.hasAttribute('data-folder-id')) { return; }
 
-        showTreeMenu(fakeEvent, {
-            id: parseInt(row.getAttribute('data-folder-id'), 10),
-            name: row.getAttribute('data-name') || '',
-            parentId: parseInt(row.getAttribute('data-parent-id'), 10) || 0,
-            canEdit: row.getAttribute('data-can-edit') === '1',
-            isRoot: row.getAttribute('data-is-root') === '1',
-            empty: row.getAttribute('data-empty') === '1',
-            row: row
-        });
+        // The same node as a right click: a published group offers
+        // Unpublish, which a node without 'enabled' never did.
+        showTreeMenu(fakeEvent, treeNodeFromRow(row));
     });
 
     // ── Guided tour ─────────────────────────────────────────────────────
@@ -15403,6 +15466,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     applyPaneState('explorer_preview_pane', 'pg_explorer_preview_open', true);
     syncPaneButtons();
+    verifyShortcuts();
 
     // Tile size, as this browser last left it. Read through the same list the
     // menu uses, so a value from an older build that no longer names a size

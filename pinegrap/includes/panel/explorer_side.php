@@ -7,8 +7,11 @@
  *   explorer_side  the branches of the File Manager's folder tree or the
  *                  Catalog Manager's product group tree that a menu panel
  *                  draws as links (assets/js/explorer_side.js); read only.
- *                  Asked: area (files, catalog), node_ids (0 is the top).
- *                  Answered: nodes, a list of {id, rows}.
+ *                  Asked: area (files, catalog), node_ids (0 is the top),
+ *                  shortcut_ids (the Pinned and Recent lists this browser
+ *                  keeps). Answered: nodes, a list of {id, rows}, and
+ *                  shortcuts, the asked ones this person may see, {id,
+ *                  name}, in the order asked.
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
  * for the contract.
@@ -62,7 +65,55 @@ function pg_panel_explorer_side($request, $action)
                 : pg_explorer_side_groups($node));
     }
 
-    respond(array('status' => 'success', 'area' => $area, 'nodes' => $nodes));
+    // Pinned and Recent come from the browser, which may have kept them for
+    // someone else or before a right was taken away: only the folders or
+    // groups this person may see go back, under their names of today.
+    $shortcuts = array();
+
+    foreach (pg_explorer_side_ids(isset($request['shortcut_ids']) ? $request['shortcut_ids'] : array(), 50) as $id) {
+        $row = ($area === 'files')
+            ? pg_explorer_side_folder_shortcut($id, $folders_that_user_has_access_to)
+            : pg_explorer_side_group_shortcut($id);
+
+        if ($row !== null) {
+            $shortcuts[] = $row;
+        }
+    }
+
+    respond(array('status' => 'success', 'area' => $area, 'nodes' => $nodes, 'shortcuts' => $shortcuts));
+}
+
+/**
+ * A folder of the Pinned or Recent list, if this person sees it (the
+ * explorer's rule; never the bin).
+ *
+ * @return array|null id, name
+ */
+function pg_explorer_side_folder_shortcut($id, $folders_that_user_has_access_to)
+{
+    $map = pg_explorer_folder_map();
+
+    if (($id < 1) || !isset($map[$id]) || ($id === (int) pg_recycle_folder_id(false)) || !pg_explorer_folder_visible($id, $folders_that_user_has_access_to)) {
+        return null;
+    }
+
+    return array('id' => $id, 'name' => (string) $map[$id]['folder_name']);
+}
+
+/**
+ * A product group of the Pinned or Recent list, if it is a live group.
+ *
+ * @return array|null id, name
+ */
+function pg_explorer_side_group_shortcut($id)
+{
+    $map = pg_catalog_group_map();
+
+    if (($id < 1) || !isset($map[$id])) {
+        return null;
+    }
+
+    return array('id' => $id, 'name' => (string) $map[$id]['name']);
 }
 
 /**
@@ -79,7 +130,7 @@ function pg_explorer_side_folders($node, $user, $folders_that_user_has_access_to
     // Which folders hold a folder this person sees, from the one folder map.
     if ($under === null) {
         $under = array();
-        $bin = pg_recycle_folder_id(false);
+        $bin = (int) pg_recycle_folder_id(false);
 
         foreach (pg_explorer_folder_map() as $id => $row) {
             if (($id !== $bin) && pg_explorer_folder_visible($id, $folders_that_user_has_access_to)) {

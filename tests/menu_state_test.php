@@ -86,8 +86,15 @@ function test_menu_header_draws_a_navigator_screen_from_its_own_cookie()
 {
 	$header = pg_test_function_source('output_header');
 
-	// The menu is built before the button and the classes are chosen.
-	pg_assert_true(strpos($header, '$output_menu = output_menu(') < strpos($header, '$output_menu_mode_button = pg_menu_mode_button($menu_state)'), 'the menu first');
+	// The menu is built before the flag is read, the flag before the button
+	// and the classes are chosen; the menu is built once.
+	$menu_at = strpos($header, '$output_menu = output_menu(');
+	$flag_at = strpos($header, 'if (pg_menu_navigator()) {');
+	$button_at = strpos($header, '$output_menu_mode_button = pg_menu_mode_button($menu_state)');
+	$hidden_at = strpos($header, "\$menu_hidden_class = (\$menu_state === 'hidden')");
+	pg_assert_true(($menu_at !== false) && ($flag_at !== false) && ($button_at !== false) && ($hidden_at !== false), 'all four found');
+	pg_assert_true(($menu_at < $flag_at) && ($flag_at < $button_at) && ($flag_at < $hidden_at), 'the menu first, then the flag, then the button and the classes');
+	pg_assert_same(1, substr_count($header, 'output_menu(array('), 'built once, not again in the sidebar');
 	pg_assert_contains("if (pg_menu_navigator()) {\n            \$menu_state = pg_menu_navigator_state(isset(\$_COOKIE['softwaremenunav'])", $header, 'its own cookie');
 	pg_assert_contains("\$menu_navigator_attribute = ' data-pg-menu-navigator';", $header, 'marked for the script');
 	pg_assert_contains("\$menu_hidden_class . '\"' . \$menu_navigator_attribute . '>", $header, 'on the container');

@@ -45,7 +45,7 @@ function test_explorer_shortcuts_leave_keys_to_a_focused_control()
 
 	pg_assert_true($guard !== '', 'keyBelongsToControl() is found in view_folders.php');
 
-	foreach (array('button', 'a[href]', '[role="button"]', '[role="menuitem"]', '[tabindex]', '#pg-chat-root', '#explorer_menu', '.menu.show') as $selector) {
+	foreach (array('button', 'a[href]', '[role="button"]', '[role="menuitem"]', '[tabindex]', '#pg-chat-root', '#explorer_menu', '.menu.show', '#menu\'') as $selector) {
 		pg_assert_contains($selector, $guard, 'a key on ' . $selector . ' is left to it');
 	}
 

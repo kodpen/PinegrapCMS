@@ -638,7 +638,7 @@ $(document).ready(function () {
     var menuPanelsReady = false;
     var menuBackdrop = null;
 
-    initMenuToggle();                 // The button in the bar: mini, open, hidden (the drawer on a phone)
+    initMenuToggle();                 // The button in the bar: mini, open, hidden (open and mini on a navigator screen; the drawer on a phone)
     initMenuDrawer();                 // Scrim, Escape, outside click, header menus
     initResizeCollapseHandler();      // Keeps the two modes in sync across resizes
     initMenuPanels();                 // Rows that open their entries inside the menu
@@ -809,8 +809,14 @@ $(document).ready(function () {
             closeMenuDrawer();
         });
 
-        // Tapping the page behind the drawer closes it too.
-        $('.software-content').on('click', function () {
+        // Tapping the page behind the drawer closes it too; not a layer
+        // that belongs to the menu while it is in use ([data-pg-menu-hold]:
+        // the tree's own menu, whose Rename edits a row in the drawer).
+        $('.software-content').on('click', function (e) {
+            if (e.target && e.target.closest && e.target.closest('[data-pg-menu-hold]')) {
+                return;
+            }
+
             if (isMenuDrawerMode() && isMenuDrawerOpen()) {
                 closeMenuDrawer();
             }

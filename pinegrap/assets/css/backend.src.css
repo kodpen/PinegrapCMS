@@ -12050,8 +12050,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   min-width: 0;
 }
 /* The way to the channel list where the menu's Workspace list is out of
-   sight: below lg, where the menu is a drawer, on the mini rail and while
-   the menu is hidden; the open menu shows the list itself. A labelled back
+   sight: below lg, where the menu is a drawer, and on the mini rail (the
+   workspace never hides the menu: main-menu-navigator-screens); the open
+   menu shows the list itself. A labelled back
    arrow, so it is not taken for a second main menu button. */
 .ws-channels-toggle {
   display: inline-flex;

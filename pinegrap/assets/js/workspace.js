@@ -2090,7 +2090,7 @@
     // not read as a second main menu button under the panel's own.
     // The way to the channel list where the main menu's Workspace list is
     // out of sight (backend.src.css shows it there): the menu's drawer on a
-    // phone, the menu slid in over the screen while it is hidden.
+    // phone, the rail widened over the screen while the menu is narrowed.
     function channelsToggle() {
         var toggle = el('button', 'ws-channels-toggle');
 

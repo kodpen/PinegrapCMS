@@ -23,4 +23,4 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 - The grid column goes to 0 and the rail slides out (`translateX(-100%)`), its `visibility: hidden` delayed by the slide so its links leave the tab order; the pocket corner (`.software-sidebar::before/::after`) goes with it. Above lg the bar button's `li` is the rail's width, so its icon sits over the menu icons.
 
 ## What does the tour say?
-- The frame tour's menu step says that a row with an arrow opens its pages in the menu and that the button at the top left walks the three states; its narrow step rings `#menu_mode_toggle`. `PG_TOUR_SHELL_KEY` went to `shell.5` so everybody sees the changed frame once (it went to `shell.4` for the earlier controls, #598).
+- The frame tour's menu step says that a row with an arrow opens its pages in the menu and that the button at the top left walks the three states, only narrowing on the navigator screens; its narrow step rings `#menu_mode_toggle`. `PG_TOUR_SHELL_KEY` is `shell.6` (the navigator sentence); `shell.5` for the one button, `shell.4` for the earlier controls (#598).
