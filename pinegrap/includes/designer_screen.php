@@ -1013,8 +1013,14 @@ function pg_designer_list_theme_label($d)
 
 /**
  * The drawing at the top of a start card: what the start does, in the
- * panel's own colours (assets/css/designer_home.css). The template card
- * shows three of the templates themselves, fanned out.
+ * panel's neutral greys with one touch of its primary colour
+ * (assets/css/designer_home.css: every shape takes a class there, none
+ * carries a colour of its own). The template card shows three of the
+ * templates themselves, side by side.
+ *
+ * Classes: p paper, g ground, l line, k ink, s line stroke, sk ink stroke,
+ * dash dashed ink stroke, cursor; the accent only as a (fill) and as (its
+ * subtle surface).
  *
  * @param string $kind      blank | import | paste | template
  * @param array  $templates pg_design_templates(), for the template card
@@ -1033,8 +1039,6 @@ function pg_designer_home_drawing($kind, $templates = array())
                      . pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb'])
                      . '</span>';
         }
-        // The first template in the middle, in front.
-        if (count($minis) === 3) $minis = array($minis[1], $minis[0], $minis[2]);
         if ($minis) return '<span class="sdh-ill sdh-ill-tpl" aria-hidden="true">' . implode('', $minis) . '</span>';
         $kind = 'template-none';
     }
@@ -1047,31 +1051,31 @@ function pg_designer_home_drawing($kind, $templates = array())
              . '<rect x="' . ($x + 33) . '" y="13.5" width="' . min(60, $w - 45) . '" height="7" rx="3.5" class="g"/>';
     };
     // From the source on the left into the page on the right.
-    $arrow = '<path d="M78 48 h20" class="sa" stroke-dasharray="3 4"/><path d="M96 43 l6 5 l-6 5" class="sa"/>';
+    $arrow = '<path d="M80 48 h18" class="sk"/><path d="M95 44 l4 4 l-4 4" class="sk"/>';
 
     switch ($kind) {
         case 'blank':
             // An empty canvas, and a block on its way in from the palette.
             $art = $window(66, 158)
                  . '<rect x="78" y="32" width="134" height="44" rx="6" class="dash"/>'
-                 . '<circle cx="166" cy="54" r="9" class="as"/><path d="M166 50 v8 M162 54 h8" class="sa"/>'
+                 . '<path d="M166 50 v8 M162 54 h8" class="sk"/>'
                  . '<rect x="16" y="14" width="38" height="68" rx="7" class="p s"/>'
                  . '<rect x="23" y="22" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="36" width="24" height="10" rx="2.5" class="g"/>'
                  . '<rect x="23" y="50" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="64" width="24" height="10" rx="2.5" class="g"/>'
-                 . '<g transform="rotate(-5 67 50)"><rect x="40" y="40" width="54" height="20" rx="4" class="a"/>'
-                 . '<rect x="47" y="46" width="24" height="3" rx="1.5" fill="#fff" fill-opacity=".9"/><rect x="47" y="52" width="36" height="3" rx="1.5" fill="#fff" fill-opacity=".6"/></g>'
+                 . '<rect x="40" y="40" width="54" height="20" rx="4" class="a"/>'
+                 . '<rect x="47" y="46" width="24" height="3" rx="1.5" class="p"/><rect x="47" y="52" width="36" height="3" rx="1.5" class="p"/>'
                  . '<path d="M88 54 v14 l3.6 -3.4 l2.6 5.8 l2.6 -1.2 l-2.6 -5.7 l4.9 -.3 z" class="cursor"/>';
             break;
         case 'import':
             // A zipped project; its pages arrive as tabs.
             $teeth = '';
             for ($i = 0; $i < 6; $i++) {
-                $teeth .= '<rect x="' . (($i % 2) ? 43 : 37) . '" y="' . (16 + $i * 6) . '" width="6" height="3.5" rx="1" class="k2"/>';
+                $teeth .= '<rect x="' . (($i % 2) ? 43 : 37) . '" y="' . (16 + $i * 6) . '" width="6" height="3.5" rx="1" class="k"/>';
             }
             $art = '<path d="M22 10 h31 l13 13 v59 a4 4 0 0 1 -4 4 h-40 a4 4 0 0 1 -4 -4 v-68 a4 4 0 0 1 4 -4 z" class="p s"/>'
-                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s" fill="none"/>'
+                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s"/>'
                  . $teeth
-                 . '<rect x="35" y="53" width="12" height="15" rx="3" class="a"/><circle cx="41" cy="63" r="2" class="p"/>'
+                 . '<rect x="35" y="53" width="12" height="15" rx="3" class="k"/><circle cx="41" cy="63" r="2" class="p"/>'
                  . $arrow
                  . '<rect x="110" y="10" width="114" height="76" rx="8" class="p s"/>'
                  . '<rect x="118" y="15" width="28" height="10" rx="3" class="as"/><rect x="121" y="22.5" width="22" height="2" rx="1" class="a"/>'
@@ -1084,14 +1088,14 @@ function pg_designer_home_drawing($kind, $templates = array())
         case 'paste':
             // Markup on the clipboard; it lands on the page as a section.
             $art = '<rect x="18" y="14" width="54" height="72" rx="7" class="p s"/>'
-                 . '<rect x="32" y="9" width="26" height="10" rx="4" class="k2"/>'
-                 . '<path d="M31 31 l-5 5 l5 5" class="sa"/><path d="M59 31 l5 5 l-5 5" class="sa"/><path d="M48 30 l-6 12" class="sa"/>'
+                 . '<rect x="32" y="9" width="26" height="10" rx="4" class="k"/>'
+                 . '<path d="M31 31 l-5 5 l5 5" class="sk"/><path d="M59 31 l5 5 l-5 5" class="sk"/><path d="M48 30 l-6 12" class="sk"/>'
                  . '<rect x="27" y="52" width="36" height="3.5" rx="1.75" class="l"/><rect x="33" y="59" width="30" height="3.5" rx="1.75" class="l"/>'
                  . '<rect x="33" y="66" width="22" height="3.5" rx="1.75" class="l"/><rect x="27" y="73" width="30" height="3.5" rx="1.75" class="l"/>'
                  . $arrow
                  . $window(110, 114)
                  . '<rect x="120" y="30" width="94" height="6" rx="2" class="g"/>'
-                 . '<rect x="120" y="41" width="94" height="27" rx="4" class="as"/><rect x="120" y="41" width="94" height="27" rx="4" class="dash"/>'
+                 . '<rect x="120" y="41" width="94" height="27" rx="4" class="as"/>'
                  . '<rect x="128" y="48" width="42" height="5" rx="2" class="a"/><rect x="128" y="57" width="70" height="3.5" rx="1.75" class="l"/>'
                  . '<rect x="120" y="73" width="94" height="6" rx="2" class="g"/>';
             break;

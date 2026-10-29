@@ -9,9 +9,11 @@
  * a design, the site's design with its pages, the other designs, and the
  * menu a design or a page opens with the right mouse button.
  *
- * The drawings are inline SVG coloured from the classes below, so they follow
- * the light and the dark panel. Their accent is the design module's own
- * colour, the one the menu's design icon wears.
+ * One accent and neutral greys: the screen's chrome, the start drawings and
+ * the status lines take the panel's primary colour as their only accent and
+ * greys for the rest; colour belongs to the design previews, which keep their
+ * own. The drawings are inline SVG coloured from the classes below, so they
+ * follow the light and the dark panel.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,17 +22,17 @@
  */
 
 .sdh {
-  --sdh-accent: var(--design-color, #a01551);
+  /* The accent as a fill and as text or an icon (the -fg-emphasis ink keeps
+     4.5:1 on the card in both themes), and its quiet surface. */
+  --sdh-accent: var(--pg-primary);
+  --sdh-accent-ink: var(--pg-primary-fg-emphasis);
+  --sdh-accent-soft: var(--pg-primary-bg-subtle);
   --sdh-ground: var(--pg-bg-1);
   --sdh-paper: var(--pg-bg-body);
   --sdh-line: var(--pg-border-color);
-  --sdh-ink: var(--pg-fg-2);
-  --sdh-ink-2: var(--pg-fg-3, var(--pg-fg-2));
+  --sdh-ink: var(--pg-fg-3, var(--pg-fg-2));
+  --sdh-hover-line: var(--pg-fg-3, var(--pg-fg-2));
   --sdh-radius: var(--pg-radius-lg, .5rem);
-}
-
-[data-bs-theme="dark"] .sdh {
-  --sdh-accent: var(--design-color-highlight, #ff4c87);
 }
 
 /* ── Sections ──────────────────────────────────────────────────────────── */
@@ -155,7 +157,8 @@
 
 .sdh-ill {
   position: relative;
-  aspect-ratio: 5 / 2;
+  display: block;
+  aspect-ratio: 3 / 1;
   overflow: hidden;
   background: var(--sdh-ground);
   border-bottom: 1px solid var(--pg-border-color);
@@ -170,43 +173,34 @@
 /* Only the drawings' own shapes: a template picture inside the gallery card
    is an SVG of its own and keeps its colours. */
 .sdh-ill > svg .p { fill: var(--sdh-paper); }
-.sdh-ill > svg .g { fill: var(--sdh-ground); }
+.sdh-ill > svg .g { fill: var(--pg-bg-2); }
 .sdh-ill > svg .l { fill: var(--sdh-line); }
 .sdh-ill > svg .k { fill: var(--sdh-ink); }
-.sdh-ill > svg .k2 { fill: var(--sdh-ink-2); }
 .sdh-ill > svg .a { fill: var(--sdh-accent); }
-.sdh-ill > svg .as { fill: var(--sdh-accent); fill-opacity: .14; }
+.sdh-ill > svg .as { fill: var(--sdh-accent-soft); }
 .sdh-ill > svg .s { stroke: var(--sdh-line); stroke-width: 1.25; }
-.sdh-ill > svg .sa { fill: none; stroke: var(--sdh-accent); stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.sdh-ill > svg .dash { fill: none; stroke: var(--sdh-accent); stroke-width: 1.5; stroke-dasharray: 4 3; stroke-opacity: .7; }
+.sdh-ill > svg .s:not(.p) { fill: none; }
+.sdh-ill > svg .sk { fill: none; stroke: var(--sdh-ink); stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+.sdh-ill > svg .dash { fill: none; stroke: var(--sdh-ink); stroke-width: 1.25; stroke-dasharray: 4 3; }
 .sdh-ill > svg .cursor { fill: var(--sdh-paper); stroke: var(--pg-fg-emphasis); stroke-width: 1.2; stroke-linejoin: round; }
 
-/* The template gallery: three of the shipped templates, fanned out. */
+/* The template gallery: three of the shipped templates side by side, as
+   they are. */
+.sdh-ill-tpl {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4%;
+  padding: 0 6%;
+}
+
 .sdh-ill-tpl .sdh-tpl-mini {
-  position: absolute;
-  top: 17%;
-  width: 46%;
+  flex: 0 1 30%;
   aspect-ratio: 16 / 10;
   overflow: hidden;
   background: #fff;
-  border-radius: .375rem;
-  box-shadow: 0 0 0 1px var(--pg-border-color), 0 .4rem .9rem -.45rem rgba(0, 0, 0, .4);
-}
-
-.sdh-ill-tpl .sdh-tpl-mini:nth-child(1) {
-  left: 5%;
-  transform: rotate(-6deg);
-}
-
-.sdh-ill-tpl .sdh-tpl-mini:nth-child(2) {
-  top: 11%;
-  left: 27%;
-  z-index: 2;
-}
-
-.sdh-ill-tpl .sdh-tpl-mini:nth-child(3) {
-  right: 5%;
-  transform: rotate(6deg);
+  border-radius: .25rem;
+  box-shadow: 0 0 0 1px var(--pg-border-color);
 }
 
 .sdh-ill-tpl .sdh-tpl-mini svg {
