@@ -27,4 +27,4 @@ description: The row start box of flows (#3064): a table row added, changed or d
 - How the start reads in lists: `ws_flow_row_start_text()` names the table and column only to a reader of the table.
 
 ## Left?
-- Add/set row boxes, workflow mode and Run from a table: plans/workspace-flows.md (F6b, F6c).
+- Add/set row boxes: plans/workspace-flows.md (F6b). Run from a table: workspace-flows-from-table.md.

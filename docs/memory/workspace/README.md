@@ -130,6 +130,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
+- workspace-flows-from-table.md: Run from a workflow table (F6c-a, #3145, decision #3122): rows compiled once into a draft flow (wtable_flow.php, ws_flow_from_wtable()), the column window on the table screen, rights; F6c-b left
 - workspace-flows-mcp-box-writes.md: The MCP box with a tool that asks first (F8c-1, #3144): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
 - workspace-flows-mcp-box.md: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's tool through ws_mcp_tool_call() with the owner's account, its answer an output; asking first: F8c
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination

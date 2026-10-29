@@ -8,8 +8,8 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 - Standing: personal allowed, no forced link, CRM, AI proposes.
 
 ## What is there today?
-- Scheduled actions (includes/workspace/scheduled.php): rules, one `ws_scheduled_do()` step, follow-ups, fixed-delay chains; nothing waits for a person.
-- Channel templates (`ws_template_apply()`): tasks with day offsets, assign rules, `depends_on` → `ws_task_link_add()` (not enforced), all made at once; builtin:new_customer is nearly use 1.
+- Scheduled actions: rules, one `ws_scheduled_do()` step, follow-ups, fixed-delay chains; nothing waits for a person.
+- Channel templates (`ws_template_apply()`): tasks with day offsets, assign rules, `depends_on` (not enforced), all at once; builtin:new_customer is nearly use 1.
 
 ## What is proposed? (not approved yet)
 - One "Flow" ("Akış"): graph JSON (boxes, arrows, notes), draft, versions; engine: plans/workspace-flows-engine.md.
@@ -18,7 +18,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
 - Rights: staff build (`ws_can_schedule()`), owner-only (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds runs started there (each keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is shared.
-- Tables T3-T5 came here; tables: workspace/workflow-tables-later.md.
+- Tables T3-T5 came here (workspace/workflow-tables-later.md).
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
 1. Done #1503: F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
@@ -26,7 +26,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine, API: PR #1551 (workspace/workspace-flows-runner.md); F3b run view: PR #1555.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
-6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes; F6c workflow mode (#3122).
+6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes; F6c workflow mode (#3122): F6c-a done #3145 (workspace/workspace-flows-from-table.md).
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md).
 8. F8 MCP box (answer 5): F8a read tool #3000; F8b canvas form #3028; F8c writes propose and wait: F8c-1 server done #3144, F8c-2 canvas form.
 
@@ -42,4 +42,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- F8c-2 (workspace/workspace-flows-mcp-box-writes.md); F6b next. Values: plans/workspace-flows-data-passing.md.
+- F8c-2 (workspace/workspace-flows-mcp-box-writes.md); F6b, F6c-b next. Values: plans/workspace-flows-data-passing.md.
