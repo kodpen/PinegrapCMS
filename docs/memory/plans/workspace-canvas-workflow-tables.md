@@ -26,7 +26,10 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1-T2 #2745-#2994): wor
    - T1d2 shares routes, `workspace.wtable.row.*` webhooks: done, #2931 (workspace/workflow-tables-api.md).
    - T1e screen workspace_wtables.php and its place in `ws_nav_groups()` — done, #2966 (workspace/workflow-tables-screen.md).
 4. T2 Board view (the channel Board tab component) by a status column — done, #2994 (workspace/workflow-table-board.md).
-5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
+5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist. Cut:
+   - T6a a CSV/xlsx/xls/ods file into a new table (header row → columns, a type guessed per column, confirmed before the write) or appended to a table (columns matched by name), every row through `ws_wtable_row_create()`, refused rows reported with their cell errors — in progress.
+   - T6b a note's table block imported the same way.
+   - T6c JSON starters (contact pipeline, checklist) on the New table card; check `ws_templates` first.
 - Schema (ask first): T1; `upgrade_2026_11_0_<topic>()`, next free Workspace label, `get_tables()`.
 
 ## Which questions are answered?
@@ -34,4 +37,5 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1-T2 #2745-#2994): wor
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T6: CSV and note-table import; JSON starters (contact pipeline, checklist).
+- T6b: a note's table block as a workflow table, through T6a's import (`includes/workspace/wtable_import.php`).
+- T6c: JSON starters (contact pipeline, checklist) on the New table card.
