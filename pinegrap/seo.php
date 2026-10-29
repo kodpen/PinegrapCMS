@@ -2876,8 +2876,21 @@ function pg_seo_render_run_script()
         Array.prototype.forEach.call(buttons, function (button) { button.disabled = true; });
         trigger.classList.add("disabled");
 
+        var failed = wrap.querySelector(".pg-seo-run-failed");
+
+        if (failed) {
+            failed.remove();
+        }
+
+        // A followed redirect is the sign-in page and a refusal is not the
+        // panel: neither is put in place of it.
         fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
-            .then(function (response) { return response.text(); })
+            .then(function (response) {
+                if (!response.ok || response.redirected) {
+                    throw response;
+                }
+                return response.text();
+            })
             .then(function (html) {
                 var holder = document.createElement("div");
                 holder.innerHTML = html;
@@ -2889,11 +2902,26 @@ function pg_seo_render_run_script()
                     wrap.innerHTML = html;
                 }
             })
-            .catch(function () {
+            .catch(function (error) {
                 Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
                 trigger.classList.remove("disabled");
+
+                var alert = document.createElement("div");
+                alert.className = "alert theme-danger small mt-3 mb-0 pg-seo-run-failed";
+                alert.setAttribute("role", "alert");
+                alert.textContent = pg_seo_load_failure_text(error);
+                trigger.parentNode.appendChild(alert);
             });
     });
+
+    // What to say when the panel could not be loaded: an ended session or a
+    // stale token, or anything else (a network failure, a server error).
+    function pg_seo_load_failure_text(error) {
+        if (error && ((error.status === 401) || (error.status === 403) || error.redirected)) {
+            return ' . json_encode(lang('Your session has expired. Please sign in again.')) . ';
+        }
+        return ' . json_encode(lang('Something went wrong. Please try again.')) . ';
+    }
     </script>';
 }
 
@@ -2945,9 +2973,20 @@ function pg_seo_render_detail_offcanvas()
         pgUI.drawer.show(offcanvas_element);
 
         fetch(trigger.getAttribute("data-seo-url"), {credentials: "same-origin"})
-            .then(function (response) { return response.text(); })
+            .then(function (response) {
+                if (!response.ok || response.redirected) {
+                    throw response;
+                }
+                return response.text();
+            })
             .then(function (html) { body.innerHTML = html; })
-            .catch(function () { body.innerHTML = "<div class=\"fg-danger\">" + ' . json_encode(lang('An error occurred')) . ' + "</div>"; });
+            .catch(function (error) {
+                var alert = document.createElement("div");
+                alert.className = "alert theme-danger mb-0";
+                alert.setAttribute("role", "alert");
+                alert.textContent = pg_seo_load_failure_text(error);
+                body.replaceChildren(alert);
+            });
     });
     </script>';
 }

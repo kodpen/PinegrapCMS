@@ -1295,8 +1295,45 @@
         return el;
     }
 
+    // A bind marker (pg_site_datetime_bind(): a site screen whose inputs come
+    // from a stored layout) names inputs by id per kind: each text input
+    // found gets the hook of its kind, once, and is drawn with the rest.
+    var BIND_KINDS = ['date', 'datetime', 'time'];
+
+    function byId(id) {
+        return document.getElementById ? document.getElementById(id) : document.querySelector('#' + id);
+    }
+
+    function bindIds(root) {
+        var marks = Array.prototype.slice.call(root.querySelectorAll('[data-pg-date-bind]'));
+        if (root !== document && root.matches && root.matches('[data-pg-date-bind]')) {
+            marks.push(root);
+        }
+        marks.forEach(function (mark) {
+            var ids = null;
+            if (mark.pgBound) {
+                return;
+            }
+            mark.pgBound = true;
+            try {
+                ids = JSON.parse(mark.getAttribute('data-pg-date-bind') || '{}');
+            } catch (e) {
+                ids = null;
+            }
+            BIND_KINDS.forEach(function (kind) {
+                ((ids && ids[kind]) || []).forEach(function (id) {
+                    var el = byId(String(id));
+                    if (el && el.tagName === 'INPUT' && !kindOf(el)) {
+                        el.setAttribute(HOOKS[kind], '');
+                    }
+                });
+            });
+        });
+    }
+
     function init(scope) {
         var root = element(scope) || document;
+        bindIds(root);
         var selector = Object.keys(HOOKS).map(function (k) { return '[' + HOOKS[k] + ']'; }).join(',');
         var list = root.querySelectorAll(selector);
         for (var i = 0; i < list.length; i++) {

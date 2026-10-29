@@ -312,6 +312,7 @@
     "Used on": "Kullanıldığı yer",
     "Used on: ": "Kullanıldığı sayfalar: ",
     "Used only when the rate is being set.": "Yalnızca oran ayarlanırken kullanılır.",
+    "Used only while a page has no title of its own.": "Yalnız sayfanın kendi başlığı yokken kullanılır.",
     "Used when signing in.": "Oturum açarken kullanılır.",
     "Used while a value from the address, compared with is equal to, finds records. {value} stands for the value, e.g. Articles by {value}. Empty: the value alone.": "Adresten gelen bir değer eşittir ile karşılaştırılıp kayıt bulduğunda kullanılır. {value} değerin yerine geçer, ör. {value} yazıları. Boşsa yalnız değer.",
     "User": "Kullanıcı",

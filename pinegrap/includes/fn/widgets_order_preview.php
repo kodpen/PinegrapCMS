@@ -145,6 +145,141 @@ function _pg_op_stamp_method_node(&$node, $surcharge)
 }
 
 /**
+ * Offer "Put it on my account" (pg_erp_open_account_option()) beside the
+ * methods the classic computation found, as the express order does: never
+ * for an order with a recurring line (submit_order.php refuses it), only
+ * with a payment due and another method to choose from. It counts as a
+ * method; when it makes the one method two, the branch's hidden
+ * payment_method field leaves $d['system'], or init_payment_method() would
+ * read it before the radios.
+ *
+ * @param array      $d      the layout values, changed in place
+ * @param array|null $option pg_erp_open_account_option()
+ * @return bool offered
+ */
+function pg_op_offer_on_account(&$d, $option)
+{
+    if (!is_array($d) || !is_array($option) || empty($d['payment']) || !empty($d['recurring_transaction'])) return false;
+    $methods = (int)($d['number_of_payment_methods'] ?? 0);
+    if ($methods < 1) return false;
+    $d['number_of_payment_methods'] = $methods + 1;
+    if ($methods === 1) $d['system'] = str_replace('<input type="hidden" name="payment_method">', '', (string)($d['system'] ?? ''));
+    return true;
+}
+
+/**
+ * The radio rows a saved tree has no row for: each redirect driver's method
+ * (PayTR, PayPal Checkout …), placed before Offline Payment as on the
+ * classic page, and On Account last. None while one method is offered.
+ *
+ * @param array      $d          the layout values
+ * @param array|null $on_account pg_erp_open_account_option(), when offered
+ * @return array of array(value, label, before_offline)
+ */
+function pg_op_method_rows($d, $on_account)
+{
+    $rows = array();
+    if ((int)($d['number_of_payment_methods'] ?? 0) < 2) return $rows;
+    foreach ((array)($d['payment_driver_methods'] ?? array()) as $value => $label) {
+        $rows[] = array('value' => (string)$value, 'label' => (string)$label, 'before_offline' => true);
+    }
+    if (is_array($on_account)) {
+        $rows[] = array('value' => (string)$on_account['value'],
+            'label' => (string)$on_account['label'] . ' (' . (string)$on_account['note'] . ')', 'before_offline' => false);
+    }
+    return $rows;
+}
+
+/**
+ * Add the rows of pg_op_method_rows() beside the tree's own payment_method
+ * radio rows, each a copy of one of them (the card's or Offline Payment's
+ * first: no logo) with its value, id and label set and its pays_by_* flag
+ * taken off, so it takes the designer's look and saved trees need no change.
+ * Run before the visibility bindings, which may drop the row copied.
+ *
+ * @param array $tree the widget tree, changed in place
+ * @param array $rows pg_op_method_rows()
+ * @return bool the radio rows were found
+ */
+function pg_op_add_method_rows(&$tree, $rows)
+{
+    if (!$rows || !is_array($tree) || empty($tree['children']) || !is_array($tree['children'])) return false;
+    $template = null;
+    $rank = 9;
+    $last = -1;
+    $offline = -1;
+    foreach (array_values($tree['children']) as $i => $child) {
+        if (!_pg_op_is_method_row($child)) continue;
+        $flag = $child['props']['_bindings']['eo_visible_if'];
+        $order = array_search($flag, array('pays_by_card', 'pays_offline'), true);
+        $order = $order === false ? 2 : $order;
+        if ($order < $rank) {
+            $template = $child;
+            $rank = $order;
+        }
+        $last = $i;
+        if ($offline < 0 && $flag === 'pays_offline') $offline = $i;
+    }
+    if ($template === null) {
+        foreach ($tree['children'] as &$child) {
+            if (pg_op_add_method_rows($child, $rows)) return true;
+        }
+        unset($child);
+        return false;
+    }
+    $before = $after = array();
+    foreach ($rows as $row) {
+        $copy = $template;
+        unset($copy['props']['_bindings']['eo_visible_if']);
+        $id = 'op_pm_' . trim(preg_replace('/[^a-z0-9]+/', '_', strtolower($row['value'])), '_');
+        _pg_op_fill_method_row($copy, $row['value'], $id, $row['label']);
+        if ($row['before_offline']) $before[] = $copy;
+        else $after[] = $copy;
+    }
+    $tree['children'] = array_values($tree['children']);
+    array_splice($tree['children'], $last + 1, 0, $after);
+    array_splice($tree['children'], $offline >= 0 ? $offline : $last + 1, 0, $before);
+    return true;
+}
+
+// A payment method's radio row: under a pays_by_* flag, holding a
+// payment_method control and no card field.
+function _pg_op_is_method_row($node)
+{
+    if (!is_array($node)) return false;
+    $flag = (string)($node['props']['_bindings']['eo_visible_if'] ?? '');
+    if (strpos($flag, 'pays_') !== 0) return false;
+    $marks = _pg_op_subtree_marks($node);
+    return isset($marks['controls']['payment_method']) && !isset($marks['controls']['card_number']);
+}
+
+// Set a copied radio row's radio (value, id, unchecked) and label (text,
+// for), and give its nodes their own ids.
+function _pg_op_fill_method_row(&$node, $value, $id, $label)
+{
+    if (!is_array($node)) return;
+    if (isset($node['id']) && is_scalar($node['id'])) $node['id'] = $node['id'] . '-' . $id;
+    $tag = strtolower((string)($node['props']['tag'] ?? ''));
+    if (_pg_member_control_name($node) === 'payment_method') {
+        $node['props']['id'] = $id;
+        _pg_member_set_attr($node, 'id', null);
+        _pg_member_set_attr($node, 'value', $value);
+        _pg_member_set_attr($node, 'checked', null);
+        return;
+    }
+    if ($tag === 'label') {
+        unset($node['props']['_bindings']['text'], $node['props']['_sentence']);
+        $node['props']['text'] = $label;
+        $node['children'] = array();
+        _pg_member_set_attr($node, 'for', $id);
+        return;
+    }
+    if (empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as &$child) _pg_op_fill_method_row($child, $value, $id, $label);
+    unset($child);
+}
+
+/**
  * The columns of the page's order_preview_pages row the widget's settings
  * change. Only a setting the widget has is written, so a converted classic
  * page keeps what its own screen stored; no next page leaves the stored one.
@@ -374,7 +509,13 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     if (!is_array($d)) return '';
     $form = $d['form'];
 
+    // On Account and the redirect drivers' methods have no row in a saved
+    // tree: their rows are copies of the tree's own radio rows.
+    $on_account = (!empty($d['payment']) && empty($d['recurring_transaction']) && function_exists('pg_erp_open_account_option'))
+        ? pg_erp_open_account_option() : null;
+    if (!pg_op_offer_on_account($d, $on_account)) $on_account = null;
     $op_flags = pg_op_flags($d);
+    if ($op_flags['many_payment_methods']) pg_op_add_method_rows($tree, pg_op_method_rows($d, $on_account));
     _eo_apply_visibility_bindings($tree, $op_flags);
     if (!$op_flags['many_payment_methods']) _pg_member_drop_control($tree, 'payment_method');
     if (!$op_flags['pays_by_card']) {

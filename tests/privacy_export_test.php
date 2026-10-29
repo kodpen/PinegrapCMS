@@ -25,7 +25,7 @@ function test_privacy_export_sections_are_pinned()
 		array(
 			'user', 'sessions', 'two_step', 'identities', 'passkeys', 'push_subscriptions',
 			'contact', 'contact_groups', 'address_book',
-			'orders', 'order_items', 'ship_tos', 'order_documents', 'returns', 'refunds', 'gift_cards',
+			'orders', 'order_items', 'ship_tos', 'order_documents', 'returns', 'refunds', 'gift_cards', 'cart_quotes',
 			'form_submissions', 'signatures', 'comments', 'watchers', 'wishlist', 'stock_notify', 'campaigns', 'consents',
 			'mail', 'sms', 'chats', 'erp_accounts', 'erp_documents', 'workspace',
 		),

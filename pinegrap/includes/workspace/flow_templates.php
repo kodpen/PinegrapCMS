@@ -44,7 +44,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The groups the gallery shows templates in.
+ * The groups the gallery shows templates in; saved holds the templates
+ * saved on the site (flow_templates_saved.php), whatever their own group.
  *
  * @return array key => label
  */
@@ -54,6 +55,7 @@ function ws_flow_template_categories()
         'team'  => lang('Team'),
         'site'  => lang('Site'),
         'sales' => lang('Sales'),
+        'saved' => lang('Saved on this site'),
     );
 }
 
@@ -699,7 +701,8 @@ function ws_flow_template_apply($template, $graph, $values)
 
 /**
  * The templates offered to the person, filled for them as the gallery fills
- * them: their texts go to them, no channel open.
+ * them: their texts go to them, no channel open; then the ones saved on the
+ * site (ws_flow_templates_saved()), so Use of either passes the same checks.
  *
  * @param array      $viewer
  * @param array|null $scheduled ws_scheduled_js_config() of the person, when at hand
@@ -715,7 +718,7 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         return array();
     }
 
-    return ws_flow_templates(array(
+    $templates = ws_flow_templates(array(
         'me'       => (int) $viewer['id'],
         'channel'  => 0,
         'site'     => (string) $scheduled['site'],
@@ -726,6 +729,8 @@ function ws_flow_templates_for($viewer, $scheduled = null)
         'join'     => !empty($scheduled['join']),
         'events'   => array_keys((array) ($scheduled['events']['list'] ?? array())),
     ));
+
+    return function_exists('ws_flow_templates_saved') ? array_merge($templates, ws_flow_templates_saved($viewer)) : $templates;
 }
 
 /**

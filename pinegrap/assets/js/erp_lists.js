@@ -31,6 +31,7 @@
     var type = panel.getAttribute('data-erp-drawer-type');
     var endpoint = panel.getAttribute('data-erp-drawer-url');
     var failure = panel.getAttribute('data-erp-drawer-error');
+    var loading = panel.getAttribute('data-erp-drawer-loading') || '';
 
     // The request in flight; a second click supersedes the first, so a slow
     // answer for the previous row never lands in the drawer of the next.
@@ -51,9 +52,13 @@
         var ticket = ++current;
 
         mark(row);
-        title.textContent = '';
+        // The dialog is named by its title, so the title reads the loading
+        // text until the record arrives; the spinner carries the same text.
+        title.textContent = loading;
+        panel.setAttribute('aria-busy', 'true');
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span></div>';
+        body.querySelector('.visually-hidden').textContent = loading;
         pgUI.drawer.show(panel);
 
         fetch(endpoint + '?type=' + encodeURIComponent(type) + '&id=' + encodeURIComponent(id), {
@@ -67,6 +72,7 @@
             if (ticket !== current) {
                 return;
             }
+            panel.removeAttribute('aria-busy');
             if (!data || data.error || !data.html) {
                 body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
                 body.firstChild.textContent = (data && data.error) ? data.error : failure;
@@ -78,6 +84,7 @@
             body.innerHTML = data.html;
         }).catch(function () {
             if (ticket === current) {
+                panel.removeAttribute('aria-busy');
                 body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
                 body.firstChild.textContent = failure;
             }

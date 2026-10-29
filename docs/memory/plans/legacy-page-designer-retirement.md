@@ -9,7 +9,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - The code editor (`designer/designer-code-editor-decisions.md`) is the bridge: a converted page keeps a code view, so nothing the old text editor allowed is lost; the emitter and the converter are the two halves of the round trip.
 
 ## Steps (one PR each)
-- L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root.
+- L1 converter: done (#2337, `designer/classic-style-import.md`): classic placeholders to region nodes, `<meta_tags>`/`<stylesheet>` dropped, title and body on the root; its title field #3140.
 - L2 entry point: done (#2370, `designer/classic-style-to-design.md`): style list button, frame as one shared component, page trees placing it, Save makes the row a visual design (framework custom); pages taking the style from their folder are converted on Save unless the box is cleared (#2704). Left: older cell-based system styles (not offered).
 - L3 regions: done (`designer/classic-regions-in-designer.md`); wired into the conversion in #2429 (`designer/classic-style-to-design.md`): a converted common region is placed as its component; nothing converts on its own. Left: page regions inside the frame component cannot be moved into the page tree (R5 refuses them inside a component).
 - L4 parity list: decided (#2484), all dropped but P7, built in #2532 (`legacy-page-designer-parity.md`, `designer/classic-style-design-files.md`); the folder-pages Save option (#2411): done (#2704, `designer/classic-style-folder-pages.md`). Page-type fields, layouts: Y2-Y3.
@@ -29,4 +29,4 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - A classic style on a PHP template file (`style_file`) is not convertible; it stays classic.
 
 ## Where to start?
-- L5 once Y6 lands. Left from L1: no panel field edits the root `title`.
+- L5 once Y6 lands.

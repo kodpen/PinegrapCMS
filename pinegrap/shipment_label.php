@@ -4,10 +4,12 @@
  *
  * Shipping labels of an order (includes/fn/shipment_labels.php).
  *
- * POST create (ship_to_id): opens a label for the address with the carrier
- * label service its carrier takes and returns to the order screen with the
- * outcome. GET id: hands out the label's document for printing, the kept
- * file or the service's copy. The documents live under data/, which is
+ * POST from the order screen: open a label or a return label for an
+ * address with the carrier label service its carrier takes, or cancel one;
+ * back to the order with the outcome. POST from the orders list: open the
+ * missing labels of the selected orders, or print their labels as one PDF
+ * merged now and never kept. GET id: hands out one label's document, the
+ * kept file or the service's copy. The documents live under data/, which is
  * closed to the web: this is their only door, behind the order screen's
  * own gate.
  *
@@ -34,20 +36,72 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     validate_token_field();
 
-    $ship_to_id = is_scalar($_POST['ship_to_id'] ?? null) ? (int) $_POST['ship_to_id'] : 0;
-    $order_id = ($ship_to_id > 0) ? (int) db_value("SELECT order_id FROM ship_tos WHERE id = '" . $ship_to_id . "'") : 0;
+    include_once('liveform.class.php');
 
-    if (($order_id <= 0) || (($_POST['action'] ?? '') !== 'create')) {
+    // label_request: create-<ship_to_id>, return-<ship_to_id> and
+    // cancel-<label id> from the order screen; bulk_create and bulk_print
+    // with orders[] from the orders list.
+    $request = is_scalar($_POST['label_request'] ?? null) ? (string) $_POST['label_request'] : '';
+    $orders = (isset($_POST['orders']) && is_array($_POST['orders'])) ? array_slice(array_map('intval', $_POST['orders']), 0, 500) : array();
+
+    if ($request === 'bulk_print') {
+        $bulk = pg_shipment_label_bulk_pdf($orders);
+
+        if (!$bulk['ok']) {
+            output_error(h($bulk['error']), 404);
+        }
+
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: inline; filename="labels.pdf"');
+        header('Content-Length: ' . strlen($bulk['document']));
+
+        echo $bulk['document'];
+        exit;
+    }
+
+    if ($request === 'bulk_create') {
+        $bulk = pg_shipment_label_bulk_create($orders, USER_ID);
+        $liveform = new liveform('view_orders');
+
+        $liveform->add_notice(h(lang(array('string' => '{var:1} shipping label(s) were created.', 'vars' => array(pg_format_number($bulk['created'], 0))))));
+
+        if ($bulk['left'] > 0) {
+            $liveform->add_notice(h(lang(array('string' => '{var:1} address(es) are left; run Create Labels again for them.', 'vars' => array(pg_format_number($bulk['left'], 0))))));
+        }
+
+        foreach (array_unique($bulk['failed']) as $error) {
+            $liveform->mark_error('_error', h($error));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php');
+    }
+
+    if (!preg_match('/^(create|return|cancel)-([1-9][0-9]*)$/', $request, $match)) {
         output_error(lang('Record not found.'), 404);
     }
 
-    include_once('liveform.class.php');
+    $order_id = (int) (($match[1] === 'cancel')
+        ? db_value("SELECT order_id FROM shipment_labels WHERE id = '" . (int) $match[2] . "'")
+        : db_value("SELECT order_id FROM ship_tos WHERE id = '" . (int) $match[2] . "'"));
+
+    if ($order_id <= 0) {
+        output_error(lang('Record not found.'), 404);
+    }
+
     $liveform = new liveform('view_order');
 
-    $result = pg_shipment_label_create($ship_to_id, USER_ID);
+    if ($match[1] === 'cancel') {
+        $result = pg_shipment_label_cancel((int) $match[2]);
+        $notice = lang('The shipping label was cancelled.');
+    } else {
+        $result = pg_shipment_label_create((int) $match[2], USER_ID, $match[1] === 'return');
+        $notice = lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number']))));
+    }
 
     if ($result['ok']) {
-        $liveform->add_notice(lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number'])))));
+        $liveform->add_notice($notice);
     } else {
         $liveform->mark_error('_error', h($result['error']));
     }

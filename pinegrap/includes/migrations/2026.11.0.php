@@ -105,7 +105,9 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 	upgrade_2026_11_0_paytr();                  // 11.0.122
 	upgrade_2026_11_0_record_revisions();       // 11.0.123
+	upgrade_2026_11_0_cart_quotes();            // 11.0.124
 	upgrade_2026_11_0_shipment_labels();        // 11.0.125
+	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
 
 }
 
@@ -3373,5 +3375,81 @@ function upgrade_2026_11_0_shipment_labels() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Shipping labels: an order\'s address can get a label from a carrier label service switched on in the Shipping settings, printed again from the order; a label document is kept for 30 days after delivery or cancellation and 90 days at most.');
+
+}
+
+// Cart quotes (2026.11.0, 11.0.124; includes/fn/cart_quotes.php).
+//
+// A cart quote is a list of products and quantities staff prepare for a
+// customer and send as a link; the link puts the lines into the visitor's
+// cart at the catalogue's prices of that moment, so no price is kept here.
+// Only the SHA-256 of the link's token is stored (token_hash), with its first
+// characters (token_hint) to tell links apart in the panel. status is open,
+// ordered, expired or cancelled; order_id is the cart the link last filled,
+// and the order that completed the quote once status is ordered. valid_until
+// and the timestamps are unix seconds. Nothing is read until a quote is made.
+function upgrade_2026_11_0_cart_quotes() {
+
+	install_create_table('cart_quotes', "CREATE TABLE cart_quotes (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		token_hash CHAR(64) NOT NULL DEFAULT '',
+		token_hint VARCHAR(8) NOT NULL DEFAULT '',
+		contact_id INT UNSIGNED NOT NULL DEFAULT 0,
+		valid_until INT UNSIGNED NOT NULL DEFAULT 0,
+		status VARCHAR(16) NOT NULL DEFAULT 'open',
+		order_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_token_hash (token_hash),
+		KEY idx_contact (contact_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('cart_quote_items', "CREATE TABLE cart_quote_items (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		cart_quote_id INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity INT UNSIGNED NOT NULL DEFAULT 1,
+		PRIMARY KEY (id),
+		KEY idx_cart_quote (cart_quote_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Cart quotes: the tables for cart quote links are in place. Nothing changes on the site until a cart quote is made.');
+
+}
+
+// Flow templates saved on the site (2026.11.0, 11.0.115;
+// includes/workspace/flow_templates_saved.php). A person saves a flow's draft as a
+// template; the gallery lists it beside the built-in ones under "Saved on this
+// site". template_key is 'site_<id>', so it never meets a built-in key. graph
+// is the normalized draft graph with the secrets of its boxes dropped;
+// settings is the JSON list of the values the setup panel asks on Use, in the
+// built-ins' shape. Box, thread and motion counts are computed on read, never
+// stored. created_by, updated_by and binned_at follow ws_flows. Nothing is
+// read until somebody saves a template.
+function upgrade_2026_11_0_workspace_flow_templates() {
+
+	install_create_table('ws_flow_templates', "CREATE TABLE ws_flow_templates (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		template_key    VARCHAR(40) NOT NULL DEFAULT '',
+		category        VARCHAR(16) NOT NULL DEFAULT '',
+		title           VARCHAR(160) NOT NULL DEFAULT '',
+		help            VARCHAR(255) NOT NULL DEFAULT '',
+		icon            VARCHAR(40) NOT NULL DEFAULT '',
+		graph           MEDIUMTEXT NULL,
+		settings        TEXT NULL,
+		source_flow_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		binned_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_template_key (template_key),
+		KEY idx_created_by (created_by)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the table for flow templates saved on the site is added. It stays empty until somebody saves a flow as a template.');
 
 }
