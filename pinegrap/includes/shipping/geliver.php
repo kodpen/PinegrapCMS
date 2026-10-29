@@ -407,7 +407,9 @@ function pg_label_geliver_time($value)
         return 0;
     }
 
-    $time = strtotime($value);
+    // Geliver writes up to nine places of a second, which strtotime() on
+    // PHP 7.1 does not read; the second is precise enough.
+    $time = strtotime(preg_replace('/(\d{2}:\d{2}:\d{2})\.\d+/', '$1', $value));
 
     return ($time === false) ? 0 : max(0, $time);
 }
