@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; steps 1-3 done, 3b #3137): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; steps 1-3 done, 6 Basit Kargo #3163): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 3b #3137): carrier APIs 
    - 3b. Done in PR #3137 (`commerce/shipment-label-bulk.md`): bulk create and one merged PDF from the orders list, Cancel Label, return labels.
 4. Status polling job in the dispatcher, write-back through the single path (S).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
-6. Further aggregators as their references open: Basit Kargo (SVG labels, no test mode, 600 requests a minute; #3123), Kargonomi; MNG ApiZone a candidate (M each).
+6. Further aggregators as their references open: Basit Kargo done in PR #3163 (`commerce/carrier-label-basitkargo.md`; one `.zpl` per bulk run still open), Kargonomi; MNG ApiZone a candidate (M each).
 7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
 
 ## Open questions?

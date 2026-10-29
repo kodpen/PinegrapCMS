@@ -5,14 +5,14 @@ module: carrier_labels
 ---
 
 ## What is a label driver?
-- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (Geliver: `carrier-label-geliver.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
-- Required `_info()`: `carriers` (kept only when a `pg_shipping_carriers()` key) and `formats` (`pdf`, `zpl`). Optional `_fields()` (the payment field shape, `pg_payment_fields_normalize()`, switches dropped) and operations `test`, `create`, `label`, `cancel`, `track`, `pickup` (`pg_label_operations()`); `pg_label_can()` asks first.
+- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (Geliver: `carrier-label-geliver.md`, Basit Kargo: `carrier-label-basitkargo.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
+- Required `_info()`: `carriers` (kept only when a `pg_shipping_carriers()` key) and `formats` (`pdf`, `zpl`, `svg`). Optional `_fields()` (the payment field shape, `pg_payment_fields_normalize()`, switches dropped) and operations `test`, `create`, `label`, `cancel`, `track`, `pickup` (`pg_label_operations()`); `pg_label_can()` asks first.
 - The account is the last argument of every operation (`pg_label_account()`: stored values, secrets unsealed, defaults). A driver never reads the database, request or session and never writes orders or parcels.
 
 ## What does a caller get back?
 - Always `pg_label_call($key, $op, $args)`: pads/cuts args, catches `Throwable` (an `\Error` is a plain failure, an exception `unclear`), then masks every secret value of the account (4+ characters) as `****` in `error`, `log` and `raw`, so a service echoing the request cannot put a key into a notice or the log.
 - `pg_label_answer()` keeps only its keys (reference, tracking_number, carrier, tracking_url, status, status_at, label, label_format, barcode, account, log, raw, unclear): a service's own fields (fee, COD amount) are dropped there.
-- A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`), track() no `pg_shipment_statuses()` value.
+- A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`, SVG passes `pg_label_svg_valid()`), track() no `pg_shipment_statuses()` value.
 
 ## What reaches the shipment row?
 - Only `pg_label_shipment_options($answer)`: `source` carrier, plus `carrier` and `tracking_url` when given, for `pg_shipment_record()` (`shipment-write-path.md`). The service's `reference`, label and barcode never go into `shipping_tracking_numbers`; they are kept in `shipment_labels` (`shipment-labels.md`). This is how the aggregator choice stays out of the schema.

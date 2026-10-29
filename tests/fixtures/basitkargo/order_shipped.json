@@ -1,0 +1,13 @@
+{
+  "id": "888-6AR-OUP",
+  "barcode": "BK4815162342",
+  "status": "OUT_FOR_DELIVERY",
+  "shipmentInfo": {
+    "handler": {"name": "Sürat Kargo", "code": "SELF_SURAT"},
+    "handlerShipmentCode": "SRT7700112233"
+  },
+  "traces": [
+    {"status": "SHIPPED", "time": "2026-10-30T09:12:00", "location": "İzmir Aktarma"},
+    {"status": "OUT_FOR_DELIVERY", "time": "2026-10-31T08:40:10", "location": "Konak Şube"}
+  ]
+}

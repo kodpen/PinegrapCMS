@@ -151,7 +151,8 @@ function pg_label_function_name($key, $operation)
 function pg_label_builtin_drivers()
 {
     return array(
-        'geliver' => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
+        'geliver'    => array('label' => 'Geliver', 'file' => 'geliver.php', 'portal' => 'https://app.geliver.io/apitokens'),
+        'basitkargo' => array('label' => 'Basit Kargo', 'file' => 'basitkargo.php', 'portal' => 'https://basitkargo.com/api'),
     );
 }
 

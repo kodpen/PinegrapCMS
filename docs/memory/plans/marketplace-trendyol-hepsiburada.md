@@ -20,6 +20,7 @@ description: Plan (approved 2026-10-19): Trendyol (V2) and Hepsiburada on the n1
 ## What is open? (any session; claim one step at a time)
 - Each step adds what it verified to the `trendyol-*.md` files, and reads `trendyol-api-facts.md` for the call rules first.
 - Hepsiburada: the same slices, blocked until its API facts are collected (below).
+- Trendyol common label (`createCommonLabel`, ZPL; #3123): stored through `shipment_labels` and `data/shipping_labels/` (`shipment-labels.md`) so reprint and the sweep cover it.
 
 ## Open questions?
 - Hepsiburada developer portal renders as a JS shell; API facts must come from the owner's account documentation before slice 1.
