@@ -1478,3 +1478,49 @@ JS
 	pg_assert_contains('ws_mcp_oauth_account($server, (int) $viewer[\'id\'])', $config);
 }
 
+
+// A row box (a workflow table's row starts the flow) is offered only while
+// the person reads a table; it reads what happens and the table, and gives
+// the server's values (table, row, who) and one per column of its table, by
+// the column's name. A table no longer in the list is named by its id and
+// gives no cells.
+function test_workspace_flows_canvas_row_box()
+{
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'stepLists', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
+		<<<'JS'
+var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
+var PALETTE = [['row', 'bi-table', 'fl_kind_row'], ['post', 'bi-chat-left-text', 'fl_add_post'], ['mcp', 'bi-plug', 'fl_kind_mcp']];
+var ROW_WHATS = { created: 'fl_row_created', updated: 'fl_row_updated', deleted: 'fl_row_deleted' };
+var FL = {
+    trigger_outputs: { kinds: { row: [{ key: 'table_id', label: 'Table' }, { key: 'row_id', label: 'Row' }] }, events: {} },
+    steps: { tables: [{ id: 4, name: 'Deals', columns: [{ id: 7, name: 'Customer', type: 'text' }, { id: 9, name: 'Amount', type: 'money' }] }] }
+};
+function keys(list) { return list.map(function (item) { return item.token.slice(2, -2) + '=' + item.label + ':' + item.type; }); }
+var row = { id: 'row_1', kind: 'row', config: { table_id: 4, what: 'updated', column_id: 9 } };
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    meta: rowMeta(row.config),
+    values: keys(boxValues(row)),
+    none: rowMeta({ table_id: 0, what: 'created', column_id: 0 }),
+    gone: rowMeta({ table_id: 8, what: 'deleted', column_id: 0 }),
+    goneValues: keys(boxValues({ id: 'row_2', kind: 'row', config: { table_id: 8, what: 'created', column_id: 0 } }))
+};
+FL.steps.tables = [];
+out.empty = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row', 'post'), $result['palette'], 'a row box while a table is read; no MCP server, no MCP box');
+	pg_assert_same(array('post'), $result['empty'], 'no table read: no row box');
+	pg_assert_same('fl_row_updated · Deals · Amount', $result['meta']);
+	pg_assert_same('fl_row_none', $result['none']);
+	pg_assert_same('fl_row_deleted · #8', $result['gone'], 'a table no longer read is named by its id');
+	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text', 'trigger.cell_7=Customer:text', 'trigger.cell_9=Amount:number'), $result['values']);
+	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text'), $result['goneValues']);
+}

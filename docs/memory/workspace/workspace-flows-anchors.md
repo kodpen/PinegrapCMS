@@ -4,7 +4,7 @@ description: Flow start boxes at a time, on an event, on a join (F4d, #2006, flo
 ---
 
 ## What is it?
-- Start boxes `schedule` (rule at), `event`, `join` (`ws_flow_anchor_kinds()`), trigger, outcome next. Settings are the rule's keys (`ws_flow_anchor_normalize()`), turned into the rule by `ws_flow_anchor_rule()` and checked with the owner by `ws_flow_anchor_check()` = `ws_scheduled_rule_input()`, plus a single time that has passed is refused. Code `includes/workspace/flow_anchors.php`; tests `tests/workspace_flow_anchors_test.php`.
+- Start boxes `schedule` (rule at), `event`, `join`, `row` (rule row, `workspace-flows-row-box.md`) (`ws_flow_anchor_kinds()`), trigger, outcome next. Settings are the rule's keys (`ws_flow_anchor_normalize()`), turned into the rule by `ws_flow_anchor_rule()` and checked with the owner by `ws_flow_anchor_check()` = `ws_scheduled_rule_input()`, plus a single time that has passed is refused. Code `includes/workspace/flow_anchors.php`; tests `tests/workspace_flow_anchors_test.php`.
 
 ## What is the anchor?
 - One `ws_scheduled_actions` row with `flow_id` = the flow: kind action, channel 0, no card or message, created_by the owner, rules `[the rule]`, action `{type: flow, flow_id}`, no follow-ups.

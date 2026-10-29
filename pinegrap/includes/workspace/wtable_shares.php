@@ -649,8 +649,33 @@ function ws_wtable_row_announce_quiet($quiet = null)
 }
 
 /**
- * Announce a row written or deleted, when the table is shared in a public
- * channel and no import is running (ws_wtable_row_announce_quiet()).
+ * The body of a row event a flow's row box starts on (ws_event()): the
+ * table, the row's id, who wrote it, the column ids written by a change,
+ * and the row's cells as ws_wtable_row_present() keys them. Pure.
+ *
+ * @param array $table   ws_wtables row
+ * @param array $row     the row as presented
+ * @param int   $actor_id
+ * @param array $changed column ids written (a change only)
+ * @return array
+ */
+function ws_wtable_row_flow_payload($table, $row, $actor_id, $changed = array())
+{
+    return array(
+        'table_id'   => (int) $table['id'],
+        'table_name' => (string) $table['name'],
+        'row_id'     => (int) $row['id'],
+        'actor_id'   => (int) $actor_id,
+        'changed'    => array_values(array_map('intval', (array) $changed)),
+        'cells'      => (array) ($row['cells'] ?? array()),
+    );
+}
+
+/**
+ * Announce a row written or deleted, when no import is running
+ * (ws_wtable_row_announce_quiet()): to the flows whose row box waits for
+ * this table (ws_event(), kept only while one waits), and to the webhooks
+ * when the table is shared in a public channel.
  *
  * @param string    $what     created | updated | deleted
  * @param array     $table
@@ -664,9 +689,27 @@ function ws_wtable_row_announce($what, $table, $row, $actor_id, $changed = array
         return;
     }
 
-    $channel_ids = ws_wtable_event_channels((int) $table['id']);
+    $event = 'workspace.wtable.row.' . $what;
+    $flows = function_exists('ws_event') && function_exists('ws_events_awaited') && in_array($event, ws_events_awaited(), true);
+    $channel_ids = function_exists('pg_announce') ? ws_wtable_event_channels((int) $table['id']) : array();
 
-    if (empty($channel_ids) || !function_exists('pg_announce')) {
+    if (!$flows && empty($channel_ids)) {
+        return;
+    }
+
+    $stored = ($what === 'deleted') ? $row : ws_wtable_row((int) $table['id'], (int) $row);
+
+    if (!$stored) {
+        return;
+    }
+
+    $presented = ws_wtable_row_present(ws_wtable_row_out($stored, ws_wtable_columns((int) $table['id'])));
+
+    if ($flows) {
+        ws_event($event, ws_wtable_row_flow_payload($table, $presented, $actor_id, $changed));
+    }
+
+    if (empty($channel_ids)) {
         return;
     }
 
@@ -677,13 +720,7 @@ function ws_wtable_row_announce($what, $table, $row, $actor_id, $changed = array
         return;
     }
 
-    $stored = ws_wtable_row((int) $table['id'], (int) $row);
-
-    if (!$stored) {
-        return;
-    }
-
-    $body = ws_wtable_row_event_body($table, ws_wtable_row_present(ws_wtable_row_out($stored, ws_wtable_columns((int) $table['id']))), $channel_ids, $actor_id, $changed);
+    $body = ws_wtable_row_event_body($table, $presented, $channel_ids, $actor_id, $changed);
 
     // Each event named in full, with channel_id in the call itself, as the
     // check that every workspace event names its channel reads it.

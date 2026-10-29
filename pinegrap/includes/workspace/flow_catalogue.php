@@ -63,6 +63,7 @@ function ws_flow_setting_values()
         'task_digest.only'   => array('open', 'week', 'overdue', 'stale'),
         'change.action'      => array('update', 'delete'),
         'approval.rule'      => array('any', 'all'),
+        'row.what'           => array_keys(ws_flow_row_whats()),
     );
 }
 
