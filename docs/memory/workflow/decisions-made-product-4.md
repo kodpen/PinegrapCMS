@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-4
-description: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library
+description: Decisions list, product part 4 (2026-10-29 evening on): the carrier return label on the returns screen, the W20b starter library, Speculation Rules prefetch
 ---
 
 ## How does a carrier return label work on the returns screen? (#3178)
@@ -8,5 +8,8 @@ description: Decisions list, product part 4 (2026-10-29 evening on): the carrier
 
 ## What is the W20b starter library? (#3179)
 - Decided (architect, 2026-10-29): ready-made, style-neutral layout variants per widget kind, shipped as files (`includes/fn/widgets_starters.php`, no schema) and offered in the W5 gallery as a fourth source, "Starters", with the gallery's Try/Keep/Cancel and undo; Bootstrap 5.3.8 site markup with theme tokens only, every word through `lang()` / `_sdT()`, a test that each starter places only tokens its kind knows. First slice: the six most used kinds (catalog card, product detail, cart, order preview, form view, blog or comments list), two or three variants each; other kinds in later slices. Part blocks in the W20a palette (b) only if asked. The W5 answer stands (three sources, no foreign template styles, no online library): starters ship with the release like the Default trees. Running sites change nothing until an operator presses Keep; dropping W20b is the owner's call.
+
+## Do published pages prefetch same-site links with Speculation Rules? (#3184)
+- Decided (architect, 2026-10-29, the leftover of the approved `image-delivery-pipeline` plan): yes, a `<script type="speculationrules">` block with one `prefetch` rule, `source: list`, the URLs built on the server from the page's menu and navbar items (same-site page URLs only; items with a query string, acting paths such as sign-in, sign-out, cart, downloads and the panel, and off-site links left out), `eagerness: moderate`; no document-wide rule and no prerender. A Settings › Features switch, on by default (`config.speculation_prefetch`, `decisions-made-schema-4.md`). A prefetch request is recorded once as the page view and session, as today: the browser serves a followed prefetch from its own cache and makes no second request, so skipping prefetches would lose real views; the not-found log keeps skipping them; a cacheable page is served from the page cache with its usual bypass reasons; no client-side beacon. Signed-in members and staff get no rules. Only Chromium-based browsers act on the block.
 
 Related: docs/memory/workflow/decisions-made-product-3.md, docs/memory/workflow/decisions-made.md
