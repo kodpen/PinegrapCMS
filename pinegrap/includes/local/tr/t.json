@@ -1815,6 +1815,7 @@
     "The file was replaced. The earlier version stays in the history.": "Dosya değiştirildi. Önceki sürüm geçmişte duruyor.",
     "The file was rotated successfully.": "Dosya başarıyla döndürüldü.",
     "The file was saved": "Dosya kaydedildi",
+    "The file you chose was not kept because the form was sent back. Please choose it again.": "Form geri gönderildiği için seçtiğiniz dosya korunmadı. Lütfen dosyayı yeniden seçin.",
     "The file you selected could not be imported because of the following error(s)": "Seçtiğiniz dosya aşağıdaki hata(lar) nedeniyle içe aktarılamadı",
     "The file you sent is larger than the {var:1} that this server accepts in one request. Copy the backup folder into the backups folder with FTP, or raise post_max_size and upload_max_filesize on the server.": "Gönderdiğiniz dosya, bu sunucunun tek istekte kabul ettiği {var:1} sınırından büyük. Yedek klasörünü FTP ile yedekler klasörüne kopyalayın ya da sunucuda post_max_size ve upload_max_filesize değerlerini yükseltin.",
     "The file you sent is {var:1} and this server only accepts {var:2} in one request. Copy the backup folder into the backups folder with FTP, or raise post_max_size and upload_max_filesize on the server.": "Gönderdiğiniz dosya {var:1}, bu sunucu ise tek istekte en fazla {var:2} kabul ediyor. Yedek klasörünü FTP ile yedekler klasörüne kopyalayın ya da sunucuda post_max_size ve upload_max_filesize değerlerini yükseltin.",

@@ -14,3 +14,6 @@ description: The calendar create and edit screens share includes/forms/calendar_
 - Create: the role-3 refusal, the INSERT, the notice on the calendar list.
 - Edit: the not-found guard, `validate_calendar_access()`, the event count (delete is refused while the calendar holds events), the record load, delete with its four xref tables, the UPDATE, the hidden id, the notice on `calendars.php`.
 - Tests: `tests/calendar_form_test.php`; `db_q_regions_menus_calendars_test.php` (edit screen, form) and `db_q_small_functions_test.php` (create screen) pin the queries.
+
+## Why does a refused name stay in the box?
+- Edit Calendar assigns the stored name only while `$liveform->prefill()` (no post came back), so a name refused as already in use stays next to its error instead of the old name.

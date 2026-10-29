@@ -53,7 +53,10 @@ if (!$_POST) {
     $result = db_q($query, array((string) $_GET['id'])) or output_error('Query failed.');
     $row = mysqli_fetch_assoc($result);
 
-    $liveform->assign_field_value('name', $row['name']);
+    // A name sent back by a refused save stays as it was typed.
+    if ($liveform->prefill()) {
+        $liveform->assign_field_value('name', $row['name']);
+    }
     
     // if there are no calendar events in this calendar, allow delete
     if ($number_of_calendar_events == 0) {

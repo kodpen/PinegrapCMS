@@ -685,6 +685,88 @@ function pg_field_form_checked($value)
 }
 
 /**
+ * The check box columns of the field form: a box that is not ticked is not
+ * posted at all, so a sent-back form reads it as off.
+ *
+ * @return array
+ */
+function pg_field_form_check_box_columns()
+{
+    return array('required', 'wysiwyg', 'multiple', 'spacing_above', 'spacing_below',
+        'use_folder_name_for_default_value', 'office_use_only', 'translate_values', 'quiz_question');
+}
+
+/**
+ * The field form drawn from a sent-back post: each posted value is laid over
+ * $field (a new or stored field), and a check box missing from the post is
+ * off. A box the form did not show keeps the value of $field.
+ *
+ * @param array $field
+ * @param array $posted  column => posted value, for the columns found in the post
+ * @return array
+ */
+function pg_field_form_posted_field($field, $posted)
+{
+    $check_boxes = pg_field_form_check_box_columns();
+
+    foreach ($check_boxes as $column) {
+        $field[$column] = (isset($posted[$column]) && ($posted[$column] == 1)) ? 1 : 0;
+    }
+
+    foreach ($posted as $column => $value) {
+        if (($column == 'id') || in_array($column, $check_boxes, true) || !array_key_exists($column, $field)) {
+            continue;
+        }
+
+        if (is_array($value)) {
+            $value = (string) reset($value);
+        }
+
+        $field[$column] = (string) $value;
+    }
+
+    return $field;
+}
+
+/**
+ * The values of a field form sent back to its screen: column => value for
+ * each field form column found in the liveform session, or null when the
+ * form was not sent back (or was sent back for another field id).
+ *
+ * @param liveform $liveform
+ * @param array $field  the new or stored field; its id must match the post
+ * @return array|null
+ */
+function pg_field_form_session_values($liveform, $field)
+{
+    if ($liveform->prefill()) {
+        return null;
+    }
+
+    if ((string) $field['id'] !== (string) $liveform->get_field_value('id')) {
+        return null;
+    }
+
+    $posted = array();
+
+    foreach (array_keys($field) as $column) {
+        $value = $liveform->get_field_value($column);
+
+        if ($value !== null) {
+            $posted[$column] = $value;
+        }
+    }
+
+    $position = $liveform->get_field_value('position');
+
+    if ($position !== null) {
+        $posted['position'] = $position;
+    }
+
+    return $posted;
+}
+
+/**
  * The field type card and the settings, information and choices cards.
  *
  * @param liveform $liveform

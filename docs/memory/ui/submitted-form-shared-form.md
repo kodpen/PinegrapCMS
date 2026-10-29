@@ -18,3 +18,6 @@ description: The submitted form create and edit screens share includes/forms/sub
 
 ## What if a submission has no row for a file field?
 - `db_item()` returns null there, so the markup, the replace path and the delete path of the edit screen read `$file` only when a row came back. Symptom fixed: `E_WARNING "Trying to access array offset on null"` on every opening of a submission whose upload field was left empty (#2065).
+
+## What happens to a chosen file when the form is sent back?
+- A browser never refills a file box. Before the panel redirect back, both screens call `pg_submitted_form_mark_chosen_files()`: each File Upload field with a chosen file and no error of its own goes into the liveform entry `PG_SUBMITTED_FORM_CHOOSE_AGAIN`, and the markup prints "please choose it again" under that box (tied with `aria-describedby`), then clears the entry. The site's own edit page redirect is left as it is.
