@@ -101,7 +101,7 @@ if (!$_POST) {
     foreach (pg_settings_categories() as $pg_settings_other_key => $pg_settings_other) {
 
         $pg_settings_switcher .=
-            '<li><a class="menu-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active' : '') . '"'
+            '<li><a class="menu-item' . (($pg_settings_other_key === $pg_settings_key) ? ' active" aria-current="page' : '') . '"'
             . ' href="' . h(pg_settings_url($pg_settings_other_key)) . '">'
             . '<i class="bi ' . h($pg_settings_other['icon']) . ' me-3" aria-hidden="true"></i>'
             . h($pg_settings_other['label']) . '</a></li>';

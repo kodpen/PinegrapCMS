@@ -211,8 +211,8 @@ if (!defined('PG_INIT_LOADED')) {
                                     <div class="row g-3 align-items-center">
                                         <div class="col-auto">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-period-open" data-on="period" data-period="open"><?=lang('Open-ended')?></button>
-                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-period-range" data-on="period" data-period="range"><?=lang('Date range')?></button>
+                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-period-open" aria-pressed="false" data-on="period" data-period="open"><?=lang('Open-ended')?></button>
+                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-period-range" aria-pressed="false" data-on="period" data-period="range"><?=lang('Date range')?></button>
                                             </div>
                                         </div>
                                         <div class="col-12 sm:col-7 md:col-6 lg:col-5 xl:col-4 d-none" id="pg-if-dates">
@@ -275,8 +275,8 @@ if (!defined('PG_INIT_LOADED')) {
                                     <div class="row g-3 align-items-center">
                                         <div class="col-auto">
                                             <div class="btn-group btn-group-sm" role="group">
-                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-scope-order" data-on="scope" data-scope="order"><?=lang('Order')?></button>
-                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-scope-recipient" data-on="scope" data-scope="recipient"><?=lang('Recipient')?></button>
+                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-scope-order" aria-pressed="false" data-on="scope" data-scope="order"><?=lang('Order')?></button>
+                                                <button type="button" class="btn btn-outline theme-secondary" id="pg-if-scope-recipient" aria-pressed="false" data-on="scope" data-scope="recipient"><?=lang('Recipient')?></button>
                                             </div>
                                         </div>
                                         <div class="col-auto d-none" id="pg-if-multiple-wrap">

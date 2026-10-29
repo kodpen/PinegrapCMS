@@ -298,6 +298,36 @@ function pg_dashboard_widget_2($request, $user)
         $output_checks = '';
         $check_slot = 0;
 
+        // One row of a chip's or a job's detail panel. The dot is
+        // decoration; the state word before the time is what tells a
+        // stalled task from a healthy one, or a required missing rule
+        // from a recommended one. Info rows carry no word: their time
+        // already says Never or Missing.
+        $status_detail_words = array(
+            'ok'   => lang('OK'),
+            'warn' => lang('Warning'),
+            'fail' => lang('Problem'),
+        );
+
+        $status_detail_row = function ($detail_row) use ($status_detail_words) {
+
+            $row_state = isset($detail_row['state']) ? (string) $detail_row['state'] : '';
+            $row_tone = ($row_state === 'ok') ? 'success' : (($row_state === 'fail') ? 'danger' : 'secondary');
+            $row_when = isset($detail_row['when']) ? (string) $detail_row['when'] : '';
+
+            if (isset($status_detail_words[$row_state])) {
+                $row_when = ($row_when === '')
+                    ? $status_detail_words[$row_state]
+                    : $status_detail_words[$row_state] . ' · ' . $row_when;
+            }
+
+            return '
+                    <div class="pg-job-panel-row">
+                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot fg-' . h($row_tone) . '" aria-hidden="true"></i>' . h($detail_row['label']) . '</span>
+                        <span class="fg-secondary flex-shrink-0">' . h($row_when) . '</span>
+                    </div>';
+        };
+
         foreach ($check_order as $check_entry) {
 
             $health_check = $reading_checks[$check_entry[1]];
@@ -311,16 +341,19 @@ function pg_dashboard_widget_2($request, $user)
                 ? $health_check['detail']
                 : array();
 
-            // The value only when the check said it. "OK",
-            // "Warning", "Problem" and "Not applicable" are the four words
-            // functions.php puts in a check's mouth when it has
-            // none of its own -- they are the colour spelled out,
-            // and a red chip does not need to be told it is red.
-            // What survives is what the check actually reported:
-            // "3 eksik", "2026.4.4", "4.2 MB".
-            $check_value = !empty($health_check['generic'])
-                ? ''
-                : '<span class="pg-check-value">' . h($health_check['value']) . '</span>';
+            // What the check actually reported ("3 eksik", "2026.4.4",
+            // "4.2 MB") always shows. "OK", "Warning", "Problem" and
+            // "Not applicable" are the words functions.php puts in a
+            // check's mouth when it has none of its own: on a warn or
+            // fail chip the word shows, since those are the chips worth
+            // looking at and the tint alone does not tell a state to
+            // someone who cannot see the colour; on a calm chip it is
+            // read out but not drawn.
+            if (empty($health_check['generic']) || in_array($health_check['state'], array('warn', 'fail'), true)) {
+                $check_value = '<span class="pg-check-value">' . h($health_check['value']) . '</span>';
+            } else {
+                $check_value = '<span class="visually-hidden">' . h($health_check['value']) . '</span>';
+            }
 
             $check_body = '
                 <i class="bi ' . h($health_check['icon']) . '"></i>
@@ -349,11 +382,7 @@ function pg_dashboard_widget_2($request, $user)
                 $check_rows = '';
 
                 foreach ($check_detail as $detail_row) {
-                    $check_rows .= '
-                    <div class="pg-job-panel-row">
-                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot fg-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
-                        <span class="fg-secondary flex-shrink-0">' . h($detail_row['when']) . '</span>
-                    </div>';
+                    $check_rows .= $status_detail_row($detail_row);
                 }
 
                 // The popover would fire on the same hover that
@@ -434,11 +463,7 @@ function pg_dashboard_widget_2($request, $user)
 
             if (isset($job_check['detail']) && is_array($job_check['detail'])) {
                 foreach ($job_check['detail'] as $detail_row) {
-                    $job_rows .= '
-                    <div class="pg-job-panel-row">
-                        <span class="text-truncate"><i class="bi bi-circle-fill pg-health-dot fg-' . h(($detail_row['state'] == 'ok') ? 'success' : (($detail_row['state'] == 'fail') ? 'danger' : 'secondary')) . '"></i>' . h($detail_row['label']) . '</span>
-                        <span class="fg-secondary flex-shrink-0">' . h($detail_row['when']) . '</span>
-                    </div>';
+                    $job_rows .= $status_detail_row($detail_row);
                 }
             }
 
