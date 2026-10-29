@@ -558,23 +558,6 @@ function get_catalog($properties) {
                     $output_edit_container_end = '</div>';
                 }
                 
-                $output_featured_items .= $output_edit_container_start;
-
-                if ($device_type == 'mobile') {
-                    $output_featured_items .= '<div class="item mobile_left" style="' . $output_cell_width . $output_cell_height . '">';
-
-                } else {
-                    $output_featured_items .= '<div class="item mobile_left">';
-                }
-
-                $output_featured_items .=
-                            $output_image . '
-                            ' . $output_short_description . '
-                            ' . $output_price . '
-                        </div>
-                        <div style="clear: both"></div>
-                    ' . $output_edit_container_end;
-                
                 // prepare to output top item
                 $output_top_item =
                     '<div class="top_item">
