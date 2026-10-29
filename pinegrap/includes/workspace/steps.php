@@ -22,6 +22,11 @@
  * sent already, so such a box is never run a second time: it fails, and the
  * run's owner sees why.
  *
+ * One kind is no scheduled action's step: the MCP box runs a tool of a
+ * connected MCP server that reads only, with the owner's account there
+ * (else the site's), through the call a tool's form makes
+ * (ws_mcp_tool_call()); its answer is a value for the boxes after it.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -42,6 +47,10 @@ define('WS_STEP_APPROVAL_CLOSES_MAX', 720);
 // The key the values of what started a run ({{trigger.<field>}}) sit under
 // among the boxes' values (ws_step_node_values()): never a box id.
 define('WS_STEP_TRIGGER', '@trigger');
+
+// The longest an MCP box's arguments are, in characters; the tool is sent
+// at most this many bytes of JSON (as from its form, mcp_form.php).
+define('WS_STEP_MCP_ARGUMENTS_MAX', 20000);
 
 // A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
 // (group 1 the box id, empty for the trigger; group 2 the field).
@@ -99,20 +108,23 @@ function ws_step_kinds()
         'approval'  => array('label' => lang('Ask for approval'), 'type' => 'approval', 'texts' => array('title', 'text'), 'lines' => array('title'),
             'outputs' => array($number('approval_id', lang('Approval request')), $number('message_id', lang('Message'))),
             'outcomes' => array('approved', 'rejected', 'expired', 'withdrawn', 'failed')),
+        'mcp'       => array('label' => lang('Run a tool of an MCP server'), 'type' => 'mcp', 'texts' => array('arguments'), 'lines' => array(),
+            'outputs' => array($text('result', lang('Answer')), $number('duration_ms', lang('Time taken (ms)')))),
     );
 }
 
 /**
  * The values of a box kept back from whoever may not change the flow, as
  * its sentence is (ws_step_result_shown()): a change box's record and the
- * run a start-a-flow box started (all its values), a webhook's answer, which
- * may carry what the called service tells only the flow's owner.
+ * run a start-a-flow box started (all its values), a webhook's or an MCP
+ * tool's answer, which may carry what the service tells only the flow's
+ * owner.
  *
  * @return array kind => keys, ['*'] for all
  */
 function ws_step_outputs_held()
 {
-    return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'));
+    return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'));
 }
 
 /**
@@ -263,6 +275,9 @@ function ws_step_outcomes()
  * approval:  channel_id, title, text, approvers (up to 50), rule (any, all),
  *            closes_in ('' for no deadline, else 1 to
  *            WS_STEP_APPROVAL_CLOSES_MAX hours from when the box runs)
+ * mcp:       server_id, tool (a tool of that server that reads), arguments
+ *            (a JSON object as text, '' for none; one given as an object
+ *            is written as its JSON)
  *
  * @param string $kind
  * @param mixed  $config
@@ -439,6 +454,19 @@ function ws_step_config_normalize($kind, $config)
                 'rule'       => (($config['rule'] ?? '') === 'all') ? 'all' : 'any',
                 'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
             );
+
+        case 'mcp':
+            $arguments = $config['arguments'] ?? '';
+
+            if (is_array($arguments) || is_object($arguments)) {
+                $arguments = (string) json_encode((object) $arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+
+            return array(
+                'server_id' => $number($config['server_id'] ?? 0),
+                'tool'      => ws_flow_line($config['tool'] ?? '', 200),
+                'arguments' => ws_flow_lines(is_scalar($arguments) ? $arguments : '', WS_STEP_MCP_ARGUMENTS_MAX),
+            );
     }
 
     return array();
@@ -577,6 +605,17 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        case 'mcp':
+            if (((int) $config['server_id'] <= 0) || ($config['tool'] === '')) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the MCP server and the tool it runs.', 'vars' => $name));
+            }
+
+            if (ws_step_mcp_arguments($config['arguments']) === null) {
+                $problems[] = lang(array('string' => 'The arguments of the box {var:1} are not a JSON object.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -609,6 +648,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
 {
     if (!isset(ws_step_kinds()[$kind])) {
         return array('ok' => false, 'error' => lang('This kind of box cannot run yet.'), 'action' => null);
+    }
+
+    // An MCP tool is no scheduled action's step: the box checks it itself.
+    if ($kind === 'mcp') {
+        return ws_step_mcp_check($viewer, ws_step_config_normalize('mcp', $config));
     }
 
     return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -839,11 +883,12 @@ function ws_step_value_box($match)
  * <@user:N> and <#order:N> tags would mention people and tag records), chat
  * (a webhook's text read by Slack, Teams or Google Chat), discord, or text
  * (a plain e-mail, an inbox notice, a webhook's JSON body, the task e-mail,
- * which escapes its HTML where it writes it). Pure.
+ * which escapes its HTML where it writes it), or json (an MCP box's
+ * arguments: a value goes in as the inside of a JSON string). Pure.
  *
  * @param string $kind   a step kind, or task (the box that waits)
  * @param array  $action ws_scheduled_action_input()
- * @return string message | chat | discord | text
+ * @return string message | chat | discord | text | json
  */
 function ws_step_fill_target($kind, $action)
 {
@@ -860,6 +905,9 @@ function ws_step_fill_target($kind, $action)
             $format = (string) ($action['format'] ?? '');
 
             return ($format === 'text') ? 'chat' : (($format === 'discord') ? 'discord' : 'text');
+
+        case 'mcp':
+            return 'json';
     }
 
     return 'text';
@@ -882,6 +930,14 @@ function ws_step_fill_target($kind, $action)
  */
 function ws_step_fill_value($value, $target)
 {
+    // The arguments go to the tool as filled, read by nothing after: the
+    // value is the inside of a JSON string, quotes and breaks escaped.
+    if ($target === 'json') {
+        $json = json_encode((string) $value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+        return is_string($json) ? substr($json, 1, -1) : '';
+    }
+
     $value = str_replace('{', "{\u{2060}", (string) $value);
 
     if (in_array($target, array('message', 'chat', 'discord'), true)) {
@@ -1282,7 +1338,12 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $outer_depth = ws_event_depth();
     ws_event_depth((int) ($run['depth'] ?? 0));
 
-    $done = ws_scheduled_do($owner, $row, $action, $step_context);
+    // An MCP tool is no scheduled action's step.
+    if ($kind === 'mcp') {
+        $done = ws_step_mcp_do($owner, $action);
+    } else {
+        $done = ws_scheduled_do($owner, $row, $action, $step_context);
+    }
 
     ws_event_depth($outer_depth - 1);
 
@@ -1422,7 +1483,7 @@ function ws_flow_box_try($viewer, $flow, $data)
 
         return array(
             'outcome' => 'done',
-            'said'    => ws_scheduled_action_text($owner, $action),
+            'said'    => ($kind === 'mcp') ? ws_step_mcp_text($action) : ws_scheduled_action_text($owner, $action),
             'texts'   => $tried['texts'],
             'empty'   => $tried['empty'],
         ) + $answer;
@@ -1515,4 +1576,192 @@ function ws_flow_box_try($viewer, $flow, $data)
     }
 
     return array('refusal' => lang('This kind of box cannot run yet.')) + $answer;
+}
+
+/* ---------------------------------------------------------------------------
+   A tool of an MCP server (the box mcp)
+   --------------------------------------------------------------------------- */
+
+/**
+ * An MCP box's arguments as the tool gets them: '' for none, else a JSON
+ * object. A {{node.*}} or {{trigger.*}} value goes in as the inside of a
+ * JSON string (ws_step_fill_value()), so the text is looked at with each
+ * one empty: one written outside quotes leaves no object. Pure.
+ *
+ * @param string $text
+ * @return array|null name => value, null when the text is not an object
+ */
+function ws_step_mcp_arguments($text)
+{
+    $text = trim((string) preg_replace(WS_STEP_VALUE_PATTERN, '', (string) $text));
+
+    if ($text === '') {
+        return array();
+    }
+
+    if ($text[0] !== '{') {
+        return null;
+    }
+
+    $decoded = json_decode($text, true);
+
+    return is_array($decoded) ? $decoded : null;
+}
+
+/**
+ * Why a flow may not run a tool of a server, '' when it may: the tool is
+ * turned on there and runs without an approval, as one that reads only
+ * (ws_mcp_form_tools()). A tool that writes asks before each call: a flow
+ * does not run one. Pure.
+ *
+ * @param array  $server ws_mcp_servers() row: alias, auth_kind, tools, tool_rules
+ * @param string $tool
+ * @return string
+ */
+function ws_step_mcp_tool_problem($server, $tool)
+{
+    $on = ws_mcp_tools_on($server);
+
+    if (!isset($on[$tool])) {
+        return lang(array('string' => 'The tool {var:1} is not turned on at @{var:2}.', 'vars' => array($tool, $server['alias'])));
+    }
+
+    if (!empty($on[$tool]['approve'])) {
+        return lang(array('string' => 'The tool {var:1} of @{var:2} asks before each call: a flow runs only the tools that read.', 'vars' => array($tool, $server['alias'])));
+    }
+
+    return '';
+}
+
+/**
+ * Checks an MCP box with somebody's rights: the server turned on, a tool
+ * of it a flow may run (ws_step_mcp_tool_problem()), an account to call it
+ * with on a server people sign in to.
+ *
+ * @param array $viewer the flow's owner
+ * @param array $config ws_step_config_normalize('mcp')
+ * @return array ok, error, action (type mcp, server_id, alias, tool, arguments)
+ */
+function ws_step_mcp_check($viewer, $config)
+{
+    $refuse = function ($error) {
+        return array('ok' => false, 'error' => $error, 'action' => null);
+    };
+
+    if (!function_exists('ws_mcp_ready') || !ws_mcp_ready()) {
+        return $refuse(lang('The database has to be updated first.'));
+    }
+
+    $server = ws_mcp_active_servers()[(int) $config['server_id']] ?? null;
+
+    if (!$server) {
+        return $refuse(lang('That MCP server could not be found.'));
+    }
+
+    $tool = (string) $config['tool'];
+    $problem = ws_step_mcp_tool_problem($server, $tool);
+
+    if ($problem !== '') {
+        return $refuse($problem);
+    }
+
+    if (ws_step_mcp_arguments($config['arguments']) === null) {
+        return $refuse(lang('The arguments are not a JSON object.'));
+    }
+
+    if (($server['auth_kind'] === 'oauth') && !ws_mcp_oauth_account($server, (int) $viewer['id'])) {
+        return $refuse(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias'])));
+    }
+
+    return array(
+        'ok'     => true,
+        'error'  => '',
+        'action' => array(
+            'type'      => 'mcp',
+            'server_id' => (int) $server['id'],
+            'alias'     => (string) $server['alias'],
+            'tool'      => $tool,
+            'arguments' => (string) $config['arguments'],
+        ),
+    );
+}
+
+/**
+ * What an MCP box does, in words. Pure.
+ *
+ * @param array $action ws_step_mcp_check()
+ * @return string
+ */
+function ws_step_mcp_text($action)
+{
+    return lang(array('string' => 'Runs the tool {var:1} of @{var:2} and keeps its answer.', 'vars' => array((string) $action['tool'], (string) $action['alias'])));
+}
+
+/**
+ * The answer an MCP box keeps of a tool's result: its text (the parts the
+ * form shows, else the structured content), cut as a webhook's answer is
+ * (ws_scheduled_webhook_body()); null for none. Pure.
+ *
+ * @param mixed $result pg_mcp_client_call_tool() result
+ * @return string|null
+ */
+function ws_step_mcp_result($result)
+{
+    $text = pg_mcp_client_result_text(is_array($result) ? $result : array(), WS_SCHEDULED_WEBHOOK_BODY_BYTES);
+
+    return ($text === '') ? null : ws_scheduled_webhook_body($text);
+}
+
+/**
+ * Runs an MCP box's tool with the flow owner's own account on the server
+ * when they have one, else with the site's, through the call the form
+ * makes (ws_mcp_tool_call()). The box's arguments are filled already
+ * (ws_step_fill_action()). An answer the tool marks as an error fails the
+ * box, its text kept.
+ *
+ * @param array $owner  the flow's owner, checked (ws_step_mcp_check())
+ * @param array $action ws_step_mcp_check(), filled
+ * @return array ok, text, data (result, duration_ms)
+ */
+function ws_step_mcp_do($owner, $action)
+{
+    $json = trim((string) $action['arguments']);
+    $json = ($json === '') ? '{}' : $json;
+
+    // Filled, the values may make it longer than the box keeps.
+    if (!is_object(json_decode($json)) || (strlen($json) > WS_STEP_MCP_ARGUMENTS_MAX)) {
+        return array('ok' => false, 'text' => lang('The arguments are not a JSON object.'), 'data' => array());
+    }
+
+    $server = ws_mcp_server((int) $action['server_id']);
+
+    if (!$server) {
+        return array('ok' => false, 'text' => lang('That MCP server could not be found.'), 'data' => array());
+    }
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(WS_MCP_SCREEN_TIMEOUT * 3 + 30);
+    }
+
+    $call = ws_mcp_tool_call((int) $owner['id'], $server, (string) $action['tool'], $json);
+
+    if (!$call['called']) {
+        return array('ok' => false, 'text' => $call['error'], 'data' => array());
+    }
+
+    log_activity(lang(array('string' => 'ran the tool {var:1} of the MCP server @{var:2} in a flow', 'vars' => array((string) $action['tool'], $server['alias']))), (string) db_value("SELECT user_username FROM user WHERE user_id = '" . (int) $owner['id'] . "'"));
+
+    $data = array('result' => null, 'duration_ms' => (int) $call['duration_ms']);
+
+    if (!$call['reached']) {
+        return array('ok' => false, 'text' => $call['error'], 'data' => $data);
+    }
+
+    $data['result'] = ws_step_mcp_result($call['out']['result'] ?? null);
+
+    if (!empty($call['out']['is_error'])) {
+        return array('ok' => false, 'text' => lang(array('string' => 'The tool {var:1} of @{var:2} answered with an error.', 'vars' => array((string) $action['tool'], $server['alias']))), 'data' => $data);
+    }
+
+    return array('ok' => true, 'text' => lang(array('string' => 'The tool {var:1} of @{var:2} answered.', 'vars' => array((string) $action['tool'], $server['alias']))), 'data' => $data);
 }

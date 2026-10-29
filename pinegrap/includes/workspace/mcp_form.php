@@ -15,7 +15,8 @@
  * site's, as when Pinegrap AI calls it, and is kept in ws_mcp_calls with via
  * 'form'. What the tool answered is shown to the person and, when they choose
  * a channel they may write in, posted there in their name as a locked
- * message.
+ * message. A flow's MCP box (steps.php) calls a tool the same way
+ * (ws_mcp_tool_call()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -501,6 +502,58 @@ function ws_mcp_form_message_body($alias, $tool, $person, $text, $failed = false
 }
 
 /**
+ * Calls a tool of a server with a person's own account when they have one,
+ * else with the site's: the one way a form (ws_mcp_form_run()) and a flow's
+ * MCP box (ws_step_mcp_do()) reach a server. A token the service no longer
+ * takes is renewed once (OAuth servers). The server keeps the state of the
+ * call and when it was last used; the caller keeps the call itself.
+ *
+ * @param int    $user_id whose own account comes first
+ * @param array  $server
+ * @param string $name    the tool's name
+ * @param string $json    the arguments, a JSON object
+ * @return array called (the server was asked), reached (it answered), error
+ *               ('' when the tool answered without an error), out
+ *               (pg_mcp_client_call_tool()), duration_ms
+ */
+function ws_mcp_tool_call($user_id, $server, $name, $json)
+{
+    $answer = array('called' => false, 'reached' => false, 'error' => '', 'out' => null, 'duration_ms' => 0);
+
+    if (!function_exists('curl_init')) {
+        return array('error' => lang('This server cannot make outgoing HTTPS requests (cURL is missing).')) + $answer;
+    }
+
+    $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, (int) $user_id);
+
+    if (($server['auth_kind'] === 'oauth') && empty($conn['headers'])) {
+        return array('error' => lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias']))) + $answer;
+    }
+
+    $started = microtime(true);
+    $out = pg_mcp_client_call_tool($conn, (string) $name, json_decode($json));
+
+    // A token the service no longer takes is renewed once (OAuth servers).
+    if (!$out['ok'] && ws_mcp_reauthorize($conn, $server, $out['status'] ?? 0)) {
+        $out = pg_mcp_client_call_tool($conn, (string) $name, json_decode($json));
+    }
+
+    $duration = (int) round((microtime(true) - $started) * 1000);
+
+    if (!$out['ok']) {
+        $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out['status'] ?? 0, $out['error'], $conn['person']))));
+    } else {
+        $error = $out['is_error'] ? lang('The tool answered with an error.') : '';
+    }
+
+    ws_mcp_remember($server, $conn, $out['ok'] ? '' : $error);
+
+    db("UPDATE ws_mcp_servers SET last_used = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
+
+    return array('called' => true, 'reached' => (bool) $out['ok'], 'error' => $error, 'out' => $out, 'duration_ms' => $duration);
+}
+
+/**
  * Runs a tool from its form, with the person's own account when they have
  * one, else with the site's, and keeps the call (ws_mcp_calls, via 'form').
  * With a channel the answer is posted there in the person's name, locked.
@@ -517,10 +570,6 @@ function ws_mcp_form_run($viewer, $server, $tool, $arguments, $channel = null)
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'text' => '', 'is_error' => true, 'message_id' => 0);
     };
-
-    if (!function_exists('curl_init')) {
-        return $fail(lang('This server cannot make outgoing HTTPS requests (cURL is missing).'));
-    }
 
     $json = (string) json_encode((object) $arguments, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
 
@@ -543,30 +592,16 @@ function ws_mcp_form_run($viewer, $server, $tool, $arguments, $channel = null)
         @set_time_limit(WS_MCP_SCREEN_TIMEOUT * 3 + 30);
     }
 
-    $conn = ws_mcp_connection($server, WS_MCP_SCREEN_TIMEOUT, (int) $viewer['id']);
-
-    if (($server['auth_kind'] === 'oauth') && empty($conn['headers'])) {
-        return $fail(lang(array('string' => 'Connect your own account to @{var:1} first: nobody\'s account is connected there for you.', 'vars' => $server['alias'])));
-    }
-
-    $started = microtime(true);
     $now = time();
-    $out = pg_mcp_client_call_tool($conn, (string) $tool['name'], json_decode($json));
+    $call = ws_mcp_tool_call((int) $viewer['id'], $server, (string) $tool['name'], $json);
 
-    // A token the service no longer takes is renewed once (OAuth servers).
-    if (!$out['ok'] && ws_mcp_reauthorize($conn, $server, $out['status'] ?? 0)) {
-        $out = pg_mcp_client_call_tool($conn, (string) $tool['name'], json_decode($json));
+    if (!$call['called']) {
+        return $fail($call['error']);
     }
 
-    $duration = (int) round((microtime(true) - $started) * 1000);
-
-    if (!$out['ok']) {
-        $error = lang(array('string' => '@{var:1} could not be reached: {var:2}', 'vars' => array($server['alias'], ws_mcp_error_text($server, $out['status'] ?? 0, $out['error'], $conn['person']))));
-    } else {
-        $error = $out['is_error'] ? lang('The tool answered with an error.') : '';
-    }
-
-    ws_mcp_remember($server, $conn, $out['ok'] ? '' : $error);
+    $out = $call['out'];
+    $error = $call['error'];
+    $duration = $call['duration_ms'];
 
     db("INSERT INTO ws_mcp_calls (server_id, tool, arguments, via, requested_by, channel_id, status, error, duration_ms, created_at, finished_at)
         VALUES (
@@ -583,8 +618,6 @@ function ws_mcp_form_run($viewer, $server, $tool, $arguments, $channel = null)
             '" . time() . "')");
 
     $call_id = (int) mysqli_insert_id(db::$con);
-
-    db("UPDATE ws_mcp_servers SET last_used = '" . time() . "' WHERE id = '" . (int) $server['id'] . "'");
 
     log_activity(lang(array('string' => 'ran the tool {var:1} of the MCP server @{var:2} with a form', 'vars' => array((string) $tool['name'], $server['alias']))), (string) ($_SESSION['sessionusername'] ?? ''));
 
