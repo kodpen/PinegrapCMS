@@ -13,7 +13,7 @@ description: Own panel widgets replaced by Bootstrap 6 components with the same 
 
 ## What was checked?
 - Screenshots of the chips (rest, hover, light, dark) and the progress bar were pixel-identical. Toasts were not shot.
-- `.btn-ghost` swap, computed styles equal before and after: slice 1 every ghost on 23 screens (light/dark, rest, hover, focus-visible, active); slice 3 (#2505) 142 on six screens; slice 4 (#2552) 36 on one tool row (rest, pressed, disabled, AI rewrite). Slice 2 (#2479), no sandbox: Bootstrap styles `.btn-text`/`.theme-secondary` by class only and no panel rule sets `--bs-btn-*` around a converted button. `tests/bs6_btn_ghost_swap_test.php` guards the files and scans every panel file but `assets/lib/`, the flow canvas and backend CSS. `edit_theme_file.php`'s 4 ghosts, back with #2983, went again (#PRNUM) unshot: same class, same `#button_bar`.
+- `.btn-ghost` swap, computed styles equal before and after: slice 1 every ghost on 23 screens (light/dark, rest, hover, focus-visible, active); slice 3 (#2505) 142 on six screens; slice 4 (#2552) 36 on one tool row (rest, pressed, disabled, AI rewrite). Slice 2 (#2479), no sandbox: Bootstrap styles `.btn-text`/`.theme-secondary` by class only and no panel rule sets `--bs-btn-*` around a converted button. `tests/bs6_btn_ghost_swap_test.php` guards the files and scans every panel file but `assets/lib/`, the flow canvas and backend CSS. `edit_theme_file.php`'s 4 ghosts, back with #2983, went again (#3039) unshot: same class, same `#button_bar`.
 - The translations filter's current chip carried `.active`, which `.pg-chip` never styled: it now shows as selected.
 
 ## What is left of B9k, and why does the rest wait?
