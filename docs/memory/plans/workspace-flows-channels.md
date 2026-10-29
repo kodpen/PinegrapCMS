@@ -15,7 +15,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 ## Which steps? (one PR each)
 - C1 the run's flag: state, one-line result, fold; on the canvas and in the list — done, #2903 (workspace/workspace-flows-run-flag.md). The run card uses its `runFlag()` in C2.
 
-- C2 Add › Start a flow in the composer; the run's card in the channel follows the run.
+- C2 Add › Start a flow in the composer; the run's card in the channel follows the run — in progress.
 
 - C3 Add › Scheduled flow (mini window) replaces Add › Scheduled action for new work.
 
