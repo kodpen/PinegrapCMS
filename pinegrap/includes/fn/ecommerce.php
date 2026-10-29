@@ -1248,7 +1248,7 @@ function pg_order_list_status_html($order, $paid_known)
         $title = $parasut_invoiced
             ? lang('An invoice was created for this order in Parasut')
             : lang('This order has been exported for upload to parasut.com');
-        $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" src="assets/images/parasut-emblem.png"></span>';
+        $html .= '<span title="' . h($title) . '" class="badge bg-transparent bg-gradient fw-light"><img width="20px" height="auto" alt="' . h($title) . '" src="assets/images/parasut-emblem.png"></span>';
     }
 
     if ($parasut_unsure) {

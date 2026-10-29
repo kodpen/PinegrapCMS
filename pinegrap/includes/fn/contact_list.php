@@ -745,7 +745,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     $address_view = (pg_contact_list_address_prefix($filter) !== '');
     $duplicates = ($filter == 'all_duplicate_contacts');
     $edit_url = 'edit_contact.php?id=' . $id . '&send_to=' . h(escape_javascript(urlencode(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php?filter=' . $filter)));
-    $lazy = '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="';
+    $lazy = '<img style="width: 50px;height:50px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="';
 
     if ((int) $contact['file_id'] != 0) {
         $picture = $lazy . PATH . h($file_name) . '" />';
