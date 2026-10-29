@@ -95,6 +95,7 @@ function test_notes_notion_import_page_id_and_title()
 	pg_assert_same('Meeting notes', ws_note_notion_title('Meeting notes 2a1b3c4d5e6f40718293a4b5c6d7e8f9'), 'the 32-hex id after a space');
 	pg_assert_same('Meeting notes', ws_note_notion_title(' Meeting-notes-2a1b3c4d5e6f40718293a4b5c6d7e8f9 '), 'or after a dash, as an address writes it');
 	pg_assert_same('Plan 2026', ws_note_notion_title('Plan 2026'), 'a title without one');
+	pg_assert_same('Q3-plan', ws_note_notion_title('Q3-plan'), 'a dash of the title itself stays');
 }
 
 function test_notes_notion_import_search_pages()
@@ -149,11 +150,11 @@ function test_notes_notion_import_page_to_note()
 
 	$file = ws_note_notion_file($page);
 
-	pg_assert_true(strpos($file, "title: Meeting notes\n") !== false, 'the file carries the title');
+	pg_assert_true(strpos($file, "title: \"Meeting notes\"\n") !== false, 'the file carries the title');
 	pg_assert_true(strpos($file, "created: 2026-09-01T08:00:00Z\n") !== false, 'and created');
 	pg_assert_true(strpos($file, "updated: 2026-10-02T10:15:00Z\n") !== false, 'and updated');
-	pg_assert_true(strpos($file, "id: 2a1b3c4d5e6f40718293a4b5c6d7e8f9\n") !== false, 'and the page id it is known by');
-	pg_assert_true(strpos($file, "tags:\n  - weekly\n  - team\n") !== false, 'and the tags');
+	pg_assert_true(strpos($file, "id: \"2a1b3c4d5e6f40718293a4b5c6d7e8f9\"\n") !== false, 'and the page id it is known by');
+	pg_assert_true(strpos($file, "tags:\n  - \"weekly\"\n  - \"team\"\n") !== false, 'and the tags');
 
 	$parsed = ws_note_import_parse(ws_note_import_text($file), 'Meeting notes.md', 0);
 

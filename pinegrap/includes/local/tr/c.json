@@ -1440,6 +1440,7 @@
     "Connect with your application key and secret first — the call is made with them.": "Önce uygulama anahtarınız ve gizli anahtarınızla bağlanın — çağrı onlarla yapılır.",
     "Connect with {var:1}": "{var:1} hesabını bağla",
     "Connect your calendar, your e-mail and the tools you already use.": "Takviminizi, e-postanızı ve zaten kullandığınız araçları bağlayın.",
+    "Connect your own Notion account first: Workspace settings › MCP servers, @{var:1}, Connect my account.": "Önce kendi Notion hesabınızı bağlayın: Workspace ayarları › MCP sunucuları, @{var:1}, Hesabımı bağla.",
     "Connect your own account": "Kendi hesabınızı bağlayın",
     "Connect your own account at a provider to sign in with it too.": "Bir sağlayıcıdaki kendi hesabınızı bağlayın; onunla da giriş yapabilirsiniz.",
     "Connect your own account in the Assistant part of the task.": "Görevin Asistan bölümünden kendi hesabınızı bağlayın.",

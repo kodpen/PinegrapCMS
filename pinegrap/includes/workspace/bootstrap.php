@@ -109,6 +109,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_import.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_enex.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_keep.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_html.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/notes_notion.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/file_edits.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/watch.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
