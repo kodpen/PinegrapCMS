@@ -1014,7 +1014,6 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     // insert and find what the operator removed.
     $existing = array();
     $old_list = array();
-    $old_title_id = 0;
     foreach ((array)db_items(
         "SELECT id, name, label, type, wysiwyg, rss_field"
          . ($has_translate ? ", translate_values" : "") . " FROM form_fields
@@ -1022,8 +1021,9 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
          ORDER BY sort_order ASC, id ASC") as $row) {
         $existing[(int)$row['id']] = $row;
         $old_list[] = array('name' => $row['name'], 'label' => $row['label']);
-        if ($old_title_id === 0 && (string)$row['rss_field'] === 'title') $old_title_id = (int)$row['id'];
     }
+    // The fields records are named after, before this save moves them.
+    $sources_before = pg_cf_address_sources($page_id);
 
     $kept         = array();
     $seen_names   = array();
@@ -1166,13 +1166,13 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
     }
 
     // The pretty URL state before the settings are written: turning it on,
-    // or moving the Title role to another field, renames the records.
-    $was_pretty   = check_if_pretty_urls_are_enabled($page_id) == true;
-    $title_before = $old_title_id;
+    // or moving the Title role or a slug kind to another field, renames the
+    // records.
+    $was_pretty = check_if_pretty_urls_are_enabled($page_id) == true;
 
     pg_cf_write_form_settings($page_id, $settings, $old_list, $written_list);
 
-    $result['addresses'] = pg_cf_refresh_address_names($page_id, $was_pretty, $title_before);
+    $result['addresses'] = pg_cf_refresh_address_names($page_id, $was_pretty, $sources_before);
 
     return $result;
 }
@@ -1180,31 +1180,30 @@ function pg_cf_sync_page_form($page_id, $fields, $form_name, $user_id, $settings
 /**
  * Give a form's records the names its pretty URLs need.
  *
- * The name comes from the record's Title field (update_submitted_form_address_name()),
- * and custom_form.php writes it on every new submission while the setting is
- * on. What was there before has none: turning the setting on, or moving the
- * Title role to another field, renames every record, as the classic page and
- * field screens do (edit_page.php, edit_field.php). While the setting stays
- * on, a record that still has no name (written while it was off, or through
- * the API) gets one. Returns how many records were given a name.
+ * The name comes from the record's slug field, else its Title field
+ * (update_submitted_form_address_name()), and custom_form.php writes it on
+ * every new submission while the setting is on. What was there before has
+ * none: turning the setting on, or moving the Title role or a slug kind to
+ * another field (pg_cf_address_sources() changes), renames every record, as
+ * the classic page and field screens do (edit_page.php, edit_field.php).
+ * While the setting stays on, a record that still has no name (written while
+ * it was off, or through the API) gets one. Returns how many records were
+ * given a name.
  */
-function pg_cf_refresh_address_names($page_id, $was_pretty, $title_before)
+function pg_cf_refresh_address_names($page_id, $was_pretty, $sources_before)
 {
     $page_id = (int)$page_id;
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return 0;
     if (check_if_pretty_urls_are_enabled($page_id) != true) return 0;
     if (function_exists('pg_sw_form_pretty_urls')) pg_sw_form_pretty_urls(0, true);
 
-    $title_now = (int)db_value(
-        "SELECT id FROM form_fields
-         WHERE page_id = '$page_id' AND rss_field = 'title'
-         ORDER BY sort_order ASC LIMIT 1");
-    if ($title_now <= 0) return 0;
+    $sources_now = pg_cf_address_sources($page_id);
+    if ($sources_now === '') return 0;
 
     // Every record when the names may all be stale; otherwise only the
-    // unnamed ones that have a title to be named after, so a save does not
-    // walk the records that never will.
-    if (!$was_pretty || (int)$title_before !== $title_now) {
+    // unnamed ones that have a slug or a title to be named after, so a save
+    // does not walk the records that never will.
+    if (!$was_pretty || (string)$sources_before !== $sources_now) {
         $records = db_items(
             "SELECT id FROM forms
              WHERE page_id = '$page_id'
@@ -1214,7 +1213,8 @@ function pg_cf_refresh_address_names($page_id, $was_pretty, $title_before)
             "SELECT DISTINCT forms.id, forms.submitted_timestamp
              FROM forms
              INNER JOIN form_data ON form_data.form_id = forms.id AND form_data.data != ''
-             INNER JOIN form_fields ON form_fields.id = form_data.form_field_id AND form_fields.rss_field = 'title'
+             INNER JOIN form_fields ON form_fields.id = form_data.form_field_id
+                 AND (" . (pg_coll_ready() ? "form_fields.collection_kind = 'slug' OR " : '') . "form_fields.rss_field = 'title')
              WHERE forms.page_id = '$page_id' AND forms.address_name = ''
              ORDER BY forms.submitted_timestamp ASC, forms.id ASC");
     }
@@ -1223,6 +1223,34 @@ function pg_cf_refresh_address_names($page_id, $was_pretty, $title_before)
         if (update_submitted_form_address_name($record['id']) !== '') $named++;
     }
     return $named;
+}
+
+/**
+ * The fields a form's records are named after, as a string to compare
+ * before and after a save: its slug fields ('s<id>', collections.php) and
+ * its first Title field ('t<id>'), in field order; '' when there is none.
+ *
+ * @param int $page_id
+ * @return string
+ */
+function pg_cf_address_sources($page_id)
+{
+    $page_id = (int)$page_id;
+    $slug    = pg_coll_ready();
+    $list    = array();
+    $title   = false;
+    foreach ((array)db_items(
+        "SELECT id, rss_field" . ($slug ? ", collection_kind" : "") . " FROM form_fields
+         WHERE page_id = '$page_id' AND form_type = 'custom'
+         ORDER BY sort_order ASC, id ASC") as $row) {
+        if ($slug && (string)$row['collection_kind'] === 'slug') {
+            $list[] = 's' . (int)$row['id'];
+        } elseif (!$title && (string)$row['rss_field'] === 'title') {
+            $list[] = 't' . (int)$row['id'];
+            $title  = true;
+        }
+    }
+    return implode(',', $list);
 }
 
 /**

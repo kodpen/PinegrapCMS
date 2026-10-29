@@ -11,9 +11,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - The canvas stays the record: kinds live on the control (`props._cf.kind`, `_cf.ref`) and the save derives row columns, like `translate_values`.
 
 ## Which steps?
-- **Done:** C1 #1981 (`__ref` binding, `designer/collection-references.md`); C2 #1997 (step 11.0.43, flag and kinds, `designer/collection-fields.md`); C3 #2601, C3b #2694, C3c #2814 (typed inputs, `designer/collection-inputs.md`); C4a #2709, C4b2 #2897, C4b2b #2917 (lists, filters, "Shown record", `designer/collection-lists.md`); C4b1 #2835 (references by kind); C5a #2910 (feed categories print the label).
-
-- **C5b — slug field.** A `slug` kind (text box) feeds `update_submitted_form_address_name()` before the Title field; `pg_coll_kinds()` and its twin `_CF_KINDS` in `style_designer.js` (a test compares them), the Form Field "Kind" option.
+- **Done:** C1 #1981 (`__ref` binding, `designer/collection-references.md`); C2 #1997 (step 11.0.43, flag and kinds, `designer/collection-fields.md`); C3 #2601, C3b #2694, C3c #2814 (typed inputs, `designer/collection-inputs.md`); C4a #2709, C4b2 #2897, C4b2b #2917 (lists, filters, "Shown record", `designer/collection-lists.md`); C4b1 #2835 (references by kind); C5a #2910 (feed categories print the label); C5b #2980 (the slug kind feeds the record's address name, `designer/collection-fields.md`).
 
 - **C6a — templates opt in. Done, #2969:** the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised; installed sites change nothing (`designer/collection-fields.md`).
 - **C6b — template references.** Resolve `_cf.ref 'tab:<key>'` at Publish, create the forms in order (target first), seed sample records by label, map `_cf.ref` in the design export; then a categories collection for blog.
@@ -27,4 +25,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- Next is C5b (the slug field kind; it edits `assets/js/style_designer.js`, so it waits until no open PR holds that file) or C6b (template references).
+- C1–C5b and C6a are done. Next is C6b (template references).

@@ -3109,9 +3109,14 @@ function update_multiple_submitted_form_address_names($custom_form_page_id)
 // for pretty URL feature.
 function update_submitted_form_address_name($submitted_form_id)
 {
-    // Get non-blank title value for this submitted form.  The title field is the one where the RSS title
-    // setting is enabled for the field.  For pretty URLs we do not support multiple title fields.
-    $title = db_value("SELECT form_data.data
+    // The address name comes from a slug field of a collection form when it
+    // has a value, else from the Title field (the one with the RSS title
+    // setting). For pretty URLs we do not support multiple title fields.
+    $slug = pg_coll_ready() ? "(form_fields.collection_kind = 'slug') OR " : '';
+    $rows = db_items("SELECT
+            form_data.data,
+            " . ($slug !== '' ? 'form_fields.collection_kind' : "''") . " AS kind,
+            form_fields.rss_field AS rss
 
         FROM form_data
 
@@ -3121,13 +3126,12 @@ function update_submitted_form_address_name($submitted_form_id)
 
             (form_data.form_id = '" . escape($submitted_form_id) . "')
 
-            AND (form_fields.rss_field = 'title')
+            AND (" . $slug . "(form_fields.rss_field = 'title'))
 
             AND (form_data.data != '')
 
-        ORDER BY form_fields.sort_order ASC
-
-        LIMIT 1");
+        ORDER BY form_fields.sort_order ASC");
+    $title = pg_coll_address_source($rows);
     $address_name = create_address_name($title);
     // If the address name is not blank, then get a unique name.
     // We do this in case pretty URLs were just enabled and there happen

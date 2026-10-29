@@ -3985,6 +3985,7 @@ function output_menu($properties = false)
         case 'workspace_template.php':
         case 'workspace_calendar_feed.php':
         case 'workspace_mail.php':
+        case 'workspace_wtables.php':
             $active_menu = 23;
             break;
         case 'workspace_notes.php':
