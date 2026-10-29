@@ -1032,3 +1032,81 @@ function test_workspace_flow_runs_result_pick()
 	pg_assert_same('Later.', ws_flow_run_result_pick('done', array($line('failed', 'Routed failure.', 20, 2), $line('done', 'Later.', 40, 4))), 'a routed failure of a run done is just a box');
 	pg_assert_same(WS_FLOW_RUN_RESULT_CHARS, mb_strlen(ws_flow_run_result_pick('done', array($line('done', str_repeat('ş', 1500), 10, 1)))), 'cut in characters');
 }
+
+// A run about a customer keeps one start key per flow and contact while it
+// is open: the key names the last ended run of that contact, so a second
+// start meets the open run's key, and once that run ends the next start
+// gets a key of its own. It never meets a key a token makes.
+function test_workspace_flow_runs_contact_start_key()
+{
+	pg_assert_same('contact:5:0', ws_flow_contact_start_key(5, 0));
+	pg_assert_same('contact:5:31', ws_flow_contact_start_key(5, 31));
+	pg_assert_true(ws_flow_contact_start_key(5, 0) !== ws_flow_contact_start_key(6, 0), 'one key per contact');
+	pg_assert_true(ws_flow_contact_start_key(5, 0) !== ws_flow_contact_start_key(5, 12), 'a run ended since: a new key');
+	pg_assert_true(strpos(ws_flow_contact_start_key(5, 0), 'manual:') !== 0, 'never a token\'s key');
+	pg_assert_true(strlen(ws_flow_contact_start_key(4294967295, 4294967295)) <= 64, 'fits start_key');
+}
+
+// A second Run for a customer with an open run answers that run while the
+// starter may read it; a run they may not read is refused, never shown and
+// never doubled; no open run starts one.
+function test_workspace_flow_runs_contact_open_run_answered()
+{
+	pg_assert_same('start', ws_flow_run_subject_answer(0, false));
+	pg_assert_same('answer', ws_flow_run_subject_answer(41, true));
+	pg_assert_same('busy', ws_flow_run_subject_answer(41, false));
+
+	// Read from the source: the open run is looked for once the contact is
+	// known to be readable, and before the limits refuse a start.
+	$check = ws_flow_runs_test_source('ws_flow_run_start_check');
+	$contact = strpos($check, 'ws_flow_run_contact_check(');
+	$open = strpos($check, 'ws_flow_run_subject_answer(');
+	$limits = strpos($check, 'ws_flow_start_refusal(');
+
+	pg_assert_true(($contact !== false) && ($open !== false) && ($contact < $open), 'the read right first');
+	pg_assert_true($open < $limits, 'the open run before the limits');
+
+	// The run row carries its subject.
+	$start = ws_flow_runs_test_source('ws_flow_run_start');
+
+	pg_assert_contains("subject_type, subject_id", $start);
+	pg_assert_contains("\$check['subject']", $start);
+}
+
+// The tasks of a run about a customer carry the customer's name after their
+// title, within the length a task title keeps; the name is never cut away.
+function test_workspace_flow_runs_task_title_with_customer()
+{
+	pg_assert_same('Send the contract', ws_flow_task_title_customer('Send the contract', ''));
+	pg_assert_same('Send the contract – Ayşe Kaya', ws_flow_task_title_customer('Send the contract', 'Ayşe Kaya'));
+
+	$long = ws_flow_task_title_customer(str_repeat('a', 200), 'Ayşe Kaya');
+
+	pg_assert_true(mb_strlen($long) <= 200, 'within a task title');
+	pg_assert_same(' – Ayşe Kaya', mb_substr($long, -12), 'the name is kept');
+
+	// The name the run started with, kept in its context, as the flow's.
+	$context = ws_flow_run_context_new(array('name' => 'Onboarding', 'channel_id' => 7), array('id' => 'start'), null, array('type' => 'contact', 'id' => 5, 'name' => 'Ayşe Kaya'));
+
+	pg_assert_same('Ayşe Kaya', $context['subject_name']);
+	pg_assert_true(!isset(ws_flow_run_context_new(array('name' => 'Onboarding'), array('id' => 'start'))['subject_name']), 'no customer: no name');
+	pg_assert_contains('ws_flow_task_title_customer(', ws_flow_runs_test_source('ws_flow_step_task'));
+}
+
+// Only a contact the starter may read is a run's customer: staff with the
+// contacts right read every contact, the user role those in its contact
+// groups, nobody without the contacts right.
+function test_workspace_flow_runs_contact_read_right()
+{
+	$staff = array('id' => 2, 'role' => 1, 'contacts' => true);
+	$member = array('id' => 9, 'role' => 3, 'contacts' => true);
+	$none = array('id' => 9, 'role' => 3, 'contacts' => false);
+
+	pg_assert_true(ws_flow_run_contact_readable($staff, array(5), 5));
+	pg_assert_true(ws_flow_run_contact_readable($member, array(5, 8), 8));
+	pg_assert_true(!ws_flow_run_contact_readable($member, array(5), 8), 'outside their contact groups');
+	pg_assert_true(!ws_flow_run_contact_readable($none, array(5), 5), 'no contacts right');
+	pg_assert_true(!ws_flow_run_contact_readable($staff, array(5), 0), 'no contact');
+
+	pg_assert_contains('ws_viewer_contacts_open(', ws_flow_runs_test_source('ws_flow_run_contact_check'));
+}

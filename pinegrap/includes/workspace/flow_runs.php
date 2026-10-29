@@ -968,6 +968,81 @@ function ws_flow_start_key($token)
 }
 
 /**
+ * The start key of a run about a customer: the contact and the last ended
+ * run of the flow about them (0 for none). While a run about the contact is
+ * open the key stays the same, so a second start meets it in the unique
+ * (flow_id, start_key) and answers that run; once it ends the next start
+ * gets a key of its own. A run swept later never brings an older key back:
+ * the runs ended after it are swept no sooner.
+ *
+ * @param int $contact_id
+ * @param int $last_ended_id
+ * @return string
+ */
+function ws_flow_contact_start_key($contact_id, $last_ended_id)
+{
+    return 'contact:' . max(0, (int) $contact_id) . ':' . max(0, (int) $last_ended_id);
+}
+
+/**
+ * What a start about a customer does with the flow's open run about them:
+ * none starts one, one the starter reads is answered, one they do not read
+ * refuses the start (it is neither shown nor doubled).
+ *
+ * @param int  $open_run_id 0 for none
+ * @param bool $readable    the starter reads it (ws_flow_run_for())
+ * @return string start | answer | busy
+ */
+function ws_flow_run_subject_answer($open_run_id, $readable)
+{
+    if ((int) $open_run_id <= 0) {
+        return 'start';
+    }
+
+    return $readable ? 'answer' : 'busy';
+}
+
+/**
+ * Whether the person reads the contact a run is to be about: they hold the
+ * contacts right and the contact is among those they may open
+ * (ws_viewer_contacts_open()).
+ *
+ * @param array $viewer
+ * @param int[] $open_ids ws_viewer_contacts_open() of the contact
+ * @param int   $contact_id
+ * @return bool
+ */
+function ws_flow_run_contact_readable($viewer, $open_ids, $contact_id)
+{
+    $contact_id = (int) $contact_id;
+
+    return ($contact_id > 0) && !empty($viewer['contacts']) && in_array($contact_id, array_map('intval', (array) $open_ids), true);
+}
+
+/**
+ * The title of a task a run about a customer opens: the box's title and the
+ * customer's name after it, the title cut so that the name stays within
+ * what a task title keeps.
+ *
+ * @param string $title
+ * @param string $name  the customer's name, '' for a run about nobody
+ * @return string
+ */
+function ws_flow_task_title_customer($title, $name)
+{
+    $title = (string) $title;
+    $name = trim((string) $name);
+
+    if ($name === '') {
+        return $title;
+    }
+
+    $tail = ' – ' . mb_substr($name, 0, 100);
+
+    return rtrim(mb_substr($title, 0, 200 - mb_strlen($tail))) . $tail;
+}
+
+/**
  * What a box keeps of how it went, as JSON: its sentence (text) and the
  * values the boxes after it may read later (data). Within
  * WS_FLOW_RESULT_BYTES: values too large are left out first, then the
@@ -1175,19 +1250,27 @@ function ws_flow_task_marker($flow_name, $run_id, $box_name)
  * change the flow's home at once, so the channel a run opens its tasks in,
  * and whose readers read it, is the one it started with.
  *
- * @param array    $flow       ws_flows row
- * @param array    $trigger    the start box
- * @param int|null $channel_id the channel the starter named, null for the flow's home
- * @return array trigger, node, channel_id, flow_name
+ * @param array      $flow       ws_flows row
+ * @param array      $trigger    the start box
+ * @param int|null   $channel_id the channel the starter named, null for the flow's home
+ * @param array|null $subject    the customer the run is about (type, id, name), null for none
+ * @return array trigger, node, channel_id, flow_name; subject_name for a run about a customer
  */
-function ws_flow_run_context_new($flow, $trigger, $channel_id = null)
+function ws_flow_run_context_new($flow, $trigger, $channel_id = null, $subject = null)
 {
-    return array(
+    $context = array(
         'trigger'    => 'manual',
         'node'       => (string) $trigger['id'],
         'channel_id' => max(0, (int) ($channel_id ?? ($flow['channel_id'] ?? 0))),
         'flow_name'  => (string) ($flow['name'] ?? ''),
     );
+
+    // The customer's name as the run starts, carried by its tasks' titles.
+    if (is_array($subject) && ((int) ($subject['id'] ?? 0) > 0)) {
+        $context['subject_name'] = (string) ($subject['name'] ?? '');
+    }
+
+    return $context;
 }
 
 /**
@@ -1767,6 +1850,33 @@ function ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)
 }
 
 /**
+ * Whether a run may be about the contact the person names: one that exists
+ * and that they read (ws_flow_run_contact_readable()). A contact they do not
+ * read is refused as one that is not there, so whether it exists is not told.
+ *
+ * @param array $viewer     the starter
+ * @param int   $contact_id
+ * @return array ok, error, status, field, subject (type, id, name)
+ */
+function ws_flow_run_contact_check($viewer, $contact_id)
+{
+    $contact_id = (int) $contact_id;
+    $row = ($contact_id > 0) ? db_item("SELECT id, first_name, last_name, company, email_address FROM contacts WHERE id = '" . $contact_id . "'") : null;
+
+    if (!$row || !ws_flow_run_contact_readable($viewer, ws_viewer_contacts_open($viewer, array($contact_id)), $contact_id)) {
+        return ws_flow_refusal(lang('That customer could not be found.'), 422, 'contact_id');
+    }
+
+    $name = pg_contact_display_name($row['first_name'], $row['last_name']);
+
+    foreach (array('company', 'email_address') as $column) {
+        $name = ($name !== '') ? $name : trim((string) $row[$column]);
+    }
+
+    return array('ok' => true, 'error' => '', 'status' => 200, 'field' => '', 'subject' => array('type' => 'contact', 'id' => $contact_id, 'name' => $name));
+}
+
+/**
  * Whether the person may start a run of the flow now: the checks of
  * ws_flow_run_start(), made on their own so that the API's dry run meets the
  * same refusals. The flow is live with a version that is started by hand,
@@ -1781,12 +1891,16 @@ function ws_flow_run_channel_check($viewer, $flow, $channel_id, $owner = null)
  * see, or the 403 of a flow shared with them at view, never a refusal of the
  * token's shape. A channel_id names the channel the run opens its tasks in
  * instead of the flow's home (ws_flow_run_channel_check(), 403 otherwise);
- * a token's run is answered whatever channel the retry names.
+ * a token's run is answered whatever channel the retry names. A contact_id
+ * makes the run about that customer (ws_flow_run_contact_check()): its start
+ * key is the flow's and the contact's (ws_flow_contact_start_key()) in place
+ * of the token's, and the flow's open run about them is answered, before the
+ * limits, as a token's run is (ws_flow_run_subject_answer()).
  *
  * @param array      $viewer
  * @param array|null $flow
- * @param array      $data   token (optional, ws_flow_start_token_valid()), channel_id (optional)
- * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started, 0 for none), channel_id (the run's channel, null for the flow's home)
+ * @param array      $data   token (optional, ws_flow_start_token_valid()), channel_id (optional), contact_id (optional)
+ * @return array ok, error, status, field, version, graph, trigger, start_key ('' when one is to be made), existing (the run the token started or the customer's open run, 0 for none), channel_id (the run's channel, null for the flow's home), subject (the customer, null for none)
  */
 function ws_flow_run_start_check($viewer, $flow, $data = array())
 {
@@ -1812,6 +1926,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
             'trigger'    => ws_flow_trigger_node($graph),
             'existing'   => (int) $run['id'],
             'channel_id' => null,
+            'subject'    => null,
         );
     };
 
@@ -1843,6 +1958,33 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
 
     if ($existing) {
         return $found($existing, $start_key);
+    }
+
+    // A run about a customer: one open run per flow and contact.
+    $subject = null;
+
+    if ((int) ($data['contact_id'] ?? 0) > 0) {
+        $contact = ws_flow_run_contact_check($viewer, $data['contact_id']);
+
+        if (!$contact['ok']) {
+            return $contact;
+        }
+
+        $subject = $contact['subject'];
+        $about = "flow_id = '" . (int) $flow['id'] . "' AND subject_type = 'contact' AND subject_id = '" . (int) $subject['id'] . "'";
+        $open_id = (int) db_value("SELECT id FROM ws_flow_runs WHERE " . $about . " AND status IN ('running', 'waiting') ORDER BY id DESC LIMIT 1");
+        $open_run = ($open_id > 0) ? ws_flow_run_for($viewer, $open_id) : null;
+
+        switch (ws_flow_run_subject_answer($open_id, (bool) $open_run)) {
+            case 'answer':
+                return $found($open_run, (string) $open_run['start_key']);
+
+            case 'busy':
+                return ws_flow_refusal(lang('This flow already has an open run for that customer.'), 409, 'contact_id');
+        }
+
+        $start_key = ws_flow_contact_start_key($subject['id'], db_value("SELECT MAX(id) FROM ws_flow_runs WHERE " . $about . " AND status NOT IN ('running', 'waiting')"));
+        $ok['start_key'] = $start_key;
     }
 
     $version = (((string) $flow['status'] === 'live') && ((int) $flow['version_id'] > 0)) ? ws_flow_version($flow['version_id']) : null;
@@ -1887,7 +2029,7 @@ function ws_flow_run_start_check($viewer, $flow, $data = array())
             return ws_flow_refusal(lang(array('string' => 'This flow was started {var:1} times in the last hour; try again later.', 'vars' => WS_FLOW_STARTS_HOURLY)));
     }
 
-    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0, 'channel_id' => $channel_id);
+    return $ok + array('version' => $version, 'graph' => $graph, 'trigger' => $trigger, 'existing' => 0, 'channel_id' => $channel_id, 'subject' => $subject);
 }
 
 /**
@@ -1923,16 +2065,18 @@ function ws_flow_run_start($viewer, $flow, $data = array())
 
     $flow_id = (int) $flow['id'];
     $start_key = ($check['start_key'] !== '') ? $check['start_key'] : 'manual:' . bin2hex(random_bytes(16));
-    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $context = json_encode(ws_flow_run_context_new($flow, $check['trigger'], $check['channel_id'], $check['subject']), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    $subject_type = $check['subject'] ? (string) $check['subject']['type'] : '';
+    $subject_id = $check['subject'] ? (int) $check['subject']['id'] : 0;
     $now = time();
 
     // Not db(): a failed statement there ends the request with an HTML page,
     // and the duplicate start key is an answer here.
     $written = db_q("INSERT INTO ws_flow_runs (flow_id, version_id, status, started_by, actor_id, start_key,
             subject_type, subject_id, context, depth, boxes_run, started_at, updated_at, finished_at)
-        SELECT ?, ?, 'running', ?, ?, ?, '', 0, ?, 0, 0, ?, ?, 0
+        SELECT ?, ?, 'running', ?, ?, ?, ?, ?, ?, 0, 0, ?, ?, 0
         FROM ws_flows WHERE id = ? AND status = 'live'",
-        array($flow_id, (int) $check['version']['id'], (int) $viewer['id'], (int) $flow['owner_id'], (string) $start_key, (string) $context, $now, $now, $flow_id));
+        array($flow_id, (int) $check['version']['id'], (int) $viewer['id'], (int) $flow['owner_id'], (string) $start_key, $subject_type, $subject_id, (string) $context, $now, $now, $flow_id));
 
     if (!$written) {
         $existing = ((int) mysqli_errno(db::$con) === 1062)
@@ -2624,8 +2768,9 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
         return ws_scheduled_fill($text, $fill);
     });
 
-    // A title that was only values the run left empty: the box's name.
-    $title = ($texts['title'] !== '') ? $texts['title'] : ws_flow_box_name($node);
+    // A title that was only values the run left empty: the box's name; a
+    // run about a customer adds their name.
+    $title = ws_flow_task_title_customer(($texts['title'] !== '') ? $texts['title'] : ws_flow_box_name($node), (string) ($context['subject_name'] ?? ''));
     $marker = ws_flow_task_marker((string) ($context['flow_name'] ?? $flow['name']), (int) $run['id'], ws_flow_box_unique_name($graph, $node));
     $channel_id = ws_flow_run_channel_id($run);
     $channel = ($channel_id > 0) ? ws_channel($channel_id) : null;
