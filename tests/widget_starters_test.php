@@ -83,14 +83,29 @@ function widget_starters_test_flags($type)
 	return $flags[1];
 }
 
-// The source of the kind's case in _buildStarterTree(): its default layout.
+// The source of the kind's case in _buildStarterTree(): its default layout,
+// with the bodies of the part helpers it calls (_sw…/_sdPart…), so a part a
+// helper draws counts as the layout's.
 function widget_starters_test_default_case($kind)
 {
 	$source = widget_starters_test_designer();
 	$from   = strpos($source, 'function _buildStarterTree(');
 	$at     = ($from === false) ? false : strpos($source, "case '" . $kind . "': {", $from);
 
-	return ($at === false) ? '' : widget_starters_test_block($source, $at + strlen("case '" . $kind . "': "));
+	if ($at === false) {
+		return '';
+	}
+
+	$case = widget_starters_test_block($source, $at + strlen("case '" . $kind . "': "));
+	preg_match_all('/\b(_sw[A-Za-z]+|_sdPart[A-Za-z]+|_sdWishlistHeart)\(/', $case, $calls);
+
+	foreach (array_unique($calls[1]) as $fn) {
+		if (preg_match('/function ' . preg_quote($fn, '/') . '\([^)]*\)\s*\{/', $source, $f, PREG_OFFSET_CAPTURE)) {
+			$case .= "\n" . widget_starters_test_block($source, $f[0][1] + strlen($f[0][0]) - 1);
+		}
+	}
+
+	return $case;
 }
 
 // What each kind may place: values, conditions, and the actions/sections
@@ -98,11 +113,15 @@ function widget_starters_test_default_case($kind)
 function widget_starters_test_contract($kind)
 {
 	$palettes = array(
-		'catalog_listing' => array('SW_CATALOG_TOKEN_GROUPS'),
-		'comments_recent' => array('SW_COMMENTS_RECENT_TOKEN_GROUPS'),
-		'form_list_view'  => array('SW_STANDARD_FIELD_OPTIONS', 'SW_FORM_LIST_VIEW_TOKENS'),
+		'catalog_listing'   => array('SW_CATALOG_TOKEN_GROUPS'),
+		'comments_recent'   => array('SW_COMMENTS_RECENT_TOKEN_GROUPS'),
+		'form_list_view'    => array('SW_STANDARD_FIELD_OPTIONS', 'SW_FORM_LIST_VIEW_TOKENS'),
+		'catalog_item_view' => array('SW_CATALOG_ITEM_TOKEN_GROUPS', 'SW_PRODUCT_ENTITY_TOKENS'),
+		'shopping_cart'     => array('SW_SHOPPING_CART_TOKEN_GROUPS'),
+		'order_preview'     => array('SW_ORDER_PREVIEW_TOKEN_GROUPS'),
+		'form_item_view'    => array('SW_STANDARD_FIELD_OPTIONS'),
 	);
-	$flag_types = array('catalog_listing' => 'catalog_listing', 'comments_recent' => 'comments', 'form_list_view' => 'form_list_view');
+	$flag_types = array('comments_recent' => 'comments');
 
 	$values = array();
 	foreach (isset($palettes[$kind]) ? $palettes[$kind] : array() as $var) {
@@ -111,7 +130,7 @@ function widget_starters_test_contract($kind)
 
 	return array(
 		'values'  => $values,
-		'flags'   => isset($flag_types[$kind]) ? widget_starters_test_flags($flag_types[$kind]) : array(),
+		'flags'   => widget_starters_test_flags(isset($flag_types[$kind]) ? $flag_types[$kind] : $kind),
 		'default' => widget_starters_test_default_case($kind),
 	);
 }
@@ -130,10 +149,27 @@ function widget_starters_test_nodes($nodes)
 	return $out;
 }
 
+// The nodes a starter places: its repeated part, or its whole layout.
+function widget_starters_test_placed($item)
+{
+	return widget_starters_test_nodes($item['body'] ? $item['body'] : $item['loop']);
+}
+
+// The quoted name a marker for a part of the default layout must find in
+// that layout's source: 'loop', 'content:<type>', 'region:<type>' or
+// '<binding>:<value>'.
+function widget_starters_test_keep_needle($key)
+{
+	if ($key === 'loop') return "'loop_area'";
+	$at = strpos($key, ':');
+
+	return ($at === false || $at === 0 || $at === strlen($key) - 1) ? '' : "'" . substr($key, $at + 1) . "'";
+}
+
 function test_widget_starters_gallery_listing()
 {
 	$kinds = pg_sw_starter_kinds();
-	pg_assert_same(array('catalog_listing', 'form_list_view', 'comments_recent'), $kinds, 'the first slice lists three kinds');
+	pg_assert_same(array('catalog_listing', 'form_list_view', 'comments_recent', 'catalog_item_view', 'shopping_cart', 'order_preview', 'form_item_view'), $kinds, 'seven kinds have starters');
 
 	foreach ($kinds as $kind) {
 		$items = pg_sw_starter_layouts($kind);
@@ -141,15 +177,23 @@ function test_widget_starters_gallery_listing()
 
 		$keys = array();
 		foreach ($items as $item) {
-			pg_assert_same(array('key', 'label', 'loop', 'wrap'), array_keys($item), $kind . ': the shape the editor reads');
+			pg_assert_same(array('key', 'label', 'loop', 'wrap', 'body'), array_keys($item), $kind . ': the shape the editor reads');
 			pg_assert_true($item['label'] !== '' && $item['label'] !== $item['key'], $kind . '/' . $item['key'] . ': a name of its own');
-			pg_assert_true(count($item['loop']) > 0, $kind . '/' . $item['key'] . ': a repeated part');
+			pg_assert_true((count($item['loop']) > 0) !== (count($item['body']) > 0), $kind . '/' . $item['key'] . ': a repeated part or a whole layout, not both');
 			$keys[] = $item['key'];
 		}
 		pg_assert_same(count($keys), count(array_unique($keys)), $kind . ': keys are unique');
 	}
 
-	pg_assert_same(array(), pg_sw_starter_layouts('shopping_cart'), 'a kind without starters lists none');
+	// The detail widgets hold forms and controls outside a repeated part:
+	// their starters are whole layouts.
+	foreach (array('catalog_item_view', 'shopping_cart', 'order_preview', 'form_item_view') as $kind) {
+		foreach (pg_sw_starter_layouts($kind) as $item) {
+			pg_assert_true(count($item['body']) > 0, $kind . '/' . $item['key'] . ': a whole layout');
+		}
+	}
+
+	pg_assert_same(array(), pg_sw_starter_layouts('order_view'), 'a kind without starters lists none');
 	pg_assert_same(array(), pg_sw_starter_layouts(''), 'no kind lists none');
 	pg_assert_same(array(), pg_sw_starter_layouts(array('catalog_listing')), 'a kind that is not a string lists none');
 }
@@ -164,13 +208,21 @@ function test_widget_starters_place_only_known_values()
 		foreach (pg_sw_starter_layouts($kind) as $item) {
 			$where = $kind . '/' . $item['key'];
 
-			foreach (widget_starters_test_nodes($item['loop']) as $node) {
+			foreach (widget_starters_test_placed($item) as $node) {
 				$bindings = isset($node['props']['_bindings']) ? $node['props']['_bindings'] : array();
+
+				if (isset($node['props']['starterKeep'])) {
+					$needle = widget_starters_test_keep_needle((string) $node['props']['starterKeep']);
+					pg_assert_true($needle !== '', $where . ': marker ' . $node['props']['starterKeep'] . ' is spelled as the editor reads it');
+					pg_assert_contains($needle, $contract['default'], $where . ': marker ' . $node['props']['starterKeep'] . ' names a part of the default layout');
+					pg_assert_same(array('starterKeep'), array_keys($node['props']), $where . ': a marker carries nothing else');
+					pg_assert_same(array(), $node['children'], $where . ': a marker holds nothing');
+				}
 
 				foreach ($bindings as $prop => $value) {
 					if ($prop === 'eo_visible_if') {
 						pg_assert_true(in_array($value, $contract['flags'], true), $where . ': flag ' . $value . ' is listed for the kind');
-					} elseif ($prop === 'action' || $prop === 'section') {
+					} elseif ($prop === 'action' || $prop === 'section' || $prop === 'value') {
 						pg_assert_contains("'" . $value . "'", $contract['default'], $where . ': ' . $prop . ' ' . $value . ' is one the default layout uses');
 					} else {
 						pg_assert_true(in_array($value, $contract['values'], true), $where . ': value ' . $value . ' (' . $prop . ') is in the kind\'s palette');
@@ -183,18 +235,32 @@ function test_widget_starters_place_only_known_values()
 
 function test_widget_starters_are_style_neutral()
 {
-	$types = array('semantic', 'content', 'component', 'col', 'row');
+	$types = array('semantic', 'content', 'component', 'col', 'row', 'container');
 
 	foreach (pg_sw_starter_kinds() as $kind) {
 		foreach (pg_sw_starter_layouts($kind) as $item) {
 			$where = $kind . '/' . $item['key'];
 			$json  = json_encode($item);
 
-			pg_assert_false(strpos($json, 'loop_area') !== false, $where . ': no loop area of its own');
-			pg_assert_false((bool) preg_match('/#[0-9a-fA-F]{3,6}\b/', (string) json_encode(array_column(widget_starters_test_nodes($item['loop']), 'props'))), $where . ': no fixed colour');
+			$placed = widget_starters_test_placed($item);
 
-			foreach (widget_starters_test_nodes($item['loop']) as $node) {
-				pg_assert_true(in_array($node['type'], $types, true), $where . ': node type ' . $node['type']);
+			if ($item['body']) {
+				// A whole layout has the widget's one repeated part: its own,
+				// or the default layout's kept by the 'loop' marker.
+				$loops = 0;
+				foreach ($placed as $node) {
+					if ($node['type'] === 'loop_area' || (isset($node['props']['starterKeep']) && $node['props']['starterKeep'] === 'loop')) $loops++;
+				}
+				pg_assert_same(1, $loops, $where . ': one repeated part');
+				pg_assert_same(array(), $item['wrap'], $where . ': a whole layout wraps nothing');
+				pg_assert_true(strpos($json, 'starterFields') === false, $where . ': the record comes with the kept repeated part');
+			} else {
+				pg_assert_false(strpos($json, 'loop_area') !== false, $where . ': no loop area of its own');
+			}
+			pg_assert_false((bool) preg_match('/#[0-9a-fA-F]{3,6}\b/', (string) json_encode(array_column($placed, 'props'))), $where . ': no fixed colour');
+
+			foreach ($placed as $node) {
+				pg_assert_true(in_array($node['type'], $types, true) || ($item['body'] && $node['type'] === 'loop_area'), $where . ': node type ' . $node['type']);
 				pg_assert_false(isset($node['props']['style']), $where . ': no inline style prop');
 
 				foreach (isset($node['props']['_attrs']) ? $node['props']['_attrs'] : array() as $attr) {
@@ -227,6 +293,8 @@ function test_widget_starters_wiring()
 	pg_assert_contains("String(key).indexOf('st:') === 0", $designer, 'Try takes a starter');
 	pg_assert_contains('_sdLgShow(sid, key, si.label, st)', $designer, 'a starter is tried like every other layout (Keep, Cancel, undo)');
 	pg_assert_contains('delete n.props.starterFields', $designer, 'the record marker is not saved');
+	pg_assert_contains('_sdLgStarterBody(kind, it, base)', $designer, 'a whole-layout starter is built from the default layout');
+	pg_assert_contains('n.props.starterKeep', $designer, 'a marker takes the default layout\'s part');
 
 	$panel = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/shared_component.php');
 	pg_assert_contains("case 'starter_layouts':", $panel, 'the panel answers the gallery');

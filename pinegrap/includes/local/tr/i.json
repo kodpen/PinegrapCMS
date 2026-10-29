@@ -756,6 +756,7 @@
     "Item {var}": "Öğe {var}",
     "Item's product details (loop)": "Satırdaki ürünün bilgileri (döngü)",
     "Items": "Ürün Adedi",
+    "Items Card": "Ürünler Kartı",
     "Items are shipped": "Ürünler kargoyla gönderiliyor",
     "Items here are deleted permanently after {var:1} days.": "Buradaki öğeler {var:1} gün sonra kalıcı olarak silinir.",
     "Items in ZIP file have been imported.": "ZIP dosyasındaki öğeler içe aktarıldı.",
