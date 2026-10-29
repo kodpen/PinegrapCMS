@@ -415,24 +415,25 @@ function pg_image_can_be_resized($width, $height)
  * Calculate how much an image file can be optimizeable.
  *
  * Estimates the saving by compressing the file without writing it, and
- * returns a string like "10%" for the badge on the file screens.
+ * returns the percent as an integer (10 for 10%); the file screens print it
+ * through lang('{var:1}%') so the sign sits where the panel language puts it.
  *
  * Expensive — it decodes and recompresses the whole image. view_files.php
  * caches the answer in files.optimization_percent and only computes it under
  * a threshold; nothing else should call it in a loop.
  *
  * @param string $file_path Full path to the image file
- * @return string Percentage string (e.g. "10%")
+ * @return int Percentage, 0 when the image cannot be processed
  */
 function calculate_optimizable_percent($file_path)
 {
     $report = pg_process_image_file($file_path, array('write' => false));
 
     if ($report['status'] !== 'success') {
-        return '0%';
+        return 0;
     }
 
-    return $report['percent'] . '%';
+    return (int) $report['percent'];
 }
 
 

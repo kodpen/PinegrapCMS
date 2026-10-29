@@ -418,13 +418,12 @@ if ($files) {
                         $optimize_percent_html = '';
                         if ($show_optimize_percent) {
                             if ($file['optimization_percent'] === null || $file['optimization_percent'] === '') {
-                                $percent_string = calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name']);
-                                $percent_int = (int) rtrim($percent_string, '%');
+                                $percent_int = calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name']);
                                 db("UPDATE files SET optimization_percent = '" . (int) $percent_int . "' WHERE id = '" . e($file['id']) . "'");
-                                $optimize_percent_html = '<span class="ps-1 pe-3 fs-smaller">' . h($percent_string) . '</span>';
                             } else {
-                                $optimize_percent_html = '<span class="ps-1 pe-3 fs-smaller">' . (int) $file['optimization_percent'] . '%</span>';
+                                $percent_int = (int) $file['optimization_percent'];
                             }
+                            $optimize_percent_html = '<span class="ps-1 pe-3 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => $percent_int))) . '</span>';
                         }
                         $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
                     }

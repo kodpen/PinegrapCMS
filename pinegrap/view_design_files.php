@@ -133,7 +133,7 @@ if ($files) {
                 if (!$optimized &&(extension_loaded('imagick') || extension_loaded('gd'))) {
 
                     $optimize_percent_html = $show_optimize_percent
-                        ? '<span class="ps-1 pe-3 fs-smaller">' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name']) . '</span>'
+                        ? '<span class="ps-1 pe-3 fs-smaller">' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file['name'])))) . '</span>'
                         : '';
                     $output_optimize_button = '<button type="button" class="m-1 btn-data-control btn btn-outline theme-success border-2 " title="' . lang('Optimize this image') . '" onclick="window.location.href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/optimize.php?id=' . h($file['id']) . get_token_query_string_field() . '\'"><i class="bi bi-fast-forward-circle"></i>' . $optimize_percent_html . '</button>';
                 }
