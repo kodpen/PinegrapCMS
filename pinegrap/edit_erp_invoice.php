@@ -399,6 +399,20 @@ $can_cancel = $can_cancel && !empty($provider_cancellable['ok']);
 // The reason is printed under the buttons: a title on a disabled button is a
 // hover popover that keyboard and touch users never see.
 $cancel_note = ($cancel_locked !== '') ? $cancel_locked : ($can_cancel ? (string) $provider_cancellable['reason'] : '');
+
+// The cancel button's ask names the document and what happens at the
+// provider: a document the provider has is taken back there first
+// (erp_edoc_invoice_provider_cancel()), and neither side can be undone.
+$cancel_provider_label = ((string) ($provider_cancellable['provider'] ?? '') !== '') ? (string) (erp_edoc_info($provider_cancellable['provider'])['label'] ?? '') : '';
+$cancel_at_provider = (trim((string) ($invoice['edoc_external_id'] ?? '')) !== '') || !in_array((string) ($invoice['edoc_status'] ?? 'none'), array('none', 'error', 'rejected'), true);
+
+if (!empty($provider_cancellable['manual'])) {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1} here too? Do it only once it has been taken back at {var:2}. It keeps its number and stays in the register as cancelled; this cannot be undone.', 'vars' => array($invoice['full_number'], $cancel_provider_label)));
+} elseif ($cancel_at_provider && ($cancel_provider_label !== '')) {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1}? It is taken back at {var:2} first (a draft is deleted there, an e-Archive document is cancelled at the tax office), then it stays in the register here as cancelled. This cannot be undone.', 'vars' => array($invoice['full_number'], $cancel_provider_label)));
+} else {
+    $cancel_confirm = lang(array('string' => 'Cancel {var:1}? It keeps its number and stays in the register as cancelled. This cannot be undone.', 'vars' => $invoice['full_number']));
+}
 $can_return = (!$is_cancelled && !$is_return && ($invoice['doc_type'] === 'invoice'));
 
 $status_labels = array(
@@ -1513,7 +1527,7 @@ pg_page_shell([
             </div>
 
             ' . (($can_return || $can_cancel || ($cancel_locked !== ''))
-                ? '<form name="form" action="edit_erp_invoice.php" method="post">
+                ? '<form name="form" action="edit_erp_invoice.php" method="post" class="disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="cancel" />
@@ -1524,7 +1538,7 @@ pg_page_shell([
                                 ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger" data-confirm-content="' . h($cancel_confirm) . '"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
                                 : '') . '
                             ' . (($cancel_locked !== '')
                                 ? '<button type="button" class="btn my-1 btn-outline theme-danger" disabled aria-describedby="erp_cancel_note"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'

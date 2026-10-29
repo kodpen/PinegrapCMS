@@ -1380,6 +1380,8 @@
     "Sign in with {var:1} is not turned on on this site. Please sign in with your account details.": "{var:1} ile giriş bu sitede açık değil. Lütfen hesap bilgilerinizle giriş yapın.",
     "Sign out": "Çıkış yap",
     "Sign out all sessions": "Tüm oturumları kapat",
+    "Sign out all {var:1} sessions of your account? This browser is signed out too.": "Hesabınızın {var:1} oturumunun tümü kapatılsın mı? Bu tarayıcıdaki oturum da kapanır.",
+    "Sign out all {var:1} sessions of {var:2}? They have to sign in again everywhere.": "{var:2} kullanıcısının {var:1} oturumunun tümü kapatılsın mı? Her yerde yeniden giriş yapması gerekir.",
     "Sign out and back in on the device that is stuck. Notes that have not synced yet are kept and sent once you sign in again.": "Takılan cihazda oturumu kapatıp yeniden açın. Henüz eşitlenmemiş notlar korunur ve yeniden oturum açtığınızda gönderilir.",
     "Sign out and remove the passkey": "Oturumu kapat ve geçiş anahtarını kaldır",
     "Sign out of all devices": "Tüm cihazlardan çıkış",
