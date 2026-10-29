@@ -197,12 +197,12 @@ if (empty($proposal['success'])) {
         $flag = '';
         if (($built !== null) && (((int) $built['line_total'] - (int) $built['discount_amount'] !== (int) $source['net'])
             || ((int) $built['tax_total'] !== (int) $source['vat']) || ((int) $built['withholding_amount'] !== (int) $source['withholding']))) {
-            $flag = '<i class="bi bi-exclamation-triangle fg-warning ms-1" aria-hidden="true" title="' . h(lang(array(
+            $flag = '<div class="small fg-emphasis-warning"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h(lang(array(
                 'string' => 'In the purchase invoice: {var:1} before VAT, {var:2} VAT, {var:3} withheld',
                 'vars' => array(erp_money_out_currency((int) $built['line_total'] - (int) $built['discount_amount'], $currency), erp_money_out_currency((int) $built['tax_total'], $currency), erp_money_out_currency((int) $built['withholding_amount'], $currency)),
-            ))) . '"></i>';
+            ))) . '</div>';
         } elseif (in_array((string) $line['no'], (array) $proposal['folded'], true)) {
-            $flag = '<i class="bi bi-info-circle fg-secondary ms-1" aria-hidden="true" title="' . h(lang('Kept as one unit of its amount')) . '"></i>';
+            $flag = '<div class="small fg-secondary"><i class="bi bi-info-circle me-1" aria-hidden="true"></i>' . h(lang('Kept as one unit of its amount')) . '</div>';
         }
 
         $detail = array_filter(array($line['seller_code'], trim($line['brand'] . ' ' . $line['model']), $source['exemption'],

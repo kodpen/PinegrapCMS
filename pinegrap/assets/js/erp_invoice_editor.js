@@ -791,11 +791,9 @@
         } else if (!isPurchase() && row.dataset.erpAvgCost && texts.avgCost) {
             parts.push(fill(texts.avgCost, row.dataset.erpAvgCost));
         }
-
-        // Where the VAT rate came from is said on the box, not in the line.
-        var taxRate = field(row, 'tax_rate');
-        if (taxRate) {
-            taxRate.title = (row.dataset.erpZoneRate === '1' && texts.zoneRate) ? texts.zoneRate : '';
+        // Where the VAT rate came from: the product has none of its own.
+        if (row.dataset.erpZoneRate === '1' && texts.zoneRate) {
+            parts.push(texts.zoneRate);
         }
 
         hint.textContent = parts.join(' \u00b7 ');
@@ -1037,6 +1035,16 @@
         return target;
     }
 
+    // Marks the barcode box with its "not found" message under it, or clears
+    // both; the class alone when the panel helper is missing.
+    function markBarcode(on) {
+        if (typeof window.pgFieldInvalid === 'function') {
+            window.pgFieldInvalid(barcodeInput, on, texts.notFound);
+        } else {
+            barcodeInput.classList.toggle('is-invalid', on);
+        }
+    }
+
     function scan(code) {
         code = String(code || '').trim();
         if (!code || !productsUrl) {
@@ -1050,12 +1058,11 @@
             .then(function (data) {
                 barcodeInput.disabled = false;
                 if (data && data.product) {
-                    barcodeInput.classList.remove('is-invalid');
+                    markBarcode(false);
                     barcodeInput.value = '';
                     placeProduct(data.product);
                 } else {
-                    barcodeInput.classList.add('is-invalid');
-                    barcodeInput.title = texts.notFound;
+                    markBarcode(true);
                     barcodeInput.select();
                 }
                 barcodeInput.focus();
@@ -1281,7 +1288,7 @@
             }
         });
         barcodeInput.addEventListener('input', function () {
-            barcodeInput.classList.remove('is-invalid');
+            markBarcode(false);
         });
     }
 
