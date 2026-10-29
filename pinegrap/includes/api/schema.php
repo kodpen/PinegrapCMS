@@ -623,7 +623,7 @@ function api_schema() {
 			'handler' => 'api_orders_get',
 			'returns' => 'Order',
 			'summary' => 'One order, with its lines',
-			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
+			'description' => 'The order with its lines and its shipments, one per shipping address. Each shipment lists its tracking_numbers and, in parcels, every number with the carrier (a key such as yurtici, or null when none is known), carrier_name, tracking_url (the carrier\'s own page, or the one built from the carrier\'s tracking address; null when neither is known), status (created, in_transit, out_for_delivery, delivered, returned or exception) and shipped_at / delivered_at (UTC, null when not known) - the carrier and link the order screen shows. labels lists the carrier labels made for the address, newest first: driver (the label service), number (the tracking number, null when none), reference (the shipment at the service), barcode, format (pdf, zpl or svg), state (active or cancelled), is_return, created_at, cancelled_at, file_kept (false once the kept copy was removed after its retention time) and document_url (GET /orders/{id}/shipments/labels/{label_id}/document); the document, which carries the recipient\'s address, is never inline. The order.shipped and order.delivered webhooks carry the same parcels for the address they are about; order.shipped from a marketplace import carries only the parcel it announces. Like the list, the order carries type (online, local or marketplace), cancelled_at, cancellation_reason and refund_status (\'\', pending, refunded, failed or manual_required), each null on a site whose database lacks its column.',
 			'params'  => array(
 				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
@@ -666,6 +666,40 @@ function api_schema() {
 				array('name' => 'ship_date',        'in' => 'body', 'type' => 'datetime', 'description' => 'Kept as a date. Nothing in the store reads it as proof of dispatch.'),
 				array('name' => 'delivery_date',    'in' => 'body', 'type' => 'datetime'),
 				array('name' => 'notify',           'in' => 'body', 'type' => 'bool', 'description' => 'true sends the store\'s "your order has shipped" mail to the customer and, for an order placed with an account, also starts the store\'s review request e-mail. Left out it does not: a backfill of last month\'s shipments must not mail a month of customers.')
+			)
+		),
+
+		array(
+			'id'      => 'orders.labels.create',
+			'method'  => 'POST',
+			'path'    => '/orders/{id}/shipments/label',
+			'scope'   => 'orders:write',
+			'handler' => 'api_orders_label_create',
+			'dry_run' => true,
+			'status'  => 201,
+			'returns' => 'OrderShipmentLabel',
+			'summary' => 'Create a carrier label',
+			'description' => 'Buys a shipment with the carrier label service that ships with the address\'s carrier, as Create Label on the order screen does: the label is kept, and the tracking number is recorded on the address as one of its parcels (POST /orders/{id}/shipment is not needed after it). is_return makes a return label instead, collected from the recipient and sent to the store; its number is not one of the address\'s parcels. Each call is a shipment bought from the service, so repeat it only after reading the order: an address with an active label of the kind is refused. 409 order_not_completed for an incomplete or cancelled order, 409 no_shipping_address for an order without one, 409 label_exists while the address has an active label of the kind (cancel it in the panel first), 409 no_label_service when no switched-on service ships with the address\'s carrier, 409 label_refused when the service refused it (the message gives its reason), 409 label_unclear when the service did not say whether it was created (look at the shipment there before trying again), 503 service_unavailable before the software update that keeps labels. The answer is the label as shipments[].labels of GET /orders/{id} lists it. A dry run makes the same checks and names the service (detail.driver) without calling it.',
+			'params'  => array(
+				array('name' => 'id',         'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'ship_to_id', 'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'Which shipping address, from the shipments block of GET /orders/{id}. Optional while the order ships to one address; required when it ships to several.'),
+				array('name' => 'is_return',  'in' => 'body', 'type' => 'bool', 'description' => 'true for a return label. Left out, the outbound label.')
+			)
+		),
+
+		array(
+			'id'      => 'orders.labels.document',
+			'method'  => 'GET',
+			'path'    => '/orders/{id}/shipments/labels/{label_id}/document',
+			'scope'   => 'orders:read',
+			'handler' => 'api_orders_label_document',
+			'binary'  => true,
+			'mcp'     => false,
+			'summary' => 'Download a carrier label',
+			'description' => 'The label\'s document as its own bytes, the address of shipments[].labels[].document_url in GET /orders/{id}: the copy kept with the order, else the service\'s copy asked for again (file_kept false). A PDF comes as application/pdf inline, a ZPL file for a label printer as an attachment, an SVG as an attachment under Content-Security-Policy: sandbox. Nothing is cached (no-store). 404 when the label is not one of this order\'s, 409 label_unavailable when the copy is no longer kept and its service cannot hand it out again (switched off, or refused).',
+			'params'  => array(
+				array('name' => 'id',       'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+				array('name' => 'label_id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
 			)
 		),
 

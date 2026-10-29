@@ -412,14 +412,113 @@ function pg_shipment_label_rows($ship_to_id)
 }
 
 /**
+ * Why a label cannot be created for an address, or '' when it can. Pure:
+ * pg_shipment_label_create_check() reads what it weighs.
+ *
+ * An address that already has an active label of the kind asked for gets no
+ * second one: a second create() would buy a second shipment.
+ *
+ * @param bool       $ready   pg_shipment_labels_ready()
+ * @param array|null $order   status of the address's order, null when none
+ * @param int        $active  active labels of the kind on the address
+ * @param string     $driver  pg_shipment_label_driver_pick()
+ * @param bool       $return
+ * @return array code (not_ready, not_found, not_completed, label_exists,
+ *               no_driver; '' when nothing refuses), error
+ */
+function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false)
+{
+    if (!$ready) {
+        return array('code' => 'not_ready', 'error' => lang('Run the software update first: the table for shipping labels is missing.'));
+    }
+
+    if (!$order) {
+        return array('code' => 'not_found', 'error' => lang('The order could not be found.'));
+    }
+
+    if (in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
+        return array('code' => 'not_completed', 'error' => lang('A label is created only for a completed order.'));
+    }
+
+    if ((int) $active > 0) {
+        return array('code' => 'label_exists', 'error' => $return
+            ? lang('This address already has a return label. Print it again, or cancel it before creating another.')
+            : lang('This address already has a label. Print it again, or cancel it before creating another.'));
+    }
+
+    if ((string) $driver === '') {
+        return array('code' => 'no_driver', 'error' => lang('No carrier label service that ships with this address\'s carrier is switched on.'));
+    }
+
+    return array('code' => '', 'error' => '');
+}
+
+/**
+ * Everything pg_shipment_label_create() checks before it calls a service,
+ * with the same refusals and messages; it reads and writes nothing else, so
+ * an API dry run stops after it. A label made from a return request is that
+ * request's (pg_shipment_label_create_for_return()) and is not counted.
+ *
+ * @param int  $ship_to_id
+ * @param bool $return
+ * @return array ok, code, error (pg_shipment_label_create_refusal()),
+ *               ship_to (with method_carrier), order, driver
+ */
+function pg_shipment_label_create_check($ship_to_id, $return = false)
+{
+    $out = array('ok' => false, 'code' => '', 'error' => '', 'ship_to' => null, 'order' => null, 'driver' => '');
+    $ready = pg_shipment_labels_ready();
+    $ship_to = null;
+    $order = null;
+    $active = 0;
+    $driver = '';
+
+    if ($ready) {
+        $ship_to = db_item(
+            "SELECT
+                ship_tos.*,
+                shipping_methods.carrier AS method_carrier
+            FROM ship_tos
+            LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
+            WHERE ship_tos.id = '" . (int) $ship_to_id . "'");
+
+        $order = $ship_to ? db_item(
+            "SELECT id, order_number, status, billing_email_address
+            FROM orders
+            WHERE id = '" . (int) $ship_to['order_id'] . "'") : null;
+    }
+
+    if ($order) {
+        $active = (int) db_value(
+            "SELECT COUNT(*) FROM shipment_labels
+            WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '" . ($return ? 1 : 0) . "')"
+            . (pg_shipment_labels_link_returns() ? " AND (order_return_id = '0')" : ""));
+
+        $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
+        $driver = pg_shipment_label_driver_pick($carrier, pg_shipment_label_drivers());
+    }
+
+    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return);
+
+    $out['code'] = $refusal['code'];
+    $out['error'] = $refusal['error'];
+    $out['ok'] = ($refusal['code'] === '');
+
+    if ($out['ok']) {
+        $out['ship_to'] = $ship_to;
+        $out['order'] = $order;
+        $out['driver'] = $driver;
+    }
+
+    return $out;
+}
+
+/**
  * Open a label for an order's address with the driver its carrier takes,
  * keep the document and the row, and record the tracking number on the
  * address through the shipment write path.
  *
- * An address that already has an active label of the kind asked for gets no
- * second one: a second create() would buy a second shipment. A label made
- * from a return request is that request's (pg_shipment_label_create_for_return())
- * and is not counted here. An unclear
+ * What may be created is pg_shipment_label_create_check()'s. An unclear
  * answer is reported as such, so the operator looks at the service before
  * trying again. A return label (collected from the recipient, delivered to
  * the store) is kept as a row only: its number is not one of the address's
@@ -428,59 +527,23 @@ function pg_shipment_label_rows($ship_to_id)
  * @param int  $ship_to_id
  * @param int  $user_id
  * @param bool $return
- * @return array ok, error, id (the label row), number
+ * @return array ok, error, code (the check's, '' past it), unclear, id (the
+ *               label row), number, row
  */
 function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
 {
-    $out = array('ok' => false, 'error' => '', 'id' => 0, 'number' => '');
+    $out = array('ok' => false, 'error' => '', 'code' => '', 'unclear' => false, 'id' => 0, 'number' => '', 'row' => array());
+    $check = pg_shipment_label_create_check($ship_to_id, $return);
 
-    if (!pg_shipment_labels_ready()) {
-        $out['error'] = lang('Run the software update first: the table for shipping labels is missing.');
+    if (!$check['ok']) {
+        $out['error'] = $check['error'];
+        $out['code'] = $check['code'];
         return $out;
     }
 
-    $ship_to = db_item(
-        "SELECT
-            ship_tos.*,
-            shipping_methods.carrier AS method_carrier
-        FROM ship_tos
-        LEFT JOIN shipping_methods ON shipping_methods.id = ship_tos.shipping_method_id
-        WHERE ship_tos.id = '" . (int) $ship_to_id . "'");
-
-    $order = $ship_to ? db_item(
-        "SELECT id, order_number, status, billing_email_address
-        FROM orders
-        WHERE id = '" . (int) $ship_to['order_id'] . "'") : null;
-
-    if (!$order) {
-        $out['error'] = lang('The order could not be found.');
-        return $out;
-    }
-
-    if (in_array((string) $order['status'], array('incomplete', 'cancelled'), true)) {
-        $out['error'] = lang('A label is created only for a completed order.');
-        return $out;
-    }
-
-    $active = (int) db_value(
-        "SELECT COUNT(*) FROM shipment_labels
-        WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '" . ($return ? 1 : 0) . "')"
-        . (pg_shipment_labels_link_returns() ? " AND (order_return_id = '0')" : ""));
-
-    if ($active > 0) {
-        $out['error'] = $return
-            ? lang('This address already has a return label. Print it again, or cancel it before creating another.')
-            : lang('This address already has a label. Print it again, or cancel it before creating another.');
-        return $out;
-    }
-
-    $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
-    $driver = pg_shipment_label_driver_pick($carrier, pg_shipment_label_drivers());
-
-    if ($driver === '') {
-        $out['error'] = lang('No carrier label service that ships with this address\'s carrier is switched on.');
-        return $out;
-    }
+    $ship_to = $check['ship_to'];
+    $order = $check['order'];
+    $driver = $check['driver'];
 
     $items = db_items(
         "SELECT
@@ -507,7 +570,7 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
 
     $order['currency'] = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
 
-    return pg_shipment_label_open($driver, $order, $ship_to, pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return), $user_id, $return);
+    return pg_shipment_label_open($driver, $order, $ship_to, pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return), $user_id, $return) + array('code' => '');
 }
 
 /**
@@ -523,17 +586,18 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
  * @param int    $user_id
  * @param bool   $return
  * @param int    $order_return_id the return request, 0 for the order screen
- * @return array ok, error, id (the label row), number, row, carrier (the
- *               service's carrier key, or '')
+ * @return array ok, error, unclear (the service did not say), id (the label
+ *               row), number, row, carrier (the service's carrier key, or '')
  */
 function pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, $return = false, $order_return_id = 0)
 {
-    $out = array('ok' => false, 'error' => '', 'id' => 0, 'number' => '', 'row' => array(), 'carrier' => '');
+    $out = array('ok' => false, 'error' => '', 'unclear' => false, 'id' => 0, 'number' => '', 'row' => array(), 'carrier' => '');
     $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
     $answer = pg_label_call($driver, 'create', array($shipment, $account));
     $driver_name = pg_label_driver($driver)['label'];
 
     if (!$answer['success']) {
+        $out['unclear'] = !empty($answer['unclear']);
         $out['error'] = $answer['unclear']
             ? lang(array('string' => '{var:1} did not say whether the label was created. Check the shipment there before trying again.', 'vars' => array($driver_name)))
             : lang(array('string' => '{var:1} refused the label: {var:2}', 'vars' => array($driver_name, $answer['error'])));

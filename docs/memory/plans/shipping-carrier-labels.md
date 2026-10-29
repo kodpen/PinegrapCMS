@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19; 1-4, 6, 7, 8a partly done): carrier APIs
    - 3b. Done in PR #3137 (`commerce/shipment-label-bulk.md`): bulk create and one merged PDF from the orders list, Cancel Label, return labels.
 4. Status polling job in the dispatcher, write-back through the single path (S). Done in PR #3157 (`commerce/shipment-tracking.md`).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
-   - 5c. API: create (dry run), labels list, document route (in progress).
+   - 5c. API: done in PR #3220 (`commerce/shipment-label-api.md`).
 6. Further aggregators as their references open: Basit Kargo done in PR #3163 (`commerce/carrier-label-basitkargo.md`; one `.zpl` per bulk run open), Kargonomi; MNG ApiZone a candidate (M each).
 7. International (#3124): Shippo done in PR #3192 (`commerce/carrier-label-shippo.md`, no customs yet); Sendcloud for the rest of Europe.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
