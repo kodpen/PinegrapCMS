@@ -73,6 +73,7 @@ description: Generated from the module field of the memory files: each includes/
 - `speculation`: [[speculation-prefetch]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
+- `subscriptions`: [[subscriptions]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
 - `voice_text`: [[voice-browser-to-text]]

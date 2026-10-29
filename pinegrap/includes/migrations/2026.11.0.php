@@ -111,6 +111,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
 	upgrade_2026_11_0_shipment_label_returns(); // 11.0.126
 	upgrade_2026_11_0_speculation_prefetch();   // 11.0.127
+	upgrade_2026_11_0_subscriptions();          // 11.0.128
 
 }
 
@@ -3512,5 +3513,99 @@ function upgrade_2026_11_0_speculation_prefetch() {
 	install_add_column('config', 'speculation_prefetch', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
 
 	install_note('Pages now tell Chrome and Edge the addresses in their menus, so a menu page opens at once; visitors who are signed in are left out. It can be switched off under Settings, Features.');
+
+}
+
+// Subscriptions run by the store through the payment drivers (2026.11.0,
+// 11.0.128; includes/fn/subscriptions.php). A subscription row is made from a
+// paid order line whose driver declares recurring mode 'store'; the cron
+// charges card_ref (the PSP's token, sealed) when next_charge_at comes.
+// Amounts are minor units, times unix seconds. subscription_events keeps what
+// happened to a subscription; a renewal order is marked only there, through
+// order_id. remote_event_id is NULL for store-side events, so the unique key
+// de-duplicates webhook deliveries only. The three campaign profile actions
+// are appended to the enum read first, in the order_delivered shape. No
+// driver declares store mode yet, so nothing writes these tables.
+function upgrade_2026_11_0_subscriptions() {
+
+	install_create_table('subscriptions', "CREATE TABLE subscriptions (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		order_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		order_item_id   INT UNSIGNED NOT NULL DEFAULT 0,
+		driver          VARCHAR(32) NOT NULL DEFAULT '',
+		remote_id       VARCHAR(100) NOT NULL DEFAULT '',
+		status          VARCHAR(16) NOT NULL DEFAULT 'active',
+		period          VARCHAR(16) NOT NULL DEFAULT '',
+		amount          INT UNSIGNED NOT NULL DEFAULT 0,
+		currency        CHAR(3) NOT NULL DEFAULT '',
+		next_charge_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		retry_count     TINYINT UNSIGNED NOT NULL DEFAULT 0,
+		card_last4      VARCHAR(4) NOT NULL DEFAULT '',
+		card_ref        VARCHAR(255) NOT NULL DEFAULT '',
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		cancelled_at    INT UNSIGNED NOT NULL DEFAULT 0,
+		ended_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id),
+		KEY idx_status_next_charge (status, next_charge_at),
+		KEY idx_order (order_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('subscription_events', "CREATE TABLE subscription_events (
+		id               INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		subscription_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		kind             VARCHAR(24) NOT NULL DEFAULT '',
+		order_id         INT UNSIGNED NOT NULL DEFAULT 0,
+		amount           INT UNSIGNED NOT NULL DEFAULT 0,
+		remote_event_id  VARCHAR(100) NULL DEFAULT NULL,
+		detail           VARCHAR(255) NOT NULL DEFAULT '',
+		created_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_subscription_event_remote (remote_event_id),
+		KEY idx_subscription (subscription_id, id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	// Widened from what is there, never narrowed, and each value only once:
+	// a value another step added stays, and the default is kept as it stands.
+	$action = install_column_info('email_campaign_profiles', 'action');
+
+	if (is_array($action)) {
+
+		preg_match_all("/'((?:[^'\\\\]|\\\\.)*)'/", (string) $action['Type'], $matches);
+		$values = array();
+
+		foreach ($matches[1] as $value) {
+			$values[] = "'" . $value . "'";
+		}
+
+		$added = false;
+
+		foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled') as $value) {
+
+			if (!in_array("'" . $value . "'", $values, true)) {
+				$values[] = "'" . $value . "'";
+				$added = true;
+			}
+
+		}
+
+		if ($added) {
+
+			$default = ((string) $action['Default'] !== '') ? (string) $action['Default'] : 'calendar_event_reserved';
+
+			install_modify_column('email_campaign_profiles', 'action', "ENUM(" . implode(',', $values) . ") NOT NULL DEFAULT '" . $default . "'");
+
+		} else {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaign_profiles.action subscription_*')));
+
+		}
+
+	}
+
+	install_note('Subscriptions: the tables for subscriptions charged by the store are in place, and automatic e-mails gain the subscription renewed, failed and cancelled actions. Nothing changes on the site until a payment service offers subscriptions.');
 
 }
