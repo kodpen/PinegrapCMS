@@ -18,4 +18,4 @@ description: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their subm
 ## How was it verified?
 - `tests/payment_iyzico_test.php`, `tests/payment_iyzico_threeds_return_test.php`: a stand-in HTTP client records the posted JSON, compared with the gateway code's statements (`legacy_*()`), with canned answers. No shop or iyzico sandbox run.
 
-Related: docs/memory/commerce/payment-iyzico-checkout.md, docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/order-cancellation-config.md, docs/memory/plans/payment-driver-layer.md, docs/memory/commerce/iyzipay-sdk-php71-patch.md (the bundled SDK is patched for PHP 7.1)
+Related: docs/memory/commerce/payment-iyzico-checkout.md, docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/order-cancellation-config.md, docs/memory/commerce/payment-driver-layer-decisions.md, docs/memory/commerce/iyzipay-sdk-php71-patch.md (the bundled SDK is patched for PHP 7.1)

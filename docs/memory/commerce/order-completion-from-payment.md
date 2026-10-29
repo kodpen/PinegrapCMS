@@ -8,7 +8,7 @@ module: order_completion
 - Owner (#2382, 2026-10-27): a payment the service confirms after the visitor left completes the order; the visitor may never return. The visitor's return and the message complete through the same `pg_order_complete()`; the six frozen legacy gateways' code in `submit_order.php` is not touched.
 
 ## What calls it?
-- PayTR (`plans/payment-driver-layer.md` 4c) completes through it too: its callback once `pg_payment_notify_outcome()` answers `complete` (the answer carries `raw['currency']`).
+- PayTR's callback too (`payment-driver-paytr.md`).
 - `pg_payment_callback_receive()` when `pg_payment_notify_outcome()` answers `complete` (`payment-callback.md`): the order's own payment, for its total, in the store's currency. Returns `completed` (order number), `nothing` (no longer incomplete, or `pg_order_complete()`'s lock went to another request) or `refused` (reason).
 
 ## Where do the values come from?
@@ -16,8 +16,11 @@ module: order_completion
 - Lines: `pg_order_lines_sql()`, the query `submit_order()` uses too; `pg_order_lines_charged()` (pure) splits them by `pg_order_line_charged_today()`.
 - The shipping's minor units the checkout gave up (`pg_order_charges_reachable()`): `SUM(ship_tos.shipping_cost) - orders.shipping`, taken off the last recipient that covers it, as `submit_order()` does.
 
+## What does a payment in installments write? (#3070)
+- The receiver passes `$paid` (amount, installments); `pg_payment_paid_totals()` on the total read here gives `total` (+ the difference), `installment_charges`, `payment_installment` over the kept values; the commission stays on the kept total.
+
 ## What is refused (alert, nothing written)?
-- `payment_method` '' (sent away before #2998 kept the values); no lines, or the lines charged today no longer sum to the kept `subtotal` (the cart changed after the redirect).
+- `payment_method` '' (sent away before #2998 kept the values); an amount that is no longer the order's total (or the total plus an installment difference); no lines, or the lines charged today no longer sum to the kept `subtotal` (the cart changed after the redirect).
 
 ## Receipt and account? (#2984)
 - `pg_order_checkout_page_row()` reads the page `checkout_page_id` names with `pg_order_checkout_page_sql()` (the query `submit_order()` uses); `pg_order_payment_page_settings()` (pure) gives its receipt and switch, or for no page a plain-text receipt, subject `lang('Order Receipt #')` + number, always sent, no account.

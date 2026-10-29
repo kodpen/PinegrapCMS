@@ -26,4 +26,4 @@ description: One list of checkout payment methods (pg_payment_checkout_methods()
 - Missing from view_orders.php's filter and view_order_report.php's options; the classic express order page never offers it.
 - get_order_preview.php's block condition and its "no payment method" error leave it out. Kept: it would not reach customer sites; old sites get it by hand. The shared list is for forward compatibility.
 
-Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/order-payment-method-normalization.md, docs/memory/plans/payment-driver-layer.md
+Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-iyzico.md, docs/memory/commerce/order-payment-method-normalization.md, docs/memory/commerce/payment-driver-layer-decisions.md
