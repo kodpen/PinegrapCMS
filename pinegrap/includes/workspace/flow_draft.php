@@ -317,6 +317,9 @@ function ws_flow_draft_change_entry($viewer, $row, $people, $can_post, $proposer
         'can_dismiss'  => $pending && $can_post && ($asker || ((int) $viewer['role'] < 3)),
         'blocked'      => '',
         'proposer'     => (string) $proposer,
+        // The card draws the flow small (ws_flow_draft_card_graph_read()):
+        // while it waits for its person, and once it is opened as a flow.
+        'window'       => $may || ($asker && ($row['status'] === 'applied') && ((int) ($draft['flow_id'] ?? 0) > 0)),
         'draft'        => $may ? array(
             'channel_id' => (int) ($draft['channel_id'] ?? 0),
             'sentence'   => '',
@@ -443,6 +446,202 @@ function ws_flow_draft_open($viewer, $change_id)
     }
 
     return ws_flow_draft_opened($viewer, $row, $draft, ws_flow_draft_flow_input($draft));
+}
+
+// ─── The card as a mini flow window ─────────────────────────────────────
+
+/** Margin around the boxes of a card's window, in canvas units. */
+define('WS_FLOW_CARD_PAD', 32);
+
+/** A box on a card's window, in canvas units (the canvas draws them 208 by 80). */
+define('WS_FLOW_CARD_BOX_W', 208);
+define('WS_FLOW_CARD_BOX_H', 80);
+
+/**
+ * The kinds of box that send something out of Pinegrap or write a record:
+ * the card marks them so the person sees what the flow does beyond itself.
+ *
+ * @return string[]
+ */
+function ws_flow_card_outbound_kinds()
+{
+    return array('email', 'task_digest', 'webhook', 'mcp', 'change');
+}
+
+/**
+ * A draft's graph as its card draws it (pure but for the kinds' words): each
+ * box with its kind, name and place moved so the leftmost and topmost box
+ * sit at the margin, whether it sends or writes outside, how a patch marks
+ * it (ws_flow_patch_marks()) and whether it can be tried (every kind but the
+ * value boxes, which only hold values); the threads; the names of the boxes
+ * a patch removed; and the size of the whole, in canvas units.
+ *
+ * @param array      $graph ws_flow_graph_normalize(), the patch made
+ * @param array|null $patch ws_flow_patch_apply() ops of a draft that changes a flow
+ * @return array nodes, edges, removed, width, height
+ */
+function ws_flow_card_graph($graph, $patch = null)
+{
+    $kinds = ws_flow_kinds();
+    $outbound = array_flip(ws_flow_card_outbound_kinds());
+    $marks = array();
+    $removed = array();
+    $added = array();
+
+    foreach (($patch !== null) ? ws_flow_patch_marks($patch, $graph) : array() as $mark) {
+        $marks[$mark['id']] = $mark['mark'];
+    }
+
+    foreach ((array) $patch as $op) {
+        $what = (is_array($op) && is_scalar($op['op'] ?? null)) ? (string) $op['op'] : '';
+        $id = (is_array($op) && is_scalar($op['id'] ?? null)) ? (string) $op['id'] : '';
+
+        if (($what === 'add') && ($id !== '')) {
+            $added[$id] = true;
+        } elseif (($what === 'remove') && ($id !== '') && !isset($added[$id])) {
+            $removed[$id] = is_scalar($op['name'] ?? null) ? (string) $op['name'] : $id;
+        }
+    }
+
+    $left = null;
+    $top = null;
+
+    foreach ($graph['nodes'] as $node) {
+        $left = ($left === null) ? (int) $node['x'] : min($left, (int) $node['x']);
+        $top = ($top === null) ? (int) $node['y'] : min($top, (int) $node['y']);
+    }
+
+    $nodes = array();
+    $there = array();
+    $width = 0;
+    $height = 0;
+
+    foreach ($graph['nodes'] as $node) {
+        $kind = (string) $node['kind'];
+        $x = (int) $node['x'] - (int) $left + WS_FLOW_CARD_PAD;
+        $y = (int) $node['y'] - (int) $top + WS_FLOW_CARD_PAD;
+        $there[$node['id']] = true;
+        $width = max($width, $x + WS_FLOW_CARD_BOX_W + WS_FLOW_CARD_PAD);
+        $height = max($height, $y + WS_FLOW_CARD_BOX_H + WS_FLOW_CARD_PAD);
+        unset($removed[$node['id']]);
+
+        $nodes[] = array(
+            'id'       => (string) $node['id'],
+            'kind'     => $kind,
+            'label'    => (string) ($kinds[$kind]['label'] ?? $kind),
+            'name'     => ws_flow_box_name($node),
+            'x'        => $x,
+            'y'        => $y,
+            'outbound' => isset($outbound[$kind]),
+            'mark'     => (string) ($marks[$node['id']] ?? ''),
+            'try'      => isset($kinds[$kind]) && empty($kinds[$kind]['pure']),
+        );
+    }
+
+    $edges = array();
+
+    foreach ($graph['edges'] as $edge) {
+        if (isset($there[$edge['from']], $there[$edge['to']])) {
+            $edges[] = array('from' => (string) $edge['from'], 'to' => (string) $edge['to'], 'on' => (string) $edge['on']);
+        }
+    }
+
+    return array('nodes' => $nodes, 'edges' => $edges, 'removed' => array_values($removed), 'width' => $width, 'height' => $height);
+}
+
+/**
+ * The graph a flow draft's card draws, for the person it was proposed to.
+ * While it waits: the drafted flow, or the patch made again on the flow's
+ * draft as it is now (edit access needed, as opening it asks), with the
+ * rights ws_flow_draft_open() checks. Once opened: the flow's draft as it is
+ * now, its boxes linked to the canvas, tried by the one who may manage the
+ * flow (ws_flow_box_try() asks the same). Nothing is written.
+ *
+ * @param array $viewer
+ * @param int   $change_id the ws_ai_changes row of the draft
+ * @return array ok, error, graph (ws_flow_card_graph() plus flow_id, can_try)
+ */
+function ws_flow_draft_card_graph_read($viewer, $change_id)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'graph' => null);
+    };
+
+    if (!function_exists('ws_changes_ready') || !ws_changes_ready() || !ws_flows_ready()) {
+        return $fail(lang('The database has to be updated first.'));
+    }
+
+    $row = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "' AND record_type = 'flow' AND action = 'draft'");
+
+    if (!is_array($row) || ((int) $row['requested_by'] !== (int) $viewer['id'])) {
+        return $fail(lang('That draft could not be found.'));
+    }
+
+    $draft = json_decode((string) $row['snapshot'], true);
+    $draft = is_array($draft) ? $draft : array();
+    $patch = isset($draft['base']) ? (array) ($draft['patch'] ?? array()) : null;
+
+    if ($row['status'] === 'applied') {
+        $flow = ws_flow_for($viewer, (int) ($draft['flow_id'] ?? 0), 'view');
+
+        if (!$flow || ($flow['status'] === 'binned')) {
+            return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
+        }
+
+        return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph(ws_flow_graph_of($flow), $patch) + array(
+            'flow_id' => (int) $flow['id'],
+            'can_try' => ws_flow_share_manager($viewer, $flow),
+        ));
+    }
+
+    if ($row['status'] !== 'pending') {
+        return $fail(lang('This draft was already opened or dismissed.'));
+    }
+
+    if (!ws_can_schedule($viewer) || !ws_can_post_channel($viewer, ws_channel($row['channel_id']))) {
+        return $fail(lang('Only staff in the team can build flows.'));
+    }
+
+    if ($patch === null) {
+        $graph = ws_flow_draft_flow_input($draft)['graph'];
+    } else {
+        $flow = ws_flow_for($viewer, (int) ($draft['base']['flow_id'] ?? 0), 'edit');
+
+        if (!$flow || ($flow['status'] === 'binned')) {
+            return $fail(lang('The flow this draft changes is gone, or you may no longer change it.'));
+        }
+
+        $made = ws_flow_patch_apply(ws_flow_graph_of($flow), $patch, ws_flow_ai_setting_keys(ws_flow_kind_catalogue()));
+
+        if (!$made['ok']) {
+            return $fail(lang('The flow was changed after this draft was made, and the draft no longer fits it.'));
+        }
+
+        $graph = $made['graph'];
+    }
+
+    // Not a flow of the person yet: no canvas to link to, nothing to try.
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph($graph, $patch) + array('flow_id' => 0, 'can_try' => false));
+}
+
+/**
+ * The texts of a flow draft card's window.
+ *
+ * @return array key => text
+ */
+function ws_flow_draft_js_strings()
+{
+    return array(
+        'fd_window'      => lang('The flow, drawn small'),
+        'fd_outbound'    => lang('Sends or writes outside the flow'),
+        'fd_added'       => lang('New'),
+        'fd_changed'     => lang('Changed'),
+        'fd_removed'     => ws_js_template('Removed: {var:1}', 1),
+        'fd_box_open'    => lang('Open on the canvas'),
+        'fd_box_try'     => lang('Try this box'),
+        'fd_box_pick'    => lang('Pick a box to see it here.'),
+        'fd_try_refusal' => ws_js_template('It would not run: {var:1}', 1),
+    );
 }
 
 // ─── Drafted by Pinegrap AI ─────────────────────────────────────────────

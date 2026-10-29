@@ -618,6 +618,13 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('flow_id' => $result['flow_id'], 'left' => $result['left']));
 
+        // The graph a flow draft's card draws small (flow_draft.php), read
+        // with the rights opening it asks; nothing is written.
+        case 'ws_flow_draft_graph':
+            $result = ws_flow_draft_card_graph_read($viewer, (int) ($request['change_id'] ?? 0));
+
+            return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'])) : ws_action_error($result['error']);
+
         // Add › Scheduled flow in a channel's composer, and Duplicate on a
         // scheduled action's card: a new draft flow opened on the canvas
         // (scheduled_convert.php).

@@ -1,6 +1,6 @@
 ---
 name: workspace-flow-ai-drafts
-description: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema, graph or patch, automatic layout, the A8 card, a patch opened onto its flow and marked on the canvas (D8c)
+description: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema, graph or patch, automatic layout, the card's window (D8b), a patch opened onto its flow and marked on the canvas (D8c)
 ---
 
 ## When is the tool offered?
@@ -29,8 +29,8 @@ description: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): cat
 - workspace_flow.js: a dashed ring and a New / Changed badge on the box and its outline item (`paintMark()`), a strip over the canvas listing the boxes (each selects and reveals its box) with "Hide marks" (kept per card in localStorage `pg_wsf_marks_hidden`). None while a run is shown.
 - `workspace_flows.php?flow=<id>&box=<id>` opens the flow with that box selected and in sight: the link a card's per-box edit uses (D8b).
 
-## What is left?
-- D8b the card as a mini flow window (plans/workspace-flows-data-passing.md).
+## How does the card draw the flow?
+- As a mini flow window since D8b (#3032): `workspace-flow-draft-card-window.md`.
 
 ## Tests
 - tests/workspace_flow_draft_test.php (schema, refusals, layout, patch, wiring).

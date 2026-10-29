@@ -101,7 +101,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-empty-states.md: Workspace empty lists with a small theme-coloured drawing (emptyState(), the shared ART kit / window.PGWsArt) and skeleton rows instead of "Loading…" (U4, PR #2027)
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
-- workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema, graph or patch, automatic layout, the A8 card, a patch opened onto its flow and marked on the canvas (D8c)
+- workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema, graph or patch, automatic layout, the card's window (D8b), a patch opened onto its flow and marked on the canvas (D8c)
+- workspace-flow-draft-card-window.md: The flow draft card as a mini flow window (D8b, #3032): panel action ws_flow_draft_graph, ws_flow_card_graph(), outbound and patch marks, link and try per box
 - workspace-flow-draft-proposals.md: An application proposes a flow as a draft card ({type: flow} in workspace.changes.propose, A8): what is sent, checked, kept, how the card opens it, what happens to {type: scheduled}
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
 - workspace-flows-api-filters.md: Flow list filters start, status, channel_id, updated_since and the start/start_text of GET /workspace/flows/{id} (A1, PR #2122); the Flows screen's start filter (C4, PR #2391)

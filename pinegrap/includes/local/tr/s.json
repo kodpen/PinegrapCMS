@@ -811,6 +811,7 @@
     "Sending the e-mail message to each specific subscriber now.": "E-posta mesajı belirli abonelerin tümüne gönderiyor.",
     "Sending…": "Gönderiliyor…",
     "Sends one notification to this device now, so you can see whether it arrives.": "Bu cihaza hemen bir bildirim gönderir; ulaşıp ulaşmadığını böyle görürsünüz.",
+    "Sends or writes outside the flow": "Akışın dışına gönderir veya yazar",
     "Sends the automatic backup to this account's cloud storage, into a folder only the site writes to.": "Otomatik yedeği bu hesabın bulut deposuna, yalnız sitenin yazdığı bir klasöre gönderir.",
     "Sends the site's e-mail from this account instead of an SMTP server.": "Sitenin e-postalarını SMTP sunucusu yerine bu hesaptan gönderir.",
     "Sends the title, description and pictures of the ticked approved listings. Price and stock go on their own.": "İşaretli onaylı ilanların başlığını, açıklamasını ve görsellerini gönderir. Fiyat ve stok ayrıca gider.",
