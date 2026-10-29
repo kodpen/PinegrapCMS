@@ -24,4 +24,4 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 - All steps done; the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
 
 ## Which questions are answered?
-1. Answered (#2416): yes, in two steps: G3 "Save as template" (a site template row in the built-ins' format; schema when claimed), G4 export and import over the API with dry run.
+1. Answered (#2416): yes, in two steps: G3 "Save as template" (a site template row in the built-ins' format; `ws_flow_templates` approved in #3120, `workflow/decisions-made-schema-4.md`), G4 export and import over the API with dry run.

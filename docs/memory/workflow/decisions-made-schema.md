@@ -16,7 +16,7 @@ description: Decisions list, schema part: steps approved in advance (ENUM append
 - SEO and record-page settings (#2471-#2475): three `config` and two `custom_form_pages` columns; behaviour: `decisions-made-seo.md`.
 
 ## Which schema was approved on 2026-10-28 and later?
-- `decisions-made-schema-2.md` (2026-10-28), `decisions-made-schema-3.md` (2026-10-29 on).
+- `decisions-made-schema-2.md` (2026-10-28), `decisions-made-schema-3.md` and `-4.md` (2026-10-29 on).
 
 ## Who decides schema?
 - The owner (CLAUDE.md fixed rule 5): the architect asks a schema question as a selectable list and records the answer (`workflow/architect.md`). The 2026-10-27 steps: architect, confirmed by the owner on 2026-10-28; reasons on the issues.

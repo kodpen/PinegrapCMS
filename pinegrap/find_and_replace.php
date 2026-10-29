@@ -282,6 +282,7 @@ if (!$_POST) {
                                                 'name'  => 'find',
                                                 'rows'  => '10',
                                                 'class' => 'form-control font-monospace',
+                                                'required' => 'required',
                                             ]) . '
                                         </div>
                                         <div class="col-12 my-3">

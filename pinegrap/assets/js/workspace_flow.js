@@ -110,37 +110,39 @@
         none: ['fl_step_none', 'bi-circle']
     };
 
-    // What each kind of box is: its sign, its name, whether an arrow may
-    // lead into it, and the outcomes an arrow may leave it on (the first is
-    // the one a new arrow takes), as ws_flow_kinds() has them.
+    // What each kind of box is: its sign, its name, its group (start,
+    // values, logic, people, message or system, which gives its colour:
+    // --wsf-kind of .wsf-group-<group> in backend.src.css), whether an arrow
+    // may lead into it, and the outcomes an arrow may leave it on (the first
+    // is the one a new arrow takes), as ws_flow_kinds() has them.
     var KINDS = {
-        manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', into: false, out: ['next'] },
-        schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', into: false, out: ['next'] },
-        event: { icon: 'bi-lightning', name: 'fl_kind_event', into: false, out: ['next'] },
-        join: { icon: 'bi-person-plus', name: 'fl_kind_join', into: false, out: ['next'] },
-        row: { icon: 'bi-table', name: 'fl_kind_row', into: false, out: ['next'] },
-        task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled', 'timeout'] },
-        post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
-        email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
-        notify: { icon: 'bi-bell', name: 'fl_kind_notify', into: true, out: ['done', 'failed'] },
-        task_open: { icon: 'bi-plus-square', name: 'fl_kind_task_open', into: true, out: ['done', 'failed'] },
-        webhook: { icon: 'bi-broadcast', name: 'fl_kind_webhook', into: true, out: ['done', 'failed'] },
-        web_check: { icon: 'bi-globe2', name: 'fl_kind_web_check', into: true, out: ['done', 'failed'] },
-        task_digest: { icon: 'bi-list-check', name: 'fl_kind_task_digest', into: true, out: ['done', 'failed'] },
-        report: { icon: 'bi-bar-chart', name: 'fl_kind_report', into: true, out: ['done', 'failed'] },
-        checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', into: true, out: ['done', 'failed'] },
-        start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', into: true, out: ['done', 'failed'] },
-        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', into: true, out: ['done', 'failed'] },
-        change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
-        lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
-        mcp: { icon: 'bi-plug', name: 'fl_kind_mcp', into: true, out: ['done', 'failed'] },
-        approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
-        condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
-        delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
-        end: { icon: 'bi-flag', name: 'fl_kind_end', into: true, out: [] },
+        manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', group: 'start', into: false, out: ['next'] },
+        schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', group: 'start', into: false, out: ['next'] },
+        event: { icon: 'bi-lightning', name: 'fl_kind_event', group: 'start', into: false, out: ['next'] },
+        join: { icon: 'bi-person-plus', name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
+        row: { icon: 'bi-table', name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
+        task: { icon: 'bi-check2-square', name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
+        post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
+        email: { icon: 'bi-envelope', name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
+        notify: { icon: 'bi-bell', name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
+        task_open: { icon: 'bi-plus-square', name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
+        webhook: { icon: 'bi-broadcast', name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
+        web_check: { icon: 'bi-globe2', name: 'fl_kind_web_check', group: 'system', into: true, out: ['done', 'failed'] },
+        task_digest: { icon: 'bi-list-check', name: 'fl_kind_task_digest', group: 'people', into: true, out: ['done', 'failed'] },
+        report: { icon: 'bi-bar-chart', name: 'fl_kind_report', group: 'message', into: true, out: ['done', 'failed'] },
+        checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', group: 'people', into: true, out: ['done', 'failed'] },
+        start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', group: 'system', into: true, out: ['done', 'failed'] },
+        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', group: 'system', into: true, out: ['done', 'failed'] },
+        change: { icon: 'bi-pencil-square', name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
+        lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
+        mcp: { icon: 'bi-plug', name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed'] },
+        approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
+        condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
+        delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
+        end: { icon: 'bi-flag', name: 'fl_kind_end', group: 'logic', into: true, out: [] },
         // A value box: no arrows, its values reach the boxes through threads.
-        constants: { icon: 'bi-tag', name: 'fl_kind_constants', into: false, out: [], pure: true },
-        value: { icon: 'bi-calculator', name: 'fl_kind_value', into: false, out: [], pure: true }
+        constants: { icon: 'bi-tag', name: 'fl_kind_constants', group: 'values', into: false, out: [], pure: true },
+        value: { icon: 'bi-calculator', name: 'fl_kind_value', group: 'values', into: false, out: [], pure: true }
     };
 
     // What an arrow is taken on, as its box says it.
@@ -285,6 +287,12 @@
 
     function kindOf(node) {
         return KINDS[node.kind] || { icon: 'bi-question-square', name: 'fl_box', into: true, out: [] };
+    }
+
+    // The classes of a box (and of its outline entry) that give it its
+    // kind's look and its group's colour; an unknown kind has no group.
+    function kindClasses(kind) {
+        return KINDS[kind] ? 'wsf-node-' + kind + ' wsf-group-' + KINDS[kind].group : 'wsf-node-unknown';
     }
 
     function person(id) {
@@ -1484,14 +1492,15 @@
 
     // ── A scheduled action on the canvas ───────────────────────────────
 
-    // The boxes of a scheduled action (ws_scheduled_graph()) in the colours
-    // of the flow boxes that will keep them: its "when" a start, its step a
-    // task.
+    // The boxes of a scheduled action (ws_scheduled_graph()) in the group
+    // colours of the flow boxes that will keep them: its "when" a start, a
+    // condition logic, its step a task, a follow-up the start of another
+    // action.
     var ACTION_KINDS = {
-        when: 'wsf-node-manual',
-        condition: 'wsf-node-sa-condition',
-        step: 'wsf-node-task',
-        follow: 'wsf-node-sa-follow'
+        when: 'wsf-group-start',
+        condition: 'wsf-group-logic',
+        step: 'wsf-group-people',
+        follow: 'wsf-group-system'
     };
 
     // A staff member's scheduled action drawn read-only in the Scheduled
@@ -2106,7 +2115,7 @@
 
     function boxNode(node) {
         var kind = kindOf(node);
-        var box = el('div', 'wsf-node wsf-node-' + (KINDS[node.kind] ? node.kind : 'unknown'));
+        var box = el('div', 'wsf-node ' + kindClasses(node.kind));
         var head = el('div', 'wsf-node-head');
 
         box.tabIndex = 0;
@@ -5919,7 +5928,7 @@
         var list = el('ol', 'wsf-outline-list');
 
         orderedNodes().forEach(function (node) {
-            var item = el('li', 'wsf-outline-item wsf-node-' + (KINDS[node.kind] ? node.kind : 'unknown'));
+            var item = el('li', 'wsf-outline-item ' + kindClasses(node.kind));
             var head = el('h3', 'wsf-outline-head');
 
             item.setAttribute('data-node', node.id);

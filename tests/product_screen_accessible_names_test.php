@@ -54,6 +54,10 @@ function test_product_screen_accessible_names_image_chip_remove()
 	pg_assert_false(strpos($js, 'pg-pb-chip-remove" tabindex="-1"') !== false, 'chip remove button out of the tab order');
 	pg_assert_contains('class="pg-pb-chip-remove" aria-label="\' + esc(label(\'Remove image\')) + \'"', $js);
 	pg_assert_contains('.pg-pb-strip .pg-pb-chip:focus-within .pg-pb-chip-remove', $php);
+	// Hidden with opacity, not display:none: a button with no box takes no
+	// focus, so :focus-within could never match and Tab skipped it.
+	pg_assert_false((bool) preg_match('/\.pg-pb-chip-remove \{[^}]*display:\s*none/', $php), 'chip remove button hidden with display:none');
+	pg_assert_true((bool) preg_match('/\.pg-pb-chip \.pg-pb-chip-remove \{[^}]*opacity:\s*0;/', $php), 'chip remove button not hidden with opacity');
 	pg_assert_contains('@media (hover: none)', $php);
 	pg_assert_contains("'Remove image'", $php);
 }
