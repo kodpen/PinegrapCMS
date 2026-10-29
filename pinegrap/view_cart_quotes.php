@@ -40,6 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'cancel') {
         if (pg_cart_quote_cancel($quote_id)) {
+            log_activity(lang(array('string' => 'cart quote {var:1} was cancelled', 'vars' => '#' . $quote_id)));
             $liveform->add_notice(h(lang('The cart quote was cancelled. Its link opens nothing any more.')));
         } else {
             $liveform->mark_error('_error', h(lang('Only an open cart quote can be cancelled.')));
@@ -48,6 +49,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $token = pg_cart_quote_new_link($quote_id);
 
         if ($token !== '') {
+            log_activity(lang(array('string' => 'cart quote {var:1} was given a new link', 'vars' => '#' . $quote_id)));
             $liveform->add_notice(h(lang('The cart quote has a new link; the old one no longer works. Copy it now: it is not shown again.'))
                 . '<div class="mt-5"><input type="text" class="form-control" readonly value="' . h(pg_cart_quote_url($token)) . '" aria-label="' . h(lang('Cart quote link')) . '"></div>');
         } else {

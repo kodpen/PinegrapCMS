@@ -1202,20 +1202,19 @@ function test_ws_api_search_record_scopes_name_known_kinds()
 
 	pg_assert_same(2, $quote_routes, 'the ERP\'s quote routes were read');
 
-	// A cart quote is found with the scope the order routes read with: its
-	// screens open to the same right as the order screens
-	// (validate_ecommerce_access()), and the store hands orders:read to the
-	// same people (api_owner_scopes()).
-	$order_routes = 0;
+	// A cart quote is found with the scope its own read routes ask
+	// (includes/api/resources/cart_quotes.php), so the search is no way
+	// round them.
+	$cart_quote_routes = 0;
 
 	foreach (api_schema() as $route) {
-		if (in_array($route['id'], array('orders.list', 'orders.get'), true)) {
-			$order_routes++;
+		if (in_array($route['id'], array('cart_quotes.list', 'cart_quotes.get'), true)) {
+			$cart_quote_routes++;
 			pg_assert_same($route['scope'], ws_api_search_record_scopes()['cart_quote'] ?? null, 'a cart quote is searched with the scope of ' . $route['id']);
 		}
 	}
 
-	pg_assert_same(2, $order_routes, 'the order routes were read');
+	pg_assert_same(2, $cart_quote_routes, 'the cart quote read routes were read');
 }
 
 // A person signed in on their own device writes in their own name; an

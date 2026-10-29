@@ -113,14 +113,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($until === null) {
         $liveform->mark_error('valid_until', h(lang('Enter a valid date.')));
-    } elseif (($until > 0) && ($until < time())) {
-        $liveform->mark_error('valid_until', h(lang('The last day of the link cannot be in the past.')));
     }
 
-    if (($contact > 0) && ((int) db_value("SELECT COUNT(*) FROM contacts WHERE id = '" . $contact . "'") === 0)) {
-        $liveform->mark_error('contact_id', h(lang('The contact could not be found.')));
-    }
-
+    // The contact, the last day and the products meet the checks the API's
+    // POST /cart-quotes meets too (pg_cart_quote_create_check()).
     if (!$liveform->check_form_errors()) {
         $result = pg_cart_quote_create($contact, $lines, (int) $until, (int) $user['id']);
 
@@ -135,7 +131,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             go(PATH . SOFTWARE_DIRECTORY . '/view_cart_quotes.php' . (($contact > 0) ? '?contact_id=' . $contact : ''));
         }
 
-        $liveform->mark_error('_error', h($result['error']));
+        $liveform->mark_error(in_array($result['field'], array('contact_id', 'valid_until'), true) ? $result['field'] : '_error', h($result['error']));
     }
 
     go(PATH . SOFTWARE_DIRECTORY . '/add_cart_quote.php');

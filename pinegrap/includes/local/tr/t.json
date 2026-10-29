@@ -1190,6 +1190,7 @@
     "The cart has something in it": "Sepette ürün var",
     "The cart is empty": "Sepet boş",
     "The cart is empty.": "Sepet boş.",
+    "The cart quote could not be found.": "Sepet teklifi bulunamadı.",
     "The cart quote could not be saved.": "Sepet teklifi kaydedilemedi.",
     "The cart quote has a new link; the old one no longer works. Copy it now: it is not shown again.": "Sepet teklifinin yeni bir bağlantısı var; eskisi artık çalışmıyor. Şimdi kopyalayın: bir daha gösterilmez.",
     "The cart quote was cancelled. Its link opens nothing any more.": "Sepet teklifi iptal edildi. Bağlantısı artık hiçbir şey açmıyor.",

@@ -59,6 +59,17 @@ function api_webhook_events() {
 		'marketplace.order.imported'  => 'A marketplace package was imported as an order, one event per package (a package cancelled before its first import writes no order and is not announced)',
 		'marketplace.order.cancelled' => 'A marketplace cancelled an imported order and the order was cancelled here; order.cancelled is sent as well (not for one that had already shipped)',
 		'marketplace.order.shipped'   => 'An order the shop ships with its own carrier was reported shipped to the marketplace, with its tracking link (a parcel of the marketplace\'s own carrier arrives as order.shipped)',
+		// A cart quote (includes/fn/cart_quotes.php): products and quantities
+		// sent to a customer as a link. id is the quote's; status, state,
+		// contact_id, order_id, valid_until and the items (product_id,
+		// quantity) follow, never the link. Announced from the cart quote
+		// functions, so the screens, the API, the link page and the order's
+		// completion alike. A new link and a quote running past its last day
+		// are not announced (nothing marks it expired).
+		'cart_quote.created'   => 'A cart quote was made, on the cart quotes screen or through the API',
+		'cart_quote.applied'   => 'A cart quote\'s link put its products into a visitor\'s cart; added says how many lines went in (the same cart again is not announced)',
+		'cart_quote.ordered'   => 'The cart a cart quote\'s link filled was ordered, from the checkout or a payment service\'s message; order_number names the order',
+		'cart_quote.cancelled' => 'A cart quote was cancelled, on the cart quotes screen or through the API (one that runs past its last day is not announced)',
 		'product.created'      => 'A new product was added',
 		'product.updated'      => 'A product was changed',
 		// Moving a product to the Recycle Bin through the API announces this

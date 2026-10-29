@@ -628,6 +628,8 @@ function api_openapi_objects()
         'OrderReturn'  => 'api_order_return_schema',
         'OrderReturnRefund' => 'api_order_return_refund_schema',
         'OrderReturnWithdrawal' => 'api_order_return_withdrawal_schema',
+        'CartQuote'    => 'api_cart_quote_schema',
+        'CartQuoteLine' => 'api_cart_quote_line_schema',
         'Customer'     => 'api_customer_schema',
         'Page'         => 'api_page_schema',
         'Folder'       => 'api_folder_schema',

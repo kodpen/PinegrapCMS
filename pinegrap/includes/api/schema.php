@@ -753,6 +753,94 @@ function api_schema() {
 			)
 		),
 
+		/* ----- Cart quotes -------------------------------------------------- */
+
+		array(
+			'id'      => 'cart_quotes.list',
+			'method'  => 'GET',
+			'path'    => '/cart-quotes',
+			'scope'   => 'orders:read',
+			'handler' => 'api_cart_quotes_list',
+			'returns' => array('list' => 'CartQuote'),
+			'summary' => 'Cart quotes',
+			'description' => 'Products and quantities staff sent a customer as a link that puts them into the customer\'s cart at the store\'s prices of the day it is used; a quote keeps no price. Newest first, cursor paged, each with its lines. status is what is stored; state is where the quote stands now: open, expired (open but past valid_until), ordered (the cart its link filled was ordered; order_id is that order) or cancelled. While open, order_id is the last cart its link filled, if any. contact_name is the name or company of the contact it was made for. The link itself is never listed: only its first characters, token_hint, as the panel shows them.',
+			'params'  => array(
+				array('name' => 'state',         'in' => 'query', 'type' => 'enum', 'values' => array('open', 'expired', 'ordered', 'cancelled')),
+				array('name' => 'contact_id',    'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the quotes made for this contact (GET /customers).'),
+				array('name' => 'order_id',      'in' => 'query', 'type' => 'int', 'min' => 1, 'description' => 'Only the quotes whose link filled this cart or order.'),
+				array('name' => 'created_since', 'in' => 'query', 'type' => 'datetime'),
+				array('name' => 'limit',         'in' => 'query', 'type' => 'int', 'min' => 1, 'max' => 250, 'default' => 50),
+				array('name' => 'cursor',        'in' => 'query', 'type' => 'string', 'max_length' => 200)
+			)
+		),
+
+		array(
+			'id'      => 'cart_quotes.get',
+			'method'  => 'GET',
+			'path'    => '/cart-quotes/{id}',
+			'scope'   => 'orders:read',
+			'handler' => 'api_cart_quotes_get',
+			'returns' => 'CartQuote',
+			'summary' => 'One cart quote',
+			'description' => 'With its lines: each product as the catalogue has it now (name and short_description are null for a product that is gone) and the quantity asked for. When the link is used, a product that is switched off or out of stock is left out and a quantity is brought within the product\'s minimum, maximum and stock.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'cart_quotes.create',
+			'method'  => 'POST',
+			'path'    => '/cart-quotes',
+			'scope'   => 'orders:write',
+			'handler' => 'api_cart_quotes_create',
+			'dry_run' => true,
+			// The link is the quote's credential: kept in no Idempotency-Key
+			// record (includes/api/idempotency.php), and it cannot be read
+			// back, since only its hash is kept.
+			'idempotency_redact' => array('link'),
+			'returns' => 'CartQuote',
+			'status'  => 201,
+			'summary' => 'Make a cart quote',
+			'description' => 'Makes a quote as the new cart quote screen does and answers it with link: the address to send the customer. The link is answered here only, never again: only its hash is kept, and a lost link is replaced with POST /cart-quotes/{id}/link. Opening the link shows the products and quantities, never whom the quote is for; the customer\'s button puts them into the cart at that day\'s prices. Each product must be in the catalogue, switched on and no donation (422 naming lines otherwise); its stock is weighed when the link is used. A retry answered from its Idempotency-Key record carries link null. Announced as cart_quote.created.',
+			'params'  => array(
+				array('name' => 'lines',       'in' => 'body', 'type' => 'list', 'of' => array('product_id' => 'integer', 'quantity' => 'integer'), 'max_items' => PG_CART_QUOTE_MAX_LINES, 'required' => true, 'description' => 'Objects of {product_id, quantity}, at most ' . PG_CART_QUOTE_MAX_LINES . ' products: quantity a whole number of at least 1. A product sent twice is one line with the quantities added up, at most ' . PG_CART_QUOTE_MAX_QUANTITY . '.'),
+				array('name' => 'contact_id',  'in' => 'body', 'type' => 'int', 'min' => 1, 'description' => 'The contact the quote is for (GET /customers). Left out, it is made for nobody named.'),
+				array('name' => 'valid_until', 'in' => 'body', 'type' => 'datetime', 'nullable' => true, 'description' => 'The last day the link works, through the end of that day in the site\'s time zone; not a day already over. Left out, 30 days from today; an empty string or null, no end.')
+			)
+		),
+
+		array(
+			'id'      => 'cart_quotes.cancel',
+			'method'  => 'POST',
+			'path'    => '/cart-quotes/{id}/cancel',
+			'scope'   => 'orders:write',
+			'handler' => 'api_cart_quotes_cancel',
+			'dry_run' => true,
+			'returns' => 'CartQuote',
+			'summary' => 'Cancel a cart quote',
+			'description' => 'Cancels an open quote as the cart quote list does: its link opens nothing more, and it cannot be undone. A cart it already filled keeps its products. 409 cart_quote_not_open: the quote is ordered, cancelled or past valid_until. Announced as cart_quote.cancelled.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
+		array(
+			'id'      => 'cart_quotes.link',
+			'method'  => 'POST',
+			'path'    => '/cart-quotes/{id}/link',
+			'scope'   => 'orders:write',
+			'handler' => 'api_cart_quotes_link',
+			'dry_run' => true,
+			'idempotency_redact' => array('link'),
+			'returns' => 'CartQuote',
+			'summary' => 'Give a cart quote a new link',
+			'description' => 'Makes a new link for an open quote, as the cart quote list does, and answers it in link: the old link stops working at once. As with a new quote, the link is answered here only. 409 cart_quote_not_open: the quote is ordered, cancelled or past valid_until. A retry answered from its Idempotency-Key record carries link null.',
+			'params'  => array(
+				array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true)
+			)
+		),
+
 		/* ----- Customers ---------------------------------------------------- */
 
 		array(
