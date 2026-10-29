@@ -1,6 +1,6 @@
 ---
 name: workspace-canvas-workflow-tables
-description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2931): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 ---
 
 ## What is asked?
@@ -23,7 +23,7 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): w
    - T1b2 privacy reader — done, #2808 (workspace/workflow-tables.md): export and erasure read person/link cells.
    - T1c shares — done, #2820 (workspace/workflow-table-shares.md): person view/edit, channel view; `ws_wtable_flow_gate()` for F6.
    - T1d1 tables, columns, rows in API/MCP — done, #2890 (workspace/workflow-tables-api.md).
-   - T1d2 shares routes (as flow shares: own words, no tool), `workspace.wtable.row.*` webhooks (`channel_id` = oldest public share): in progress (branch feature/wtables-t1d2-shares-webhooks).
+   - T1d2 shares routes (as flow shares: own words, no tool), `workspace.wtable.row.*` webhooks (`channel_id` = oldest public share): done, #2931 (workspace/workflow-tables-api.md).
    - T1e screen workspace_wtables.php and its place in `ws_nav_groups()`.
 4. T2 Board view (the channel Board tab component) by a status column.
 5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist.
@@ -34,4 +34,4 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): w
 2. Answered (#2424): administrators see a personal table only through a share, like notes (a). Owner deleted or `ws_profiles.excluded`: tables stay invisible, their flows pause.
 
 ## Where to start?
-- T1d2 (from a3f8d4f0), then T1e screen.
+- T1e: the screen workspace_wtables.php and its place in `ws_nav_groups()`.

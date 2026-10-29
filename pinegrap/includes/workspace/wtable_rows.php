@@ -474,6 +474,8 @@ function ws_wtable_row_create($viewer, $table, $input)
         return ws_wtable_refusal('not_saved', '', 500) + array('row_id' => 0, 'revision' => 0);
     }
 
+    ws_wtable_row_announce('created', $table, $row_id, (int) $viewer['id']);
+
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 201, 'row_id' => $row_id, 'revision' => 1);
 }
 
@@ -554,6 +556,7 @@ function ws_wtable_row_update($viewer, $table, $row, $input)
     }
 
     ws_wtable_touch($table_id);
+    ws_wtable_row_announce('updated', $table, (int) $row['id'], (int) $viewer['id'], array_keys($check['cells']));
 
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200, 'revision' => $revision + 1);
 }
@@ -618,6 +621,7 @@ function ws_wtable_row_delete($viewer, $table, $row, $input = array())
 
     db("UPDATE ws_wtable_rows SET position = position - 1 WHERE table_id = '" . $table_id . "' AND position > '" . (int) $row['position'] . "'");
     db("UPDATE ws_wtables SET row_count = IF(row_count > 0, row_count - 1, 0), updated_at = '" . time() . "' WHERE id = '" . $table_id . "'");
+    ws_wtable_row_announce('deleted', $table, $row, (int) $viewer['id']);
 
     return $check;
 }
