@@ -146,7 +146,7 @@
                             '<div id="pgImageEditorHost" style="width:100%;height:100%"></div>' +
                         '</div>' +
                         '<div class="dialog-footer py-3 justify-content-between" id="pgImageEditorFoot">' +
-                            '<span class="small fg-secondary" id="pgImageEditorHint"></span>' +
+                            '<span class="small fg-secondary" id="pgImageEditorHint" role="status"></span>' +
                             '<span class="d-flex align-items-center gap-3" id="pgImageEditorActions"></span>' +
                         '</div>' +
                     '</dialog>';
@@ -452,8 +452,8 @@
                 var msg = (res.data && res.data.message)
                     ? res.data.message
                     : (t('The image could not be saved.') + ' (' + res.status + ')');
-                var hint = document.getElementById('pgImageEditorHint');
-                if (hint) hint.innerHTML = '<span class="fg-danger">' + msg + '</span>';
+                // The message is the server's text; it goes in as text.
+                _footError(msg);
                 return;
             }
             _didSave = true;
@@ -464,8 +464,7 @@
         })
         .catch(function () {
             _busyState(false);
-            var hint = document.getElementById('pgImageEditorHint');
-            if (hint) hint.innerHTML = '<span class="fg-danger">' + t('Network error.') + '</span>';
+            _footError(t('Network error.'));
         });
     }
 

@@ -123,6 +123,7 @@ function init_page_designer(properties) {
                     <button type="button" value="Save" class="btn btn-sm  btn-solid theme-success save submit-primary disabled" title="${h(labels['Save'])} (Ctrl+S | &#8984;+S)"><span class="statusicon bi bi-floppy me-3" role="status" aria-hidden="true"></span> ${h(labels['Save'])}</button>
                     <button type="button" value="Cancel" class="btn btn-sm border-0 cancel submit-dark disabled" title="${h(labels['Undo Changes'])}" ><span class="statusicon bi bi-arrow-counterclockwise me-3" role="status" aria-hidden="true"></span>${h(labels['Undo Changes'])}</button>
                 </div>
+                <div class="page_designer_save_error small fg-danger mt-2" role="alert"></div>
             </div>
             `);
 
@@ -410,6 +411,17 @@ function init_page_designer(properties) {
                         $('.save').removeClass('disabled');
                         $('.cancel').removeClass('disabled');
 
+                        // A save that did not store the edit leaves the editor as it
+                        // was (content_changed, the last saved text, Save and Undo
+                        // enabled) and says why in the footer's alert line.
+                        var saveFailed = function (message) {
+                            var text = labels['The changes could not be saved.'];
+                            if (message) {
+                                text += ' ' + message;
+                            }
+                            $('.page_designer_save_error').text(text);
+                        };
+
                         // When the save button is clicked then save the form.
                         $('.save').click(function () {
                             editor.focus();
@@ -484,6 +496,16 @@ function init_page_designer(properties) {
                                 data: JSON.stringify(data),
                                 type: 'POST',
                                 success: function (response) {
+                                    // api.php answers a refusal (expired session, changed
+                                    // token, missing style or file) with HTTP 200 and
+                                    // status "error": the edit is not stored, so nothing
+                                    // may say it is.
+                                    if (!response || response.status !== 'success') {
+                                        saveFailed(response && response.message);
+                                        return;
+                                    }
+
+                                    $('.page_designer_save_error').text('');
                                     content_changed = false;
 
                                     // Store the new content, so if the cancel button is clicked
@@ -519,6 +541,9 @@ function init_page_designer(properties) {
                                         $('.save').html('<span class="statusicon bi bi-floppy me-3" role="status" aria-hidden="true"></span>' + labels['Save']);
                                     }, 1500);
 
+                                },
+                                error: function () {
+                                    saveFailed('');
                                 }
                             });
                         });
@@ -530,6 +555,7 @@ function init_page_designer(properties) {
                             editor.setValue(content);
 
                             content_changed = false;
+                            $('.page_designer_save_error').text('');
 
                             // Disable the save & cancel buttons.
                             $('.save').unbind('click');

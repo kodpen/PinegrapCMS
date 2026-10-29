@@ -216,6 +216,8 @@ function ws_message_payloads($viewer, $rows, $options = array())
         'note_cards' => function_exists('ws_note_cards_map') ? ws_note_cards_map($viewer, $ids) : array(),
         // Scheduled actions written in the channel (scheduled.php).
         'scheduled'  => function_exists('ws_scheduled_cards_map') ? ws_scheduled_cards_map($viewer, $ids) : array(),
+        // Flow runs started from the composer (flow_run_cards.php).
+        'flow_runs'  => function_exists('ws_flow_run_cards_map') ? ws_flow_run_cards_map($viewer, $ids) : array(),
         // The other messages an answer answers, and the copies a forward
         // carries (forward.php).
         'quotes'     => function_exists('ws_message_quotes_map') ? ws_message_quotes_map($viewer, $ids) : array(),
@@ -400,6 +402,7 @@ function ws_message_payload($viewer, $row, $refs, $people, $tasks, $assignees, $
         'invite'      => $deleted ? array() : ($extra['outside'][$id] ?? array()),
         'note_card'   => $deleted ? null : ($extra['note_cards'][$id] ?? null),
         'scheduled'   => $deleted ? null : ($extra['scheduled'][$id] ?? null),
+        'flow_run'    => $deleted ? null : ($extra['flow_runs'][$id] ?? null),
         'quotes'      => $deleted ? array() : ($extra['quotes'][$id] ?? array()),
         'forwards'    => $deleted ? array() : ($extra['forwards'][$id] ?? array()),
         'thread'      => $deleted ? null : ($extra['threads'][$id] ?? null),

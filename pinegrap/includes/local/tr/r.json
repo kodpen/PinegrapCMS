@@ -1160,6 +1160,7 @@
     "Run a tool of an MCP server": "Bir MCP sunucusunun aracını çalıştır",
     "Run a tool with a form": "Bir aracı formla çalıştır",
     "Run now": "Şimdi çalıştır",
+    "Run of {var:1}": "{var:1} çalıştırması",
     "Run the database upgrade steps again": "Veritabanı yükseltme adımlarını yeniden koş",
     "Run the installer and follow the steps on the screen.": "Kurulum dosyasını çalıştırın ve ekrandaki adımları izleyin.",
     "Run the live version of this flow": "Bu akışın yayındaki sürümünü çalıştır",
