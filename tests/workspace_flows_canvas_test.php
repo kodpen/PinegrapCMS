@@ -1794,3 +1794,67 @@ JS
 	pg_assert_same(6, count($result['selected']), 'selected: its unused values too');
 	pg_assert_same(array(true, true), array_slice(array_column($result['selected'], 'unused'), 4), 'the unused ones last');
 }
+
+// Every kind of box has a line icon of its own in workspace.js's set (16 ×
+// 16 view, drawn by flowIcon() as an SVG the screen reader skips); the
+// canvas draws boxes, palette, outline, template cards and run steps with
+// it, and the mini window of a draft with the same paths. Before, each kind
+// had a Bootstrap icon, and the mini window none.
+function test_workspace_flows_canvas_kinds_have_line_icons()
+{
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$host = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $flow, $kinds), 'KINDS is in the canvas script');
+	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $flow, $palette), 'PALETTE is in the canvas script');
+	pg_assert_true((bool) preg_match('/\n    var FLOW_ICONS = \{\n.*?\n    \};\n/s', $host, $icons), 'FLOW_ICONS is in workspace.js');
+	pg_assert_false(strpos($kinds[0] . $palette[0], "'bi-") !== false, 'no Bootstrap icon left on a kind');
+
+	foreach (array("K.flowIcon(node.kind)", "K.flowIcon(node.kind, 'me-1')", "K.flowIcon(item[0], 'me-1')") as $use) {
+		pg_assert_contains($use, $flow, 'the canvas draws ' . $use);
+	}
+
+	pg_assert_contains('flowIcon: flowIcon,', $host, 'the kit lends flowIcon()');
+	pg_assert_contains('flowIconPaths(node.kind).forEach', $host, 'the mini window draws the same icon');
+
+	$result = ws_flows_canvas_test_node(array(), $kinds[0] . $icons[0]
+		. ws_flows_canvas_test_script_function($host, 'flowIconPaths') . ws_flows_canvas_test_script_function($host, 'flowIcon') . <<<'JS'
+document.createElementNS = function (ns, tag) { var node = new FakeNode(tag); node.ns = ns; return node; };
+var made = flowIcon('approval', 'me-1');
+console.log(JSON.stringify({
+    kinds: Object.keys(KINDS),
+    icons: Object.keys(FLOW_ICONS),
+    paths: FLOW_ICONS,
+    unknown: flowIconPaths('nothing'),
+    made: { tag: made.tag, ns: made.ns, attrs: made.attrs, paths: made.children.map(function (path) { return path.attrs.d; }) }
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(), array_values(array_diff($result['kinds'], $result['icons'])), 'every kind has its icon');
+	pg_assert_same(array(), array_values(array_diff($result['icons'], $result['kinds'])), 'no icon for a kind that is not there');
+
+	foreach ($result['paths'] as $kind => $paths) {
+		pg_assert_true(count($paths) > 0, $kind . ' has a path');
+
+		foreach ($paths as $d) {
+			pg_assert_true((bool) preg_match('/^M[0-9. ]+[MLHVCSQTAZmlhvcsqtaz0-9 .-]*$/', $d), $kind . ': a path: ' . $d);
+			// Every absolute point stays in the 16 × 16 view.
+			preg_match('/^M([0-9.]+) ([0-9.]+)/', $d, $first);
+			pg_assert_true($first[1] >= 0 && $first[1] <= 16 && $first[2] >= 0 && $first[2] <= 16, $kind . ': starts in the view');
+		}
+	}
+
+	pg_assert_same(array('M2.5 2.5h11v11h-11z'), $result['unknown'], 'an unknown kind: a plain square');
+	pg_assert_same('svg', $result['made']['tag']);
+	pg_assert_same('http://www.w3.org/2000/svg', $result['made']['ns']);
+	pg_assert_same(array('class' => 'ws-flow-icon me-1', 'viewBox' => '0 0 16 16', 'width' => '16', 'height' => '16', 'aria-hidden' => 'true', 'focusable' => 'false'), $result['made']['attrs']);
+	pg_assert_same($result['paths']['approval'], $result['made']['paths'], 'its paths drawn');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\n\.ws-flow-icon \{[^}]*width: 16px;[^}]*stroke: currentColor;[^}]*stroke-width: 1\.5;/', $css), 'drawn 16 px with a 1.5 px stroke in the colour around it');
+}
