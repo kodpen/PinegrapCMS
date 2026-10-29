@@ -973,6 +973,7 @@
     "Clearing": "Temizleniyor",
     "Clearing Cache": "Önbellek Temizleniyor",
     "Clears every reference and deletes it from the database. This cannot be undone.": "Tüm referansları temizler ve veritabanından siler. Geri alınamaz.",
+    "Clears in {var:1} minutes.": "{var:1} dakika içinde kendiliğinden açılır.",
     "Click": "Tıklama",
     "Click & collect": "Tıkla ve gel al",
     "Click 'Delete' to delete all key codes.": "Tüm anahtar kodları silmek için 'Sil'i tıklayın.",

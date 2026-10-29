@@ -19,3 +19,8 @@ module: user_list
 - The toolbar and save bar landmarks are `h(lang('Button Bar'))` and `h(lang('data edit buttons'))`.
 
 Test: `tests/user_screens_names_test.php`.
+
+## Where are the Sessions screen's and users list's reasons?
+- Printed as small `fg-secondary` text, never only in a `title` (a hover-only popover, and Bootstrap 6's `_fixTitle()` drops it for screen readers on an element with text): the push "N failed attempts" badge's `last_error` (`text-break`, the failed-test notice points there), the bare dash and "Signed out" of a push row, the session "Locked" badge, the users list "Locked" badge's "Clears in N minutes." (server-paged rows get no ready-time hints) and the "{provider} only" warning of `pg_signin_identity_badges()`.
+- With "Refuse new sign-ins when the limit is full" and a limit of one, the Locked button of an unpinned session is `aria-disabled="true"` (no `disabled`, which takes no focus and, through `pointer-events:none`, no hover) and `aria-describedby="pg_pin_redundant_reason"`, a `form-text` printed once above the sessions table.
+- Test, Stop and Lock/Unlock keep their detail as a compact tooltip (`no-popover` + `data-bs-toggle="tooltip"`), shown on hover and focus. Test: `tests/session_screen_reasons_test.php` (#PR).
