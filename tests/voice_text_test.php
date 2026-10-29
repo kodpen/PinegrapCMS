@@ -139,11 +139,11 @@ function test_voice_text_wiring()
 	$voice = voice_text_test_source('assets/js/workspace_voice.js');
 	$chat = voice_text_test_source('assets/js/chat_backend.src.js');
 	$bundles = pg_js_bundles();
-	$set = $bundles['assets/js/workspace.min.js'];
 
 	pg_assert_contains("var under = voice ? transcript(voice, h) : null;\n\n        if (!under && window.PGVoiceText) {", $voice, 'a server transcript wins');
 	pg_assert_contains('window.PGVoiceText.control(attachment.url', $chat);
-	pg_assert_true(array_search('assets/js/pg_voice_text.js', $set) < array_search('assets/js/workspace_voice.js', $set), 'loaded before the player');
+	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_voice_text.min.js')\n        . pg_js_bundle_tags('assets/js/workspace.min.js')", voice_text_test_source('includes/workspace/screen.php'), 'loaded before the player');
+	pg_assert_contains("array_merge(pg_js_bundle_urls('assets/js/pg_voice_text.min.js'), pg_js_bundle_urls('assets/js/workspace.min.js'))", voice_text_test_source('includes/workspace/screen.php'), 'a record screen loads it too');
 	pg_assert_same(array('assets/js/pg_voice_text.js'), $bundles['assets/js/pg_voice_text.min.js']);
 	pg_assert_contains("pg_js_bundle_tags('assets/js/pg_voice_text.min.js')", voice_text_test_source('chat.php'));
 	pg_assert_contains('+ pg_voice_text_strings()', voice_text_test_source('includes/workspace/voice.php'));

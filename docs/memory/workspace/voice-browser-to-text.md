@@ -18,7 +18,7 @@ module: voice_text
 - On the click: `LanguageModel.create()` at once (download progress in a `<progress>`), the file fetched and decoded by the browser's own `AudioContext` (WebM, Ogg, MP4), the first channel cut into 30-second `AudioBuffer`s (`PIECE`). Each piece is asked on a `clone()` of the session, so earlier pieces do not fill the context; the text grows piece by piece. Any error, or nothing heard, says "The recording could not be converted to text." and shows the button again. The session is destroyed afterwards.
 
 ## Where are the files and texts?
-- `assets/js/pg_voice_text.js` (`window.PGVoiceText`: `ready`, `control`, `language`), a member of `workspace.min.js` (before workspace_voice.js) and its own `pg_voice_text.min.js`, which `pg_chat_render_backend_launcher()` loads before chat_backend; a second load returns at once.
+- `assets/js/pg_voice_text.js` (`window.PGVoiceText`: `ready`, `control`, `language`), served alone as `pg_voice_text.min.js` (a source sits in one bundle only): `ws_screen_assets()` (includes/workspace/screen.php) loads it before `workspace.min.js` (the record loader too), `pg_chat_render_backend_launcher()` before chat_backend; a second load on the same page returns at once.
 - Texts `pg_voice_text_strings()` (includes/fn/voice_text.php), added to `ws_voice_js_strings()` and to the chat launcher's strings only.
 
 ## What is unverified?

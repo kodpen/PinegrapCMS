@@ -897,7 +897,7 @@ function ws_screen_assets($viewer, $mode, $extra = array())
     // script builds. A record's screen fetches it with the script, unless the
     // screen has its own.
     if ($mode === 'record') {
-        return $output . ws_record_loader(pg_js_bundle_urls('assets/js/workspace.min.js'), get_date_picker_format() . pg_fields_script_tags());
+        return $output . ws_record_loader(array_merge(pg_js_bundle_urls('assets/js/pg_voice_text.min.js'), pg_js_bundle_urls('assets/js/workspace.min.js')), get_date_picker_format() . pg_fields_script_tags());
     }
 
     $fields = pg_fields_script();
@@ -913,7 +913,10 @@ function ws_screen_assets($viewer, $mode, $extra = array())
         $output .= pg_ai_write_assets();
     }
 
-    $output .= pg_js_bundle_tags('assets/js/workspace.min.js')
+    // "Convert to text" under a voice message (pg_voice_text.js), which the
+    // player in workspace.min.js asks for.
+    $output .= pg_js_bundle_tags('assets/js/pg_voice_text.min.js')
+        . pg_js_bundle_tags('assets/js/workspace.min.js')
         // The search box, on every workspace screen.
         . pg_js_bundle_tags('assets/js/workspace_palette.min.js');
 
