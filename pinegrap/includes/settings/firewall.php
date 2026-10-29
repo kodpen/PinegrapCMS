@@ -47,7 +47,7 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="col-12 ">
-                                                            <label class="form-label">' . lang('Mode') . '</label>
+                                                            <fieldset><legend class="form-label fs-md">' . lang('Mode') . '</legend>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="waf_mode" id="waf_mode_monitor" value="monitor"' . $waf_mode_monitor_checked . '/>
                                                                 <label class="" for="waf_mode_monitor"><strong>' . lang('Monitor') . '</strong> &mdash; ' . lang('record only, block nothing new') . '</label>
@@ -58,6 +58,7 @@ $pg_settings_cards[] = '
                                                                 <label class="" for="waf_mode_block"><strong>' . lang('Block') . '</strong> &mdash; ' . lang('reject attacking requests') . '</label>
                                                                 <div class="form-text">' . lang('Attacks receive a 403 response and repeat offenders are banned temporarily.') . '</div>
                                                             </div>
+                                                            </fieldset>
                                                         </div>
                                                         <div class="pg-f-lg">
                                                             <label for="waf_sensitivity" class="form-label">' . lang('Sensitivity') . '</label>
@@ -361,7 +362,8 @@ if (!empty($waf_country_ready)) {
                         <div class="form-text">' . lang('Refuses requests by the country they come from. Applied while the firewall is enabled; in Monitor mode a request that would be refused is only recorded in the firewall log.') . '</div>
                     </div>
                     <div class="col-12">
-                        <label class="form-label">' . lang('Restriction') . '</label>' . $output_waf_country_modes . '
+                        <fieldset><legend class="form-label fs-md">' . lang('Restriction') . '</legend>' . $output_waf_country_modes . '
+                        </fieldset>
                     </div>
                     <div class="col-12">
                         <label for="waf_country_list" class="form-label"><i class="bi bi-globe2 me-1"></i>' . lang('Countries') . '</label>
@@ -477,7 +479,7 @@ if ($security_ready) {
                                                             </div>
                                                         </div>
                                                         <div class="col-12 ">
-                                                            <label class="form-label">' . lang('Content Security Policy') . '</label>
+                                                            <fieldset><legend class="form-label fs-md">' . lang('Content Security Policy') . '</legend>
                                                             <div class="form-field">
                                                                 <input class="radio" type="radio" name="security_csp_mode" id="security_csp_mode_off" value="off"' . $security_csp_off_checked . '/>
                                                                 <label class="" for="security_csp_mode_off"><strong>' . lang('Off') . '</strong></label>
@@ -492,6 +494,7 @@ if ($security_ready) {
                                                                 <label class="" for="security_csp_mode_enforce"><strong>' . lang('Enforce') . '</strong> &mdash; ' . lang('refuse what the policy does not allow') . '</label>
                                                                 <div class="form-text">' . lang('A source missing from the policy stops loading for every visitor. Enforce only after Report Only has run for a while on real traffic.') . '</div>
                                                             </div>
+                                                            </fieldset>
                                                         </div>
                                                         <div class="col-12 ">
                                                             <label for="security_csp_policy" class="form-label">' . lang('Policy') . '</label>

@@ -309,10 +309,12 @@ if (!empty($language_redirect_ready)) {
                             <div class="popover-body">
                                 <div class="row gy-5">
                                     <div class="col-12">
-                                        <label class="form-label">' . lang('What decides the language') . '</label>' . $output_language_redirect_modes . '
+                                        <fieldset><legend class="form-label fs-md">' . lang('What decides the language') . '</legend>' . $output_language_redirect_modes . '
+                                        </fieldset>
                                     </div>
                                     <div class="col-12">
-                                        <label class="form-label">' . lang('Pages that are redirected') . '</label>' . $output_language_redirect_scopes . '
+                                        <fieldset><legend class="form-label fs-md">' . lang('Pages that are redirected') . '</legend>' . $output_language_redirect_scopes . '
+                                        </fieldset>
                                     </div>
                                     <div class="col-12">
                                         <div class="pg-f-md">
