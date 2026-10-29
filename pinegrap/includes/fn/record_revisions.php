@@ -537,3 +537,185 @@ function pg_record_revisions_sweep()
 
     return $out;
 }
+
+/**
+ * A stored values_json read back: field id (string) => list. Broken JSON,
+ * a field id that is not a number and a lone value (not a list) are
+ * handled, so a row written by hand cannot break the History section.
+ *
+ * @param string $values_json
+ * @return array field id (string) => list
+ */
+function pg_record_revision_decode($values_json)
+{
+    $decoded = json_decode((string) $values_json, true);
+    $out     = array();
+
+    if (!is_array($decoded)) {
+        return $out;
+    }
+
+    foreach ($decoded as $field_id => $list) {
+        if (!ctype_digit((string) $field_id) || (int) $field_id <= 0) {
+            continue;
+        }
+
+        $out[(string) (int) $field_id] = is_array($list) && !isset($list['file_id']) ? array_values($list) : array($list);
+    }
+
+    return $out;
+}
+
+/**
+ * The field-by-field comparison of a revision with the current values, in
+ * form order; information fields hold no value and are left out.
+ *
+ * @param array $fields   form_fields rows: id, label, type
+ * @param array $revision pg_record_revision_decode() of the revision
+ * @param array $current  pg_record_revision_values() of the stored item
+ * @return array list of field_id, label, type, revision, current, changed
+ */
+function pg_record_revision_compare($fields, $revision, $current)
+{
+    $rows = array();
+
+    foreach ((array) $fields as $field) {
+        if ($field['type'] === 'information') {
+            continue;
+        }
+
+        $id  = (string) (int) $field['id'];
+        $old = isset($revision[$id]) ? $revision[$id] : array();
+        $new = isset($current[$id]) ? $current[$id] : array();
+
+        $rows[] = array(
+            'field_id' => $id,
+            'label'    => (string) $field['label'],
+            'type'     => (string) $field['type'],
+            'revision' => $old,
+            'current'  => $new,
+            'changed'  => ($old != $new),
+        );
+    }
+
+    return $rows;
+}
+
+/**
+ * The file id a field's value list holds, 0 when none.
+ *
+ * @param array $list
+ * @return int
+ */
+function pg_record_revision_file_id($list)
+{
+    foreach ((array) $list as $value) {
+        if (is_array($value) && !empty($value['file_id'])) {
+            return (int) $value['file_id'];
+        }
+    }
+
+    return 0;
+}
+
+/**
+ * What restoring a revision does with each field: 'value' (the edit form is
+ * filled with it), 'file' (the revision's file is pointed at again on save),
+ * 'gone' (its file record has been deleted since: not restored), 'kept' (a
+ * signature, never redrawn, or a revision without a file: the current one
+ * stays), 'unchanged'.
+ *
+ * @param array $fields   form_fields rows: id, type
+ * @param array $revision pg_record_revision_decode() of the revision
+ * @param array $current  pg_record_revision_values() of the stored item
+ * @param array $file_ids ids of the revision's files that still exist
+ * @return array field id (string) => status
+ */
+function pg_record_revision_restore_plan($fields, $revision, $current, $file_ids)
+{
+    $existing = array_map('intval', (array) $file_ids);
+    $plan     = array();
+
+    foreach ((array) $fields as $field) {
+        $id   = (string) (int) $field['id'];
+        $type = (string) $field['type'];
+
+        if ($type === 'information') {
+            continue;
+        }
+
+        if ($type !== 'file upload' && $type !== 'signature') {
+            $plan[$id] = 'value';
+            continue;
+        }
+
+        $old = pg_record_revision_file_id(isset($revision[$id]) ? $revision[$id] : array());
+        $new = pg_record_revision_file_id(isset($current[$id]) ? $current[$id] : array());
+
+        if ($old === $new) {
+            $plan[$id] = 'unchanged';
+        } elseif ($type === 'signature' || $old === 0) {
+            $plan[$id] = 'kept';
+        } else {
+            $plan[$id] = in_array($old, $existing, true) ? 'file' : 'gone';
+        }
+    }
+
+    return $plan;
+}
+
+/**
+ * A revision's value as the edit form takes it: one value as text, several
+ * as a list (a check box or multiple pick list), none (or a file) as ''.
+ *
+ * @param array $list
+ * @return string|array
+ */
+function pg_record_revision_form_value($list)
+{
+    $values = array();
+
+    foreach ((array) $list as $value) {
+        if (!is_array($value)) {
+            $values[] = (string) $value;
+        }
+    }
+
+    if (count($values) > 1) {
+        return $values;
+    }
+
+    return $values ? $values[0] : '';
+}
+
+/**
+ * The text the History section shows for a value: tags dropped, white
+ * space folded, several values joined, a file by its name (by its id when
+ * its record is gone), cut at 300 characters.
+ *
+ * @param array $list
+ * @param array $file_names file id => name
+ * @return string plain text, to be escaped where printed
+ */
+function pg_record_revision_value_text($list, $file_names)
+{
+    $parts = array();
+
+    foreach ((array) $list as $value) {
+        if (is_array($value)) {
+            $file_id = isset($value['file_id']) ? (int) $value['file_id'] : 0;
+            $parts[] = isset($file_names[$file_id]) ? (string) $file_names[$file_id] : '#' . $file_id;
+            continue;
+        }
+
+        $text = trim(preg_replace('/\s+/u', ' ', html_entity_decode(strip_tags((string) $value), ENT_QUOTES, 'UTF-8')));
+
+        if ($text !== '') {
+            $parts[] = $text;
+        }
+    }
+
+    $text = implode(', ', $parts);
+
+    return (mb_strlen($text) > 300) ? mb_substr($text, 0, 300) . '…' : $text;
+}
