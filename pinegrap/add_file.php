@@ -161,7 +161,9 @@ if (!$_POST) {
             maxFilesize: ' . $dropzone_file_max_mb . ',
             dictFileTooBig: "' . lang('This file is too big to upload ({{filesize}} MB). The limit is {{maxFilesize}} MB.') . '",
             previewsContainer: ".dropzone_previews",
-            clickable: ".dropzone_previews",
+            // The drop area is a plain div that takes no focus; the button
+            // beside it opens the same file dialog from the keyboard.
+            clickable: [".dropzone_previews", "#pg_upload_choose"],
             ' . $output_maxfiles . '
 
             // Every accepted file goes up in one request, so the queue as a
@@ -194,6 +196,9 @@ if (!$_POST) {
 
             init: function() {
                 var myDropzone = this;
+
+                // Shown only once Dropzone runs; without it the fallback input below is used.
+                document.getElementById("pg_upload_choose").hidden = false;
                
                 // First change the button to actually tell Dropzone to process the queue.
                 this.element.querySelector("button[type=submit]").addEventListener("click", function(e) {
@@ -258,6 +263,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
+                                    <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>
                                 </div>
                             </div>
                         </div>

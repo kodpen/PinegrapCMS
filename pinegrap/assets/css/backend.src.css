@@ -4771,7 +4771,11 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   opacity: 0;
 }
 
-.dz-preview:hover .dz-remove {
+/* Shown on hover and while the link, which Dropzone makes focusable, has
+   keyboard focus. */
+.dz-preview:hover .dz-remove,
+.dz-preview:focus-within .dz-remove,
+.dz-remove:focus-visible {
   opacity: 1;
 }
 

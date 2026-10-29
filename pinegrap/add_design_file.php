@@ -79,11 +79,16 @@ if (!$_POST) {
             // the default of 256 MB (value is in MB).
             maxFilesize: 9999,
             previewsContainer: ".dropzone_previews",
-            clickable: ".dropzone_previews",
+            // The drop area is a plain div that takes no focus; the button
+            // beside it opens the same file dialog from the keyboard.
+            clickable: [".dropzone_previews", "#pg_upload_choose"],
             ' . $output_maxfiles . '
 
             init: function() {
                 var myDropzone = this;
+
+                // Shown only once Dropzone runs; without it the fallback input below is used.
+                document.getElementById("pg_upload_choose").hidden = false;
                
                 // First change the button to actually tell Dropzone to process the queue.
                 this.element.querySelector("button[type=submit]").addEventListener("click", function(e) {
@@ -147,6 +152,7 @@ if (!$_POST) {
                                             </div>
                                         </div>
                                     </div>
+                                    <button type="button" id="pg_upload_choose" class="btn btn-sm btn-outline theme-primary mt-4" hidden><span class="material-icons me-3" aria-hidden="true">upload_file</span><span class="pg-btn-label">' . lang('Select File(s)') . '</span></button>
                                 </div>
                             </div>
                         </div>
