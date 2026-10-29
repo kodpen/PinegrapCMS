@@ -123,6 +123,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
+- erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
 - erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.

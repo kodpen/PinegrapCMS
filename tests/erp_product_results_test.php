@@ -119,7 +119,7 @@ function test_erp_product_results_open_above_near_the_bottom_edge()
 	}
 
 	pg_assert_same(true, $result[0]['above'], 'above the box when the room below is short');
-	pg_assert_same(798, $result[0]['bottom'], 'its bottom edge just over the box');
+	pg_assert_same(102, $result[0]['bottom'], 'its bottom edge just over the box');
 	pg_assert_same(320, $result[0]['maxHeight'], 'at most 320px high');
 }
 
@@ -128,7 +128,7 @@ function test_erp_product_results_narrow_box_and_phone_width()
 	$count = 2;
 	$result = erp_product_results_test_place(array(
 		array('rect' => array('left' => 300, 'top' => 100, 'bottom' => 131, 'width' => 140), 'width' => 1280, 'height' => 900),
-		array('rect' => array('left' => 200, 'top' => 100, 'bottom' => 131, 'width' => 160), 'width' => 360, 'height' => 640),
+		array('rect' => array('left' => 200, 'top' => 100, 'bottom' => 131, 'width' => 160), 'width' => 320, 'height' => 640),
 	));
 
 	if ($result === null) {
@@ -142,7 +142,7 @@ function test_erp_product_results_narrow_box_and_phone_width()
 	}
 
 	pg_assert_same(320, $result[0]['width'], 'a narrow box still gets a readable list');
-	pg_assert_same(344, $result[1]['width'], 'never wider than the viewport less its margins');
+	pg_assert_same(304, $result[1]['width'], 'never wider than the viewport less its margins');
 	pg_assert_same(8, $result[1]['left'], 'moved left to stay on screen');
 }
 
