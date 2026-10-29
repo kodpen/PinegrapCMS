@@ -548,6 +548,7 @@
     "Remove allocation": "Tahsisi kaldır",
     "Remove anything private from screenshots and logs before you attach them.": "Ekran görüntülerini ve günlük dosyalarını eklemeden önce kişisel olan her şeyi çıkarın.",
     "Remove condition": "Koşulu kaldır",
+    "Remove filter: {var:1}": "Filtreyi kaldır: {var:1}",
     "Remove from Contact Groups": "Rehber Gruplarından Kaldır",
     "Remove from Design": "Tasarımdan Çıkart",
     "Remove from Favourites (loop_area)": "Favorilerden Çıkar (loop_area)",
