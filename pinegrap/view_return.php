@@ -11,6 +11,8 @@
  *   action=shipped   tracking_number, carrier (the parcel left the customer)
  *   action=received  the goods are back
  *   action=close     the case is settled outside these steps
+ *   action=label     a return label from the carrier label service of the
+ *                    approval's carrier; its code becomes the return code
  *   action=refund    refund_amount, refund_method (driver or manual),
  *                    refund_reference: the money back once the goods are here
  *
@@ -83,6 +85,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!pg_return_status_seen($shown, (string) $return['status'])) {
         $refuse('_error', lang('The return was changed in the meantime. Open it again.'));
+    }
+
+    // A return label for an approved request (pg_return_create_label()): the
+    // request keeps its status, its return code becomes the label's code.
+    if ($action === 'label') {
+        $label = pg_return_create_label($return_id, (int) $user['id']);
+
+        if (!$label['ok']) {
+            $refuse('_error', $label['error']);
+        }
+
+        $liveform->add_notice(h($label['mailed']
+            ? lang(array('string' => 'The return label was created. Its return code {var:1} was sent to the customer by e-mail.', 'vars' => array($label['code'])))
+            : lang(array('string' => 'The return label was created with the return code {var:1}, but the e-mail to the customer could not be sent.', 'vars' => array($label['code'])))));
+        go($here);
     }
 
     // The money back: its own path, because it moves money before it moves
@@ -343,6 +360,59 @@ if (in_array('shipped', $actions, true) || in_array('received', $actions, true))
                 <div class="card-body">
                     ' . $output_shipped . '
                     ' . $output_received . '
+                </div>
+            </div>';
+}
+
+// The request's return labels, and the button that makes one: shown while a
+// carrier label service is on, or once the request has a label. When no
+// service ships with the approval's carrier, staff read why and give the
+// customer the code by hand.
+$return_labels = pg_shipment_labels_ready() ? pg_shipment_label_return_rows($return_id) : array();
+$label_drivers = (($status === 'approved') && pg_shipment_labels_ready() && pg_shipment_labels_link_returns()) ? pg_shipment_label_drivers() : array();
+
+if ($return_labels || $label_drivers) {
+    $output_labels = '';
+
+    foreach ($return_labels as $return_label) {
+        $return_label_driver = pg_label_driver($return_label['driver']);
+        $return_label_cancelled = ($return_label['state'] === 'cancelled');
+
+        $output_labels .= '
+                        <li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
+                            <span class="fw-medium text-break">' . h(pg_shipment_label_return_code($return_label)) . '</span>
+                            <span class="small fg-secondary">' . h($return_label_driver ? $return_label_driver['label'] : $return_label['driver']) . ' · ' . h(pg_return_time_text($return_label['created_at'])) . '</span>
+                            ' . ($return_label_cancelled ? '<span class="badge theme-secondary">' . h(lang('Cancelled')) . '</span>' : '') . '
+                            <a class="btn btn-link pg-link-secondary py-0 ms-auto" href="shipment_label.php?id=' . (int) $return_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . h(lang('Print Label')) . '</a>
+                        </li>';
+    }
+
+    $label_plan = $label_drivers ? pg_shipment_label_return_plan($return, $return_labels, $label_drivers) : null;
+    $output_label_action = '';
+
+    if ($label_plan && ($label_plan['driver'] !== '')) {
+        $label_driver = pg_label_driver($label_plan['driver']);
+
+        $output_label_action = '
+                    <form method="post" action="view_return.php">
+                        ' . $form_keys . '
+                        <button type="submit" name="action" value="label" class="btn btn-solid theme-primary" data-confirm-content="' . h(lang(array('string' => 'A return label is created with {var:1}; the service may charge for it. Its code is sent to the customer by e-mail.', 'vars' => array($label_driver ? $label_driver['label'] : $label_plan['driver'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang('Create Return Label')) . '</button>
+                    </form>';
+    } elseif ($label_plan && ($label_plan['label_id'] === 0)) {
+        $output_label_action = '
+                    <p class="small fg-secondary mb-0">' . h($label_plan['error']) . '</p>';
+    }
+
+    $output_forms .= '
+            <div class="card mb-7">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Return Label')) . '</span>
+                </div>
+                <div class="card-body">
+                    ' . (($output_labels !== '') ? '<ul class="list-unstyled mb-5">' . $output_labels . '
+                    </ul>' : '') . '
+                    ' . $output_label_action . '
+                    <div class="form-text">' . h(lang('A label is cancelled on the order\'s screen.')) . '</div>
                 </div>
             </div>';
 }

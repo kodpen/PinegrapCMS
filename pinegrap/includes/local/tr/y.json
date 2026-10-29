@@ -458,6 +458,7 @@
     "Your request to return items from order #{var:1} was approved.": "#{var:1} numaralı siparişinizdeki ürünlerin iade talebi onaylandı.",
     "Your requests, their status and our messages.": "Talepleriniz, durumları ve mesajlarımız.",
     "Your results and next steps wait for you in your account.": "Sonuçlarınız ve sonraki adımlar hesabınızda sizi bekler.",
+    "Your return code": "İade kodunuz",
     "Your return request for order #{var:1} was approved": "#{var:1} numaralı siparişinizin iade talebi onaylandı",
     "Your return request was received. We will let you know what happens next.": "İade talebiniz alındı. Sonrasını size bildireceğiz.",
     "Your return request was withdrawn.": "İade talebiniz geri çekildi.",

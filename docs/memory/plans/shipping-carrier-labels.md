@@ -11,7 +11,7 @@ description: Plan (approved 2026-10-19; steps 1-4 done, 6 Basit Kargo #3163): ca
 - First driver: one shipping aggregator (single API, many carriers, contracted rates without a carrier contract), chosen by the owner from the current Turkish aggregators; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (2026-10-29, #3073): start with the services whose integration is open (public reference and test mode); every aggregator and direct carrier follows; international drivers too, the US and Europe first, since the product is global. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; the carrier comes from the shipping method's `carrier` or the order's method code.
 - Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, the campaign e-mail and SMS (`sms-and-iys.md`) fire exactly once. Carrier webhooks are used when the driver offers them.
-- Return labels: the same driver creates a return shipment for customer returns (`commerce/order-returns-panel.md`) with the named return carrier; on the returns screen as step 8.
+- Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
 - UPS/FedEx/USPS rate code and box packing stay untouched; their labels are a later driver on the same interface.
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is handled inside the marketplace connector, not here.
 
@@ -25,11 +25,12 @@ description: Plan (approved 2026-10-19; steps 1-4 done, 6 Basit Kargo #3163): ca
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
 6. Further aggregators as their references open: Basit Kargo done in PR #3163 (`commerce/carrier-label-basitkargo.md`; one `.zpl` per bulk run still open), Kargonomi; MNG ApiZone a candidate (M each).
 7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
-8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`): staff button, code into `carrier_code` and the mail, `shipment_labels.order_return_id` (S).
+8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
+   - 8a (2(a)). Done in PR #3194 (`commerce/shipment-label-returns.md`). 8b next: the customer's download (2(c)), with Shippo.
 
 ## Open questions?
 - Answered (#3073): Geliver first (public reference and test mode); the owner confirms its prices; no aggregator-specific fields in the shipment row.
 - Formats (#3123): PDF, ZPL and SVG; ZPL never sent to an external converter.
 
 ## Where to start?
-- Step 8 (#3163 has landed) or step 5: Yurtiçi and Aras direct drivers; one with `track()` is tracked by the job as it is. Live check of the Geliver driver with the owner's test key.
+- Step 8b once Shippo (step 7) has landed, or step 5: Yurtiçi and Aras direct drivers; one with `track()` is tracked by the job as it is. Live check of the Geliver driver with the owner's test key.
