@@ -162,6 +162,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-datepicker.md: data-pg-date, data-pg-datetime, data-pg-time on the pg_datetime.js calendar, time row in the same popup: own parse, hidden store, clock, keys, theme, dialogs, drawers
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
+- phone-width-rows.md: Phone-width layout fixes (#3006): v6 .input-group does not wrap (Shipping Method base rate tiers), Login Region code fields without a fixed width
 - print-views-light-paper.md: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.

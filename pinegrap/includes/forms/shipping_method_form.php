@@ -554,12 +554,16 @@ function pg_shipping_method_form_cards($values, $zone_options)
         $output_variable_base_rates .= '
                                                         <div class="col-12 my-1">
                                                             <label class="form-label" for="base_rate_' . $number . '">' . lang('or') . '</label>
-                                                            <div class="input-group">
-                                                                <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                                <label class="input-group-text" for="base_rate_' . $number . '">' . BASE_CURRENCY_SYMBOL . '</label>
-                                                                <label class="input-group-text text-wrap" for="base_rate_' . $number . '_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
-                                                                <label class="input-group-text" for="base_rate_' . $number . '_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
+                                                            <div class="d-flex flex-wrap gap-1">
+                                                                <div class="input-group w-auto flex-grow-1">
+                                                                    <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . ' />
+                                                                    <label class="input-group-text" for="base_rate_' . $number . '">' . BASE_CURRENCY_SYMBOL . '</label>
+                                                                </div>
+                                                                <div class="input-group w-auto flex-grow-1">
+                                                                    <label class="input-group-text text-wrap" for="base_rate_' . $number . '_subtotal">' . lang('if recipient subtotal is at least') . '</label>
+                                                                    <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . ' />
+                                                                    <label class="input-group-text" for="base_rate_' . $number . '_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
+                                                                </div>
                                                             </div>
                                                         </div>';
     }
