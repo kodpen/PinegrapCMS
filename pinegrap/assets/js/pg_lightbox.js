@@ -42,6 +42,7 @@
     var prevBtn = null;
     var nextBtn = null;
     var openedAt = 0;
+    var opener  = null;     // element that had focus before the viewer opened
 
     // Per-image transform state (rebuilt on each navigation)
     var scale = 1;
@@ -53,9 +54,11 @@
     // ── Labels ──────────────────────────────────────────────────────────────
     // The carousel renderer emits window.pgLightboxLabels through lang() next
     // to this script; the English key is the fallback when the map is absent.
-    function L(key) {
+    // Escaped for innerHTML unless raw is set (setAttribute, textContent).
+    function L(key, raw) {
         var map = window.pgLightboxLabels;
         var v = (map && Object.prototype.hasOwnProperty.call(map, key)) ? map[key] : null;
+        if (raw) return String(v || key);
         return String(v || key).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
@@ -65,7 +68,10 @@
         overlay = document.createElement('div');
         overlay.className = 'pgl-overlay';
         overlay.setAttribute('role', 'dialog');
-        overlay.setAttribute('aria-modal', 'true');
+        overlay.setAttribute('aria-label', L('Image viewer', true));
+        // Closed: out of the tab order and the accessibility tree. aria-modal
+        // is set only while open, so a closed dialog is not announced.
+        overlay.inert = true;
         overlay.innerHTML = [
             '<div class="pgl-toolbar">',
                 '<span class="pgl-counter" data-pgl="counter">0 / 0</span>',
@@ -417,6 +423,7 @@
         if (thumbs) {
             Array.prototype.forEach.call(thumbs.children, function (t, i) {
                 t.classList.toggle('pgl-thumb-active', i === currentIndex);
+                t.setAttribute('aria-current', i === currentIndex ? 'true' : 'false');
             });
             // Scroll active thumb into view
             var active = thumbs.children[currentIndex];
@@ -442,11 +449,16 @@
         }
         thumbs.hidden = false;
         images.forEach(function (rec, i) {
-            var t = document.createElement('img');
+            var t = document.createElement('button');
+            t.type = 'button';
             t.className = 'pgl-thumb';
-            t.src = rec.src;
-            t.alt = '';
-            t.loading = 'lazy';
+            t.setAttribute('aria-label', L('Image {n} of {total}', true).replace('{n}', i + 1).replace('{total}', images.length));
+            var pic = document.createElement('img');
+            pic.src = rec.src;
+            pic.alt = '';
+            pic.loading = 'lazy';
+            pic.draggable = false;
+            t.appendChild(pic);
             t.addEventListener('click', function () { showImageAt(i); });
             thumbs.appendChild(t);
         });
@@ -464,13 +476,18 @@
         }).filter(function (r) { return r.src; });
         if (!images.length) return;
         currentIndex = clamp(startIndex || 0, 0, images.length - 1);
+        if (!overlay.classList.contains('pgl-open')) opener = document.activeElement;
         buildThumbs();
         document.body.classList.add('pgl-lock');
+        overlay.inert = false;
+        overlay.setAttribute('aria-modal', 'true');
         overlay.classList.add('pgl-open');
         openedAt = Date.now();
         showImageAt(currentIndex);
+        focusInto(overlay.querySelector('[data-pgl="close"]'));
         // Keyboard listener attached on open, removed on close
         document.addEventListener('keydown', onKeydown, true);
+        document.addEventListener('focusin', onFocusin, true);
         // Window resize → recompute fit
         window.addEventListener('resize', onResize);
     }
@@ -478,19 +495,67 @@
     function close() {
         if (!overlay || !overlay.classList.contains('pgl-open')) return;
         overlay.classList.remove('pgl-open');
+        overlay.inert = true;
+        overlay.removeAttribute('aria-modal');
         document.body.classList.remove('pgl-lock');
         document.removeEventListener('keydown', onKeydown, true);
+        document.removeEventListener('focusin', onFocusin, true);
         window.removeEventListener('resize', onResize);
         // Exit fullscreen if the lightbox put us there
         if (fullscreenElement()) {
             leaveFullscreen();
         }
+        // Give focus back to the thumbnail that opened the viewer, unless the
+        // page replaced it meanwhile.
+        var back = opener;
+        opener = null;
+        if (back && back.isConnected && typeof back.focus === 'function') {
+            try { back.focus({ preventScroll: true }); } catch (_) { back.focus(); }
+        }
+    }
+
+    // ── Focus containment ───────────────────────────────────────────────────
+    function focusInto(el) {
+        if (!el) el = focusables()[0];
+        if (!el) return;
+        try { el.focus({ preventScroll: true }); } catch (_) { el.focus(); }
+    }
+
+    // Enabled, rendered buttons inside the overlay, in document order.
+    function focusables() {
+        var nodes = overlay.querySelectorAll('button:not([disabled])');
+        return Array.prototype.filter.call(nodes, function (n) {
+            return n.getClientRects().length > 0;
+        });
+    }
+
+    // Tab and Shift+Tab wrap inside the overlay instead of walking the page
+    // hidden behind it.
+    function trapTab(e) {
+        var list = focusables();
+        e.preventDefault();
+        if (!list.length) return;
+        var at = list.indexOf(document.activeElement);
+        var next;
+        if (e.shiftKey) {
+            next = at <= 0 ? list[list.length - 1] : list[at - 1];
+        } else {
+            next = (at === -1 || at === list.length - 1) ? list[0] : list[at + 1];
+        }
+        focusInto(next);
+    }
+
+    // Focus that reaches the page behind (a script, assistive technology)
+    // is brought back into the overlay.
+    function onFocusin(e) {
+        if (overlay && !overlay.contains(e.target)) focusInto(null);
     }
 
     function onKeydown(e) {
         if (e.defaultPrevented) return;
         switch (e.key) {
             case 'Escape':     e.preventDefault(); close(); break;
+            case 'Tab':        trapTab(e); break;
             case 'ArrowLeft':  e.preventDefault(); navigate(-1); break;
             case 'ArrowRight': e.preventDefault(); navigate(+1); break;
             case '+':

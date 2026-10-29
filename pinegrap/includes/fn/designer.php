@@ -4279,6 +4279,8 @@ function _pg_lightbox_assets_once()
         'Previous'                       => lang('Previous'),
         'Next'                           => lang('Next'),
         'The image could not be loaded.' => lang('The image could not be loaded.'),
+        'Image viewer'                   => lang('Image viewer'),
+        'Image {n} of {total}'           => lang(array('string' => 'Image {var:1} of {var:2}', 'vars' => array('{n}', '{total}'))),
     );
     return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/css/pg_lightbox.css?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/css/pg_lightbox.css') . '">
     <script>window.pgLightboxLabels = ' . encode_json($labels) . ';</script>
