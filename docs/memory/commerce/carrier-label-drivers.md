@@ -5,7 +5,7 @@ module: carrier_labels
 ---
 
 ## What is a label driver?
-- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (Geliver: `carrier-label-geliver.md`, Basit Kargo: `carrier-label-basitkargo.md`, Shippo: `carrier-label-shippo.md`, Sendcloud: `carrier-label-sendcloud.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
+- A file `includes/shipping/<key>.php` listed in `pg_label_builtin_drivers()` (`carrier-label-geliver.md`, `carrier-label-basitkargo.md`, `carrier-label-shippo.md`, `carrier-label-sendcloud.md`, `carrier-label-aras.md`) or an add-on file registered with `pg_label_driver_register()` (absolute path, a taken key refused). Contract, registry, answers, settings: `includes/fn/carrier_labels.php`. Function tables, not an interface, as `payment-drivers.md`.
 - Required `_info()`: `carriers` (kept only when a `pg_shipping_carriers()` key) and `formats` (`pdf`, `zpl`, `svg`). Optional `_fields()` (the payment field shape, `pg_payment_fields_normalize()`, switches dropped) and operations `test`, `create`, `label`, `cancel`, `track`, `pickup` (`pg_label_operations()`); `pg_label_can()` asks first.
 - The account is the last argument of every operation (`pg_label_account()`: stored values, secrets unsealed, defaults). A driver never reads the database, request or session and never writes orders or parcels.
 
