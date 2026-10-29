@@ -1172,7 +1172,7 @@ if (!$_POST) {
                             <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                 ' . lang('Shipping Information') . '
                                 <div class="print_packing_slip float-end pg-print-none">
-                                    <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Packing Slip') . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
+                                    <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Packing Slip') . '" aria-label="' . h(lang('Print Packing Slip')) . '" onclick="window.open(\'print_packing_slip.php?ship_to_id=' . $ship_tos[$key]['ship_to_id'] . '\', \'\', \'width=750, height=600, resizable=1, scrollbars=1\'); return false;"><span class="material-icons me-1">print</span>' . lang('Print') . '</button>
                                 </div>
                             </div>
                             <div class="card-body">
@@ -2758,7 +2758,7 @@ if (!$_POST) {
                             ' . $output_erp_buttons . '
                             ' . $output_workspace_button . '
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Order') . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;""><span class="material-icons me-1">print</span>' . lang('Print') . '</a>
+                                <button type="button" class="btn btn-link pg-link-secondary py-0 mb-3 position-relative" title="' . lang('Print Order') . '" aria-label="' . h(lang('Print Order')) . '" onclick="window.open(\'print_order.php?id=' . (int)$_GET['id'] . '\', \'\', \'width=794, height=1123, resizable=1, scrollbars=1\'); return false;"><span class="material-icons me-1">print</span>' . lang('Print') . '</button>
 
                             </div>
                         </nav>

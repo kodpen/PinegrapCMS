@@ -227,7 +227,7 @@ if (!$_POST) {
         // then add button to allow user to create a user for this contact.
         $output_create_user_button = '';
         if (USER_ROLE < 3) {
-            $output_create_user_button = lang(array('string'=>' {var:1} connected to this contact.','vars'=>array('<a class="alert-link" href="#!" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id'])) . '\'">' . lang('Create an User') . '</a>') ));
+            $output_create_user_button = lang(array('string'=>' {var:1} connected to this contact.','vars'=>array('<a class="alert-link" href="' . h(PATH . SOFTWARE_DIRECTORY . '/add_user.php?contact_id=' . $_GET['id']) . '">' . lang('Create an User') . '</a>') ));
         }
 
         $output_user_info ='
