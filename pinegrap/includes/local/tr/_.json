@@ -274,6 +274,7 @@
     "@{var:1} is working on it": "@{var:1} üzerinde çalışıyor",
     "@{var:1} lists no tool named {var:2}.": "@{var:1} sunucusunda {var:2} adlı araç yok.",
     "@{var:1} no longer signs in with OAuth, so a call that changes things cannot run there.": "@{var:1} artık OAuth ile giriş yapmıyor, bu yüzden değişiklik yapan bir çağrı orada çalışamaz.",
+    "@{var:1} offers no {var:2} tool, or it is turned off. An administrator reads its tools again under Workspace settings › MCP servers.": "@{var:1} {var:2} aracı sunmuyor ya da araç kapalı. Bir yönetici araçlarını Workspace ayarları › MCP sunucuları altında yeniden okur.",
     "@{var:1} sent back an empty answer.": "@{var:1} boş bir yanıt döndürdü.",
     "@{var:1} stopped the work.": "@{var:1} işi durdurdu.",
     "@{var:1} was removed, with its credential.": "@{var:1} kimlik bilgisiyle birlikte kaldırıldı.",

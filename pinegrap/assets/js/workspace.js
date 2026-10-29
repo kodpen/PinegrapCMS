@@ -21003,6 +21003,7 @@
                 clear(body);
                 clear(footer);
 
+                sourceTabs('files');
                 body.appendChild(el('p', 'small fg-secondary', t('notes_import_intro')));
 
                 var drop = el('label', 'ws-nb-import-drop');
@@ -21124,6 +21125,235 @@
                 footer.appendChild(go);
 
                 return go.disabled ? input : go;
+            }
+
+            // ── Notion pages ──
+
+            // The site's notion MCP server, searched and fetched with the
+            // person's own connection: the picked pages are staged on the
+            // server as files would be, and the preview below takes them.
+            var notion = { state: null, query: '', pages: [], chosen: {} };
+
+            // Files or Notion, above either: only where the site has a
+            // Notion server.
+            function sourceTabs(current) {
+                if (!CFG.notes_notion) {
+                    return;
+                }
+
+                var row = el('div', 'd-flex gap-2 mb-4');
+
+                [['files', t('notes_files_tab'), 'bi-cloud-arrow-up'], ['notion', t('notes_notion_tab'), 'bi-journal-text']].forEach(function (tab) {
+                    var on = (tab[0] === current);
+                    var item = button('btn btn-sm rounded-pill px-4 ' + (on ? 'btn-solid theme-primary' : 'btn-text theme-secondary'), tab[1], tab[2]);
+
+                    item.setAttribute('aria-pressed', on ? 'true' : 'false');
+                    item.addEventListener('click', function () {
+                        if (on) {
+                            return;
+                        }
+
+                        if (tab[0] === 'files') {
+                            drawPick().focus();
+                        } else {
+                            drawNotion();
+                        }
+                    });
+                    row.appendChild(item);
+                });
+
+                body.appendChild(row);
+            }
+
+            function drawNotion(error) {
+                phase = 'notion';
+                clear(body);
+                clear(footer);
+                sourceTabs('notion');
+                footer.appendChild(closeButton());
+
+                if (!notion.state) {
+                    var wait = el('div', 'small fg-secondary', t('loading'));
+
+                    body.appendChild(wait);
+                    send({ step: 'notion_state', token: CFG.token }).then(function (data) {
+                        notion.state = data;
+                    }, function (failure) {
+                        notion.state = { state: 'error', message: failure.message };
+                    }).then(function () {
+                        if (!closed && phase === 'notion') {
+                            drawNotion(error);
+                        }
+                    });
+
+                    return;
+                }
+
+                // Not connected, or a tool missing: one line on where to
+                // put it right.
+                if (notion.state.state !== 'ready') {
+                    var line = el('div', 'alert theme-secondary small mb-0', notion.state.message || t('error_generic'));
+
+                    if (notion.state.anchor && CFG.urls.settings) {
+                        var link = el('a', 'ms-2', t('notes_notion_settings'));
+
+                        link.href = CFG.urls.settings + '#' + notion.state.anchor;
+                        line.appendChild(link);
+                    }
+
+                    body.appendChild(line);
+                    return;
+                }
+
+                body.appendChild(el('p', 'small fg-secondary', t('notes_notion_intro')));
+
+                var form = el('form', 'd-flex gap-2 mb-4');
+                var input = el('input', 'form-control form-control-sm');
+                var find = button('btn btn-sm btn-text theme-secondary', t('notes_notion_search'), 'bi-search');
+
+                input.type = 'search';
+                input.value = notion.query;
+                input.setAttribute('aria-label', t('notes_notion_search'));
+                find.type = 'submit';
+                form.appendChild(input);
+                form.appendChild(find);
+                body.appendChild(form);
+
+                var list = el('div', 'list-group ws-nb-import-list');
+                var note = el('div', 'small fg-secondary');
+                var max = notion.state.max || 25;
+                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+
+                function count() {
+                    return Object.keys(notion.chosen).length;
+                }
+
+                function update() {
+                    var picked = count();
+
+                    go.textContent = '';
+                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(document.createTextNode(t('notes_notion_go', picked)));
+                    go.disabled = !picked || picked > max;
+                    note.textContent = (picked > max) ? t('notes_notion_max', max) : '';
+                }
+
+                function drawList() {
+                    clear(list);
+
+                    notion.pages.forEach(function (page) {
+                        var row = el('label', 'list-group-item d-flex gap-3 align-items-start');
+                        var box = el('input', 'check mt-1');
+                        var main = el('div', 'ws-nb-import-main');
+
+                        box.type = 'checkbox';
+                        box.checked = !!notion.chosen[page.id];
+                        box.addEventListener('change', function () {
+                            if (box.checked) {
+                                notion.chosen[page.id] = true;
+                            } else {
+                                delete notion.chosen[page.id];
+                            }
+
+                            update();
+                        });
+                        main.appendChild(el('div', 'fw-semibold text-truncate', page.title || t('notes_notion_untitled')));
+
+                        if (page.when) {
+                            main.appendChild(el('div', 'ws-nb-import-path', new Date(page.when * 1000).toLocaleDateString(CFG.locale || undefined)));
+                        }
+
+                        row.appendChild(box);
+                        row.appendChild(main);
+                        list.appendChild(row);
+                    });
+                }
+
+                form.addEventListener('submit', function (event) {
+                    event.preventDefault();
+                    notion.query = input.value;
+                    find.disabled = true;
+                    clear(list);
+                    list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_notion_searching')));
+
+                    send({ step: 'notion_search', token: CFG.token, query: notion.query }).then(function (data) {
+                        notion.pages = data.pages || [];
+
+                        if (!closed && phase === 'notion') {
+                            drawList();
+
+                            if (!notion.pages.length) {
+                                list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_notion_none')));
+                            }
+                        }
+                    }, function (failure) {
+                        clear(list);
+                        list.appendChild(el('div', 'list-group-item small fg-emphasis-danger', failure.message));
+                    }).then(function () {
+                        find.disabled = false;
+                    });
+                });
+
+                drawList();
+                body.appendChild(list);
+                body.appendChild(note);
+
+                if (error) {
+                    var notice = el('div', 'alert theme-danger small mt-4 mb-0', error);
+
+                    notice.setAttribute('role', 'alert');
+                    body.appendChild(notice);
+                }
+
+                go.addEventListener('click', fetchPages);
+                footer.appendChild(go);
+                update();
+                input.focus();
+            }
+
+            // The pages picked, fetched and staged; the preview follows as
+            // after an upload.
+            function fetchPages() {
+                var ids = Object.keys(notion.chosen);
+
+                if (!ids.length) {
+                    return;
+                }
+
+                pressed = Date.now();
+                phase = 'read';
+                clear(body);
+                clear(footer);
+
+                var label = el('div', 'small fg-secondary mb-3', t('notes_notion_fetching'));
+                var bar = progressBar({ percent: 100 });
+
+                label.setAttribute('role', 'status');
+                bar.firstChild.className = 'progress-bar progress-bar-striped progress-bar-animated';
+                bar.firstChild.style.width = '100%';
+                body.appendChild(label);
+                body.appendChild(bar);
+                footer.appendChild(closeButton());
+                window.addEventListener('beforeunload', leaveGuard);
+
+                send({ step: 'notion_stage', token: CFG.token, pages: ids }).then(function (data) {
+                    if (closed) {
+                        send({ step: 'discard', token: CFG.token, stage: data.stage || '' }).catch(function () {});
+                        return;
+                    }
+
+                    notion.chosen = {};
+                    stage = data.stage || '';
+                    rows = data.rows || [];
+                    capacity = data.capacity || 0;
+                    drawPreview(data);
+                }, function (failure) {
+                    if (!closed) {
+                        drawNotion(failure.message);
+                    }
+                }).then(function () {
+                    window.removeEventListener('beforeunload', leaveGuard);
+                });
             }
 
             // ── the upload ──
@@ -21343,6 +21573,11 @@
                 if (data.more) {
                     body.appendChild(el('div', 'alert theme-warning small py-3', t('notes_import_more', data.more, rows.length)));
                 }
+
+                // Notion pages that could not be fetched.
+                (data.warnings || []).forEach(function (warning) {
+                    body.appendChild(el('div', 'alert theme-warning small py-3', warning));
+                });
 
                 // Files exported from here: brought up to date, or copies.
                 if (counts.update || counts.same) {

@@ -122,6 +122,7 @@
     "Until then, turning off session.upload_progress.enabled in php.ini closes one of the ways in; Pinegrap does not use it.": "O zamana kadar php.ini'de session.upload_progress.enabled ayarını kapatmak giriş yollarından birini kapatır; Pinegrap bu ayarı kullanmıyor.",
     "Until {var:1}": "{var:1} saatine kadar",
     "Until {var:1}.": "{var:1} tarihine kadar.",
+    "Untitled": "Adsız",
     "Untitled flow": "Adsız akış",
     "Untitled note": "Adsız not",
     "Untitled sheet": "Adsız tablo",
