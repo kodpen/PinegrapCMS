@@ -15,18 +15,10 @@ description: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1-T2 #2745-#2994): wor
 - Candidates: `ws_templates` starters, xlsx export (includes/fn/office.php), "my tables" strip on /workspace/my-day.
 
 ## Slices
-1. S1 Scheduled actions API: list, get, pause, cancel — done, #1708; removed before release with S2 in #2107 (workspace/workspace-scheduled-actions-api.md).
-2. S2 Create, edit, resume — done, #1858 (workspace/workspace-scheduled-actions-api.md). S2b change card for connected apps — done, #1987 (workspace/workspace-scheduled-draft-proposals.md).
-3. T1 Tables: new `ws_wtables`, `ws_wtable_columns`, `ws_wtable_rows`, `ws_wtable_shares`, includes/workspace/wtables.php (`ws_wtable_*`, not `ws_table_*`), workspace_wtables.php, API. Cut:
-   - T1a types and store core — done, #2745 (decided in #2746; workspace/workflow-tables.md): types, cell checks, limits, step 11.0.110, `ws_wtable_access()`, create/rename/delete of tables and columns.
-   - T1b rows — done, #2794 (workspace/workflow-table-rows.md): person and record-link cells refused (`not_writable_yet`).
-   - T1b2 privacy reader — done, #2808 (workspace/workflow-tables.md): export and erasure read person/link cells.
-   - T1c shares — done, #2820 (workspace/workflow-table-shares.md): person view/edit, channel view; `ws_wtable_flow_gate()` for F6.
-   - T1d1 tables, columns, rows in API/MCP — done, #2890 (workspace/workflow-tables-api.md).
-   - T1d2 shares routes, `workspace.wtable.row.*` webhooks: done, #2931 (workspace/workflow-tables-api.md).
-   - T1e screen workspace_wtables.php and its place in `ws_nav_groups()` — done, #2966 (workspace/workflow-tables-screen.md).
-4. T2 Board view (the channel Board tab component) by a status column — done, #2994 (workspace/workflow-table-board.md).
-5. T6 CSV, note-table import; JSON starters: contact pipeline, checklist. Cut:
+1. S1, S2, S2b scheduled actions API — done, #1708 #1858 #1987 (workspace/workspace-scheduled-actions-api.md, workspace-scheduled-draft-proposals.md).
+2. T1 tables (`ws_wtable_*`, workspace_wtables.php, API) — done: T1a store #2745, T1b rows #2794, T1b2 privacy reader #2808, T1c shares #2820, T1d1/T1d2 API #2890 #2931, T1e screen #2966 (workspace/workflow-tables*.md, workflow-table-*.md).
+3. T2 Board view (the channel Board tab component) by a status column — done, #2994 (workspace/workflow-table-board.md).
+4. T6 CSV, note-table import; JSON starters: contact pipeline, checklist. Cut:
    - T6a a CSV/xlsx/xls/ods file into a new table (header row → columns, a type guessed per column, confirmed before the write) or appended to a table (columns matched by name), every row through `ws_wtable_row_create()`, refused rows reported with their cell errors — in progress.
    - T6b a note's table block imported the same way.
    - T6c JSON starters (contact pipeline, checklist) on the New table card; check `ws_templates` first.
