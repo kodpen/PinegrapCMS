@@ -288,11 +288,28 @@ function pg_product_group_form_products_card($form)
                             var loadedOffset = ' . (int) $form['loaded'] . ';
                             var loadMoreBusy = false;
 
+                            // The button is enabled again or hidden on every answer: a batch
+                            // can come back empty when products were binned, deleted or added
+                            // to the group elsewhere since the screen opened.
+                            function loadMoreRestore($btn) {
+                                $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                            }
+
                             $("#btn_load_more_products").on("click", function() {
                                 if (loadMoreBusy) return;
                                 loadMoreBusy = true;
                                 var $btn = $(this);
                                 $btn.prop("disabled", true).find("i").removeClass("bi-arrow-down-circle").addClass("bi-hourglass-split");
+
+                                // A network failure, an expired session (the sign-in page is
+                                // not JSON) and refused commerce access all end here.
+                                function loadMoreFailed(message) {
+                                    loadMoreBusy = false;
+                                    loadMoreRestore($btn);
+                                    if (typeof window.pgToast === "function") {
+                                        window.pgToast({ variant: "danger", message: message || ' . json_encode(lang('Query failed.')) . ' });
+                                    }
+                                }
 
                                 $.ajax({
                                     url: "api.php",
@@ -305,8 +322,13 @@ function pg_product_group_form_products_card($form)
                                         offset: loadedOffset
                                     }),
                                     success: function(response) {
-                                        if (response.status === "success" && response.rows) {
-                                            var $rows = $(response.rows);
+                                        if (!(response && response.status === "success")) {
+                                            loadMoreFailed(response && response.message);
+                                            return;
+                                        }
+
+                                        var $rows = response.rows ? $(response.rows).filter("tr") : $();
+                                        if ($rows.length) {
                                             var dt = $("#' . $form['table_id'] . '").DataTable();
                                             $rows.each(function() {
                                                 dt.row.add(this);
@@ -321,18 +343,30 @@ function pg_product_group_form_products_card($form)
                                                 }
                                             });
 
-                                            loadedOffset += response.loaded;
-                                            if (!response.has_more) {
-                                                $btn.closest(".border-top").hide();
-                                            } else {
-                                                $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                                            if (typeof pgInitInjected === "function") {
+                                                pgInitInjected($rows);
                                             }
                                         }
+
+                                        loadedOffset += parseInt(response.loaded, 10) || 0;
                                         loadMoreBusy = false;
+                                        if (!response.has_more) {
+                                            $btn.closest(".border-top").hide();
+                                        } else {
+                                            loadMoreRestore($btn);
+                                        }
+
+                                        // Focus goes to the first row the batch brought; when none came
+                                        // and the strip holding the button is gone, to Select All.
+                                        var $first = $rows.find("input.check").first();
+                                        if ($first.length && $first.is(":visible")) {
+                                            $first.trigger("focus");
+                                        } else if (!response.has_more) {
+                                            $("#select_all").trigger("focus");
+                                        }
                                     },
                                     error: function() {
-                                        loadMoreBusy = false;
-                                        $btn.prop("disabled", false).find("i").removeClass("bi-hourglass-split").addClass("bi-arrow-down-circle");
+                                        loadMoreFailed();
                                     }
                                 });
                             });
