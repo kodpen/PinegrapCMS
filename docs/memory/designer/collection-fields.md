@@ -1,6 +1,6 @@
 ---
 name: collection-fields
-description: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, why the slug kind waits for C5
+description: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type takes, templates that opt in (C6a), no slug kind yet
 ---
 
 ## What is stored?
@@ -19,7 +19,11 @@ description: Collection forms and field kinds (11.0.43, C2): the three columns, 
 - The Form Field panel shows "Kind" when the page's form is a collection or the field already has a kind; a reference adds the form picker (`_swFormOptions()`; this form itself too: related posts).
 - Inputs by kind: `collection-inputs.md` (C3); lists and filters by kind are C4.
 
+## Which design template forms are collections?
+- C6a (#2969): the blog (posts, journal, articles, stories), staff directory, cafe menu and events forms carry `'collection' => 1` in their page `form` (Publish writes it with the other form settings). Each template's `$file` helper adds `_cf.kind 'image'` to a field that takes only `image/*` (covers, photos, dish and event pictures, byline photos); attachments and CVs stay plain files. The template files are read only when a template is opened or published, so installed sites change nothing; the version of each changed template was raised.
+- No `_cf.ref` yet: a template reference needs the target form's page id at Publish (C6b in `plans/designer-collections-steps.md`).
+
 ## Why is there no slug kind yet?
 - A slug kind that does not feed the record's address name would be a visible but dead choice. It comes with C5, which makes `update_submitted_form_address_name()` read it before the Title field.
 
-Tests: `tests/collections_kinds_test.php`.
+Tests: `tests/collections_kinds_test.php`, `tests/design_template_collections_test.php`.

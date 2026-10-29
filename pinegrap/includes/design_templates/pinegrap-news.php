@@ -562,12 +562,14 @@ $newsletter_fields = function ($id, $button_class = 'btn btn-primary px-4') use 
         $submit(lang('Subscribe'), $button_class),
     );
 };
-// A file field; what is sent is kept in the template folder named.
+// A file field; what is sent is kept in the template folder named. One
+// that takes only pictures is a collection's image kind.
 $file = function ($id, $name, $folder, $accept = 'image/*', $required = false) use ($el, $attr) {
     $attrs = array($attr('type', 'file'), $attr('name', $name), $attr('accept', $accept));
     if ($required) $attrs[] = $attr('required', '');
     return $el('input', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs,
-        '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+        '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')
+            + ($accept === 'image/*' ? array('kind' => 'image') : array())));
 };
 // The name, e-mail and phone of whoever sends a form; the contact's own
 // fields, so the site knows them next time.
@@ -2188,6 +2190,7 @@ $pages[] = array(
     'noindex' => true,
     'form'    => array(
         'form_name'            => lang('Newsroom Directory'),
+        'collection'           => 1,
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ),
@@ -2479,6 +2482,7 @@ $pages[] = array(
     'noindex' => true,
     'form'    => array(
         'form_name'            => lang('News Articles'),
+        'collection'           => 1,
         'confirmation_message' => lang('Thank you. Your article has reached the desk; an editor will write to you on its page.'),
         'confirmation_page_id' => '{{tab:submission}}',
         'notify_email'         => '{{site_email}}',
@@ -3955,7 +3959,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('News Portal'),
-    'version'     => '1.0.1',
+    'version'     => '1.0.2',
     'framework'   => 'bootstrap5',
     'order'       => 70,
     'icon'        => 'bi-newspaper',

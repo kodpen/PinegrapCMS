@@ -368,7 +368,7 @@ if ($_POST) {
 
 		$cleared = mp_matches_clear_stale($account_id);
 
-		$liveform->add_notice(lang(array('string' => '{var:1} match(es) removed. Nothing was changed on the marketplace.', 'vars' => array($cleared))));
+		$liveform->add_notice(lang(array('string' => '{var:1} match(es) removed. Nothing was changed on the marketplace.', 'vars' => array(pg_format_number($cleared, 0)))));
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-map');
 
@@ -381,7 +381,7 @@ if ($_POST) {
 		$queued = mp_enqueue_account($account_id);
 
 		$liveform->add_notice($queued
-			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array($queued)))
+			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array(pg_format_number($queued, 0))))
 			: lang('Nothing to send: no product is matched and active on this account.'));
 
 		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-queue');
@@ -1519,24 +1519,31 @@ echo pg_page_shell(array(
 .mp-scroll { overflow-x: auto; overflow-y: hidden; }
 .mp-head, .mp-row { display: grid; grid-template-columns: 2fr 1.4fr 1fr .9fr .9fr 40px;
 	gap: 12px; align-items: center; min-width: 760px; }
-.mp-head { padding: 0 14px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; }
+.mp-head { padding: 0 14px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .mp-row { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
 .mp-row b { font-size: 13px; display: block; }
 .mp-row code { font-size: 11px; opacity: .7; }
 .mp-pill { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; white-space: nowrap; }
-.mp-pill.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
-.mp-pill.off { opacity: .6; }
-.mp-pill.bad { color: var(--pg-danger); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
+.mp-pill.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
+.mp-pill.off { color: var(--pg-fg-2); }
+.mp-pill.bad { color: var(--pg-danger-fg-emphasis); border-color: color-mix(in srgb, var(--pg-danger) 35%, transparent); }
 .mp-tab { border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 10px 14px;
 	text-decoration: none; color: inherit; display: block; }
 .mp-tab.sel { border-color: var(--pg-primary); background: var(--pg-bg-1); }
-.mp-tab small { opacity: .6; }
+.mp-tab small { color: var(--pg-fg-2); }
 .mp-count { display: flex; gap: 18px; flex-wrap: wrap; }
 .mp-count div { min-width: 82px; }
 .mp-count b { font-size: 20px; display: block; line-height: 1.1; }
-.mp-count span { font-size: 11px; opacity: .6; }
-.mp-err { font-size: 11.5px; color: var(--pg-danger); word-break: break-word; }
+.mp-count span { font-size: 11px; color: var(--pg-fg-2); }
+.mp-err { font-size: 11.5px; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
+/* Questions and failures are free text, not columns: they sit outside the
+   sideways-scrolling block, so they wrap to the width of the card instead. */
+.mp-question { padding: 11px 14px; border-top: 1px solid var(--pg-border-color); }
+.mp-fail-name { flex: 1 1 150px; min-width: 0; }
+.mp-fail .mp-err { flex: 1 1 100%; }
+@media (min-width: 768px) { .mp-fail .mp-err { flex: 1 1 0; min-width: 0; } }
+.mp-fail-time { color: var(--pg-fg-2); }
 }</style>
 
 <main id="content" class="container-fluid">
@@ -1591,7 +1598,7 @@ if (!$accounts) {
 
 		echo '
 		<div class="col-12 md:col-6 xl:col-4">
-			<a class="mp-tab' . ($is_selected ? ' sel' : '') . '" href="marketplace_settings.php?account=' . (int)$row['id'] . '">
+			<a class="mp-tab' . ($is_selected ? ' sel" aria-current="page' : '') . '" href="marketplace_settings.php?account=' . (int)$row['id'] . '">
 				<div class="d-flex align-items-center gap-3">
 					<i class="bi bi-shop"></i>
 					<b>' . h($row['name']) . '</b>
@@ -2124,7 +2131,7 @@ if ($selected) {
 				$question_id = h((string)$question['id']);
 
 				echo '
-			<div class="mp-row d-block">
+			<div class="mp-question">
 				<div class="d-flex flex-wrap gap-3 align-items-center small">
 					' . (((string)$question['product_url'] !== '')
 						? '<a href="' . h((string)$question['product_url']) . '" target="_blank" rel="noopener noreferrer">'
@@ -2230,12 +2237,12 @@ if ($selected) {
 		foreach ($failures as $row) {
 
 			echo '
-			<div class="d-flex gap-5 py-3 border-top align-items-start">
-				<div style="min-width:150px"><b class="small">' . h((string)$row['product_name']) . '</b>'
+			<div class="mp-fail d-flex flex-wrap gap-5 py-3 border-top align-items-start">
+				<div class="mp-fail-name"><b class="small">' . h((string)$row['product_name']) . '</b>'
 					. (((string)$row['operation'] === 'listing_update')
 						? '<div class="small opacity-75">' . lang('Listing changes') . '</div>' : '') . '</div>
-				<div class="flex-grow-1 mp-err">' . h((string)$row['last_error']) . '</div>
-				<div class="small opacity-50 text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
+				<div class="mp-err">' . h((string)$row['last_error']) . '</div>
+				<div class="mp-fail-time small text-nowrap">' . h(mp_settings_ago((int)$row['updated_timestamp'])) . '</div>
 			</div>';
 
 		}
@@ -2291,12 +2298,12 @@ foreach ($providers as $key => $meta) {
 }
 
 echo '
-<dialog class="dialog" id="mp_new">
+<dialog class="dialog" id="mp_new" aria-labelledby="mp_new_title">
 		<form method="post" action="marketplace_settings.php" autocomplete="off" class="d-contents disable_shortcut">
 			' . get_token_field() . '
 			<input type="hidden" name="mp_action" value="create">
 			<div class="dialog-header">
-				<h5 class="dialog-title"><i class="bi bi-shop me-3"></i>' . lang('Connect a Marketplace') . '</h5>
+				<h5 class="dialog-title" id="mp_new_title"><i class="bi bi-shop me-3"></i>' . lang('Connect a Marketplace') . '</h5>
 				<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
 			</div>
 			<div class="dialog-body">
@@ -2344,13 +2351,13 @@ if ($selected) {
 	}
 
 	echo '
-<dialog class="drawer drawer-end" id="mp_drawer" style="width:min(480px,100%)">
+<dialog class="drawer drawer-end" id="mp_drawer" aria-labelledby="mp_drawer_title" style="width:min(480px,100%)">
 	<form method="post" action="marketplace_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
 		' . get_token_field() . '
 		<input type="hidden" name="mp_action" value="update">
 		<input type="hidden" name="account_id" value="' . $selected_id . '">
 		<div class="drawer-header border-bottom">
-			<h5 class="drawer-title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
+			<h5 class="drawer-title" id="mp_drawer_title"><i class="bi bi-sliders me-3"></i>' . h($selected['name']) . '</h5>
 			<button type="button" class="btn-close" data-bs-dismiss="drawer" aria-label="' . h(lang('Close')) . '"></button>
 		</div>
 		<div class="drawer-body">

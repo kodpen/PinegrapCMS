@@ -7,8 +7,8 @@ module: order_completion
 ## Which functions? (A2c4)
 - `pg_order_complete_campaigns($contact_id)`: the `order_completed` campaigns, after the ship dates, before the product loop.
 - Per line, after the submitted forms (`commerce/order-completion-lines.md`): `pg_order_complete_line_comments($line, $variable_fields, $product_forms, $forms)`, `pg_order_complete_line_email_page($line, $billing_email_address, $variable_fields, $product_forms, $forms)`, `pg_order_complete_line_campaigns($line, $contact_id)` (`product_ordered`).
-- `$forms` is what `submit_order()` collects per unit while it updates or creates forms: quantity number => `id`, `type` (`created`/`updated`). `$variable_fields` and `$product_forms` come from `pg_order_line_variable_fields()` / `pg_order_line_product_form_fields()`, so the order row, never the request.
-- The contact and billing address are the order row's (`submit_order()` reads `contact_id` from `orders`); a webhook completion passes the same columns.
+- `$forms` is what `pg_order_complete_lines()` collects per unit while it updates or creates forms: quantity number => `id`, `type` (`created`/`updated`). `$variable_fields` and `$product_forms` come from `pg_order_line_variable_fields()` / `pg_order_line_product_form_fields()`, so the order row, never the request.
+- The contact and billing address come from the completion's context (`submit_order()` writes `contact_id` into `orders` first); a webhook completion passes the same columns.
 
 ## How are comments added?
 - One per unit when `submit_form_quantity_type` is "One Form per Quantity", else one (`pg_order_line_unit_count()`, pure); the same rule as the submitted forms.

@@ -113,14 +113,23 @@ foreach ($accounts as $account) {
         continue;
     }
 
+    // The details sit in visually-hidden text too: the title is a hover
+    // popover only.
+    $credit_text = isset($over_limit[$id])
+        ? lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($over_limit[$id]['limit']), erp_money_out($over_limit[$id]['balance'] - $over_limit[$id]['limit']))))
+        : '';
     $output_credit_flag = isset($over_limit[$id])
-        ? ' <span class="badge theme-danger" title="' . h(lang(array('string' => 'Credit limit {var:1}, over by {var:2}', 'vars' => array(erp_money_out($over_limit[$id]['limit']), erp_money_out($over_limit[$id]['balance'] - $over_limit[$id]['limit']))))) . '">' . lang('Over limit') . '</span>'
+        ? ' <span class="badge theme-danger" title="' . h($credit_text) . '">' . lang('Over limit') . '</span><span class="visually-hidden"> ' . h($credit_text) . '</span>'
         : '';
 
-    // The gap is named in the tooltip: "not ready" without saying what
-    // is missing only moves the question one click further away.
+    // The gap is named in the tooltip and in visually-hidden text: "not
+    // ready" without saying what is missing only moves the question one
+    // click further away.
+    $edoc_gap_text = isset($edoc_gaps[$id])
+        ? lang(array('string' => 'Missing for the e-document: {var:1}', 'vars' => implode(', ', $edoc_gaps[$id])))
+        : '';
     $output_edoc_flag = isset($edoc_gaps[$id])
-        ? ' <i class="bi bi-exclamation-triangle-fill fg-warning" title="' . h(lang(array('string' => 'Missing for the e-document: {var:1}', 'vars' => implode(', ', $edoc_gaps[$id])))) . '"></i>'
+        ? ' <i class="bi bi-exclamation-triangle-fill fg-warning" aria-hidden="true" title="' . h($edoc_gap_text) . '"></i><span class="visually-hidden">' . h($edoc_gap_text) . '</span>'
         : '';
     $balance = (int) $account['balance'];
 

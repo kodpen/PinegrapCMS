@@ -3479,9 +3479,12 @@ function submit_order($type) {
     }
 
     // Complete the order (includes/fn/order_completion.php): its values, the
-    // status, the order number, the legal documents, order.created and the
-    // order SMS. The user id is written again, in case we now have new user
-    // info from the auto-registration feature that ran above.
+    // status, the order number, the legal documents, order.created, the order
+    // SMS, and then every stage of the completion, from the key code and the
+    // gift cards to the receipt, each line's stock, forms and e-mails, the
+    // reward points and the new_order notification. The user id is written
+    // again, in case we now have new user info from the auto-registration
+    // feature that ran above.
     // paid_at: a gateway-confirmed payment lands when the order is placed; an
     // offline payment has no confirmed moment here, so it stays 0, and so does
     // a payment its service left pending (pg_order_checkout_paid_at()).
@@ -3520,7 +3523,33 @@ function submit_order($type) {
             'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
             'contract' => ($liveform->get_field_value('legal_contract') == 1),
             'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
-        )))
+        ))),
+        array(
+            'lines' => $products,
+            'order' => compact(
+                'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
+                'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
+                'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number',
+                'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number'),
+            'contact_id' => $contact_id,
+            'reference_code' => $reference_code,
+            'receipt' => array(
+                'email' => $order_receipt_email,
+                'subject' => $order_receipt_email_subject,
+                'format' => $order_receipt_email_format,
+                'header' => $order_receipt_email_header,
+                'footer' => $order_receipt_email_footer,
+                'page_id' => $order_receipt_email_page_id,
+            ),
+            'new_account' => pg_order_new_account_email() !== '',
+            'auto_registration' => $auto_registration_type,
+            'key_code' => $key_code,
+            'affiliate_rate' => $affiliate_rate,
+            'recurring_products' => $recurring_products,
+            'created_user_id' => USER_ID,
+            'actor' => $_SESSION['sessionusername'] ?? '',
+            'visitor_id' => $_SESSION['software']['visitor_id'] ?? 0,
+        )
     );
 
     // Another request completed this order first (a second submit of the
@@ -3540,20 +3569,9 @@ function submit_order($type) {
         header('Location: ' . $next_page_url);
         exit();
     }
-    
-    // Behind the lock, so a second submit of the same checkout writes none of
-    // them again: the key code used up, the gift cards redeemed (a shortfall
-    // is e-mailed to the store), the affiliate's commission.
-    $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
-    pg_order_complete_key_code($key_code, USER_ID);
-
-    if (ECOMMERCE_GIFT_CARD == TRUE) {
-        pg_order_complete_gift_cards($completed_order_id, $order_number, $gift_card_discount, USER_ID, $_SESSION['sessionusername'] ?? '');
-    }
-
-    pg_order_complete_commission($completed_order_id, $affiliate_code, $affiliate_rate, $commission, $recurring_products, $user_id);
-
+    // The frozen legacy gateways' recurring profiles need the card the
+    // visitor typed, so they stay with this request, after the completion.
     // if a recurring transaction is required
     // and Credit/Debit Card was the selected payment method
     // and there is an active payment gateway, process recurring transactions
@@ -4839,239 +4857,6 @@ function submit_order($type) {
     // for outputting to conversion tracking JavaScript services and etc.
     $_SESSION['software']['order_number'] = $order_number;
     $_SESSION['software']['order_total'] = sprintf("%01.2lf", $total / 100);
-    
-    // E-mail the receipt, when the checkout page sends one
-    // (includes/fn/order_completion.php).
-    pg_order_complete_receipt(
-        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
-        $order_number,
-        array(
-            'email' => $order_receipt_email,
-            'subject' => $order_receipt_email_subject,
-            'format' => $order_receipt_email_format,
-            'header' => $order_receipt_email_header,
-            'footer' => $order_receipt_email_footer,
-            'page_id' => $order_receipt_email_page_id,
-        ),
-        $billing_email_address,
-        pg_order_new_account_email() !== ''
-    );
-
-    // Each recipient's ship and delivery dates, and the address book of an
-    // account auto-registration created or found.
-    pg_order_complete_ship_dates((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $order_date, $auto_registration_type, $user_id);
-
-    // The order_completed auto e-mail campaigns.
-    pg_order_complete_campaigns($contact_id);
-    
-    // initialize array that will be used to store all of the contact groups that the contact should be added to
-    $contact_groups = array();
-    
-    // intialize variable to keep track of the total reward points that products should give for this order
-    $reward_points = 0;
-
-    // The stock each product was left with by the rows above, so a product
-    // that comes twice (two recipients) announces its second row from what
-    // the first one left, not from the stock read before the loop.
-    $stock_left = array();
-
-    // The order's values a line's submitted form, comment and e-mailed page
-    // can name as variables (includes/fn/order_completion.php).
-    $order_variables = compact(
-        'billing_salutation', 'billing_first_name', 'billing_last_name', 'billing_company',
-        'billing_address_1', 'billing_address_2', 'billing_city', 'billing_state',
-        'billing_zip_code', 'billing_country', 'billing_phone_number', 'billing_fax_number',
-        'billing_email_address', 'custom_field_1', 'custom_field_2', 'po_number',
-        'total', 'order_number', 'order_date');
-
-    // loop through all ordered products in order to determine if things need to be done for each product
-    foreach ($products as $product) {
-        $product_id = $product['product_id'];
-        $name = $product['product_name'];
-        $short_description = $product['short_description'];
-        $quantity = $product['quantity'];
-        $product_price = sprintf("%01.2lf", $product['price'] / 100);
-        $contact_group_id = $product['contact_group_id'];
-
-        // Stock and a calendar event's spots (includes/fn/order_completion.php).
-        pg_order_complete_line_stock($product, $stock_left, $_SESSION['sessionusername'] ?? '');
-        pg_order_complete_line_reservation($product, $contact_id);
-
-        // if contact group has not already been added to array, add it to array
-        if (in_array($contact_group_id, $contact_groups) == false) {
-            $contact_groups[] = $contact_group_id;
-        }
-
-        // A membership renewal adds the contact to the membership contact
-        // group, when one is selected.
-        if (
-            pg_order_complete_line_membership($product, $contact_id, $reference_code)
-            && (MEMBERSHIP_CONTACT_GROUP_ID != 0)
-            && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)
-        ) {
-            $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
-        }
-
-        // Private folder access and the send-to page.
-        pg_order_complete_line_folder_access($product, $user_id);
-
-        // The reward points the line gives (includes/fn/order_completion.php).
-        $reward_points += pg_order_line_reward_points($product, ECOMMERCE_REWARD_PROGRAM == true);
-
-        // Gift cards and their e-mails (includes/fn/order_completion.php).
-        pg_order_complete_line_gift_cards($product, (int) ($_SESSION['ecommerce']['order_id'] ?? 0), USER_ID, $_SESSION['sessionusername'] ?? '');
-
-        // If this product creates/updates a submitted a form, adds a comment,
-        // or emails a page, then prepare variable fields where variables can
-        // be replaced with dynamic data from the order, and the product form
-        // answers of each unit (includes/fn/order_completion.php).
-        if (
-            ($product['submit_form'])
-            || ($product['add_comment'])
-            || ($product['email_page'])
-        ) {
-            $variable_fields = pg_order_line_variable_fields($order_variables, $quantity);
-            $product_form_variable_fields = pg_order_line_product_form_fields($product['order_item_id']);
-        }
-
-        // Create an array that will be used to keep track of whether a submitted form
-        // was created or updated for each quantity number, and which submitted form
-        // was created/updated.  We will need this info later when we add a comment.
-        $forms = array();
-
-        // If this product submits a form, then deal with that.
-        if (
-            ($product['submit_form'])
-            && ($product['submit_form_custom_form_page_id'])
-            &&
-            (
-                ($product['submit_form_create'])
-                || ($product['submit_form_update'])
-            )
-        ) {
-            // The user the line names as a watcher, so they are added to the form
-            // and the page and get the submitter e-mail (includes/fn/order_completion.php).
-            $add_watcher_user = pg_order_line_watcher($product);
-
-            $pretty_urls = check_if_pretty_urls_are_enabled($product['submit_form_custom_form_page_id']);
-
-            // If the quantity type is "one form per quantity",
-            // then set the number of forms to the quantity.
-            if ($product['submit_form_quantity_type'] == 'One Form per Quantity') {
-                $number_of_forms = $quantity;
-                
-            // Otherwise the quantity type is "one form per product",
-            // so set the number of forms to one.
-            } else  {
-                $number_of_forms = 1;
-            }
-
-            for ($quantity_number = 1; $quantity_number <= $number_of_forms; $quantity_number++) {
-
-                // Assume that a submitted form was not updated until we determine that we need to do that.
-                // We use this in order to determine if we need to create a form.
-                $submitted_form_updated = false;
-
-                // The unit's own product form, else the first unit's.
-                $product_form_quantity_number = pg_order_product_form_number($quantity_number, $product_form_variable_fields);
-
-                // Update the oldest submitted form that matches, when the
-                // product updates one (includes/fn/order_completion.php).
-                $submitted_form_id = pg_order_complete_line_form_update(
-                    $product,
-                    $variable_fields,
-                    $product_form_quantity_number ? $product_form_variable_fields[$product_form_quantity_number] : null,
-                    USER_ID,
-                    $pretty_urls);
-
-                if ($submitted_form_id) {
-                    // Remember that a submitted form was updated, so we know further below to not create a form.
-                    $submitted_form_updated = true;
-
-                    // Remember that a form was updated for this quantity number,
-                    // for use later when we add a comment.
-                    $forms[$quantity_number] = array(
-                        'id' => $submitted_form_id,
-                        'type' => 'updated');
-                }
-
-                // If submit form create is enabled, and a submitted form was not updated up above,
-                // then create a submitted form, its e-mails and campaigns; its origin
-                // comes from the order row (includes/fn/order_completion.php).
-                if (
-                    ($product['submit_form_create'])
-                    && ($submitted_form_updated == false)
-                ) {
-                    $created_form_id = pg_order_complete_line_form_create(
-                        $product,
-                        array(
-                            'id' => (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
-                            'user_id' => $user_id,
-                            'contact_id' => $contact_id,
-                            'billing_email_address' => $billing_email_address),
-                        $variable_fields,
-                        $product_form_quantity_number ? $product_form_variable_fields[$product_form_quantity_number] : null,
-                        $add_watcher_user,
-                        $pretty_urls);
-
-                    if ($created_form_id) {
-                        $submitted_form_id = $created_form_id;
-
-                        // Remember that a form was created for this quantity number,
-                        // for use later when we add a comment.
-                        $forms[$quantity_number] = array(
-                            'id' => $submitted_form_id,
-                            'type' => 'created');
-                    }
-                }
-
-                // The watcher watches the unit's form on the add comment page.
-                pg_order_complete_line_watcher($product, $add_watcher_user, $submitted_form_id);
-
-            }
-            
-        }
-
-        // The line's comments, its e-mailed page and its product_ordered
-        // campaigns (includes/fn/order_completion.php).
-        pg_order_complete_line_comments($product, $variable_fields ?? array(), $product_form_variable_fields ?? array(), $forms);
-        pg_order_complete_line_email_page($product, $billing_email_address, $variable_fields ?? array(), $product_form_variable_fields ?? array(), $forms);
-        pg_order_complete_line_campaigns($product, $contact_id);
-    }
-
-    // Private access for ever to the store's private folder
-    // (includes/fn/order_completion.php).
-    pg_order_complete_private_access($user_id);
-
-    // The reward points, and the membership and e-mail of an order that
-    // reaches the program's goal.
-    if (
-        pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order_number, $billing_email_address)
-        && (MEMBERSHIP_CONTACT_GROUP_ID != 0)
-        && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)
-    ) {
-        $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
-    }
-
-    // The contact groups the lines and the rewards collected.
-    pg_order_complete_contact_groups($contact_id, $contact_groups);
-
-    // The customer completed an order: the order_abandoned campaigns of this
-    // order and of the same customer are cancelled.
-    pg_order_complete_abandoned_campaigns((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $contact_id, $billing_email_address);
-
-    // The visit that placed the order, when visitor tracking keeps one.
-    pg_order_complete_visitor(
-        $_SESSION['software']['visitor_id'] ?? 0,
-        $total,
-        array('city' => $billing_city, 'state' => $billing_state, 'zip_code' => $billing_zip_code, 'country' => $billing_country));
-
-    // The activity log line and the new_order notification.
-    pg_order_complete_announce(
-        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
-        $order_number,
-        $total,
-        array('first_name' => $billing_first_name, 'last_name' => $billing_last_name, 'email_address' => $billing_email_address));
 
     // If hooks are enabled and there is post-save hook code, then run it.
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($post_save_hook_code != '')) {

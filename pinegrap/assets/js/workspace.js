@@ -12429,8 +12429,8 @@
                     return;
                 }
 
-                // /product: every value the product would be made with,
-                // made only from the card.
+                // /product, /create: every value the product or group would
+                // be made with, made only from the card.
                 if (result.command && result.command.type === 'create_preview') {
                     self.pending = { body: body };
                     self.drawCreatePreview(result.command);
@@ -12659,7 +12659,7 @@
             var preview = command.preview;
             var card = el('div', 'ws-preview');
 
-            card.appendChild(el('div', 'fw-semibold', t('qc_command_title')));
+            card.appendChild(el('div', 'fw-semibold', t((preview.kind === 'product_group') ? 'qc_command_title_group' : 'qc_command_title')));
 
             var list = el('dl');
             (preview.rows || []).forEach(function (item) {
@@ -13351,6 +13351,12 @@
 
             if (source === 'statuses') {
                 show(fixed(values.statuses, 'bi-circle-half'));
+                return;
+            }
+
+            // What /create makes: a product, a group.
+            if (source === 'kinds') {
+                show(fixed(values.kinds, 'bi-plus-square'));
                 return;
             }
 

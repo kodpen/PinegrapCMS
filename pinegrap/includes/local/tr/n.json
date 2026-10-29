@@ -1456,6 +1456,7 @@
     "n11 refused the batch without saying why.": "n11 partiyi gerekçe belirtmeden reddetti.",
     "n11 rejected the batch.": "n11 partiyi reddetti.",
     "n11 returned no categories.": "n11 hiç kategori dönmedi.",
+    "name": "ad",
     "name in the line": "satırda cari adı",
     "name is required.": "name alanı zorunlu.",
     "name parameter must be send.": "name parametresi gönderilmelidir.",
