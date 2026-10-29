@@ -1490,7 +1490,7 @@ function test_workspace_flows_canvas_row_box()
 		array('nodeById', 'kindOf', 'stepLists', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
-var PALETTE = [['row', 'bi-table', 'fl_kind_row'], ['post', 'bi-chat-left-text', 'fl_add_post'], ['mcp', 'bi-plug', 'fl_kind_mcp']];
+var PALETTE = [['row', 'fl_kind_row'], ['post', 'fl_add_post'], ['mcp', 'fl_kind_mcp']];
 var ROW_WHATS = { created: 'fl_row_created', updated: 'fl_row_updated', deleted: 'fl_row_deleted' };
 var FL = {
     trigger_outputs: { kinds: { row: [{ key: 'table_id', label: 'Table' }, { key: 'row_id', label: 'Row' }] }, events: {} },
