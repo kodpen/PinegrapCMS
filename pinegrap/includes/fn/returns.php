@@ -1721,7 +1721,21 @@ function pg_return_present($return, $enabled, $format_date)
         'refund_deadline' => ($refund !== '') ? $format($refund) : '',
         'can_withdraw'    => $enabled && pg_return_can_move($status, 'closed', 'customer'),
         'can_mark_sent'   => $enabled && pg_return_can_move($status, 'shipped', 'customer'),
+        'label_url'       => '',
     );
+}
+
+/**
+ * Where the owner of an order downloads the return label of a request
+ * (order_return.php), with a raw &: h() it where it is printed.
+ *
+ * @param int $order_id
+ * @param int $return_id
+ * @return string
+ */
+function pg_return_label_url($order_id, $return_id)
+{
+    return PATH . SOFTWARE_DIRECTORY . '/order_return.php?action=label&order_id=' . (int) $order_id . '&return_id=' . (int) $return_id;
 }
 
 /**
@@ -1755,8 +1769,18 @@ function pg_return_customer_view($order_id, $format_date = null, $today = '')
     $enabled = pg_returns_customer_enabled();
     $view['enabled'] = $enabled;
 
+    // A request with an active carrier return label offers its download,
+    // whatever the setting: staff made the label for the customer to print.
+    $labelled = pg_shipment_label_labelled_returns($order_id);
+
     foreach (pg_returns_of_order($order_id) as $return) {
-        $view['returns'][] = pg_return_present($return, $enabled, $format);
+        $shown = pg_return_present($return, $enabled, $format);
+
+        if (pg_shipment_label_customer_offered($shown['status'], in_array($shown['id'], $labelled, true))) {
+            $shown['label_url'] = pg_return_label_url($order_id, $shown['id']);
+        }
+
+        $view['returns'][] = $shown;
     }
 
     $view['has_returns'] = !empty($view['returns']);
@@ -1964,8 +1988,8 @@ function pg_return_actions_html($return, $form)
 /**
  * The returns of an order as the customer follows them: where each stands,
  * its lines, what the shop wrote, how to send the goods once it is approved,
- * when the refund is due, and the customer's own moves (withdraw a request,
- * say the parcel is on its way).
+ * when the refund is due, the customer's own moves (withdraw a request,
+ * say the parcel is on its way) and the download of a carrier return label.
  *
  * @param array $returns pg_return_present() rows
  * @param array $form    as pg_return_form_html() takes it
@@ -2028,6 +2052,11 @@ function pg_returns_list_html($returns, $form)
         }
 
         $html .= pg_return_actions_html($return, $form);
+
+        if (!empty($return['label_url'])) {
+            $html .= '<div class="mt-2"><a class="btn btn-sm btn-outline-primary" href="' . h((string) $return['label_url']) . '">'
+                . h(lang('Download return label')) . '</a></div>';
+        }
 
         $html .= '</div>';
     }

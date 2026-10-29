@@ -859,6 +859,108 @@ function pg_shipment_label_return_rows($return_id)
 }
 
 /**
+ * The ids of an order's return requests that have an active return label.
+ *
+ * @param int $order_id
+ * @return int[]
+ */
+function pg_shipment_label_labelled_returns($order_id)
+{
+    if (!pg_shipment_labels_ready() || !pg_shipment_labels_link_returns()) {
+        return array();
+    }
+
+    return array_map('intval', db_values(
+        "SELECT DISTINCT order_return_id FROM shipment_labels
+        WHERE order_id = '" . (int) $order_id . "' AND order_return_id > 0 AND state = 'active'"));
+}
+
+/**
+ * The return label a customer is handed for their request: the newest
+ * active one. A cancelled label is never handed out. Pure.
+ *
+ * @param array $rows pg_shipment_label_return_rows(), newest first
+ * @return array|null the row
+ */
+function pg_shipment_label_customer_pick($rows)
+{
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        if (is_array($row) && ((string) $row['state'] === 'active')) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether a customer is offered the return label of a request: while the
+ * goods are to go back (approved) or on their way (shipped, printed again
+ * for the carrier), and only when the request has an active label. Pure.
+ *
+ * @param string $status    order_returns.status
+ * @param bool   $has_label an active label names the request
+ * @return bool
+ */
+function pg_shipment_label_customer_offered($status, $has_label)
+{
+    return $has_label && in_array((string) $status, array('approved', 'shipped'), true);
+}
+
+/**
+ * Why a customer's download of a return label is refused, or null. Order
+ * ids are sequential, so anybody but the signed-in owner of the order hears
+ * one answer whether or not it exists (order_return.php's rule on
+ * orders.user_id); then the returns' rate limit, then the request and its
+ * label. Pure.
+ *
+ * @param int        $user_id  the signed-in customer, 0 for none
+ * @param array|null $order    id, user_id
+ * @param array|null $return   id, order_id, status
+ * @param array|null $label    pg_shipment_label_customer_pick()
+ * @param bool       $rate_hit the returns' rate limit refused the owner
+ * @return array|null status (HTTP), message
+ */
+function pg_shipment_label_customer_refusal($user_id, $order, $return, $label, $rate_hit)
+{
+    $user_id = (int) $user_id;
+
+    if (($user_id <= 0) || !is_array($order) || ((int) $order['user_id'] !== $user_id)) {
+        return array('status' => 403, 'message' => lang('You are not allowed to download labels of this order.'));
+    }
+
+    if ($rate_hit) {
+        return array('status' => 429, 'message' => lang('Too many return requests in a short time. Please try again later.'));
+    }
+
+    if (!is_array($return) || ((int) $return['order_id'] !== (int) $order['id'])) {
+        return array('status' => 404, 'message' => lang('The return could not be found.'));
+    }
+
+    $active = is_array($label) && ((string) $label['state'] === 'active') && ((int) $label['order_return_id'] === (int) $return['id']);
+
+    if (!pg_shipment_label_customer_offered((string) $return['status'], $active)) {
+        return array('status' => 404, 'message' => lang('This return has no label to download.'));
+    }
+
+    return null;
+}
+
+/**
+ * The headers a customer's return label is handed out with: a PDF opens in
+ * the browser, a ZPL file is saved, and an SVG is only ever an attachment
+ * the browser sandboxes (the print page is the panel's). Pure.
+ *
+ * @param string $format    pdf, zpl or svg
+ * @param string $file_name without the extension, [A-Za-z0-9-] only
+ * @return string[]
+ */
+function pg_shipment_label_customer_headers($format, $file_name)
+{
+    return pg_shipment_label_headers($format, $file_name, $format === 'svg');
+}
+
+/**
  * A label's document for printing: the kept file, else the service's copy
  * asked for by reference (a file the sweep removed, a create() that sent
  * none). The service's copy is not written back: it would restart the time
