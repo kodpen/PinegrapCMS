@@ -155,13 +155,15 @@ $output_fetch = '';
 if ($provider !== '') {
     // Reading writes rows, so a read-only user is shown when it last ran, not the button.
     $output_fetch = ((defined('USER_ERP_READONLY') && USER_ERP_READONLY) ? '' : '
-                <form action="erp_inbox.php" method="post" class="d-flex align-items-center gap-1">
+                <form action="erp_inbox.php" method="post" class="d-flex flex-wrap align-items-center gap-1 row-gap-2">
                     ' . get_token_field() . '
                     <input type="hidden" name="erp_action" value="fetch" />
                     <input type="hidden" name="state" value="' . h($state) . '" />
-                    <input type="date" data-pg-date name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
-                    <span class="fg-secondary">&ndash;</span>
-                    <input type="date" data-pg-date name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
+                    <span class="d-inline-flex align-items-center gap-1">
+                        <input type="date" data-pg-date name="from" value="' . h($default_from) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('Start date') . '" required />
+                        <span class="fg-secondary">&ndash;</span>
+                        <input type="date" data-pg-date name="to" value="' . h($default_to) . '" class="form-control form-control-sm w-auto" aria-label="' . lang('End date') . '" required />
+                    </span>
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5 text-nowrap"><i class="bi bi-cloud-download me-1" aria-hidden="true"></i>' . lang('Read from the provider') . '</button>
                 </form>') . '
                 ' . (($read_at > 0)

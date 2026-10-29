@@ -34,5 +34,7 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 ## How does the toolbar behave on narrow screens?
 - It splits into rows: controls take the first row; breadcrumb and search drop to full-width lower rows (`order` + `flex-basis`).
 - Example: the `@media (max-width: 767.98px)` block in `view_folders.php`.
+- `editor_select_image.php` does the same: the picker opens as a 390 px tab on a phone (zoom off), so `#esi_toolbar` wraps and the filter pill takes a full row, its fields `flex: 1 1 0`.
+- A card header's right-hand button cluster (`ms-auto d-flex`) carries `flex-wrap justify-content-end`: `.btn` is nowrap, and four of them pushed `marketplace_settings.php` sideways.
 
 Related: docs/memory/ui/admin-screen-toolbar.md

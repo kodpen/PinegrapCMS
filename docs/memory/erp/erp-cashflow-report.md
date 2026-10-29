@@ -11,7 +11,7 @@ Files `includes/erp/cashflow.php`, `erp_cashflow.php` (gate `'cash'`); entry fro
 - Payment method labels are the same five members as in `erp_receipt.php` (cheque included, 4.54); if the `erp_cash_payment_methods()` list changes, change both.
 
 ## What UI and translation traps exist on this screen?
-- Several `form-control`s inside `.pg-toolbar`: do NOT give the form `flex-wrap`, and put `w-auto` on the fields; otherwise the 100% width of `form-control` throws every field onto its own line.
+- Several `form-control`s inside `.pg-toolbar`: `w-auto` on the fields, or the 100% width of `form-control` throws every field onto its own line. The form wraps (`flex-wrap row-gap-2`) with each label in one `d-inline-flex` span with its field (`ui/report-screen-controls.md`).
 - Existing `tr.json` entries do not fit as screen labels: `From` → "Şundan", `To` → "Şuna", `Net` → "KDV Hariç", `Method` → "Metod". Use `Start` / `End` / `Net change` / a separate key. Check existing translations before writing a new key.
 - Other ERP traps: docs/memory/erp/erp-translation-traps.md.
 
