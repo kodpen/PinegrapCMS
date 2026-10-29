@@ -216,6 +216,7 @@
     "A discount for a customer who has never ordered.": "Hiç sipariş vermemiş müşteriye indirim.",
     "A discount on everything, and products at a price or a discount of their own. Invoices and quotes for this account are filled with them when a product is picked; the store's campaigns do not add to them.": "Her şeye bir iskonto ve kendi fiyatı ya da iskontosu olan ürünler. Bu carinin fatura ve tekliflerinde ürün seçilince bunlar uygulanır; mağazanın kampanyaları üstüne eklenmez.",
     "A discount, tax, shipping or gift card follows the subtotal": "Ara toplamdan sonra indirim, vergi, kargo veya hediye kartı geliyor",
+    "A discussion Claude follows asks it at every message nobody else is asked in, so it costs runs too.": "Claude'un takip ettiği bir tartışma, kimsenin çağrılmadığı her mesajda onu çağırır; bu da koşu harcar.",
     "A discussion has no message pinned to the top.": "Bir tartışmada en üste sabitlenmiş mesaj olmaz.",
     "A discussion is not in the channel list, so it cannot be pinned or put in order.": "Tartışma kanal listesinde yer almaz; sabitlenemez ve sıraya konamaz.",
     "A discussion is started from a message of a channel.": "Tartışma bir kanalın mesajından başlatılır.",

@@ -919,13 +919,16 @@ function ws_ai_setup_hint()
  * @param array  $channel
  * @param int    $message_id
  * @param string $body
+ * @param bool   $followed a discussion Pinegrap AI follows asks it without
+ *                         its name (ws_thread_follow_ask()); a refusal is not
+ *                         written after every message there
  * @return bool a request was queued
  */
-function ws_ai_after_send($viewer, $channel, $message_id, $body)
+function ws_ai_after_send($viewer, $channel, $message_id, $body, $followed = false)
 {
     // Written to an MCP server's alias, or a reply to an answer given with
     // one: Pinegrap AI answers with that server's tools (mcp_ask.php).
-    $server = (ws_ai_schema_ready() && function_exists('ws_mcp_ask_server')) ? ws_mcp_ask_server($body, $message_id) : null;
+    $server = (!$followed && ws_ai_schema_ready() && function_exists('ws_mcp_ask_server')) ? ws_mcp_ask_server($body, $message_id) : null;
 
     // A server that is an agent itself answers its alias on its own
     // (mcp_agent.php, ws_mcp_agent_after_send()).
@@ -933,19 +936,25 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         return false;
     }
 
-    if (!ws_ai_schema_ready() || !($server || ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
+    if (!ws_ai_schema_ready() || !($followed || $server || ws_ai_asked($body) || ws_ai_answers_ai($message_id))) {
         return false;
     }
 
     // An alias can still be served without Pinegrap AI: its tools that read
     // run with a form (mcp_form.php).
     if (!ws_ai_ready()) {
-        ws_message_system($channel['id'], ws_ai_setup_hint() . (($server && function_exists('ws_mcp_form_hint')) ? ws_mcp_form_hint($server, (int) $channel['id']) : ''));
+        if (!$followed) {
+            ws_message_system($channel['id'], ws_ai_setup_hint() . (($server && function_exists('ws_mcp_form_hint')) ? ws_mcp_form_hint($server, (int) $channel['id']) : ''));
+        }
+
         return false;
     }
 
     if (!ws_ai_channel_allowed($channel)) {
-        ws_message_system($channel['id'], lang('Pinegrap AI cannot be asked in this channel. Somebody who manages the channel can allow it from the channel menu.'));
+        if (!$followed) {
+            ws_message_system($channel['id'], lang('Pinegrap AI cannot be asked in this channel. Somebody who manages the channel can allow it from the channel menu.'));
+        }
+
         return false;
     }
 
@@ -953,7 +962,10 @@ function ws_ai_after_send($viewer, $channel, $message_id, $body)
         WHERE agent = 'ai' AND requested_by = '" . (int) $viewer['id'] . "' AND status IN ('queued', 'sent', 'running')");
 
     if ($waiting >= WS_AI_PER_PERSON) {
-        ws_message_system($channel['id'], lang(array('string' => 'Pinegrap AI already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => WS_AI_PER_PERSON)));
+        if (!$followed) {
+            ws_message_system($channel['id'], lang(array('string' => 'Pinegrap AI already has {var:1} requests of yours waiting. Please wait for those to be answered.', 'vars' => WS_AI_PER_PERSON)));
+        }
+
         return false;
     }
 
@@ -3368,6 +3380,17 @@ function ws_ai_agent_preamble($head, $place, $request, $language)
 }
 
 /**
+ * The sentence a request in a discussion that follows the assistant adds to
+ * its brief.
+ *
+ * @return string
+ */
+function ws_ai_followed_sentence()
+{
+    return 'You follow this discussion: a message here asks you without your name. Answer the latest messages; your answer is a reply to the last one.';
+}
+
+/**
  * What an assistant is told about a request before it starts: who it is,
  * now, who asked, the place it was asked in (a note, a task, a channel or a
  * discussion and the message a reply answers), the people, the request and
@@ -3520,6 +3543,13 @@ function ws_ai_briefing($row, $asker, $agent = 'ai')
             $parts[] = 'This is a discussion about message ' . (int) $about['id'] . ' of the channel #' . $parent['name'] . ':';
             $parts[] = pg_ai_data_block('message', ws_ai_author($about) . ': ' . ws_ai_heard_text($asker, $about, 2000));
             $parts[] = 'Decisions marked and tasks opened here go into #' . $parent['name'] . ' as well.';
+
+            // A discussion that follows the assistant asks it without its
+            // name (ws_thread_follow_ask()).
+            if (function_exists('ws_thread_follow_agent') && (ws_thread_follow_agent($channel['id']) === ($claude ? 'claude' : 'ai'))) {
+                $parts[] = ws_ai_followed_sentence();
+            }
+
             $parts[] = '';
         }
         $parts[] = 'People in the workspace:';
