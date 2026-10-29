@@ -157,7 +157,7 @@ function test_workspace_scheduled_flow_copy_wiring()
 
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 
-	pg_assert_contains("api('ws_flow_scheduled_new', { channel_id: self.channel.id })", $js);
+	pg_assert_contains("api('ws_flow_scheduled_new', { channel_id: channelId, sketch: 1 })", $js);
 	pg_assert_contains("api('ws_flow_scheduled_copy', { id: item.id })", $js);
 	pg_assert_false(strpos($js, 'scheduledForm({ note_id') !== false, 'the note toolbar has no entry');
 }

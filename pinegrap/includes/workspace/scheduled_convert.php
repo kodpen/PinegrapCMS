@@ -189,26 +189,69 @@ function ws_scheduled_convert($id)
 /**
  * The flow Add › Scheduled flow in a channel starts from (pure): a time
  * start tomorrow at 09:00, once, and a post box into that channel with no
- * text yet. Laid out as the templates are.
+ * text yet. What the member filled in the mini window replaces those: the
+ * start's settings (as ws_scheduled_flow_fill() keeps them) and the text.
+ * Laid out as the templates are; ws_flow_graph_normalize() cuts and casts.
  *
  * @param int    $channel_id the channel the composer is in
  * @param string $today      the site's date, Y-m-d
+ * @param array  $fill       start (date, time, repeat, every, days, until), body
  * @return array the graph (ws_flow_graph_normalize())
  */
-function ws_scheduled_flow_graph($channel_id, $today)
+function ws_scheduled_flow_graph($channel_id, $today, $fill = array())
 {
     $utc = new DateTimeZone('UTC');
     $day = (preg_match('/^\d{4}-\d{2}-\d{2}$/', (string) $today) === 1) ? date_create_immutable($today . ' 12:00:00', $utc) : false;
     $day = $day ? $day : date_create_immutable(date('Y-m-d') . ' 12:00:00', $utc);
+    $start = array('date' => $day->modify('+1 day')->format('Y-m-d'), 'time' => '09:00', 'repeat' => 'none', 'every' => 1, 'days' => array(), 'until' => '');
+
+    foreach ((array) ($fill['start'] ?? array()) as $key => $value) {
+        if (array_key_exists($key, $start)) {
+            $start[$key] = $value;
+        }
+    }
 
     return ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
-        array('id' => 'start', 'kind' => 'schedule', 'label' => '', 'x' => 0, 'y' => 0,
-            'config' => array('date' => $day->modify('+1 day')->format('Y-m-d'), 'time' => '09:00', 'repeat' => 'none', 'every' => 1, 'days' => array(), 'until' => '')),
+        array('id' => 'start', 'kind' => 'schedule', 'label' => '', 'x' => 0, 'y' => 0, 'config' => $start),
         array('id' => 'post', 'kind' => 'post', 'label' => '', 'x' => 256, 'y' => 0,
-            'config' => array('channel_id' => max(0, (int) $channel_id), 'body' => '')),
+            'config' => array('channel_id' => max(0, (int) $channel_id), 'body' => is_scalar($fill['body'] ?? null) ? (string) $fill['body'] : '')),
     ), 'edges' => array(
         array('from' => 'start', 'to' => 'post', 'on' => 'next'),
     ), 'notes' => array()));
+}
+
+/**
+ * What the mini window of Add › Scheduled flow sends, kept to its fields
+ * (pure): the flow's name, the time start's settings and the message. Only
+ * what was sent is kept, so a missing field leaves the default.
+ *
+ * @param array $request
+ * @return array name (only when sent), start, body
+ */
+function ws_scheduled_flow_fill($request)
+{
+    $fill = array('start' => array(), 'body' => '');
+    $start = is_array($request['start'] ?? null) ? $request['start'] : array();
+
+    foreach (array('date', 'time', 'repeat', 'every', 'until') as $key) {
+        if (isset($start[$key]) && is_scalar($start[$key])) {
+            $fill['start'][$key] = (string) $start[$key];
+        }
+    }
+
+    if (isset($start['days'])) {
+        $fill['start']['days'] = array_values(array_filter((array) $start['days'], 'is_scalar'));
+    }
+
+    if (isset($request['body']) && is_scalar($request['body'])) {
+        $fill['body'] = (string) $request['body'];
+    }
+
+    if (isset($request['name']) && is_scalar($request['name']) && (trim((string) $request['name']) !== '')) {
+        $fill['name'] = (string) $request['name'];
+    }
+
+    return $fill;
 }
 
 /**
@@ -227,30 +270,86 @@ function ws_scheduled_flow_home($viewer, $channel_id)
 }
 
 /**
- * Add › Scheduled flow in a channel: a new draft flow of the person's own,
- * its home that channel where a flow may live there, which they then build
- * and publish on the canvas. Only where they may post, with the right to
- * build flows; ws_flow_save() checks it all again.
+ * Add › Scheduled flow in a channel: a draft flow of the person's own, its
+ * home that channel where a flow may live there, holding what they filled
+ * in the mini window, published there or opened on the canvas. A second
+ * write from the same window (flow_id, draft_rev) changes the draft it made
+ * before, while it is still a draft of theirs, so a refused publish leaves
+ * one draft, not one per try. Only where they may post, with the right to
+ * build flows; ws_flow_save() and ws_flow_publish() check it all again.
  *
  * @param array $viewer
  * @param int   $channel_id
- * @return array ok, error, flow_id
+ * @param array $data ws_scheduled_flow_fill(), and flow_id, draft_rev, publish
+ * @return array ok, error, field (of the save), flow_id, draft_rev, published, publish_error
  */
-function ws_scheduled_flow_new($viewer, $channel_id)
+function ws_scheduled_flow_new($viewer, $channel_id, $data = array())
 {
+    $answer = function ($saved, $published = false, $publish_error = '') {
+        return array('ok' => $saved['ok'], 'error' => $saved['error'], 'field' => (string) ($saved['field'] ?? ''), 'flow_id' => (int) ($saved['flow_id'] ?? 0),
+            'draft_rev' => (int) ($saved['draft_rev'] ?? 0), 'published' => $published, 'publish_error' => $publish_error);
+    };
     $channel = ws_channel((int) $channel_id);
 
     if (!$channel || !ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => lang('That channel could not be found.'), 'flow_id' => 0);
+        return $answer(array('ok' => false, 'error' => lang('That channel could not be found.')));
     }
 
-    $saved = ws_flow_save($viewer, array(
-        'name'       => lang('Scheduled flow'),
-        'channel_id' => ws_scheduled_flow_home($viewer, $channel['id']),
-        'graph'      => ws_scheduled_flow_graph($channel['id'], date('Y-m-d')),
-    ));
+    $flow = null;
 
-    return array('ok' => $saved['ok'], 'error' => $saved['error'], 'flow_id' => (int) $saved['flow_id']);
+    if ((int) ($data['flow_id'] ?? 0) > 0) {
+        $flow = ws_flow_for($viewer, (int) $data['flow_id'], 'edit');
+
+        if (!$flow || ((int) $flow['owner_id'] !== (int) $viewer['id']) || ((string) $flow['status'] !== 'draft')) {
+            return $answer(array('ok' => false, 'error' => lang('That flow could not be found.')));
+        }
+    }
+
+    $fields = array('graph' => ws_scheduled_flow_graph($channel['id'], date('Y-m-d'), $data));
+
+    if ($flow === null) {
+        $fields += array('name' => lang('Scheduled flow'), 'channel_id' => ws_scheduled_flow_home($viewer, $channel['id']));
+    } else {
+        $fields['draft_rev'] = (int) ($data['draft_rev'] ?? 0);
+    }
+
+    if (isset($data['name'])) {
+        $fields['name'] = (string) $data['name'];
+    }
+
+    $saved = ws_flow_save($viewer, $fields, $flow);
+
+    if (!$saved['ok'] || empty($data['publish'])) {
+        return $answer($saved);
+    }
+
+    // Refused here, the draft stays and the window says why: the next try
+    // changes this draft.
+    $published = ws_flow_publish($viewer, ws_flow_for($viewer, $saved['flow_id'], 'edit'), array('draft_rev' => $saved['draft_rev']));
+
+    return $answer($saved, $published['ok'], $published['ok'] ? '' : $published['error']);
+}
+
+/**
+ * The two boxes of Add › Scheduled flow as the mini window draws them before
+ * anything is written (ws_flow_card_graph()), with the start's settings the
+ * form opens on. Only where the person may post and build flows.
+ *
+ * @param array $viewer
+ * @param int   $channel_id
+ * @return array ok, error, graph, start
+ */
+function ws_scheduled_flow_sketch($viewer, $channel_id)
+{
+    $channel = ws_channel((int) $channel_id);
+
+    if (!$channel || !ws_can_post_channel($viewer, $channel) || !ws_can_schedule($viewer)) {
+        return array('ok' => false, 'error' => lang('That channel could not be found.'), 'graph' => null, 'start' => null);
+    }
+
+    $graph = ws_scheduled_flow_graph($channel['id'], date('Y-m-d'));
+
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph($graph), 'start' => $graph['nodes'][0]['config']);
 }
 
 /**
