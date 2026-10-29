@@ -32,8 +32,8 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - W6 done (#1680, [[widget-lists]]). W7 done (#1688, [[widget-lists-editor]]). W8 done (seven PRs #1809 to #1917, [[widget-entity-fields-list]]).
 - W9 done #1752 #1768 ([[widget-lists-product]]). W10 done (#1783, [[widget-lists-order]]). W11 done #1796 ([[widget-lists-cart]]). W12 done #1924 to #2245 ([[widget-list-paging]]). W13 done (#1758).
 - W14 done (#1602, #1701, #1719, [[widget-fill-filters]], [[widget-fill-shop]]).
-- W15 done (#1734). W16 default parts: #1808 #1824 #1863 #1908 #1945 #1973 #2067 #2218, cart gift card #2260, schedule #2311, cancel and return forms #2330, return moves #2361, cart product form #2401 ([[widget-default-parts-cart-form]]); done.
-- W17 record values outside widgets #2398 ([[page-record-values]]); parts anywhere decided #3074 ([[widget-designability-decisions-2]]), cut in two: K1 server hook (`widget_part` node, marker, widget's first render draws it) in progress; K2 editor placement, canvas and Preview, the variant switch reaching parts outside ([[widget-parts-outside]]).
+- W15 done (#1734). W16 done: default parts #1808 to #2401 ([[widget-default-parts]]).
+- W17 record values outside widgets #2398 ([[page-record-values]]); parts anywhere decided #3074 ([[widget-designability-decisions-2]]); K1 server hook in progress, K2 editor ([[widget-parts-outside]]).
 - W17 form fields by name: server half #3007, editor half #3047 ([[page-record-values]]). W18 done #2308 #2334 ([[page-conditions]]).
 - W19 done #1904 #1914 #1928, opening state #2232 ([[widget-condition-canvas]]).
 - W20 Parts palette, starter library. W21 done #2326 #2345. W22 done: #2317, W22b #2368 ([[layout-form-converter]]). W23 done #2225 #2307. W24 done #2259 #2304 ([[widget-lists-checkout]]).
@@ -44,4 +44,4 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 - Claim with a draft PR `[plan:widget-designability] Wn`. New kinds read saved-tree checks via `pg_sw_cond_tree_json()`.
 
 ## Where to start?
-- W17 parts anywhere K2 once K1 has merged ([[widget-parts-outside]] "What is left?").
+- W17 parts K2 after K1 ([[widget-parts-outside]]).
