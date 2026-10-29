@@ -13,7 +13,7 @@ description: Remaining outside-account connections (calendar, notes, cloud picke
 | Notion, OneNote | Notion through its hosted MCP server (alias, no provider code). OneNote via Graph `Notes.ReadWrite`. An imported note is an ordinary `ws_notes` row. Keep, Evernote, Apple Notes: no usable API | M (S via MCP) |
 | Cloud file picker | Google Picker + `drive.file`, OneDrive picker, Dropbox Chooser (app key only). Download on the server, then the normal upload rules | S–M |
 | Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed, WhatsApp Cloud API. Model B only | L |
-| Merchant Center | Merchant API (Content API for Shopping shut 2026-08-18). Slice 1 (feed as data source + issues, no schema) done (#3213, `commerce/merchant-center.md`). Left: per-item push + sync table (schema question) | M |
+| Merchant Center | Merchant API (Content API for Shopping shut 2026-08-18). Slice 1 done (#3213, `commerce/merchant-center.md`). Left: per-item push + sync table (schema question) | M |
 | GA4, Business Profile | Admin/Data API; Business Profile needs Google's access form (5 read-only reviews: Places API key is enough). On demand | M |
 | Social posting | Facebook Page, Instagram, LinkedIn; needs app review; X is paid, not recommended | M + process |
 | AI accounts | Not recommended (subscription OAuth is limited to Anthropic's own products); only OpenRouter PKCE as "bring your own model" (`includes/workspace/ai.php`) | S |
