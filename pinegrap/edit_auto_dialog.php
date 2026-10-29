@@ -29,6 +29,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM auto_dialogs WHERE id = '
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/auto_dialog_form.php');
+
 $liveform = new liveform('edit_auto_dialog');
 
 $auto_dialog = db_item(
@@ -121,46 +123,28 @@ if (!$_POST) {
 
     // Otherwise the user selected to save the auto dialog, so save it.
     } else {
-        $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required.','vars'=>lang('Name') )));
-        $liveform->validate_required_field('url', lang(array('string'=>'{var:1} is required.','vars'=>lang('URL'))) );
+        pg_auto_dialog_form_validate($liveform, (string) $id);
 
-        // If there is not already an error for the name field,
-        // and that name is already in use, then output error.
-        if (
-            (!$liveform->check_field_error('name'))
-            && (db_value("SELECT COUNT(*) FROM auto_dialogs WHERE (name = '" . e($liveform->get_field_value('name')) . "') AND (id != '" . e($liveform->get_field_value('id')) . "')") != 0)
-        ) {
-            $liveform->mark_error('name', lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
-        }
-        
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors()) {
-            go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+            go($_SERVER['PHP_SELF'] . '?id=' . $id);
         }
 
-        $page = $liveform->get_field_value('page');
-
-        // If the first character is a slash, then the user
-        // has accidentally entered a URL instead of a page name,
-        // so correct the mistake and remove the slash for the user.
-        if (mb_substr($page, 0, 1) == '/') {
-            $page = mb_substr($page, 1);
-        }
-        
-        db(
+        $query =
             "UPDATE auto_dialogs
             SET
-                name = '" . e($liveform->get_field_value('name')) . "',
-                enabled = '" . e($liveform->get_field_value('enabled')) . "',
-                url = '" . e($liveform->get_field_value('url')) . "',
-                width = '" . e($liveform->get_field_value('width')) . "',
-                height = '" . e($liveform->get_field_value('height')) . "',
-                delay = '" . e($liveform->get_field_value('delay')) . "',
-                frequency = '" . e($liveform->get_field_value('frequency')) . "',
-                page = '" . e($page) . "',
-                last_modified_user_id = '" . USER_ID . "',
+                name = ?,
+                enabled = ?,
+                url = ?,
+                width = ?,
+                height = ?,
+                delay = ?,
+                frequency = ?,
+                page = ?,
+                last_modified_user_id = ?,
                 last_modified_timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($liveform->get_field_value('id')) . "'");
+            WHERE id = ?";
+        db_q($query, array_merge(pg_auto_dialog_form_values($liveform), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
 
         log_activity(lang(array('string'=>'{var:1} ({var:2}) was modified','vars'=>array(lang('auto dialog'),$liveform->get_field_value('name')))), $_SESSION['sessionusername']);
         $liveform->remove_form();

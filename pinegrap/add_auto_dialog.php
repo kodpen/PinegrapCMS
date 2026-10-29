@@ -20,6 +20,8 @@ include('init.php');
 $user = validate_user();
 validate_area_access($user, 'manager');
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/auto_dialog_form.php');
+
 $liveform = new liveform('add_auto_dialog');
 
 // If the form has not been submitted, then output it.
@@ -49,32 +51,13 @@ if (!$_POST) {
     
     $liveform->add_fields_to_session();
     
-    $liveform->validate_required_field('name', lang(array('string'=>'{var:1} is required.','vars'=>lang('Name'))) );
-    $liveform->validate_required_field('url', lang(array('string'=>'{var:1} is required.','vars'=>lang('URL'))) );
+    pg_auto_dialog_form_validate($liveform, null);
 
-    // If there is not already an error for the name field,
-    // and that name is already in use, then output error.
-    if (
-        (!$liveform->check_field_error('name'))
-        && (db_value("SELECT COUNT(*) FROM auto_dialogs WHERE name = '" . e($liveform->get_field_value('name')) . "'") != 0)
-    ) {
-        $liveform->mark_error('name', lang('Sorry, the name that you entered is already in use, so please enter a different name.'));
-    }
-    
     if ($liveform->check_form_errors()) {
         go($_SERVER['PHP_SELF']);
     }
 
-    $page = $liveform->get_field_value('page');
-
-    // If the first character is a slash, then the user
-    // has accidentally entered a URL instead of a page name,
-    // so correct the mistake and remove the slash for the user.
-    if (mb_substr($page, 0, 1) == '/') {
-        $page = mb_substr($page, 1);
-    }
-    
-    db(
+    $query =
         "INSERT INTO auto_dialogs (
             name,
             enabled,
@@ -88,19 +71,8 @@ if (!$_POST) {
             created_timestamp,
             last_modified_user_id,
             last_modified_timestamp)
-        VALUES (
-            '" . e($liveform->get_field_value('name')) . "',
-            '" . e($liveform->get_field_value('enabled')) . "',
-            '" . e($liveform->get_field_value('url')) . "',
-            '" . e($liveform->get_field_value('width')) . "',
-            '" . e($liveform->get_field_value('height')) . "',
-            '" . e($liveform->get_field_value('delay')) . "',
-            '" . e($liveform->get_field_value('frequency')) . "',
-            '" . e($page) . "',
-            '" . USER_ID . "',
-            UNIX_TIMESTAMP(),
-            '" . USER_ID . "',
-            UNIX_TIMESTAMP())");
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, UNIX_TIMESTAMP(), ?, UNIX_TIMESTAMP())";
+    db_q($query, array_merge(pg_auto_dialog_form_values($liveform), array((string) USER_ID, (string) USER_ID))) or output_error('Query failed.');
 
     $auto_dialog_id = mysqli_insert_id(db::$con);
     
