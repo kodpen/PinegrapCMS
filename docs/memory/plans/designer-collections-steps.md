@@ -17,12 +17,12 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - **C6b1 — template references resolved. Done, #3025:** resolve `_cf.ref 'tab:<key>'` at Publish (server and editor cache), create the forms in order (target first), map `_cf.ref` in the design export (`designer/collection-template-refs.md`).
 - **C6b2 — seeded references and blog categories. Done, #3052:** sample records name a reference's target by its label (stored as its `reference_code`); hello-pinegrap's blog has a categories collection its posts reference (`designer/collection-template-refs.md`).
 
-- **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
+- **C7 — item revisions (Q3, decided in #3051).** `record_revisions` on the `page_revisions` pattern (`decisions-made-schema-3.md`): collection items only; written by the panel edit, restore, API and Workspace writers; page retention settings; erasure deletes them; History and restore on `edit_submitted_form.php`; `job.php` sweep.
 
 - Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns unless the owner wants them (Q4).
 
 ## Which schema changes are approved?
-- Approved in #2393 and done at C2 (step 11.0.43): Q1 `custom_form_pages.collection`, Q2 `form_fields.collection_kind` and `reference_page_id` (`designer/collection-fields.md`); Q3 table `record_revisions` is asked when C7 comes.
+- Approved in #2393 and done at C2 (step 11.0.43): Q1 `custom_form_pages.collection`, Q2 `form_fields.collection_kind` and `reference_page_id` (`designer/collection-fields.md`); Q3 table `record_revisions` approved in #3051 (`decisions-made-schema-3.md`).
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?

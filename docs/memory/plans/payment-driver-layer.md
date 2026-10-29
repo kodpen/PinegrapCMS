@@ -1,6 +1,6 @@
 ---
 name: payment-driver-layer
-description: Plan (approved 2026-10-19; all done but 4c2 instalments, waiting on #3057): payment drivers beside submit_order.php; iyzico, Stripe, PayPal v2 and PayTR on it
+description: Plan (approved 2026-10-19; all done but the PayTR instalments 4c2a and 4c2b, decided in #3057): payment drivers beside submit_order.php; iyzico, Stripe, PayPal v2 and PayTR on it
 ---
 
 ## What did the owner decide?
@@ -23,15 +23,13 @@ description: Plan (approved 2026-10-19; all done but 4c2 instalments, waiting on
 3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing it: #3021.
 4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
 4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
-4c. PayTR: driver, callback, CSP done (#3036, `commerce/payment-driver-paytr.md`). 4c2: refund API done (#3055); instalments wait on #3057.
+4c. PayTR: driver, callback, CSP done (#3036, `commerce/payment-driver-paytr.md`). 4c2: refunds (#3055); 4c2a instalments by a most-instalments driver setting, the store paying the difference; 4c2b the callback records a customer-paid difference as the surcharge and raises the total (#3057, `decisions-made-product-2.md`).
 6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
 ## Open questions?
-- #3057: PayTR instalments: who bears the rate; may the callback raise `orders.total`?
 - Sipay/Param after PayTR by demand; prefer a PSP that fronts the banks over per-bank vPOS.
-- Done (#2438, PR #2770): the unreachable inline Iyzipay and Pay With Iyzico code is gone (`commerce/payment-driver-iyzico.md`).
-- Answered (#2407): the driver's fields on the classic checkout and express order pages too: 6b, PR #2556.
+- Done: the unreachable inline Iyzipay code is gone (#2438, PR #2770); the driver's fields on the classic pages (#2407, 6b).
 
 ## Where to start?
-- 4c2 instalments: the answer on #3057, then `commerce/payment-driver-paytr.md`.
+- 4c2a, then 4c2b: `commerce/payment-driver-paytr.md`, `commerce/payment-callback.md`.
