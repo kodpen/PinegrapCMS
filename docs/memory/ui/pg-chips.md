@@ -12,7 +12,7 @@ description: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208)
 - Every add or remove writes the joined list into the input and fires its native bubbling `change`. `pgChips.set()` writes the input, fires one change, disposes the box and draws it again.
 
 ## Where does the remove button's label come from?
-- Bootstrap hard-codes `aria-label="Remove"` on `.chip-dismiss`. `pg_fields_script()` prints `data-pg-remove-label="<lang('Remove')>"` on its tag; the engine relabels every button after drawing and after each change.
+- Bootstrap hard-codes `aria-label="Remove"` on `.chip-dismiss`. `pg_fields_script()` prints `data-pg-remove-label="<lang('Remove')>"` on its tag; the engine relabels every button "Remove: <chip value>" after drawing and after each change. A chip reached with Tab becomes the selection, so Delete removes it (`pg-fields-speech.md`).
 
 ## How big is the remove button on a touch screen?
 - Under `@media (pointer: coarse)` `.chip-dismiss` in a `.pg-chips` box is at least 1.5rem square (Bootstrap: 1rem, no padding); the icon stays 1rem. A missed tap used to select the chip instead of removing it. The designer keyword box (`#styleSettingsModal`) is left out. Same block: System Status `.pg-checks > .pg-check` chips 1.5rem tall, gap 4px. Test: `tests/panel_tap_targets_css_test.php`.

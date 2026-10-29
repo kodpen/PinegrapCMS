@@ -14,7 +14,7 @@ description: data-pg-source combobox (google_product_category) on Bootstrap 6 Co
 - A pick writes the select (`keepChosenOptions()`: the empty option and the chosen one with the item's text stay, the rest go) and fires the native change. Opening shows the empty item and the stored choice again; the cursor goes into the search box.
 
 ## Which keys and ARIA?
-- Keys: arrows, Home/End and Escape are Bootstrap's menu keys (focus moves to the items, as in every combobox; no `aria-activedescendant`); Enter in the search box picks the first item and never submits the form. `aria-expanded` is Bootstrap's on the toggle; the box has `aria-controls` the menu (`<select id>_menu`).
+- Keys: arrows, Home/End and Escape are Bootstrap's menu keys (focus moves to the items, as in every combobox; no `aria-activedescendant`); Enter in the search box picks the first item and never submits the form. `aria-expanded` is Bootstrap's on the toggle; the box has `aria-controls` the listbox (`<select id>_combobox_list`), whose items the answers replace.
 
 ## What does the product screen print?
 - product_builder prints the stored category as `path  (id)` through `pg_pb_google_taxonomy_lookup()`, as the search answers it, not the bare id.

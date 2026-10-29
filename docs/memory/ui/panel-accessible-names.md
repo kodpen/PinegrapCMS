@@ -9,7 +9,7 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 - Close buttons (`.btn-close`) of dialogs, drawers and toasts always carry `aria-label` Close: a v6 dialog opened with `showModal()` puts focus on it first. Icon-only buttons and pager links get the action's name (Edit, Delete, Search, Previous page / Next page, Invoice Detail, Software Theme); the settings screen's disabled step button reuses Previous / Next. JS-built markup uses the screen's own label map (`t('Close')` in `image_editor_modal.js` from `$labels` in `get_image_editor_includes()`, `L.close` in `view_folders.php`). Pinned by `tests/panel_accessible_names_test.php`; the API applications screen (search box, dialog titles, fields, permission groups) by `tests/api_settings_theme_test.php`.
 - A dialog's `aria-labelledby` names its `h5.dialog-title` id (`cron_jobs_title`), never the dialog (that reads its whole body). A filter select behind an icon-ligature `<label for>` (`visibility`) carries a translated `aria-label`, else the ligature names it (#2668).
 - The settings autofill decoy `#fake_user_name` (`includes/settings/screen.php`) is `tabindex="-1" aria-hidden="true"`: out of keyboard and screen-reader reach.
-- Chips (`data-pg-chips`): `pg_fields.js` copies the hidden input's `<label>` text to the typed box as `aria-label`.
+- Chip and combobox fields (`pg_fields.js`): `pg-fields-speech.md`.
 - select2 on site pages (`v5` combobox) gets `language` texts (no results, searching, search) from the labels on the `pg_fields_script()` tag.
 
 ## Where does a required field's marker come from?

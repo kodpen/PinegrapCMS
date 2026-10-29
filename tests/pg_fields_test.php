@@ -218,6 +218,8 @@ function makePgUI(calls, late) {
                 calls.push(['chips', box.className, opts]);
                 chipsOf(box).forEach(dismiss);
                 var inst = {
+                    selected: [],
+                    selectChip: function (c) { inst.selected.push(c.getAttribute('data-bs-chip-value')); },
                     getValues: function () { return chipsOf(box).map(function (c) { return c.getAttribute('data-bs-chip-value'); }); },
                     add: function (v) {
                         var c = new FakeElement(box.ownerDocument, 'span', {}); c.className = 'chip'; c.setAttribute('data-bs-chip-value', v);
@@ -429,6 +431,22 @@ function main() {
     box.instance.remove('a');
     out.chips_typed = { heard: chipsHeard, children: shape(box) };
 
+    // A chip reached with Tab is selected, so Delete removes it; a chip
+    // focused by a press is left to Chips' own click; an already selected
+    // chip and the ghost input select nothing.
+    var focusIn = function (target) { box.dispatchEvent({ type: 'focusin', target: target }); };
+    var chipC = box.children[1];
+    focusIn(chipC);
+    box.dispatchEvent({ type: 'mousedown', target: box.children[0] });
+    focusIn(box.children[0]);
+    box.dispatchEvent({ type: 'click', target: box.children[0] });
+    chipC.className = 'chip active';
+    focusIn(chipC);
+    chipC.className = 'chip';
+    focusIn(box.children[box.children.length - 1]);
+    focusIn(box.children[2]);
+    out.chips_focus = box.instance.selected.slice();
+
     a.calls.length = 0;
     a.win.pgChips.set('#tags', ['x', 'y']);
     out.chips_redraw = {
@@ -447,8 +465,12 @@ function main() {
         get: a.win.pgCombobox.get(zones),
         redraw: a.calls.map(function (c) { return c[0]; }),
         text: zones.nextSibling.children[0].textContent,
-        selected: zones.nextSibling.nextSibling.querySelectorAll('.selected').map(function (i) { return i.getAttribute('data-bs-value'); })
+        selected: zones.nextSibling.nextSibling.querySelectorAll('.selected').map(function (i) { return i.getAttribute('data-bs-value'); }),
+        listbox: zones.nextSibling.nextSibling.children.map(function (c) { return c.getAttribute('role') + ':' + c.getAttribute('aria-multiselectable'); }),
+        aria_selected: zones.nextSibling.nextSibling.querySelectorAll('.menu-item').map(function (i) { return i.getAttribute('role') + '=' + i.getAttribute('aria-selected'); })
     };
+    zones.nextSibling.instance.pick('2');
+    out.combobox.picked = zones.nextSibling.nextSibling.querySelectorAll('.menu-item').map(function (i) { return i.getAttribute('aria-selected'); });
 
     // Loaded again with injected markup: the first copy draws the new field
     // and the drawn ones are left alone.
@@ -506,17 +528,24 @@ function main() {
     ['320', '335', '360'].forEach(function (v) { opts.push(['acct', { value: v, text: 'Account ' + v, selected: v === '335' ? '' : undefined }, 'Liabilities']); });
     opts.forEach(function (o) { if (o[1].selected === undefined) { delete o[1].selected; } });
     opts.push(['few', { value: 'a', text: 'A' }], ['few', { value: 'b', text: 'B' }]);
+    // A select named only by its aria-label, with no data-placeholder (the
+    // bank statement's record line), and one named by aria-labelledby.
+    opts.push(['line', { value: '', text: 'Choose an account' }], ['line', { value: '7', text: 'Cash' }], ['row', { value: '1', text: 'One' }]);
     var cb = load({ label: 'Kaldır', labels: [{ 'for': 'acct', text: 'Account' }], fields: [
         ['select', { id: 'acct', name: 'account_id', 'data-pg-combobox': '', 'class': 'form-control form-control-sm is-invalid', 'data-placeholder': 'Choose an account' }],
-        ['select', { id: 'few', 'data-pg-combobox': '', 'data-placeholder': 'Pick one' }]
+        ['select', { id: 'few', 'data-pg-combobox': '', 'data-placeholder': 'Pick one', tabindex: '4' }],
+        ['select', { id: 'line', 'data-pg-combobox': '', 'aria-label': 'Account', 'aria-describedby': 'line_help' }],
+        ['select', { id: 'row', 'data-pg-combobox': '', 'aria-labelledby': 'h_product h_row' }]
     ], options: opts });
     cb.win.pgFields.init();
     var acct = cb.doc.querySelector('#acct'), toggle = acct.nextSibling, menu = toggle.nextSibling;
-    var menuShape = function (m) { return m.children.map(function (c) {
-        if (c.className === 'combobox-search') { return 'search:' + c.children[0].getAttribute('placeholder'); }
-        if (c.tagName === 'BUTTON') { return 'item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : ''); }
-        return c.className + ':' + c.textContent;
-    }); };
+    var menuShape = function (m) { var out = []; m.children.forEach(function walk(c) {
+        if (c.className === 'combobox-search') { out.push('search:' + c.children[0].getAttribute('placeholder') + ':' + c.children[0].getAttribute('aria-controls')); return; }
+        if (c.tagName === 'BUTTON') { out.push('item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : '') + ':' + c.getAttribute('role') + '=' + c.getAttribute('aria-selected')); return; }
+        if (c.getAttribute('role') === 'listbox') { out.push('listbox:' + c.id + ':' + c.getAttribute('aria-labelledby') + ':' + c.getAttribute('aria-multiselectable')); c.children.forEach(walk); return; }
+        if (c.getAttribute('role') === 'group') { out.push('group:' + c.getAttribute('aria-labelledby')); c.children.forEach(walk); return; }
+        out.push(c.className + ':' + c.textContent + (c.getAttribute('role') ? ':' + c.getAttribute('role') : ''));
+    }); return out; };
     var acctHeard = [];
     acct.addEventListener('change', function (e) { acctHeard.push(acct.value + ':' + e.bubbles); });
     out.combobox_markup = {
@@ -524,6 +553,9 @@ function main() {
         options: cb.calls.map(function (c) { return c[2]; }),
         native: acct.className,
         toggle: [toggle.tagName, toggle.type, toggle.getAttribute('aria-labelledby'), toggle.children[0].textContent, toggle.children[0].className],
+        toggle_aria: [toggle.id, toggle.children[0].id, toggle.getAttribute('aria-haspopup'), toggle.getAttribute('aria-controls'), toggle.getAttribute('aria-label'), acct.getAttribute('tabindex'), cb.doc.querySelector('#few').getAttribute('tabindex')],
+        line: (function (s) { var t = s.nextSibling; return [t.getAttribute('aria-label'), t.getAttribute('aria-labelledby'), t.getAttribute('aria-describedby'), t.children[0].textContent, t.children[0].className]; })(cb.doc.querySelector('#line')),
+        row: (function (s) { var t = s.nextSibling; return [t.getAttribute('aria-label'), t.getAttribute('aria-labelledby'), menuShape(t.nextSibling)[0]]; })(cb.doc.querySelector('#row')),
         menu: menuShape(menu),
         few: menuShape(cb.doc.querySelector('#few').nextSibling.nextSibling),
         few_text: [cb.doc.querySelector('#few').nextSibling.children[0].textContent, cb.doc.querySelector('#few').nextSibling.children[0].className],
@@ -531,10 +563,30 @@ function main() {
     };
     (toggle.listeners.click || []).forEach(function (f) { f({ preventDefault: function () {} }); });
     out.combobox_click = toggle.instance.toggled;
+    // A click on the field's label goes to the toggle, not to the hidden select.
+    var acctLabel = cb.doc.all.filter(function (e) { return e.tagName === 'LABEL'; })[0], labelPrevented = 0;
+    (acctLabel.listeners.click || []).forEach(function (f) { f({ preventDefault: function () { labelPrevented++; } }); });
+    out.combobox_label_click = [labelPrevented, cb.doc.activeElement === toggle];
     toggle.instance.pick('120');
     out.combobox_pick = { value: acct.value, heard: acctHeard.slice(), text: toggle.children[0].textContent, get: cb.win.pgCombobox.get(acct) };
+    out.combobox_pick_items = menuShape(menu).filter(function (s) { return s.indexOf('item:1') === 0 || s.indexOf('item:335') === 0; });
+    // A search that matches nothing is announced; opening again clears it.
+    var searchInput = menu.children[0].children[0], none = menu.children[1], said = menu.children[2];
+    none.classList.remove('d-none');
+    searchInput.dispatchEvent({ type: 'input' });
+    out.combobox_no_results = [said.textContent];
+    none.classList.add('d-none');
+    searchInput.dispatchEvent({ type: 'input' });
+    out.combobox_no_results.push(said.textContent);
+    none.classList.remove('d-none');
+    searchInput.dispatchEvent({ type: 'input' });
+    (toggle.listeners['show.bs.combobox'] || []).forEach(function (f) { f({}); });
+    out.combobox_no_results.push(said.textContent);
     cb.win.pgFields.destroy(acct);
-    out.combobox_destroy = { native: acct.className, siblings: acct.parentNode.children.length, value: acct.value, calls: cb.calls.slice(-1).map(function (c) { return c[0]; }) };
+    cb.win.pgFields.destroy(cb.doc.querySelector('#few'));
+    out.combobox_destroy = { native: acct.className, siblings: acct.parentNode.children.length, value: acct.value, calls: cb.calls.slice(-1).map(function (c) { return c[0]; }), tabindex: [acct.getAttribute('tabindex'), cb.doc.querySelector('#few').getAttribute('tabindex')] };
+    (acctLabel.listeners.click || []).forEach(function (f) { f({ preventDefault: function () { labelPrevented++; } }); });
+    out.combobox_destroy.label_click = labelPrevented;
 
     // Inside a switch panel (.collapse clips overflow-y in Bootstrap 6) the
     // menu is placed fixed, so it is not cut off at the panel's edge. The
@@ -887,11 +939,12 @@ function remote(out) {
     var el = r.doc.querySelector('#gpc'), toggle = el.nextSibling, menu = toggle.nextSibling;
     var input = menu.children[0].children[0], heard = [];
     el.addEventListener('change', function (e) { heard.push(el.value + ':' + e.bubbles); });
-    var shape = function () { return menu.children.map(function (c) {
-        if (c.className === 'combobox-search') { return 'search:' + c.children[0].className + ':' + c.children[0].getAttribute('placeholder') + ':' + c.children[0].getAttribute('aria-controls'); }
-        if (c.tagName === 'BUTTON') { return 'item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : ''); }
-        return c.className + ':' + c.textContent;
-    }); };
+    var shape = function () { var out = []; menu.children.forEach(function walk(c) {
+        if (c.className === 'combobox-search') { out.push('search:' + c.children[0].className + ':' + c.children[0].getAttribute('placeholder') + ':' + c.children[0].getAttribute('aria-controls')); return; }
+        if (c.tagName === 'BUTTON') { out.push('item:' + c.getAttribute('data-bs-value') + ':' + c.textContent + (c.classList.contains('selected') ? ':selected' : '') + ':' + c.getAttribute('role') + '=' + c.getAttribute('aria-selected')); return; }
+        if (c.getAttribute('role') === 'listbox') { out.push('listbox:' + c.id); c.children.forEach(walk); return; }
+        out.push(c.className + ':' + c.textContent);
+    }); return out; };
     var type = function (text) { input.value = text; input.dispatchEvent({ type: 'input' }); };
     var tick = function () { return new Promise(function (resolve) { setImmediate(resolve); }); };
     out.remote6 = {
@@ -1076,7 +1129,7 @@ function test_pg_fields_set_writes_the_posted_field()
 		array(
 			'calls' => array('chips-dispose:chip-input pg-chips min-height-tagin border-subtle-danger', 'chips:chip-input pg-chips min-height-tagin border-subtle-danger'),
 			'old_box_gone' => true,
-			'children' => array('chip:x:Remove', 'chip:y:Remove', 'form-ghost:Add tags'),
+			'children' => array('chip:x:Remove: x', 'chip:y:Remove: y', 'form-ghost:Add tags'),
 			'heard' => 3,
 		),
 		$r['chips_redraw'],
@@ -1084,9 +1137,12 @@ function test_pg_fields_set_writes_the_posted_field()
 	);
 	pg_assert_same(array('1/2/2026 12:30 AM', '1:45 PM', 'x,y', 'x y'), $r['texts'], 'site text in the posted field');
 	pg_assert_same(
-		array('get' => array('1', '3'), 'redraw' => array('combobox-dispose', 'combobox'), 'text' => 'One, Three', 'selected' => array('1', '3')),
+		array(
+			'get' => array('1', '3'), 'redraw' => array('combobox-dispose', 'combobox'), 'text' => 'One, Three', 'selected' => array('1', '3'),
+			'listbox' => array('listbox:true'), 'aria_selected' => array('option=true', 'option=false', 'option=true'), 'picked' => array('true', 'true', 'true'),
+		),
 		$r['combobox'],
-		'the native select keeps the value; Combobox is drawn again with the chosen items and their texts'
+		'the native select keeps the value; Combobox is drawn again with the chosen items and their texts, in a multiselectable listbox whose picked state follows each pick'
 	);
 }
 
@@ -1145,19 +1201,24 @@ function test_pg_fields_chips_on_bootstrap_6()
 	pg_assert_same(
 		array(
 			'box' => 'chip-input pg-chips min-height-tagin border-subtle-danger',
-			'children' => array('chip:a:Remove', 'chip:b:Remove', 'chip:c:Remove', 'form-ghost:Add tags'),
+			'children' => array('chip:a:Remove: a', 'chip:b:Remove: b', 'chip:c:Remove: c', 'form-ghost:Add tags'),
 			'classes' => 'chip-input pg-chips pg-chips-sm',
 		),
 		$r['chips_markup'],
 		'a chip per stored value in the markup, the input\'s own classes but the control ones, the placeholder on the ghost input'
 	);
 	pg_assert_same(
-		array('heard' => array('a,b,c,d:true', 'b,c,d:true', 'x,y:true'), 'children' => array('chip:b:Remove', 'chip:c:Remove', 'chip:d:Remove', 'form-ghost:Add tags')),
+		array('heard' => array('a,b,c,d:true', 'b,c,d:true', 'x,y:true'), 'children' => array('chip:b:Remove: b', 'chip:c:Remove: c', 'chip:d:Remove: d', 'form-ghost:Add tags')),
 		$r['chips_typed'],
-		'an added or removed chip writes the posted input and fires one bubbling change; drawing fires none'
+		'an added or removed chip writes the posted input and fires one bubbling change; drawing fires none; each remove button names its chip'
 	);
 	pg_assert_same(
-		array('before' => 0, 'after' => array('chips'), 'kind' => 'chips', 'label' => 'Kaldır', 'destroyed' => array('children' => 1, 'calls' => array('chips', 'chips-dispose'), 'value' => 'a')),
+		array('c', 'd'),
+		$r['chips_focus'],
+		'a chip reached with Tab becomes the selection Delete removes; a press, a selected chip and the ghost input select nothing'
+	);
+	pg_assert_same(
+		array('before' => 0, 'after' => array('chips'), 'kind' => 'chips', 'label' => 'Kaldır: a', 'destroyed' => array('children' => 1, 'calls' => array('chips', 'chips-dispose'), 'value' => 'a')),
 		$r['late'],
 		'drawn once after Bootstrap\'s module ran, the remove label from pg_fields_script(), destroy() leaves the input with its value'
 	);
@@ -1172,7 +1233,7 @@ function test_pg_fields_combobox_on_bootstrap_6()
 
 	$m = $r['combobox_markup'];
 	pg_assert_same(
-		array('combobox:form-control combobox-toggle pg-combobox form-control-sm is-invalid', 'combobox:form-control combobox-toggle pg-combobox'),
+		array('combobox:form-control combobox-toggle pg-combobox form-control-sm is-invalid', 'combobox:form-control combobox-toggle pg-combobox', 'combobox:form-control combobox-toggle pg-combobox', 'combobox:form-control combobox-toggle pg-combobox'),
 		$m['calls'],
 		'the toggle takes the select\'s sizes and validation state'
 	);
@@ -1180,35 +1241,60 @@ function test_pg_fields_combobox_on_bootstrap_6()
 		array(
 			array('multiple' => false, 'search' => true, 'placeholder' => 'Choose an account'),
 			array('multiple' => false, 'search' => false, 'placeholder' => 'Pick one'),
+			array('multiple' => false, 'search' => false, 'placeholder' => 'Choose an account'),
+			array('multiple' => false, 'search' => false, 'placeholder' => ''),
 		),
 		$m['options'],
-		'search from eight options on, the placeholder from data-placeholder'
+		'search from eight options on, the placeholder from data-placeholder, else the empty option\'s text'
 	);
 	pg_assert_same('form-control form-control-sm is-invalid pg-combobox-native', $m['native'], 'the select stays, hidden by its class');
-	pg_assert_same(array('BUTTON', 'button', 'acct_label', 'Account 335', 'combobox-value'), $m['toggle'], 'a button named by the field\'s label, showing the chosen option');
+	pg_assert_same(array('BUTTON', 'button', 'acct_label acct_combobox_value', 'Account 335', 'combobox-value'), $m['toggle'], 'a button named by the field\'s label and the chosen option it shows');
+	pg_assert_same(
+		array('acct_combobox', 'acct_combobox_value', 'listbox', 'acct_combobox_list', null, '-1', '-1'),
+		$m['toggle_aria'],
+		'the toggle opens the listbox; the hidden selects leave the Tab order'
+	);
+	pg_assert_same(
+		array('Account', 'line_combobox line_combobox_value', 'line_help', 'Choose an account', 'combobox-value combobox-placeholder'),
+		$m['line'],
+		'a select named only by aria-label: the toggle takes it and its description, and shows the empty option\'s text'
+	);
+	pg_assert_same(
+		array(null, 'h_product h_row row_combobox_value', 'listbox:row_combobox_list:h_product h_row:null'),
+		$m['row'],
+		'a select named by aria-labelledby: the toggle and the listbox take its ids'
+	);
 	pg_assert_same(
 		array(
-			'search:Ara', 'combobox-no-results d-none:Sonuç bulunamadı', 'item::Choose an account',
-			'menu-header:Assets', 'item:100:Account 100', 'item:102:Account 102', 'item:120:Account 120', 'item:153:Account 153',
-			'menu-header:Liabilities', 'item:320:Account 320', 'item:335:Account 335:selected', 'item:360:Account 360',
+			'search:Ara:acct_combobox_list', 'combobox-no-results d-none:Sonuç bulunamadı', 'visually-hidden::status',
+			'listbox:acct_combobox_list:acct_label:null', 'item::Choose an account:option=false',
+			'group:acct_combobox_group1', 'menu-header:Assets', 'item:100:Account 100:option=false', 'item:102:Account 102:option=false', 'item:120:Account 120:option=false', 'item:153:Account 153:option=false',
+			'group:acct_combobox_group2', 'menu-header:Liabilities', 'item:320:Account 320:option=false', 'item:335:Account 335:selected:option=true', 'item:360:Account 360:option=false',
 		),
 		$m['menu'],
-		'translated search words, the empty option as an item reading as the placeholder, a header per group, the chosen item marked'
+		'translated search words and a status line outside the listbox, the empty option as an item reading as the placeholder, a group named by its header, options that say whether they are picked'
 	);
-	pg_assert_same(array('item:a:A', 'item:b:B'), $m['few'], 'no search box under eight options');
+	pg_assert_same(array('listbox:few_combobox_list:null:null', 'item:a:A:option=false', 'item:b:B:option=false'), $m['few'], 'no search box under eight options');
 	pg_assert_same(array('Pick one', 'combobox-value combobox-placeholder'), $m['few_text'], 'nothing chosen: the placeholder');
 	pg_assert_same(0, $m['heard_on_draw'], 'drawing fires no change');
 	pg_assert_same(array('fixed', null), $r['combobox_in_collapse'], 'a combobox inside a .collapse panel opens its menu fixed, one outside keeps the default');
 	pg_assert_same(1, $r['combobox_click'], 'a click on the toggle opens its own instance');
+	pg_assert_same(array(1, true), $r['combobox_label_click'], 'a click on the label focuses the toggle, not the hidden select');
 	pg_assert_same(
 		array('value' => '120', 'heard' => array('120:true'), 'text' => 'Account 120', 'get' => '120'),
 		$r['combobox_pick'],
 		'a pick writes the select and fires one bubbling change'
 	);
 	pg_assert_same(
-		array('native' => 'form-control form-control-sm is-invalid', 'siblings' => 5, 'value' => '120', 'calls' => array('combobox-dispose')),
+		array('item:100:Account 100:option=false', 'item:102:Account 102:option=false', 'item:120:Account 120:selected:option=true', 'item:153:Account 153:option=false', 'item:335:Account 335:option=false'),
+		$r['combobox_pick_items'],
+		'after a pick only the picked option says it is picked'
+	);
+	pg_assert_same(array('Sonuç bulunamadı', '', ''), $r['combobox_no_results'], 'a search that matches nothing is announced; a match or opening again clears it');
+	pg_assert_same(
+		array('native' => 'form-control form-control-sm is-invalid', 'siblings' => 9, 'value' => '120', 'calls' => array('combobox-dispose'), 'tabindex' => array(null, '4'), 'label_click' => 1),
 		$r['combobox_destroy'],
-		'destroy() leaves the plain select with its value'
+		'destroy() leaves the plain select with its value and its own tabindex; the label is its own again'
 	);
 }
 
@@ -1309,16 +1395,16 @@ function test_pg_fields_combobox_server_search()
 	pg_assert_same(array('combobox:form-control combobox-toggle pg-combobox'), $m['calls'], 'a server-searched field is a Bootstrap 6 Combobox on the panel');
 	pg_assert_same(array(array('multiple' => false, 'search' => false, 'placeholder' => 'Category')), $m['options'], 'its search box is ours: Bootstrap does not filter the server\'s answer');
 	pg_assert_same('form-control pg-combobox-native', $m['native'], 'the select stays as the posted store');
-	pg_assert_same(array('gpc_label', 'Apparel > Shoes  (187)'), $m['toggle'], 'named by its label, showing the stored choice');
+	pg_assert_same(array('gpc_label gpc_combobox_value', 'Apparel > Shoes  (187)'), $m['toggle'], 'named by its label and the stored choice it shows');
 	pg_assert_same('gpc_menu', $m['menu_id']);
 	pg_assert_same(
-		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:187:Apparel > Shoes  (187):selected'),
+		array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status:Aramak için yazın...', 'listbox:gpc_combobox_list', 'item::Category:option=false', 'item:187:Apparel > Shoes  (187):selected:option=true'),
 		$m['drawn'],
 		'a search box, a status line, the empty item and the stored choice'
 	);
 	pg_assert_same(true, $m['focused'], 'opening puts the cursor in the search box');
 	pg_assert_same(
-		array('waits' => array(250), 'fetched' => 0, 'menu' => array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:187:Apparel > Shoes  (187):selected')),
+		array('waits' => array(250), 'fetched' => 0, 'menu' => array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status:Aramak için yazın...', 'listbox:gpc_combobox_list', 'item::Category:option=false', 'item:187:Apparel > Shoes  (187):selected:option=true')),
 		$m['short'],
 		'under data-pg-min-length nothing is asked'
 	);
@@ -1326,12 +1412,12 @@ function test_pg_fields_combobox_server_search()
 	pg_assert_same(array('tax.php?action=search&q=shoe:same-origin'), $m['fetched'], 'GET url&q=<text> with the session cookie');
 	pg_assert_same('pg-combobox-status:Aranıyor…', $m['searching'][1], 'searching is announced');
 	pg_assert_same(
-		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:187:Apparel > Shoes  (187):selected', 'item:188:Apparel > Shoe Laces  (188)', 'item:shoe:shoe'),
+		array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status d-none:', 'listbox:gpc_combobox_list', 'item:187:Apparel > Shoes  (187):selected:option=true', 'item:188:Apparel > Shoe Laces  (188):option=false', 'item:shoe:shoe:option=false'),
 		$m['results'],
 		'the answer as items, the stored one marked, the typed text last as free text'
 	);
 	pg_assert_same(
-		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:187:Boots:selected', 'item:boot:boot'),
+		array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status d-none:', 'listbox:gpc_combobox_list', 'item:187:Boots:selected:option=true', 'item:boot:boot:option=false'),
 		$m['stale'],
 		'an older answer arriving late is dropped'
 	);
@@ -1342,18 +1428,18 @@ function test_pg_fields_combobox_server_search()
 		'a pick becomes the select\'s option and fires one bubbling change'
 	);
 	pg_assert_same(
-		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status d-none:', 'item:My own category:My own category'),
+		array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status d-none:', 'listbox:gpc_combobox_list', 'item:My own category:My own category:option=false'),
 		$m['free'],
 		'data-pg-free-text: the typed text can be picked'
 	);
 	pg_assert_same(array('My own category', 'My own category'), $m['free_pick']);
 	pg_assert_same(
-		array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Access denied'),
+		array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status:Access denied', 'listbox:gpc_combobox_list'),
 		$m['error'],
 		'the server\'s refusal is shown, nothing to pick'
 	);
 	pg_assert_same(
-		array('', array('search:form-control pg-combobox-query:Ara:gpc_menu', 'pg-combobox-status:Aramak için yazın...', 'item::Category', 'item:My own category:My own category:selected')),
+		array('', array('search:form-control pg-combobox-query:Ara:gpc_combobox_list', 'pg-combobox-status:Aramak için yazın...', 'listbox:gpc_combobox_list', 'item::Category:option=false', 'item:My own category:My own category:selected:option=true')),
 		$m['reopened'],
 		'opening again starts from the stored choice'
 	);
