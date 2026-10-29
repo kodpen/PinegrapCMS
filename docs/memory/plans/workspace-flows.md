@@ -14,7 +14,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 ## What is proposed? (not approved yet)
 - One "Flow" ("Akış"): graph JSON (boxes, arrows, notes), draft, versions; engine: plans/workspace-flows-engine.md.
 - Canvas (main): workspace_flows.php, bundle `workspace_flow.min.js`; HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_flow_run_get`, backoff).
-- Process template: task boxes on "after" arrows; also from a channel template or table rows (workflow mode).
+- Process template: task boxes on "after" arrows; from a channel template or table rows.
 - Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
 - Rights: staff build (`ws_can_schedule()`), owner-only like notes (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds runs started there (each keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is shared.
@@ -28,6 +28,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 after T1: row events, add/set row, workflow mode, Run from a table.
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md). F8 MCP tool, assistant, AI draft cards, starters.
+8. F8 MCP box (answer 5): F8a read tool, server (in progress); F8b canvas form; F8c writes propose and wait.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations taken (owner: decide without asking); 8 below.
@@ -41,4 +42,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- F4 next (plans/workspace-flows-engine.md); values between boxes: plans/workspace-flows-data-passing.md. Read workspace/README.md, plans/workspace-growth-terms.md.
+- F8a, then F8b, F8c. Values: plans/workspace-flows-data-passing.md. Read workspace/README.md.
