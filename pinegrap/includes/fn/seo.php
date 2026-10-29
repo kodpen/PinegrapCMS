@@ -5687,3 +5687,14 @@ xhtml|link::after {
 }
 ';
 }
+
+// Accessible name of a list screen's SEO link: its visible text is only the
+// score number or a dash, and the 'SEO Detail' title becomes a popover.
+function pg_seo_link_name($row)
+{
+    if (!pg_seo_row_scored($row)) {
+        return lang('SEO score has not been calculated yet.');
+    }
+
+    return lang('SEO Score') . ': ' . (int) $row['seo_score'] . '/100';
+}

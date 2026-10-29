@@ -1267,16 +1267,16 @@ if ($pages) {
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_edit_url . '\'"><i class="bi bi-pencil"></i></button>
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-secondary border-2 " title="' . lang('Preview') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-link"></i></button>
                 </td>
-                <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
+                <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
                 ' . $output_form_enabled_row . '
-                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
+                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;">' . pg_folder_access_mark($page['folder_access_control_type']) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
                 <td class="align-middle ' . $output_no_mobile_style_warning_class . '">' . $output_style_name . '</td>
                 <td class="align-middle">' . h(get_page_type_name($page['page_type'])) . '</td>
                 <td class="align-middle text-center">' . $output_search_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_comments_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_sitemap_check_mark . '</td>
-                <td class="align-middle text-center"><a href="javascript:void(0)" class="pg-seo-open text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_badge($page) . '</a></td>
+                <td class="align-middle text-center"><a href="javascript:void(0)" class="pg-seo-open text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_badge($page) . '</a></td>
                 <td class="align-middle text-center">' . pg_seo_render_impact($page) . '</td>
                 <td class="align-middle" >' . get_relative_time(array('timestamp' => $page['page_timestamp'])) . $output_last_modifier_user . ' </td>
             </tr>';

@@ -465,7 +465,7 @@ function pg_submitted_form_list_row($row, $contacts_access)
     $modified_by = ($row['last_modified_username'] != '') ? $row['last_modified_username'] : '[' . lang('Unknown') . ']';
 
     return array('class' => '', 'cells' => array(
-        pg_list_cell('<input class="check" type="checkbox" name="forms[]" value="' . $id . '" class="checkbox" />', 'select-all align-middle text-start'),
+        pg_list_cell('<input class="check" type="checkbox" name="forms[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array(trim($row['form_name'] . ' ' . $row['reference_code']))))) . '" />', 'select-all align-middle text-start'),
         pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_submitted_form.php?id=' . $id . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start action-buttons'),
         pg_list_cell(h($row['form_name']), 'chart_label'),
         pg_list_cell(h($row['reference_code'])),
