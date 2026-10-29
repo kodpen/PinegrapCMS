@@ -1047,9 +1047,11 @@ if (!$_POST) {
                     }
 
                     // The address's carrier labels (includes/fn/shipment_labels.php):
-                    // each printed through shipment_label.php, and "Create
-                    // Label" while a label service is on and the address has
-                    // no active label. The button posts the form outside the
+                    // each printed through shipment_label.php, cancelled while
+                    // its driver can cancel (a marketplace's label has none:
+                    // includes/api/outbound/labels.php), and "Create Label"
+                    // while a label service is on and the address has no
+                    // active label. The buttons post the form outside the
                     // order form ($output_shipment_label_form).
                     if (!isset($shipment_label_drivers)) {
                         $shipment_label_drivers = pg_shipment_labels_ready() ? pg_shipment_label_drivers() : array();
@@ -1072,7 +1074,7 @@ if (!$_POST) {
                                 ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
                                 <span class="ms-auto pg-print-none">
                                     <a class="btn btn-link pg-link-secondary py-0" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
-                                    ' . ($shipment_label_cancelled ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="cancel-' . (int) $shipment_label['id'] . '" class="btn btn-link pg-link-danger py-0" data-confirm-content="' . h(lang('The label is cancelled at the carrier label service and its tracking number is removed from this address. Continue?')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Cancel Label') . '</button>') . '
+                                    ' . (($shipment_label_cancelled || !pg_label_can($shipment_label['driver'], 'cancel')) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="cancel-' . (int) $shipment_label['id'] . '" class="btn btn-link pg-link-danger py-0" data-confirm-content="' . h(lang('The label is cancelled at the carrier label service and its tracking number is removed from this address. Continue?')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Cancel Label') . '</button>') . '
                                 </span>
                             </li>';
                     }

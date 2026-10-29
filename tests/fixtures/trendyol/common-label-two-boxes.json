@@ -1,0 +1,12 @@
+{
+    "data": [
+        {
+            "label": "^XA^CI28^PW800^LL1040^FO40,40^A0N,34,34^FDAras Kargo^FS^FO40,100^BY3,3,130^BCN,130,Y,N,N^FD7280027504111144^FS^FO40,660^A0N,28,28^FDKoli 1/2^FS^XZ",
+            "format": "ZPL"
+        },
+        {
+            "label": "^XA^CI28^PW800^LL1040^FO40,40^A0N,34,34^FDAras Kargo^FS^FO40,100^BY3,3,130^BCN,130,Y,N,N^FD7280027504111144^FS^FO40,660^A0N,28,28^FDKoli 2/2^FS^XZ",
+            "format": "ZPL"
+        }
+    ]
+}

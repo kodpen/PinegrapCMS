@@ -1,0 +1,12 @@
+{
+    "error": {
+        "status": 400,
+        "errors": [
+            {
+                "code": 1001,
+                "type": "BadRequestException",
+                "title": "İletmiş olduğunuz kargo takip numarası değerini kontrol ediniz"
+            }
+        ]
+    }
+}

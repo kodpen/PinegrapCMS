@@ -42,6 +42,7 @@ require_once(dirname(__FILE__) . '/includes/api/outbound/connectors/base.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/listings.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/product_matches.php');
 require_once(dirname(__FILE__) . '/includes/api/outbound/webhook_receiver.php');
+require_once(dirname(__FILE__) . '/includes/api/outbound/labels.php');
 
 $liveform = new liveform('marketplace_settings');
 
@@ -510,6 +511,50 @@ if ($_POST) {
 				)));
 
 			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
+	// The shipping label the marketplace makes for its own carrier's parcel
+	// (Trendyol's common label), asked for by the operator for one imported
+	// package and kept with the order's labels (includes/api/outbound/labels.php).
+	// A refusal is shown here and not kept in last_error, which would take the
+	// package out of the acceptance pass.
+	if ($action === 'common_label' && $account) {
+
+		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
+
+		$made = mp_label_create($account, $map_id, mp_label_boxes(isset($_POST['boxes']) ? $_POST['boxes'] : ''), (int)$user['id']);
+
+		$order_number = (string)db_value("SELECT remote_order_id FROM marketplace_order_map
+			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')");
+
+		if ($made['ok'] && $made['existing']) {
+
+			$liveform->add_notice(h(lang(array(
+				'string' => 'Order {var:1} has its shipping label already. Print it below or on the order screen.',
+				'vars'   => array($order_number)
+			))));
+
+		} elseif ($made['ok']) {
+
+			$liveform->add_notice(h(lang(array(
+				'string' => 'The shipping label of order {var:1} is kept with the order. Print it below or on the order screen.',
+				'vars'   => array($order_number)
+			))));
+
+		} elseif ($made['pending']) {
+
+			$liveform->add_notice(h($made['error']));
+
+		} else {
+
+			$liveform->add_warning(h($made['error']));
 
 		}
 
@@ -1316,6 +1361,57 @@ function mp_settings_invoice_form($account_id, $row) {
 
 }
 
+// The marketplace's shipping label under one imported order
+// (mp_label_offer()): the link to the label kept, a ZPL file saved for the
+// thermal printer through shipment_label.php, or the folded form that asks for
+// it with the number of boxes, one label each.
+function mp_settings_label_line($account_id, $row, $offer, $provider_name) {
+
+	if ($offer['offer'] === 'print') {
+
+		return '
+				<div class="small" style="grid-column:1/-1">
+					<a class="pg-link-secondary" href="shipment_label.php?id=' . (int)$offer['label_id'] . '">
+						<i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
+					<span class="opacity-75 ms-1">' . lang('ZPL file for a thermal label printer') . '</span>
+				</div>';
+
+	}
+
+	if ($offer['offer'] !== 'create') {
+
+		return '';
+
+	}
+
+	$map_id = (int)$row['id'];
+
+	return '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="pg-link-secondary">' . h(lang(array('string' => '{var:1} shipping label', 'vars' => array($provider_name)))) . '</summary>
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap align-items-center mt-3"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="common_label">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<label class="form-label mb-0" for="label_boxes_' . $map_id . '">' . lang('Boxes') . '</label>
+						<input type="number" class="form-control form-control-sm" id="label_boxes_' . $map_id . '"
+							name="boxes" value="1" min="1" max="' . mp_label_max_boxes() . '" step="1" required style="max-width:90px">
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary"
+							data-confirm-content="' . h(lang(array(
+								'string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?',
+								'vars'   => array($provider_name)
+							))) . '">' . lang('Get label') . '</button>
+					</form>
+					<div class="form-text">' . h(lang(array(
+						'string' => 'The label {var:1} makes for its own carrier, as a file for a thermal label printer (ZPL). It is kept with the order and listed on the order screen.',
+						'vars'   => array($provider_name)
+					))) . '</div>
+				</details>';
+
+}
+
 // When something last happened, in words.
 //
 // The same shape the application screen uses. get_relative_time() is the
@@ -1436,6 +1532,8 @@ $map_counts = array('all' => 0, 'errors' => 0, 'stale' => 0);
 
 $orders = array();
 
+$order_labels = array();
+
 $failed_orders = 0;
 
 $queue_counts = array('waiting' => 0, 'sent' => 0, 'done' => 0, 'failed' => 0);
@@ -1472,6 +1570,10 @@ if ($selected) {
 		WHERE marketplace_order_map.account_id = '" . e($selected_id) . "'
 		ORDER BY marketplace_order_map.imported_timestamp DESC
 		LIMIT 40");
+
+	// What each package offers for the marketplace's shipping label: the
+	// request, or the print of the label kept (mp_label_offer()).
+	$order_labels = mp_label_card($selected, $orders);
 
 	$failures = (array) db_items("SELECT marketplace_sync_queue.*, products.name AS product_name
 		FROM marketplace_sync_queue
@@ -1933,7 +2035,9 @@ if ($selected) {
 					: '') . '</span>'
 				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
 					&& (mp_order_stage($selected, $row) !== 'cancelled'))
-					? mp_settings_invoice_form($selected_id, $row) : '') . '
+					? mp_settings_invoice_form($selected_id, $row) : '')
+				. (isset($order_labels[(int)$row['order_id']])
+					? mp_settings_label_line($selected_id, $row, $order_labels[(int)$row['order_id']], mp_provider_name($selected['provider'])) : '') . '
 			</div>';
 
 			}

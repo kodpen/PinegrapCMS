@@ -1,0 +1,20 @@
+{
+    "data": [
+        {
+            "label": "^XA^POI^FS^BY3,3,130^FO143,40^BC^FD1022069492243^FS^FO40,220^GB650,280,3^FS^CFA,22^FO50,250^FDKHALID BIN AL WALEED RD 43AL KARAMA^FS^XZ",
+            "format": "ZPL",
+            "labelType": "CARGO"
+        },
+        {
+            "labelType": "PRODUCT",
+            "barcode": "868171180178431",
+            "message": "Bu üründe AB ürün etiketi için gerekli ürün özellik bilgileri eksik ya da yanlıştır. AB ürün etiketi basılamamaktadır."
+        },
+        {
+            "label": "https://cdn.dsmcdn.com/public-delivery-partner/product-label/35_2738_8681711801785.pdf",
+            "format": "PDF",
+            "labelType": "PRODUCT",
+            "barcode": "868171180178434"
+        }
+    ]
+}
