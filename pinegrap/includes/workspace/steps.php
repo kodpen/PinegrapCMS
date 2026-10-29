@@ -1634,6 +1634,54 @@ function ws_step_mcp_tool_problem($server, $tool)
 }
 
 /**
+ * What an MCP box's form on the flow canvas offers (ws_flow_js_config()):
+ * each server the person may call, with the tools a flow may run there
+ * (ws_mcp_form_tools(), the ones ws_step_mcp_tool_problem() accepts) and
+ * the names of those that ask before each call, which the form refuses as
+ * the check does. A server without a tool to run is left out. Pure.
+ *
+ * @param array[]  $servers ws_mcp_active_servers()
+ * @param callable $usable  function (array $server): bool, whether the
+ *                          person may call it (an account on an OAuth server)
+ * @return array[] id, alias, name, tools (name, description), asks
+ */
+function ws_step_mcp_form_servers($servers, $usable)
+{
+    $out = array();
+
+    foreach ($servers as $server) {
+        if (!$usable($server)) {
+            continue;
+        }
+
+        $tools = array();
+
+        foreach (ws_mcp_form_tools($server) as $name => $tool) {
+            $about = trim((string) ($tool['description'] ?? ''));
+
+            $tools[] = array('name' => (string) $name, 'description' => mb_substr($about, 0, 200, 'UTF-8'));
+        }
+
+        if (empty($tools)) {
+            continue;
+        }
+
+        $asks = array();
+
+        foreach (ws_mcp_tools_on($server) as $name => $tool) {
+            if (!empty($tool['approve'])) {
+                $asks[] = (string) $name;
+            }
+        }
+
+        sort($asks);
+        $out[] = array('id' => (int) $server['id'], 'alias' => (string) $server['alias'], 'name' => (string) ($server['name'] ?? ''), 'tools' => $tools, 'asks' => $asks);
+    }
+
+    return $out;
+}
+
+/**
  * Checks an MCP box with somebody's rights: the server turned on, a tool
  * of it a flow may run (ws_step_mcp_tool_problem()), an account to call it
  * with on a server people sign in to.

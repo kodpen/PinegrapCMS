@@ -813,3 +813,30 @@ function test_workspace_flow_steps_mcp_values_and_answer()
 	pg_assert_true(strlen($long) <= WS_SCHEDULED_WEBHOOK_BODY_BYTES, 'cut to the webhook answer size');
 	pg_assert_true(mb_check_encoding($long, 'UTF-8'), 'cut at a character');
 }
+
+// What the canvas form offers: each server the person may call with its
+// tools that read (name order) and those that ask first; a server out of
+// reach or without such a tool is left out.
+function test_workspace_flow_steps_mcp_form_servers()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp_form.php');
+
+	$docs = ws_flow_steps_test_mcp_server();
+	$tools = json_decode($docs['tools'], true);
+	$tools[0]['description'] = str_repeat('é', 250);
+	$docs['tools'] = json_encode($tools);
+	$docs['name'] = 'Docs';
+	$closed = array('id' => 8, 'alias' => 'crm') + ws_flow_steps_test_mcp_server();
+	$bare = array('id' => 9, 'alias' => 'none', 'tool_rules' => '{}') + ws_flow_steps_test_mcp_server('bearer');
+
+	$out = ws_step_mcp_form_servers(array(7 => $docs, 8 => $closed, 9 => $bare), function ($server) {
+		return $server['alias'] !== 'crm';
+	});
+
+	pg_assert_same(1, count($out), 'only a server the person may call, with a tool that reads');
+	pg_assert_same(array(7, 'docs', 'Docs'), array($out[0]['id'], $out[0]['alias'], $out[0]['name']));
+	pg_assert_same(array('fetch', 'search'), array_column($out[0]['tools'], 'name'), 'the tools that read, by name');
+	pg_assert_same(200, mb_strlen($out[0]['tools'][1]['description'], 'UTF-8'), 'a description cut at a character');
+	pg_assert_same(array('create_page'), $out[0]['asks'], 'a tool that asks first is named, not offered');
+}

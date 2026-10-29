@@ -143,6 +143,7 @@
         start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', into: true, out: ['done', 'failed'] },
         change: { icon: 'bi-pencil-square', name: 'fl_kind_change', into: true, out: ['done', 'failed'] },
         lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', into: true, out: ['done', 'failed'] },
+        mcp: { icon: 'bi-plug', name: 'fl_kind_mcp', into: true, out: ['done', 'failed'] },
         approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', into: true, out: ['yes', 'no'] },
         delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', into: true, out: ['done'] },
@@ -196,6 +197,7 @@
         ['start_flow', 'bi-diagram-3', 'fl_kind_start_flow'],
         ['change', 'bi-pencil-square', 'fl_kind_change'],
         ['lead', 'bi-person-vcard', 'fl_kind_lead'],
+        ['mcp', 'bi-plug', 'fl_kind_mcp'],
         ['approval', 'bi-patch-check', 'fl_kind_approval'],
         ['constants', 'bi-tag', 'fl_kind_constants'],
         ['value', 'bi-calculator', 'fl_kind_value'],
@@ -507,7 +509,8 @@
             operators: steps.operators || {},
             counts: steps.counts || [],
             repeats: steps.repeats || {},
-            events: steps.events || null
+            events: steps.events || null,
+            mcp: steps.mcp || []
         };
     }
 
@@ -638,6 +641,16 @@
             var what = kind ? kind.label : (config.record || t('fl_change_none'));
 
             return what + (config.id ? ' #' + config.id : '') + ((config.action === 'delete') ? ' · ' + t('fl_change_delete') : '');
+        }
+
+        if (node.kind === 'mcp') {
+            var called = mcpServer(config.server_id);
+
+            if (!config.server_id) {
+                return t('fl_mcp_none');
+            }
+
+            return (called ? '@' + called.alias : '#' + config.server_id) + (config.tool ? ' · ' + config.tool : '');
         }
 
         if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
@@ -2262,6 +2275,7 @@
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000]],
+        mcp: [['arguments', 'fl_mcp_arguments', 20000]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
@@ -2808,12 +2822,22 @@
         });
     }
 
+    // What the palette offers: an MCP box only while there is a server the
+    // person may call with a tool that reads (ws_step_mcp_form_servers()).
+    function paletteItems() {
+        var mcp = stepLists().mcp.length > 0;
+
+        return PALETTE.filter(function (item) {
+            return (item[0] !== 'mcp') || mcp;
+        });
+    }
+
     // The buttons that add a box; on the canvas they may also be dragged to
     // where the box should go.
     function paletteButtons(className, draggable) {
         var started = state.graph.nodes.some(function (node) { return node.kind === 'manual'; });
 
-        return PALETTE.map(function (item) {
+        return paletteItems().map(function (item) {
             var add = K.button(className, t(item[2]), item[1]);
 
             // One box starts a flow; a second would be a problem to fix.
@@ -3894,6 +3918,10 @@
             leadFields(box, node);
         }
 
+        if (node.kind === 'mcp') {
+            mcpFields(box, node);
+        }
+
         if (node.kind === 'condition') {
             conditionFields(box, node);
         }
@@ -4460,6 +4488,136 @@
         });
         box.appendChild(field(t('fl_lead_private'), closed, t('fl_lead_help')));
         box.appendChild(field(t('fl_lead_people'), peopleList(node, el('div', 'wsf-people'), 'user_ids', 50)));
+    }
+
+    // ── The MCP box ────────────────────────────────────────────────────
+
+    // A server an MCP box may call, as the form offers it, null when the
+    // person may not call it (off, no tool that reads, no account).
+    function mcpServer(id) {
+        return stepLists().mcp.filter(function (item) { return item.id === id; })[0] || null;
+    }
+
+    // Why the box's tool may not run, '' when it may or none is chosen yet:
+    // the refusals of ws_step_mcp_tool_problem() and ws_step_mcp_check().
+    function mcpToolProblem(config) {
+        if (!config.server_id) {
+            return '';
+        }
+
+        var server = mcpServer(config.server_id);
+
+        if (!server) {
+            return t('fl_mcp_server_out');
+        }
+
+        if (!config.tool) {
+            return '';
+        }
+
+        if (server.asks.indexOf(config.tool) !== -1) {
+            return t('fl_mcp_tool_asks', config.tool, server.alias);
+        }
+
+        return server.tools.some(function (tool) { return tool.name === config.tool; }) ? '' : t('fl_mcp_tool_off', config.tool, server.alias);
+    }
+
+    // Why the arguments are no JSON object, '' when they are one or empty:
+    // read with each value empty, as ws_step_mcp_arguments() reads them, so
+    // a value written outside quotes leaves no object.
+    function mcpArgumentsProblem(text) {
+        var bare = String(text || '').replace(VALUE_TOKEN, '').trim();
+        var parsed = null;
+
+        if (bare === '') {
+            return '';
+        }
+
+        try {
+            parsed = (bare.charAt(0) === '{') ? JSON.parse(bare) : null;
+        } catch (error) {
+            parsed = null;
+        }
+
+        return (parsed && (typeof parsed === 'object') && !Array.isArray(parsed)) ? '' : t('fl_mcp_arguments_bad');
+    }
+
+    // A tool of a connected MCP server that reads: the server, the tool and
+    // its arguments as a JSON object, values of the run put inside quotes.
+    function mcpFields(box, node) {
+        var config = node.config;
+        var servers = stepLists().mcp;
+        var options = [[0, t('fl_mcp_server_pick')]].concat(servers.map(function (item) {
+            return [item.id, '@' + item.alias + (item.name ? ' · ' + item.name : '')];
+        }));
+
+        if (config.server_id && !mcpServer(config.server_id)) {
+            options.push([config.server_id, '#' + config.server_id]);
+        }
+
+        var pick = K.select(options, config.server_id || 0);
+        var toolWrap = el('div');
+        var about = el('div', 'form-text');
+        var note = el('div', 'small fg-danger mb-5');
+        var argNote = el('div', 'small fg-danger mb-5');
+        var tell = function () {
+            var server = mcpServer(config.server_id);
+            var tool = server ? server.tools.filter(function (item) { return item.name === config.tool; })[0] : null;
+
+            about.textContent = tool ? tool.description : '';
+            note.textContent = mcpToolProblem(config);
+            argNote.textContent = mcpArgumentsProblem(config.arguments);
+        };
+        var drawTools = function () {
+            var server = mcpServer(config.server_id);
+            var list = server ? server.tools : [];
+            var choices = [['', t('fl_mcp_tool_pick')]].concat(list.map(function (item) { return [item.name, item.name]; }));
+
+            if (config.tool && !list.some(function (item) { return item.name === config.tool; })) {
+                choices.push([config.tool, config.tool]);
+            }
+
+            var tools = K.select(choices, config.tool || '');
+
+            tools.setAttribute('data-refocus', 'mcp-tool-' + node.id);
+            tools.addEventListener('change', function () {
+                config.tool = tools.value;
+                tell();
+                refreshNode(node);
+            });
+            K.clear(toolWrap);
+            toolWrap.appendChild(field(t('fl_mcp_tool'), tools, t('fl_mcp_tool_help')));
+            toolWrap.appendChild(about);
+        };
+
+        pick.setAttribute('data-refocus', 'mcp-server-' + node.id);
+        pick.addEventListener('change', function () {
+            var server = mcpServer(parseInt(pick.value, 10) || 0);
+
+            config.server_id = parseInt(pick.value, 10) || 0;
+
+            // A tool of the server before stays only where this one has it.
+            if (!server || !server.tools.some(function (item) { return item.name === config.tool; })) {
+                config.tool = '';
+            }
+
+            drawTools();
+            tell();
+            refreshNode(node);
+        });
+        note.setAttribute('role', 'status');
+        argNote.setAttribute('role', 'status');
+        box.appendChild(field(t('fl_mcp_server'), pick, servers.length ? '' : t('fl_mcp_no_server')));
+        box.appendChild(toolWrap);
+        box.appendChild(note);
+        box.appendChild(valueField(node, t('fl_mcp_arguments'), config.arguments, 20000, function (value) {
+            config.arguments = value;
+            argNote.textContent = mcpArgumentsProblem(value);
+            refreshNode(node);
+        }, true, t('fl_mcp_arguments_help')));
+        box.appendChild(argNote);
+        drawTools();
+        tell();
     }
 
     // Another scheduled action, started now or some minutes later.
@@ -5905,6 +6063,11 @@
             config = { rule: 'join', a: '', b: '', op: 'eq', places: 0, format: 'Y-m-d' };
         } else if (kind === 'lead') {
             config = { private: false, user_ids: [] };
+        } else if (kind === 'mcp') {
+            // The one server there is is taken; of several, none yet.
+            var servers = stepLists().mcp;
+
+            config = { server_id: (servers.length === 1) ? servers[0].id : 0, tool: '', arguments: '' };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {

@@ -120,7 +120,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
-- workspace-flows-mcp-box.md: The MCP box of flows (F8a, PR #3000, answer 5): step kind mcp runs a connected server's read tool through ws_mcp_tool_call() with the owner's account; answer as output, writes refused
+- workspace-flows-mcp-box.md: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's read tool through ws_mcp_tool_call() with the owner's account; answer as output, writes refused
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination
 - workspace-flows-parity-test.md: tests/workspace_flows_parity_test.php maps every scheduled-action key to the Flows box that keeps it; the changes far from scheduled.php that fail it, how call sites are keyed, what to do
 - workspace-flows-references.md: The reference check of a flow (data-passing D4, PR #2305): bad_reference for {{node.*}} of a missing, later or field-less box; a warning for a box that may not run; Problems list

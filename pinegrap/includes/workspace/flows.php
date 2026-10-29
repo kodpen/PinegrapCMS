@@ -2290,6 +2290,20 @@ function ws_flow_js_strings()
         'fl_approval_closes_help' => lang('Empty for no deadline; at most 720 hours (30 days). A request with no decision by then expires.'),
         'fl_kind_change'      => lang('Change a record'),
         'fl_kind_lead'        => lang('Bring a customer into a channel'),
+        'fl_kind_mcp'         => lang('Run a tool of an MCP server'),
+        'fl_mcp_none'         => lang('No server chosen'),
+        'fl_mcp_server'       => lang('MCP server'),
+        'fl_mcp_server_pick'  => lang('Choose a server'),
+        'fl_mcp_no_server'    => lang('No server is turned on with a tool that reads and an account you may call it with.'),
+        'fl_mcp_server_out'   => lang('This server is turned off, has no tool that reads, or needs your own account first.'),
+        'fl_mcp_tool'         => lang('Tool'),
+        'fl_mcp_tool_pick'    => lang('Choose a tool'),
+        'fl_mcp_tool_help'    => lang('Only the tools that read and run without an approval.'),
+        'fl_mcp_tool_asks'    => ws_js_template('The tool {var:1} of @{var:2} asks before each call: a flow runs only the tools that read.', 2),
+        'fl_mcp_tool_off'     => ws_js_template('The tool {var:1} is not turned on at @{var:2}.', 2),
+        'fl_mcp_arguments'    => lang('Arguments'),
+        'fl_mcp_arguments_help' => lang('A JSON object, empty for none. Put a value inside quotes: "{{node.box.field}}".'),
+        'fl_mcp_arguments_bad' => lang('The arguments are not a JSON object.'),
         'fl_lead_meta'        => lang('The customer of the submitted form'),
         'fl_lead_meta_private' => lang('The customer of the submitted form, privately'),
         'fl_lead_private'     => lang('A channel it opens is private'),
@@ -2642,7 +2656,7 @@ function ws_flow_js_config($viewer, $mode)
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
-        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null);
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'mcp' => array());
 
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
@@ -2673,6 +2687,14 @@ function ws_flow_js_config($viewer, $mode)
         // time repeats, and the events the person may wait for.
         $steps['repeats'] = (object) (is_array($scheduled) ? $scheduled['repeats'] : array());
         $steps['events'] = is_array($scheduled) ? $scheduled['events'] : null;
+
+        // The MCP servers an MCP box may call with the person's account and
+        // the tools that read there; none, and the palette has no MCP box.
+        if (function_exists('ws_mcp_active_servers') && function_exists('ws_step_mcp_form_servers')) {
+            $steps['mcp'] = ws_step_mcp_form_servers(ws_mcp_active_servers(), function ($server) use ($viewer) {
+                return ($server['auth_kind'] !== 'oauth') || (bool) ws_mcp_oauth_account($server, (int) $viewer['id']);
+            });
+        }
     }
 
     // The values each kind of box gives the boxes after it (a report's

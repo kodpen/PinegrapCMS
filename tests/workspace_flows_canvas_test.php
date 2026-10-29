@@ -1412,3 +1412,65 @@ JS
 	pg_assert_same(array('b', 'x', 'y'), $result['past'], 'only the last steps are kept');
 	pg_assert_same('z', $result['now'], 'the graph as it is');
 }
+
+// The MCP box: the palette offers it only while a server is listed for the
+// person; its form tells a tool that asks first, one no longer on, a server
+// out of reach and arguments that are no JSON object (each value read as
+// empty, a value outside quotes leaves none), as the server's check does.
+function test_workspace_flows_canvas_mcp_box()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'PALETTE') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\[\n.*?\n\1\];\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'paletteItems', 'mcpServer', 'mcpToolProblem', 'mcpArgumentsProblem'),
+		$constants . <<<'JS'
+var FL = { steps: {} };
+var none = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
+FL.steps.mcp = [{ id: 7, alias: 'docs', name: 'Docs', tools: [{ name: 'search', description: 'Finds pages' }], asks: ['create_page'] }];
+var offered = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
+console.log(JSON.stringify({
+    none: none,
+    offered: offered > -1,
+    tools: [
+        mcpToolProblem({ server_id: 7, tool: 'search' }),
+        mcpToolProblem({ server_id: 7, tool: 'create_page' }),
+        mcpToolProblem({ server_id: 7, tool: 'gone' }),
+        mcpToolProblem({ server_id: 9, tool: 'search' }),
+        mcpToolProblem({ server_id: 0, tool: '' }),
+        mcpToolProblem({ server_id: 7, tool: '' })
+    ],
+    args: [
+        mcpArgumentsProblem(''),
+        mcpArgumentsProblem('{"q": "{{node.a.text}}", "n": 2}'),
+        mcpArgumentsProblem('{"q": "{{trigger.name}}"}'),
+        mcpArgumentsProblem('{"n": {{node.a.text}}}'),
+        mcpArgumentsProblem('[1, 2]'),
+        mcpArgumentsProblem('"x"'),
+        mcpArgumentsProblem('{oops')
+    ]
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(-1, $result['none'], 'no server, no MCP box in the palette');
+	pg_assert_true($result['offered'], 'a server listed: the palette offers it');
+	pg_assert_same(array('', 'fl_mcp_tool_asks create_page docs', 'fl_mcp_tool_off gone docs', 'fl_mcp_server_out', '', ''), $result['tools']);
+	pg_assert_same(array('', '', '', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad'), $result['args']);
+
+	// The lists come with the flows config, built by the steps' helper with
+	// the person's account on an OAuth server.
+	$config = ws_flows_canvas_test_function_source('includes/workspace/flows.php', 'ws_flow_js_config');
+	pg_assert_contains("\$steps['mcp'] = ws_step_mcp_form_servers(ws_mcp_active_servers()", $config);
+	pg_assert_contains('ws_mcp_oauth_account($server, (int) $viewer[\'id\'])', $config);
+}
+
