@@ -7,6 +7,58 @@ window.pgLang = function (key) {
     return (v !== undefined && v !== null) ? String(v) : key;
 };
 
+// Says a short answer to a screen reader without moving focus. A live region
+// is only heard when its words change after it is in the document, so the two
+// regions (polite and assertive) are made empty once the page has loaded and
+// the words are written a moment later; a region inserted together with its
+// words, like a panel redrawn with its report, is read by nobody. The region
+// is emptied first, so the same sentence twice in a row is heard twice.
+(function () {
+    var timers = {};
+
+    function region(assertive) {
+        var id = assertive ? 'pg_live_assertive' : 'pg_live_polite';
+        var el = document.getElementById(id);
+
+        if (!el && document.body) {
+            el = document.createElement('div');
+            el.id = id;
+            el.className = 'visually-hidden';
+            el.setAttribute('role', assertive ? 'alert' : 'status');
+            el.setAttribute('aria-live', assertive ? 'assertive' : 'polite');
+            el.setAttribute('aria-atomic', 'true');
+            document.body.appendChild(el);
+        }
+
+        return el;
+    }
+
+    window.pgAnnounce = function (text, assertive) {
+        var el = region(!!assertive);
+
+        if (!el) {
+            return;
+        }
+
+        el.textContent = '';
+        window.clearTimeout(timers[el.id]);
+        timers[el.id] = window.setTimeout(function () {
+            el.textContent = String(text || '');
+        }, 150);
+    };
+
+    function prepare() {
+        region(false);
+        region(true);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', prepare);
+    } else {
+        prepare();
+    }
+})();
+
 // Panel money boxes use the Inputmask "currency" alias with the separators of
 // the panel language (pg_money_mask_attributes()). The numeric alias turns
 // whichever of "." and "," is not its decimal point into the decimal point as
@@ -1879,7 +1931,7 @@ $(document).ready(function () {
         });
 
         $button.prop("disabled", true);
-        $result.html('<div class="fg-secondary small"><span class="spinner-border spinner-border-sm me-3"></span></div>');
+        $result.html('<div class="fg-secondary small"><span class="spinner-border spinner-border-sm me-3" aria-hidden="true"></span><span class="visually-hidden">' + h(pgLang('Please Wait')) + '</span></div>');
 
         window.fetch(action, { method: "POST", body: data, credentials: "same-origin" })
             .then(function (response) {
@@ -4246,7 +4298,7 @@ function open_dialog(properties) {
 
     $('body').append('\
     <dialog id="message_modal_id_' + id + '" class="dialog dialog-lg dialog-scrollable" data-bs-backdrop="static" data-bs-keyboard="false">\
-                <div class="dialog-header"><h5 class="dialog-title">' + title + '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button></div>\
+                <div class="dialog-header"><h5 class="dialog-title">' + title + '</h5><button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + h(pgLang('Close')) + '"></button></div>\
                 <div class="dialog-body p-0" style="height:100vh"></div>\
     </dialog>');
     $('body #message_modal_id_' + id + ' .dialog-body').append(iframe);
@@ -6795,12 +6847,28 @@ $(function () {
 
         function settle(summary, message) {
             window.pgHealthReload(function () {
+                var fresh = document.getElementById(action);
+                var active = document.activeElement;
+
                 $(state).text(summary);
                 $(note).text(message);
                 $(result).removeClass('d-none');
                 // The redraw brought a new button with it; the old one is gone
                 // from the document, so this re-enables whichever is there now.
                 $('#' + action).prop('disabled', false);
+
+                // Focus was on the pressed button, which the redraw removed, so
+                // it fell to the body. It goes to the new button, unless the
+                // operator has moved on to something else meanwhile.
+                if (fresh && (!active || (active === document.body) || !document.contains(active) || $(active).closest('.card[widget-id="2"]').length)) {
+                    fresh.focus({ preventScroll: true });
+                }
+
+                // The report panel arrives with its words, which a screen
+                // reader does not read out by itself.
+                if (typeof window.pgAnnounce === 'function') {
+                    window.pgAnnounce(message);
+                }
             });
         }
 
@@ -9688,6 +9756,7 @@ function initSettingsFilter() {
     }
 
     var cards = Array.prototype.slice.call(document.querySelectorAll('#pg_settings_sections > div'));
+    var status = document.getElementById('pg_settings_filter_status');
 
     // Read once: the text of a card does not change as it is typed over, and
     // reading it per keystroke on the commerce screen is a hundred kilobytes of
@@ -9710,10 +9779,35 @@ function initSettingsFilter() {
         }
 
         var needle = field.value.trim().toLowerCase();
+        var shown = 0;
 
         cards.forEach(function (card) {
-            card.classList.toggle('d-none', (needle !== '') && (card.getAttribute('data-pgtext').indexOf(needle) === -1));
+            var hide = (needle !== '') && (card.getAttribute('data-pgtext').indexOf(needle) === -1);
+
+            card.classList.toggle('d-none', hide);
+
+            if (!hide) {
+                shown++;
+            }
         });
+
+        // How many cards are left is said politely; a word that matches none
+        // also says so on screen, where it would otherwise leave a blank page.
+        if (status) {
+            var text = '';
+
+            if (needle !== '') {
+                text = shown
+                    ? (status.getAttribute('data-pg-count') || '').replace('{var:1}', shown).replace('{var:2}', cards.length)
+                    : (status.getAttribute('data-pg-empty') || '');
+            }
+
+            status.classList.toggle('visually-hidden', shown > 0);
+
+            if (status.textContent !== text) {
+                status.textContent = text;
+            }
+        }
     }
 
     field.addEventListener('input', apply);

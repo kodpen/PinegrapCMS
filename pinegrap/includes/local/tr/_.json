@@ -953,6 +953,7 @@
     "{var:1} of {var:2} pages are drafts": "{var:2} sayfanın {var:1} tanesi taslak",
     "{var:1} of {var:2} products read": "{var:2} üründen {var:1} okundu",
     "{var:1} of {var:2} requests took longer than {var:3} ms ({var:4}%)": "{var:2} isteğin {var:1} tanesi {var:3} ms üzerinde sürdü (%{var:4})",
+    "{var:1} of {var:2} sections shown": "{var:2} bölümden {var:1} tanesi gösteriliyor",
     "{var:1} of {var:2} selected": "{var:2} seçenekten {var:1} tanesi seçili",
     "{var:1} of {var:2} shown": "{var:1} / {var:2} gösteriliyor",
     "{var:1} of {var:2} tools on": "{var:2} araçtan {var:1} açık",
