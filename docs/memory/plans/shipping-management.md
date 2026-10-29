@@ -1,6 +1,6 @@
 ---
 name: shipping-management
-description: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7 done, phase 1 waits for new carriers): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
+description: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 ---
 
 ## What state is it in?
@@ -21,9 +21,9 @@ description: Shipping plan (2026-10-08; phases 1-4, 5, 6 and 7 done, phase 1 wai
 5. Customer side (M), two PRs: (a) done (#1964; `commerce/shipment-mail-fields.md`) e-mail: tracking mail-merge fields, `order_delivered` in the campaign profile screens, and the step widening `email_campaigns.action` (owner approved 2026-10-20). (b) widget `__tracking_*` tokens read the row first - done (#2102); guest tracking by order number + billing e-mail - done (#2116; `commerce/guest-shipment-lookup.md`).
 6. Bulk - done (#1877; `commerce/shipping-bulk-import.md`).
 7. API (S–M), two PRs: (a) done (#2004; `commerce/shipment-api-fields.md`): `parcels` (carrier, name, URL, status, dates) in shipments and the `order.shipped` / `order.delivered` payloads, a recognised `carrier` of `api_orders_ship()` kept on each parcel, n11 import city = district, state = province for new imports only. (b) done (#2715; decision #2433): an unknown `carrier` is accepted and kept on the parcel as typed; the answer gives `carrier: null`, `carrier_name` and a warning, no 422.
-8. Optional: `ship_tos.district`, `states.plate_code`, postcode-province check in warning mode; no district data set (licence decision).
+8. Optional: postcode-province check in warning mode - done (#PRNUM; `commerce/order-address-postcode-note.md`), plate numbers from `pg_sales_map_tr_regions()`, no schema. Left: `ship_tos.district` and `states.plate_code` (schema changes, open owner question); no district data set (licence decision).
 
 ## What must the owner check by hand?
 - Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.
-- Open owner questions: `orders.tracking_company`, ShipWorks through the write path, old n11 records, the delivery rule and the named-only `carrier` (`commerce/shipment-write-path.md`), when the `[NEW]` changelog line comes.
+- Open owner questions: `ship_tos.district` / `states.plate_code` (phase 8), `orders.tracking_company`, ShipWorks through the write path, old n11 records, the delivery rule and the named-only `carrier` (`commerce/shipment-write-path.md`), when the `[NEW]` changelog line comes.
 - Seen, not changed: `print_order.php` builds `$output_shipping_details` but never prints it.

@@ -1,6 +1,6 @@
 ---
 name: order-screen-shipments
-description: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
+description: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning and how Save writes them
 ---
 
 ## What does the shipping card show? (PR #931)
@@ -25,5 +25,6 @@ description: The panel order screen's shipping cards (view_order.php): one card 
 - `1z…` saved again as `1Z…` is the same parcel (the column's collation, as `uk_parcel`), and `pg_shipment_record()` now writes the new spelling too, so the link and the format warning follow what was typed; before (PR #1125) the row kept the old spelling while the warning was worked out from the new one. A marketplace poll (`source` marketplace) leaves the spelling alone, so it cannot undo a correction; `$recorded['number']` is the stored spelling and `update_order()` hands it to the event and the answer.
 
 ## What is not done here?
+- The postcode-province note under the address: `order-address-postcode-note.md`.
 - `print_order.php` builds `$output_shipping_details` but never prints it (seen, not changed).
 - Customer side, mail-merge fields and the API fields are later steps of `plans/shipping-management.md`.
