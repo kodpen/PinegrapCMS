@@ -20,10 +20,10 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - S2 (#2967): `/oluştur` (`/create`) ürün|grup with the single card; `/ürün` runs the same function (`workspace/workspace-quick-create.md`).
 - S3 (#2982): several lines under `/oluştur ürün` or `/ürün` make the bulk card under the command's message (`ws_command_product_bulk()` → `ws_bulk_create_card()`); the pasted-list window and its keys are gone; `ws_bulk_create_propose()` reads only a file now.
 
-## What is open? (architect questions, not decided here)
-- Which other kinds `/oluştur` takes later (task, customer, sales quote, workflow table row…), and whether `/görev` then becomes an alias like `/ürün`.
-- Whether `/oluştur grup` takes several lines too (bulk groups); the bulk card today is products only.
-- The reply form of S4 when the file is someone else's message: allowed for anyone who may read it, or the poster only?
+## What did the architect decide? (#2999)
+- S4's reply form on someone else's file: anyone who may read the message, post in the channel and change products (as the button was); the drafts are the proposer's own, every row checked again at Apply.
+- `/oluştur grup` stays one record; several lines answer with a clear error (rides S4).
+- No new kinds now; `/görev` stays its own command (`workflow/decisions-made-workspace-2.md`).
 
 ## Where to start?
-- S4, once the reply-form question above is decided. Read `workspace/README.md` key rules, workspace-bulk-sources.md, workspace-create-commands.md.
+- S4. Read `workspace/README.md` key rules, workspace-bulk-sources.md, workspace-create-commands.md.
