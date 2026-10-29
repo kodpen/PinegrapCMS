@@ -27,6 +27,6 @@ module: subscriptions
 - Amount of a line: `price * quantity + tax_total` (minor units).
 
 ## How was it verified?
-- `tests/subscriptions_test.php`; the step was not run on a dev DB (none in the cloud session).
+- `tests/subscriptions_test.php`; the step was not run on a dev DB.
 
 Related: commerce/subscriptions-iyzico.md, commerce/payment-drivers.md, plans/subscriptions-iyzico-stripe.md
