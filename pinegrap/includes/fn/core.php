@@ -1045,11 +1045,52 @@ function csv_cell($value)
     return str_replace('"', '""', $value);
 }
 
+// The headers of a panel CSV download: UTF-8 named in the content type and
+// the file offered as an attachment called $filename.
+function pg_csv_download_headers($filename)
+{
+    return array(
+        'Content-Type: text/csv; charset=utf-8',
+        'Content-Disposition: attachment; filename=' . $filename,
+    );
+}
+
+// Starts a panel CSV download: sends pg_csv_download_headers() and writes a
+// UTF-8 byte order mark. Excel opens a CSV file without the mark in the
+// system's ANSI code page, which turns Turkish letters into 'Ã¼' and 'ÅŸ'.
+// The importers step over the mark (pg_csv_open()).
+function pg_csv_download_start($filename)
+{
+    foreach (pg_csv_download_headers($filename) as $header) {
+        header($header);
+    }
+
+    echo "\xEF\xBB\xBF";
+}
+
+// A date and time cell of a panel CSV export: the site's day/month order and
+// clock with seconds and the time zone ('4/3/2026 17:05:09 +03' on a 24-hour
+// site, '4/3/2026 5:05:09 PM +03' otherwise). The settings are read from
+// DATE_FORMAT and TIME_FORMAT unless values are passed (tests).
+function pg_csv_export_time($timestamp, $date_format = null, $time_format = null)
+{
+    if ($date_format === null) {
+        $date_format = defined('DATE_FORMAT') ? DATE_FORMAT : 'month_day';
+    }
+
+    $day_code = ($date_format === 'month_day') ? 'n/j' : 'j/n';
+    $time_code = (pg_time_format_code($time_format) === 'H:i') ? 'H:i:s' : 'g:i:s A';
+
+    return date($day_code . '/Y ' . $time_code . ' T', (int) $timestamp);
+}
+
 // Opens an uploaded CSV file for fgetcsv(), which splits lines only on LF.
 // LF and CRLF files are returned as they are; a classic Mac file, whose first
 // line break is a lone CR, is copied into a temporary stream with each lone CR
 // turned into LF. This replaces the auto_detect_line_endings setting,
 // deprecated since PHP 8.1, and reads the same rows on every version.
+// A leading UTF-8 byte order mark (Excel's "CSV UTF-8", the panel exports)
+// is stepped over, so the first heading reads without it.
 // Returns the handle, or false when the file cannot be opened.
 function pg_csv_open($path)
 {
@@ -1069,7 +1110,9 @@ function pg_csv_open($path)
     $cr = strpos($head, "\r");
     $lf = strpos($head, "\n");
 
-    rewind($handle);
+    $start = (substr($head, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0;
+
+    fseek($handle, $start);
 
     if (($cr === false) || (($lf !== false) && ($lf <= $cr + 1))) {
         return $handle;

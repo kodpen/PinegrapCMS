@@ -82,12 +82,14 @@ if (!$_POST) {
     // get file handle for uploaded CSV file
     $handle = pg_csv_open($_FILES['file']['tmp_name']);
 
-    // The header line says which separator the file uses. A byte order mark
-    // (Excel's "CSV UTF-8") is stepped over before the cells are read: left
+    // The header line says which separator the file uses; the cells are then
+    // read from where it starts. pg_csv_open() has stepped over a byte order
+    // mark (Excel's "CSV UTF-8"), so the handle is not rewound onto it: left
     // in front of a quoted heading it keeps the quotes in the name.
+    $header_start = (int) ftell($handle);
     $header_line = (string) fgets($handle);
     $separator = pg_key_code_import_separator($header_line);
-    fseek($handle, (substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0);
+    fseek($handle, $header_start + ((substr($header_line, 0, 3) === "\xEF\xBB\xBF") ? 3 : 0));
 
     // get column names from first row of CSV file
     $columns = fgetcsv($handle, 100000, $separator, '"', '\\');

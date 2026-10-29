@@ -211,9 +211,10 @@ if ($filter != 'all_duplicate_contacts') {
 
 // if user requested to export contacts, export contacts
 if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
-    // force download dialog
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=contacts.csv");
+    pg_csv_download_start('contacts.csv');
+
+    $output_affiliate_headings = '';
+    $output_affiliate_values = '';
 
     if (AFFILIATE_PROGRAM == true) {
         $output_affiliate_headings = ',affiliate_approved,affiliate_name,affiliate_code,affiliate_commission_rate';

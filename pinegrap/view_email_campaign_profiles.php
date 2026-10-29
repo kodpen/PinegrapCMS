@@ -81,8 +81,7 @@ if (USER_ROLE == 3) {
 
 // If user requested to export, then export them.
 if (isset($_GET['export'])) {
-    header('Content-type: text/csv');
-    header('Content-disposition: attachment; filename=campaign_profiles.csv');
+    pg_csv_download_start('campaign_profiles.csv');
 
     // Output column headings for CSV data.
     echo
@@ -142,8 +141,6 @@ if (isset($_GET['export'])) {
         LEFT JOIN user AS last_modified_user ON email_campaign_profiles.last_modified_user_id = last_modified_user.user_id
         $where
         ORDER BY $order_by");
-
-    $date_format_code = get_date_format_code();
 
     // Loop through the campaign profiles in order to output CSV data.
     foreach ($email_campaign_profiles as $email_campaign_profile) {
@@ -225,9 +222,9 @@ if (isset($_GET['export'])) {
             '"' . $email_campaign_profile['schedule_base'] . '",' .
             '"' . $schedule_time . '",' .
             '"' . $email_campaign_profile['purpose'] . '",' .
-            '"' . date($date_format_code . '/Y g:i:s A T', $email_campaign_profile['created_timestamp']) . '",' .
+            '"' . pg_csv_export_time($email_campaign_profile['created_timestamp']) . '",' .
             '"' . escape_csv($email_campaign_profile['created_username']) . '",' .
-            '"' . date($date_format_code . '/Y g:i:s A T', $email_campaign_profile['last_modified_timestamp']) . '",' .
+            '"' . pg_csv_export_time($email_campaign_profile['last_modified_timestamp']) . '",' .
             '"' . escape_csv($email_campaign_profile['last_modified_username']) . '"' . "\n";
     }
 

@@ -168,9 +168,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
         $custom_form_page_id = ($_SESSION['software']['forms']['view_submitted_forms']['custom_form'] ?? '');
     }
 
-    // force download dialog
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=forms.csv");
+    pg_csv_download_start('forms.csv');
 
     echo '"form_name","reference_code","status","address_name","tracking_code","affiliate_code","http_referer","ip_address","submitted","last_modified","member_id","form_editor"';
 
@@ -234,32 +232,23 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
 
     $number_of_forms = 0;
 
-    // If the date format is month and then day, then use that format.
-    if (DATE_FORMAT == 'month_day') {
-        $month_and_day_format = 'n/j';
-
-    // Otherwise the date format is day and then month, so use that format.
-    } else {
-        $month_and_day_format = 'j/n';
-    }
-
     foreach ($forms as $form) {
         $form_name = csv_cell($form['form_name']);
         $quiz_score = $form['quiz_score'];
         $reference_code = csv_cell($form['reference_code']);
 
         if ($form['complete']) {
-            $status = 'Complete';
+            $status = lang('Complete');
         } else {
-            $status = 'Incomplete';
+            $status = lang('Incomplete');
         }
 
         $address_name = csv_cell($form['address_name']);
         $tracking_code = csv_cell($form['tracking_code']);
         $affiliate_code = csv_cell($form['affiliate_code']);
         $http_referer = csv_cell($form['http_referer']);
-        $submitted = date($month_and_day_format . '/Y g:i:s A T', $form['submitted_timestamp']);
-        $last_modified = date($month_and_day_format . '/Y g:i:s A T', $form['last_modified_timestamp']);
+        $submitted = pg_csv_export_time($form['submitted_timestamp']);
+        $last_modified = pg_csv_export_time($form['last_modified_timestamp']);
         $member_id = csv_cell($form['member_id']);
         $form_editor = csv_cell($form['form_editor']);
 
@@ -270,7 +259,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
             $ip_address = '';
         }
 
-        print '"' . $form_name . '","' . $reference_code . '","' . $status . '", "' . $address_name . '","' . $tracking_code . '","' . $affiliate_code . '","' . $http_referer . '","' . $ip_address . '","' . $submitted . '","' . $last_modified . '","' . $member_id . '","' . $form_editor . '"';
+        print '"' . $form_name . '","' . $reference_code . '","' . $status . '","' . $address_name . '","' . $tracking_code . '","' . $affiliate_code . '","' . $http_referer . '","' . $ip_address . '","' . $submitted . '","' . $last_modified . '","' . $member_id . '","' . $form_editor . '"';
 
         // if custom form is a quiz, then include quiz score
         if ($quiz == 1) {

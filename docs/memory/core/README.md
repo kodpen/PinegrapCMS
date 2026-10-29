@@ -53,6 +53,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - content-translation-uses.md: translation_uses (where a text of the front-end translation is drawn): owner types, who rewrites them, and how a deleted or binned page's texts leave the counts and the pending list
 - css-bundles.md: The panel stylesheet served minified (pg_css_bundles(), tools/build_css.php, tools/css_minify.php): what the minifier removes and keeps, src mode, the CI and pre-push check, how it was proved equal
 - csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
+- csv-exports.md: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset and byte order mark) and stamp times with pg_csv_export_time() (site clock); pg_csv_open() steps over the mark on import
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)
 - db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149, #3195): the DB_LEGACY mysql_* connection in db_connect() and router.php, the magic quotes strip of init.php and the installer; a config that still sets DB_LEGACY
 - deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
