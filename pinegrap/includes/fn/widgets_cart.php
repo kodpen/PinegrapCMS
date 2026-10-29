@@ -3431,15 +3431,8 @@ function _pg_cart_tax_shipping_notice($has_shippable_item, $tax_shown = false)
 // @return string         HTML block, or '' when there is nothing to choose.
 function _pg_cart_currency_selector($send_to)
 {
-    if (!defined('ECOMMERCE_MULTICURRENCY') || !ECOMMERCE_MULTICURRENCY) return '';
-
-    $rows = db_items(
-        "SELECT id, name, code
-         FROM currencies
-         WHERE exchange_rate != '0'
-         ORDER BY base DESC, name ASC"
-    );
-    if (!is_array($rows) || count($rows) < 2) return '';
+    $rows = pg_sw_currency_rows();
+    if (count($rows) < 2) return '';
 
     $current = defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0;
     $base    = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
@@ -3469,6 +3462,79 @@ function _pg_cart_currency_selector($send_to)
            . h(lang('Update')) . '</button></noscript>'
            . '</form>';
     return $html;
+}
+
+/**
+ * The currencies a visitor can switch to, base currency first: none while
+ * multi-currency is off; a currency with exchange rate 0 is left out, as on
+ * the classic pages. The one query of the cart's picker and the checkout
+ * widgets' pickers.
+ *
+ * @return array rows with id, name, code
+ */
+function pg_sw_currency_rows()
+{
+    if (!defined('ECOMMERCE_MULTICURRENCY') || !ECOMMERCE_MULTICURRENCY) return array();
+    $rows = db_items(
+        "SELECT id, name, code
+         FROM currencies
+         WHERE exchange_rate != '0'
+         ORDER BY base DESC, name ASC"
+    );
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * Wire the currency picker of a widget whose tree sits inside the widget's
+ * own form (Order Preview, Shipping Method, Order Form). A form cannot hold
+ * another, so the `currency_id` select and the `currency_update` button
+ * belong by their form attribute to the separate form
+ * pg_sw_currency_form_html() prints after the widget. Without a choice of
+ * currencies both controls are dropped.
+ *
+ * @param array $tree      the widget's tree
+ * @param int   $widget_id
+ * @param array $rows      pg_sw_currency_rows()
+ * @param int   $current   the visitor's currency id
+ */
+function pg_sw_currency_picker(&$tree, $widget_id, $rows, $current)
+{
+    if (count((array)$rows) < 2) {
+        _pg_member_drop_control($tree, 'currency_id');
+        _pg_member_drop_control($tree, 'currency_update');
+        return;
+    }
+    $form_id = 'pg-cur-w' . (int)$widget_id;
+    $options = array();
+    foreach ($rows as $c) $options[] = array((string)(int)$c['id'], (string)$c['name'] . ' (' . (string)$c['code'] . ')');
+    _pg_acct_select_options($tree, 'currency_id', $options, (string)(int)$current);
+    _pg_member_edit_control($tree, 'currency_id', function (&$node) use ($form_id) {
+        _pg_member_set_attr($node, 'form', $form_id);
+        _pg_member_set_attr($node, 'onchange', 'this.form.submit()');
+    });
+    _pg_member_edit_control($tree, 'currency_update', function (&$node) use ($form_id) {
+        _pg_member_set_attr($node, 'form', $form_id);
+        _pg_member_set_attr($node, 'type', 'submit');
+    });
+}
+
+/**
+ * The form the picker's controls submit to update_currency.php, printed
+ * after the widget's own form: the token and the way back only.
+ *
+ * @param int    $widget_id
+ * @param array  $rows      pg_sw_currency_rows()
+ * @param string $send_to   same-host path to return to
+ * @return string '' without a choice of currencies
+ */
+function pg_sw_currency_form_html($widget_id, $rows, $send_to)
+{
+    if (count((array)$rows) < 2) return '';
+    return '<form id="pg-cur-w' . (int)$widget_id . '" class="pg-currency-form" action="'
+        . h(_pg_acct_software_path() . '/update_currency.php') . '" method="post">'
+        . get_token_field()
+        . '<input type="hidden" name="send_to" value="' . h((string)$send_to) . '">'
+        . '</form>';
 }
 
 // ── Offline-payment toggle for the cart (STAFF ONLY) ─────────────────────
