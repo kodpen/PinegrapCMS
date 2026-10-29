@@ -28,6 +28,8 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM key_codes WHERE id = '" .
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/key_code_form.php');
+
 $liveform = new liveform('edit_key_code');
 
 $key_code = db_item(
@@ -95,59 +97,33 @@ if (!$_POST) {
     } else {
 
         $liveform->validate_required_field('code', lang('Key Code is required.'));
-        $liveform->validate_required_field('offer_code', lang('Offer Code is required.'));
+        pg_key_code_form_validate($liveform, $id);
 
-        // If there is not already an error for the code field,
-        // and that code is already in use, then output error.
-        if (
-            (!$liveform->check_field_error('code'))
-            && (db_value("SELECT COUNT(*) FROM key_codes WHERE (code = '" . e($liveform->get_field_value('code')) . "') AND (id != '" . e($liveform->get_field_value('id')) . "')") != 0)
-        ) {
-            $liveform->mark_error('code', lang('Sorry, the key code that you entered is already in use, so please enter a different key code.'));
-        }
-
-        // If there is not already an error for the offer code field,
-        // and an offer cannot be found for that code, then output error.
-        if (
-            (!$liveform->check_field_error('offer_code'))
-            && (db_value("SELECT COUNT(*) FROM offers WHERE code = '" . e($liveform->get_field_value('offer_code')) . "'") == 0)
-        ) {
-            $liveform->mark_error('offer_code', lang('Sorry, we cannot find an offer for the offer code that you entered.'));
-        }
-
-        $expiration_date = $liveform->get_field_value('expiration_date');
-
-        // If an expiration date was entered and it is not valid, then add error.
-        if (($expiration_date != '') && (validate_date($expiration_date) == false)) {
-            $liveform->mark_error('expiration_date', lang('Please enter a valid expiration date.'));
-        }
-        
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors()) {
-            go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+            go($_SERVER['PHP_SELF'] . '?id=' . $id);
         }
-        
-        db(
+
+        db_q(
             "UPDATE key_codes
             SET
-                code = '" . e($liveform->get_field_value('code')) . "',
-                offer_code = '" . e($liveform->get_field_value('offer_code')) . "',
-                enabled = '" . e($liveform->get_field_value('enabled')) . "',
-                expiration_date = '" . e(prepare_form_data_for_input($expiration_date, 'date')) . "',
-                notes = '" . e($liveform->get('notes')) . "',
-                single_use = '" . e($liveform->get_field_value('single_use')) . "',
-                report = '" . e($liveform->get('report')) . "',
-                user = '" . USER_ID . "',
+                code = ?,
+                offer_code = ?,
+                enabled = ?,
+                expiration_date = ?,
+                notes = ?,
+                single_use = ?,
+                report = ?,
+                user = ?,
                 timestamp = UNIX_TIMESTAMP()
-            WHERE id = '" . e($liveform->get_field_value('id')) . "'");
-        
+            WHERE id = ?",
+            array_merge(pg_key_code_form_values($liveform, $liveform->get_field_value('code')), array((string) USER_ID, (string) $id))) or output_error('Query failed.');
+
         log_activity(lang(array('string'=>'key code ({var:1}) was modified','vars'=>$liveform->get_field_value('code'))), $_SESSION['sessionusername']);
         $liveform->remove_form();
         $liveform_view_key_codes = new liveform('view_key_codes');
         $liveform_view_key_codes->add_notice(lang('The key code has been saved.'));
     }
-
-    
 
     go(PATH . SOFTWARE_DIRECTORY . '/view_key_codes.php');
 }
