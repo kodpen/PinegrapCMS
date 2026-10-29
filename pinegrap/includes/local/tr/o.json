@@ -262,6 +262,7 @@
     "One item per line": "Her satıra bir öğe",
     "One keeper recorded every bird that landed on the gallery. Another noted the birthdays of his children and the day his daughter rowed to the mainland by herself.": "Bekçilerden biri fenerin balkonuna konan her kuşu kaydetmiş. Bir başkası çocuklarının doğum günlerini ve kızının karaya tek başına kürek çektiği günü not etmiş.",
     "One keyword per line, matched against the user agent. Checked after the built-in lists, so these can never override a search engine or a payment gateway.": "Her satıra bir anahtar kelime; tarayıcı kimliğiyle eşleştirilir. Yerleşik listelerden sonra denetlenir, bu yüzden bir arama motorunu veya ödeme sağlayıcısını asla geçersiz kılamaz.",
+    "One line about it": "Onu anlatan tek satır",
     "One line about you (optional)": "Sizi anlatan bir satır (isteğe bağlı)",
     "One long read and one essay, chosen by the editors": "Editörlerin seçtiği bir uzun okuma ve bir deneme",
     "One long read, one essay and a letter from the editor, by e-mail.": "Bir uzun okuma, bir deneme ve editörden bir mektup, e-postayla.",

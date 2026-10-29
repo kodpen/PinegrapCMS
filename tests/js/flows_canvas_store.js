@@ -290,6 +290,24 @@ async function createStore(name, check) {
         });
     }
 
+    const templates = new Map();
+    let templateId = 0;
+
+    const savedEntry = (template) => ({
+        key: 'site_' + template.id,
+        category: 'saved',
+        title: template.title,
+        help: template.help,
+        icon: 'bi-bookmark-star',
+        start: template.graph.nodes[0].kind,
+        graph: template.graph,
+        boxes: template.graph.nodes.length,
+        threads: 0,
+        settings: [],
+        motion: { boxes: [], edges: [], threads: [], panel: 0 },
+        saved: { id: template.id, category: template.category, created_by: ME, source: 0, updated_at: 0, edit: true }
+    });
+
     function flowOf(request, edit) {
         const flow = flows.get(Number(request.flow_id));
 
@@ -409,6 +427,58 @@ async function createStore(name, check) {
             }
 
             flow.binned = true;
+
+            return {};
+        },
+
+        // Templates saved on the site (flow_templates_saved.php): the
+        // flow's draft kept under site_<n>, its title, line and group
+        // changed, binned; the answer in the gallery's shape.
+        ws_flow_template_save: (request) => {
+            const flow = flowOf(request, true);
+
+            if (flow.refuse) {
+                return flow;
+            }
+
+            const title = String(request.title || '').trim();
+
+            if (!title) {
+                return refuse('Give the template a title.', 'title');
+            }
+
+            const graph = clone(flow.draft);
+            const template = { id: ++templateId, title: title, help: String(request.help || ''), category: String(request.category || 'team'), graph: graph };
+
+            templates.set(template.id, template);
+
+            return { template: savedEntry(template) };
+        },
+
+        ws_flow_template_update: (request) => {
+            const template = templates.get(Number(String(request.key || '').replace('site_', '')));
+
+            if (!template) {
+                return refuse('That template could not be found, or you cannot change it.');
+            }
+
+            ['title', 'help', 'category'].forEach((key) => {
+                if (request[key] !== undefined) {
+                    template[key] = String(request[key]);
+                }
+            });
+
+            return { template: savedEntry(template) };
+        },
+
+        ws_flow_template_bin: (request) => {
+            const id = Number(String(request.key || '').replace('site_', ''));
+
+            if (!templates.has(id)) {
+                return refuse('That template could not be found, or you cannot change it.');
+            }
+
+            templates.delete(id);
 
             return {};
         },

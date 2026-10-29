@@ -979,6 +979,52 @@ module.exports = [
     },
 
     {
+        name: 'the ⋯ menu: Save as template keeps the draft; the gallery shows it as the site\'s, edit renames it, delete removes it',
+        run: async (h) => {
+            await h.open('?flow=7');
+            await h.click({ label: h.t('fl_more'), within: BAR });
+            await h.click({ text: h.t('fl_tpl_save'), within: BAR });
+
+            const dialog = await h.waitFor('the template dialog opens', (harness) => harness.dialog(), 4000);
+
+            h.same('it is the template dialog', dialog.id, 'wsf-tpl-dialog');
+            h.same('the title is the flow\'s name, selected', await h.page(() => [document.activeElement.value, document.activeElement.selectionEnd]), ['Customer onboarding', 'Customer onboarding'.length]);
+            await h.page(() => {
+                const field = document.querySelector('dialog[open] [data-field="help"]');
+
+                field.value = 'Welcome a new customer';
+                document.querySelector('dialog[open] [data-field="category"]').value = 'sales';
+            });
+            await h.answer(h.t('fl_tpl_save_do'));
+            h.same('saved through the panel action', h.store.callsOf('ws_flow_template_save').map((call) => [call.data.title, call.data.help, call.data.category]), [['Customer onboarding', 'Welcome a new customer', 'sales']]);
+            await h.eventually('a toast says so', (harness, text) => harness.toasts.some((toast) => toast.text === text), 3000, h.t('fl_tpl_saved'));
+            await h.eventually('the ⋯ button has the focus again', (harness) => harness.focused() && (harness.focused().refocus === 'more'), 2000);
+
+            await h.click({ text: h.t('fl_new'), within: BAR });
+            await h.waitFor('the gallery opens', () => !!document.querySelector('#ws-root .wsf-tpl-card'), 4000);
+            h.same('the saved card, marked with its group', await h.page(() => Array.prototype.map.call(document.querySelectorAll('#ws-root .wsf-tpl-card'), (card) => [card.querySelector('.wsf-tpl-name').textContent, (card.querySelector('.badge') || {}).textContent || ''])), [['Customer onboarding', 'Sales']]);
+
+            await h.click({ label: h.t('fl_tpl_edit') + ': Customer onboarding' });
+            await h.waitFor('the template dialog opens', (harness) => harness.dialog(), 4000);
+            await h.page(() => { document.querySelector('dialog[open] [data-field="title"]').value = 'Onboarding'; });
+            await h.answer(h.t('fl_tpl_change_do'));
+            h.same('changed through the panel action', h.store.callsOf('ws_flow_template_update').map((call) => [call.data.key, call.data.title]), [['site_1', 'Onboarding']]);
+            await h.waitFor('the card renamed', () => !!document.querySelector('#ws-root .wsf-tpl-name') && document.querySelector('#ws-root .wsf-tpl-name').textContent === 'Onboarding', 4000);
+            await h.eventually('its edit button has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'tpl-edit-site_1'), 2000);
+
+            await h.click({ label: h.t('fl_tpl_delete') + ': Onboarding' });
+
+            const asked = await h.answer(h.t('fl_tpl_delete'));
+
+            h.same('it asks first', asked.text, h.t('fl_tpl_delete_ask', 'Onboarding'));
+            await h.until('binned', () => h.store.callsOf('ws_flow_template_bin').length === 1, 3000);
+            await h.waitFor('the card gone', () => !document.querySelector('#ws-root .wsf-tpl-card'), 4000);
+            await h.eventually('a toast says so', (harness, text) => harness.toasts.some((toast) => toast.text === text), 3000, h.t('fl_tpl_deleted'));
+            await h.eventually('Empty canvas has the focus', (harness) => harness.focused() && (harness.focused().refocus === 'tpl-empty'), 2000);
+        }
+    },
+
+    {
         name: 'with no flow yet the screen says how to start, and New flow is all it offers',
         fixture: 'empty',
         run: async (h) => {

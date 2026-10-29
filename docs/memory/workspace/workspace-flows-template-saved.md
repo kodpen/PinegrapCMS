@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-template-saved
-description: Flow templates saved on the site (G3a, #3146, 11.0.115): ws_flow_templates, what a save keeps and drops, settings from the boxes, rights, listing under "Saved on this site", the panel actions
+description: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_templates, what a save keeps, settings, rights, panel actions, the editor's Save as template, the gallery's saved cards
 ---
 
 ## Where is it?
@@ -19,7 +19,12 @@ description: Flow templates saved on the site (G3a, #3146, 11.0.115): ws_flow_te
 
 ## Who may change or delete one?
 - `ws_flow_template_may_change()`: its saver, or a staff member at role 2 (Manager) or above (0, 1). Builders are role < 3 today, so all of them may; the saver rule is for a wider builder set later. Delete sets `binned_at`; flows made from it keep their boxes.
-- Erasure: as `ws_flows`, nothing is rewritten when a user goes; `created_by`/`updated_by` keep the number.
+- Erasure: as `ws_flows`, nothing rewritten; `created_by`/`updated_by` keep the number.
 
 ## Which panel actions?
-- `ws_flow_template_save` (flow_id, title, help, category), `ws_flow_template_update` (key, any of title, help, category), `ws_flow_template_bin` (key): `includes/workspace/actions.php`, rows in `pg_panel_actions()`. The button and the gallery's edit and delete are G3b (`plans/workspace-flows-templates.md`).
+- `ws_flow_template_save` (flow_id, title, help, category), `ws_flow_template_update` (key, any of title, help, category), `ws_flow_template_bin` (key): `includes/workspace/actions.php`, rows in `pg_panel_actions()`.
+
+## Where does the panel use them? (G3b, #3242)
+- Editor ⋯ menu: "Save as template" when `ws_flow_js_config()`'s `template_save` (builders, table there), the flow editable (one without boxes is refused in the dialog). One dialog (`templateDialog()`, `workspace_flow.js`): title (the flow's name), one line, group (the categories but saved); saving `flush()`es first, as the server reads the draft.
+- Gallery: saved cards under "Saved on this site" with a badge of their own group (`savedMark()`); edit (same dialog) and delete (`K.ask`) only where `saved.edit`. `FL.templates` is kept in step by `templatesKept()` (pure, Node test in the canvas test); no reload.
+- Focus: the gallery is drawn again only once every dialog is closed (`whenDialogsClosed()`: the page behind a modal dialog takes no focus; `K.ask` answers before its fade ends); `showGallery()` keeps `state.refocus` past `showNone()`, which would spend it on the flow list. Harness scenario "Save as template".
