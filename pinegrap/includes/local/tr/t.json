@@ -4451,6 +4451,7 @@
     "This file is too large, or is not text, to be opened here.": "Bu dosya çok büyük ya da metin değil; burada açılamaz.",
     "This file name is not accepted.": "Bu dosya adı kabul edilmiyor.",
     "This file type is not allowed.": "Bu dosya türüne izin verilmiyor.",
+    "This flow already has an open run for that customer.": "Bu akışın o müşteri için açık bir çalıştırması zaten var.",
     "This flow has no published version to resume. Publish it instead.": "Bu akışın sürdürülecek yayımlanmış bir sürümü yok. Bunun yerine yayımlayın.",
     "This flow has not run yet.": "Bu akış henüz çalıştırılmadı.",
     "This flow has {var:1} runs open already; it starts again once some of them end.": "Bu akışın zaten {var:1} açık çalıştırması var; bazıları bitince yeniden başlatılabilir.",

@@ -2806,6 +2806,10 @@ function ws_flow_js_strings()
         'fl_run_help'         => lang('Run the live version of this flow'),
         'fl_run_ask'          => ws_js_template('Run “{var:1}” now? Version {var:2} starts, and its first tasks open at once in the name of the owner of the flow.', 2),
         'fl_run_do'           => lang('Start the run'),
+        'fl_run_customer'     => lang('Customer (optional)'),
+        'fl_run_customer_help' => lang('Its tasks carry the customer’s name; while a run for them is open, Run opens that run.'),
+        'fl_run_customer_none' => lang('No contact found.'),
+        'fl_run_customer_clear' => lang('Remove the customer'),
         'fl_run_started'      => lang('The run has started.'),
         'fl_run_again'        => lang('This run had started already.'),
         'fl_runs'             => lang('Flow runs'),
@@ -3027,6 +3031,9 @@ function ws_flow_js_config($viewer, $mode)
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,
         'subjects' => $subjects,
+        // Run asks for an optional customer of whoever reads contacts
+        // (ws_flow_run_contact_check() decides which).
+        'run_customer' => !empty($viewer['contacts']),
         'derived'  => function_exists('ws_flow_derived_rules') ? ws_flow_derived_lists() : array(),
         'limits'   => array('nodes' => WS_FLOW_MAX_NODES, 'notes' => WS_FLOW_MAX_NOTES, 'coord' => WS_FLOW_COORD_MAX, 'constants' => defined('WS_FLOW_CONSTANTS_MAX') ? WS_FLOW_CONSTANTS_MAX : 20),
     );
