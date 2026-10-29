@@ -14,7 +14,7 @@ description: A classic style's code read by the HTML importer (L1): placeholders
 
 ## Title and body?
 - Body `class`, `id`, `style` and other attributes land on the root as before (`cssClass`, `id`, `inlineStyle`, `_attrs`).
-- A classic document (one that had `<meta_tags>`, `<stylesheet>` or a placeholder, `$ctx->classic`) with a non-empty `<title>` keeps it as root `props.title`. `generate_style_code_from_tree()` and its JS twin in `generateHTML()` print it in `<title>`; `get_page_content.php` shows it only for a page without a title of its own, as the classic style did. No panel field edits it yet. A plain imported page keeps its title on the page only.
+- A classic document (one that had `<meta_tags>`, `<stylesheet>` or a placeholder, `$ctx->classic`) with a non-empty `<title>` keeps it as root `props.title`. `generate_style_code_from_tree()` and its JS twin in `generateHTML()` print it in `<title>`; `get_page_content.php` shows it only for a page without a title of its own, as the classic style did. The root's settings edit it (#3140), shown only when the root carries a title. A plain imported page keeps its title on the page only.
 
 ## Site paths?
 - `pg_di_is_absolute()` counts a reference starting with `{path}` or `{software_directory}` as absolute: kept as written, a head link or script becomes an external asset entry, no "not in the archive" warning. `get_page_content.php` fills both in on the assembled page.

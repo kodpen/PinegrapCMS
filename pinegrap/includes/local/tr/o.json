@@ -1187,6 +1187,7 @@
     "Outside applications can now ask a person to connect. The person signs in on this site, sees what the application asks for and agrees or refuses; the application never sees the password. Nothing here has to be kept secret.": "Dış uygulamalar artık bir kişiden bağlanmasını isteyebilir. Kişi bu siteye giriş yapar, uygulamanın ne istediğini görür ve onaylar ya da reddeder; uygulama parolayı hiç görmez. Buradaki hiçbir bilginin gizli tutulması gerekmez.",
     "Outside applications you let act for you, such as an AI assistant. Each can do only what you allowed, and never more than your own account.": "Sizin adınıza çalışmasına izin verdiğiniz dış uygulamalar, örneğin bir yapay zeka asistanı. Her biri yalnız izin verdiğinizi yapabilir, kendi hesabınızdan fazlasını asla yapamaz.",
     "Outside its hours ({var:1} – {var:2}).": "Çalışma saatlerinin dışında ({var:1} – {var:2}).",
+    "Outside the widget these land as its parts: they show the record it shows.": "Bileşenin dışında bunlar onun parçası olarak yerleşir: bileşenin gösterdiği kaydı gösterirler.",
     "Outstanding": "Kalan",
     "Over": "Bitmiş",
     "Over 90 days": "90 günden fazla",
