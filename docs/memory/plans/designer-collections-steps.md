@@ -15,7 +15,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C5b — slug field.** A `slug` kind (text box) feeds `update_submitted_form_address_name()` before the Title field; `pg_coll_kinds()` and its twin `_CF_KINDS` in `style_designer.js` (a test compares them), the Form Field "Kind" option.
 
-- **C6a — templates opt in.** In progress: the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised. Installed sites change nothing.
+- **C6a — templates opt in. Done, #2969:** the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised; installed sites change nothing (`designer/collection-fields.md`).
 - **C6b — template references.** Resolve `_cf.ref 'tab:<key>'` at Publish, create the forms in order (target first), seed sample records by label, map `_cf.ref` in the design export; then a categories collection for blog.
 
 - **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
@@ -27,4 +27,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- Next is C5b (the slug field kind) or C6b (template references).
+- Next is C5b (the slug field kind; it edits `assets/js/style_designer.js`, so it waits until no open PR holds that file) or C6b (template references).
