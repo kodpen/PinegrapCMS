@@ -202,7 +202,7 @@ if ($email_campaigns) {
 
         $output_rows .=
             '<tr>
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="email_campaigns[]" value="' . $email_campaign['id'] . '" aria-label="' . h(lang(array('string'=>'Select {var:1}','vars'=>array($email_campaign['subject'])))) . '" /></td>
 			    <td class="align-middle text-start">
                     <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
@@ -213,7 +213,7 @@ if ($email_campaigns) {
                 <td class="align-middle">' . h($email_campaign['page_name']) . '</td>
                 ' . $output_start_time_cell . '
                 <td class="align-middle">' . get_email_campaign_status_name($email_campaign['status']) . '</td>
-                <td class="align-middle">' . $progress_percentage . '% (' . lang(array('string'=>'{var:1} of {var:2}','vars'=>array(pg_format_number($number_of_completed_email_recipients, 0),pg_format_number($number_of_email_recipients, 0)))) . ')</td>
+                <td class="align-middle">' . lang(array('string'=>'{var:1}%','vars'=>array($progress_percentage))) . ' (' . lang(array('string'=>'{var:1} of {var:2}','vars'=>array(pg_format_number($number_of_completed_email_recipients, 0),pg_format_number($number_of_email_recipients, 0)))) . ')</td>
                 <td class="align-middle">' . lang(h(ucwords($email_campaign['purpose']))) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['created_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($created_username) ) ) ) . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $email_campaign['last_modified_timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($last_modified_username) ) ) ) . '</td>
@@ -242,11 +242,11 @@ pg_page_shell(
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_email_campaign.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class="disable_shortcut d-inline-block">
                             <div class=" btn-group btn-group-sm flex-wrap">
-                                <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_email_campaign_history.php"><span class="material-icons me-1">history</span>' . lang(array('string'=>'My Campaign History') ) . '</a>
+                                <a class="btn btn-link pg-link-secondary py-0 m-1" href="view_email_campaign_history.php"><span class="material-icons me-1" aria-hidden="true">history</span>' . lang(array('string'=>'My Campaign History') ) . '</a>
                             </div>
                         </div>
                         <div class="pg-toolbar-grow"></div>
@@ -282,10 +282,10 @@ pg_page_shell(
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
                         </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                    <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('campaigns')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                 </div>
                             </div>
                         </nav>
