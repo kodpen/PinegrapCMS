@@ -37,6 +37,13 @@
  * (announce()); the screens that mark the texts written with AI listen for
  * it (assets/js/pg_ai_fields.js).
  *
+ * An image's alt text (settings.image: the element holding the image's
+ * address) is written by the browser's model whatever engine the site has:
+ * nothing says Pinegrap AI's model reads images, and the image goes from
+ * the browser to its own model only. Such a button comes hidden and the
+ * screen shows it when window.PinegrapAiWrite.imageReady() resolves true:
+ * the model takes image input in this browser.
+ *
  * A box that is no form field (the Workspace writing box) gives its button
  * an adapter, button.pgAiWrite: context() the values to send, place(panel)
  * puts the panel on the screen, use(text) takes the draft in through the
@@ -191,10 +198,11 @@
         var icon = make('i', 'bi bi-stars me-1');
         icon.setAttribute('aria-hidden', 'true');
         title.appendChild(icon);
-        title.appendChild(document.createTextNode((engine === 'browser') ? label('title_browser') : label('title')));
+        title.appendChild(document.createTextNode(onBrowser(settings) ? label('title_browser') : label('title')));
         head.appendChild(title);
 
-        var tone = make('select', 'form-control form-control-sm w-auto ms-auto pg-ai-draft-tone');
+        // An image's alt text says what the image shows: no tone.
+        var tone = make('select', 'form-control form-control-sm w-auto ms-auto pg-ai-draft-tone' + (settings.image ? ' d-none' : ''));
         tone.setAttribute('aria-label', label('tone'));
 
         for (var i = 0; i < tones.length; i++) {
@@ -465,14 +473,19 @@
         } else if (error && error.pgMessage) {
             showError(panel, error.pgMessage);
         } else {
-            showError(panel, (engine === 'browser') ? label('browser_failed') : label('failed'));
+            showError(panel, onBrowser(state.settings) ? label('browser_failed') : label('failed'));
         }
 
         setBusy(panel, false);
     }
 
+    // Whether the browser's model writes this field's draft.
+    function onBrowser(settings) {
+        return (engine === 'browser') || !!settings.image;
+    }
+
     function ask(panel) {
-        if (engine === 'browser') {
+        if (onBrowser(panel._pgAi.settings)) {
             askBrowser(panel);
         } else {
             askPinegrap(panel);
@@ -494,11 +507,13 @@
     // The answer's shape: the same object Pinegrap AI is asked for.
     var ANSWER = { type: 'object', properties: { text: { type: 'string' } }, required: ['text'] };
 
-    // How this browser writes the site's language: 'direct', 'bridge' (in
-    // English, then translated) or '' when it cannot; and the languages the
-    // model is told it reads.
-    var browserMode = '';
-    var modelInput = ['en'];
+    // How this browser writes the site's language: mode 'direct', 'bridge'
+    // (in English, then translated) or '' when it cannot, and input: the
+    // languages the model is told it reads. One plan for text, one for a
+    // text that comes with an image.
+    var textPlan = { mode: '', input: ['en'] };
+    var imagePlan = null;
+    var imagePlanNow = null;
 
     function usable(state) {
         return !!state && (state !== 'unavailable') && (state !== 'no');
@@ -551,21 +566,35 @@
             && (typeof window.Translator.create === 'function') && (typeof window.Translator.availability === 'function');
     }
 
+    // What the model is told it gets: text in these languages, and an
+    // image when one comes with it.
+    function inputsOf(languages, image) {
+        var inputs = [{ type: 'text', languages: languages }];
+
+        if (image) {
+            inputs.push({ type: 'image' });
+        }
+
+        return inputs;
+    }
+
     // The rules are English and the data is in the site's language, which
     // the model reads even when it does not officially (Turkish, for one):
     // the languages are tried from the most exact down to English.
-    function planBrowser() {
+    function planBrowser(image) {
+        var plan = { mode: '', input: ['en'] };
+
         if (!window.Promise || !modelSupported()) {
-            return Promise.resolve('');
+            return Promise.resolve(plan);
         }
 
         var check = function (input, output) {
             return withTimeout(window.LanguageModel.availability({
-                expectedInputs: [{ type: 'text', languages: input }],
+                expectedInputs: inputsOf(input, image),
                 expectedOutputs: [{ type: 'text', languages: [output] }]
             }), 10000).then(function (state) {
                 if (usable(state)) {
-                    modelInput = input;
+                    plan.input = input;
                     return true;
                 }
 
@@ -602,8 +631,26 @@
                         return '';
                     });
             });
+        }).then(function (mode) {
+            plan.mode = mode;
+            return plan;
         });
     }
+
+    // Whether this browser's model reads images and writes from them, asked
+    // once: true or false.
+    function imageReady() {
+        if (!imagePlan) {
+            imagePlan = planBrowser(true);
+        }
+
+        return imagePlan.then(function (plan) {
+            imagePlanNow = plan;
+            return plan.mode !== '';
+        });
+    }
+
+    cfg.imageReady = imageReady;
 
     function percentOf(event) {
         var share = (event.total > 0) ? (event.loaded / event.total) : (event.loaded || 0);
@@ -611,9 +658,9 @@
         return Math.max(0, Math.min(100, Math.round(share * 100)));
     }
 
-    function createModel(output, monitor, signal) {
+    function createModel(plan, output, image, monitor, signal) {
         var options = {
-            expectedInputs: [{ type: 'text', languages: modelInput }],
+            expectedInputs: inputsOf(plan.input, image),
             expectedOutputs: [{ type: 'text', languages: [output] }],
             monitor: monitor
         };
@@ -693,12 +740,16 @@
     }
 
     // The rules and the data in one prompt: the model was created before
-    // they arrived, and a system prompt is given only at creation.
-    function writeDraft(session, data) {
+    // they arrived, and a system prompt is given only at creation. An image
+    // goes with them in the same message.
+    function writeDraft(session, data, picture) {
         var rules = String(data.rules || '');
 
         var attempt = function (record, left) {
-            return promptModel(session, rules + '\n\n' + record).then(null, function (error) {
+            var text = rules + '\n\n' + record;
+            var prompt = picture ? [{ role: 'user', content: [{ type: 'text', value: text }, { type: 'image', value: picture }] }] : text;
+
+            return promptModel(session, prompt).then(null, function (error) {
                 var smaller = (error && (error.name === 'QuotaExceededError') && (left > 0)) ? shrink(record) : record;
 
                 if (smaller !== record) {
@@ -755,10 +806,38 @@
         });
     }
 
+    // The picture at an address, for the model: a file of this site, or
+    // of another one that lets this page read it. A failure says so.
+    function loadImage(address) {
+        var url;
+
+        try {
+            url = new URL(String(address || '').trim(), document.baseURI);
+        } catch (e) {
+            url = null;
+        }
+
+        if (!String(address || '').trim() || !url || !/^https?:$/.test(url.protocol)) {
+            return Promise.reject(failure(label('no_image')));
+        }
+
+        return fetch(url.href, { credentials: 'same-origin' }).then(function (response) {
+            return response.ok ? response.blob() : null;
+        }).then(function (blob) {
+            if (!blob || !/^image\//.test(String(blob.type || ''))) {
+                throw new Error('not an image');
+            }
+
+            return blob;
+        }).then(null, function () {
+            throw failure(label('image_failed'));
+        });
+    }
+
     function askBrowser(panel) {
         var state = panel._pgAi;
         var seq = begin(panel, label('writing_browser'));
-        var bridge = (browserMode === 'bridge');
+        var image = !!state.settings.image;
         var request = requestOf(panel);
 
         var current = function () {
@@ -799,23 +878,32 @@
             return kept;
         };
 
-        // In the click itself, before the request below.
+        // In the click itself, before the request below. A field that
+        // describes an image was offered only once its plan was known.
+        var plan = image ? (imagePlanNow || textPlan) : textPlan;
+        var bridge = (plan.mode === 'bridge');
         var signal = controller ? controller.signal : null;
-        var model = keep(createModel(bridge ? 'en' : siteLanguage, monitor, signal));
+        var model = keep(createModel(plan, bridge ? 'en' : siteLanguage, image, monitor, signal));
         var translator = bridge ? keep(createTranslator(monitor, signal)) : null;
+        var picture = image ? loadImage(valueOf(String(state.settings.image))) : null;
+
+        if (picture) {
+            // A failure here is reported where the picture is awaited.
+            picture.then(null, function () {});
+        }
 
         request.engine = 'browser';
         request.step = 'prompt';
         request.language = bridge ? 'en' : siteLanguage;
 
         post(request).then(accepted).then(function (data) {
-            return model.then(function (session) {
+            return Promise.all([model, picture]).then(function (made) {
                 // A download may have shown its progress until now.
                 if (current()) {
                     showStatus(panel, label('writing_browser'));
                 }
 
-                return writeDraft(session, data);
+                return writeDraft(made[0], data, made[1]);
             });
         }).then(function (answer) {
             var text = answerText(answer);
@@ -969,10 +1057,10 @@
 
     // The buttons come hidden for the browser's AI: shown where it writes.
     if (engine === 'browser') {
-        planBrowser().then(function (mode) {
-            browserMode = mode;
+        planBrowser(false).then(function (plan) {
+            textPlan = plan;
 
-            if (!mode) {
+            if (!plan.mode) {
                 return;
             }
 

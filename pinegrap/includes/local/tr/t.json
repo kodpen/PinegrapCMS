@@ -1979,6 +1979,7 @@
     "The image could not be converted to WebP.": "Görsel WebP biçimine dönüştürülemedi.",
     "The image could not be loaded.": "Görsel yüklenemedi.",
     "The image could not be opened.": "Görsel açılamadı.",
+    "The image could not be read. An image on another site may not let the browser read it.": "Görsel okunamadı. Başka bir sitedeki görsel, tarayıcının okumasına izin vermeyebilir.",
     "The image could not be saved.": "Görsel kaydedilemedi.",
     "The image could not be written to disk.": "Görsel diske yazılamadı.",
     "The image editor could not be loaded.": "Görsel düzenleyici yüklenemedi.",

@@ -47133,6 +47133,12 @@ const StyleDesigner = (function () {
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" onclick="window.sdOpenImagePicker(\'sd-prop-img-src\')">' + esc(_sdT('Select')) + '</button>' +
                         '<button class="btn btn-sm btn-outline theme-secondary sd-pick-btn" type="button" title="' + esc(_sdT('Edit the image')) + '" onclick="window.sdOpenImageEditor(\'sd-prop-img-src\')"><i class="bi bi-brush"></i></button>' +
                     '</div>');
+            } else if (ct === 'image' && key === 'alt') {
+                // The alt text, with "Write with AI" under it where the
+                // browser's model reads images (_sdAiAltButton()).
+                h += row(capFirst(key),
+                    '<input type="text" class="form-control form-control-sm" id="sd-prop-img-alt" data-prop="alt" value="' + esc(String(val)) + '">' +
+                    '<div class="sd-ai-alt-slot d-none"></div>');
             } else if (key === 'width' || key === 'height') {
                 h += row(capFirst(key), '<input type="text" class="form-control form-control-sm" data-prop="' + key + '" value="' + esc(String(val)) + '" placeholder="' + esc(_sdT('e.g. 100% or 50px')) + '">');
             } else if (key === 'html' || key === 'php') {
@@ -48951,7 +48957,37 @@ const StyleDesigner = (function () {
         return '';
     }
 
+    // "Write with AI" for an image's alt text: a copy of the button the
+    // server drew (designer_screen.php, template #sd-ai-alt-button) in the
+    // Alt row's slot, shown once the browser says its model reads images
+    // (PinegrapAiWrite.imageReady(), assets/js/pg_ai_write.js). Its draft
+    // panel opens under the row; "Use this text" fills the input, whose
+    // input event writes the prop like typing would.
+    function _sdAiAltButton() {
+        var slot = document.querySelector('#sd-properties .sd-ai-alt-slot');
+        var tpl = document.getElementById('sd-ai-alt-button');
+        var ai = window.PinegrapAiWrite;
+        if (!slot || !tpl || !tpl.content || !ai || typeof ai.imageReady !== 'function') return;
+        if (slot.querySelector('.pg-ai-write-btn')) return;
+        var btn = tpl.content.querySelector('.pg-ai-write-btn');
+        if (!btn) return;
+        btn = btn.cloneNode(true);
+        var row = slot.closest('.sd-prop-row');
+        btn.pgAiWrite = {
+            place: function (panel) {
+                if (row && row.parentNode) row.parentNode.insertBefore(panel, row.nextSibling);
+            }
+        };
+        slot.appendChild(btn);
+        ai.imageReady().then(function (reads) {
+            if (!reads || !slot.isConnected) return;
+            btn.classList.remove('d-none');
+            slot.classList.remove('d-none');
+        });
+    }
+
     function bindPropEvents() {
+        _sdAiAltButton();
         if (!selectedNode) return;
 
         // ── Background prop selects and inputs ──

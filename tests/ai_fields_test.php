@@ -20,14 +20,15 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 // Every "Write with AI" button of a product or a page writes a column that
-// can carry the mark, and no column carries one without a button.
+// can carry the mark, and no column carries one without a button. An
+// image's alt text is no column: it lives in the page's tree, unmarked.
 function test_ai_fields_columns_match_the_buttons()
 {
 	foreach (array('product', 'page') as $record) {
 		$targets = array();
 
 		foreach (pg_ai_write_targets() as $target => $row) {
-			if (isset($row['records'][$record])) {
+			if (isset($row['records'][$record]) && empty($row['image'])) {
 				$targets[] = $target;
 			}
 		}
