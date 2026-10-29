@@ -1353,10 +1353,16 @@ function pg_extract_archive($archive_path, $destination)
  *                     'curl_error')
  *   invalid_response  the answer named no version
  *
+ * Once PG_VENDOR_API_V1 is on, the Kodpen API is asked instead
+ * (pg_vendor_release_check()) and the answer also has 'decision', what the
+ * release offers in $mode; an unusable answer is curl_error when no answer
+ * came, else invalid_response.
+ *
+ * @param string $mode 'update', or 'repair' for Repair Software
  * @return array('ok' => bool, 'version' => string, 'error' => string,
  *               'curl_errno' => int, 'curl_error' => string)
  */
-function pg_update_server_version()
+function pg_update_server_version($mode = 'update')
 {
     $result = array(
         'ok' => false,
@@ -1368,6 +1374,24 @@ function pg_update_server_version()
 
     if (!function_exists('curl_init')) {
         $result['error'] = 'curl_missing';
+        return $result;
+    }
+
+    if (PG_VENDOR_API_V1 === true) {
+        $check = pg_vendor_release_check($mode);
+
+        $result['decision'] = $check['decision'];
+        $result['curl_errno'] = $check['errno'];
+        $result['curl_error'] = $check['error'];
+
+        if ($check['decision']['outcome'] === 'unusable') {
+            $result['error'] = ($check['errno'] !== 0) ? 'curl_error' : 'invalid_response';
+            return $result;
+        }
+
+        $result['ok'] = true;
+        $result['version'] = is_array($check['decision']['release']) ? $check['decision']['release']['version'] : '';
+
         return $result;
     }
 
@@ -1489,6 +1513,306 @@ function pg_update_repair_decision($server_version, $installed, $checks_enabled)
         'ok' => true,
         'message' => lang(array('string' => 'Downloading {var:1}...', 'vars' => array($server_version))),
         'newer' => false,
+    );
+}
+
+// ----------------------------------------------------------------------------
+// The Kodpen API's release check (GET /releases/latest)
+// ----------------------------------------------------------------------------
+// Asked instead of api2 once PG_VENDOR_API_V1 is on (includes/fn/vendor_api.php);
+// the cases come from tests/fixtures/vendor_api/update_steps.json.
+
+/**
+ * The path of GET /releases/latest for a channel, with from when the
+ * installed version may be sent (pg_vendor_api_version()).
+ *
+ * @param string $channel 'stable' or 'beta'
+ * @param string $from    the installed version, '' to leave it out
+ * @return string
+ */
+function pg_vendor_release_path($channel, $from)
+{
+    $query = array('channel' => (string) $channel);
+
+    if ((string) $from !== '') {
+        $query['from'] = (string) $from;
+    }
+
+    return '/releases/latest?' . http_build_query($query, '', '&');
+}
+
+/**
+ * A GET /releases/latest answer in the flat shape the update reads: its
+ * status, the code of its problem object, and its release with the update
+ * package (release.artifacts.update) as update.
+ *
+ * A 200 holds a release only as JSON with a release object whose version is
+ * a release number and whose channel is stable or beta. A blocked release
+ * needs a stepping stone (a release number) and nothing more, since nothing
+ * of it is pinned; any other release needs all the check step pins: a build
+ * of letters, digits, '.', '_' and '-' ('' when absent), the manifest and
+ * signature addresses, the manifest's sha256, the signing key's id and the
+ * package's address, size and sha256. Their addresses are checked by the
+ * step that fetches them. Anything less is no release, and the answer is
+ * unusable.
+ *
+ * @param array $answer pg_curl_run()'s answer: status, content_type, body
+ * @return array status, code ('' without a problem object) and release, null
+ *               unless a 200 carried one: version, channel, build,
+ *               min_from_version (a release number or null), manifest_url,
+ *               signature_url, manifest_sha256, sig_key_id, update (url,
+ *               size, sha256) and blocked (reason, stepping_stone, or null)
+ */
+function pg_vendor_release_read($answer)
+{
+    $status = isset($answer['status']) ? (int) $answer['status'] : 0;
+    $problem = pg_vendor_api_problem($answer);
+    $found = array('status' => $status, 'code' => ($problem === null) ? '' : $problem['code'], 'release' => null);
+
+    if (($status !== 200) || (pg_vendor_api_media_type(isset($answer['content_type']) ? $answer['content_type'] : '') !== 'application/json')) {
+        return $found;
+    }
+
+    $data = json_decode(isset($answer['body']) ? (string) $answer['body'] : '', true);
+    $release = (is_array($data) && isset($data['release']) && is_array($data['release'])) ? $data['release'] : array();
+    $version = pg_vendor_api_version_value(isset($release['version']) ? $release['version'] : null);
+    $channel = isset($release['channel']) ? $release['channel'] : null;
+
+    if (($version === '') || !in_array($channel, array('stable', 'beta'), true)) {
+        return $found;
+    }
+
+    $blocked = null;
+
+    if (isset($release['blocked'])) {
+        $stone = (is_array($release['blocked']) && isset($release['blocked']['stepping_stone'])) ? pg_vendor_api_version_value($release['blocked']['stepping_stone']) : '';
+
+        if ($stone === '') {
+            return $found;
+        }
+
+        $blocked = array(
+            'reason'         => (isset($release['blocked']['reason']) && is_string($release['blocked']['reason'])) ? $release['blocked']['reason'] : '',
+            'stepping_stone' => $stone,
+        );
+    }
+
+    $text = function ($value, $pattern) {
+        return (is_string($value) && (preg_match($pattern, $value) === 1)) ? $value : null;
+    };
+
+    $update = (isset($release['artifacts']['update']) && is_array($release['artifacts']['update'])) ? $release['artifacts']['update'] : array();
+    $build = isset($release['build']) ? $text($release['build'], '/\A[0-9A-Za-z._-]{0,64}\z/') : '';
+    $manifest_sha256 = isset($release['manifest_sha256']) ? $text($release['manifest_sha256'], '/\A[0-9a-fA-F]{64}\z/') : null;
+    $update_sha256 = isset($update['sha256']) ? $text($update['sha256'], '/\A[0-9a-fA-F]{64}\z/') : null;
+
+    // null marks a value that is missing or not of its form.
+    $fields = array(
+        'build'           => $build,
+        'manifest_url'    => isset($release['manifest_url']) ? $text($release['manifest_url'], '/\A\S+\z/') : null,
+        'signature_url'   => isset($release['signature_url']) ? $text($release['signature_url'], '/\A\S+\z/') : null,
+        'manifest_sha256' => ($manifest_sha256 === null) ? null : strtolower($manifest_sha256),
+        'sig_key_id'      => isset($release['sig_key_id']) ? $text($release['sig_key_id'], '/\A[a-z0-9][a-z0-9._-]{0,15}\z/') : null,
+        'url'             => isset($update['url']) ? $text($update['url'], '/\A\S+\z/') : null,
+        'size'            => (isset($update['size']) && is_int($update['size']) && ($update['size'] > 0)) ? $update['size'] : null,
+        'sha256'          => ($update_sha256 === null) ? null : strtolower($update_sha256),
+    );
+
+    if (($blocked === null) && in_array(null, $fields, true)) {
+        return $found;
+    }
+
+    $defaults = array('build' => '', 'manifest_url' => '', 'signature_url' => '', 'manifest_sha256' => '', 'sig_key_id' => '', 'url' => '', 'size' => 0, 'sha256' => '');
+
+    foreach ($fields as $name => $value) {
+        if ($value === null) {
+            $fields[$name] = $defaults[$name];
+        }
+    }
+
+    $min_from = pg_vendor_api_version_value(isset($release['min_from_version']) ? $release['min_from_version'] : null);
+
+    $found['release'] = array(
+        'version'          => $version,
+        'channel'          => $channel,
+        'build'            => $fields['build'],
+        'min_from_version' => ($min_from === '') ? null : $min_from,
+        'manifest_url'     => $fields['manifest_url'],
+        'signature_url'    => $fields['signature_url'],
+        'manifest_sha256'  => $fields['manifest_sha256'],
+        'sig_key_id'       => $fields['sig_key_id'],
+        'update'           => array('url' => $fields['url'], 'size' => $fields['size'], 'sha256' => $fields['sha256']),
+        'blocked'          => $blocked,
+    );
+
+    return $found;
+}
+
+/**
+ * What a release answer offers this installation, the check step of an
+ * update or a repair:
+ *
+ *   update     a newer version; on beta also another build of the installed
+ *              version, when the installation records a build of it (Repair
+ *              Software takes a newer version as an update too)
+ *   repair     Repair Software and the same version
+ *   no_update  a release that is not newer (up_to_date), 404
+ *              release_not_found, or 403 access_blocked: an access block, not
+ *              a refusal of the installed software
+ *   blocked    the release needs a stepping stone first, whatever reason the
+ *              server names (blocked_min_from_version)
+ *   refuse     a release of another channel (channel_mismatch); an older
+ *              version for Repair Software (older)
+ *   unusable   anything else
+ *
+ * @param array  $found     pg_vendor_release_read()
+ * @param string $installed VERSION
+ * @param string $build     the installed beta build, '' when none is recorded
+ * @param string $channel   pg_update_channel()
+ * @param string $mode      'update', or 'repair' for Repair Software
+ * @return array mode, outcome, reason, release (the flat release of a 200,
+ *               else null) and pin: what the later steps of an update or a
+ *               repair read, null for any other outcome
+ */
+function pg_vendor_release_offer($found, $installed, $build, $channel, $mode)
+{
+    $status = isset($found['status']) ? (int) $found['status'] : 0;
+    $code = isset($found['code']) ? (string) $found['code'] : '';
+    $release = (($status === 200) && isset($found['release']) && is_array($found['release'])) ? $found['release'] : null;
+    $mode = ($mode === 'repair') ? 'repair' : 'update';
+
+    $decision = function ($outcome, $reason) use ($mode, $release) {
+        return array('mode' => $mode, 'outcome' => $outcome, 'reason' => $reason, 'release' => $release, 'pin' => null);
+    };
+
+    if (($status === 403) && ($code === 'access_blocked')) {
+        return $decision('no_update', 'access_blocked');
+    }
+
+    if (($status === 404) && ($code === 'release_not_found')) {
+        return $decision('no_update', 'release_not_found');
+    }
+
+    if ($release === null) {
+        return $decision('unusable', '');
+    }
+
+    if (isset($release['blocked']) && is_array($release['blocked'])) {
+        return $decision('blocked', 'blocked_min_from_version');
+    }
+
+    if ($release['channel'] !== (string) $channel) {
+        return $decision('refuse', 'channel_mismatch');
+    }
+
+    $compare = version_compare($release['version'], (string) $installed);
+
+    if ($mode === 'repair') {
+        if ($compare < 0) {
+            return $decision('refuse', 'older');
+        }
+
+        $outcome = ($compare > 0) ? 'update' : 'repair';
+    } else {
+        $other_build = ($compare === 0) && ($channel === 'beta') && ((string) $build !== '') && ($release['build'] !== (string) $build);
+
+        if (($compare <= 0) && !$other_build) {
+            return $decision('no_update', 'up_to_date');
+        }
+
+        $outcome = 'update';
+    }
+
+    $result = $decision($outcome, '');
+    $result['pin'] = array(
+        'mode'            => $mode,
+        'version'         => $release['version'],
+        'channel'         => $release['channel'],
+        'build'           => $release['build'],
+        'package_url'     => $release['update']['url'],
+        'size'            => $release['update']['size'],
+        'sha256'          => $release['update']['sha256'],
+        'manifest_sha256' => $release['manifest_sha256'],
+        'sig_key_id'      => $release['sig_key_id'],
+        'manifest_url'    => $release['manifest_url'],
+        'signature_url'   => $release['signature_url'],
+    );
+
+    return $result;
+}
+
+/**
+ * What the update and repair screens say about a decision of
+ * pg_vendor_release_offer(): why nothing is installed, or what the steps
+ * after the check are about to install. Not for an unusable answer: the
+ * screens keep their own texts for an update server that cannot be reached.
+ *
+ * @param array  $decision  pg_vendor_release_offer()
+ * @param string $installed VERSION
+ * @return string
+ */
+function pg_vendor_release_message($decision, $installed)
+{
+    $release = is_array($decision['release']) ? $decision['release'] : array('version' => '', 'build' => '');
+
+    // A beta build is named with its version.
+    $label = $release['version'] . (($release['build'] !== '') ? ' (' . $release['build'] . ')' : '');
+
+    switch ($decision['outcome']) {
+        case 'update':
+            return ($decision['mode'] === 'repair')
+                ? lang(array('string' => 'The server has {var:1}; the files will be replaced with it and the site updated. Downloading...', 'vars' => array($label)))
+                : lang('Downloading...');
+
+        case 'repair':
+            return lang(array('string' => 'Downloading {var:1}...', 'vars' => array($label)));
+
+        case 'blocked':
+            return lang(array(
+                'string' => '{var:1} can only be installed over {var:2} or a later version. Update this site to {var:2} first.',
+                'vars'   => array($release['version'], $release['blocked']['stepping_stone']),
+            ));
+
+        case 'refuse':
+            if ($decision['reason'] === 'older') {
+                return lang(array(
+                    'string' => 'The update server offers {var:1}, which is older than this installation ({var:2}). The software cannot be repaired until the server carries this version or a newer one.',
+                    'vars'   => array($label, (string) $installed),
+                ));
+            }
+
+            return lang('The update server answered for another update channel, so nothing was installed.');
+
+        case 'no_update':
+            if ($decision['reason'] === 'access_blocked') {
+                return lang('Service access is closed for this site.');
+            }
+
+            return ($decision['mode'] === 'repair')
+                ? lang('The update server did not offer a version for this channel, so the software cannot be repaired now.')
+                : lang('There is no update available.');
+    }
+
+    return lang('No response from the update server.');
+}
+
+/**
+ * Asks the Kodpen API for this channel's release and decides what it offers
+ * (pg_vendor_release_offer()).
+ *
+ * @param string $mode 'update' or 'repair'
+ * @return array decision, and errno and error: cURL's, when no answer came
+ */
+function pg_vendor_release_check($mode)
+{
+    $answer = pg_vendor_api_request('GET', pg_vendor_api_url(pg_vendor_release_path(pg_update_channel(), pg_vendor_api_version())));
+
+    // No beta build is recorded yet, so a beta site is offered newer
+    // versions only.
+    return array(
+        'decision' => pg_vendor_release_offer(pg_vendor_release_read($answer), defined('VERSION') ? (string) VERSION : '', '', pg_update_channel(), $mode),
+        'errno'    => (int) $answer['errno'],
+        'error'    => (string) $answer['error'],
     );
 }
 

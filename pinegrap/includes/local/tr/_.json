@@ -460,6 +460,7 @@
     "{var:1} came in this week, and the people who filled them in are waiting to hear back.": "Bu hafta {var:1} geldi; dolduranlar senden haber bekliyor.",
     "{var:1} campaign(s) were deleted": "{var:1} kampanya silindi",
     "{var:1} can be at most {var:2} characters long.": "{var:1} en fazla {var:2} karakter olabilir.",
+    "{var:1} can only be installed over {var:2} or a later version. Update this site to {var:2} first.": "{var:1} yalnızca {var:2} ya da daha yeni bir sürümün üzerine kurulabilir. Önce bu siteyi {var:2} sürümüne güncelleyin.",
     "{var:1} cancelled": "{var:1} iptal edildi",
     "{var:1} cannot be changed. The fields are: {var:2}.": "{var:1} değiştirilemez. Alanlar: {var:2}.",
     "{var:1} cannot be connected while signed in as another user.": "Başka bir kullanıcı olarak oturum açmışken {var:1} bağlanamaz.",
