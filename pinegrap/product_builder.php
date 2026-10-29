@@ -5366,8 +5366,8 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                             <div class="d-flex flex-wrap gap-1 mt-1" data-pg-pb-giftvar-target="gift_card_email_subject">' . $output_gift_card_variables . '</div>
                                                         </div>
     
-                                                        <div class="col-12 mt-5">
-                                                            <label class="form-label">' . lang('Format') . '</label>
+                                                        <fieldset class="col-12 mt-5">
+                                                            <legend class="form-label fs-md">' . lang('Format') . '</legend>
                                                             <div class="form-field d-inline-grid me-5">
                                                                 <input class="radio collapse-switcher" type="radio" id="gift_card_email_format_plain_text" name="gift_card_email_format" checked="checked" value="plain_text" data-bs-target="#gift_card_email_format_plain_text_row" />
                                                                 <label class="" for="gift_card_email_format_plain_text">' . lang('Plain Text') . '</label>
@@ -5376,7 +5376,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                                 <input class="radio collapse-switcher" type="radio" id="gift_card_email_format_html" name="gift_card_email_format" value="html"' . (($v('gift_card_email_format') === 'html') ? ' checked="checked"' : '') . ' data-bs-target="#gift_card_email_format_html_row" />
                                                                 <label class="" for="gift_card_email_format_html">' . lang('HTML') . '</label>
                                                             </div>
-                                                        </div>
+                                                        </fieldset>
     
                                                         <div class="col-12 collapse popover fade bs-popover-bottom p-0 w-100 mb-3 mt-3" id="gift_card_email_format_plain_text_row">
                                                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>

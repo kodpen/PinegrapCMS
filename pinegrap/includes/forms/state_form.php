@@ -75,7 +75,7 @@ function pg_state_form_card($values)
                                                 <div class="text-end form-text">' . lang('New State/Province Code for Order Reporting') . '</div>
                                             </div>
                                             <div class="col-12 md:col-12 lg:col-4 my-3">
-                                                <label for="name" class="form-label">' . lang('Country') . '</label>
+                                                <label for="country_id" class="form-label">' . lang('Country') . '</label>
                                                 <select name="country_id" id="country_id"  class="form-control">' .  $country_options . '</select>
                                             </div>
                                         </div>

@@ -120,6 +120,7 @@
     "Base": "Temel",
     "Base Price for All Variants": "Tüm Varyantlar için Temel Fiyat",
     "Base Rate": "Ana Oran",
+    "Base Rate {var:1}": "Ana Oran {var:1}",
     "Base Transit Time": "Temel Teslimat Süresi",
     "Base address": "Temel adres",
     "Base currency": "Ana para birimi",

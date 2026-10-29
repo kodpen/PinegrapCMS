@@ -126,11 +126,12 @@ function pg_ship_date_adjustment_form_card($liveform)
                                                 <select name="shipping_method_id" id="shipping_method_id" class="form-control' . ($liveform->check_field_error('shipping_method_id') ? ' is-invalid' : '') . '">' . $output_shipping_method_options . '</select>
                                             </div>
                                             <div class="col-12 md:col-auto my-3">
-                                                <label class="form-label">' . lang('Adjustment') . '</label>
-                                                <div class="input-group w-auto">
-                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
-                                                    <span class="input-group-text">' . lang('days') . '</span>
-                                                    <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" class="form-control' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>
+                                                <div class="form-label" id="adjustment_label">' . lang('Adjustment') . '</div>
+                                                <div class="input-group w-auto" role="group" aria-labelledby="adjustment_label">
+                                                    <input style="width:100px;max-width:100%;" type="text" name="adjustment_days" id="adjustment_days" aria-labelledby="adjustment_label adjustment_days_unit" maxlength="3" value="' . h($liveform->get_field_value('adjustment_days')) . '" class="form-control' . ($liveform->check_field_error('adjustment_days') ? ' is-invalid' : '') . '"/>
+                                                    <span class="input-group-text" id="adjustment_days_unit">' . lang('days') . '</span>
+                                                    <span class="visually-hidden" id="adjustment_type_label">' . lang('Direction') . '</span>
+                                                    <select style="width:100px;max-width:100%;" name="adjustment_type" id="adjustment_type" aria-labelledby="adjustment_label adjustment_type_label" class="form-control' . ($liveform->check_field_error('adjustment_type') ? ' is-invalid' : '') . '">' . $output_adjustment_type_options . '</select>
                                                 </div>
                                             </div>
                                         </div>

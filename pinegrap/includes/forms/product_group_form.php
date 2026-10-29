@@ -132,17 +132,19 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         </div>
 
                                         <div class="col-12 my-5">
-                                            <div class="col-12">
-                                                <label class="form-label">' . lang('Display Type') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" ' . $display_type_browse_checked . '/>
-                                                <label for="browse">' . lang('Browse') . '</label>
-                                            </div>
-                                            <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
-                                                <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
-                                                <label for="select">' . lang('Select') . '</label>
-                                            </div>
+                                            <fieldset>
+                                                <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
+                                                <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for browsing on catalog page') . '">
+                                                    <input class="radio collapse-switcher"  type="radio" id="browse" name="display_type" value="browse" aria-describedby="display_type_browse_help" ' . $display_type_browse_checked . '/>
+                                                    <label for="browse">' . lang('Browse') . '</label>
+                                                    <span class="visually-hidden" id="display_type_browse_help">' . lang('Display contents for browsing on catalog page') . '</span>
+                                                </div>
+                                                <div class="form-field  d-inline-grid me-5" title="' . lang('Display contents for selection on catalog detail page') . '">
+                                                    <input class="radio collapse-switcher"  type="radio" id="select" name="display_type" value="select" aria-describedby="display_type_select_help" ' . $display_type_select_checked . ' data-bs-target="#display_type_select_row"/>
+                                                    <label for="select">' . lang('Select') . '</label>
+                                                    <span class="visually-hidden" id="display_type_select_help">' . lang('Display contents for selection on catalog detail page') . '</span>
+                                                </div>
+                                            </fieldset>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_select_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(111px, 0px);"></div>
                                                 <div class="popover-body">
