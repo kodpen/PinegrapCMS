@@ -717,12 +717,31 @@ $(document).ready(function () {
         return container.hasClass('expanded') ? 'expanded' : 'collapsed';
     }
 
+    // The shut drawer only slides off screen, so its links would stay in the
+    // tab order and the reading order: inert takes them out until it opens.
+    // Wide screens never set it.
+    function paintMenuInert() {
+        var sidebar = document.querySelector('.software-sidebar');
+
+        if (!sidebar) {
+            return;
+        }
+
+        if (isMenuDrawerMode() && !isMenuDrawerOpen()) {
+            sidebar.setAttribute('inert', '');
+        } else {
+            sidebar.removeAttribute('inert');
+        }
+    }
+
     // Names on the button in the bar what it does here: below lg whether the
     // drawer is open, above it the state the menu is in. The picture follows
     // from the stylesheet.
     function paintMenuToggle() {
         var toggle = document.getElementById('menu_mode_toggle');
         var label;
+
+        paintMenuInert();
 
         if (!toggle) {
             return;
@@ -840,7 +859,18 @@ $(document).ready(function () {
                     return;
                 }
 
+                // Focus on a row would stay behind, off screen, in the
+                // inert drawer: it goes back to the button that opened it.
+                var active = document.activeElement;
+                var inMenu = !!(active && active.closest && active.closest('.software-sidebar'));
+
                 closeMenuDrawer();
+
+                var toggle = document.getElementById('menu_mode_toggle');
+
+                if (inMenu && toggle) {
+                    toggle.focus();
+                }
             }
         });
 
@@ -6487,9 +6517,9 @@ function editBarcodeTemplate(opts) {
     // ── Build modal HTML once ──────────────────────────────────────────
     if (!$modal.length) {
         $('body').append(
-            '<dialog class="dialog dialog-xl" id="' + MODAL_ID + '" data-bs-backdrop="static">' +
+            '<dialog class="dialog dialog-xl" id="' + MODAL_ID + '" aria-labelledby="pg-bc-template-title" data-bs-backdrop="static">' +
             '<div class="dialog-header py-3">' +
-            '<h5 class="dialog-title fs-md fw-semibold"><i class="bi bi-upc-scan me-3"></i>' + _L('Label Designer') + '</h5>' +
+            '<h5 class="dialog-title fs-md fw-semibold" id="pg-bc-template-title"><i class="bi bi-upc-scan me-3"></i>' + _L('Label Designer') + '</h5>' +
             '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + h(_L('Close')) + '"></button>' +
             '</div>' +
             '<div class="dialog-body">' +
@@ -8448,9 +8478,9 @@ window.onload = function() {
             let $modal = $('#' + BLIST_ID);
             if (!$modal.length) {
                 $('body').append(
-                    '<dialog class="dialog" id="' + BLIST_ID + '">' +
+                    '<dialog class="dialog" id="' + BLIST_ID + '" aria-labelledby="pg-barcodes-list-title">' +
                     '<div class="dialog-header py-3">' +
-                    '<h6 class="dialog-title"><i class="bi bi-upc-scan me-3"></i>' + pgLang('Barcodes') + '</h6>' +
+                    '<h6 class="dialog-title" id="pg-barcodes-list-title"><i class="bi bi-upc-scan me-3"></i>' + pgLang('Barcodes') + '</h6>' +
                     '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + h(pgLang('Close')) + '"></button>' +
                     '</div><div class="dialog-body" id="pg-blist-body"><div class="text-center py-5"><div class="spinner-border spinner-border-sm"></div></div></div>' +
                     '</dialog>'
@@ -8757,7 +8787,7 @@ function pg_background_calls_allowed() {
                     '<i class="bi ' + iconMap[variant] + ' me-3" aria-hidden="true"></i>' +
                     escapeHtml(message) +
                 '</div>' +
-                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>' +
+                '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
             '</div>';
         container.appendChild(el);
 
@@ -8798,7 +8828,7 @@ function pg_background_calls_allowed() {
             modalEl.innerHTML =
                 '<div class="dialog-header">' +
                             '<h5 class="dialog-title" id="pg-confirm-title">' + escapeHtml(title) + '</h5>' +
-                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="Close"></button>' +
+                            '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + escapeHtml(lang('Close')) + '"></button>' +
                         '</div>' +
                         '<div class="dialog-body">' + escapeHtml(message) + '</div>' +
                         '<div class="dialog-footer">' +
@@ -9858,6 +9888,16 @@ var pgSettingsModal = (function () {
 
             if (row) {
                 row.focus({ preventScroll: true });
+            }
+        } else if (button && window.matchMedia && window.matchMedia('(max-width: 575.98px)').matches) {
+
+            // The shut list turns visibility:hidden, which would drop the
+            // focus of a row inside it; at wider widths the list stays in
+            // view and the chosen row keeps the focus.
+            var side = byId('pg_settings_modal_side');
+
+            if (side && side.contains(document.activeElement)) {
+                button.focus({ preventScroll: true });
             }
         }
     }

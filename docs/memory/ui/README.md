@@ -115,6 +115,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
 - main-menu-categories.md: Main menu rows in categories (pg_menu_categories(), pg_menu_layout()): which rows, no heading over nothing, the File Manager row with the files, retired slot 3, store row names, heading look
+- main-menu-drawer-focus.md: The phone main menu drawer (below lg) is inert while shut and Escape gives focus back to the bar button; the symptom it fixed
 - main-menu-entry-gates.md: Main menu entries follow the gate of the screen they open: the screens that had no menu path for some of the people they admit, the entries that led to a refusal, and how both were checked
 - main-menu-icons.md: The panel main menu's two-colour SVG icons (pg_menu_icon()): when a drawing is needed, the 24-unit grid, module colour and accent colour classes, hover motion, what stays a Bootstrap icon.
 - main-menu-navigator-screens.md: Screens whose own navigation is a main menu panel (workspace, File Manager, Catalog Manager): the menu open or narrowed, never hidden, softwaremenunav, pg_menu_navigator()
