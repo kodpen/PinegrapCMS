@@ -10,7 +10,7 @@ description: Dashboard figures and states printed as text instead of a native ti
 - Recent Orders (`widget_8.php`): Shipped / Not shipped yet in the meta line when shipping is on, as Canceled already was; the truck or box glyph is `aria-hidden`.
 - Firewall rows (`widget_21.php`): the `×N` pill is `aria-hidden` beside a visually hidden `{var:1} request{suffix:1}`; the score prints `s / threshold` with a visually hidden `Score:`, and the bar is `aria-hidden`.
 - Threat sources (`widget_22.php`, drawn inside widget 21) and slowest pages (`widget_23.php`): the address count and the `{var:1} request{suffix:1} · peak {var:2} ms` text are a small `fg-secondary` line under an `aria-hidden` bar.
-- Search Console (`widget_31.php`): `+N%` is followed by a visually hidden "Against the 28 days before"; the title stays for hover.
+- Search Console (`widget_31.php`) and Google Analytics (`widget_32.php`, also `+N points`): `+N%` is followed by a visually hidden "Against the 28 days before"; the title stays for hover.
 - Online Engagement (`widget_4.php`): an Away row's seen line reads `Away · <relative time>`, since the avatar (with its dot) is `aria-hidden` and Offline prints the same relative time.
 
 ## What pins it?
