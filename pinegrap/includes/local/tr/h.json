@@ -179,6 +179,7 @@
     "Help for this screen": "Bu ekran için yardım",
     "Help for this section": "Bu bölüm için yardım",
     "Helpful Contents": "Yardımcı İçerikler",
+    "Here is the return code for your return from order #{var:1}.": "#{var:1} numaralı siparişinizden yaptığınız iadenin iade kodu aşağıdadır.",
     "Here now": "Şu an burada",
     "Here you can also run a tool that reads yourself, without Pinegrap AI: choose it, fill in its form and choose whether the answer goes to a channel.": "Burada okuyan bir aracı Pinegrap AI olmadan kendiniz de çalıştırabilirsiniz: aracı seçin, formunu doldurun ve yanıtın bir kanala gidip gitmeyeceğini seçin.",
     "Hero": "Karşılama Alanı",

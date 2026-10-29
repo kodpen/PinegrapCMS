@@ -302,7 +302,7 @@ if (!$_POST) {
             $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $contact_image);
             $output_contact_image = '
             <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-                <img class="lazy object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
+                <img class="lazy object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($contact_image) . '" />
             </div>';
         }else{
             $output_contact_image = '
@@ -321,7 +321,7 @@ if (!$_POST) {
         $accent_color = get_dominant_area_color(FILE_DIRECTORY_PATH . '/' . $file_name);
         $output_contact_image = '
         <div class="col-auto overflow-hidden pg-print-none rounded-circle bg-1 border border-2" style="width:50px;height:50px;background-color:' . h($accent_color) . ';">
-            <img class="lazy  object-fit-contain w-100 h-100"  src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
+            <img class="lazy  object-fit-contain w-100 h-100" alt="" src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . PATH . h($file_name) . '" />
         </div>';
     }
 

@@ -469,7 +469,7 @@ define('WS_FLOW_CARD_BOX_H', 80);
  */
 function ws_flow_card_outbound_kinds()
 {
-    return array('email', 'task_digest', 'webhook', 'mcp', 'change');
+    return array('email', 'task_digest', 'webhook', 'mcp', 'change', 'row_add', 'row_set');
 }
 
 /**

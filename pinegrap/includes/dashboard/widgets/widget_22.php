@@ -162,13 +162,14 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
                     <span class="text-truncate' . $td_text . '" style="font-size:12px" title="' . h($td_source['category']) . '">' . h($td_label) . '</span>
                     <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . pg_format_number($td_hits, 0) . '</span>
                 </div>
-                <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" title="' . lang(array(
+                <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" aria-hidden="true">
+                    <div class="progress-bar ' . $td_bar . '" style="width:' . $td_width . '%"></div>
+                </div>
+                <div class="fg-secondary mt-1" style="font-size:10px">' . lang(array(
                     'string' => '{var:1} address{suffix:1}',
                     'vars'   => pg_format_number((int) $td_source['ips'], 0),
                     'suffix' => ((int) $td_source['ips'] == 1 ? '' : 'es'),
-                )) . '">
-                    <div class="progress-bar ' . $td_bar . '" style="width:' . $td_width . '%"></div>
-                </div>
+                )) . '</div>
             </div>';
         }
 

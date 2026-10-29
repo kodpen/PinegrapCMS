@@ -588,6 +588,7 @@
     "Money in": "Para girişi",
     "Money in today": "Bugün giren",
     "Money is still owed on {var:1}; the customers are waiting.": "Müşteriler bekliyor: {var:1} için para hâlâ iade edilmedi.",
+    "Money is written in minor units: 1250 for 12.50.": "Para alt birim cinsinden yazılır: 12,50 için 1250.",
     "Money moving between your own accounts. No customer or supplier is involved.": "Kendi hesaplarınız arasında para hareketi. Cari hesap etkilenmez.",
     "Money out": "Para çıkışı",
     "Money out today": "Bugün çıkan",

@@ -1270,12 +1270,12 @@ class liveform {
                 
             // if there is 1 warning, then output description and warning
             if (count($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings']) == 1) {
-                $output_warnings = '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="Warning" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warning') . ':</h5> <p class="warning" style="color:' . $warning_color . ';">' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
+                $output_warnings = '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warning') . ':</h5> <p class="warning" style="color:' . $warning_color . ';">' . $_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'][0] . '</p>';
                 
             // else there is more than 1 warning, so output description and list of warnings
             } else {
                 $output_warnings =
-                    '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="Warning" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warnings') . ':</h5>';
+                    '<h5 class="alert-heading description"><img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/icon_warning.png" alt="" title="" class="icon" style="display: inline-block;margin-right: 0.5em;min-width: 18px;min-height: 16px;">' . lang('Warnings') . ':</h5>';
                 
                 // loop through the warnings in order to output them
                 foreach ($_SESSION['software']['liveforms'][$this->form][$this->index]['warnings'] as $warning) {

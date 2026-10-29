@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-5
-description: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals
+description: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals, vendor API client: beta builds, widget 14
 ---
 
 ## Which outside-account leftovers start in 2026.11.0? (#3180)
@@ -8,5 +8,11 @@ description: Decisions list, product part 5 (2026-10-29 evening on): the outside
 
 ## Do subscriptions start, and who runs the renewals? (#3183)
 - Owner (2026-10-29): start now ("Şimdi başlasın"). Architect: store-run first on both drivers: `recurring` carries a `mode` (`store` | `psp`) and slice 1 implements `store`: the first payment registers the card (iyzico `setRegisterCard`, Stripe `setup_future_usage: off_session`), the token kept as the PSP's token only, `charge_renewal()` from the cron with the 1/3/7-day ladder, `update_card()` through the PSP's hosted page, `subscription_cancel()` store-side (the plan's `cancel(subscription)` clashed with the order `cancel()`). Stripe's `authentication_required` moves the row to `past_due` and mails a confirmation link. iyzico's stored-card charges without 3DS need the merchant's permission: a driver setting, subscriptions through iyzico off until it is on; iyzico's Subscription API (`psp` mode) is a later slice only if that permission is not granted to ordinary merchants, so the SDK's subscription mappers stay unloaded (no PHP 7.1 patch). One checkout payment for a mixed cart, no catalogue sync; the tables are in `decisions-made-schema-5.md`.
+
+## Does a beta site without a build file get the beta build of its own version? (#3204)
+- Decided (architect, 2026-10-29, plan `kodpen-vendor-api-client.md` Q1): no. A same-version build is offered on the beta channel only when `data/update_build.json` names a beta build of the running version; a beta site without the file (a stable install, a 2026.4.x site updated to 2026.11.0) gets betas again from the next version number. Repair Software still installs the pointer's build, named on its screen. Reason: that build may predate or follow the stable release and the client cannot tell, so (b) could move a running site to an older build of its own version; the bridge matrix allows "same version, other build" and the client applies it only where it knows the site came from a beta build.
+
+## Widget 14, the Subscription ID field and download_assistant.php (#3205)
+- Owner decisions 2 and 3 of the vendor API plan (2026-10-25, Kodpen's private repository; relayed by PR #3203), recorded 2026-10-29: dashboard widget 14 is retired in 2026.11.0 and id 14 is never reused (the permanent-ids line of `decisions-made.md`); the "Subscription ID" field of `includes/settings/general.php` and its save line go with it, the `config.subscription_id` column stays. `download_assistant.php` (root) keeps its api2 call and fixed key as the manual rescue path: audits do not "fix" it; the other api2 branches leave in the next open version.
 
 Related: docs/memory/workflow/decisions-made-product-4.md, docs/memory/workflow/decisions-made.md

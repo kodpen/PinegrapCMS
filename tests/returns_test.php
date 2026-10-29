@@ -924,3 +924,37 @@ function test_returns_erp_hand_off()
 	pg_assert_false(pg_return_erp_hand_off($manager, false), 'the ERP is off');
 	pg_assert_false(pg_return_erp_hand_off('x', true), 'not a user row');
 }
+
+// A label's code goes into carrier_code; the carrier only when the approval
+// named none and the service named a known one.
+function test_returns_label_code_change()
+{
+	pg_assert_same(array('carrier_code' => 'RC-77'), pg_return_label_code_change(array('carrier' => 'aras', 'carrier_code' => 'OLD'), ' RC-77 ', 'yurtici'), 'code written, carrier kept');
+	pg_assert_same(array('carrier_code' => 'RC-77', 'carrier' => 'aras'), pg_return_label_code_change(array('carrier' => '', 'carrier_code' => ''), 'RC-77', 'aras'), 'carrier filled');
+	pg_assert_same(array('carrier_code' => 'RC-77'), pg_return_label_code_change(array('carrier' => '', 'carrier_code' => ''), 'RC-77', 'nowhere'), 'an unknown carrier is not written');
+	pg_assert_same(64, mb_strlen(pg_return_label_code_change(array('carrier' => 'aras'), str_repeat('9', 80), '')['carrier_code']), 'cut to its column');
+
+	$after = array_merge(array('status' => 'approved', 'carrier' => 'aras', 'carrier_code' => 'OLD'), pg_return_label_code_change(array('carrier' => 'aras', 'carrier_code' => 'OLD'), 'RC-77', ''));
+	pg_assert_same('RC-77', pg_return_audit_fields($after)['carrier_code'], 'in the audit trail');
+}
+
+// The short mail after the approval carries the code only.
+function test_returns_label_mail_body()
+{
+	$body = pg_return_label_mail_body(array(
+		'customer'     => 'Jane <Cooper>',
+		'order_number' => '1172',
+		'carrier'      => 'Aras Kargo',
+		'carrier_code' => 'RC<1>',
+		'from_name'    => 'ACME',
+	));
+
+	pg_assert_contains('Jane &lt;Cooper&gt;', $body, 'name, escaped');
+	pg_assert_contains('1172', $body, 'order number');
+	pg_assert_contains('Aras Kargo', $body, 'carrier');
+	pg_assert_contains('<strong>RC&lt;1&gt;</strong>', $body, 'code, escaped');
+	pg_assert_contains('ACME', $body, 'shop');
+
+	$bare = pg_return_label_mail_body(array('order_number' => '9', 'carrier_code' => 'RC-2'));
+	pg_assert_contains('Give the carrier this return code:', $bare, 'no carrier named');
+}
