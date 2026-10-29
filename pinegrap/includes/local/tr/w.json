@@ -354,6 +354,7 @@
     "Welcome! Your account is ready": "Hoş geldiniz! Hesabınız hazır",
     "Wellbeing": "İyi Yaşam",
     "Went freelance": "Serbest çalışmaya başladım",
+    "Went through {var:1} items: {var:2} done, {var:3} failed.": "{var:1} öğe dolaşıldı: {var:2} tamamlandı, {var:3} başarısız oldu.",
     "Western Sahara": "Batı Sahra",
     "What Happens Next": "Sonra Ne Olur",
     "What I'm up to now": "Şu an neler yapıyorum",

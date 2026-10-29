@@ -40,6 +40,7 @@ function ws_flow_setting_overrides()
         'change.fields'     => array('type' => 'object'),
         'condition.rule'    => array('type' => 'object'),
         'report.metrics'    => array('of' => 'object'),
+        'for_each.fields'   => array('of' => 'text'),
     );
 }
 
@@ -142,7 +143,7 @@ function ws_flow_kind_catalogue()
             'step'     => !empty($info['step']),
             'outcomes' => array_values(array_map('strval', (array) $info['outcomes'])),
             'outputs'  => $outputs,
-            'texts'    => array_values(array_map('strval', (array) ($steps[$kind]['texts'] ?? array()))),
+            'texts'    => array_values(array_map('strval', (array) ($info['texts'] ?? $steps[$kind]['texts'] ?? array()))),
             'settings' => ws_flow_kind_settings($kind, ws_flow_config_normalize($kind, array())),
         );
     }

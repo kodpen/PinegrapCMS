@@ -1169,7 +1169,8 @@ function ws_api_flow_step_outputs($kind, $stored, $edit)
 }
 
 /**
- * One box of a run as the API hands it out: which box, how it stands, the
+ * One box of a run as the API hands it out: which box and its pass (the
+ * item of a For each loop, from 1; 0 outside the loops), how it stands, the
  * task it opened, its times, the arrows into it as the run took them, the
  * values it kept and how it went, in short (a change box's record and
  * values only to whoever may change the flow, ws_step_result_shown()).
@@ -1189,6 +1190,7 @@ function ws_api_flow_run_step_present($step, $graph, $edit = false, $states = nu
 
     return array(
         'node_id'     => (string) $step['node_id'],
+        'pass'        => (int) ($step['pass'] ?? 0),
         'kind'        => $kind,
         'name'        => $node ? ws_flow_box_name($node) : (string) $step['node_id'],
         'status'      => (string) $step['status'],
@@ -1209,6 +1211,7 @@ function ws_api_flow_run_step_schema()
 {
     return array(
         'node_id'     => 'string',
+        'pass'        => 'integer',
         'kind'        => 'string',
         'name'        => 'string',
         'status'      => 'string',
