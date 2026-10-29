@@ -171,7 +171,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 			if ($tables === '') {
 
-				$tables = '<p class="small opacity-50 mb-0">' . lang('This endpoint takes no parameters.') . '</p>';
+				$tables = '<p class="small fg-2 mb-0">' . lang('This endpoint takes no parameters.') . '</p>';
 
 			}
 
@@ -252,7 +252,7 @@ function api_console_endpoints_html($try_hint = '') {
 
 			$curl .= ' "' . api_openapi_base_url() . $route['path'] . '"';
 
-			$hint = ($try_hint === '') ? '' : '<span class="doc-try-hint small opacity-50">' . h($try_hint) . '</span>';
+			$hint = ($try_hint === '') ? '' : '<span class="doc-try-hint small fg-2">' . h($try_hint) . '</span>';
 
 			$panels .= '
 			<div class="doc-ep" id="' . $anchor . '" data-id="' . h($route['id']) . '"
@@ -397,18 +397,18 @@ function api_console_css() {
 	.doc-wrap { grid-template-columns: 1fr; }
 	.doc-nav { position: static; max-height: 260px; }
 }
-.doc-nav-group { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .5;
+.doc-nav-group { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--pg-fg-2);
 	padding: 12px 10px 5px; }
 .doc-nav-item { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 7px;
 	font-size: 12px; text-decoration: none; color: inherit; }
 .doc-nav-item:hover { background: var(--pg-bg-1); color: inherit; }
 .doc-m { font-size: 9.5px; font-weight: 700; letter-spacing: .03em; padding: 2px 6px; border-radius: 4px;
 	background: var(--pg-bg-1); flex: none; min-width: 42px; text-align: center; }
-.doc-m.post { color: var(--pg-success); }
-.doc-m.get { color: var(--pg-primary); }
+.doc-m.post { color: var(--pg-success-fg-emphasis); }
+.doc-m.get { color: var(--pg-primary-fg-emphasis); }
 .doc-m.patch, .doc-m.put { color: var(--pg-warning-fg-emphasis); }
-.doc-m.delete { color: var(--pg-danger); }
-.doc-group-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; opacity: .55; margin: 22px 0 10px; }
+.doc-m.delete { color: var(--pg-danger-fg-emphasis); }
+.doc-group-h { font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--pg-fg-2); margin: 22px 0 10px; }
 .doc-group-h:first-child { margin-top: 0; }
 .doc-ep { border: 1px solid var(--pg-border-color); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
 .doc-ep-head { display: flex; align-items: center; gap: 10px; padding: 11px 14px; background: var(--pg-bg-1); }
@@ -416,10 +416,10 @@ function api_console_css() {
 .doc-scope { margin-left: auto; font-size: 10.5px; opacity: .7; }
 .doc-ep-body { padding: 14px; }
 .doc-summary { font-size: 13px; margin-bottom: 6px; }
-.doc-also { font-size: 10.5px; opacity: .6; }
+.doc-also { font-size: 10.5px; color: var(--pg-fg-2); }
 .doc-desc { font-size: 12px; opacity: .75; line-height: 1.55; }
 .doc-params { margin-top: 12px; }
-.doc-params-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; opacity: .5; }
+.doc-params-h { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--pg-fg-2); }
 /* The parameter table has two fixed columns and one that carries a sentence, so
    below roughly 560px it squeezes rather than overflows - the note column drops
    to a word per line. It scrolls sideways instead, the same as the application
@@ -504,7 +504,7 @@ window.pgApiConsole = (function () {
 			var where = row.dataset.where || "query";
 			var attributes = " data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
 			html += "<div class=\'col-6 lg:col-4\'><label class=\'form-label small mb-1\'>" + esc(name) +
-				" <span class=\'opacity-50\'>" + esc(where) + "</span></label>";
+				" <span class=\'fg-2\'>" + esc(where) + "</span></label>";
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +
 					" placeholder=\'[&quot;a&quot;, &quot;b&quot;]\'></textarea>";
