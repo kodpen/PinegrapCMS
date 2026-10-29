@@ -2516,8 +2516,8 @@ function ws_changes_input($changes, $asker_id, $channel_id = 0, $task_id = 0, $f
         $type = (string) ($change['type'] ?? '');
 
         // A scheduled action an application proposes (scheduled_draft.php):
-        // no record kind, but a draft the person opens in its form and saves
-        // in their own name. A task's drawer has no form to open it in.
+        // no record kind, but a flow draft the person opens on the canvas and
+        // publishes in their own name. A task's drawer cannot open it.
         if (($type === 'scheduled') && $for_proposal && function_exists('ws_scheduled_draft_proposal_row')) {
             if ((int) $task_id > 0) {
                 return $refuse(lang('A scheduled action is proposed in a channel, not on a task.'));
@@ -3119,8 +3119,8 @@ function ws_changes_map($viewer, $ids, $by = 'message_id')
         // kind of record, but waits on the same card.
         $mcp = ($type === 'mcp_call') && function_exists('ws_mcp_change_entry');
 
-        // Nor is a scheduled action Pinegrap AI drafted (scheduled_draft.php):
-        // it is opened in its form and saved there.
+        // Nor is a scheduled draft kept before drafts became flow cards
+        // (scheduled_draft.php): it opens as a new flow and is published there.
         $scheduled = ($type === 'scheduled') && function_exists('ws_scheduled_draft_change_entry');
 
         // Nor is a flow an application proposed (flow_draft.php): it is

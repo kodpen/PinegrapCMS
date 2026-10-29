@@ -1772,9 +1772,7 @@ function ws_ai_proposed_words($text, $state)
     }
 
     if (ws_ai_only_drafts($state)) {
-        return rtrim((string) $text) . "\n\n" . (empty($state['proposals']['scheduled'])
-            ? lang('Nothing runs until you open the flow and publish it.')
-            : lang('Nothing is scheduled until you open the draft in the form and save it.'));
+        return rtrim((string) $text) . "\n\n" . lang('Nothing runs until you open the flow and publish it.');
     }
 
     return rtrim((string) $text) . "\n\n" . lang('Nothing is changed until you press Apply under the proposal.');
@@ -1782,8 +1780,8 @@ function ws_ai_proposed_words($text, $state)
 
 /**
  * Is all an answer proposes a draft: a scheduled action drafted from the
- * request (scheduled_draft.php), saved from its form, or a flow
- * (flow_draft.php), published on the canvas? Neither is applied.
+ * request (scheduled_draft.php) or a flow (flow_draft.php), each kept as a
+ * flow draft card and published on the canvas? Neither is applied.
  *
  * @param array $state
  * @return bool
@@ -1806,9 +1804,7 @@ function ws_ai_only_drafts($state)
 function ws_ai_proposed_line($state)
 {
     if (ws_ai_only_drafts($state)) {
-        return empty($state['proposals']['scheduled'])
-            ? lang('I drafted the flow below. Nothing runs until you open it and publish it.')
-            : lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.');
+        return lang('I drafted the flow below. Nothing runs until you open it and publish it.');
     }
 
     return lang('I propose it below. Nothing is changed until you press Apply under it.');
@@ -2307,7 +2303,7 @@ function ws_ai_drafts_input($tasks)
  * @param string $text
  * @param array  $proposals tasks (rows as the model sent them), changes
  *                          (ws_ai_propose_change() entries), scheduled
- *                          (drafts, ws_scheduled_draft_ai_step()), flows
+ *                          (flow card rows, ws_scheduled_draft_ai_step()), flows
  *                          (card rows, ws_flow_ai_propose())
  * @return array ok, error (what the model is told to fix)
  */
@@ -2479,8 +2475,8 @@ function ws_ai_deliver($row, $text, $proposals)
         ws_mcp_calls_propose($row, (int) $sent['message_id'], $proposals['mcp_calls']);
     }
 
-    // Scheduled actions drafted from the request, waiting to be opened in
-    // their form and saved (scheduled_draft.php).
+    // Scheduled actions drafted from the request, kept as flow draft cards
+    // waiting to be opened on the canvas and published (scheduled_draft.php).
     if (!empty($proposals['scheduled']) && function_exists('ws_scheduled_draft_ai_store')) {
         ws_scheduled_draft_ai_store($row, (int) $sent['message_id'], $proposals['scheduled']);
     }
@@ -3239,7 +3235,7 @@ function ws_ai_system_prompt($row, $asker, $readable)
         $lines[] = '- Call add_task_note only when the request asks for a note on a task.';
 
         if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
-            $lines[] = '- When the request asks for something to be done later on its own, again and again, or whenever something happens ("every Monday at 9...", "when a task moves to Waiting...", "remind the team tomorrow at 10"), it is a scheduled action, not a task: call propose_scheduled_action with the request as one complete sentence, once for each action (at most ' . WS_SCHEDULED_DRAFT_PER_ANSWER . '). It is drafted for you and waits under your answer; ' . $name . ' opens it in its form and saves it. Never write that it is scheduled or set up.';
+            $lines[] = '- When the request asks for something to be done later on its own, again and again, or whenever something happens ("every Monday at 9...", "when a task moves to Waiting...", "remind the team tomorrow at 10"), it is a scheduled action, not a task: call propose_scheduled_action with the request as one complete sentence, once for each action (at most ' . WS_SCHEDULED_DRAFT_PER_ANSWER . '). It is drafted for you as a flow and waits under your answer; ' . $name . ' opens it on the Flows canvas and publishes it. Never write that it is scheduled or set up.';
         }
 
         if (function_exists('ws_flow_ai_offered') && ws_flow_ai_offered($row, $asker)) {
@@ -3762,7 +3758,7 @@ function ws_ai_tools($row)
         // A scheduled action, drafted from a sentence the way its form is
         // (scheduled_draft.php), waits under the answer to be saved.
         if (function_exists('ws_scheduled_draft_ai_offered') && ws_scheduled_draft_ai_offered($row, $asker)) {
-            $tools[] = $tool('propose_scheduled_action', 'Draft a scheduled action, only when the request asks for something to be done later on its own, again and again, or whenever something happens. It is drafted from the sentence and waits under your answer; the person who asked opens it in its form and saves it.', array(
+            $tools[] = $tool('propose_scheduled_action', 'Draft a scheduled action, only when the request asks for something to be done later on its own, again and again, or whenever something happens. It is drafted from the sentence as a flow and waits under your answer; the person who asked opens it on the Flows canvas and publishes it.', array(
                 'sentence' => array('type' => 'string', 'description' => 'What the scheduled action does, as one complete sentence in the language of the request: when it runs (a time and how often, or what happens) and what it does, with the channel, the people and the e-mail addresses the request names.'),
             ), array('sentence'));
         }
