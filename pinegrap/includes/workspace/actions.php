@@ -2004,6 +2004,23 @@ function ws_handle_action($action, $request)
                 'copy_note'  => ($result['copy'] === 'failed') ? lang('The e-mail was sent, but no copy could be put into the mailbox\'s sent folder.') : '',
             ));
 
+        // A conversation's status or holder (mail_status.php).
+        case 'ws_mail_conversation':
+            if (!function_exists('ws_mail_conversation_set') || !ws_mail_ready()) {
+                return ws_action_error(lang('The database has not been upgraded yet.'));
+            }
+
+            $result = ws_mail_conversation_set($viewer, (int) ($request['conversation_id'] ?? 0), array(
+                'status' => is_scalar($request['status'] ?? '') ? (string) ($request['status'] ?? '') : '',
+                'assign' => is_scalar($request['assign'] ?? '') ? (string) ($request['assign'] ?? '') : '',
+            ));
+
+            if (!$result['ok']) {
+                return ws_action_error(ws_mail_conversation_error_text($result['error']));
+            }
+
+            return ws_action_ok();
+
         case 'ws_attach':
             $channel = ws_action_channel($viewer, $request, 'post');
 

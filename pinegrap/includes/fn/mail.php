@@ -1979,6 +1979,12 @@ function email($properties)
 
         $mail->addCustomHeader('X-Pinegrap-Mail', pg_mail_site_mark());
 
+        // An answer no person wrote (RFC 3834), so the receiving side's own
+        // automatic answers stay quiet instead of starting a loop.
+        if (!empty($properties['auto_submitted'])) {
+            $mail->addCustomHeader('Auto-Submitted', 'auto-replied');
+        }
+
         // One-click unsubscribe for commercial campaigns (RFC 8058). The
         // mailto part goes to whoever reads the replies.
         $list_unsubscribe_headers = array();

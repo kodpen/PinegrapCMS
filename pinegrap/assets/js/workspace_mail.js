@@ -2,8 +2,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - answering an e-mail conversation by e-mail on the channel
- * screen: the "Reply by e-mail" button under a conversation's card and the
- * drawer the answer is written in.
+ * screen: the "Reply by e-mail" button under a conversation's card, the
+ * drawer the answer is written in, and the conversation's status and
+ * holder (includes/workspace/mail_status.php).
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
  * own helpers. Whether a card may be answered is decided by the server
@@ -82,7 +83,48 @@
 
         row.appendChild(open);
 
+        if (message.mail_state) {
+            state(row, message, view, h);
+        }
+
         return row;
+    }
+
+    // The conversation's status and holder, changed at once.
+    function state(row, message, view, h) {
+        var t = h.t;
+        var current = message.mail_state;
+        var change = function (data, control) {
+            data.conversation_id = message.mail_reply;
+            control.disabled = true;
+
+            h.api('ws_mail_conversation', data).then(function () {
+                view.sync();
+            }).catch(function (error) {
+                control.disabled = false;
+                h.fail(error);
+            });
+        };
+
+        var status = h.select(['open', 'waiting', 'closed'].map(function (key) {
+            return [key, t('mail_status_' + key)];
+        }), current.status);
+
+        status.classList.add('d-inline-block', 'w-auto', 'ms-2', 'py-0');
+        status.setAttribute('aria-label', t('mail_status'));
+        status.addEventListener('change', function () {
+            change({ status: status.value }, status);
+        });
+
+        var hold = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', current.mine ? t('mail_release') : t('mail_take'), current.mine ? 'bi-person-dash' : 'bi-person-check');
+
+        hold.addEventListener('click', function (event) {
+            event.stopPropagation();
+            change({ assign: current.mine ? 'none' : 'me' }, hold);
+        });
+
+        row.appendChild(status);
+        row.appendChild(hold);
     }
 
     window.PGWsMail = {

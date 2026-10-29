@@ -830,6 +830,7 @@
     "Sent from {var:1}; replies come back to the same address.": "{var:1} adresinden gönderilir; yanıtlar aynı adrese gelir.",
     "Sent in the last 24 hours": "Son 24 saatte gönderilen",
     "Sent once the delivery note is written.": "İrsaliye kesilince gönderilir.",
+    "Sent once to the customer of a new conversation, from the mailbox's address and the way answers are sent; not to a sender the checking server found forged, and at most once a day to the same address.": "Yeni bir konuşmanın müşterisine bir kez, kutunun adresinden ve yanıtların gönderildiği yoldan gönderilir; denetleyen sunucunun sahte bulduğu gönderene gönderilmez ve aynı adrese günde en çok bir kez gider.",
     "Sent to": "Gönderildiği adres",
     "Sent to Claude": "Claude'a iletildi",
     "Sent to the account's address when the page shows a link bound to \"{var}\"; otherwise the built-in text e-mail goes out.": "Sayfada \"{var}\" seçeneğine bağlı bir bağlantı varsa hesabın adresine bu sayfa gönderilir; yoksa yerleşik metin e-postası gider.",

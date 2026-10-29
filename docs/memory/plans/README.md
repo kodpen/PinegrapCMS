@@ -42,7 +42,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - feature-roadmap-2026-10.md: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approved plans in four groups, wave order, the legacy rule, one task per session; index of the plan files
 - graph-canvas-core.md: Plan (2026-10-24, not started, answers open): a reusable box-and-arrow canvas core split from workspace_flow.js behind an adapter; first Flows, then designer prototype links
 - incoming-email-design.md: Design of the not-started incoming e-mail feature: ingest flow, ws_mail_* tables, channel card, routing, threading, reply headers, security, API endpoints
-- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1-G3 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+- incoming-email-g5.md: G5 of incoming e-mail: G5a (status, holder, auto-reply) is #2923; G5b (E-postalar tab, assigning others, first-response target, events, assignee notice) not started
+- incoming-email-plan.md: Incoming e-mail into Workspace channels (G1-G3, G5a, G6 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 - legacy-page-designer-l5-list.md: What step L5 (retire page_designer.php) reroutes or removes beyond the three files: Edit Layout links, help row, menu case, panel actions used only by page_designer.js
 - legacy-page-designer-parity.md: L4 parity list (2026-10-26): what page_designer.php does that the visual designer lacks, and the owner's build-or-drop answer per item (#2484)
 - legacy-page-designer-retirement.md: Plan (2026-10-19, waits for its prerequisites) to open classic pages in the visual designer and retire page_designer.php: placeholder converter L1, entry point, parity list, what leaves
