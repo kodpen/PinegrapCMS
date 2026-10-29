@@ -3397,6 +3397,7 @@ function output_menu($properties = false)
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_order.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(['string' => 'Add {var:1}', 'vars' => [lang('Order')]]) . '</a>';
             $menu_items[10]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_returns.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-arrow-return-left bi-me-2\'>' . lang('Returns') . '</a>';
+            $menu_items[10]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_cart_quotes.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-cart3 bi-me-2\'>' . lang('Cart quotes') . '</a>';
 
             if ((ECOMMERCE === true) and USER_MANAGE_ECOMMERCE_REPORTS) {
                 // ECOMMERCE > Order Reports
@@ -4018,6 +4019,8 @@ function output_menu($properties = false)
         case 'view_returns.php':
         case 'view_return.php':
         case 'add_return.php':
+        case 'view_cart_quotes.php':
+        case 'add_cart_quote.php':
             $active_menu = 10;
             break;
         case 'view_order_reports.php':

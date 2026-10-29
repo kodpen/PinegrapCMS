@@ -124,6 +124,62 @@
         return node;
     }
 
+    // The flow box kinds' line icons (16 px, 1.5 px stroke): the canvas,
+    // its list and outline (workspace_flow.js, through the kit) and the mini
+    // window of a draft draw these, one set for all. Each is the paths of a
+    // 16 × 16 view; a kind without one takes a plain square.
+    var FLOW_ICONS = {
+        manual: ['M1.75 8a6.25 6.25 0 1 0 12.5 0a6.25 6.25 0 1 0 -12.5 0', 'M6.5 5.5v5l4-2.5z'],
+        schedule: ['M1.75 8a6.25 6.25 0 1 0 12.5 0a6.25 6.25 0 1 0 -12.5 0', 'M8 4.5V8l2.5 1.5'],
+        event: ['M9 1.5L3.5 9H8l-1 5.5L12.5 7H8z'],
+        join: ['M3.5 5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0', 'M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5', 'M13 4.5v4M11 6.5h4'],
+        row: ['M2 2.5h12v11H2z', 'M2 6h12M2 9.5h12M6.5 6v7.5'],
+        task: ['M2.5 2.5h11v11h-11z', 'M5 8l2 2l4-4'],
+        post: ['M2 3h12v8H7l-3 3v-3H2z'],
+        email: ['M1.5 3.5h13v9h-13z', 'M1.5 4l6.5 5l6.5-5'],
+        notify: ['M4 11V7a4 4 0 0 1 8 0v4l1.5 1.5h-11z', 'M6.5 14.25h3'],
+        task_open: ['M2.5 2.5h11v11h-11z', 'M8 5v6M5 8h6'],
+        webhook: ['M6.25 3.75a1.75 1.75 0 1 0 3.5 0a1.75 1.75 0 1 0 -3.5 0', 'M2 11.5a1.75 1.75 0 1 0 3.5 0a1.75 1.75 0 1 0 -3.5 0', 'M10.5 11.5a1.75 1.75 0 1 0 3.5 0a1.75 1.75 0 1 0 -3.5 0', 'M7.2 5.3l-2.6 4.6M8.8 5.3l2.6 4.6M5.5 11.5h5'],
+        web_check: ['M1.75 8a6.25 6.25 0 1 0 12.5 0a6.25 6.25 0 1 0 -12.5 0', 'M1.75 8h12.5', 'M8 1.75c-2.5 2-2.5 10.5 0 12.5M8 1.75c2.5 2 2.5 10.5 0 12.5'],
+        task_digest: ['M1.75 4l1.25 1.25L5.25 3', 'M7.5 4h6.5', 'M1.75 9l1.25 1.25L5.25 8', 'M7.5 9h6.5', 'M7.5 13.5h6.5'],
+        report: ['M2 14h12', 'M4.25 14V9M8 14V3.5M11.75 14V6.5'],
+        checkin: ['M3.5 5a2.5 2.5 0 1 0 5 0a2.5 2.5 0 1 0 -5 0', 'M1.5 14c0-2.5 2-4.5 4.5-4.5s4.5 2 4.5 4.5', 'M10.5 6.5l1.5 1.5l3-3'],
+        start_action: ['M2.75 9a5.25 5.25 0 1 0 10.5 0a5.25 5.25 0 1 0 -10.5 0', 'M8 6.5V9l1.75 1', 'M1.75 3.75L4 1.75M14.25 3.75L12 1.75'],
+        start_flow: ['M2 2.5h5v3.5H2z', 'M9 10h5v3.5H9z', 'M4.5 6v3.5a2 2 0 0 0 2 2H9'],
+        change: ['M10.5 2.25l3.25 3.25L6 13.25H2.75V10z', 'M9 3.75l3.25 3.25'],
+        lead: ['M1.5 3h13v10h-13z', 'M4 6.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0', 'M3.25 11c0-1.25 1-2.25 2.25-2.25s2.25 1 2.25 2.25', 'M9.75 6.5h3M9.75 9h3'],
+        mcp: ['M5.5 1.5v3M10.5 1.5v3', 'M3.5 4.5h9v2.25a4.5 4.5 0 0 1-9 0z', 'M8 11.25v3.25'],
+        approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
+        condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
+        delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
+        end: ['M3.5 14.5V2', 'M3.5 2.5h9l-2 3l2 3h-9'],
+        constants: ['M2 2h6l6 6l-6 6l-6-6z', 'M4.5 5.25a0.75 0.75 0 1 0 1.5 0a0.75 0.75 0 1 0 -1.5 0'],
+        value: ['M12 2.5H4l4.5 5.5L4 13.5h8']
+    };
+
+    function flowIconPaths(kind) {
+        return FLOW_ICONS[kind] || ['M2.5 2.5h11v11h-11z'];
+    }
+
+    function flowIcon(kind, extra) {
+        var svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+
+        svg.setAttribute('class', 'ws-flow-icon' + (extra ? ' ' + extra : ''));
+        svg.setAttribute('viewBox', '0 0 16 16');
+        svg.setAttribute('width', '16');
+        svg.setAttribute('height', '16');
+        svg.setAttribute('aria-hidden', 'true');
+        svg.setAttribute('focusable', 'false');
+        flowIconPaths(kind).forEach(function (d) {
+            var path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+            path.setAttribute('d', d);
+            svg.appendChild(path);
+        });
+
+        return svg;
+    }
+
     // Plays a one-off motion class from its start again; the keyframes in
     // backend.src.css run only under prefers-reduced-motion: no-preference,
     // so without them the class is a harmless leftover.
@@ -9992,8 +10048,16 @@
                 group.appendChild(make('title', {}, node.name + ' · ' + node.label));
                 group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 12 }));
                 group.appendChild(make('text', { x: node.x + 14, y: node.y + 34, 'class': 'ws-fd-name' }, name));
-                group.appendChild(make('text', { x: node.x + 14, y: node.y + 64, 'class': 'ws-fd-kind' },
-                    node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : (node.label.length > 22 ? node.label.slice(0, 21) + '…' : node.label)));
+                // The kind's icon before its name, drawn at 24 units (the
+                // window is shown at 0.4).
+                var sign = make('svg', { x: node.x + 14, y: node.y + 44, width: 24, height: 24, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
+
+                flowIconPaths(node.kind).forEach(function (d) {
+                    sign.appendChild(make('path', { d: d }));
+                });
+                group.appendChild(sign);
+                group.appendChild(make('text', { x: node.x + 46, y: node.y + 64, 'class': 'ws-fd-kind' },
+                    node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : (node.label.length > 19 ? node.label.slice(0, 18) + '…' : node.label)));
 
                 if (node.outbound) {
                     group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 34) + ' ' + (node.y + 34) + ' l16 -16 m-10 0 h10 v10' }));
@@ -22325,6 +22389,7 @@
             t: t,
             el: el,
             icon: icon,
+            flowIcon: flowIcon,
             button: button,
             select: select,
             avatar: avatar,
