@@ -26,6 +26,8 @@ module: widgets_shipping_address
 - One loop row per active date: the `arrival_date` radio gets the date id as value; `custom_arrival_date` is renamed `custom_arrival_date_<id>` and dropped for a date without a custom day (row flag `arrival_is_custom`). It is an `<input type="date">`: the handler reads ISO dates (`prepare_form_data_for_input()`).
 - Static flags are applied with `arrival_is_custom => true`, so the row flag is decided per row.
 
+## Where is the verified addresses box?
+- In [[shipping-address-verified-box]] (#3177).
+
 ## What is left out?
-- The verified shipping addresses help box of the classic page.
 - The staff edit grid around the custom shipping form; the form's rows are the classic markup in the `custom_shipping_form` section (only a classic page has `form = 1`).

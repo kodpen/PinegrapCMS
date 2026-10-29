@@ -794,6 +794,7 @@
     "Choose folder": "Klasör seç",
     "Choose from Files": "Dosyalardan Seç",
     "Choose from a File": "Dosyadan Seç",
+    "Choose from one of our verified shipping addresses.": "Doğrulanmış teslimat adreslerimizden birini seçin.",
     "Choose how each part is paid.": "Her parçanın nasıl ödendiğini seçin.",
     "Choose how long the link is valid, in seconds: {var:1}.": "Linkin ne kadar geçerli olacağını saniye olarak seçin: {var:1}.",
     "Choose how long the link is valid.": "Bağlantının ne kadar geçerli olacağını seçin.",
