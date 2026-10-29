@@ -161,7 +161,8 @@ $pin_column = pg_auth_tokens_have_pin();
 // With a limit of one, refusing new sign-ins already ties the account to a
 // single device: the member's only way to another device is to sign out here
 // first, and pinning does not stop that either. So the button would promise
-// something it cannot add - it is shown disabled instead, with the reason.
+// something it cannot add - it is shown inert instead, with the reason
+// printed above the table.
 // From two devices upward pinning does add something (it stops the member
 // freeing a slot by signing out one of their OTHER devices), so it stays live.
 $pin_redundant = (pg_device_limit_strict() && (pg_device_limit() === 1));
@@ -302,9 +303,12 @@ foreach ($push_subscriptions as $subscription) {
     $has_session = (($subscription_selector !== '') && isset($push_live_selectors[$subscription_selector]));
 
     if (((int) $subscription['fail_count']) > 0) {
-        $status = '<span class="badge bg-subtle-warning fg-emphasis-warning fw-light" title="'
-            . h((string) $subscription['last_error']) . '">'
-            . h(lang(array('string' => '{var:1} failed attempts', 'vars' => array((int) $subscription['fail_count'])))) . '</span>';
+        // The notice above the tables sends the reader here for the reason,
+        // so the error is printed under the badge rather than in a hover title.
+        $last_error = trim((string) $subscription['last_error']);
+        $status = '<span class="badge bg-subtle-warning fg-emphasis-warning fw-light">'
+            . h(lang(array('string' => '{var:1} failed attempts', 'vars' => array((int) $subscription['fail_count'])))) . '</span>'
+            . (($last_error !== '') ? '<div class="small fg-secondary text-break">' . h($last_error) . '</div>' : '');
     } elseif (((int) $subscription['last_ok_timestamp']) > 0) {
         $status = get_relative_time(array('timestamp' => (int) $subscription['last_ok_timestamp']));
     } else {
@@ -319,10 +323,10 @@ foreach ($push_subscriptions as $subscription) {
         . '</td>'
         . '<td class="align-middle">'
         . (($subscription_selector === '')
-            ? '<span class="fg-secondary" title="' . h(lang('This subscription was made before the software started recording which browser a subscription belongs to, so it cannot be matched to a sign-in. Turning notifications off and on again on that device records it.')) . '">&mdash;</span>'
+            ? '<span class="fg-secondary" aria-hidden="true">&mdash;</span><div class="small fg-secondary">' . h(lang('This subscription was made before the software started recording which browser a subscription belongs to, so it cannot be matched to a sign-in. Turning notifications off and on again on that device records it.')) . '</div>'
             : ($has_session
                 ? '<span class="badge bg-subtle-success fg-emphasis-success fw-light">' . h(lang('Signed in')) . '</span>'
-                : '<span class="badge bg-subtle-secondary fg-secondary fw-light" title="' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '">' . h(lang('Signed out')) . '</span>'))
+                : '<span class="badge bg-subtle-secondary fg-secondary fw-light">' . h(lang('Signed out')) . '</span><div class="small fg-secondary">' . h(lang('This browser has no live sign-in, so it can only be told that something happened - never what.')) . '</div>'))
         . '</td>'
         . '<td class="align-middle">' . h(get_absolute_time(array('timestamp' => (int) $subscription['created_timestamp']))) . '</td>'
         . '<td class="align-middle">' . $status . '</td>'
@@ -332,13 +336,13 @@ foreach ($push_subscriptions as $subscription) {
         . '<input type="hidden" name="pg_session_action" value="test_push"/>'
         . '<input type="hidden" name="pg_push_id" value="' . (int) $subscription['id'] . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Sends one notification to this device now, so you can see whether it arrives.')) . '">' . h(lang('Test')) . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" title="' . h(lang('Sends one notification to this device now, so you can see whether it arrives.')) . '">' . h(lang('Test')) . '</button>'
         . '</form>'
         . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
         . '<input type="hidden" name="pg_session_action" value="revoke_push"/>'
         . '<input type="hidden" name="pg_push_id" value="' . (int) $subscription['id'] . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline theme-danger" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from the bell in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-danger no-popover" data-bs-toggle="tooltip" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from the bell in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
         . '</form>'
         . '</div>'
         . '</td>'
@@ -364,7 +368,7 @@ foreach ($sessions as $s) {
         . '<td class="align-middle"><a href="edit_user.php?id=' . (int) $s['user_id'] . '">' . h((string) $s['user_username']) . '</a></td>'
         . '<td class="align-middle" title="' . h(trim((string) $s['user_agent'])) . '">' . h(pg_user_agent_label($s['user_agent']))
         . ($is_current ? ' <span class="badge theme-success fw-light">' . h(lang('This device')) . '</span>' : '')
-        . ($is_pinned ? ' <span class="badge theme-secondary fw-light" title="' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '"><i class="bi bi-pin-angle-fill"></i> ' . h(lang('Locked')) . '</span>' : '')
+        . ($is_pinned ? ' <span class="badge theme-secondary fw-light"><i class="bi bi-pin-angle-fill" aria-hidden="true"></i> ' . h(lang('Locked')) . '</span><div class="small fg-secondary">' . h(lang('Locked by the site owner: the device limit cannot evict it and the member cannot sign it out.')) . '</div>' : '')
         . '</td>'
         . '<td class="align-middle">' . pg_connected_account_label(isset($identity_providers[(int) $s['user_id']]) ? $identity_providers[(int) $s['user_id']] : array(), $s['user_password_algo']) . '</td>'
         . '<td class="align-middle">' . h((string) $s['ip_address']) . '</td>'
@@ -375,13 +379,15 @@ foreach ($sessions as $s) {
         . '<div class="d-inline-flex gap-1">'
         . ($pin_column
             ? (($pin_redundant && !$is_pinned)
-                ? ('<button type="button" class="btn btn-sm btn-outline theme-secondary disabled" disabled title="'
-                    . h(lang('The setting "Refuse new sign-ins when the limit is full" already ties this account to one device, so pinning a single session adds nothing here. It becomes useful with a limit of two or more, where it stops the member freeing a slot by signing out one of their other devices.')) . '"><i class="bi bi-pin-angle-fill me-1"></i>' . h(lang('Locked')) . '</button>')
+                // Not disabled: a disabled button takes no focus and no
+                // pointer, so its reason could not be reached. The reason is
+                // printed once above the table and named by every such button.
+                ? ('<button type="button" class="btn btn-sm btn-outline theme-secondary" style="opacity:.65;cursor:default" aria-disabled="true" aria-describedby="pg_pin_redundant_reason"><i class="bi bi-pin-angle-fill me-1" aria-hidden="true"></i>' . h(lang('Locked')) . '</button>')
                 : ('<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
                 . '<input type="hidden" name="pg_session_action" value="' . ($is_pinned ? 'unpin' : 'pin') . '"/>'
                 . '<input type="hidden" name="pg_selector" value="' . h((string) $s['selector']) . '"/>'
                 . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary" title="' . h(lang('Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices - here the account is tied to this one.')) . '">'
+                . '<button type="submit" class="btn btn-sm btn-outline theme-secondary no-popover" data-bs-toggle="tooltip" title="' . h(lang('Pins THIS session: the device limit cannot evict it and the member cannot sign it out from their own screen. Different from the setting "Refuse new sign-ins when the limit is full", which only stops new devices - here the account is tied to this one.')) . '">'
                 . '<i class="bi ' . ($is_pinned ? 'bi-unlock' : 'bi-pin-angle') . ' me-1"></i>'
                 . h($is_pinned ? lang('Unlock') : lang('Lock')) . '</button></form>'))
             : '')
@@ -436,6 +442,7 @@ print '<main id="content" class="container-fluid">
             </div>
             ' . $output_filter_note . '
             <div class="alert theme-secondary">' . lang('Every sign-in carries a session token and is listed here. Sessions started before this feature are bound automatically on their next request.') . '</div>
+            ' . (($pin_column && $pin_redundant) ? '<p class="form-text" id="pg_pin_redundant_reason">' . h(lang('The setting "Refuse new sign-ins when the limit is full" already ties this account to one device, so pinning a single session adds nothing here. It becomes useful with a limit of two or more, where it stops the member freeing a slot by signing out one of their other devices.')) . '</p>' : '') . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">

@@ -93,7 +93,7 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
                 . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
             <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given')) . '</div></td>
-            <td style="max-width:240px" class="text-truncate">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-truncate">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
+            <td style="max-width:240px" class="text-break">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
             <td class="small">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['amount_base'] . '">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</td>
             <td><span class="badge theme-' . h($state[1]) . '">' . h($state[0]) . '</span></td>

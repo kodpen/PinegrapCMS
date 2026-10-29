@@ -186,27 +186,172 @@ function test_workspace_flows_canvas_detail_carries_the_start_kind()
 }
 
 // The list action hands each flow its start kind, and the screen keeps it
-// in a saved flow's entry and narrows the list by it with a select.
+// in a saved flow's entry; the flow list's chips narrow by it (the select
+// they replaced is gone).
 function test_workspace_flows_canvas_list_filters_by_start_kind()
 {
 	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 800);
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 1600);
 
-	pg_assert_contains('ws_flows_start_kinds($rows)', $list, 'the list reads each flow\'s start');
+	pg_assert_contains("\$start['kind']", $list, 'the list hands each flow its start');
 
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
 	$entry = substr($script, strpos($script, 'function listEntry(flow)'), 400);
-	$draw = substr($script, strpos($script, 'function drawList()'), 3000);
-	$filter = substr($script, strpos($script, 'function startFilter()'), 1500);
 
 	pg_assert_contains('start: flow.start', $entry, 'a saved flow keeps its start kind');
-	pg_assert_contains('startFilter()', $draw, 'the list draws the filter');
-	pg_assert_contains('flow.start === state.startFilter', $draw, 'the list is narrowed by the chosen start');
-	pg_assert_contains("el('select', 'form-control form-control-sm')", $filter, 'the filter is a Bootstrap select');
+	pg_assert_false(strpos($script, 'function startFilter()') !== false, 'no start select');
 
-	foreach (array('time', 'manual', 'event', 'join') as $start) {
-		pg_assert_contains("['" . $start . "', 'fl_", $filter, 'a choice for ' . $start);
+	foreach (array('time', 'manual', 'event', 'join', 'draft') as $chip) {
+		pg_assert_contains("['" . $chip . "', 'fl_chip_", $script, 'a chip for ' . $chip);
 	}
+}
+
+// The flow list: each chip counts the flows the search finds, a chip and
+// the search narrow the rows, the chips are toggle buttons with the count
+// in their name, each row's header a button that opens the flow, and a
+// flow without a sentence says its kind.
+function test_workspace_flows_canvas_list_chips_count_and_filter()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	preg_match('/^    var CHIPS = \[.*?\];$/ms', $source, $chips);
+	preg_match('/^    var START_BOXES = .*?;$/m', $source, $boxes);
+	pg_assert_true(!empty($chips) && !empty($boxes), 'the chips and start boxes are declared');
+
+	$result = ws_flows_canvas_test_node(
+		array('listCounts', 'listMatches', 'startSentence', 'drawRows', 'flowRow', 'statusBadge'),
+		($chips[0] ?? '') . "\n" . ($boxes[0] ?? '') . "\n" . <<<'JS'
+var KINDS = { manual: { name: 'fl_kind_manual' }, schedule: { name: 'fl_kind_schedule' }, event: { name: 'fl_kind_event' }, join: { name: 'fl_kind_join' } };
+var LEVELS = { view: 'fl_level_view' };
+var FL = { build: true };
+K.flowIcon = function (kind) { return new FakeNode('svg', 'ws-flow-icon ' + kind); };
+function runFlag(run) { return el('div', 'wsf-flag', 'flag ' + run.id); }
+function refocus() {}
+function openLastRun() {}
+var opened = [];
+function openFromList(flow) { opened.push(flow.id); return Promise.resolve(true); }
+var flows = [
+    { id: 1, name: 'Morning report', status: 'live', version: 3, start: 'time', start_text: 'Every day 09:00', channel_name: 'sales', mine: true, access: 'edit', last_run: { id: 9 } },
+    { id: 2, name: 'Welcome', status: 'draft', version: 0, start: 'join', start_text: '', channel_name: '', mine: true, access: 'edit', last_run: null },
+    { id: 3, name: 'Low stock', status: 'paused', version: 1, start: 'event', start_text: 'When a product runs low in stock', channel_name: 'shop', mine: false, access: 'view', last_run: null },
+    { id: 4, name: 'Refund', status: 'draft', version: 0, start: 'manual', start_text: 'By hand', channel_name: 'sales', mine: true, access: 'edit', last_run: null },
+    { id: 5, name: 'Empty', status: 'draft', version: 0, start: '', start_text: '', channel_name: '', mine: true, access: 'edit', last_run: null }
+];
+function ids(chip, query) { return flows.filter(function (flow) { return listMatches(flow, chip, query); }).map(function (flow) { return flow.id; }); }
+state = { flows: flows, chip: '', query: '' };
+ui.chips = new FakeNode('div');
+ui.rows = new FakeNode('tbody');
+ui.flowsNone = new FakeNode('p', 'd-none');
+var out = {};
+out.counts = listCounts(flows, '');
+out.searched = listCounts(flows, 'SALES');
+out.time = ids('time', '');
+out.draft = ids('draft', '');
+out.search = ids('', 'stock low');
+out.searchChannel = ids('manual', 'sales');
+out.sentences = flows.map(startSentence);
+drawRows();
+out.chips = ui.chips.children.map(function (chip) { return [textOf(chip), chip.getAttribute('aria-pressed')]; });
+out.rows = ui.rows.children.length;
+var first = ui.rows.children[0];
+out.header = [first.children[0].tag, first.children[0].getAttribute('scope'), first.children[0].children[0].tag, textOf(first.children[0].children[0])];
+out.cells = first.children.slice(1).map(function (cell) { return [cell.getAttribute('data-label'), textOf(cell)]; });
+out.level = textOf(ui.rows.children[2].children[0]);
+ui.chips.children[5].click();
+out.afterChip = [state.chip, ui.rows.children.length, ui.chips.children[5].getAttribute('aria-pressed'), ui.chips.children[0].getAttribute('aria-pressed')];
+state.query = 'nothing like it';
+drawRows();
+out.none = [ui.rows.children.length, ui.flowsNone.className, ui.flowsNone.textContent];
+first.children[0].children[0].click();
+out.opened = opened;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(is_array($result), 'the script printed its result');
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('' => 5, 'time' => 1, 'manual' => 1, 'event' => 1, 'join' => 1, 'draft' => 3), $result['counts'], 'every chip counts its flows');
+	pg_assert_same(array('' => 2, 'time' => 1, 'manual' => 1, 'event' => 0, 'join' => 0, 'draft' => 1), $result['searched'], 'the counts follow the search');
+	pg_assert_same(array(1), $result['time'], 'Time: flows started at a time');
+	pg_assert_same(array(2, 4, 5), $result['draft'], 'Draft: the drafts, however they start');
+	pg_assert_same(array(3), $result['search'], 'every word searched for, in any order, any case');
+	pg_assert_same(array(4), $result['searchChannel'], 'the home channel is searched, within the chip');
+	pg_assert_same(array('Every day 09:00', 'fl_kind_join', 'When a product runs low in stock', 'By hand', 'fl_list_no_start'), $result['sentences'], 'a flow without a sentence says its kind');
+	pg_assert_same(array(array('fl_chip_all 5', 'true'), array('fl_chip_time 1', 'false'), array('fl_chip_manual 1', 'false'), array('fl_chip_event 1', 'false'), array('fl_chip_join 1', 'false'), array('fl_chip_draft 3', 'false')), $result['chips'], 'chips: toggle buttons, the count in the name');
+	pg_assert_same(5, $result['rows'], 'a row per flow');
+	pg_assert_same(array('th', 'row', 'button', 'Morning report'), $result['header'], 'the row\'s header is a button with the flow\'s name');
+	pg_assert_same(array(
+		array('fl_col_start', 'Every day 09:00'),
+		array('fl_col_state', 'fl_status_live 3'),
+		array('fl_flag_last', 'flag 9'),
+		array('fl_col_channel', '#sales'),
+	), $result['cells'], 'how it starts, state, last run, home channel, each named for stacked rows');
+	pg_assert_contains('fl_level_view', $result['level'], 'somebody else\'s flow says what the person may do');
+	pg_assert_same(array('draft', 3, 'true', 'false'), $result['afterChip'], 'a chip narrows the rows and is pressed');
+	pg_assert_same(array(0, '', 'fl_list_none_match'), $result['none'], 'nothing found says so');
+	pg_assert_same(array(1), $result['opened'], 'the row\'s button opens the flow');
+}
+
+// The flow list says how each flow starts in a short sentence: a time box
+// by its time alone ("Every day 09:00", no "from" date), any other start in
+// the words the API's start_text gives; no start box, nothing.
+function test_workspace_flows_canvas_list_start_sentence_per_kind()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/scheduled.php');
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/recurrence.php');
+
+	$viewer = array('id' => 5, 'member' => true, 'role' => 3);
+	$none = function () {
+		return false;
+	};
+	$graph = function ($kind, $config = array()) {
+		return ws_flow_graph_normalize(array(
+			'nodes' => array(array('id' => 'start', 'kind' => $kind, 'config' => $config), array('id' => 'stop', 'kind' => 'end')),
+			'edges' => array(array('from' => 'start', 'to' => 'stop')),
+		));
+	};
+	$at = function ($repeat, $extra = array()) {
+		return array('type' => 'at', 'date' => '2030-01-07', 'time' => '09:00', 'repeat' => $repeat) + $extra;
+	};
+
+	pg_assert_same(lang(array('string' => 'Every day {var:1}', 'vars' => '09:00')), ws_flow_start_short($at('daily')), 'daily');
+	pg_assert_same(lang(array('string' => 'Every {var:1} days {var:2}', 'vars' => array(3, '09:00'))), ws_flow_start_short($at('daily', array('every' => 3))), 'every 3 days');
+	pg_assert_same(lang(array('string' => 'Every working day {var:1}', 'vars' => '09:00')), ws_flow_start_short($at('workdays')), 'working days');
+	pg_assert_same(lang(array('string' => 'Every {var:1} {var:2}', 'vars' => array(lang('Monday'), '09:00'))), ws_flow_start_short($at('weekly', array('days' => array(1)))), 'weekly');
+	pg_assert_same(lang(array('string' => 'Every month on day {var:1} {var:2}', 'vars' => array(7, '09:00'))), ws_flow_start_short($at('monthly')), 'monthly');
+	pg_assert_same(lang(array('string' => 'Every year on {var:1} {var:2}', 'vars' => array('07.01', '09:00'))), ws_flow_start_short($at('yearly')), 'yearly');
+	pg_assert_same(lang('Every hour'), ws_flow_start_short($at('hourly')), 'hourly');
+	pg_assert_same(lang(array('string' => 'Every {var:1} minutes', 'vars' => 15)), ws_flow_start_short($at('minutes', array('every' => 15))), 'minutes');
+	pg_assert_same(lang(array('string' => 'On {var:1} at {var:2}', 'vars' => array('07.01.2030', '09:00'))), ws_flow_start_short($at('none')), 'once');
+	pg_assert_same('', ws_flow_start_short(array('type' => 'join')), 'not a time: no short words');
+
+	pg_assert_same(lang('By hand'), ws_flow_start_sentence($viewer, $graph('manual'), $none), 'by hand');
+	pg_assert_same(lang(array('string' => 'Every day {var:1}', 'vars' => '09:00')), ws_flow_start_sentence($viewer, $graph('schedule', array('date' => '2030-01-07', 'time' => '09:00', 'repeat' => 'daily')), $none), 'a time box');
+	pg_assert_same(lang('At a time'), ws_flow_start_sentence($viewer, $graph('schedule'), $none), 'a time box not filled in');
+	pg_assert_same(lang('When somebody joins a public channel'), ws_flow_start_sentence($viewer, $graph('join'), $none), 'join');
+	pg_assert_same(lang('When somebody joins a channel'), ws_flow_start_sentence($viewer, $graph('join', array('channel_id' => 7)), $none), 'a channel not read is not named');
+	pg_assert_same('', ws_flow_start_sentence($viewer, ws_flow_graph_empty(), $none), 'no start box');
+}
+
+// The list action hands each flow its start sentence and its home
+// channel's name, read for the whole list at once.
+function test_workspace_flows_canvas_list_carries_sentence_and_channel()
+{
+	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 1600);
+
+	pg_assert_contains('ws_flows_starts($viewer, $rows)', $list, 'starts read once for the list');
+	pg_assert_contains("'start_text'", $list, 'the start sentence');
+	pg_assert_contains("'channel_name'", $list, 'the home channel\'s name');
+	pg_assert_contains('ws_flows_channel_names($viewer, $rows)', $list, 'channel names read once for the list');
 }
 
 // A save always names the draft it was made on: without draft_rev,

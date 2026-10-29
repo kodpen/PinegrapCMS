@@ -37,6 +37,6 @@ Compared 2026-10-19: the `page_type` cases of `get_page_content.php` against `SW
 - Next: the next type of the owner's order no open PR holds. One widget per PR.
 
 ## Which steps are there?
-1-4. Done: shipping address (#1746; verified box left), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
+1-4. Done: shipping address (#1746; verified box #3177), method (#1759), billing (#1777), order preview (#1789); [[shipping-address-widget]] and siblings, [[order-preview-widget]].
 - Left from 4, the currency switcher: done (#3164, [[checkout-currency-picker]]). 4b, card fields and surcharge rows by method: done (#1918). 4c, payment service methods and On Account: done (#3126).
 5. The owner's order (above): done: 5a order form (#2367, [[order-form-widget]]), 5b folder view (#2465, [[folder-view-widget]]), 5c photo gallery (#2492, [[photo-gallery-widget]]); 5d confirmations as a `confirmation_message` setting (#2697, [[affiliate-sign-up-widget]], [[member-widgets-handlers-and-forms]]), 5e affiliate sign-up form done (#2508, [[affiliate-sign-up-widget]]).

@@ -9,9 +9,10 @@
  * back to the order with the outcome. POST from the orders list: open the
  * missing labels of the selected orders, or print their labels as one PDF
  * merged now and never kept. GET id: hands out one label's document, the
- * kept file or the service's copy. The documents live under data/, which is
- * closed to the web: this is their only door, behind the order screen's
- * own gate.
+ * kept file or the service's copy; an SVG on a print page that holds it as
+ * an image, or with download the SVG file itself, sandboxed. The documents
+ * live under data/, which is closed to the web: this is their only door,
+ * behind the order screen's own gate.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -124,17 +125,16 @@ if (!$document['ok']) {
 
 $file_name = 'label-' . preg_replace('/[^A-Za-z0-9-]+/', '', (string) ($row['number'] !== '' ? $row['number'] : $row['id']));
 
-header('Cache-Control: private, no-store');
-header('X-Content-Type-Options: nosniff');
+$download = !empty($_GET['download']);
 
-// A PDF opens in the browser to print; a ZPL file is saved for the label
-// printer.
-if ($document['format'] === 'zpl') {
-    header('Content-Type: application/octet-stream');
-    header('Content-Disposition: attachment; filename="' . $file_name . '.zpl"');
-} else {
-    header('Content-Type: application/pdf');
-    header('Content-Disposition: inline; filename="' . $file_name . '.pdf"');
+foreach (pg_shipment_label_headers((string) $document['format'], $file_name, $download) as $header) {
+    header($header);
+}
+
+// An SVG is shown only as an image of a print page, or saved sandboxed.
+if (($document['format'] === 'svg') && !$download) {
+    echo pg_shipment_label_svg_page($document['document'], lang('Shipping Label') . ' ' . $file_name, 'shipment_label.php?id=' . (int) $row['id'] . '&download=1');
+    exit;
 }
 
 header('Content-Length: ' . strlen($document['document']));

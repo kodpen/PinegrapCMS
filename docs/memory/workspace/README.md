@@ -117,6 +117,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-look.md: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs #3118, #3158): its group and colour per theme, its line icon, the 1.5 px border, the selection ring, control arrows
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
+- workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-29
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-catalogue.md: The box catalogue GET /workspace/flow-kinds (settings read from the normalizers) and GET /workspace/flows/{id}/validate (the publish check without publishing), flow_catalogue.php
 - workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
@@ -131,6 +132,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a, #3145, decision #3122): rows compiled once into a draft flow (wtable_flow.php, ws_flow_from_wtable()), the column window on the table screen, rights; F6c-b left
+- workspace-flows-list.md: The Flows screen's flow list (#3172): full-width table, start sentence, state, last run flag, home channel, search, filter chips with counts, "Flows ›" back
 - workspace-flows-mcp-box-writes.md: The MCP box with a tool that asks first (F8c-1, #3144): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
 - workspace-flows-mcp-box.md: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's tool through ws_mcp_tool_call() with the owner's account, its answer an output; asking first: F8c
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination

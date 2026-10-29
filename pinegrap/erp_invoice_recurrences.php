@@ -39,7 +39,7 @@ foreach (erp_invoice_recurrences(!$show_stopped) as $row) {
 
     $output_rows .= '
         <tr' . ($active ? '' : ' class="opacity-75"') . '>
-            <td style="max-width:260px" class="text-truncate">' . h((string) $row['account_title']) . '</td>
+            <td style="max-width:260px" class="text-break">' . h((string) $row['account_title']) . '</td>
             <td class="text-nowrap"><a class="pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $row['source_invoice_id'] . '#erp-recurring">' . h((string) $row['source_number']) . '</a></td>
             <td>' . h($periods[(int) $row['every_months']] ?? '') . '</td>
             <td>' . h($modes[(string) $row['mode']] ?? '') . '</td>

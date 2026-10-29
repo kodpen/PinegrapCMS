@@ -1,0 +1,17 @@
+{
+  "id": "888-6AR-OUP",
+  "barcode": "BK4815162342",
+  "type": "OUTGOING",
+  "status": "READY_TO_SHIP",
+  "validationFailed": false,
+  "createdTime": "2026-10-29T15:41:47.755",
+  "shipmentInfo": {
+    "handler": {"name": "Sürat Kargo", "code": "SURAT"},
+    "handlerShipmentCode": "SRT7700112233"
+  },
+  "priceInfo": {"paymentMethod": "ADVANCE", "shipmentFee": 62.5, "extraFee": 0, "returnFee": 0, "extraServicesFee": 0, "totalCost": 62.5},
+  "orderTotal": 349.9,
+  "orderPaymentType": "OTHER",
+  "orderPaymentStatus": "PAID",
+  "codInfo": {"collectOnDelivery": false}
+}

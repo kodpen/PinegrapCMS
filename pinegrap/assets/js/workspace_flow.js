@@ -198,6 +198,20 @@
         ['end', 'fl_add_end']
     ];
 
+    // The flow list's filter chips: every flow, the four ways to start,
+    // and the drafts.
+    var CHIPS = [
+        ['', 'fl_chip_all'],
+        ['time', 'fl_chip_time'],
+        ['manual', 'fl_chip_manual'],
+        ['event', 'fl_chip_event'],
+        ['join', 'fl_chip_join'],
+        ['draft', 'fl_chip_draft']
+    ];
+
+    // The box whose line icon stands for a way to start in the flow list.
+    var START_BOXES = { time: 'schedule', manual: 'manual', event: 'event', join: 'join' };
+
     var K = null;
     var CFG = {};
     var FL = {};
@@ -228,7 +242,9 @@
         saveError: '',
         conflict: '',
         refocus: '',
-        startFilter: '',    // the list narrowed to one way of starting, '' for all
+        listing: false,     // the flow list shown full width, no flow open
+        chip: '',           // the flow list's chip: a way to start, 'draft', '' for all
+        query: '',          // what the flow list is searched for
         space: false,
         drag: null,
         pointers: {},
@@ -704,16 +720,13 @@
             state.flows = data.flows || [];
             drawList();
 
-            // The flow the address names opens, else the first of the
-            // person's own (listed first); when the one asked for cannot be
-            // opened (deleted, out of reach), that first one opens instead.
-            var mine = state.flows.filter(function (flow) { return flow.mine; });
-            var first = (mine[0] || state.flows[0] || {}).id || 0;
-
+            // The flow the address names opens, else the flow list; when
+            // the one asked for cannot be opened (deleted, out of reach),
+            // the list shows instead.
             if (section) {
                 showScheduled();
-            } else if (asked || first) {
-                open(asked || first, first).then(function () {
+            } else if (asked) {
+                open(asked).then(function () {
                     if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
                         select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
                     }
@@ -754,6 +767,10 @@
         ui.side.setAttribute('aria-label', t('fl_settings'));
         ui.live = el('div', 'visually-hidden');
         ui.live.setAttribute('aria-live', 'polite');
+        // The flow list, full width in place of the editor while no flow
+        // is open: a search field, the chips and the table.
+        ui.flows = el('section', 'wsf-flows d-none');
+        ui.flows.setAttribute('aria-label', t('fl_nav'));
 
         // The canvas: a viewport, the layer it moves and scales, and on the
         // layer the arrows under the boxes.
@@ -835,6 +852,7 @@
         root.appendChild(ui.runBox);
         root.appendChild(ui.problemBox);
         root.appendChild(ui.marksBox);
+        root.appendChild(ui.flows);
         root.appendChild(ui.app);
         root.appendChild(ui.live);
 
@@ -846,13 +864,13 @@
     function drawList() {
         K.clear(ui.listCol);
 
-        if (state.flows.length) {
-            ui.listCol.appendChild(startFilter());
+        if (state.listing) {
+            drawRows();
         }
 
         [[true, 'fl_list_mine'], [false, 'fl_list_shared']].forEach(function (part) {
             var flows = state.flows.filter(function (flow) {
-                return flow.mine === part[0] && (!state.startFilter || flow.start === state.startFilter);
+                return flow.mine === part[0];
             });
 
             if (!flows.length && !part[0]) {
@@ -864,7 +882,7 @@
             var list = el('ul', 'list-unstyled mb-5');
 
             if (!flows.length) {
-                list.appendChild(el('li', 'small fg-secondary px-3', t(state.startFilter ? 'fl_none_start' : 'fl_none')));
+                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
             }
 
             flows.forEach(function (flow) {
@@ -946,31 +964,221 @@
         }
     }
 
-    // The select that narrows the list to the flows started one way: at a
-    // time, by hand, on an event or when somebody joins a channel.
-    function startFilter() {
-        var wrap = el('div', 'px-3 mb-3');
-        var select = el('select', 'form-control form-control-sm');
+    // How many flows each chip holds among those the search finds.
+    function listCounts(flows, query) {
+        var counts = {};
 
-        [['', 'fl_start_all'], ['time', 'fl_kind_schedule'], ['manual', 'fl_kind_manual'], ['event', 'fl_kind_event'], ['join', 'fl_kind_join']].forEach(function (choice) {
-            var option = el('option', '', t(choice[1]));
-
-            option.value = choice[0];
-            option.selected = (choice[0] === state.startFilter);
-            select.appendChild(option);
+        CHIPS.forEach(function (chip) {
+            counts[chip[0]] = flows.filter(function (flow) { return listMatches(flow, chip[0], query); }).length;
         });
 
-        select.setAttribute('aria-label', t('fl_start_filter'));
-        select.setAttribute('data-refocus', 'start-filter');
-        select.addEventListener('change', function () {
-            state.startFilter = select.value;
-            state.refocus = 'start-filter';
-            drawList();
-            refocus();
-        });
-        wrap.appendChild(select);
+        return counts;
+    }
 
-        return wrap;
+    // Whether a flow shows under a chip and a search: its name, its start
+    // sentence or its home channel holds every word searched for.
+    function listMatches(flow, chip, query) {
+        if (chip === 'draft' ? (flow.status !== 'draft') : (chip && (flow.start !== chip))) {
+            return false;
+        }
+
+        var text = [flow.name, flow.start_text, flow.channel_name].join(' ').toLowerCase();
+
+        return String(query || '').toLowerCase().split(/\s+/).every(function (word) {
+            return !word || (text.indexOf(word) !== -1);
+        });
+    }
+
+    // How a flow starts in the list: its sentence, else its kind's name.
+    function startSentence(flow) {
+        if (flow.start_text) {
+            return flow.start_text;
+        }
+
+        return START_BOXES[flow.start] ? t(KINDS[START_BOXES[flow.start]].name) : t('fl_list_no_start');
+    }
+
+    // The flow list in place of the editor: a search field, the chips (a
+    // toolbar of toggle buttons, each count in its name) and the table.
+    function drawFlows() {
+        K.clear(ui.flows);
+
+        var tools = el('div', 'wsf-flows-tools');
+        var search = el('input', 'form-control form-control-sm wsf-flows-search');
+
+        search.type = 'search';
+        search.value = state.query;
+        search.setAttribute('aria-label', t('fl_list_search'));
+        search.placeholder = t('fl_list_search');
+        search.setAttribute('data-refocus', 'flows-search');
+        search.addEventListener('input', function () {
+            state.query = search.value;
+            drawRows();
+        });
+        tools.appendChild(search);
+        ui.chips = el('div', 'wsf-chips');
+        ui.chips.setAttribute('role', 'toolbar');
+        ui.chips.setAttribute('aria-label', t('fl_list_filter'));
+        tools.appendChild(ui.chips);
+        ui.flows.appendChild(tools);
+
+        var table = el('table', 'table wsf-flow-table');
+        var head = el('tr');
+
+        table.appendChild(el('caption', 'visually-hidden', t('fl_nav')));
+        ['fl_col_flow', 'fl_col_start', 'fl_col_state', 'fl_flag_last', 'fl_col_channel'].forEach(function (key) {
+            var cell = el('th', '', t(key));
+
+            cell.setAttribute('scope', 'col');
+            head.appendChild(cell);
+        });
+        table.appendChild(el('thead')).appendChild(head);
+        ui.rows = el('tbody');
+        table.appendChild(ui.rows);
+        ui.flows.appendChild(table);
+        ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
+        ui.flows.appendChild(ui.flowsNone);
+
+        // Staff's scheduled actions: one entry, the section it opens.
+        if (FL.scheduled) {
+            var scheduled = K.button('btn btn-sm btn-ghost', t('sa_title'), 'bi-alarm');
+
+            scheduled.setAttribute('data-refocus', 'scheduled');
+            scheduled.addEventListener('click', function () {
+                state.refocus = 'scheduled';
+                showScheduled();
+            });
+            ui.flows.appendChild(scheduled);
+        }
+
+        drawRows();
+    }
+
+    // The chips and the rows, drawn again as the search or a chip changes;
+    // the search field keeps the focus.
+    function drawRows() {
+        var counts = listCounts(state.flows, state.query);
+        var flows = state.flows.filter(function (flow) { return listMatches(flow, state.chip, state.query); });
+
+        K.clear(ui.chips);
+        CHIPS.forEach(function (chip) {
+            var button = K.button('btn btn-sm rounded-pill wsf-chip' + ((state.chip === chip[0]) ? ' active' : ''), t(chip[1]) + ' ');
+
+            button.appendChild(el('span', 'wsf-chip-count', String(counts[chip[0]])));
+            button.setAttribute('aria-pressed', (state.chip === chip[0]) ? 'true' : 'false');
+            button.setAttribute('data-refocus', 'chip-' + (chip[0] || 'all'));
+            button.addEventListener('click', function () {
+                state.chip = chip[0];
+                state.refocus = 'chip-' + (chip[0] || 'all');
+                drawRows();
+                refocus();
+            });
+            ui.chips.appendChild(button);
+        });
+
+        K.clear(ui.rows);
+        flows.forEach(function (flow) {
+            ui.rows.appendChild(flowRow(flow));
+        });
+
+        ui.flowsNone.textContent = state.flows.length ? t('fl_list_none_match') : (FL.build ? t('fl_none_build') : t('fl_none_run'));
+        ui.flowsNone.classList.toggle('d-none', flows.length > 0);
+    }
+
+    // One flow of the table: its name (the row's header, a button that
+    // opens it), how it starts, its state, its last run and its home
+    // channel. A click anywhere on the row opens it too.
+    function flowRow(flow) {
+        var row = el('tr', 'wsf-flow-row');
+        var name = el('th', 'wsf-flow-name');
+        var link = el('button', 'wsf-flow-open', flow.name);
+        var starts = el('td', 'wsf-flow-start');
+        var stateCell = el('td');
+        var last = el('td', 'wsf-flow-last');
+        var channel = el('td', '', flow.channel_name ? '#' + flow.channel_name : '—');
+
+        link.type = 'button';
+        link.setAttribute('data-refocus', 'row-' + flow.id);
+        link.addEventListener('click', function () {
+            openFromList(flow);
+        });
+        name.setAttribute('scope', 'row');
+        name.appendChild(link);
+
+        // Somebody else's flow says what the person may do with it.
+        if (!flow.mine && LEVELS[flow.access]) {
+            name.appendChild(el('span', 'wsf-list-level', t(LEVELS[flow.access])));
+        }
+
+        if (START_BOXES[flow.start]) {
+            starts.appendChild(K.flowIcon(START_BOXES[flow.start], 'wsf-group-start'));
+        }
+
+        starts.appendChild(el('span', '', startSentence(flow)));
+        stateCell.appendChild(statusBadge(flow, true));
+
+        if (flow.last_run) {
+            last.appendChild(runFlag(flow.last_run, {
+                key: 'table-flag-' + flow.id,
+                label: t('fl_flag_last') + ': ' + flow.name,
+                open: function (run) {
+                    openFromList(flow).then(function (opened) {
+                        if (opened) {
+                            openLastRun(run);
+                        }
+                    });
+                }
+            }));
+        } else {
+            last.appendChild(el('span', 'fg-secondary', t('fl_list_never')));
+        }
+
+        [[starts, 'fl_col_start'], [stateCell, 'fl_col_state'], [last, 'fl_flag_last'], [channel, 'fl_col_channel']].forEach(function (cell) {
+            cell[0].setAttribute('data-label', t(cell[1]));
+        });
+
+        [name, starts, stateCell, last, channel].forEach(function (cell) {
+            row.appendChild(cell);
+        });
+
+        row.addEventListener('click', function (event) {
+            if (!(event.target && event.target.closest && event.target.closest('button, a, input'))) {
+                openFromList(flow);
+            }
+        });
+
+        return row;
+    }
+
+    // A flow opened from the list; the flow's name takes the focus.
+    function openFromList(flow) {
+        state.refocus = 'name';
+
+        return open(flow.id);
+    }
+
+    // The list shown full width, or the editor in its place.
+    function listing(on) {
+        state.listing = on;
+        ui.flows.classList.toggle('d-none', !on);
+        ui.app.classList.toggle('d-none', on);
+    }
+
+    // Back to the flow list from a flow: what is unsaved is saved first,
+    // and the flow's row takes the focus.
+    function showList() {
+        var id = state.flow ? state.flow.id : 0;
+
+        leaveFlow().then(function (go) {
+            if (!go) {
+                refocus();
+                return;
+            }
+
+            window.clearTimeout(state.saveTimer);
+            state.refocus = 'row-' + id + ' flows-search';
+            showNone();
+        }).catch(K.fail);
     }
 
     function statusBadge(flow, small) {
@@ -1018,7 +1226,6 @@
         state.graph = graphOf(null);
         K.clear(ui.bar);
         newFlowButton();
-        listToggle();
 
         // The address no longer names a flow, so a reload does not ask for
         // one that is gone.
@@ -1041,6 +1248,8 @@
         ui.empty.classList.remove('d-none');
         ui.stage.classList.remove('d-none');
         ui.outlineBox.classList.add('d-none');
+        listing(true);
+        drawFlows();
         refocus();
     }
 
@@ -1072,6 +1281,8 @@
 
             window.clearTimeout(state.saveTimer);
             showNone();
+            listing(false);
+            listToggle();
             state.section = 'scheduled';
 
             try {
@@ -1087,6 +1298,7 @@
             ui.scheduled.classList.remove('d-none');
             ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
             newFlowButton();
+            flowsButton();
             K.scheduledList(ui.scheduled);
             listToggle();
             drawList();
@@ -1111,6 +1323,8 @@
 
             window.clearTimeout(state.saveTimer);
             showNone();
+            listing(false);
+            flowsButton();
             state.section = 'templates';
             K.clear(ui.gallery);
             ui.empty.classList.add('d-none');
@@ -1728,6 +1942,7 @@
         state.section = '';
         ui.scheduled.classList.add('d-none');
         ui.gallery.classList.add('d-none');
+        listing(false);
         ui.app.classList.remove('wsf-nothing');
         ui.app.classList.toggle('wsf-readonly', !state.edit);
         ui.conflictBox.classList.add('d-none');
@@ -1782,6 +1997,17 @@
             }
         });
         ui.bar.appendChild(create);
+    }
+
+    // "Flows ›": back to the flow list.
+    function flowsButton() {
+        var back = K.button('btn btn-sm btn-ghost wsf-back', t('fl_nav'));
+
+        back.appendChild(el('span', 'ms-1', '›')).setAttribute('aria-hidden', 'true');
+        back.setAttribute('aria-label', t('fl_list_back'));
+        back.setAttribute('data-refocus', 'flows');
+        back.addEventListener('click', showList);
+        ui.bar.appendChild(back);
     }
 
     function listToggle() {
@@ -1868,6 +2094,7 @@
             runButton(true);
         }
 
+        flowsButton();
         listToggle();
 
         if (state.edit) {
@@ -6674,15 +6901,10 @@
                 drawList();
                 K.toast(t('fl_binned'), 'success');
 
-                // The menu that deleted it is gone: the next flow's name, or
+                // The menu that deleted it is gone: the list's search, or
                 // "New flow", takes the focus.
-                state.refocus = 'name new';
-
-                if (state.flows.length) {
-                    open(state.flows[0].id);
-                } else {
-                    showNone();
-                }
+                state.refocus = 'flows-search new';
+                showNone();
             }).catch(K.fail);
         });
     }

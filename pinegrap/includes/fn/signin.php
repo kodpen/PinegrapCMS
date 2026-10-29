@@ -518,9 +518,12 @@ function pg_signin_identity_badges($providers, $password_algo)
     if ((count($providers) === 1) && ((int) $password_algo === 3)) {
         $label = pg_signin_provider_label($providers[0]);
 
-        return '<span class="badge theme-warning fg-black fw-light" title="'
-            . h(lang(array('string' => 'This account has no password of its own - disconnecting {var:1} would lock it out.', 'vars' => $label))) . '">'
-            . h(lang(array('string' => '{var:1} only', 'vars' => $label))) . '</span>';
+        // The warning is printed under the badge: a hover title reaches no
+        // keyboard, touch or screen-reader user.
+        return '<span class="badge theme-warning fg-black fw-light">'
+            . h(lang(array('string' => '{var:1} only', 'vars' => $label))) . '</span>'
+            . '<div class="small fg-secondary">'
+            . h(lang(array('string' => 'This account has no password of its own - disconnecting {var:1} would lock it out.', 'vars' => $label))) . '</div>';
     }
 
     $html = array();

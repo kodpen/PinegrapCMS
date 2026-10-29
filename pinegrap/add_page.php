@@ -33,10 +33,28 @@ if (($user['role'] == '3') && ($user['create_pages'] == FALSE)) {
 }
 
 if (!$_POST) {
+    // A refused save comes back with what was typed; otherwise the form opens
+    // with the defaults of a new page.
+    $posted = pg_page_form_posted($liveform_add_page);
+    $noindex_ready = pg_page_noindex_ready();
+
+    $form_values = pg_page_form_redraw_fields(
+        array(
+            'folder' => '',
+            'style' => '',
+            'mobile_style_id' => '',
+            'layout_type' => 'system',
+            'sitemap' => '1',
+            'noindex' => '0',
+            'nofollow' => '0',
+        ),
+        $posted,
+        $noindex_ready ? array('sitemap', 'noindex', 'nofollow') : array('sitemap'));
+
     // if user role is Administrator, Designer, or Manager, then allow user to select style and mobile style for page
     if ($user['role'] < 3) {
-        $output_style = '<select class="form-control" id="style" name="style">' . select_style() . '</select>';
-        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options() . '</select>';
+        $output_style = '<select class="form-control" id="style" name="style">' . select_style($form_values['style']) . '</select>';
+        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($form_values['mobile_style_id']) . '</select>';
 
     // else user has a user role
     } else {
@@ -44,9 +62,8 @@ if (!$_POST) {
         $output_mobile_style = lang('Default') . ' (' . lang('inherit') . ')';
     }
 
-    // NOTE: $page_folder is never assigned anywhere in this script, so the folder picklist has
-    // no preselected folder.  Empty keeps that behaviour and stops the warning.
-    $page_folder = '';
+    // A new page has no preselected folder.
+    $page_folder = $form_values['folder'];
 
     // Search engine indexing. The block is only built where the columns behind
     // it exist: a switch that saves nothing is worse than no switch at all.
@@ -54,16 +71,20 @@ if (!$_POST) {
     // nofollow starts unavailable, the way the master switch leaves it.
     $output_noindex_rows = '';
 
-    if (pg_page_noindex_ready() == TRUE) {
+    if ($noindex_ready == TRUE) {
+        $noindex_checked = ($form_values['noindex'] == 1) ? ' checked="checked"' : '';
+        $nofollow_checked = ($form_values['nofollow'] == 1) ? ' checked="checked"' : '';
+        $nofollow_disabled = ($form_values['noindex'] == 1) ? '' : ' disabled="disabled"';
+
         $output_noindex_rows =
             '<div class="col-12 my-5" id="noindex_row">
                 <div class="form-field">
-                    <div class="switch"><input class="" type="checkbox" id="noindex" name="noindex" value="1"></div>
+                    <div class="switch"><input class="" type="checkbox" id="noindex" name="noindex" value="1"' . $noindex_checked . '></div>
                     <label class="" for="noindex">' . lang('Close to Search Engines (noindex)') . '</label>
                 </div>
                 <div class="form-text">' . lang('The page is served with a noindex robots tag, is blocked in robots.txt and is left out of the site map.') . '</div>
                 <div class="form-field mt-5 ms-7">
-                    <div class="switch"><input class="" type="checkbox" id="nofollow" name="nofollow" value="1" disabled="disabled"></div>
+                    <div class="switch"><input class="" type="checkbox" id="nofollow" name="nofollow" value="1"' . $nofollow_checked . $nofollow_disabled . '></div>
                     <label class="" for="nofollow">' . lang('Do Not Follow Links on This Page (nofollow)') . '</label>
                 </div>
                 <div class="form-text ms-7">' . lang('Leave this off so that search engines keep discovering the items this page links to. Turn it on for a widget page whose links already appear on a page that is indexed.') . '</div>
@@ -72,8 +93,14 @@ if (!$_POST) {
 
     // A new page opens on the standard type; the other types' rows are
     // printed hidden with the defaults of a new page and shown by the type
-    // picker.
-    $page_type_fields = pg_page_form_type_fields('standard', 'system', pg_page_form_new_page_properties(), $user);
+    // picker. A refused save opens on the type chosen, with its settings.
+    $form_page_type = pg_page_form_redraw_type($posted, 'standard', $user);
+    $form_layout_type = ($form_values['layout_type'] == 'custom') ? 'custom' : 'system';
+    $page_type_fields = pg_page_form_type_fields(
+        $form_page_type,
+        $form_layout_type,
+        pg_page_form_redraw_type_properties(pg_page_form_new_page_properties(), $form_page_type, $posted),
+        $user);
     $output_wysiwyg_editor_code = $page_type_fields['wysiwyg'];
 
     echo
@@ -164,7 +191,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-3" id="sitemap_row">
                                                     <div class="form-field">
-                                                        <div class="switch"><input class="" type="checkbox" id="sitemap" name="sitemap" value="1" checked="checked"></div>
+                                                        <div class="switch"><input class="" type="checkbox" id="sitemap" name="sitemap" value="1"' . (($form_values['sitemap'] == 1) ? ' checked="checked"' : '') . '></div>
                                                         <label class="" for="sitemap">' . lang('Include in Site Map?') . '</label>
                                                     </div>
                                                 </div>
@@ -193,8 +220,8 @@ if (!$_POST) {
 </main>' .
         output_footer();
     
-    $liveform_add_page->unmark_errors('add_page');
-    $liveform_add_page->clear_notices('add_page');
+    // The errors, notices and typed values are shown once.
+    $liveform_add_page->remove_form();
     
 } else {
     validate_token_field();
@@ -209,6 +236,7 @@ if (!$_POST) {
     
     // If the page name field is blank.
     if ($name == '') {
+        $liveform_add_page->add_fields_to_session();
         $liveform_add_page->mark_error('name', lang('The page must have a name. Please type in a name for the page.'));
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
         exit();
@@ -221,6 +249,7 @@ if (!$_POST) {
     $name = $clean_name['name'];
 
     if (check_name_availability(array('name' => $name)) == false) {
+        $liveform_add_page->add_fields_to_session();
         $liveform_add_page->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
         header('Location: ' . $form_url);
         exit();
