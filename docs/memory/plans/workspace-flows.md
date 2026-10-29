@@ -42,4 +42,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- F8b next (workspace/workspace-flows-mcp-box.md). Values: plans/workspace-flows-data-passing.md. Read workspace/README.md.
+- F8b now (workspace/workspace-flows-mcp-box.md). Values: plans/workspace-flows-data-passing.md. Read workspace/README.md.
