@@ -168,6 +168,10 @@ function ws_events_catalog()
         $catalog['workspace.guest.message'] = array('label' => lang('A guest writes'), 'when' => lang('When a guest writes'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
     }
 
+    if (function_exists('ws_mail_ready') && ws_mail_ready()) {
+        $catalog['workspace.mail.received'] = array('label' => lang('An e-mail is received'), 'when' => lang('When an e-mail is received'), 'record' => 'channel', 'right' => 'member', 'filter' => '', 'channel' => true);
+    }
+
     return $catalog;
 }
 
@@ -185,6 +189,7 @@ function ws_events_own()
         'workspace.task.overdue',
         'workspace.approval.decided',
         'workspace.guest.message',
+        'workspace.mail.received',
     );
 }
 
@@ -409,7 +414,7 @@ function ws_events_record_of($event, $payload)
             : array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
-    if ($event === 'workspace.guest.message') {
+    if (($event === 'workspace.guest.message') || ($event === 'workspace.mail.received')) {
         return array('channel', (int) ($payload['channel_id'] ?? 0));
     }
 
@@ -804,6 +809,15 @@ function ws_events_own_values($viewer, $event, $payload, $values, $ref)
     }
 
     $values['{{record_link}}'] = $link;
+
+    // An e-mail: who wrote and the subject; its text stays on the card.
+    if ($event === 'workspace.mail.received') {
+        $values['{{record_title}}'] = (string) ($payload['subject'] ?? '');
+        $values['{{customer}}'] = (string) ($payload['customer'] ?? '');
+
+        return $values;
+    }
+
     $values['{{customer}}'] = (string) ($payload['guest'] ?? '');
     $values['{{message}}'] = (string) ($payload['text'] ?? '');
 

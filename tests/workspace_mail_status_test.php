@@ -37,8 +37,8 @@ function test_workspace_mail_state_offer()
 {
 	$item = array('conversation' => array('id' => 3, 'message_id' => 100, 'status' => 'open', 'assignee_id' => 7));
 
-	pg_assert_same(array('status' => 'open', 'mine' => true, 'taken' => true), ws_mail_state_offer($item, 3, 7));
-	pg_assert_same(array('status' => 'open', 'mine' => false, 'taken' => true), ws_mail_state_offer($item, 3, 8), 'somebody else holds it');
+	pg_assert_same(array('status' => 'open', 'mine' => true, 'taken' => true, 'assignee' => 7, 'me' => 7), ws_mail_state_offer($item, 3, 7));
+	pg_assert_same(array('status' => 'open', 'mine' => false, 'taken' => true, 'assignee' => 7, 'me' => 8), ws_mail_state_offer($item, 3, 8), 'somebody else holds it');
 	pg_assert_same(null, ws_mail_state_offer($item, 0, 7), 'not the card, or the reader may not answer');
 	pg_assert_same(null, ws_mail_state_offer(array('conversation' => null), 3, 7));
 	pg_assert_same(false, ws_mail_state_offer(array('conversation' => array('status' => 'closed', 'assignee_id' => 0)), 3, 0)['mine'], 'nobody is not the viewer 0');
@@ -57,11 +57,55 @@ function test_workspace_mail_conversation_changes()
 	pg_assert_same('status', ws_mail_conversation_changes($conversation, array('status' => 'spam'), 7, 1000)['error']);
 	pg_assert_same('nothing', ws_mail_conversation_changes($conversation, array('status' => 'open'), 7, 1000)['error'], 'the same status');
 	pg_assert_same('nothing', ws_mail_conversation_changes(array('status' => 'open', 'assignee_id' => 7), array('assign' => 'me'), 7, 1000)['error'], 'already held');
-	pg_assert_same('nothing', ws_mail_conversation_changes($conversation, array('assign' => 'someone'), 7, 1000)['error'], 'only me or none');
+	pg_assert_same('nothing', ws_mail_conversation_changes($conversation, array('assign' => 'someone'), 7, 1000)['error'], 'me, none or an id');
+	pg_assert_same(array('assignee_id' => 9, 'updated_at' => 1000), ws_mail_conversation_changes($conversation, array('assign' => '9'), 7, 1000)['fields'], 'given to somebody else');
+	pg_assert_same(array('assignee_id' => 9, 'updated_at' => 1000), ws_mail_conversation_changes(array('status' => 'open', 'assignee_id' => 7), array('assign' => '9'), 7, 1000)['fields'], 'handed on');
+	pg_assert_same(array('assignee_id' => 7, 'updated_at' => 1000), ws_mail_conversation_changes($conversation, array('assign' => '7'), 7, 1000)['fields'], 'one\'s own id is me');
+	pg_assert_same('nothing', ws_mail_conversation_changes(array('status' => 'open', 'assignee_id' => 9), array('assign' => '9'), 7, 1000)['error'], 'already theirs');
+	pg_assert_same('nothing', ws_mail_conversation_changes($conversation, array('assign' => '0'), 7, 1000)['error'], 'no id 0');
 
-	foreach (array('no_access', 'status', 'nothing') as $error) {
+	foreach (array('no_access', 'status', 'assignee', 'nothing') as $error) {
 		pg_assert_true(ws_mail_conversation_error_text($error) !== '', $error);
 	}
+}
+
+function test_workspace_mail_first_reply_target()
+{
+	$conversation = array('status' => 'open', 'first_in_at' => 10000, 'first_reply_at' => 0);
+
+	pg_assert_same(10000 + 4 * 3600, ws_mail_first_reply_due($conversation, 4));
+	pg_assert_same(0, ws_mail_first_reply_due($conversation, 0), 'no target');
+	pg_assert_same(0, ws_mail_first_reply_due(array_merge($conversation, array('first_reply_at' => 12000)), 4), 'answered');
+	pg_assert_same(0, ws_mail_first_reply_due(array_merge($conversation, array('status' => 'closed')), 4), 'closed');
+	pg_assert_same(10000 + 3600, ws_mail_first_reply_due(array_merge($conversation, array('status' => 'waiting')), 1), 'set waiting without an answer still counts');
+	pg_assert_false(ws_mail_first_reply_overdue($conversation, 1, 10000 + 3600), 'due right now is not late');
+	pg_assert_true(ws_mail_first_reply_overdue($conversation, 1, 10000 + 3601));
+
+	pg_assert_contains(h(lang('First answer overdue')), ws_mail_first_reply_html($conversation, 1, 20000));
+	pg_assert_contains('bi-alarm', ws_mail_first_reply_html($conversation, 10, 20000), 'due later');
+	pg_assert_true(strpos(ws_mail_first_reply_html($conversation, 10, 20000), 'theme-danger') === false);
+	pg_assert_same('', ws_mail_first_reply_html($conversation, 0, 20000));
+	pg_assert_contains(h(lang('First answer overdue')), ws_mail_status_html($conversation, '', 1, 20000), 'on the card\'s state');
+
+	pg_assert_same(6, ws_mail_first_reply_hours(array('settings' => '{"first_reply_hours":6}')));
+	pg_assert_same(WS_MAIL_FIRST_REPLY_MAX, ws_mail_first_reply_hours(array('settings' => '{"first_reply_hours":99999}')), 'bounded');
+	pg_assert_same(0, ws_mail_first_reply_hours(array('settings' => '')));
+	pg_assert_same(0, ws_mail_first_reply_hours(null));
+
+	pg_assert_same(array('ok' => true, 'error' => '', 'hours' => 0), ws_mail_first_reply_input(array()));
+	pg_assert_same(24, ws_mail_first_reply_input(array('first_reply_hours' => ' 24 '))['hours']);
+	pg_assert_false(ws_mail_first_reply_input(array('first_reply_hours' => '1.5'))['ok'], 'whole hours');
+	pg_assert_false(ws_mail_first_reply_input(array('first_reply_hours' => '-1'))['ok']);
+	pg_assert_false(ws_mail_first_reply_input(array('first_reply_hours' => (string) (WS_MAIL_FIRST_REPLY_MAX + 1)))['ok']);
+	pg_assert_true(ws_mail_first_reply_input(array('first_reply_hours' => array('1')))['ok'], 'a posted array is none');
+
+	$box = array('id' => 3, 'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 0, 'folder' => 'INBOX', 'after_fetch' => 'seen', 'enabled' => 1, 'reply_via' => 'box',
+		'settings' => '{"first_reply_hours":8}', 'auto_reply' => 0, 'auto_reply_text' => '');
+	pg_assert_contains('name="first_reply_hours" id="ws_mail_3_first_reply_hours" min="0" max="720" value="8"', ws_mail_box_form('workspace_settings.php', $box, array()));
+	pg_assert_contains('id="ws_mail_0_first_reply_hours" min="0" max="720" value=""', ws_mail_box_form('workspace_settings.php', null, array()), 'none on a new box');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
+	pg_assert_contains("\$settings['first_reply_hours'] = \$first['hours'];", $source, 'kept in the box\'s settings');
 }
 
 function test_workspace_mail_auto_reply_due()
@@ -136,4 +180,15 @@ function test_workspace_mail_status_wiring()
 	}
 
 	pg_assert_contains("t('mail_status_' + key)", $script, 'the status words by key');
+
+	// Given to somebody, and the customer writing again: the holder hears.
+	pg_assert_contains("ws_notify(\$holder, 'mail_assigned',", $status);
+	pg_assert_contains("ws_notify((int) \$conversation['assignee_id'], 'mail_customer',", $ingest);
+	pg_assert_contains("ws_event('workspace.mail.received', array(", $ingest);
+	pg_assert_true(strpos(substr($ingest, strpos($ingest, "ws_event('workspace.mail.received'"), 700), 'body') === false, 'no mail text in the event');
+	pg_assert_contains("change({ assign: hold.value === '' ? 'none' : hold.value }, hold);", $script);
+	pg_assert_contains("case 'mail_customer':", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php'));
+	pg_assert_contains("'mail_customer') AND message_id <=", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channels.php'), 'read with the channel');
+	pg_assert_same(array('channel', 5), ws_events_record_of('workspace.mail.received', array('channel_id' => 5)));
+	pg_assert_true(isset(ws_flow_event_outputs()['workspace.mail.received']));
 }

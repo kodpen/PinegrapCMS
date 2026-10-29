@@ -531,6 +531,7 @@
     "When an approval request ends: {var:1}": "Bir onay isteği sonuçlandığında: {var:1}",
     "When an approval request is settled": "Bir onay isteği sonuçlandığında",
     "When an approval request of the channel is approved, a task for the next step is opened for you.": "Kanaldaki bir onay isteği onaylanınca sonraki adım için size bir görev açılır.",
+    "When an e-mail is received": "Bir e-posta geldiğinde",
     "When an editor sets your article live, the editor tells you so under it: that message is the e-mail you get, and no other e-mail is sent when it goes live.": "Bir editör haberinizi yayına aldığında bunu size haberin altından yazar: size gelen e-posta bu mesajdır; haber yayına girdiğinde başka bir e-posta gönderilmez.",
     "When an editor sets your story live, the editor tells you so under it: that message is the e-mail you get, and no other e-mail is sent when it goes live.": "Bir editör yazınızı yayına aldığında bunu yazının altında size bildirir: aldığınız e-posta o mesajdır; yazı yayına girdiğinde başka bir e-posta gönderilmez.",
     "When an order changes status": "Siparişin durumu değiştiğinde",

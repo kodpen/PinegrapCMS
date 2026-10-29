@@ -4,7 +4,7 @@
  * Workspace - answering an e-mail conversation by e-mail on the channel
  * screen: the "Reply by e-mail" button under a conversation's card, the
  * drawer the answer is written in, and the conversation's status and
- * holder (includes/workspace/mail_status.php).
+ * holder, given to anybody of the channel (includes/workspace/mail_status.php).
  *
  * assets/js/workspace.js draws the conversation and calls in here with its
  * own helpers. Whether a card may be answered is decided by the server
@@ -116,11 +116,31 @@
             change({ status: status.value }, status);
         });
 
-        var hold = h.button('btn btn-sm btn-outline theme-secondary py-0 ms-2', current.mine ? t('mail_release') : t('mail_take'), current.mine ? 'bi-person-dash' : 'bi-person-check');
+        // Who holds it: nobody, the viewer, or a member of the channel.
+        var people = [['', t('mail_nobody')], [String(current.me), t('mail_me')]];
+        var seen = {};
 
-        hold.addEventListener('click', function (event) {
-            event.stopPropagation();
-            change({ assign: current.mine ? 'none' : 'me' }, hold);
+        seen[people[1][0]] = true;
+        ((view.channel && view.channel.members) || []).forEach(function (member) {
+            var id = String(member.id);
+
+            if (!seen[id]) {
+                seen[id] = true;
+                people.push([id, member.name]);
+            }
+        });
+
+        // A holder who is not among the members; the card names them.
+        if (current.assignee && !seen[String(current.assignee)]) {
+            people.push([String(current.assignee), t('mail_other')]);
+        }
+
+        var hold = h.select(people, current.assignee ? String(current.assignee) : '');
+
+        hold.classList.add('d-inline-block', 'w-auto', 'ms-2', 'py-0');
+        hold.setAttribute('aria-label', t('mail_holder'));
+        hold.addEventListener('change', function () {
+            change({ assign: hold.value === '' ? 'none' : hold.value }, hold);
         });
 
         row.appendChild(status);

@@ -47,6 +47,8 @@ function ws_nav_groups($viewer, $flags = null)
             // Each person's own accounts on the MCP servers and their tool
             // forms, while a server is on (mcp_form.php).
             'mcp'           => function_exists('ws_mcp_active_servers') && (bool) ws_mcp_active_servers(),
+            // A mailbox writes into a channel the person reads (mail_list.php).
+            'mail'          => function_exists('ws_mail_list_visible') && ws_mail_list_visible($viewer),
         );
     }
 
@@ -66,6 +68,10 @@ function ws_nav_groups($viewer, $flags = null)
         ),
         'foot' => array(),
     );
+
+    if (!empty($flags['mail'])) {
+        $groups['work'][] = array('key' => 'mail', 'label' => lang('E-mails'), 'icon' => 'bi-envelope', 'url' => $base . 'workspace_mail.php');
+    }
 
     if (!empty($flags['notes'])) {
         $groups['work'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
@@ -139,6 +145,7 @@ function ws_side_screen($script)
         'workspace_timeline.php'      => 'timeline',
         'workspace_flows.php'         => 'flows',
         'workspace_mcp.php'           => 'mcp',
+        'workspace_mail.php'          => 'mail',
         'workspace_settings.php'      => 'settings',
         // A template is written from the settings (templates.php).
         'workspace_template.php'      => 'settings',

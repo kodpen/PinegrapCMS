@@ -121,6 +121,8 @@ function ws_flow_event_outputs()
         'workspace.task.overdue'        => array_merge($task, array($channel, $value('due_date', 'text', lang('Due date')))),
         'workspace.approval.decided'    => array_merge($task, array($channel, $value('message_id', 'number', lang('Message')), $actor)),
         'workspace.guest.message'       => array($value('guest', 'text', lang('Guest')), $value('text', 'text', lang('What the guest wrote')), $channel, $value('message_id', 'number', lang('Message'))),
+        'workspace.mail.received'       => array($value('customer', 'text', lang('Customer')), $value('customer_email', 'text', lang('E-mail')), $value('subject', 'text', lang('Subject')),
+            $value('conversation_id', 'number', lang('Conversation')), $channel, $value('message_id', 'number', lang('Message'))),
     );
 }
 
