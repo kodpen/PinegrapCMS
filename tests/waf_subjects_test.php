@@ -92,7 +92,7 @@ function test_waf_subjects_credential_endpoints()
 	pg_assert_false(waf_names_script_in('/pinegrap/index.php', '/pinegrap/index.php/shipworks.php', $api), 'the name as PATH_INFO claims nothing');
 
 	$waf = (string) file_get_contents(PG_FUNCTIONS_DIR . '/waf.php');
-	pg_assert_contains("'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php');", $waf, 'the guest room in waf_is_api_request()');
+	pg_assert_contains("'marketplace_webhook.php', 'workspace_guest.php', 'payment_callback.php', 'carrier_webhook.php');", $waf, 'the guest room in waf_is_api_request()');
 	pg_assert_contains("if (waf_schema_ready() && ((int) waf_setting('login_throttle', 1) === 1)) {\n            \$names[] = 'shipworks.php';", $waf, 'ShipWorks only while the sign-in throttle counts its password');
 	pg_assert_contains("\$answer = waf_request_names_script(array('api.php'));", $waf, 'api.php alone keeps the site allowance');
 
@@ -100,7 +100,7 @@ function test_waf_subjects_credential_endpoints()
 	// client and a person's guest room are held to the country rule like
 	// the panel.
 	$country = waf_country_api_scripts();
-	pg_assert_same(array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php'), $country);
+	pg_assert_same(array('integration.php', 'mcp.php', 'oauth.php', 'workspace_ical.php', 'feed.php', 'marketplace_webhook.php', 'payment_callback.php', 'carrier_webhook.php'), $country);
 	pg_assert_false(waf_names_script_in('/pinegrap/shipworks.php', '/pinegrap/shipworks.php', $country), 'ShipWorks is not country-exempt');
 	pg_assert_false(waf_names_script_in('/pinegrap/workspace_guest.php', '/pinegrap/workspace_guest.php', $country), 'a guest room is not country-exempt');
 	pg_assert_contains("waf_setting('waf_country_exempt_api', 1) && waf_request_names_script(waf_country_api_scripts())", $waf, 'the country restriction reads its own list');

@@ -685,20 +685,43 @@ function pg_label_geliver_track($reference, $account)
         return pg_label_geliver_failure($read, false);
     }
 
-    $data = $read['data'];
+    return array('reference' => $id) + pg_label_geliver_track_answer($read['data'], $read['raw']);
+}
+
+/**
+ * The track() answer of a shipment as Geliver gives it, in GET
+ * /shipments/{id} or in a TRACK_UPDATED message. The time is the tracking
+ * status's statusDate, else the moment Geliver recorded that status (a
+ * message's statusDate may be null).
+ *
+ * @param array $data a shipment
+ * @param array $raw  what to keep of Geliver's answer
+ * @return array
+ */
+function pg_label_geliver_track_answer($data, $raw)
+{
     $status = pg_label_geliver_status($data);
 
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Geliver gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return array('success' => false, 'error' => lang('Geliver gives no status for this shipment yet.'), 'raw' => $raw);
     }
 
     $tracking = (isset($data['trackingStatus']) && is_array($data['trackingStatus'])) ? $data['trackingStatus'] : array();
+    $at = 0;
+
+    foreach (array('statusDate', 'updatedAt', 'createdAt') as $name) {
+        $at = pg_label_geliver_time(isset($tracking[$name]) ? $tracking[$name] : '');
+
+        if ($at > 0) {
+            break;
+        }
+    }
 
     return array(
         'success'         => true,
-        'reference'       => $id,
+        'reference'       => isset($data['id']) && is_string($data['id']) ? $data['id'] : '',
         'status'          => $status,
-        'status_at'       => pg_label_geliver_time(isset($tracking['statusDate']) ? $tracking['statusDate'] : ''),
+        'status_at'       => $at,
         'tracking_number' => isset($data['trackingNumber']) && is_scalar($data['trackingNumber']) ? (string) $data['trackingNumber'] : '',
         'tracking_url'    => isset($data['trackingUrl']) && is_string($data['trackingUrl']) ? $data['trackingUrl'] : '',
         'carrier'         => pg_label_geliver_carrier($data),
@@ -706,4 +729,83 @@ function pg_label_geliver_track($reference, $account)
             ? array('Geliver: ' . trim($tracking['statusDetails']) . '.')
             : array(),
     );
+}
+
+/**
+ * The parcel news in a message Geliver posted to the store's webhook
+ * address (carrier_webhook.php). Geliver's reference gives the message as
+ * {event, metadata, data: <the shipment>} and no signature: the key in the
+ * registered address is the credential (includes/fn/carrier_webhook.php).
+ * Only TRACK_UPDATED is read; another event carries nothing. Pure.
+ *
+ * @param string $body
+ * @return array|false list of reference (Geliver's shipment id), is_return
+ *                     (Geliver's own return flag), answer (a track() answer);
+ *                     false when the body is not a message
+ */
+function pg_label_geliver_webhook_read($body)
+{
+    $message = json_decode((string) $body, true);
+
+    if (!is_array($message) || !isset($message['event']) || !is_string($message['event'])) {
+        return false;
+    }
+
+    $data = (isset($message['data']) && is_array($message['data'])) ? $message['data'] : array();
+    $id = pg_label_geliver_id(isset($data['id']) ? $data['id'] : '');
+
+    if ((strtoupper($message['event']) !== 'TRACK_UPDATED') || ($id === '')) {
+        return array();
+    }
+
+    return array(array(
+        'reference' => $id,
+        'is_return' => !empty($data['isReturn']),
+        'answer'    => pg_label_geliver_track_answer($data, array('event' => 'TRACK_UPDATED', 'shipment' => $id)),
+    ));
+}
+
+/**
+ * Registers the store's webhook address at Geliver for TRACK_UPDATED
+ * (POST /webhook).
+ *
+ * @param string $url
+ * @param array  $account
+ * @return array success, id (Geliver's webhook id), error
+ */
+function pg_label_geliver_webhook_register($url, $account)
+{
+    $read = pg_label_geliver_api('POST', '/webhook', $account, array('type' => 'TRACK_UPDATED', 'url' => (string) $url));
+    $id = $read['ok'] ? pg_label_geliver_id(isset($read['data']['id']) ? $read['data']['id'] : '') : '';
+
+    if ($id === '') {
+        return array('success' => false, 'id' => '', 'error' => $read['ok'] ? lang('Geliver refused the request.') : pg_label_geliver_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'id' => $id, 'error' => '');
+}
+
+/**
+ * Removes a webhook at Geliver (DELETE /webhook/{id}). One Geliver no longer
+ * has (404) counts as removed.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array success, error
+ */
+function pg_label_geliver_webhook_remove($id, $account)
+{
+    $id = pg_label_geliver_id($id);
+
+    if ($id === '') {
+        return array('success' => false, 'error' => lang('Geliver refused the request.'));
+    }
+
+    $read = pg_label_geliver_api('DELETE', '/webhook/' . $id, $account);
+
+    if (!$read['ok'] && ($read['status'] !== 404)) {
+        return array('success' => false, 'error' => pg_label_geliver_failure($read, false)['error']);
+    }
+
+    return array('success' => true, 'error' => '');
 }
