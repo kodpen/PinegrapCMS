@@ -646,13 +646,94 @@
         });
         if (window.pgFields) { window.pgFields.init(root); }
     }
-    function render() {
+    // ── focus across a redraw ────────────────────────────────────────────
+    // render() rebuilds the rows and both Add menus with innerHTML, so the
+    // control that had focus is gone and focus would fall to <body>. A
+    // control is named by its data-on, data-index and the attribute that
+    // tells it from its siblings; render() takes a list of such names (or
+    // functions returning an element), tries them in order on the new markup
+    // and focuses the first one there.
+    var FOCUS_ATTRS = ['data-tier', 'data-id', 'data-unit', 'data-target', 'data-mode', 'data-type'];
+    function focusKey(el) {
+        var key = '[data-on="' + el.getAttribute('data-on') + '"]';
+        if (el.hasAttribute('data-index')) { key += '[data-index="' + el.getAttribute('data-index') + '"]'; }
+        FOCUS_ATTRS.forEach(function (attr) {
+            if (el.hasAttribute(attr)) { key += '[' + attr + '="' + el.getAttribute(attr) + '"]'; }
+        });
+        return key;
+    }
+    // The editor control that holds focus. A combobox toggle, or an item of
+    // its menu, stands for the select it was drawn from (pg_fields.js puts
+    // the toggle and the menu right after the select).
+    function focusedControl() {
+        var el = document.activeElement;
+        if (!el || el === document.body || !root.contains(el)) { return null; }
+        var box = el.closest('.pg-combobox-menu') || (el.classList.contains('pg-combobox') ? el : null);
+        if (box) { el = box.parentNode.querySelector('select[data-on]') || el; }
+        return el.closest('[data-on]');
+    }
+    function focusable(el) {
+        if (!el || el.disabled || el.closest('.d-none')) { return null; }
+        // People reach a long select through its combobox toggle.
+        return el.pgComboboxToggle || el;
+    }
+    // force: the handler names where focus goes; otherwise focus moves only
+    // when the redraw took it away.
+    function restoreFocus(keys, force) {
+        var current = document.activeElement;
+        if (!force && current && current !== document.body && root.contains(current)) { return; }
+        for (var n = 0; n < keys.length; n++) {
+            var el = focusable(typeof keys[n] === 'function' ? keys[n]() : (keys[n] ? $(keys[n]) : null));
+            if (el) { el.focus(); return; }
+        }
+    }
+    function rowRemoveKey(kind, index) {
+        return '[data-on="' + (kind === 'condition' ? 'cond-remove' : 'act-remove') + '"][data-index="' + index + '"]';
+    }
+    function addButton(kind) {
+        return function () {
+            var menu = $(kind === 'condition' ? '#pg-if-add-condition-menu' : '#pg-if-add-action-menu');
+            return menu ? menu.previousElementSibling : null;
+        };
+    }
+    // The first control of a row, its remove buttons and tag links aside.
+    function firstField(kind, index) {
+        return function () {
+            var row = $('[data-row="' + kind + '"][data-index="' + index + '"]');
+            if (!row) { return null; }
+            var fields = $$('[data-on]', row).filter(function (el) {
+                return !/-remove$/.test(el.getAttribute('data-on')) && !!focusable(el);
+            });
+            return fields[0] || null;
+        };
+    }
+    // After a row goes: the row now at its place, else the one before it,
+    // else the section's Add button.
+    function afterRowRemove(kind, index) {
+        return [rowRemoveKey(kind, index), rowRemoveKey(kind, index - 1), addButton(kind)];
+    }
+    // After a tag goes: the next tag's remove link, else the row's picker.
+    function afterTagRemove(el, picker) {
+        var tag = el.closest('.badge');
+        var next = tag && tag.nextElementSibling ? tag.nextElementSibling.querySelector('[data-on]') : null;
+        var index = el.getAttribute('data-index');
+        return [next ? focusKey(next) : null, '[data-on="' + picker + '"][data-index="' + index + '"]',
+            rowRemoveKey(picker.indexOf('cond-') === 0 ? 'condition' : 'action', index)];
+    }
+    function render(keys) {
+        var force = !!keys;
+        if (!keys) {
+            var focused = focusedControl();
+            var row = focused ? focused.closest('[data-row]') : null;
+            keys = focused ? [focusKey(focused), row ? rowRemoveKey(row.getAttribute('data-row'), row.getAttribute('data-index')) : null] : [];
+        }
         renderHeader();
         renderConditions();
         renderActions();
         renderOptions();
         renderSummary();
         enhance();
+        if (keys.length) { restoreFocus(keys, force); }
     }
     function softRow(sel, err) {
         var row = $(sel);
@@ -688,17 +769,17 @@
             case 'cond-add':
                 addCondition(el.getAttribute('data-type')); break;
             case 'cond-remove':
-                S.conditions.splice(i, 1); touch(); render(); break;
+                S.conditions.splice(i, 1); touch(); render(afterRowRemove('condition', i)); break;
             case 'cond-group-remove':
                 S.conditions[i].group_ids = S.conditions[i].group_ids.filter(function (id) { return id != el.getAttribute('data-id'); });
-                touch(); render(); break;
+                touch(); render(afterTagRemove(el, 'cond-group-add')); break;
             case 'cond-product-remove':
                 S.conditions[i].product_ids = S.conditions[i].product_ids.filter(function (id) { return id != el.getAttribute('data-id'); });
-                touch(); render(); break;
+                touch(); render(afterTagRemove(el, 'cond-product-add')); break;
             case 'act-add':
                 addAction(el.getAttribute('data-type')); break;
             case 'act-remove':
-                S.actions.splice(i, 1); touch(); render(); break;
+                S.actions.splice(i, 1); touch(); render(afterRowRemove('action', i)); break;
             case 'act-target':
                 var target = el.getAttribute('data-target');
                 if (S.actions[i].target !== target) {
@@ -722,11 +803,16 @@
             case 'tier-add':
                 var last = S.actions[i].tiers[S.actions[i].tiers.length - 1];
                 S.actions[i].tiers.push({ min: last ? last.min + 10000 : 0, percent: last ? Math.min(100, last.percent + 5) : 5 });
-                touch(); render(); break;
+                touch(); render(['[data-on="tier-min"][data-index="' + i + '"][data-tier="' + (S.actions[i].tiers.length - 1) + '"]']); break;
             case 'tier-remove':
-                S.actions[i].tiers.splice(parseInt(el.getAttribute('data-tier'), 10), 1);
+                var tier = parseInt(el.getAttribute('data-tier'), 10);
+                S.actions[i].tiers.splice(tier, 1);
                 if (!S.actions[i].tiers.length) { S.actions[i].value = 0; }
-                touch(); render(); break;
+                touch();
+                render(['[data-on="tier-remove"][data-index="' + i + '"][data-tier="' + tier + '"]',
+                    '[data-on="tier-remove"][data-index="' + i + '"][data-tier="' + (tier - 1) + '"]',
+                    '[data-on="tier-add"][data-index="' + i + '"]', '[data-on="act-value"][data-index="' + i + '"]', rowRemoveKey('action', i)]);
+                break;
             case 'act-unit':
                 if (S.actions[i].unit !== el.getAttribute('data-unit')) {
                     S.actions[i].unit = el.getAttribute('data-unit');
@@ -736,7 +822,7 @@
                 break;
             case 'act-method-remove':
                 S.actions[i].shipping_method_ids = S.actions[i].shipping_method_ids.filter(function (id) { return id != el.getAttribute('data-id'); });
-                touch(); render(); break;
+                touch(); render(afterTagRemove(el, 'act-method-add')); break;
             case 'period':
                 S.offer.period = el.getAttribute('data-period'); touch(); render(); break;
             case 'scope':
@@ -763,23 +849,27 @@
     function onChange(el) {
         var on = el.getAttribute('data-on');
         var i = parseInt(el.getAttribute('data-index'), 10);
+        // A pick in a row's select redraws the row: focus goes back to the
+        // same select (or its combobox toggle), else to the row's remove
+        // button when the select is gone.
+        var same = [focusKey(el), rowRemoveKey(on.indexOf('cond-') === 0 ? 'condition' : 'action', i)];
         switch (on) {
             case 'cond-product-add':
-                if (el.value) { S.conditions[i].product_ids.push(parseInt(el.value, 10)); touch(); render(); }
+                if (el.value) { S.conditions[i].product_ids.push(parseInt(el.value, 10)); touch(); render(same); }
                 break;
             case 'cond-group-add':
-                if (el.value) { S.conditions[i].group_ids.push(parseInt(el.value, 10)); touch(); render(); }
+                if (el.value) { S.conditions[i].group_ids.push(parseInt(el.value, 10)); touch(); render(same); }
                 break;
             case 'cond-mode':
                 S.conditions[i].mode = el.value;
                 if (!(S.conditions[i].days >= 1)) { S.conditions[i].days = 30; }
-                touch(); render(); break;
+                touch(); render(same); break;
             case 'act-product':
-                S.actions[i].product_id = parseInt(el.value, 10) || 0; touch(); render(); break;
+                S.actions[i].product_id = parseInt(el.value, 10) || 0; touch(); render(same); break;
             case 'act-group':
-                S.actions[i].group_id = parseInt(el.value, 10) || 0; touch(); render(); break;
+                S.actions[i].group_id = parseInt(el.value, 10) || 0; touch(); render(same); break;
             case 'act-method-add':
-                if (el.value) { S.actions[i].shipping_method_ids.push(parseInt(el.value, 10)); touch(); render(); }
+                if (el.value) { S.actions[i].shipping_method_ids.push(parseInt(el.value, 10)); touch(); render(same); }
                 break;
             case 'enabled':
                 S.offer.enabled = el.checked ? 1 : 0; touch(); renderSummary(); break;
@@ -865,7 +955,9 @@
         // One per customer is what this condition is nearly always for.
         if (type === 'usage limit') { S.conditions.push({ type: 'usage limit', total_limit: 0, customer_limit: 1 }); }
         if (type === 'new customer') { S.conditions.push({ type: 'new customer', mode: 'no_orders', days: 30 }); }
-        touch(); render();
+        // The menu item that was pressed is rewritten, so focus goes to the
+        // new row.
+        touch(); render([firstField('condition', S.conditions.length - 1), addButton('condition')]);
     }
     function addAction(type) {
         if (!ACTION_TYPES[type]) { return; }
@@ -873,7 +965,7 @@
         if (type === 'add product') { a.quantity = 1; a.value = 100; }
         if (type === 'discount shipping') { a.value = 100; a.shipping_method_ids = allMethods(); }
         S.actions.push(a);
-        touch(); render();
+        touch(); render([firstField('action', S.actions.length - 1), addButton('action')]);
     }
     // The templates on an empty offer: they fill rows, nothing more.
     // One place that knows the shape of an action row, so a template says what
@@ -964,7 +1056,9 @@
             S.conditions = [{ type: 'product group', group_ids: firstGroup ? [firstGroup] : [], quantity: 1 }];
             S.actions = [newAction('discount order', { value: 10 })];
         }
-        touch(); render();
+        // The template cards hide once a template is chosen, the pressed one
+        // with them: focus goes to the first row it filled.
+        touch(); render([firstField('condition', 0), firstField('action', 0), '#pg-if-code']);
     }
 
     // Codes the customer types instead of the offer code. The offer does not
@@ -1007,7 +1101,10 @@
                     C.key_code_count = res.count;
                     show($('#pg-if-keycodes-new'), false);
                     $('#pg-if-keycodes-list').value = '';
+                    var lost = !document.activeElement || document.activeElement === document.body || document.activeElement === button;
                     renderHeader();
+                    // The Delete button hides with no codes left to delete.
+                    if (lost) { restoreFocus(['[data-on="keycodes-generate"]', '#pg-if-keycodes-quantity'], true); }
                     toast(res.message, 'success');
                 })
                 .catch(function () { button.disabled = false; toast(L.requestFailed, 'danger'); });
