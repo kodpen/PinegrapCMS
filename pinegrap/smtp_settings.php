@@ -131,21 +131,21 @@ if (!$_POST) {
     if ($smtp_ready) {
         $system_buttons = '
             <button type="submit" id="send_system_email" name="send_system_email" value="Send System Test Email" class="btn my-1 btn-solid theme-warning">
-                <span class="material-icons me-3">forward_to_inbox</span>
+                <span class="material-icons me-3" aria-hidden="true">forward_to_inbox</span>
                 <span class="pg-btn-label">' . lang('Send Test') . '</span>
             </button>';
     }
 
     $dkim_generate_button = '
         <button type="submit" name="generate_dkim_key" value="true" class="btn my-1 btn-solid theme-secondary">
-            <span class="material-icons me-3">vpn_key</span>
+            <span class="material-icons me-3" aria-hidden="true">vpn_key</span>
             <span class="pg-btn-label">' . lang('Generate DKIM Key') . '</span>
         </button>';
     $dkim_buttons = $dkim_generate_button;
     if ($smtp_ready) {
         $dkim_buttons .= '
             <button type="submit" name="test_dkim" value="true" class="btn my-1 btn-solid theme-info">
-                <span class="material-icons me-3">verified</span>
+                <span class="material-icons me-3" aria-hidden="true">verified</span>
                 <span class="pg-btn-label">' . lang('Test DKIM') . '</span>
             </button>';
     }
@@ -324,7 +324,7 @@ if (!$_POST) {
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success">
-                                    <span class="material-icons me-3">save</span>
+                                    <span class="material-icons me-3" aria-hidden="true">save</span>
                                     <span class="pg-btn-label">' . lang(['string'=>'Save']) . '</span>
                                 </button>
                             </div>
@@ -397,8 +397,8 @@ if (!$_POST) {
 
                 $liveform_settings->add_notice(
                     lang('DKIM key pair generated successfully.') .
-                    '<br><label class="form-label mt-3">' . lang('Add this TXT record to your DNS:') . '</label>' .
-                    '<textarea class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>'
+                    '<br><label for="dkim_notice_record" class="form-label mt-3">' . lang('Add this TXT record to your DNS:') . '</label>' .
+                    '<textarea id="dkim_notice_record" class="form-control" rows="4" readonly>' . h($txt_record) . '</textarea>'
                 );
                 log_activity('DKIM key pair generated, files saved, TXT suggestion stored.', $_SESSION['sessionusername']);
             }
