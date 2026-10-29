@@ -708,6 +708,11 @@ function pg_privacy_erase_tables()
             'decided_ip'    => '',
             'decided_agent' => '',
         )),
+        // A cart quote keeps its products for the store; only whom it was
+        // made for goes.
+        'cart_quotes' => array('find' => array('contact_id' => 'contact_ids'), 'action' => 'anonymise', 'fields' => array(
+            'contact_id' => 0,
+        )),
         // The trail's lines about the person: the field list's columns are
         // replaced inside before_json and after_json
         // (_pg_privacy_erase_apply_audit_log()); who did what and when stays.
@@ -821,6 +826,7 @@ function pg_privacy_erase_labels()
         'comments'                     => lang('Comments and reviews'),
         'consent_log'                  => lang('Consents'),
         'ws_approval_guests'           => lang('Workspace approvals'),
+        'cart_quotes'                  => lang('Cart quotes'),
         'audit_log'                    => lang('Audit trail'),
         'record_revisions'             => lang('Item revisions'),
         'files'                        => lang('Uploaded files'),

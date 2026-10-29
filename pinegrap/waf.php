@@ -2048,7 +2048,7 @@ function waf_scan_request()
 
 /**
  * Scripts where automated abuse is expensive: credential stuffing, card
- * testing, form spam, coupon brute-forcing.
+ * testing, form spam, coupon brute-forcing, cart quote link guessing.
  */
 function waf_sensitive_scripts()
 {
@@ -2059,6 +2059,7 @@ function waf_sensitive_scripts()
         'get_express_order.php', 'forgot_password.php', 'reset_password.php',
         'email_a_friend.php', 'add_comment.php', 'api.php',
         'cancel_order.php', 'retrieve_order.php', 'order_history_retrieve_order.php',
+        'cart_quote.php',
     );
 }
 
