@@ -12,6 +12,7 @@ description: A recording made in a Workspace note (V6): the note toolbar's micro
 
 ## Why no transcript or waveform?
 - `ws_voice` rows belong to a message (`message_id`), and the recorder's measure is stored by `ws_attach` only: a note's recording would need a schema change, so it has neither. Assistants asked in the note read the link, not the sound.
+- The browser's own model may write one out for the person who asks, never stored: voice-browser-to-text.md.
 
 ## How was it checked?
 - `tests/workspace_notes_voice_test.php`: the three extensions are kept and drawn as sounds, `voiceLinks()` under Node, the wiring by source. Not with a real microphone in a browser, nor on a running site.

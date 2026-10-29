@@ -56,7 +56,7 @@ function ws_voice_js_strings()
         'voice_speak'       => lang('Read assistant answers to me aloud'),
         'voice_speak_on'    => lang('Assistant answers to your messages will be read aloud in this browser.'),
         'voice_speak_off'   => lang('Assistant answers are no longer read aloud.'),
-    );
+    ) + pg_voice_text_strings();
 }
 
 /* ---------------------------------------------------------------------------

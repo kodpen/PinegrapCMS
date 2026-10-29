@@ -724,6 +724,7 @@
     "Download {var:1}": "{var:1} indir",
     "Downloading": "İndiriliyor",
     "Downloading the AI model: {var:1}%": "Yapay zekâ modeli indiriliyor: %{var:1}",
+    "Downloading the browser's speech model…": "Tarayıcının konuşma modeli indiriliyor…",
     "Downloading the language model… {var}%": "Dil modeli indiriliyor… %{var}",
     "Downloading {var:1}...": "{var:1} indiriliyor...",
     "Downloading...": "İndiriliyor...",

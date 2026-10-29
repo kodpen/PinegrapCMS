@@ -39,6 +39,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-sent-and-bounces.md: After a Workspace e-mail answer leaves (G3c): the copy APPENDed to the box's sent folder, email()'s keep_mime, and a delivery failure (DSN) drawn as a "Not delivered" line under the conversation
 - mail-status.md: State of a Workspace e-mail conversation (G5a, G5b, mail_status.php): open/waiting/closed, the holder, the first-response target, the card's controls, the automatic answer
 - mail-tables.md: Incoming e-mail tables (G1b, step 11.0.82): ws_mail_boxes, ws_mail_conversations, ws_mail_items, sender kind 'mail'; what each column holds and why
+- voice-browser-to-text.md: "Convert to text" under a voice message by the browser's own model (pg_voice_text.js, owner request 2026-10-29): where it shows, Prompt API with audio input, pieces of 30 s, nothing sent or kept
 - workflow-table-board.md: Board view of a workflow table (T2, #2994): rows as cards by a status column via the channel board's mountSource(); a move writes the status cell with ws_wtable_row_update()
 - workflow-table-import-notes.md: A note's table block into a workflow table (T6b, #3044): notes and tables offered, cells read (tags, marks, formulas), then the file import's confirmation and writes; the note never changes
 - workflow-table-import.md: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new table with guessed column types or rows added by column name, confirmed first, every row through ws_wtable_row_create(), no webhooks

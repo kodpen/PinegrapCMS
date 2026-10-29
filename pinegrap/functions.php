@@ -160,6 +160,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/maintenance_mode.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_cache.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/product_feeds.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_write.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/voice_text.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/ai_prompts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/sms_messages.php');

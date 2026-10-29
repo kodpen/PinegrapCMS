@@ -259,7 +259,19 @@
             player.controls = true;
             player.preload = 'metadata';
 
-            return player;
+            // "Convert to text" under it where the browser's own model
+            // hears audio (pg_voice_text.js); nothing otherwise.
+            if (!window.PGVoiceText) {
+                return player;
+            }
+
+            var sound = document.createElement('div');
+            sound.appendChild(player);
+            sound.appendChild(window.PGVoiceText.control(attachment.url, function (key) {
+                return STR[key] || '';
+            }, document.documentElement.lang || ''));
+
+            return sound;
         }
 
         var fileLink = document.createElement('a');

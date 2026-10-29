@@ -6512,6 +6512,9 @@ function pg_js_bundles()
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // "Convert to text" under a voice message, loaded before
+        // workspace.min.js and beside the chat window's script.
+        'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),
         // The panel's own script, on every panel screen. Loaded without
         // defer: the inline scripts of the screens call it as they run.
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),
