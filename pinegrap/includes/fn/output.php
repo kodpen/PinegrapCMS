@@ -6531,6 +6531,8 @@ function pg_js_bundles()
         // The visual designer. Loaded without defer, before the inline
         // script that starts it and the scripts that extend it.
         'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
+        // The cloud file picker of the Upload File screen (add_file.php).
+        'assets/js/cloud_file_picker.min.js'       => array('assets/js/cloud_file_picker.js'),
     );
 }
 

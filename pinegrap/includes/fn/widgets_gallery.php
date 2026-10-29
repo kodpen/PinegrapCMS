@@ -179,8 +179,9 @@ function pg_sw_template_page_map($tpl, $style_id)
 
 /**
  * The gallery's "Starters" for widgets of $kind (pg_sw_starters()): each
- * array('key', 'label', 'loop', 'wrap'). A starter whose repeated part is
- * empty, or that is not an array of nodes, is left out.
+ * array('key', 'label', 'loop', 'wrap', 'body'), a repeated part ('loop',
+ * 'wrap') or a whole layout ('body'). A starter with neither, or whose
+ * nodes are not an array, is left out.
  *
  * @param string $kind pg_sw_widget_kind() of the widget
  * @return array
@@ -190,12 +191,16 @@ function pg_sw_starter_layouts($kind)
     if (!is_string($kind) || !in_array($kind, pg_sw_starter_kinds(), true)) return array();
     $out = array();
     foreach (pg_sw_starters($kind) as $s) {
-        if (!is_array($s) || empty($s['key']) || empty($s['loop']) || !is_array($s['loop'])) continue;
+        if (!is_array($s) || empty($s['key'])) continue;
+        $body = (!empty($s['body']) && is_array($s['body'])) ? array_values($s['body']) : array();
+        $loop = (!$body && !empty($s['loop']) && is_array($s['loop'])) ? array_values($s['loop']) : array();
+        if (!$body && !$loop) continue;
         $out[] = array(
             'key'   => (string)$s['key'],
             'label' => isset($s['label']) ? (string)$s['label'] : (string)$s['key'],
-            'loop'  => array_values($s['loop']),
-            'wrap'  => (isset($s['wrap']) && is_array($s['wrap'])) ? $s['wrap'] : array(),
+            'loop'  => $loop,
+            'wrap'  => ($loop && isset($s['wrap']) && is_array($s['wrap'])) ? $s['wrap'] : array(),
+            'body'  => $body,
         );
     }
     return $out;
