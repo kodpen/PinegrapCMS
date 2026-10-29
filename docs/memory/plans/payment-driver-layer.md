@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing from the webhook moved to `plans/order-completion-function.md`.
 4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
 4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
-4c. PayTR driver (M), after `order-completion-function.md` A3: it confirms payments only server to server; its iframe needs frame-src CSP. In progress (`feature/payment-driver-paytr`).
+4c. PayTR driver (M), after `order-completion-function.md` A3: confirms only server to server; its iframe needs frame-src CSP. In progress.
 6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
