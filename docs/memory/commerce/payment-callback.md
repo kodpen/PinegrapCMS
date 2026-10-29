@@ -15,17 +15,16 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 - `pg_payment_notify_outcome()` (pure) → http, status, log, alert:
   - not signed, unreadable, no secret: 400 `refused`; driver threw: 500 `error` (the service retries); `raw.ignored`: 200 `ignored`; no matching order: 200 `unknown_order`.
   - `paid` for an order placed with its payment pending (`pg_order_payment_pending()`, PayPal Checkout) at `orders.total`: 200 `recorded`, `mark_paid`, the receiver runs `pg_order_mark_paid()`; another amount alerts (`payment-driver-paypal-webhook.md`).
-  - Otherwise `paid`/`authorized` for an order not `incomplete`: 200 `nothing`. For an `incomplete` one: the driver's line + "… still incomplete. The order was not completed …".
+  - Otherwise `paid`/`authorized` for an order not `incomplete`: 200 `nothing`. For an `incomplete` one whose own payment it is, for its total, in the store's currency (`pg_payment_notify_matches_order()`): `complete`, the receiver completes it (`commerce/order-completion-from-payment.md`) and answers `completed` (log line with the order number), `nothing` (another request was first: no line) or `alerted` (refused). Any mismatch: the line + "… not for its own payment, its total or the store's currency. The order was not completed …".
   - `refunded`, `cancelled`, `pending` (Stripe's dispute): the line + "The order was not changed."
 - An `alerted` line goes to `log_activity(…, 'SYSTEM')` and to `pg_ops_alert('payment_notice', …)`; the alert keeps its once-a-day rule, the log line is written every time.
 
-## Why alert only?
-- Decided (#2382): the webhook will complete an incomplete order, once the completion tail of `submit_order()` runs without a session (`plans/order-completion-function.md`, A2/A3). Until then an incomplete order is not changed; the only order write is the pending payment above.
-- Since #2199 a Stripe order sent to 3-D Secure already keeps the PaymentIntent in `transaction_id` and the started amount in `total` (`pg_payment_started_order_values()`), so the order is found by its own payment and another intent is `unknown_order`.
+## Why complete here? (A3, #3021)
+- Decided (#2382): a payment the service confirms after the visitor left completes the order (`plans/order-completion-function.md`). Before #3021 the message only alerted.
+- The match: the order keeps the payment id in `transaction_id` (since #2199, written when the visitor is sent away), the answer's `amount` (integer hundredths) equals `orders.total`, its `raw['currency']` (Stripe and PayPal answers carry it since #3021) equals `BASE_CURRENCY_CODE`, any case. iyzico's 3-D Secure page names no payment: its orders still only alert.
 
-## What does the order keep for a later completion? (A3a, #2998)
-- Before the visitor is sent away, `pg_order_payment_started_query()` (pure, `order_completion.php`) writes on the incomplete order: the payment id, the amount (`total`), `payment_method`, `subtotal`, `discount`, `tax`, `shipping`, `gift_card_discount`, `surcharge` (minor units, `round()`) and, behind `pg_schema_has()`, `checkout_page_id`. Before, only the id and the amount; an incomplete order held no figures, so a completion from the message could not write them.
-- The completion from the message itself (plan step A3) waits for #3001 (the legal documents of such an order). Until then the `incomplete` answer still only alerts.
+## What does the order keep for a later completion? (A3a, #2998; #3021)
+- Before the visitor is sent away, `pg_order_payment_started_query()` (pure) writes on the incomplete order: the payment id, `total`, `payment_method`, `subtotal`, `discount`, `tax`, `shipping`, `gift_card_discount`, `surcharge` (minor units, `round()`) and, behind `pg_schema_has()`, `checkout_page_id` (11.0.120) and `legal_acceptance` (11.0.121; JSON from `pg_order_legal_acceptance_json()` while the documents are on, else NULL).
 
 ## Firewall?
 - In `waf_is_api_request()` and `waf_country_api_scripts()` (service servers, any country). No offence on a bad signature: a wrong secret stored here would ban the service.

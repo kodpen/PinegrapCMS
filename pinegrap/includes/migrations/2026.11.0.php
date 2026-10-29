@@ -101,6 +101,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_record_share_image_field(); // 11.0.18
 	upgrade_2026_11_0_workspace_thread_follow(); // 11.0.113
 	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
+	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 
 }
 
@@ -3218,5 +3219,19 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 function upgrade_2026_11_0_order_checkout_page() {
 
 	install_add_column('orders', 'checkout_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+}
+
+// The legal documents a visitor accepted before being sent to the payment
+// service (2026.11.0, 11.0.121; includes/fn/order_completion.php).
+// orders.legal_acceptance holds JSON {"types": [...], "ip": "...",
+// "user_agent": "...", "at": <unix>}: the ticked boxes, the visitor's address
+// and browser and when. A payment service's message that completes the order
+// after the visitor left stores the documents with these instead of its own
+// request's. NULL (orders started before this step) falls back to the two
+// required documents accepted, no KVKK consent, the order's IPv4 address.
+function upgrade_2026_11_0_order_legal_acceptance() {
+
+	install_add_column('orders', 'legal_acceptance', "TEXT NULL");
 
 }

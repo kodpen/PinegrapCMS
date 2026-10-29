@@ -160,6 +160,22 @@ function test_db_q_submit_order_forms_value_queries_use_db_q()
 
 // One value per '?': a literal array(...) of values has as many top-level
 // elements as the SQL text has placeholders.
+// The body of a function of includes/fn/order_completion.php, '' when it is
+// not there.
+function db_q_submit_order_forms_test_function_body($name)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
+	$start = strpos($source, "\nfunction " . $name . '(');
+
+	if ($start === false) {
+		return '';
+	}
+
+	$end = strpos($source, "\n}\n", $start);
+
+	return substr($source, $start, ($end === false) ? null : $end - $start);
+}
+
 function test_db_q_submit_order_forms_values_fit_placeholders()
 {
 	foreach (array('submit_order.php', 'includes/fn/forms.php') as $path) {
@@ -185,9 +201,16 @@ function test_db_q_submit_order_forms_values_fit_placeholders()
 			}
 
 			// Only the '?' of the SQL text count: a PHP ternary or '??' adds none.
+			// A query shared with the order completion (pg_order_*_sql()) is
+			// read from its function's body.
 			$placeholders = 0;
+			$sql = $call['sql'];
 
-			foreach (token_get_all('<?php ' . $call['sql'] . ';') as $token) {
+			if (preg_match('/^\s*(pg_order_\w+_sql)\(/', $sql, $shared)) {
+				$sql = db_q_submit_order_forms_test_function_body($shared[1]);
+			}
+
+			foreach (token_get_all('<?php ' . $sql . ';') as $token) {
 				if (is_array($token) && in_array($token[0], array(T_CONSTANT_ENCAPSED_STRING, T_ENCAPSED_AND_WHITESPACE), true)) {
 					$placeholders += substr_count($token[1], '?');
 				}

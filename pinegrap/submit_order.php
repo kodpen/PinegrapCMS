@@ -741,69 +741,7 @@ function submit_order($type) {
     }
     
     // get all products in cart
-    $query =
-        "SELECT
-            order_items.id as order_item_id,
-            order_items.ship_to_id,
-            order_items.product_id,
-            order_items.product_name,
-            order_items.quantity,
-            order_items.price,
-            order_items.tax_total," . (pg_schema_has('order_items', 'tax_rate') ? "
-            order_items.tax_rate AS line_tax_rate," : "") . "
-            order_items.recurring_payment_period,
-            order_items.recurring_number_of_payments,
-            order_items.recurring_start_date,
-            order_items.recurrence_number,
-            order_items.add_watcher,
-            products.id,
-            products.enabled,
-            products.short_description,
-            products.price AS product_price,
-            products.recurring,
-            products.sage_group_id,
-            products.required_product,
-            products.commissionable,
-            products.commission_rate_limit,
-            products.order_receipt_bcc_email_address,
-            products.contact_group_id,
-            products.membership_renewal,
-            products.grant_private_access,
-            products.private_folder,
-            products.private_days,
-            products.send_to_page,
-            products.email_page,
-            products.email_bcc,
-            products.inventory,
-            products.inventory_quantity,
-            products.out_of_stock,
-            products.reward_points,
-            products.gift_card,
-            products.gift_card_email_subject,
-            products.gift_card_email_format,
-            products.gift_card_email_body,
-            products.gift_card_email_page_id,
-            products.submit_form,
-            products.submit_form_custom_form_page_id,
-            products.submit_form_quantity_type,
-            products.submit_form_create,
-            products.submit_form_update,
-            products.submit_form_update_where_field,
-            products.submit_form_update_where_value,
-            products.add_comment,
-            products.add_comment_page_id,
-            products.add_comment_message,
-            products.add_comment_name,
-            products.add_comment_only_for_submit_form_update,
-            calendar_events.id as calendar_event_id,
-            calendar_events.reservations,
-            calendar_events.limit_reservations,
-            calendar_events.number_of_initial_spots
-        FROM order_items
-        LEFT JOIN products ON order_items.product_id = products.id
-        LEFT JOIN calendar_events ON order_items.calendar_event_id = calendar_events.id
-        WHERE order_items.order_id = ?" . pg_order_item_active_sql() . "
-        ORDER BY order_items.id ASC";
+    $query = pg_order_lines_sql();
     $result = db_q($query, array((string) ($_SESSION['ecommerce']['order_id'] ?? ''))) or output_error('Query failed.');
 
     $products = array();
@@ -1003,23 +941,7 @@ function submit_order($type) {
     // get various properties for previous express order or order preview page
     // we just need the terms page name in the block below, however we will go ahead and get other values
     // that we will use later in the code, in order to minimize database queries
-    $query =
-        "SELECT
-            page.page_name,
-            " . $type_value . "_pages.offline_payment_always_allowed,
-            " . $type_value . "_pages.auto_registration,
-            " . $type_value . "_pages.pre_save_hook_code,
-            " . $type_value . "_pages.post_save_hook_code,
-            " . $type_value . "_pages.order_receipt_email,
-            " . $type_value . "_pages.order_receipt_email_subject,
-            " . $type_value . "_pages.order_receipt_email_format,
-            " . $type_value . "_pages.order_receipt_email_header,
-            " . $type_value . "_pages.order_receipt_email_footer,
-            " . $type_value . "_pages.order_receipt_email_page_id,
-            " . $type_value . "_pages.next_page_id
-        FROM " . $type_value . "_pages
-        LEFT JOIN page ON " . $type_value . "_pages.terms_page_id = page.page_id
-        WHERE " . $type_value . "_pages.page_id = ?";
+    $query = pg_order_checkout_page_sql($type_value);
     $result = db_q($query, array((string) $page_id)) or output_error('Query failed.');
     // No row when the id names no page of this type: none of its settings then.
     $row = mysqli_fetch_assoc($result) ?: array();
@@ -1978,8 +1900,24 @@ function submit_order($type) {
                         'gift_card_discount' => $gift_card_discount,
                         'surcharge' => $surcharge,
                         'checkout_page_id' => $page_id,
+                        // The boxes the visitor ticked, with their address
+                        // and browser, for the documents a later completion
+                        // keeps.
+                        'legal_acceptance' => pg_legal_documents_enabled()
+                            ? pg_order_legal_acceptance_json(
+                                array_keys(array_filter(array(
+                                    'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
+                                    'contract' => ($liveform->get_field_value('legal_contract') == 1),
+                                    'kvkk'     => ($liveform->get_field_value('legal_kvkk') == 1),
+                                ))),
+                                function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? ''),
+                                $_SERVER['HTTP_USER_AGENT'] ?? '',
+                                time())
+                            : null,
                     ),
-                    pg_schema_has('orders', 'checkout_page_id'));
+                    array_values(array_filter(array('checkout_page_id', 'legal_acceptance'), function ($column) {
+                        return pg_schema_has('orders', $column);
+                    })));
 
                 if ($payment_started_query !== null) {
                     db_q($payment_started_query['sql'], $payment_started_query['params']) or output_error('Query failed.');
