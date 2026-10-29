@@ -3248,6 +3248,7 @@
     "The selected items will be moved to the Recycle Bin:": "Seçili öğeler Geri Dönüşüm Kutusuna taşınacak:",
     "The selected items will be permanently deleted:": "Seçili öğeler kalıcı olarak silinecek:",
     "The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.": "Seçilen siparişler bugün kargoya verildi olarak işaretlenecek ve müşterilerine kargo e-postası gönderilecek. Zaten takip numarası olan siparişler atlanır.",
+    "The selected orders have no active ZPL label.": "Seçilen siparişlerin etkin ZPL etiketi yok.",
     "The selected orders have no active shipping label.": "Seçili siparişlerin etkin kargo etiketi yok.",
     "The selected page styles will be moved to the Recycle Bin. Those still used by a folder or page are kept.": "Seçili sayfa stilleri Geri Dönüşüm Kutusuna taşınacak. Hâlâ bir klasör ya da sayfa tarafından kullanılanlar yerinde kalır.",
     "The selected pages will be moved to the Recycle Bin. Those already in it will be deleted permanently.": "Seçili sayfalar Geri Dönüşüm Kutusuna taşınacak. Zaten kutuda olanlar kalıcı olarak silinecek.",
