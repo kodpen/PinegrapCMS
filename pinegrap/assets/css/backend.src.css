@@ -19065,6 +19065,73 @@ button.ws-ack-count:hover {
   font-weight: 400;
   color: var(--pg-fg-2);
 }
+/* The flow list, full width while no flow is open (drawFlows() in
+   workspace_flow.js): a search field and the filter chips over a table. */
+.wsf-flows-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2) var(--ws-space-3);
+  margin-bottom: var(--ws-space-3);
+}
+.wsf-flows-search {
+  flex: 0 1 18rem;
+}
+.wsf-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+}
+.wsf-chip {
+  border: 1px solid var(--pg-border-color);
+  color: var(--pg-fg-body);
+}
+.wsf-chip.active {
+  border-color: var(--ws-accent);
+  background: var(--ws-soft);
+  color: var(--ws-accent);
+  font-weight: 600;
+}
+.wsf-chip-count {
+  color: var(--pg-fg-2);
+  font-variant-numeric: tabular-nums;
+}
+.wsf-flow-table th,
+.wsf-flow-table td {
+  vertical-align: top;
+}
+.wsf-flow-row {
+  cursor: pointer;
+}
+.wsf-flow-row:hover > * {
+  background: var(--pg-bg-2);
+}
+.wsf-flow-open {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--pg-fg-body);
+  font-weight: 600;
+  text-align: left;
+}
+.wsf-flow-open:hover {
+  text-decoration: underline;
+}
+.wsf-flow-name .wsf-list-level {
+  display: block;
+}
+.wsf-flow-start {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--ws-space-2);
+}
+.wsf-flow-start .ws-flow-icon {
+  margin-top: .15rem;
+  color: var(--wsf-kind);
+}
+.wsf-flow-last .wsf-flag {
+  max-width: 22rem;
+}
 /* The Share dialog: one row per person or channel, the owner first. */
 .wsf-share-row {
   display: flex;
@@ -20096,6 +20163,14 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   .wsf-outline { height: auto; overflow: visible; }
   .wsf-bar .wsf-name { flex: 1 1 8rem; min-width: 0; }
   .wsf-bar .wsf-unpublished { display: none; }
+  /* The flow list on a phone: each flow a block of stacked rows, each
+     value under its column's name. */
+  .wsf-flow-table thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .wsf-flow-table tr { display: block; padding: var(--ws-space-2) 0; border-bottom: 1px solid var(--pg-border-color-translucent); }
+  .wsf-flow-table th,
+  .wsf-flow-table td { display: block; padding: .2rem 0; border: 0; }
+  .wsf-flow-table td::before { content: attr(data-label); display: block; font-size: .72rem; color: var(--pg-fg-2); }
+  .wsf-flow-table .wsf-flow-start { display: block; }
 }
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of

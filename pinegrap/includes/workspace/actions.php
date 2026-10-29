@@ -597,16 +597,22 @@ function ws_handle_action($action, $request)
             // (the composer's Add › Start a flow).
             $rows = ((int) ($request['runnable_in'] ?? 0) > 0) ? ws_flows_runnable_in($viewer, (int) $request['runnable_in']) : ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
-            $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
+            // How each flow starts (its kind and the list's sentence) and
+            // the name of its home channel, each read once for the list.
+            $starts = empty($rows) ? array() : ws_flows_starts($viewer, $rows);
+            $channels = empty($rows) ? array() : ws_flows_channel_names($viewer, $rows);
             // Each flow's last run, for its flag in the list and on the canvas.
             $last = ws_flow_last_runs($viewer, $rows);
             $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $last, $run_numbers) {
+            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $last, $run_numbers) {
                 $run = $last[(int) $row['id']] ?? null;
+                $start = $starts[(int) $row['id']] ?? array('kind' => '', 'text' => '');
 
-                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $starts[(int) $row['id']] ?? '') + array(
-                    'last_run' => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
+                return ws_flow_brief($viewer, $row, $numbers[(int) $row['version_id']] ?? 0, $start['kind']) + array(
+                    'start_text'   => $start['text'],
+                    'channel_name' => $channels[(int) $row['channel_id']] ?? '',
+                    'last_run'     => $run ? ws_action_flow_run_present($viewer, $run, $run_numbers[(int) $run['version_id']] ?? 0) : null,
                 );
             }, $rows)));
 
