@@ -220,7 +220,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                         'value' => h($line['product_name']),
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
-                    <div class="menu shadow-sm w-100" data-erp-product-results></div>
+                    <div class="menu shadow-sm" id="' . h($id('product_results')) . '" data-erp-product-results></div>
                     <div class="d-flex align-items-start gap-3 mt-1">
                         <img class="img-thumbnail flex-shrink-0 d-none" style="width:40px;height:40px;object-fit:cover;" alt="" data-erp-product-thumb />
                         <div class="form-text small mt-0 flex-grow-1" data-erp-product-hint></div>

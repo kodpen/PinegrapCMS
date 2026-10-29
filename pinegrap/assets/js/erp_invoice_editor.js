@@ -432,6 +432,7 @@
             return null;
         }
         showWithholding(row, withholdingOn());
+        describeSearch(row);
         tbody.appendChild(row);
         renumber();
         recalc();
@@ -439,6 +440,9 @@
     }
 
     function removeLine(row) {
+        if (openList && openList.row === row) {
+            closeResults();
+        }
         // The last row is emptied rather than removed, so there is always a
         // line to type into.
         if (rows().length <= 1) {
@@ -594,13 +598,110 @@
     var lookupTimer = null;
     var lookupRequest = 0;
 
+    // The open suggestion list: { menu, row, input, cell, next }. While open
+    // the menu sits on the overlay host, not in its cell: the lines table's
+    // .table-responsive scrolls and contains layout, so a list inside it is
+    // clipped at the table's edge, even when placed fixed.
+    var openList = null;
+
+    // Where the list goes for a search box at rect, in a viewport of
+    // width x height: under the box (above it when the room below is short
+    // and there is more above), at least 320px wide but never past the
+    // viewport's 8px margins, and at most 320px high.
+    function resultsPlacement(rect, width, height) {
+        var margin = 8;
+        var gap = 2;
+        var limit = 320;
+        var listWidth = Math.min(Math.max(rect.width, limit), width - 2 * margin);
+        var left = Math.max(margin, Math.min(rect.left, width - listWidth - margin));
+        var below = height - rect.bottom - gap - margin;
+        var above = rect.top - gap - margin;
+        var place = { left: Math.round(left), width: Math.round(listWidth) };
+
+        if (below < Math.min(limit, 200) && above > below) {
+            place.above = true;
+            place.bottom = Math.round(height - rect.top + gap);
+            place.maxHeight = Math.round(Math.min(limit, above));
+        } else {
+            place.above = false;
+            place.top = Math.round(rect.bottom + gap);
+            place.maxHeight = Math.round(Math.min(limit, Math.max(below, 0)));
+        }
+        return place;
+    }
+
+    // The row's results menu, in its cell or on the overlay host.
+    function resultsMenu(row) {
+        if (openList && openList.row === row) {
+            return openList.menu;
+        }
+        return row.querySelector('[data-erp-product-results]');
+    }
+
+    function placeResults() {
+        if (!openList) {
+            return;
+        }
+        var rect = openList.input.getBoundingClientRect();
+        var height = window.innerHeight || document.documentElement.clientHeight;
+        if (rect.bottom < 0 || rect.top > height) {
+            closeResults();
+            return;
+        }
+        var place = resultsPlacement(rect, document.documentElement.clientWidth || window.innerWidth, height);
+        var style = openList.menu.style;
+        style.position = 'fixed';
+        style.left = place.left + 'px';
+        style.width = place.width + 'px';
+        style.top = place.above ? 'auto' : (place.top + 'px');
+        style.bottom = place.above ? (place.bottom + 'px') : 'auto';
+        style.setProperty('--bs-menu-max-height', place.maxHeight + 'px');
+        style.setProperty('--bs-menu-overflow-y', 'auto');
+    }
+
+    function openResults(row, input, menu) {
+        if (!openList || openList.menu !== menu) {
+            closeResults();
+            openList = { menu: menu, row: row, input: input, cell: menu.parentNode, next: menu.nextSibling };
+            var host = (window.pgUI && typeof window.pgUI.overlayHost === 'function') ? window.pgUI.overlayHost(input) : document.body;
+            (host || document.body).appendChild(menu);
+        }
+        menu.classList.add('show');
+        input.setAttribute('aria-expanded', 'true');
+        placeResults();
+    }
+
+    // Closes the open list and puts its menu back in its cell.
     function closeResults(except) {
-        Array.prototype.forEach.call(root.querySelectorAll('[data-erp-product-results].show'), function (menu) {
-            if (menu !== except) {
-                menu.classList.remove('show');
-                menu.innerHTML = '';
-            }
-        });
+        if (!openList || openList.menu === except) {
+            return;
+        }
+        var list = openList;
+        openList = null;
+        list.menu.classList.remove('show');
+        list.menu.innerHTML = '';
+        list.menu.removeAttribute('style');
+        list.input.setAttribute('aria-expanded', 'false');
+        if (list.cell) {
+            list.cell.insertBefore(list.menu, (list.next && list.next.parentNode === list.cell) ? list.next : null);
+        }
+    }
+
+    // The search box names its list and says whether it is open.
+    function describeSearch(row) {
+        var input = row.querySelector('.erp-product-search');
+        var menu = row.querySelector('[data-erp-product-results]');
+        if (!input || !menu || !menu.id) {
+            return;
+        }
+        input.setAttribute('role', 'combobox');
+        input.setAttribute('aria-autocomplete', 'list');
+        input.setAttribute('aria-controls', menu.id);
+        input.setAttribute('aria-expanded', 'false');
+    }
+
+    function resultItems() {
+        return openList ? Array.prototype.slice.call(openList.menu.querySelectorAll('.menu-item')) : [];
     }
 
     function formatPrice(kurus) {
@@ -799,7 +900,7 @@
         return span;
     }
 
-    function renderResults(row, menu, products) {
+    function renderResults(row, input, menu, products) {
         menu.innerHTML = '';
 
         if (!products.length) {
@@ -845,11 +946,39 @@
             item.addEventListener('click', function () {
                 fillFromProduct(row, product);
                 closeResults();
+                input.focus();
             });
             menu.appendChild(item);
         });
 
-        menu.classList.add('show');
+        if (!menu.erpKeys) {
+            menu.erpKeys = true;
+            menu.addEventListener('keydown', resultsKeydown);
+        }
+        openResults(row, input, menu);
+    }
+
+    // Off the row, the list is past the end of the page in the tab order:
+    // the arrows move through it, Escape and Tab go back to the search box.
+    function resultsKeydown(event) {
+        if (!openList) {
+            return;
+        }
+        var input = openList.input;
+        var items = resultItems();
+        var at = items.indexOf(document.activeElement);
+        if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+            event.preventDefault();
+            if (event.key === 'ArrowUp' && at <= 0) {
+                input.focus();
+            } else if (items.length) {
+                items[Math.min(items.length - 1, Math.max(0, at + (event.key === 'ArrowDown' ? 1 : -1)))].focus();
+            }
+        } else if (event.key === 'Escape' || event.key === 'Tab') {
+            event.preventDefault();
+            closeResults();
+            input.focus();
+        }
     }
 
     /* ------------------------------------------------------------- barcode */
@@ -930,7 +1059,7 @@
     }
 
     function lookup(row, input) {
-        var menu = row.querySelector('[data-erp-product-results]');
+        var menu = resultsMenu(row);
         var query = input.value.trim();
 
         // The typed name no longer names the product that was picked.
@@ -944,8 +1073,7 @@
             return;
         }
         if (query.length < 2) {
-            menu.classList.remove('show');
-            menu.innerHTML = '';
+            closeResults();
             return;
         }
 
@@ -962,10 +1090,10 @@
                         return;
                     }
                     closeResults(menu);
-                    renderResults(row, menu, (data && data.results) ? data.results : []);
+                    renderResults(row, input, menu, (data && data.results) ? data.results : []);
                 })
                 .catch(function () {
-                    menu.classList.remove('show');
+                    closeResults();
                 });
         }, 250);
     }
@@ -1178,9 +1306,16 @@
         withholdingToggle.addEventListener('change', applyWithholdingToggle);
     }
 
+    rows().forEach(describeSearch);
+
     tbody.addEventListener('keydown', function (event) {
         if (event.key === 'Escape') {
             closeResults();
+        }
+        if (event.key === 'ArrowDown' && openList && event.target === openList.input && resultItems().length) {
+            event.preventDefault();
+            resultItems()[0].focus();
+            return;
         }
         // Enter on a line adds the next one instead of submitting the form:
         // a form with two submit buttons would otherwise issue the invoice
@@ -1208,6 +1343,33 @@
             closeResults();
         }
     });
+
+    // Focus leaving the search box for anything but its list closes it.
+    document.addEventListener('focusin', function (event) {
+        if (openList && event.target !== openList.input && !openList.menu.contains(event.target)) {
+            closeResults();
+        }
+    });
+
+    // The list follows its box when the page scrolls or resizes; a scroll
+    // of the lines table closes it, as the box may have moved out of sight
+    // under the table's edge. The list's own scroll is left alone.
+    window.addEventListener('resize', placeResults);
+    window.addEventListener('scroll', function (event) {
+        if (!openList) {
+            return;
+        }
+        var target = event.target;
+        if (target === document || target === document.documentElement || target === document.body) {
+            placeResults();
+        } else if (target.contains && target.contains(openList.input)) {
+            if (target === openList.input.closest('.table-responsive')) {
+                closeResults();
+            } else {
+                placeResults();
+            }
+        }
+    }, true);
 
     if (directionSelect) {
         directionSelect.addEventListener('change', applyDirection);

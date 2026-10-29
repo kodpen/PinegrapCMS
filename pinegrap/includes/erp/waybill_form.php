@@ -126,7 +126,7 @@ function erp_waybill_form_line_row($liveform, $index, $line)
                         'value' => h($line['product_name']),
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
-                    <div class="menu shadow-sm w-100" data-erp-product-results></div>
+                    <div class="menu shadow-sm" id="' . h($id('product_results')) . '" data-erp-product-results></div>
                     <div class="form-text small mt-1" data-erp-product-hint></div>
                 </td>
                 <td>' . $liveform->output_field(array(
