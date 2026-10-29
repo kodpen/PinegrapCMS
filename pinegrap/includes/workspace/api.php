@@ -48,6 +48,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_saved_replies.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -189,6 +190,7 @@ function ws_openapi_objects()
         'WorkspaceCommand'         => 'ws_api_command_schema',
         'WorkspaceCommandArgument' => 'ws_api_command_argument_schema',
         'WorkspaceAppCommand'      => 'ws_api_app_command_schema',
+        'WorkspaceSavedReply'      => 'ws_api_saved_reply_schema',
         'WorkspaceTaskTime'       => 'ws_api_task_time_schema',
         'WorkspaceTimeEntry'      => 'ws_api_task_time_range_schema',
         'WorkspaceTimeTask'       => 'ws_api_task_time_task_schema',
@@ -2565,6 +2567,7 @@ function ws_api_routes()
 
     // Asking Claude in a channel (api_claude.php), the changes an
     // application proposes (api_proposals.php), workflow tables
-    // (api_wtables.php) and e-mail conversations (api_mail.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes());
+    // (api_wtables.php), e-mail conversations (api_mail.php) and saved
+    // replies (api_saved_replies.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes(), ws_saved_reply_api_routes());
 }

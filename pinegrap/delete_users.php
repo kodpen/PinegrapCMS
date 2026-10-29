@@ -107,6 +107,9 @@ if ($_POST['users']) {
 
                 db("DELETE FROM users_messages_xref WHERE user_id = '" . e($user_id) . "'");
 
+                // A person's saved replies are theirs alone.
+                if (pg_schema_has('ws_saved_replies')) db("DELETE FROM ws_saved_replies WHERE user_id = '" . (int) $user_id . "'");
+
                 // delete shared component xref records
                 if (pg_schema_has('users_shared_components_xref')) db("DELETE FROM users_shared_components_xref WHERE user_id = '" . e($user_id) . "'");
 

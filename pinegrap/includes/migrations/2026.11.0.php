@@ -100,6 +100,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_review_photos();          // 11.0.57
 	upgrade_2026_11_0_record_share_image_field(); // 11.0.18
 	upgrade_2026_11_0_workspace_thread_follow(); // 11.0.113
+	upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114
 	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 	upgrade_2026_11_0_paytr();                  // 11.0.122
@@ -3208,6 +3209,34 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 	install_add_column('ws_threads', 'follow_agent', "VARCHAR(64) NOT NULL DEFAULT ''");
 
 	install_note('Workspace: an assistant asked in a discussion, or whose answer a discussion was started from, now answers the later messages there without being named again. Discussions started before this update follow nobody until an assistant is asked in them.');
+
+}
+
+// Saved replies (2026.11.0, 11.0.114; includes/workspace/saved_replies.php).
+// ws_saved_replies holds the texts a person picks with ; in the Workspace
+// composer, each under its shortcut. scope is 'personal' for every row this
+// release writes; it is there now so that team replies come later without a
+// second change to this table or a rebuild of uq_shortcut, which keeps a
+// shortcut once per person and scope. body keeps {customer} and {order} as
+// typed: they are filled when the reply is put in, so no customer data is
+// stored. The rows go with their user (delete_users.php, edit_user.php).
+function upgrade_2026_11_0_workspace_saved_replies() {
+
+	install_create_table('ws_saved_replies', "CREATE TABLE ws_saved_replies (
+		id           INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		scope        VARCHAR(16) NOT NULL DEFAULT 'personal',
+		shortcut     VARCHAR(32) NOT NULL DEFAULT '',
+		title        VARCHAR(100) NOT NULL DEFAULT '',
+		body         TEXT NULL,
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_user (user_id),
+		UNIQUE KEY uq_shortcut (user_id, scope, shortcut)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the table for saved replies is added: texts a person keeps under a short word and puts into a message. It stays empty until somebody saves a reply.');
 
 }
 
