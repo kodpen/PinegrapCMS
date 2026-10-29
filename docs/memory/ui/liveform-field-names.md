@@ -14,7 +14,7 @@ description: Liveform field names and pagers: aria-label, file id, required impo
 
 ## Why do Migration's source sign-in and marketplace secrets say new-password?
 - The browser filled the panel's own saved sign-in into Migration's source e-mail/password (then sent to the typed URL) and into a marketplace secret box, where on an edit it replaced the stored secret. `autocomplete="off"` is ignored on password fields; `new-password` (as `smtp_settings.php`) keeps it out.
-- The API console (`includes/api/console.php`, `/docs`) has the same trap: its Secret key box said `off`, so the panel sign-in landed in Application key / Secret key and Connect sent it as HTTP Basic. `con_secret` says `new-password` since #<PR>; `con_key` stays `off`.
+- The API console (`includes/api/console.php`, `/docs`) has the same trap: its Secret key box said `off`, so the panel sign-in landed in Application key / Secret key and Connect sent it as HTTP Basic. `con_secret` says `new-password` since #3159; `con_key` stays `off`.
 
 ## Why does the default Set Password card hold a hidden username field?
 - Password managers take the account from an `autocomplete="username"` field in the same form; the card showed the e-mail only as a `<p>`, so the new password was saved against no account. `get_set_password.php`'s default card (`$page_id <= 0`) prints `#set_password_username` (e-mail, else user name) inside the form when a token named the account: `visually-hidden`, `readonly`, `tabindex="-1"`, `aria-hidden`, no `name`, so nothing new is posted. The site layout path is unchanged. Pinned by `tests/password_manager_fields_test.php`.
