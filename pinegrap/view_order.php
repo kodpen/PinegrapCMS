@@ -930,7 +930,7 @@ if (!$_POST) {
                 
                 // if the address has been verified, then prepare to output check mark
                 if ($ship_tos[$key]['address_verified'] == 1) {
-                    $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
+                    $output_address_verified_check_mark = '<i class="bi bi-check-lg fg-success" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
                 }
 
                 $output_arrival_date = '';

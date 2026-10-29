@@ -48,3 +48,19 @@ function test_panel_chart_colours_search_console()
 {
 	panel_chart_colours_assert_inked('search_console.php', 3);
 }
+
+function test_panel_chart_colours_view_orders()
+{
+	// The Orders statistics strip read --bs-secondary-color, which nothing
+	// in the panel defines, so its text was always the #6c757d fallback.
+	$source = panel_chart_colours_source('view_orders.php');
+
+	pg_assert_false(strpos($source, '--bs-secondary-color') !== false, 'view_orders.php reads an undefined variable for the chart ink');
+	pg_assert_contains('probe.style.color = "var(--pg-fg-2)";', $source, 'view_orders.php probes the panel ink');
+	pg_assert_contains('var ink = getComputedStyle(probe).color;', $source, 'view_orders.php reads the computed ink');
+	pg_assert_same(2, substr_count($source, 'ticks: { color: ink'), 'view_orders.php: both bar scales have ink');
+	pg_assert_contains('legend: { position: "right", labels: { color: ink', $source, 'view_orders.php legend ink');
+	pg_assert_false(
+		(bool) preg_match('/getPropertyValue\(\s*["\']--pg-/', $source),
+		'view_orders.php hands no --pg-* custom property text to Chart.js');
+}

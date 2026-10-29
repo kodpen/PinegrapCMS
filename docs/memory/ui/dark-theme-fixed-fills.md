@@ -1,6 +1,6 @@
 ---
 name: dark-theme-fixed-fills
-description: Inline light colours in panel markup and scripts (label designer, dashboard tracks, Chart.js ink, SEO orange band, chat dot ring) moved onto --pg-* tokens; what stays white and what is left
+description: Fixed light colours in panel markup and scripts (label designer, tracks, Chart.js ink, SEO band, chat dot, order tick, menu pictures, comment stars) moved onto theme colours
 ---
 
 ## Why did these places stay light in the dark theme?
@@ -12,10 +12,13 @@ description: Inline light colours in panel markup and scripts (label designer, d
 - The hosting widget track (`widget_14.php`): `var(--pg-bg-2)`.
 - The rows/columns corner ticks of `includes/forms/field_form.php`: `var(--pg-border-color)`.
 - The dashboard tracks of widgets 18, 21 (and its hit count pill, which keeps `color:inherit`), 22 and 23: `rgba(0,0,0,.06)` vanished on the dark card, now `var(--pg-bg-2)` (#2569).
-- Chart.js charts in `erp_profit.php` and `search_console.php` drew Chart.js defaults (#666 labels, black 10% grid). They resolve an ink from `var(--pg-fg-2)` through a probe element (`getComputedStyle(probe).color`) and pass it to the legend and every scale's ticks, with a `rgba(128,128,128,.2)` grid. Never hand `getPropertyValue('--pg-*')` to Chart.js: it returns `light-dark(...)` text a canvas cannot parse (#2569).
+- Chart.js charts in `erp_profit.php`, `search_console.php` and the Orders statistics strip (`view_orders.php`, which read the undefined `--bs-secondary-color` and so always drew `#6c757d`, under 4.5:1 on both cards) drew Chart.js defaults (#666 labels, black 10% grid). They resolve an ink from `var(--pg-fg-2)` through a probe element (`getComputedStyle(probe).color`) and pass it to the legend and every scale's ticks, with a `rgba(128,128,128,.2)` grid. Never hand `getPropertyValue('--pg-*')` to Chart.js: it returns `light-dark(...)` text a canvas cannot parse (#2569).
 - `pg_seo_score_color()` in `seo.php`: the 30-54 band returned `var(--bs-orange)`, undefined in the panel, so its bar and badge were transparent; it returns `#fd7e14` (as `pg_seo_score_hex()`), the badge carries `color:var(--pg-on-accent)` (#2569).
 - The chat AI row's presence dot is built with `border-white` in `chat_backend.src.js`; an unlayered `#pg-chat-root .pg-chat-dot { border-color: var(--pg-bg-body); }` in `chat.php` beats the layered utility (#2569).
-- `tests/dark_theme_leftovers_test.php` and `tests/panel_chart_colours_test.php` pin these strings.
+- View Order's Address Verified mark was a black 7px `check_mark.gif`, invisible on the dark card: now `bi-check-lg fg-success` with a visually hidden `lang('Yes')`. `print_order.php` keeps the GIF (light paper, `print-views-light-paper.md`).
+- Create/Edit Menu's Submenu Effect pictures are opaque light greyscale PNGs: a screen-level `html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); }` in `menu_form.php`; accordion and none are drawn at their own 56px width.
+- Edit Comment's rating stars were black background pictures inverted in dark, which also inverted the focus outline (2:1). The star is now a `mask-image` on `label::before` painted with `currentColor` (a mask on the label itself would clip its outline), so the outline keeps `var(--pg-primary-ink)`.
+- `tests/dark_theme_leftovers_test.php`, `panel_chart_colours_test.php`, `order_view_marks_test.php`, `content_edit_names_test.php` and `comment_calendar_names_test.php` pin these strings.
 
 ## What stays white on purpose?
 - The label canvas and the label print document: they stand for the paper.
