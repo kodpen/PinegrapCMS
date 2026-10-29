@@ -369,11 +369,96 @@ function test_payment_stripe_webhook_started_payment_kept_on_order()
 	pg_assert_true($at !== false, 'submit_order.php keeps the started payment');
 	pg_assert_true($at < strpos($source, "if (\$payment_answer['html'] !== '')"), 'before the redirect');
 	pg_assert_contains('pg_order_payment_started_query(', substr($source, $at, 900), 'through the started-payment query');
-	pg_assert_contains("AND status = 'incomplete'", pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12345), array(), false)['sql'], 'only an incomplete order');
+	pg_assert_contains("AND status = 'incomplete'", pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12345), array(), array())['sql'], 'only an incomplete order');
 
 	// The callback now finds the order's own payment id and tells another
 	// payment apart.
 	$event = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
 	$order = array('id' => '438', 'status' => 'incomplete', 'transaction_id' => 'pi_other');
 	pg_assert_same('unknown_order', pg_payment_notify_outcome('stripe', $event, $order)['status']);
+}
+
+/* ---------------------------------------------------------------------------
+   Completing an incomplete order from the message
+   --------------------------------------------------------------------------- */
+
+function payment_stripe_webhook_test_incomplete_order($changes = array())
+{
+	return array_merge(array('id' => '438', 'status' => 'incomplete', 'transaction_id' => 'pi_3Abc', 'payment_method' => 'Credit/Debit Card', 'total' => '4714'), $changes);
+}
+
+function test_payment_stripe_webhook_answer_carries_the_currency()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+
+	pg_assert_same('TRY', $answer['raw']['currency'], 'the payment\'s currency, upper case');
+}
+
+function test_payment_stripe_webhook_own_payment_completes_the_incomplete_order()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_incomplete_order(), 'TRY');
+
+	pg_assert_same(200, $outcome['http']);
+	pg_assert_same('complete', $outcome['status']);
+	pg_assert_true($outcome['complete'], 'the receiver completes it');
+	pg_assert_false($outcome['mark_paid'], 'not a pending payment');
+	pg_assert_same('', $outcome['alert'], 'no alert');
+	pg_assert_contains('order #438', $outcome['log'][0]);
+	pg_assert_contains('The order was completed from the message.', $outcome['log'][0]);
+
+	pg_assert_same('complete', pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_incomplete_order(), 'try')['status'], 'the store\'s code in any case');
+}
+
+function test_payment_stripe_webhook_mismatch_alerts_and_completes_nothing()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+	$cases = array(
+		'another amount' => array(payment_stripe_webhook_test_incomplete_order(array('total' => '4715')), 'TRY'),
+		'another currency' => array(payment_stripe_webhook_test_incomplete_order(), 'EUR'),
+		'no store currency' => array(payment_stripe_webhook_test_incomplete_order(), ''),
+		'no payment kept' => array(payment_stripe_webhook_test_incomplete_order(array('transaction_id' => '')), 'TRY'),
+	);
+
+	foreach ($cases as $label => $case) {
+		$outcome = pg_payment_notify_outcome('stripe', $answer, $case[0], $case[1]);
+
+		pg_assert_same('alerted', $outcome['status'], $label);
+		pg_assert_false($outcome['complete'], $label . ': nothing completed');
+		pg_assert_contains('not completed', $outcome['alert'], $label . ': an alert');
+	}
+
+	$no_amount = $answer;
+	$no_amount['amount'] = null;
+	pg_assert_same('alerted', pg_payment_notify_outcome('stripe', $no_amount, payment_stripe_webhook_test_incomplete_order(), 'TRY')['status'], 'an amount the driver could not read');
+
+	$no_currency = $answer;
+	unset($no_currency['raw']['currency']);
+	pg_assert_same('alerted', pg_payment_notify_outcome('stripe', $no_currency, payment_stripe_webhook_test_incomplete_order(), 'TRY')['status'], 'a driver that names no currency');
+}
+
+function test_payment_stripe_webhook_completed_order_is_a_no_op()
+{
+	$answer = payment_stripe_webhook_test_notify(payment_stripe_webhook_test_event('payment_intent.succeeded', payment_stripe_webhook_test_intent()));
+	$outcome = pg_payment_notify_outcome('stripe', $answer, payment_stripe_webhook_test_incomplete_order(array('status' => 'complete')), 'TRY');
+
+	pg_assert_same('nothing', $outcome['status'], 'the visitor came back first, or a second event');
+	pg_assert_false($outcome['complete']);
+	pg_assert_same(array(), $outcome['log']);
+}
+
+function test_payment_stripe_webhook_receiver_completes_once()
+{
+	$receive = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	$receive = substr($receive, strpos($receive, 'function pg_payment_callback_receive('));
+
+	pg_assert_contains("pg_payment_notify_outcome(\$key, \$answer, \$order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '')", $receive, 'the store\'s currency');
+	pg_assert_contains("pg_order_complete_from_payment((int) \$order['id'], (string) \$answer['status'])", $receive, 'completes through the order completion');
+	pg_assert_true(strpos($receive, 'pg_order_complete_from_payment(') < strpos($receive, "log_activity(\$line, 'SYSTEM')"), 'before the log line names its result');
+
+	// Another request completed it first (the lock in pg_order_complete()):
+	// no log line, no alert.
+	$nothing = substr($receive, strpos($receive, "} elseif (\$completion['status'] === 'nothing') {"), 200);
+	pg_assert_contains("\$outcome['status'] = 'nothing';", $nothing);
+	pg_assert_contains("\$outcome['log'] = array();", $nothing);
 }

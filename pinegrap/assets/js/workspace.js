@@ -8514,17 +8514,6 @@
                     fileBox.appendChild(versions);
                 }
 
-                // A CSV or spreadsheet of the channel made into product
-                // drafts, for whoever may make products here.
-                if (self.channel && self.channel.bulk_products && /\.(csv|xlsx|xlsm|xls|ods)$/i.test(message.file.name || '')) {
-                    var makeProducts = button('ws-file-versions', t('bulk_make_products'), 'bi-box-seam');
-                    makeProducts.addEventListener('click', function (event) {
-                        event.stopPropagation();
-                        self.bulkMakeProducts({ message_id: message.id });
-                    });
-                    fileBox.appendChild(makeProducts);
-                }
-
                 main.appendChild(fileBox);
             }
 
@@ -9800,21 +9789,6 @@
             }).catch(function () {
                 self.agentKicking = false;
             });
-        },
-
-        // Product drafts as one bulk card (bulk_sources.php) from a file of
-        // the channel. The card waits under a message of the person's own
-        // until they apply it.
-        bulkMakeProducts: function (source) {
-            var self = this;
-
-            api('ws_bulk_create_propose', {
-                channel_id: self.channel.id,
-                message_id: source.message_id
-            }).then(function (data) {
-                self.bulkMade(data);
-                self.sync(true);
-            }).catch(fail);
         },
 
         // A bulk card was made: how many drafts wait, and the columns of a
@@ -12464,7 +12438,8 @@
                     toast(t(result.command.created ? 'qc_created' : 'qe_saved'), 'success');
                 }
 
-                // Several lines under /create product: one card of drafts.
+                // Several lines under /create product, or the command answering
+                // a spreadsheet: one card of drafts.
                 if (result.command && result.command.type === 'done' && result.command.bulk) {
                     self.bulkMade(result.command.bulk);
                 }
@@ -12864,8 +12839,18 @@
                         parent_id: settings.parent_id || 0,
                         voice_duration_ms: settings.voice ? Math.round(settings.voice.duration_ms || 0) : 0,
                         voice_peaks: settings.voice ? (settings.voice.peaks || '') : ''
-                    }).then(function () {
+                    }).then(function (result) {
                         done++;
+
+                        // "/create product" sent with a spreadsheet: the file
+                        // is posted, its rows a card of drafts or refused.
+                        if (result && result.command) {
+                            if (result.command.type === 'error') {
+                                toast(result.command.error, 'warning');
+                            } else if (result.command.bulk) {
+                                self.bulkMade(result.command.bulk);
+                            }
+                        }
 
                         if (body !== '') {
                             body = '';

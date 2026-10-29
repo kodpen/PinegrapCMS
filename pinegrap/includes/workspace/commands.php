@@ -2704,6 +2704,11 @@ function ws_command_group_fields($text)
  */
 function ws_command_group($viewer, $channel, $text, $options)
 {
+    // One group a command: several lines are not read as several groups.
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return array('type' => 'error', 'error' => lang('/create group makes one group: write its name on one line.'));
+    }
+
     $fields = ws_command_group_fields($text);
 
     if ($fields['name'] === '') {
@@ -2723,18 +2728,25 @@ function ws_command_group($viewer, $channel, $text, $options)
  * value it will be created with, made on confirmation
  * (ws_command_create_card()). Off sale unless the card's "On sale" is
  * ticked. Several lines make one bulk card of product drafts instead
- * (ws_command_product_bulk()).
+ * (ws_command_product_bulk()), and so does nothing after the command in an
+ * answer to a CSV or spreadsheet file (ws_command_product_file()).
  *
  * @param array  $viewer
  * @param array  $channel
  * @param string $text    what follows the command
- * @param array  $options confirm, decision, on_sale, typed (the whole text)
+ * @param array  $options confirm, decision, on_sale, typed (the whole text),
+ *                        parent_id (the message the command answers)
  * @return array
  */
 function ws_command_product($viewer, $channel, $text, $options)
 {
     if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
         return ws_command_product_bulk($viewer, $channel, $text, $options);
+    }
+
+    // Nothing after the command in an answer: the answered message's file.
+    if ((trim((string) $text) === '') && ((int) ($options['parent_id'] ?? 0) > 0)) {
+        return ws_command_product_file($viewer, $channel, (int) $options['parent_id']);
     }
 
     $parsed = ws_command_parse_product($text);
@@ -2786,6 +2798,68 @@ function ws_command_product_bulk($viewer, $channel, $text, $options)
         'message_id' => $made['message_id'],
         'bulk'       => array('count' => $made['count'], 'ignored' => $made['ignored']),
     );
+}
+
+/**
+ * /product (and /create product) answering a CSV or spreadsheet file of the
+ * channel, or sent with one: one bulk card of drafts from the file
+ * (ws_bulk_create_propose()), under a message of the person's own naming
+ * it. Anyone who may read the file, post here and make products may do it;
+ * the drafts are theirs and every row is checked again when applied.
+ *
+ * @param array $viewer
+ * @param array $channel
+ * @param int   $message_id the message carrying the file
+ * @return array
+ */
+function ws_command_product_file($viewer, $channel, $message_id)
+{
+    $message = ws_message((int) $message_id);
+
+    // A file of this channel only: the card names it here.
+    if (!$message || ((int) $message['channel_id'] !== (int) $channel['id'])) {
+        return array('type' => 'error', 'error' => lang('That message could not be found.'));
+    }
+
+    $made = ws_bulk_create_propose($viewer, (int) $channel['id'], array('message_id' => (int) $message_id));
+
+    if (!$made['ok']) {
+        return array('type' => 'error', 'error' => $made['error']);
+    }
+
+    return array(
+        'type'       => 'done',
+        'message_id' => $made['message_id'],
+        'bulk'       => array('count' => $made['count'], 'ignored' => $made['ignored']),
+    );
+}
+
+/**
+ * Is a text /product (or /create product) with nothing after it, the
+ * command that, sent with a file, makes product drafts from that file?
+ *
+ * @param string $body
+ * @return bool
+ */
+function ws_command_is_product_file($body)
+{
+    $split = ws_command_split($body);
+
+    if ($split === null) {
+        return false;
+    }
+
+    if ($split['command'] === 'product') {
+        return $split['rest'] === '';
+    }
+
+    if ($split['command'] !== 'create') {
+        return false;
+    }
+
+    $parsed = ws_command_parse_create($split['rest']);
+
+    return ($parsed['kind'] === 'product') && ($parsed['rest'] === '');
 }
 
 /**

@@ -1153,11 +1153,20 @@ function pg_legal_documents_for_order($order_id, array $seen = array())
  * Each stored and accepted type also writes a granted contract row to the
  * consent log (pg_legal_documents_consent_events()).
  *
- * @param int      $order_id
- * @param string[] $accepted_types  types the customer accepted
+ * A payment service's message that completes the order after the visitor
+ * left passes the address, browser and time the visitor accepted them with
+ * (orders.legal_acceptance); the visitor's own request leaves them null and
+ * its own are used. The time is accepted_at and the consent rows' time;
+ * created_at stays the moment the copy is kept.
+ *
+ * @param int         $order_id
+ * @param string[]    $accepted_types  types the customer accepted
+ * @param string|null $ip              the visitor's address (null: this request's)
+ * @param string|null $agent           the visitor's browser (null: this request's)
+ * @param int|null    $at              when the visitor accepted (null: now)
  * @return int  number of documents stored
  */
-function pg_legal_documents_store($order_id, array $accepted_types)
+function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, $agent = null, $at = null)
 {
     $order_id = (int) $order_id;
 
@@ -1170,10 +1179,20 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     }
 
     $now = time();
+    $accepted_at = ($at !== null) ? (int) $at : $now;
+
     // The visitor's address as the firewall resolves it: behind a CDN or a
     // trusted proxy REMOTE_ADDR is the proxy, the same for every customer.
-    $ip = substr((string) (function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '')), 0, 45);
-    $agent = mb_substr((string) ($_SERVER['HTTP_USER_AGENT'] ?? ''), 0, 255);
+    if ($ip === null) {
+        $ip = function_exists('waf_client_ip') ? waf_client_ip() : ($_SERVER['REMOTE_ADDR'] ?? '');
+    }
+
+    if ($agent === null) {
+        $agent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+    }
+
+    $ip = substr((string) $ip, 0, 45);
+    $agent = mb_substr((string) $agent, 0, 255);
     $stored = array();
 
     $documents = pg_legal_documents_for_order($order_id);
@@ -1193,7 +1212,7 @@ function pg_legal_documents_store($order_id, array $accepted_types)
             continue;
         }
 
-        $accepted = in_array($type, $accepted_types, true) ? "'" . $now . "'" : 'NULL';
+        $accepted = in_array($type, $accepted_types, true) ? "'" . $accepted_at . "'" : 'NULL';
 
         if (db(
             "INSERT INTO order_documents (order_id, type, html, accepted_at, ip, user_agent, created_at)
@@ -1208,7 +1227,7 @@ function pg_legal_documents_store($order_id, array $accepted_types)
     if ($stored && function_exists('pg_consent_log_record')) {
         $order = db_item("SELECT billing_email_address, user_id, contact_id FROM orders WHERE id = '" . $order_id . "'");
 
-        foreach (pg_legal_documents_consent_events(is_array($order) ? $order : array(), $stored, $accepted_types, $ip, $agent, $now) as $event) {
+        foreach (pg_legal_documents_consent_events(is_array($order) ? $order : array(), $stored, $accepted_types, $ip, $agent, $accepted_at) as $event) {
             pg_consent_log_record($event);
         }
     }

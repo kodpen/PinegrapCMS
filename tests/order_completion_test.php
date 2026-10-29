@@ -678,31 +678,180 @@ function test_order_completion_payment_started_query()
 		'subtotal' => 10000, 'discount' => 500, 'tax' => 1710, 'shipping' => 990,
 		'gift_card_discount' => 0, 'surcharge' => 12.6, 'checkout_page_id' => '31',
 	);
-	$query = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, true);
+	$query = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, array('checkout_page_id'));
 
 	pg_assert_same(
 		"UPDATE orders SET transaction_id = ?, total = ?, payment_method = ?, subtotal = ?, discount = ?, tax = ?, shipping = ?, gift_card_discount = ?, surcharge = ?, checkout_page_id = ? WHERE id = ? AND status = 'incomplete'",
 		$query['sql'], 'the payment, the figures and the page, only on an incomplete order');
 	pg_assert_same(array('pi_3abc', '12213', 'Credit/Debit Card', '10000', '500', '1710', '990', '0', '13', '31', '42'), $query['params'], 'minor units rounded, never cut');
 
-	$without = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, false);
+	$without = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, array());
 	pg_assert_false(strpos($without['sql'], 'checkout_page_id') !== false, 'no page before step 11.0.120');
 	pg_assert_same(10, count($without['params']), 'one parameter fewer');
 
-	pg_assert_same(null, pg_order_payment_started_query(0, array('transaction_id' => 'pi_3abc', 'total' => 1), $settled, true), 'no order');
-	pg_assert_same(null, pg_order_payment_started_query(42, array('transaction_id' => '', 'total' => 1), $settled, true), 'no payment id');
+	pg_assert_same(null, pg_order_payment_started_query(0, array('transaction_id' => 'pi_3abc', 'total' => 1), $settled, array()), 'no order');
+	pg_assert_same(null, pg_order_payment_started_query(42, array('transaction_id' => '', 'total' => 1), $settled, array()), 'no payment id');
+
+	$legal = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 1), array('legal_acceptance' => '{"types":[]}') + $settled, array('checkout_page_id', 'legal_acceptance'));
+	pg_assert_contains('checkout_page_id = ?, legal_acceptance = ? WHERE', $legal['sql'], 'the acceptance after the page, once step 11.0.121 has run');
+	pg_assert_same('{"types":[]}', $legal['params'][10], 'as the JSON given');
+
+	$off = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 1), array('legal_acceptance' => null) + $settled, array('legal_acceptance'));
+	pg_assert_contains('legal_acceptance = NULL WHERE', $off['sql'], 'documents off: NULL, not an empty text');
+	pg_assert_same(10, count($off['params']), 'no parameter for NULL');
 }
 
 function test_order_completion_checkout_page_column_guarded()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	pg_assert_same(2, substr_count($source, "pg_schema_has('orders', 'checkout_page_id')"), 'the redirect and the completing UPDATE ask by exact name');
+	pg_assert_same(1, substr_count($source, "pg_schema_has('orders', 'checkout_page_id')"), 'the completing UPDATE asks by exact name');
+	pg_assert_contains("array_filter(array('checkout_page_id', 'legal_acceptance'), function (\$column) {\n                        return pg_schema_has('orders', \$column);", $source, 'the redirect asks for each column by exact name');
 	pg_assert_contains("array('checkout_page_id' => pg_order_checkout_page_id(\$page_id))", $source, 'the completing UPDATE writes the page');
 	pg_assert_true(in_array('checkout_page_id', pg_order_complete_columns(), true), 'a column the completion may write');
 
 	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
 	pg_assert_contains("upgrade_2026_11_0_order_checkout_page();    // 11.0.120", $migration, 'called in the open version, label 11.0.120');
 	pg_assert_contains("install_add_column('orders', 'checkout_page_id', \"INT UNSIGNED NOT NULL DEFAULT 0\");", $migration, 'through the idempotent helper');
+	pg_assert_contains("upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121", $migration, 'the legal acceptance, label 11.0.121');
+	pg_assert_contains("install_add_column('orders', 'legal_acceptance', \"TEXT NULL\");", $migration, 'through the idempotent helper');
 	pg_assert_false(preg_match('/db\(\s*"ALTER TABLE orders/i', $migration) === 1, 'never a direct ALTER');
+
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+	pg_assert_contains("\$page_column = pg_schema_has('orders', 'checkout_page_id');", $completion, 'the completion asks for the page column by exact name');
+	pg_assert_contains("\$legal_column = pg_schema_has('orders', 'legal_acceptance');", $completion, 'and for the acceptance column');
+	pg_assert_contains("(\$page_column ? ', checkout_page_id' : '')", $completion, 'reads the page only when it exists');
+	pg_assert_contains("(\$legal_column ? ', legal_acceptance' : '')", $completion, 'reads the acceptance only when it exists');
+}
+
+function test_order_completion_payment_page_settings_from_the_recorded_page()
+{
+	$row = array(
+		'auto_registration' => '1',
+		'order_receipt_email' => '1',
+		'order_receipt_email_subject' => 'Your order #',
+		'order_receipt_email_format' => 'html',
+		'order_receipt_email_header' => 'Hello',
+		'order_receipt_email_footer' => 'Bye',
+		'order_receipt_email_page_id' => '77',
+	);
+	$settings = pg_order_payment_page_settings($row);
+
+	pg_assert_same(array('email' => '1', 'subject' => 'Your order #', 'format' => 'html', 'header' => 'Hello', 'footer' => 'Bye', 'page_id' => '77'), $settings['receipt'], 'the page\'s receipt settings');
+	pg_assert_true($settings['auto_registration'], 'the page\'s switch');
+
+	$off = pg_order_payment_page_settings(array('auto_registration' => '0', 'order_receipt_email' => '0') + $row);
+	pg_assert_false($off['auto_registration'], 'switch off');
+	pg_assert_same('0', $off['receipt']['email'], 'a page that sends no receipt sends none');
+
+	foreach (array('no page' => null, 'gone' => array()) as $label => $none) {
+		$fallback = pg_order_payment_page_settings($none);
+
+		pg_assert_same(1, $fallback['receipt']['email'], $label . ': always sent');
+		pg_assert_same('plain_text', $fallback['receipt']['format'], $label . ': plain text');
+		pg_assert_same(lang('Order Receipt #'), $fallback['receipt']['subject'], $label . ': the fixed subject the number follows');
+		pg_assert_same('', $fallback['receipt']['header'] . $fallback['receipt']['footer'], $label . ': no header or footer');
+		pg_assert_false($fallback['auto_registration'], $label . ': no account');
+	}
+}
+
+function test_order_completion_checkout_type_value_and_page_sql()
+{
+	pg_assert_same('order_preview', pg_order_checkout_type_value('order preview'));
+	pg_assert_same('express_order', pg_order_checkout_type_value('express order'));
+	pg_assert_same('', pg_order_checkout_type_value('catalog'));
+	pg_assert_same(null, pg_order_checkout_page_sql(''), 'another type: no query');
+	pg_assert_contains('FROM express_order_pages', pg_order_checkout_page_sql('express_order'));
+	pg_assert_contains('order_preview_pages.auto_registration,', pg_order_checkout_page_sql('order_preview'));
+	pg_assert_contains('order_preview_pages.order_receipt_email_page_id,', pg_order_checkout_page_sql('order_preview'));
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	pg_assert_contains('$query = pg_order_checkout_page_sql($type_value);', $source, 'submit_order() reads its page with the same query');
+
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+	pg_assert_contains("pg_order_payment_page_settings(pg_order_checkout_page_row(\$page_column ? \$order['checkout_page_id'] : 0))", $completion, 'the receipt comes from the page the order names');
+	pg_assert_contains("'receipt' => \$settings['receipt'],", $completion);
+	pg_assert_contains("'new_account' => false,", $completion, 'no account is opened');
+}
+
+function test_order_completion_payment_links_an_existing_account_only()
+{
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+
+	pg_assert_contains("if ((\$user_id <= 0) && \$settings['auto_registration'] && ((string) \$order['billing_email_address'] !== '')) {", $completion, 'a guest\'s order, with the page\'s switch on');
+	pg_assert_contains('SELECT user_id FROM user WHERE user_email = ?', $completion, 'the account with the billing e-mail');
+	pg_assert_contains("\$auto_registration = 'existing';", $completion, 'the address book of an existing account');
+	pg_assert_false(strpos($completion, 'create_member_user(') !== false, 'never opens an account');
+	pg_assert_false(strpos($completion, 'pg_session_sign_in(') !== false, 'never signs anyone in');
+	pg_assert_contains("pg_erp_auto_invoice(\$order_id, 'order_paid', true);", $completion, 'the paid order\'s invoice');
+	pg_assert_true(strpos($completion, 'pg_erp_auto_invoice(') > strpos($completion, 'if ($order_number === null) {'), 'only after this request completed it');
+}
+
+function test_order_completion_lines_charged()
+{
+	$lines = array(
+		array('price' => '1000', 'quantity' => '2', 'recurring' => '0', 'recurring_start_date' => ''),
+		array('price' => '500', 'quantity' => '1', 'recurring' => '1', 'recurring_start_date' => '2026-11-01'),
+		array('price' => '300', 'quantity' => '1', 'recurring' => '1', 'recurring_start_date' => '2026-12-01'),
+	);
+	$split = pg_order_lines_charged($lines, '2026-11-10', false);
+
+	pg_assert_same(2500, $split['subtotal'], 'the lines charged today');
+	pg_assert_same(2, count($split['nonrecurring']));
+	pg_assert_same(2, count($split['recurring']), 'every recurring line');
+
+	pg_assert_same(2000, pg_order_lines_charged($lines, '2026-11-10', true)['subtotal'], 'ClearCommerce charges recurring lines itself');
+}
+
+function test_order_completion_payment_completion_values()
+{
+	$order = array(
+		'payment_method' => 'Credit/Debit Card', 'subtotal' => '10000', 'discount' => '500', 'tax' => '1710',
+		'shipping' => '990', 'gift_card_discount' => '0', 'surcharge' => '13', 'total' => '12213',
+		'transaction_id' => 'pi_3abc', 'affiliate_code' => 'AFF', 'checkout_page_id' => '31',
+	);
+	$values = pg_order_payment_completion_values($order, 'paid', 1760950000, 7, 120.0, array('report' => 'offer_code', 'offer_code' => 'SALE'), true);
+
+	pg_assert_same(12213, $values['total'], 'the kept total');
+	pg_assert_same(10000, $values['subtotal']);
+	pg_assert_same('Credit/Debit Card', $values['payment_method']);
+	pg_assert_same(1760950000, $values['order_date']);
+	pg_assert_same(1760950000, $values['paid_at'], 'a taken payment is paid when completed');
+	pg_assert_same('SALE', $values['special_offer_code'], 'the offer code a key code stands for');
+	pg_assert_same(31, $values['checkout_page_id']);
+	pg_assert_same(7, $values['user_id']);
+	pg_assert_same(array(), array_values(array_diff(array_keys($values), pg_order_complete_columns())), 'only columns the completion may write');
+	pg_assert_true(pg_order_complete_query(42, $values) !== null, 'a query it can write');
+
+	$plain = pg_order_payment_completion_values($order, 'authorized', 1760950000, '', '', null, false);
+	pg_assert_false(array_key_exists('checkout_page_id', $plain), 'no page before step 11.0.120');
+	pg_assert_false(array_key_exists('special_offer_code', $plain), 'no key code');
+	pg_assert_false(array_key_exists('ip_address', $plain), 'the visitor\'s address stays as the order kept it');
+}
+
+function test_order_completion_legal_acceptance()
+{
+	$json = pg_order_legal_acceptance_json(array('contract', 'preinfo', 'kvkk', 'other'), '2001:db8::1', 'Mozilla/5.0', 1760900000);
+
+	pg_assert_same(
+		array('types' => array('preinfo', 'contract', 'kvkk'), 'ip' => '2001:db8::1', 'user_agent' => 'Mozilla/5.0', 'at' => 1760900000),
+		pg_order_legal_acceptance_read($json, '10.0.0.1', 1760950000),
+		'what the visitor accepted, with their address (IPv6 too), browser and time');
+
+	pg_assert_same(
+		array('types' => array('preinfo', 'contract'), 'ip' => '10.0.0.1', 'user_agent' => '', 'at' => 1760950000),
+		pg_order_legal_acceptance_read(null, '10.0.0.1', 1760950000),
+		'NULL: the two required documents, no KVKK consent, the order\'s IPv4, no browser, now');
+	pg_assert_same(array('preinfo', 'contract'), pg_order_legal_acceptance_read('not json', '', 1)['types'], 'unreadable: the same fallback');
+	pg_assert_same(array(), pg_order_legal_acceptance_read('{"types":[]}', '', 1)['types'], 'an empty list stays empty');
+
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+	pg_assert_contains("\$legal['types'],", $completion, 'the accepted types are the documents passed');
+	pg_assert_contains("'legal_acceptance' => array('ip' => \$legal['ip'], 'user_agent' => \$legal['user_agent'], 'at' => \$legal['at']),", $completion);
+
+	$complete = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete');
+	pg_assert_contains("\$legal['ip'] ?? null,", $complete, 'the visitor\'s path leaves them to the store');
+
+	$store = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
+	pg_assert_contains('function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, $agent = null, $at = null)', $store);
 }

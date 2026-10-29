@@ -75,7 +75,8 @@ function test_bundle_checkout_stock_stage_routes_a_bundle()
 // are written against.
 function test_bundle_checkout_lines_carry_the_order_item()
 {
-	pg_assert_contains('order_items.id as order_item_id', bundle_checkout_test_source('submit_order.php'));
+	pg_assert_contains('$query = pg_order_lines_sql();', bundle_checkout_test_source('submit_order.php'));
+	pg_assert_contains('order_items.id as order_item_id', bundle_checkout_test_source('includes/fn/order_completion.php'));
 }
 
 // The list's quick edit refuses a bundle's stock with code bundle, before any

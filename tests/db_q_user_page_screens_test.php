@@ -126,7 +126,7 @@ function db_q_user_page_screens_test_built($text)
 
 function test_db_q_user_page_screens_value_queries_use_db_q()
 {
-	$expected = array('edit_user.php' => 21, 'add_user.php' => 2, 'includes/forms/user_form.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 30, 'edit_page.php' => 30);
+	$expected = array('edit_user.php' => 21, 'add_user.php' => 2, 'includes/forms/user_form.php' => 8, 'import_users.php' => 8, 'edit_pages.php' => 30, 'edit_page.php' => 29);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;

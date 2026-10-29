@@ -19,6 +19,7 @@
 
 include('init.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_type_pane.php');
 
 $liveform_add_page = new liveform('add_page');
 
@@ -213,55 +214,21 @@ if (!$_POST) {
         exit();
     }
     
-    // if the page type is catalog or catalog detail then check the name for slashes
-    if (($_POST['type'] == 'catalog') || ($_POST['type'] == 'catalog detail')) {
-        // if there is a slash in the page name, then output an error
-        if (mb_strpos($name, '/') !== FALSE) {
-            $liveform_add_page->mark_error('name', lang('The page name for catalog and catalog detail pages cannot contain forward slashes. Please type in a new name for the page.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
-            exit();
-        }
-    }
-    
-    $name = str_replace(" ", "_", $name);
-    $name = str_replace("&", "_", $name);
+    $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php';
+
+    $clean_name = pg_page_form_clean_name($name, $_POST['type']);
+    pg_page_form_refuse($liveform_add_page, array_filter(array('name' => $clean_name['error'])), $form_url);
+    $name = $clean_name['name'];
 
     if (check_name_availability(array('name' => $name)) == false) {
         $liveform_add_page->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
-        
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
+        header('Location: ' . $form_url);
         exit();
     }
     
-    // if page is a custom form, check to see if there is another page with this same form name
+    // A form name another page holds, or settings the form cannot run with.
     if ($_POST['type'] == 'custom form') {
-        $query = "SELECT id FROM custom_form_pages WHERE form_name = ?";
-        $result = db_q($query, array((string) ($_POST['custom_form_form_name'] ?? ''))) or output_error('Query failed.');
-
-        // if there is another page with this form name, output error
-        if (mysqli_num_rows($result) > 0) {
-            $liveform_add_page->mark_error('custom_form_form_name', lang('The form name that you entered is already in use. Please enter a different form name.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
-            exit();
-        }
-
-        // An e-mail switched on with nothing to send, or a "Next Page"
-        // confirmation without a page (pg_cf_legacy_settings_errors()).
-        $custom_form_setting_errors = pg_cf_legacy_settings_errors(
-            pg_page_form_type_properties_from_post('custom form', 0),
-            function ($page_id) {
-                return ($page_id > 0)
-                    && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0)
-                    && !(function_exists('pg_recycle_page_binned') && pg_recycle_page_binned((int) $page_id));
-            });
-
-        if ($custom_form_setting_errors) {
-            foreach ($custom_form_setting_errors as $custom_form_setting_field => $custom_form_setting_error) {
-                $liveform_add_page->mark_error($custom_form_setting_field, $custom_form_setting_error);
-            }
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_page.php');
-            exit();
-        }
+        pg_page_form_refuse($liveform_add_page, pg_page_type_custom_form_errors(0), $form_url);
     }
 
     $sql_style_fields = "";
@@ -281,37 +248,8 @@ if (!$_POST) {
         $style_values = array((string) ($_POST['style'] ?? ''), (string) ($_POST['mobile_style_id'] ?? ''));
     }
     
-    // if the user has access to the selected page type, then set page type to selected page type
-    if (
-        ($user['role'] < 3)
-        || ($_POST['type'] == 'standard')
-        || (($_POST['type'] == 'email a friend') && ($user['set_page_type_email_a_friend'] == TRUE))
-        || (($_POST['type'] == 'folder view') && ($user['set_page_type_folder_view'] == TRUE))
-        || (($_POST['type'] == 'photo gallery') && ($user['set_page_type_photo_gallery'] == TRUE))
-        || (($_POST['type'] == 'catalog') && ($user['set_page_type_catalog'] == TRUE))
-        || (($_POST['type'] == 'catalog detail') && ($user['set_page_type_catalog_detail'] == TRUE))
-        || (($_POST['type'] == 'express order') && ($user['set_page_type_express_order'] == TRUE))
-        || (($_POST['type'] == 'order form') && ($user['set_page_type_order_form'] == TRUE))
-        || (($_POST['type'] == 'shopping cart') && ($user['set_page_type_shopping_cart'] == TRUE))
-        || (($_POST['type'] == 'shipping address and arrival') && ($user['set_page_type_shipping_address_and_arrival'] == TRUE))
-        || (($_POST['type'] == 'shipping method') && ($user['set_page_type_shipping_method'] == TRUE))
-        || (($_POST['type'] == 'billing information') && ($user['set_page_type_billing_information'] == TRUE))
-        || (($_POST['type'] == 'order preview') && ($user['set_page_type_order_preview'] == TRUE))
-        || (($_POST['type'] == 'order receipt') && ($user['set_page_type_order_receipt'] == TRUE))
-        || (($_POST['type'] == 'custom form') && ($user['set_page_type_custom_form'] == TRUE))
-        || (($_POST['type'] == 'custom form confirmation') && ($user['set_page_type_custom_form_confirmation'] == TRUE))
-        || (($_POST['type'] == 'form list view') && ($user['set_page_type_form_list_view'] == TRUE))
-        || (($_POST['type'] == 'form item view') && ($user['set_page_type_form_item_view'] == TRUE))
-        || (($_POST['type'] == 'form view directory') && ($user['set_page_type_form_view_directory'] == TRUE))
-        || (($_POST['type'] == 'calendar view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_view'] == TRUE))
-        || (($_POST['type'] == 'calendar event view') && ($user['manage_calendars'] == TRUE) && ($user['set_page_type_calendar_event_view'] == TRUE))
-    ) {
-        $type = $_POST['type'];
-        
-    // else the user does not have access to the selected page type, so set type to standard
-    } else {
-        $type = 'standard';
-    }
+    // A type the user was not given is saved as a standard page.
+    $type = pg_page_type_user_may_set($user, $_POST['type']) ? $_POST['type'] : 'standard';
 
     // If the page type supports a layout, and if the user is an admin or designer,
     // then use layout type value that user selected.
@@ -326,42 +264,12 @@ if (!$_POST) {
         $layout_type = 'system';
     }
     
-    // Resolved into a variable rather than read straight into the query,
-    // because the indexing switch below can override it. The cast also keeps an
-    // unchecked checkbox - absent from the POST entirely - out of the TINYINT
-    // column as an empty string.
-    $sitemap = ((($_POST['sitemap'] ?? '') == 1) ? 1 : 0);
-
-    $noindex = 0;
-    $nofollow = 0;
-
-    // nofollow qualifies the noindex directive and is never emitted on its own,
-    // so it is only stored while the page is closed to search engines.
-    if (($_POST['noindex'] ?? '') == 1) {
-        $noindex = 1;
-
-        if (($_POST['nofollow'] ?? '') == 1) {
-            $nofollow = 1;
-        }
-    }
-
-    // A page that is closed to search engines has no business in the site map.
-    if ($noindex == 1) {
-        $sitemap = 0;
-    }
-
-    $sql_noindex_columns = "";
-    $sql_noindex_values = "";
-
-    if (pg_page_noindex_ready() == TRUE) {
-        $sql_noindex_columns =
-            "noindex,
-            nofollow,";
-
-        $sql_noindex_values =
-            "'" . $noindex . "',
-            '" . $nofollow . "',";
-    }
+    // An unchecked box is absent from the POST and stored as 0.
+    $index_flags = pg_page_form_index_flags(($_POST['sitemap'] ?? '') == 1, $_POST);
+    $sitemap = $index_flags['sitemap'];
+    $sql_noindex = pg_page_form_noindex_sql($index_flags, pg_page_noindex_ready());
+    $sql_noindex_columns = $sql_noindex['columns'];
+    $sql_noindex_values = $sql_noindex['values'];
 
     // insert row into page table
     //
@@ -523,32 +431,11 @@ if (!$_POST) {
 
     pg_audit_record('create', 'page', (int) $page_id);
 
-    // If this page is a custom form, or a custom shipping or custom billing form was enabled,
-    // then forward user to form designer.
-    if (
-        ($type == 'custom form')
-        || (($type == 'shipping address and arrival') && ($_POST['shipping_address_and_arrival_form'] == 1))
-        || (($type == 'billing information') && ($_POST['billing_information_form'] == 1))
-        || (
-            ($type == 'express order') and ($_POST['express_order_shipping_form'] or $_POST['express_order_form'])
-        )
-    ) {
+    // A custom form page, or a page with a shipping, billing or express order
+    // form switched on, goes on to the form designer.
+    $form_type = pg_page_form_designer_redirect($type, $_POST);
 
-        $form_type = '';
-
-        // If this is an express order page, then determine if we should forward to shipping
-        // or billing form.
-        if ($type == 'express order') {
-
-            $form_type = '&form_type=';
-
-            if ($_POST['express_order_shipping_form']) {
-                $form_type .= 'shipping';
-            } else {
-                $form_type .= 'billing';
-            }
-        }
-
+    if ($form_type !== false) {
         $query_string_from = '';
         
         // if the page is a shipping address and arrival page, then prepare from

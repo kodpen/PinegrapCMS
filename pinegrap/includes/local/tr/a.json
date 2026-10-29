@@ -6,6 +6,8 @@
     "A 36 mm steel case, a sapphire crystal and an Italian leather strap.": "36 mm çelik kasa, safir cam ve İtalyan deri kordon.",
     "A Bootstrap Icons class, such as bi-briefcase.": "Bir Bootstrap Icons sınıfı, örneğin bi-briefcase.",
     "A CSV export holds at most {var:1} lines, newest first, and is recorded in the trail.": "Bir CSV dışa aktarımı en yeniden başlayarak en çok {var:1} satır içerir ve denetim izine yazılır.",
+    "A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.": "İlk satırı sütunları adlandıran bir CSV, Excel ya da OpenDocument dosyası: her biri kendi adındaki sütunu doldurur.",
+    "A CSV, Excel or OpenDocument file: its first row names the columns.": "CSV, Excel ya da OpenDocument dosyası: ilk satırı sütunları adlandırır.",
     "A JSON object, empty for none. Put a value inside quotes: \"{{node.box.field}}\".": "Bir JSON nesnesi; yoksa boş bırakın. Bir değeri tırnak içine koyun: \"{{node.box.field}}\".",
     "A KVKK consent sentence is set": "KVKK açık rıza metni ayarlı",
     "A KVKK notice page is set": "KVKK aydınlatma sayfası ayarlı",

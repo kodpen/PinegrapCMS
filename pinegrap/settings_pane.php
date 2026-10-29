@@ -204,12 +204,22 @@ if ($liveform->check_form_errors()) {
         $errors[] = pg_settings_pane_words($error);
     }
 
+    // The marked fields by name, so the dialog can mark them in view and
+    // focus the first; an object even when empty.
+    $fields = array();
+    $state  = isset($_SESSION['software']['liveforms'][$liveform->form][$liveform->index]) ? $_SESSION['software']['liveforms'][$liveform->form][$liveform->index] : array();
+
+    foreach (pg_settings_marked_fields($state) as $name => $sentence) {
+        $fields[$name] = pg_settings_pane_words($sentence);
+    }
+
     $liveform->remove_form();
 
     pg_settings_pane_respond(array(
         'status' => 'invalid',
         'pane'   => $pane,
         'errors' => $errors,
+        'fields' => $fields ? $fields : new stdClass(),
         'token'  => (isset($_SESSION['software']['token']) ? $_SESSION['software']['token'] : ''),
     ));
 }

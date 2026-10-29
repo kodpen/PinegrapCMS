@@ -1971,17 +1971,47 @@ function ws_handle_action($action, $request)
                 $parent_id = 0;
             }
 
+            $body = (string) ($request['body'] ?? '');
+
+            // "/create product" sent with a CSV or spreadsheet: the file is
+            // posted on its own, then made into one bulk card of drafts
+            // (ws_command_product_file()). Refused before the file is posted
+            // when it could not be, so the command stays in the box.
+            $product_file = ws_command_is_product_file($body);
+
+            if ($product_file) {
+                if (!ws_bulk_file_is_table((string) ($request['name'] ?? ''))) {
+                    return ws_action_error(lang('Products are made from a CSV, Excel or OpenDocument file.'));
+                }
+
+                if (!function_exists('ws_bulk_ready') || !ws_bulk_ready()) {
+                    return ws_action_error(lang('This site cannot take proposed changes yet: its database has to be upgraded.'));
+                }
+
+                if (!ws_change_allowed($viewer, 'product', 0)) {
+                    return ws_action_error(lang('You may not change a record of this kind.'));
+                }
+
+                $body = '';
+            }
+
             // A message that could not be written (too many too fast, too
             // long) keeps no file, as the external API does.
             // A recording also carries the length and waveform its recorder
             // measured, cleaned before they are kept (ws_voice_queue()).
-            $result = ws_message_send_file($viewer, $channel, (string) ($request['body'] ?? ''), (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array(
+            $result = ws_message_send_file($viewer, $channel, $body, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array(
                 'parent_id' => $parent_id,
                 'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
             ));
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
+            }
+
+            // The file is posted whatever its rows say; a refusal of them
+            // comes back as the command's error.
+            if ($product_file) {
+                return ws_action_ok(array('message_id' => $result['message_id'], 'command' => ws_command_product_file($viewer, $channel, (int) $result['message_id'])));
             }
 
             // A recording that asked an assistant without waiting for its
@@ -2949,20 +2979,6 @@ function ws_handle_action($action, $request)
                 'lines'       => $created['lines'],
                 'decision_id' => $created['decision_id'],
             ));
-
-        // Product drafts from a file posted in a channel (bulk_sources.php):
-        // one bulk create card under a message of the person's own, which
-        // they apply.
-        case 'ws_bulk_create_propose':
-            $proposed = ws_bulk_create_propose($viewer, (int) ($request['channel_id'] ?? 0), array(
-                'message_id' => (int) ($request['message_id'] ?? 0),
-            ));
-
-            if (!$proposed['ok']) {
-                return ws_action_error($proposed['error']);
-            }
-
-            return ws_action_ok(array('message_id' => $proposed['message_id'], 'count' => $proposed['count'], 'ignored' => $proposed['ignored']));
 
         case 'ws_task_get':
             $task = ws_task((int) ($request['task_id'] ?? 0));

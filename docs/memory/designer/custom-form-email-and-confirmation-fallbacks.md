@@ -13,11 +13,11 @@ description: Custom form submit fallbacks (empty plain text body -> field list w
 - HTML mail with a missing page is not covered at send time; the screen refuses it instead.
 
 ## What does the legacy page screen refuse?
-- `pg_cf_legacy_settings_errors($settings, $page_exists)` on `edit_page.php` and `add_page.php` (after the form name check, same redirect + `mark_error()` pattern, so the typed changes are lost like there):
+- `pg_cf_legacy_settings_errors($settings, $page_exists)`, run for `add_page.php`, `edit_page.php` and the designer pane through `pg_page_type_custom_form_errors()` (`includes/fn/page_type_pane.php`, with the form name check; one redirect + `mark_error()`, so the typed changes are lost like there):
   - E-mail Submitter / Administrator on + Plain Text + empty Body;
   - the same on + HTML (any format other than `plain_text`, as `custom_form.php` reads it) + no page, a deleted page or a page in the Recycle Bin;
   - Confirmation Type `page` + no, deleted or binned Next Page. An empty or missing type is the message and needs no page.
-- On `edit_page.php` it runs only when the user may set the page's type (`$user_can_set_page_type`, the condition that guards saving the type properties). A basic user without `set_page_type_custom_form` sees no form fields and posts none; checking them refused every save of that page, even a title change.
+- On `edit_page.php` it runs only when the user may set the page's type (`$may_save_page_type`, the condition that guards saving the type properties; the form name check runs always). A basic user without `set_page_type_custom_form` sees no form fields and posts none; checking them refused every save of that page, even a title change.
 - An empty stored `confirmation_type` renders the Message radio (it used to render Next Page), matching the submit rule.
 
 ## What does the visitor see when the next page is missing?

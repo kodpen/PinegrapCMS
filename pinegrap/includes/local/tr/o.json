@@ -507,6 +507,7 @@
     "Only the entered URL is scanned along with its assets (images, CSS, JS).": "Yalnızca girilen URL, varlıklarıyla (görseller, CSS, JS) birlikte taranır.",
     "Only the entries for this record: {var:1} #{var:2}": "Yalnızca bu kaydın izleri: {var:1} #{var:2}",
     "Only the featured comments are shown": "Yalnızca öne çıkan yorumlar gösteriliyor",
+    "Only the first 100 are listed.": "Yalnızca ilk 100 tanesi listelenir.",
     "Only the first 200 returns are shown. The rest are in your seller panel.": "Yalnızca ilk 200 iade gösteriliyor. Diğerleri satıcı panelinizde.",
     "Only the first files are listed. Search to find the others.": "Yalnız ilk dosyalar listelendi. Diğerlerini bulmak için arayın.",
     "Only the first of them are listed.": "Yalnızca ilk bulunanlar listelendi.",

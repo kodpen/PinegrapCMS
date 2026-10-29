@@ -378,6 +378,36 @@ function pg_settings_refuse_lists($key, $liveform)
 
 
 /**
+ * The fields a refused save marked, by name, each with its sentence ('' when
+ * it was marked without one), so the dialog can mark them in view. Read from
+ * the liveform's state: the form-level errors (_form_error_N) and the notice
+ * and warning lists belong to no field and are left out.
+ *
+ * @param array $state the liveform's session entry
+ * @return array field name => sentence
+ */
+function pg_settings_marked_fields($state)
+{
+    $fields = array();
+
+    foreach ((array) $state as $name => $field) {
+
+        if (!is_string($name) || ($name === 'notices') || ($name === 'warnings') || (strpos($name, '_form_error_') === 0)) {
+            continue;
+        }
+
+        if (!is_array($field) || empty($field['error'])) {
+            continue;
+        }
+
+        $fields[$name] = isset($field['error_message']) ? (string) $field['error_message'] : '';
+    }
+
+    return $fields;
+}
+
+
+/**
  * The script that renders a category.
  *
  * @param string $key
