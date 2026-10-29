@@ -154,6 +154,7 @@ if (!isset($_POST['name'])) {
                         <embed 
                             src="' . OUTPUT_PATH . $file_name . '" 
                             type="application/pdf" 
+                            title="' . h($file_name) . '" 
                             class="w-100 h-100" />
                     </div>
                 </div>
@@ -199,7 +200,7 @@ if (!isset($_POST['name'])) {
                     <img 
                         src="' . OUTPUT_PATH . $file_name . '" 
                         class="img-fluid" 
-                        alt="icon preview" 
+                        alt="" 
                         style="max-width:128px; height:auto;" />
                    
                 </div>
