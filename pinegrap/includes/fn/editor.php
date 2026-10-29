@@ -223,7 +223,8 @@ function get_wysiwyg_editor_code($editor_ids, $activate_editors = true, $folder_
             $output_include_source_plugin = ',"Source"';
             $output_remove_sourcedialog_plugin = ',sourcedialog';
             foreach ($editor_ids as $editor_id) {
-                $output_editor_initialization .= 'CKEDITOR.replace("' . $editor_id . '", software_ckeditor_config);';
+                // Each editor named by its field's caption (pg_ckeditor_source.js).
+                $output_editor_initialization .= 'pgCkeditorReplace("' . $editor_id . '", software_ckeditor_config);';
             }
             $output_editor_initialization = 'if (typeof(software_$) != "undefined") {
                     software_$(document).ready(function() {
@@ -713,7 +714,12 @@ function pg_code_editor_includes()
 
     $config = pg_code_editor_urls();
     $config['phrases'] = pg_code_editor_phrases();
-    $config['labels'] = array('syntaxError' => lang('Syntax error'));
+    // keysHint: the line under a rich text editor in Source mode
+    // (pg_ckeditor_source.js), as under a code field.
+    $config['labels'] = array(
+        'syntaxError' => lang('Syntax error'),
+        'keysHint'    => lang('Tab indents. {var} makes Tab move to the next field.'),
+    );
 
     return '<script>window.pgCodeEditorConfig = ' . pg_code_editor_json($config) . ';</script>';
 }
