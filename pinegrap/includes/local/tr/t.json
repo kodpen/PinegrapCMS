@@ -5277,6 +5277,8 @@
     "Turn modules on and off as you need them and customize without code.": "İhtiyacınıza göre modülleri açın kapatın; kod yazmadan özelleştirin.",
     "Turn off": "Kapat",
     "Turn off two-step verification": "İki adımlı doğrulamayı kapat",
+    "Turn off two-step verification for your account? Your authenticator key, passkeys and recovery codes are deleted and your other devices are signed out. This cannot be undone.": "Hesabınızda iki adımlı doğrulama kapatılsın mı? Doğrulama uygulaması anahtarınız, geçiş anahtarlarınız ve kurtarma kodlarınız silinir ve diğer cihazlarınızdaki oturumlar kapatılır. Bu işlem geri alınamaz.",
+    "Turn off two-step verification for {var:1}? Their authenticator key, passkeys and recovery codes are deleted and they are signed out everywhere. This cannot be undone.": "{var:1} için iki adımlı doğrulama kapatılsın mı? Doğrulama uygulaması anahtarı, geçiş anahtarları ve kurtarma kodları silinir ve tüm oturumları kapatılır. Bu işlem geri alınamaz.",
     "Turn on": "Aç",
     "Turn on 2-Step Verification for the account and use an app password; Google refuses the account's own password.": "Hesapta 2 Adımlı Doğrulama'yı açın ve bir uygulama şifresi kullanın; Google hesabın kendi şifresini reddeder.",
     "Turn on IMAP access in the Zoho Mail settings; with two-factor sign-in use an app password.": "Zoho Mail ayarlarında IMAP erişimini açın; iki adımlı oturum açmada bir uygulama şifresi kullanın.",

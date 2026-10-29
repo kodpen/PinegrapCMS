@@ -608,6 +608,7 @@
     "Remove this term from the glossary?": "Bu terim sözlükten kaldırılsın mı?",
     "Remove webhook": "Webhook'u kaldır",
     "Remove {var:1}": "{var:1} satırını sil",
+    "Remove {var:1} stale match(es) of {var:2}? Their codes are freed; a product restored from the Recycle Bin afterwards comes back unmatched.": "{var:2} hesabının {var:1} eski eşleşmesi kaldırılsın mı? Kodları serbest kalır; sonradan Geri Dönüşüm Kutusundan geri yüklenen bir ürün eşleşmesiz gelir.",
     "Remove {var:1} visitor records older than {var:2} days now? They cannot be brought back. The work goes in small steps while this page stays open; the site keeps running meanwhile.": "{var:2} günden eski {var:1} ziyaretçi kaydı şimdi silinsin mi? Geri getirilemezler. İş, bu sayfa açık kaldıkça küçük adımlarla ilerler; site bu sırada çalışmaya devam eder.",
     "Removed after {var:1} days": "{var:1} gün sonra silindi",
     "Removed from this group. It is now in no group, and only the All Products view will show it.": "Bu gruptan çıkarıldı. Artık hiçbir grupta değil; yalnızca Tüm Ürünler görünümünde çıkar.",
