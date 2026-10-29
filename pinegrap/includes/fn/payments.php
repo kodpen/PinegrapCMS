@@ -994,7 +994,9 @@ function pg_payment_settings_card_rows($gateway, $card_enabled)
     $html = '';
 
     foreach (pg_payment_drivers() as $key => $definition) {
-        $fields = (($definition['kind'] === 'card') && ($definition['settings'] === 'connect')) ? pg_payment_fields($key) : array();
+        // A shipped driver that keeps its keys in config columns may still
+        // have fields of its own (iyzico's stored-card renewals switch).
+        $fields = ($definition['kind'] === 'card') ? pg_payment_fields($key) : array();
 
         if (!$fields) {
             continue;

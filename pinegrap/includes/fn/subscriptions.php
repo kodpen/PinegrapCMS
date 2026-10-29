@@ -357,6 +357,51 @@ function pg_subscription_event_row($subscription_id, $kind, $order_id, $amount, 
     );
 }
 
+/**
+ * The order lines a paid checkout makes subscriptions of: recurring lines
+ * with a price that were charged today (a line that starts later was not in
+ * the payment), each with its period. None unless the payment's driver runs
+ * subscriptions itself (recurring mode 'store') and its payment stored a
+ * card: the legacy gateways keep their own recurring profiles.
+ *
+ * @param array  $lines          order lines as pg_order_lines_sql() reads them
+ * @param string $recurring_mode pg_payment_recurring_mode() of the payment's driver
+ * @param string $card_ref       the card_ref the payment answered, plain
+ * @param string $today          Y-m-d
+ * @return array list of array('item' => order_items fields, 'period' => key)
+ */
+function pg_subscription_checkout_lines($lines, $recurring_mode, $card_ref, $today)
+{
+    if (($recurring_mode !== 'store') || (trim((string) $card_ref) === '') || !is_array($lines)) {
+        return array();
+    }
+
+    $planned = array();
+
+    foreach ($lines as $line) {
+        $period = pg_subscription_period_from_legacy($line['recurring_payment_period'] ?? '');
+        $item_id = (int) ($line['order_item_id'] ?? 0);
+
+        if (empty($line['recurring']) || ((int) ($line['price'] ?? 0) <= 0) || ($period === '') || ($item_id <= 0)
+            || ((string) ($line['recurring_start_date'] ?? '') > (string) $today)) {
+            continue;
+        }
+
+        $planned[$item_id] = array(
+            'item' => array(
+                'id'         => $item_id,
+                'product_id' => (int) ($line['product_id'] ?? 0),
+                'price'      => $line['price'],
+                'quantity'   => $line['quantity'] ?? 1,
+                'tax_total'  => $line['tax_total'] ?? 0,
+            ),
+            'period' => $period,
+        );
+    }
+
+    return array_values($planned);
+}
+
 /* ---------------------------------------------------------------------------
    The card's token
    --------------------------------------------------------------------------- */
@@ -467,6 +512,14 @@ function pg_subscription_create_from_order_line($order, $item, $driver, $period,
         return 0;
     }
 
+    // One subscription per order line: a checkout that runs again for the
+    // same order (a retried return) finds the row it made.
+    $existing = (int) db_value("SELECT id FROM subscriptions WHERE (order_id = '" . e((int) ($order['id'] ?? 0)) . "') AND (order_item_id = '" . e((int) ($item['id'] ?? 0)) . "') LIMIT 1");
+
+    if ($existing > 0) {
+        return $existing;
+    }
+
     $row = pg_subscription_row_from_order_line($order, $item, $driver, $period, $currency,
         pg_subscription_card_ref_seal($card_token), $card_last4, time());
 
@@ -539,4 +592,44 @@ function pg_subscription_set_status($id, $to, $detail = '')
     pg_subscription_event_write((int) $row['id'], 'status_' . $to, 0, 0, '', $detail);
 
     return true;
+}
+
+/**
+ * Makes the subscriptions of a completed checkout (submit_order.php): one per
+ * recurring line pg_subscription_checkout_lines() picks, with the card the
+ * payment stored. Run again for the same order it makes nothing new.
+ *
+ * @param int    $order_id
+ * @param string $driver the payment's driver key
+ * @param array  $answer the payment's answer (pg_payment_answer())
+ * @param array  $lines  order lines as pg_order_lines_sql() reads them
+ * @return array order_item_id => subscription id, 0 for a line that got none
+ */
+function pg_subscription_checkout_create($order_id, $driver, $answer, $lines)
+{
+    if (!pg_subscriptions_ready() || ((int) $order_id <= 0) || !pg_payment_key_valid($driver)) {
+        return array();
+    }
+
+    $card_ref = (string) ($answer['card_ref'] ?? '');
+    $planned = pg_subscription_checkout_lines($lines, pg_payment_recurring_mode($driver), $card_ref, date('Y-m-d'));
+
+    if (!$planned) {
+        return array();
+    }
+
+    $order = db_item("SELECT id, user_id FROM orders WHERE id = '" . e((int) $order_id) . "'");
+
+    if (!$order) {
+        return array();
+    }
+
+    $made = array();
+
+    foreach ($planned as $line) {
+        $made[$line['item']['id']] = pg_subscription_create_from_order_line($order, $line['item'], $driver, $line['period'],
+            defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '', $card_ref, (string) ($answer['card_last4'] ?? ''));
+    }
+
+    return $made;
 }

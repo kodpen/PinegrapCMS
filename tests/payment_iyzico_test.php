@@ -1012,7 +1012,10 @@ function test_payment_iyzico_drivers_are_shipped()
 	pg_assert_same('pay_with_iyzico', pg_payment_driver_for_method('Pay With Iyzico'));
 	pg_assert_same('config', pg_payment_driver('iyzico')['settings']);
 	pg_assert_same('config', pg_payment_driver('pay_with_iyzico')['settings']);
-	pg_assert_same(array(), pg_payment_fields('iyzico'), 'the config columns stay the settings');
+	pg_assert_same(array('stored_card_renewals'), array_column(pg_payment_fields('iyzico'), 'name'), 'the config columns stay the settings; only the renewals switch is the driver\'s own');
+	pg_assert_same('switch', pg_payment_fields('iyzico')[0]['type']);
+	pg_assert_same('', pg_payment_fields('iyzico')[0]['default'], 'off until the merchant has iyzico\'s approval');
+	pg_assert_same(array(), pg_payment_fields('pay_with_iyzico'));
 	pg_assert_false(strpos(pg_payment_settings_gateway_options('Iyzipay'), 'Iyzipay') !== false, 'the gateway list already has Iyzipay');
 
 	pg_assert_true(pg_payment_can('iyzico', 'authorize'));
@@ -1091,4 +1094,246 @@ function test_payment_iyzico_sdk_keeps_to_php_7_1()
 	$type = (new ReflectionMethod('Iyzipay\Model\Mapper\AmountBaseRefundMapper', 'mapAmountBaseRefundFrom'))->getParameters()[1]->getType();
 
 	pg_assert_same('stdClass', ($type instanceof ReflectionNamedType) ? $type->getName() : '', 'the refund mapper takes the decoded answer as \stdClass, not object');
+}
+
+/* ---------------------------------------------------------------------------
+   Stored-card renewals
+   --------------------------------------------------------------------------- */
+
+function payment_iyzico_test_subscription($changes = array())
+{
+	return array_merge(array(
+		'id'         => 61,
+		'user_id'    => 7,
+		'product_id' => 44,
+		'amount'     => 17688,
+		'currency'   => 'TRY',
+		'card_ref'   => 'ukey-1|ctok-1',
+		'order'      => payment_iyzico_test_order(),
+	), $changes);
+}
+
+function payment_iyzico_test_card_list($tokens)
+{
+	$cards = array();
+
+	foreach ($tokens as $token => $last4) {
+		$cards[] = array('cardToken' => $token, 'lastFourDigits' => $last4, 'cardAlias' => 'Kart');
+	}
+
+	return payment_iyzico_test_success(array('cardUserKey' => 'ukey-1', 'cardDetails' => $cards));
+}
+
+function test_payment_iyzico_renewals_capability_follows_the_setting()
+{
+	pg_assert_same(array('installments', 'partial_refund', 'threeds'), pg_payment_iyzico_capabilities_with(false));
+	pg_assert_same('', pg_payment_recurring_mode_declared(pg_payment_iyzico_capabilities_with(false)), 'off: no subscriptions through iyzico');
+	pg_assert_same('store', pg_payment_recurring_mode_declared(pg_payment_iyzico_capabilities_with(true)), 'on: the store runs them');
+	pg_assert_same(array('installments', 'recurring', 'partial_refund', 'threeds'), pg_payment_capabilities_normalize(pg_payment_iyzico_capabilities_with(true)));
+
+	pg_assert_false(pg_payment_iyzico_stored_card_renewals(), 'no stored setting: off');
+	pg_assert_same('', pg_payment_recurring_mode('iyzico'));
+	pg_assert_same('', pg_payment_recurring_mode('pay_with_iyzico'));
+
+	foreach (array('charge_renewal', 'update_card', 'subscription_cancel') as $operation) {
+		pg_assert_true(pg_payment_can('iyzico', $operation), $operation);
+		pg_assert_false(pg_payment_can('pay_with_iyzico', $operation), 'Pay with iyzico has no ' . $operation);
+	}
+}
+
+function test_payment_iyzico_first_payment_registers_the_card_and_answers_it()
+{
+	$http = payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array(
+		'paymentId' => '24681', 'fraudStatus' => 1, 'lastFourDigits' => '0008', 'cardUserKey' => 'ukey-1', 'cardToken' => 'ctok-1'))));
+
+	$answer = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment(array('recurring' => true)));
+
+	pg_assert_same(1, $http->posts[0]['body']['paymentCard']['registerCard'], 'a recurring line registers the card');
+	pg_assert_true($answer['success']);
+	pg_assert_same('ukey-1|ctok-1', $answer['card_ref'], 'card user key and token, for the caller to seal');
+	pg_assert_same('0008', $answer['card_last4']);
+	pg_assert_same(array(), $answer['log'], 'the token is never logged');
+
+	$http = payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '24682', 'fraudStatus' => 1))));
+	$plain = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
+
+	pg_assert_same(0, $http->posts[0]['body']['paymentCard']['registerCard']);
+	pg_assert_same('', $plain['card_ref'], 'no stored card, no card_ref');
+}
+
+function test_payment_iyzico_card_ref_shape()
+{
+	pg_assert_same('a|b', pg_payment_iyzico_card_ref(' a ', 'b'));
+	pg_assert_same('', pg_payment_iyzico_card_ref('a', ''), 'both halves are needed');
+	pg_assert_same('', pg_payment_iyzico_card_ref('a|x', 'b'), 'the separator is never inside a half');
+	pg_assert_same('', pg_payment_iyzico_card_ref(str_repeat('k', 100), str_repeat('t', 60)), 'longer than a card_ref may be');
+	pg_assert_same(array('ukey-1', 'ctok-1'), pg_payment_iyzico_card_ref_parts('ukey-1|ctok-1'));
+	pg_assert_same(null, pg_payment_iyzico_card_ref_parts('ctok-1'));
+	pg_assert_same(null, pg_payment_iyzico_card_ref_parts(''));
+
+	// What the checkout keeps is the sealed form only: the plain pair is refused.
+	pg_assert_same(null, pg_subscription_row_from_order_line(array('id' => 1), array('id' => 2, 'price' => 100), 'iyzico', 'monthly', 'TRY', 'ukey-1|ctok-1', '0008', time()));
+}
+
+function test_payment_iyzico_renewal_charges_the_stored_card()
+{
+	$http = payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008')),
+		'/payment/auth'      => payment_iyzico_test_success(array('paymentId' => '99001', 'fraudStatus' => 1, 'lastFourDigits' => '0008', 'cardAssociation' => 'MASTER_CARD')),
+	));
+
+	$answer = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_same(array('/cardstorage/cards', '/payment/auth'), array_column($http->posts, 'path'));
+	pg_assert_same('ukey-1', $http->posts[0]['body']['cardUserKey']);
+
+	$body = $http->posts[1]['body'];
+	pg_assert_same(array('cardToken' => 'ctok-1', 'cardUserKey' => 'ukey-1'), $body['paymentCard'], 'the stored card only: no number, no CVC, no registration');
+	pg_assert_same('176.88', $body['price']);
+	pg_assert_same('176.88', $body['paidPrice']);
+	pg_assert_same('TRY', $body['currency']);
+	pg_assert_same(1, $body['installment']);
+	pg_assert_same('SUBSCRIPTION', $body['paymentGroup']);
+	pg_assert_same('subscription-61', $body['basketId']);
+	pg_assert_false(isset($body['callbackUrl']), 'no 3-D Secure');
+	pg_assert_same('7', $body['buyer']['id']);
+	pg_assert_same('ayse@example.com', $body['buyer']['email']);
+	pg_assert_same('176.88', $body['basketItems'][0]['price']);
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('paid', $answer['status']);
+	pg_assert_same('99001', $answer['transaction_id']);
+	pg_assert_same(17688, $answer['amount']);
+	pg_assert_same('', $answer['card_ref'], 'the same card: nothing new to keep');
+}
+
+function test_payment_iyzico_renewal_in_the_protected_currency()
+{
+	$http = payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008')),
+		'/payment/auth'      => payment_iyzico_test_success(array('paymentId' => '99002', 'fraudStatus' => 1)),
+	));
+
+	$answer = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(
+		payment_iyzico_test_subscription(array('amount' => 1000, 'currency' => 'USD')),
+		payment_iyzico_test_settings(array('currency' => 'USD', 'protected_currency' => 'TRY', 'protected_rate' => 41.5))));
+
+	pg_assert_same('415.0', $http->posts[1]['body']['paidPrice'], 'the SDK trims the zeros');
+	pg_assert_same('TRY', $http->posts[1]['body']['currency']);
+	pg_assert_same(1000, $answer['amount'], 'the store records its own amount');
+
+	payment_iyzico_test_http();
+	$no_rate = pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(array('currency' => 'USD')),
+		payment_iyzico_test_settings(array('currency' => 'USD', 'protected_currency' => 'TRY', 'protected_rate' => 0.0)));
+	pg_assert_false($no_rate['success']);
+}
+
+function test_payment_iyzico_renewal_follows_a_replaced_card()
+{
+	$http = payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-2' => '4242')),
+		'/payment/auth'      => payment_iyzico_test_success(array('paymentId' => '99003', 'fraudStatus' => 1)),
+	));
+
+	$answer = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_same('ctok-2', $http->posts[1]['body']['paymentCard']['cardToken'], 'the one card left in the wallet');
+	pg_assert_same('ukey-1|ctok-2', $answer['card_ref'], 'answered for the caller to keep');
+	pg_assert_same('4242', $answer['card_last4']);
+
+	$http = payment_iyzico_test_http(array('/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-2' => '4242', 'ctok-3' => '1111'))));
+	$unsure = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_same(1, count($http->posts), 'two other cards: none is guessed, nothing charged');
+	pg_assert_false($unsure['success']);
+	pg_assert_false($unsure['unclear']);
+}
+
+function test_payment_iyzico_renewal_refused_and_unclear()
+{
+	payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008')),
+		'/payment/auth'      => array('status' => 'failure', 'errorCode' => '10051', 'errorMessage' => 'Kart limiti yetersiz'),
+	));
+	$refused = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_false($refused['success']);
+	pg_assert_false($refused['unclear'], 'a refusal is clear: the ladder may try again');
+	pg_assert_same('Kart limiti yetersiz', $refused['error'], 'iyzico\'s own words');
+	pg_assert_same('10051', $refused['raw']['code']);
+	pg_assert_false(strpos(implode(' ', $refused['log']), 'ctok-1') !== false, 'the token is never logged');
+
+	payment_iyzico_test_http(array('/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008'))));
+	$unclear = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_false($unclear['success']);
+	pg_assert_true($unclear['unclear'], 'no answer to the charge: it may have been taken');
+
+	payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008')),
+		'/payment/auth'      => array('status' => 'failure', 'errorCode' => 'curl_28', 'errorMessage' => 'Operation timed out'),
+	));
+	pg_assert_true(pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()))['unclear'], 'a timeout is unclear');
+
+	payment_iyzico_test_http(array(
+		'/cardstorage/cards' => payment_iyzico_test_card_list(array('ctok-1' => '0008')),
+		'/payment/auth'      => array('status' => 'failure', 'errorCode' => 'curl_6', 'errorMessage' => 'Could not resolve host'),
+	));
+	pg_assert_false(pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()))['unclear'], 'never sent: a plain failure');
+
+	$http = payment_iyzico_test_http();
+	$no_card = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(array('card_ref' => '')), payment_iyzico_test_settings()));
+	pg_assert_same(lang('The subscription has no stored card.'), $no_card['error']);
+	pg_assert_same(array(), $http->posts, 'iyzico is not asked');
+
+	payment_iyzico_test_http(array('/cardstorage/cards' => array('status' => 'failure', 'errorMessage' => 'Kart bulunamadı')));
+	$lookup = pg_payment_answer('charge_renewal', pg_payment_iyzico_charge_renewal_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+	pg_assert_same('Kart bulunamadı', $lookup['error']);
+	pg_assert_false($lookup['unclear'], 'nothing was charged');
+}
+
+function test_payment_iyzico_update_card_opens_iyzicos_card_page()
+{
+	$http = payment_iyzico_test_http(array('/v1/card-management/pages' => payment_iyzico_test_success(array('token' => 't-1', 'cardPageUrl' => 'https://sandbox-cpp.iyzipay.com/?token=t-1'))));
+
+	$answer = pg_payment_answer('update_card', pg_payment_iyzico_update_card_with(
+		payment_iyzico_test_subscription(array('return_url' => 'https://shop.example/my-account')), payment_iyzico_test_settings()));
+
+	$body = $http->posts[0]['body'];
+	pg_assert_same('ukey-1', $body['cardUserKey']);
+	pg_assert_same('https://shop.example/my-account', $body['callbackUrl']);
+	pg_assert_same('ayse@example.com', $body['email']);
+	pg_assert_same('subscription-61', $body['externalId']);
+	pg_assert_true($body['addNewCardEnabled']);
+	pg_assert_false(isset($body['cardToken']), 'the page works on the wallet, not on one card');
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('redirect', $answer['status']);
+	pg_assert_same('https://sandbox-cpp.iyzipay.com/?token=t-1', $answer['redirect_url']);
+
+	payment_iyzico_test_http(array('/v1/card-management/pages' => array('status' => 'failure', 'errorMessage' => 'Geçersiz istek')));
+	$refused = pg_payment_answer('update_card', pg_payment_iyzico_update_card_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+	pg_assert_false($refused['success']);
+	pg_assert_same('Geçersiz istek', $refused['error']);
+
+	payment_iyzico_test_http();
+	pg_assert_false(pg_payment_answer('update_card', pg_payment_iyzico_update_card_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()))['unclear'], 'asking for a page changes nothing');
+}
+
+function test_payment_iyzico_subscription_cancel_deletes_the_stored_card()
+{
+	$http = payment_iyzico_test_http(array('/cardstorage/card' => payment_iyzico_test_success()));
+
+	$answer = pg_payment_answer('subscription_cancel', pg_payment_iyzico_subscription_cancel_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+
+	pg_assert_same('/cardstorage/card', $http->posts[0]['path']);
+	pg_assert_same('ukey-1', $http->posts[0]['body']['cardUserKey']);
+	pg_assert_same('ctok-1', $http->posts[0]['body']['cardToken']);
+	pg_assert_true($answer['success']);
+	pg_assert_same('cancelled', $answer['status']);
+
+	payment_iyzico_test_http(array('/cardstorage/card' => array('status' => 'failure', 'errorMessage' => 'Kart bulunamadı')));
+	$refused = pg_payment_answer('subscription_cancel', pg_payment_iyzico_subscription_cancel_with(payment_iyzico_test_subscription(), payment_iyzico_test_settings()));
+	pg_assert_false($refused['success']);
+	pg_assert_same('Kart bulunamadı', $refused['error']);
 }

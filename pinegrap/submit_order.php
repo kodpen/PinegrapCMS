@@ -3470,6 +3470,17 @@ function submit_order($type) {
         exit();
     }
 
+    // A payment driver that runs subscriptions itself (recurring mode
+    // 'store') gets a subscription per paid recurring line, charged later
+    // from the card its payment stored; a line that got none is logged.
+    if (($payment_driver !== '') && ($recurring_transaction == TRUE)) {
+        foreach (pg_subscription_checkout_create((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $payment_driver, $payment_answer, $products) as $subscription_item_id => $subscription_id) {
+            if ($subscription_id === 0) {
+                log_activity(lang('A subscription could not be created for an order line.') . ' (' . $order_number . ', ' . $subscription_item_id . ')');
+            }
+        }
+    }
+
     // The frozen legacy gateways' recurring profiles need the card the
     // visitor typed, so they stay with this request, after the completion.
     // if a recurring transaction is required
