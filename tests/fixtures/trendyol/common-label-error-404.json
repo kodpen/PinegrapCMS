@@ -1,0 +1,12 @@
+{
+    "error": {
+        "status": 404,
+        "errors": [
+            {
+                "code": 1001,
+                "type": "NotFoundException",
+                "title": "Kargo takip numarasına ait gönderi bulunamamıştır"
+            }
+        ]
+    }
+}

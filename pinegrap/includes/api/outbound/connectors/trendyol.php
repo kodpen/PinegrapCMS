@@ -21,8 +21,9 @@
 // approved, send the title, description and pictures over approved ones, send
 // stock and price, read the result of a batch, read order
 // packages (pulled, or delivered by their webhook), accept one (Picking),
-// report one shipped with the seller's own carrier, send the link of a
-// package's invoice, read the buyers' returns and approve or reject the ones
+// report one shipped with the seller's own carrier, ask for and read the
+// shipping label Trendyol makes for its own carrier's parcel, send the link of
+// a package's invoice, read the buyers' returns and approve or reject the ones
 // that came back, read the buyers' questions and answer them, register or remove
 // that webhook, and read the seller's catalogue a page at a time for matching
 // it to the shop's products. What it does not
@@ -81,6 +82,9 @@ function mp_trendyol_connector() {
 		'order_stage'         => 'mp_trendyol_order_stage',
 		'approve_lines'       => 'mp_trendyol_approve_lines',
 		'ship_package'        => 'mp_trendyol_ship_package',
+		'request_label'       => 'mp_trendyol_request_common_label',
+		'read_label'          => 'mp_trendyol_common_label',
+		'label_carrier'       => 'mp_trendyol_common_label_carrier',
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
 		'claims'              => 'mp_trendyol_claims',
 		'approve_claim'       => 'mp_trendyol_approve_claim',
@@ -336,14 +340,28 @@ function mp_trendyol_read($outcome, $environment = 'production', $allow_empty = 
 // Their error text, or '' when the answer is not an error.
 //
 // The envelope is {"timestamp", "exception", "errors": [{"key", "message",
-// "errorParams"}]} on the services that document one. A bare "message" is read
-// too; the exception class alone is the last resort, because it names a Java
-// type rather than a reason.
+// "errorParams"}]} on the services that document one. The common label
+// services wrap theirs one level down, {"error": {"status", "errors": [{"code",
+// "type", "title"}]}}, and their sentence is the title. A bare "message" is
+// read too; the exception class alone is the last resort, because it names a
+// Java type rather than a reason.
 function mp_trendyol_error_message($decoded) {
 
 	if (!is_array($decoded)) {
 
 		return '';
+
+	}
+
+	if (isset($decoded['error']) && is_array($decoded['error'])) {
+
+		$nested = mp_trendyol_error_message($decoded['error']);
+
+		if ($nested !== '') {
+
+			return $nested;
+
+		}
 
 	}
 
@@ -358,6 +376,10 @@ function mp_trendyol_error_message($decoded) {
 				if (isset($entry['message']) && trim((string)$entry['message']) !== '') {
 
 					$parts[] = trim((string)$entry['message']);
+
+				} elseif (isset($entry['title']) && is_scalar($entry['title']) && trim((string)$entry['title']) !== '') {
+
+					$parts[] = trim((string)$entry['title']);
 
 				} elseif (isset($entry['key']) && trim((string)$entry['key']) !== '') {
 
@@ -2765,6 +2787,158 @@ function mp_trendyol_send_invoice_link($account, $package, $url, $transport = nu
 	}
 
 	return $result;
+
+}
+
+/* ------------------------------------------------------------ common label */
+
+// The shipping label Trendyol makes for a parcel that Trendyol Express or Aras
+// Kargo carries on Trendyol's account (their "common label"), keyed by the
+// package's cargo tracking number. Two calls under
+// /integration/sellers/{sellerId}/common-label/{cargoTrackingNumber}: a POST
+// that asks for it, answered with its status alone, and a GET that hands over
+// what was made, one label per box, as ZPL for a thermal printer (the only
+// format they offer). The label is made after the request, so a GET straight
+// after it may come back empty. They advise asking once the package is
+// Picking or Invoiced.
+
+// Whether a cargo tracking number may go into the path: five to forty letters
+// and digits. Theirs are digits; nothing that could leave the path segment is
+// let through.
+function mp_trendyol_cargo_number_fits($number) {
+
+	return is_string($number) && (preg_match('/^[A-Za-z0-9]{5,40}$/D', $number) === 1);
+
+}
+
+// The body of the request: ZPL, and the boxes the package goes in, one label
+// each. volumetricHeight is optional and left out: nothing here knows it.
+function mp_trendyol_common_label_body($boxes) {
+
+	return array('format' => 'ZPL', 'boxQuantity' => (int)$boxes);
+
+}
+
+// Whether Trendyol makes the label of a parcel its carrier name names: Trendyol
+// Express (TEX) or Aras Kargo, as the package's cargoProviderName spells them
+// ("Trendyol Express Marketplace", "Aras Kargo Marketplace"). A parcel whose
+// carrier is not known is asked about all the same, and so is the other
+// condition, that Trendyol pays the carriage, which a package does not show:
+// their answer decides.
+function mp_trendyol_common_label_carrier($name) {
+
+	$text = pg_shipping_carrier_text(is_scalar($name) ? (string)$name : '');
+
+	if ($text === '') {
+
+		return true;
+
+	}
+
+	$words = preg_split('/[^a-z0-9]+/', $text, -1, PREG_SPLIT_NO_EMPTY);
+
+	return (strpos($text, 'trendyol express') !== false)
+		|| (is_array($words) && in_array('tex', $words, true))
+		|| (pg_shipping_method_carrier($text) === 'aras');
+
+}
+
+// Ask Trendyol for the label of a package, by its cargo tracking number.
+//
+// Their answer to a request taken has no body, so any 2xx is success. Their
+// 400 says the cargo number is wrong, their 404 that no parcel has it.
+function mp_trendyol_request_common_label($account, $number, $boxes, $transport = null) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if (!mp_trendyol_cargo_number_fits($number)) {
+
+		return mp_error(lang('That order has no cargo tracking number to ask a label for.'));
+
+	}
+
+	if (!is_int($boxes) || $boxes < 1) {
+
+		return mp_error(lang('The number of boxes has to be a whole number of at least one.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/sellers/' . mp_trendyol_seller_id($account) . '/common-label/' . $number,
+		65536, $transport, mp_trendyol_common_label_body($boxes), 'POST', true);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	return mp_ok(array('requested' => true));
+
+}
+
+// The label Trendyol made for a package, read by its cargo tracking number.
+//
+// Answers data['label'], the ZPL of every box one after the other (a printer
+// takes several labels in one file), data['format'] 'zpl' and data['count'],
+// the number of labels. A label not made yet is an empty one, not an error.
+function mp_trendyol_common_label($account, $number, $transport = null) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if (!mp_trendyol_cargo_number_fits($number)) {
+
+		return mp_error(lang('That order has no cargo tracking number to ask a label for.'));
+
+	}
+
+	$result = mp_trendyol_call($account,
+		'/integration/sellers/' . mp_trendyol_seller_id($account) . '/common-label/' . $number,
+		4194304, $transport);
+
+	if (!$result['ok']) {
+
+		return $result;
+
+	}
+
+	$labels = mp_trendyol_common_label_documents($result['data']);
+
+	return mp_ok(array('label' => implode("\n", $labels), 'format' => 'zpl', 'count' => count($labels)));
+
+}
+
+// The ZPL labels of their answer, {"data": [{"label", "format"}]}, in their
+// order. An entry that is not a ZPL label of the parcel is left out: another
+// format, or a product label, which their export variant of the call puts in
+// the same list (labelType PRODUCT, a link or a message).
+function mp_trendyol_common_label_documents($decoded) {
+
+	$entries = (is_array($decoded) && isset($decoded['data']) && is_array($decoded['data'])) ? $decoded['data'] : array();
+
+	$labels = array();
+
+	foreach ($entries as $entry) {
+
+		if (!is_array($entry) || !isset($entry['label']) || !is_string($entry['label'])) {
+
+			continue;
+
+		}
+
+		$format = (isset($entry['format']) && is_scalar($entry['format'])) ? strtoupper(trim((string)$entry['format'])) : 'ZPL';
+
+		$type = (isset($entry['labelType']) && is_scalar($entry['labelType'])) ? strtoupper(trim((string)$entry['labelType'])) : 'CARGO';
+
+		if (($format === 'ZPL') && ($type === 'CARGO') && pg_label_document_valid($entry['label'], 'zpl')) {
+
+			$labels[] = $entry['label'];
+
+		}
+
+	}
+
+	return $labels;
 
 }
 
