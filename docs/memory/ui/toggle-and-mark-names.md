@@ -9,9 +9,11 @@ description: Toggle aria-labels follow state, icon marks carry visually-hidden t
 ## How is an icon-only badge or a list mark read?
 - The icon is `aria-hidden="true"` and a `<span class="visually-hidden">` carries the name: the offers list's up-sell badge (`Up-sell message`), the key codes list's Single-Use and Enabled marks (`Yes`). A `title` on a non-focusable span is a hover popover only; a bare `task_alt` ligature is read as "task_alt".
 - `pg_key_code_list_cells()` (`includes/fn/ecommerce.php`) draws the Enabled mark for the list and for the quick-edit answer alike, so the text is set there once.
+- The form list view's two Hints buttons hide their `info` icon; the short link Name field hides its `public` icon and shows the address pattern as a `.form-text` instead of a hover popover on a span no keyboard reaches.
 
 ## How are radios with a heading named as a group?
 - `<fieldset>` with `<legend class="form-label fs-md">`, not a `<label for="">`: an empty `for` names nothing and makes `pgInjectAriaAndRequiredMarkers()` skip the label (the key code form's Report radios).
+- Same on the ad region form (Display Type, Transition Type) and the calendar event recurrence (`On` weekdays, `By` month type); ids, names and collapse targets stay as they were. Test: `tests/content_form_group_names_test.php`.
 
 ## Where do the ERP screens keep a reason or a mark's details?
 - Never only in a `title`: `pgBindTitlePopovers()` shows it on hover, Bootstrap 6 moves it to `data-bs-original-title`, and an `aria-label` on a bare `<i>` (no role) is ignored. Marks follow the rule above: the accounts list's e-document triangle and the Over limit badge's limit and excess, the invoices list's snoozed reminders bell, the Signed pen (quotes list, quote heading).

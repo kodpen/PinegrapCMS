@@ -701,7 +701,8 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                             </div>
                                                         </div>
                                                         <div class="col-12 my-3" id="recurrence_days_of_the_week_row"' . $output_recurrence_days_of_the_week_row_style . '>
-                                                            <h5 class="fg-secondary">' . lang('On') . '</h5>
+                                                            <fieldset>
+                                                                <legend class="form-label fs-md">' . lang('On') . '</legend>
                                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">
                                                                 <div class="col">
                                                                     <div class="form-field">
@@ -781,9 +782,11 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                     </div>
                                                                 </div>
                                                             </div>
+                                                            </fieldset>
                                                         </div>
                                                         <div class="col-12 my-5" id="recurrence_month_type_row"' . $output_recurrence_month_type_row_style . '>
-                                                            <h5 class="fg-secondary">' . lang('By') . '</h5>
+                                                            <fieldset>
+                                                                <legend class="form-label fs-md">' . lang('By') . '</legend>
                                                             <div class="form-field">
                                                                 ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_month', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_month', 'checked' => 'checked', 'class' => 'radio')) . '
                                                                 <label class="" for="recurrence_month_type_day_of_the_month">' . lang('Day of the Month (e.g. 15th)') . '</label> 
@@ -792,6 +795,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                 ' . $liveform->output_field(array('type' => 'radio', 'id' => 'recurrence_month_type_day_of_the_week', 'name' => 'recurrence_month_type', 'value' => 'day_of_the_week', 'class' => 'radio')) . '
                                                                 <label class="" for="recurrence_month_type_day_of_the_week">' . lang('Day of the Week (e.g. second Sunday)') . '</label>
                                                             </div>
+                                                            </fieldset>
                                                         </div>
                                                     </div>
                                                 </div>

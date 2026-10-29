@@ -53,26 +53,24 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                         </div>
                                         <h5 class="mt-12">' . lang('Region Behavior') . '</h5>
                                         <div class="col-12">
-                                            <label class="form-label">' . lang('Display Type') . '</label>
-                                        </div>
-                                        <div class="col-12">
-                                            <div class="form-field">
-                                                ' . $liveform->output_field($checked + array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
-                                            </div>
-                                            <div class="form-field">
-                                                ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
-                                                <label class="" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
-                                            </div>
+                                            <fieldset>
+                                                <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
+                                                <div class="form-field">
+                                                    ' . $liveform->output_field($checked + array('type'=>'radio', 'name'=>'display_type', 'id'=>'static', 'value'=>'static', 'class'=>'radio collapse-switcher')) . '
+                                                    <label class="" for="static">' . lang('Static') . ' (' . lang('i.e. display one ad per page view') . ')</label>
+                                                </div>
+                                                <div class="form-field">
+                                                    ' . $liveform->output_field(array('type'=>'radio', 'name'=>'display_type', 'id'=>'dynamic', 'value'=>'dynamic', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#display_type_dynamic_row')) . '
+                                                    <label class="" for="dynamic">' . lang('Dynamic') . ' (' . lang('i.e. display multiple ads per page view') . ')</label>
+                                                </div>
+                                            </fieldset>
                                             
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="display_type_dynamic_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
                                                     <div class="row">
-                                                        <div class="col-12 my-1">
-                                                            <label class="form-label">' . lang('Transition Type') . '</label>
-                                                        </div>
-                                                        <div class="col-12 my-1">
+                                                        <fieldset class="col-12 my-1">
+                                                            <legend class="form-label fs-md">' . lang('Transition Type') . '</legend>
                                                             <div class="form-field">
                                                                 ' . $liveform->output_field($checked + array('type'=>'radio', 'name'=>'transition_type', 'id'=>'slide', 'value'=>'slide', 'class'=>'radio')) . '
                                                                 <label class="" for="slide">' . lang('Slide') . '</label>
@@ -81,7 +79,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                                 ' . $liveform->output_field(array('type'=>'radio', 'name'=>'transition_type', 'id'=>'fade', 'value'=>'fade', 'class'=>'radio')) . '
                                                                 <label class="" for="fade">' . lang('Fade') . '</label>
                                                             </div>
-                                                        </div>
+                                                        </fieldset>
                                                         <div class="col-12 md:col-6 lg:col-4 my-1">
                                                             <label class="form-label" for="transition_duration">' . lang('Transition Duration') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
