@@ -1708,6 +1708,11 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
      application would put every application\'s settings into the page at once. -->
 <dialog class="drawer drawer-end" id="api_drawer" aria-labelledby="d_title" style="width:min(520px,100%)">
 	<form method="post" action="api_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
+		<!-- Return in a text field presses the first submit button of the form.
+		     This one stands first and has no name, so Return posts the hidden
+		     api_action=update and saves; it never issues a new secret or deletes
+		     the application. A hidden button would still be the default one. -->
+		<button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
 		' . get_token_field() . '
 		<input type="hidden" name="api_action" value="update" id="d_action">
 		<input type="hidden" name="webhook_id" value="" id="d_webhook_id">

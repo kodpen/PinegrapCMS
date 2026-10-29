@@ -102,12 +102,16 @@ function pg_dashboard_widget_8($request, $user)
                     'href'  => $output_link_url,
                     'color' => $order_canceled ? '#dc3545' : '',
                     'badge' => $order_canceled
-                        ? '<i class="bi bi-x-circle" title="' . lang('Canceled') . '"></i>'
-                        : '<i class="bi ' . ($shipped ? 'bi-truck' : 'bi-box-seam') . '" title="' . $ship_title . '"></i>',
+                        ? '<i class="bi bi-x-circle" aria-hidden="true" title="' . lang('Canceled') . '"></i>'
+                        : '<i class="bi ' . ($shipped ? 'bi-truck' : 'bi-box-seam') . '" aria-hidden="true" title="' . $ship_title . '"></i>',
                     'name'  => h($name),
                     'aside' => prepare_amount($order['total'] / 100),
+                    // The state is written out, since the glyph's title
+                    // shows on mouse hover only.
                     'meta'  => h($order['order_number'])
-                        . ($order_canceled ? ' &mdash; <span class="fg-danger">' . lang('Canceled') . '</span>' : '')
+                        . ($order_canceled
+                            ? ' &mdash; <span class="fg-danger">' . lang('Canceled') . '</span>'
+                            : ((ECOMMERCE_SHIPPING == true) ? ' &mdash; ' . $ship_title : ''))
                         . ' &middot; ' . get_relative_time(array('timestamp' => $order['timestamp'])),
                 ));
             }

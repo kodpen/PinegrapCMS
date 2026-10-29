@@ -498,7 +498,7 @@ if ($number_of_results > 0) {
             '<div class="col">
                 <button type="button" class="esi-tile hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
                     <span class="esi-thumb">
-                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="' . h($images[$key]['name']) . '">
+                        <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>
                     </span>
                     <span class="esi-caption text-truncate">' . h($images[$key]['name']) . '</span>

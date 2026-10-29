@@ -2354,6 +2354,10 @@ if ($selected) {
 	echo '
 <dialog class="drawer drawer-end" id="mp_drawer" aria-labelledby="mp_drawer_title" style="width:min(480px,100%)">
 	<form method="post" action="marketplace_settings.php" autocomplete="off" class="disable_shortcut d-flex flex-column h-100">
+		<!-- Return in a text field presses the first submit button of the form.
+		     This one stands first and has no name, so Return posts the hidden
+		     mp_action=update and saves instead of pressing Remove marketplace. -->
+		<button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
 		' . get_token_field() . '
 		<input type="hidden" name="mp_action" value="update">
 		<input type="hidden" name="account_id" value="' . $selected_id . '">

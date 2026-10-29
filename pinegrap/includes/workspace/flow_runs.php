@@ -2725,6 +2725,11 @@ function ws_flow_step_recheck($step)
         return ws_flow_approval_recheck($step);
     }
 
+    // A table box waiting for its table's owner to be back (steps.php).
+    if (ws_step_row_wait_table($step['wait_key']) > 0) {
+        return ws_step_row_recheck($step);
+    }
+
     $task_id = ws_flow_effect_task_id($step['wait_key']);
     $run = ($task_id > 0) ? ws_flow_run($step['run_id']) : null;
 
