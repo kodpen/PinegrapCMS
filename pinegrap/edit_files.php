@@ -108,14 +108,21 @@ if (!$_POST) {
 
                 opener.scrollTo(0, 0);
 
-                opener.$("#content").prepend(\'\
-                    <div class=" alert theme-secondary software_notice">\
+                // The status region goes in empty and is filled a moment
+                // later, so screen readers hear the notice. The bar is
+                // indeterminate: it is named but claims no value.
+                var notice = opener.$(\'<div class="alert theme-secondary software_notice" role="status"></div>\');
+
+                opener.$("#content").prepend(notice);
+
+                setTimeout(function () {
+                    notice.html(\'\
                         <h4 class="alert-heading">' . lang('Optimizing images') . '...</h4>\
-                        <p>' . lang('Please stay on this page until this process is complete.') . '<p>\
+                        <p>' . lang('Please stay on this page until this process is complete.') . '</p>\
                         <div class="progress">\
-                          <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" role="progressbar" aria-valuenow="75" aria-valuemin="0" aria-valuemax="100" style="width: 100%"></div>\
-                        </div>\
-                    </div>\');
+                          <div class="progress-bar progress-bar-striped progress-bar-animated bg-secondary" role="progressbar" aria-label="' . h(lang('Optimizing images')) . '" style="width: 100%"></div>\
+                        </div>\');
+                }, 50);
 
                 // Add delay before submitting form in parent window so loading image
                 // has time to load.

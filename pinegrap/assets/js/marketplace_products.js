@@ -125,11 +125,23 @@
             sure.classList.toggle('d-none', !counts.sure);
         }
 
-        var meter = document.querySelector('#mpp-meter > i');
-
-        if (meter && counts.all) {
-            meter.style.width = Math.round(100 * counts.matched / counts.all) + '%';
+        if (counts.all) {
+            setMeter(Math.round(100 * counts.matched / counts.all), label('matched'));
         }
+    }
+
+    // The meter shows either the matched share or, while a read runs, the
+    // read share; the value and name it reads always follow the width.
+    function setMeter(value, name) {
+        var meter = document.getElementById('mpp-meter');
+
+        if (!meter) {
+            return;
+        }
+
+        meter.querySelector('i').style.width = value + '%';
+        meter.setAttribute('aria-valuenow', value);
+        meter.setAttribute('aria-label', name);
     }
 
     /* ------------------------------------------------------------- the read */
@@ -139,6 +151,23 @@
     // Where a read that stopped goes on from: the page to ask for, the read's
     // start and how many rows it had stored. Null starts a new read.
     var resume = null;
+
+    // The progress line is a status region, so it changes only at steps
+    // (every 10% of the read or 10 seconds), not on every page.
+    var announced = { share: 0, time: 0 };
+
+    function announceProgress(read, total) {
+        var text = document.getElementById('mpp-progress-text');
+        var share = Math.round(100 * read / total);
+        var now = Date.now();
+
+        if (!text || !(share - announced.share >= 10 || now - announced.time >= 10000)) {
+            return;
+        }
+
+        announced = { share: share, time: now };
+        text.textContent = label('read_progress', [number(read), number(total)]);
+    }
 
     function readFrom(page, run, readSoFar) {
         var meter = document.getElementById('mpp-meter');
@@ -152,6 +181,7 @@
 
         if (text && !readSoFar) {
             text.textContent = label('reading');
+            announced = { share: 0, time: Date.now() };
         }
 
         post('read', { page: page, run: run }).then(function (answer) {
@@ -172,12 +202,9 @@
             var read = readSoFar + (answer.read || 0);
             var total = Math.max(answer.total || 0, read);
 
-            if (meter && total) {
-                meter.querySelector('i').style.width = Math.min(100, Math.round(100 * read / total)) + '%';
-            }
-
-            if (text) {
-                text.textContent = label('read_progress', [number(read), number(total)]);
+            if (total) {
+                setMeter(Math.min(100, Math.round(100 * read / total)), label('reading_meter'));
+                announceProgress(read, total);
             }
 
             if (answer.done) {

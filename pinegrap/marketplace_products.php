@@ -1753,7 +1753,7 @@ if (!$account) {
 					</div>
 					<div class="mpp-meter" id="mpp-meter" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' . $matched_share . '"'
 						. ' aria-label="' . h(lang('Matched')) . '"><i style="width:' . $matched_share . '%"></i></div>
-					<div class="small mt-3" id="mpp-progress-text">'
+					<div class="small mt-3" id="mpp-progress-text" role="status">'
 						. ($read_at
 							// get_relative_time() answers a <time> element.
 							? lang(array('string' => '{var:1}% matched. Read {var:2}.', 'vars' => array($matched_share, get_relative_time(array('timestamp' => $read_at)))))
@@ -1896,6 +1896,8 @@ if ($account) {
 		'labels'   => array(
 			'reading'      => lang(array('string' => 'Reading from {var:1}…', 'vars' => array($provider_name))),
 			'read_progress' => lang('{var:1} of {var:2} products read'),
+			'reading_meter' => lang('Reading products'),
+			'matched'      => lang('Matched'),
 			'read_done'    => lang('{var:1} products read, {var:2} suggestions ({var:3} sure).'),
 			'read_failed'  => lang('Reading stopped: {var:1}'),
 			'continue'     => lang('Continue reading'),

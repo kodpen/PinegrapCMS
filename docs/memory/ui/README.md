@@ -137,7 +137,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry
 - main-menu-settings-row.md: The Site Settings row of the main menu (slot 20): two levels of panels, the page path instead of the modal (data-pg-settings-page), the gates it shares with the modal, the rows it marks active
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
-- marketplace-products-names.md: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988)
+- marketplace-products-names.md: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988), read progress announced
 - marketplace-settings-screen-a11y.md: Marketplaces account screen: question and failure rows wrap on a phone, emphasis inks for status text, named dialogs, the current account marked, formatted notice counts
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens

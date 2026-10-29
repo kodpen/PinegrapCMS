@@ -1,6 +1,6 @@
 ---
 name: marketplace-products-names
-description: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988)
+description: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988), read progress announced
 ---
 
 ## How are the row tick boxes named?
@@ -23,5 +23,9 @@ description: Marketplace products screen: row boxes named per row, focus kept on
 
 ## Are the dialogs named?
 - `pgUI.dialog.build()` gives the title `<id>-title` (or `pg-dialog-<n>-title`) and sets `aria-labelledby` on the root (`pg-ui-adapter.md`); the picker, category search and attributes dialogs are its only callers.
+
+## How does a read say how far it is?
+- `#mpp-meter` shows the matched share, or the read share while a read runs. `setMeter(value, name)` sets its width, `aria-valuenow` and `aria-label` together: `readFrom()` passes the read share and "Reading products", `setCounts()` the matched share and "Matched". Before, a read widened the bar but the meter still read the matched value under the name "Matched".
+- `#mpp-progress-text` is `role="status"`; `announceProgress()` writes "x of y products read" only every 10% of the read or 10 s, so a long read is heard without a message per page. Failures go to `#mpp-flash`.
 
 Test: `tests/marketplace_products_names_test.php`, `tests/pg_ui_test.php` (`test_pg_ui_build_dialog`).
