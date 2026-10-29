@@ -344,6 +344,21 @@ if (!$_POST) {
             </div>
         </div>
     
+    <script>
+        // The photo x removes its item from an inline handler. This listener
+        // runs first, in the capture phase, and moves focus to Change Image,
+        // so focus does not fall to the page top with the removed button.
+        (function () {
+            var photos = document.getElementById("software_image_picker_container");
+            if (photos) {
+                photos.addEventListener("click", function (event) {
+                    if (event.target.closest(".item .card-header button[onclick]")) {
+                        photos.parentNode.querySelector(".card-footer button").focus();
+                    }
+                }, true);
+            }
+        }());
+    </script>
 </main>' .
         output_footer();
 

@@ -293,12 +293,10 @@ if (!defined('PG_INIT_LOADED')) {
 		if(($change_price == '1') || ($change_price == '2')){
 			$value_type.innerHTML = base_currency;
 			$price_value_input.placeholder='12,30';
-	        $price_value_input.focus(); 
 		}
 		else if(($change_price == '3') || ($change_price == '4')){
 			$value_type.innerHTML = percentiles;
 			$price_value_input.placeholder='30';
-	        $price_value_input.focus(); 
 		}
 		
 	}

@@ -45,9 +45,9 @@ function test_focus_after_removal_contact_photo()
 	foreach (array('add_contact.php', 'edit_contact.php') as $file) {
 		$php = focus_after_removal_source($file);
 
-		pg_assert_contains("photos.addEventListener('click', function (event) {", $php, $file . ' listens on the photo container');
-		pg_assert_contains("}, true);", $php, $file . ' listens in the capture phase, before the inline remove');
-		pg_assert_contains("photos.parentNode.querySelector('.card-footer button').focus();", $php, $file . ' focuses Change Image');
+		pg_assert_contains('photos.addEventListener("click", function (event) {', $php, $file . ' listens on the photo container');
+		pg_assert_contains('}, true);', $php, $file . ' listens in the capture phase, before the inline remove');
+		pg_assert_contains('photos.parentNode.querySelector(".card-footer button").focus();', $php, $file . ' focuses Change Image');
 	}
 }
 
@@ -55,10 +55,11 @@ function test_focus_after_removal_api_sheet()
 {
 	$php = focus_after_removal_source('api_settings.php');
 
-	pg_assert_contains('sheet.parentNode.children', $php, 'the page behind the sheet is walked level by level');
+	pg_assert_contains('Array.prototype.forEach.call(level.parentNode.children, function (node) {', $php, 'the page behind the sheet is walked level by level');
 	pg_assert_contains('node.inert = true;', $php, 'the page behind the sheet is out of reach');
-	pg_assert_contains('sheet.querySelector("button:not(.disabled), input, a[href]").focus();', $php, 'the sheet takes focus on load');
-	pg_assert_contains('document.querySelector(\'[data-bs-target="#api_new"]\').focus();', $php, 'Close focuses New application');
+	pg_assert_contains('var first = sheet.querySelector("button:not(.disabled), input, a[href]");', $php, 'the sheet takes focus on load');
+	pg_assert_contains('inerted.forEach(function (node) { node.inert = false; });', $php, 'Close gives the page back');
+	pg_assert_contains('var newButton = document.querySelector("[data-bs-target=\\"#api_new\\"]");', $php, 'Close focuses New application');
 	pg_assert_contains('document.querySelector("#d_delete_confirm .theme-danger").focus();', $php, 'Delete this application focuses Yes, delete');
 	pg_assert_contains("ask.classList.remove(\"d-none\");\n\t\task.focus();", $php, 'Cancel focuses Delete this application');
 }
