@@ -787,13 +787,25 @@
         }
     }
 
-    // ── the engine select in the toolbar: saved at once, then the screen
-    //    reloads with that engine's note and button ──
+    // ── the engine select in the toolbar: saved, then the screen reloads
+    //    with that engine's note and button. A pointer pick saves at once.
+    //    An arrow key on a closed select changes the value and fires change
+    //    on every step, and each save writes the engine (and can clear the
+    //    fallback engine), so after a navigation key the pick is saved on
+    //    Enter or when the select loses focus ──
 
     var engineSelect = document.getElementById('pg_tr_engine');
 
     if (engineSelect) {
-        engineSelect.addEventListener('change', function () {
+        var engineKeyed = false;
+
+        var saveEngine = function () {
+            engineKeyed = false;
+
+            if (engineSelect.disabled || (engineSelect.value === config.engine)) {
+                return;
+            }
+
             var previous = config.engine;
             engineSelect.disabled = true;
 
@@ -804,7 +816,28 @@
                 engineSelect.disabled = false;
                 toast(error.message, 'error');
             });
+        };
+
+        engineSelect.addEventListener('keydown', function (event) {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1) {
+                engineKeyed = true;
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                saveEngine();
+            }
         });
+
+        engineSelect.addEventListener('pointerdown', function () {
+            engineKeyed = false;
+        });
+
+        engineSelect.addEventListener('change', function () {
+            if (!engineKeyed) {
+                saveEngine();
+            }
+        });
+
+        engineSelect.addEventListener('blur', saveEngine);
     }
 
     // ── "approve all": every machine translation of the scope reviewed at
