@@ -221,6 +221,9 @@ $pg_settings_cards[] = '
 $product_feeds_groups = pg_product_feed_screen_groups();
 $product_feeds_rows = '';
 
+// The Google Merchant Center part of the card ($product_feeds_merchant).
+require(PG_FUNCTIONS_DIR . '/includes/settings/seo_merchant.php');
+
 foreach (pg_product_feed_format_texts() as $product_feeds_format => $product_feeds_text) {
     $product_feeds_entry = $product_feeds_settings['formats'][$product_feeds_format];
     $product_feeds_address = '';
@@ -320,7 +323,7 @@ $pg_settings_cards[] = '
                                         <div class="col-12">
                                             <div class="form-text mb-3">' . lang('Changes reach the feeds at the next daily build. A feed you switch on is built when you save.') . '</div>
                                             <button type="submit" name="product_feed_build" value="1" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Save and build now') . '</button>
-                                        </div>
+                                        </div>' . $product_feeds_merchant . '
                                    </div>
                                 </div>
                             </div>
