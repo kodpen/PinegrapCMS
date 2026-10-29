@@ -1633,7 +1633,7 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-code-edit { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; width: 100%; }
 .mpp-code-edit .form-control { flex: 1 1 160px; min-width: 0; }
 .mpp-code-edit small { flex-basis: 100%; color: var(--pg-fg-2); }
-.mpa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; padding: 14px 16px; border-top: 1px solid var(--pg-border-color); }
+.mpa-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 14px; padding: 14px 16px; border-top: 1px solid var(--pg-border-color); }
 .mpa-card { position: relative; display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--pg-border-color);
 	border-radius: var(--pg-radius-lg); background: var(--pg-card-bg); transition: border-color .15s, opacity .2s; }
 .mpa-card:has(.mpa-check:checked) { border-color: var(--pg-primary); box-shadow: 0 0 0 1px var(--pg-primary); }
