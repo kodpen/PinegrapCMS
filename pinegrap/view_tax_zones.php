@@ -67,6 +67,13 @@ foreach ($tax_zones as $tax_zone) {
         $last_modified_username = ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($tax_zone['last_modified_username']))));
     }
 
+    // format_tax_rate() trims the stored rate to the decimals it has
+    // (20.000 -> 20, 18.500 -> 18.5); the number keeps that many decimals in
+    // the panel's separators and the template puts the sign on the side the
+    // language writes it (TR "%20").
+    $tax_rate = format_tax_rate($tax_zone['tax_rate']);
+    $tax_rate_decimals = (strpos($tax_rate, '.') === false) ? 0 : strlen($tax_rate) - strpos($tax_rate, '.') - 1;
+
     $output_rows .=
         '<tr>
             <td></td>
@@ -74,7 +81,7 @@ foreach ($tax_zones as $tax_zone) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_tax_zone.php?id=' . $tax_zone['id'] . '\'"><i class="bi bi-pencil"></i></button>
             </td>
             <td class="chart_label align-middle">' . h($tax_zone['name']) . '</td>
-            <td class="align-middle">' . h($tax_zone['tax_rate']) . '%</td>
+            <td class="align-middle">' . h(lang(array('string' => '{var:1}%', 'vars' => array(pg_format_number($tax_rate, $tax_rate_decimals))))) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $tax_zone['last_modified_timestamp'])) . $last_modified_username . '</td>
         </tr>';
 }
@@ -97,7 +104,7 @@ echo
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="add_tax_zone.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Create') . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_tax_zones.php', $sort_columns, $sort_levels, $sort_default) . '
