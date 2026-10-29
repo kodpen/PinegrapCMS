@@ -703,7 +703,7 @@ if ($ship_to_exists == true) {
             
             // if the address has been verified, then prepare to output check mark
             if ($ship_tos[$key]['address_verified'] == 1) {
-                $output_address_verified_check_mark = '<img src="images/check_mark.gif" width="7" height="7" alt="check mark" title="" />';
+                $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
             }
             $output_arrival_date = '';
             if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
