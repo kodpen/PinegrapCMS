@@ -349,15 +349,17 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                     <div class="card-body">
                         <div class="row">
                             <div class="col-12 lg:col-6 my-3">
-                                <label class="form-label">' . lang('If the account already exists') . '</label>
-                                <div class="form-field">
-                                    <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
-                                    <label class="" for="duplicate_mode_update">' . lang('Update it') . '</label>
-                                </div>
-                                <div class="form-field">
-                                    <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
-                                    <label class="" for="duplicate_mode_skip">' . lang('Skip it') . '</label>
-                                </div>
+                                <fieldset>
+                                    <legend class="form-label fs-md">' . lang('If the account already exists') . '</legend>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_update" value="update"' . (($mode === 'update') ? ' checked="checked"' : '') . '>
+                                        <label class="" for="duplicate_mode_update">' . lang('Update it') . '</label>
+                                    </div>
+                                    <div class="form-field">
+                                        <input class="radio" type="radio" name="duplicate_mode" id="duplicate_mode_skip" value="skip"' . (($mode !== 'update') ? ' checked="checked"' : '') . '>
+                                        <label class="" for="duplicate_mode_skip">' . lang('Skip it') . '</label>
+                                    </div>
+                                </fieldset>
                                 <div class="form-text">' . lang('Matched by tax number, then e-mail, then exact name.') . ' ' . lang('An update writes only the columns the file supplies; balances are never touched.') . '</div>
                             </div>
                             <div class="col-12 lg:col-6 my-3">

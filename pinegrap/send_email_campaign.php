@@ -22,16 +22,33 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 $user = validate_user();
 validate_email_access($user);
 
+// The window is drawn once and its script sends the next batches through the
+// JSON mode (?format=json), which answers {sent, total, done, error}. A JSON
+// caller gets its refusals in JSON: validate_token_field() and output_error()
+// print an HTML page, which the script cannot read.
+$send_json = (($_GET['format'] ?? '') === 'json');
+
 // Sending is a change, so it carries the CSRF token like the other actions:
-// both links that open this window and the refresh that sends the next batch
-// pass it.
-validate_token_field();
+// both links that open this window and every request that sends the next
+// batch pass it.
+if ($send_json) {
+    $session_token = (string) ($_SESSION['software']['token'] ?? '');
+    $get_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+    if (($session_token === '') || !hash_equals($session_token, $get_token)) {
+        send_email_campaign_json(array('error' => lang('Your session expired or you logged out. Sign in again and send the campaign again to resume it.')), 403);
+    }
+} else {
+    validate_token_field();
+}
 
 // A campaign that is missing, unknown or sent as an array (?id[]=x) stops on
 // "not found": escape() failed on the array with an error page, and a missing
 // id ran the send loop on an empty row.
 $id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
 if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM email_campaigns WHERE id = '" . $id . "'") < 1)) {
+    if ($send_json) {
+        send_email_campaign_json(array('error' => lang('Record not found.')), 404);
+    }
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
@@ -417,9 +434,24 @@ if (mysqli_num_rows($result) > 0) {
     $percent_complete = ($number_of_completed_email_recipients / $number_of_email_recipients) * 100;
     $percent_complete = round($percent_complete, 0);
 
+    if ($send_json) {
+        send_email_campaign_json(array(
+            'sent' => (int) $number_of_completed_email_recipients,
+            'total' => (int) $number_of_email_recipients,
+            'done' => false,
+            'percent' => (int) $percent_complete,
+            'percent_text' => lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))),
+            'count' => pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0)));
+    }
+
+    // The next batch is requested by the script below, one second after the
+    // previous answer, as the refresh did; without script the window still
+    // reloads itself.
+    $send_json_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/send_email_campaign.php?id=' . $id . '&format=json&token=' . urlencode((string) ($_SESSION['software']['token'] ?? ''));
+
     echo
     output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
-    <meta http-equiv="refresh" content="1;url=' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/send_email_campaign.php?id=' . h(urlencode($_GET['id'])) . get_token_query_string_field() . '">
+    <noscript><meta http-equiv="refresh" content="1;url=' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/send_email_campaign.php?id=' . h(urlencode($_GET['id'])) . get_token_query_string_field() . '"></noscript>
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
             <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
@@ -433,7 +465,7 @@ if (mysqli_num_rows($result) > 0) {
                     </ul>
                 </li>
                 <li class="nav-item">
-                    <button title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
+                    <button id="campaign_send_header_close" title="' . lang('Close') . '" type="button" class="nav-link nav-link-sm position-relative no-popover" onclick="window.close()" aria-label="' . h(lang('Close')) . '">
                         <span class="bi bi-x-lg"></span>
                     </button>
                 </li>
@@ -457,25 +489,104 @@ if (mysqli_num_rows($result) > 0) {
                     </div>
                 </div>
             </div>
-            <div class="col-12">
-                <h3>' . lang('Sending Campaign Now') . '...</h3>
+            <div class="col-12" id="campaign_sending">
+                <h3 id="campaign_send_heading">' . lang('Sending Campaign Now') . '...</h3>
                 <p>' . lang('Sending the e-mail message to each specific subscriber now.') . '</p>
-                
-                <div class="progress">
-                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</div>
+
+                <div class="d-flex align-items-center gap-3">
+                    <div class="progress flex-grow-1">
+                        <div id="campaign_send_bar" class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-labelledby="campaign_send_heading" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%"></div>
+                    </div>
+                    <span id="campaign_send_percent" class="fw-bold" aria-hidden="true">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</span>
                 </div>
-                <h3>(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
+                <h3 id="campaign_send_count">(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
                 <div class="alert theme-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
+            </div>
+            <div class="col-12" id="campaign_sent" hidden>
+                <h3>' . lang('Campaign Sent') . '.</h3>
+                <div class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
+            </div>
+            <div class="col-12">
+                <p id="campaign_send_status" role="status" class="visually-hidden"></p>
+                <div id="campaign_send_error" class="alert theme-danger" role="alert" hidden><p></p></div>
             </div>
         </div>
         <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                    <button id="campaign_send_stop" type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                    <button id="campaign_send_close" type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" hidden><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>
-    </main>' . output_footer_secure();
+    </main>
+    <script>
+    (function () {
+        var url = ' . json_encode($send_json_url, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        var failed = ' . json_encode(lang('The campaign stopped because the server did not answer. Close this window and send the campaign again to resume it.'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+        var bar = document.getElementById(\'campaign_send_bar\');
+        var percent = document.getElementById(\'campaign_send_percent\');
+        var count = document.getElementById(\'campaign_send_count\');
+        var status = document.getElementById(\'campaign_send_status\');
+        var error = document.getElementById(\'campaign_send_error\');
+        var stop = document.getElementById(\'campaign_send_stop\');
+        var close = document.getElementById(\'campaign_send_close\');
+
+        // The count is announced once per tenth of the campaign, not after
+        // every batch of ten.
+        var announced = -1;
+
+        function show(answer) {
+            bar.style.width = answer.percent + \'%\';
+            bar.setAttribute(\'aria-valuenow\', answer.percent);
+            percent.textContent = answer.percent_text;
+            count.textContent = \'(\' + answer.count + \')\';
+            var step = Math.floor(answer.percent / 10);
+            if (step !== announced) {
+                announced = step;
+                status.textContent = answer.count;
+            }
+        }
+
+        function fail(message) {
+            bar.classList.remove(\'progress-bar-animated\');
+            error.querySelector(\'p\').textContent = message;
+            error.hidden = false;
+        }
+
+        // Done: the finished screen replaces the progress, Close (which
+        // reloads the campaign list) replaces Stop & Close and takes focus.
+        function finish() {
+            document.getElementById(\'campaign_sending\').hidden = true;
+            document.getElementById(\'campaign_sent\').hidden = false;
+            document.getElementById(\'campaign_send_header_close\').onclick = close.onclick;
+            stop.hidden = true;
+            close.hidden = false;
+            status.textContent = ' . json_encode(lang('Campaign Sent') . '. ' . lang('The e-mail campaign has been sent to all recipients.'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
+            close.focus();
+        }
+
+        function next() {
+            fetch(url, {credentials: \'same-origin\', cache: \'no-store\', headers: {\'Accept\': \'application/json\'}})
+                .then(function (response) { return response.json(); })
+                .then(function (answer) {
+                    if (!answer || answer.error) {
+                        fail((answer && answer.error) ? answer.error : failed);
+                        return;
+                    }
+                    show(answer);
+                    if (answer.done) {
+                        finish();
+                    } else {
+                        setTimeout(next, 1000);
+                    }
+                })
+                .catch(function () { fail(failed); });
+        }
+
+        setTimeout(next, 1000);
+    })();
+    </script>' . output_footer_secure();
     
 // else there is not at least one e-mail recipient left, so e-mail campaign is complete
 } else {
@@ -510,6 +621,17 @@ if (mysqli_num_rows($result) > 0) {
             'action_item_id' => $email_campaign_profile_id,
             'contact_id' => $contact_id));
     }
+
+    if ($send_json) {
+        send_email_campaign_json(array(
+            'sent' => (int) $number_of_email_recipients,
+            'total' => (int) $number_of_email_recipients,
+            'done' => true,
+            'percent' => 100,
+            'percent_text' => lang(array('string' => '{var:1}%', 'vars' => array(100))),
+            'count' => pg_format_number($number_of_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0)));
+    }
+
     echo
     output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
@@ -568,6 +690,12 @@ if (mysqli_num_rows($result) > 0) {
 // meanwhile lands here.
 function output_error_in_popup($error_message)
 {
+    global $send_json;
+
+    if ($send_json) {
+        send_email_campaign_json(array('error' => $error_message), 403);
+    }
+
     echo
     output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
     <main id="content" class="container-fluid">
@@ -584,5 +712,16 @@ function output_error_in_popup($error_message)
             </div>
         </nav>
     </main>' . output_footer_secure();
+    exit();
+}
+
+// One answer of the JSON mode, always with its four keys, and the end of the
+// request.
+function send_email_campaign_json($answer, $status = 200)
+{
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store');
+    echo pg_json_encode_answer(array_merge(array('sent' => 0, 'total' => 0, 'done' => false, 'error' => ''), $answer));
     exit();
 }
