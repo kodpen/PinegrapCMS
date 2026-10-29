@@ -771,18 +771,18 @@ function test_order_completion_checkout_type_value_and_page_sql()
 	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
 	pg_assert_contains("pg_order_payment_page_settings(pg_order_checkout_page_row(\$page_column ? \$order['checkout_page_id'] : 0))", $completion, 'the receipt comes from the page the order names');
 	pg_assert_contains("'receipt' => \$settings['receipt'],", $completion);
-	pg_assert_contains("'new_account' => false,", $completion, 'no account is opened');
+	pg_assert_contains("'new_account' => \$registration['account'],", $completion, 'the account it opened, for the receipt');
 }
 
-function test_order_completion_payment_links_an_existing_account_only()
+function test_order_completion_payment_links_or_opens_an_account()
 {
 	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
 
-	pg_assert_contains("if ((\$user_id <= 0) && \$settings['auto_registration'] && ((string) \$order['billing_email_address'] !== '')) {", $completion, 'a guest\'s order, with the page\'s switch on');
-	pg_assert_contains('SELECT user_id FROM user WHERE user_email = ?', $completion, 'the account with the billing e-mail');
-	pg_assert_contains("\$auto_registration = 'existing';", $completion, 'the address book of an existing account');
-	pg_assert_false(strpos($completion, 'create_member_user(') !== false, 'never opens an account');
+	pg_assert_contains("if ((\$user_id <= 0) && \$settings['auto_registration']) {", $completion, 'a guest\'s order, with the page\'s switch on');
+	pg_assert_contains("\$registration = pg_order_auto_register(\$order['billing_email_address'], (int) \$order['contact_id']);", $completion, 'the shared auto-registration');
+	pg_assert_contains("'auto_registration' => \$registration['type'],", $completion, 'the address book of the account');
 	pg_assert_false(strpos($completion, 'pg_session_sign_in(') !== false, 'never signs anyone in');
+	pg_assert_false(strpos($completion, 'pg_login_set_device_cookie(') !== false, 'sets no device cookie');
 	pg_assert_contains("pg_erp_auto_invoice(\$order_id, 'order_paid', true);", $completion, 'the paid order\'s invoice');
 	pg_assert_true(strpos($completion, 'pg_erp_auto_invoice(') > strpos($completion, 'if ($order_number === null) {'), 'only after this request completed it');
 }

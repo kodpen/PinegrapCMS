@@ -3248,81 +3248,35 @@ function submit_order($type) {
     // different order/customer.
     unset($_SESSION['software']['auto_registration']);
 
-    // Prepare to remember whether a new user was created or an existing user was found for
-    // auto-registration, so later we can create address book items for the user.  We don't create
-    // address book items now, because it is more efficient to do it later, when we get recipient
-    // data to update ship date, delivery date, and etc.
-    $auto_registration_type = '';
+    // What auto-registration did, for the address book and the receipt.
+    $registration = pg_order_auto_register_none();
 
     // If auto-registration is enabled and the user is not logged in or is ghosting, then deal with
     // auto-registration.
     if ($auto_registration and (!USER_LOGGED_IN or $ghost)) {
 
-        // Check if user exists for billing email address.
-        // If the user is found, then this order will be connected to the user further below.
-        $user_id = db_value("SELECT user_id FROM user WHERE user_email = '" . e($billing_email_address) . "'");
+        // The account with the billing e-mail, or a new one (none for a
+        // blocked address: the order still goes through). This order is
+        // connected to it further below.
+        $registration = pg_order_auto_register($billing_email_address, $contact_id);
+        $user_id = ($registration['user_id'] > 0) ? $registration['user_id'] : '';
 
-        // If a user does not exist, then create user - unless the address is
-        // blocked, in which case the order still goes through (the customer
-        // paid; refusing the sale here would be a different decision) but no
-        // account is opened from it.
-        if (!$user_id && pg_email_blocked($billing_email_address)) {
-            log_activity(lang(array(
-                'string' => 'no account created for a blocked email address ({var:1})',
-                'vars'   => array($billing_email_address))), '');
+        if ($registration['type'] === 'new') {
 
-        } elseif (!$user_id) {
-
-            // Create a username by using everything before "@" in the email address,
-            // and, if necessary, add numbers to the end to make it unique.
-            $username = strtok($billing_email_address, '@');
-            $username = get_unique_username($username);
-
-            // Created without a password (algo 3, which no password matches):
-            // the customer sets one through the set password link issued
-            // below, or on the change password screen while still signed in.
-            $user_id = create_member_user(array(
-                'username'   => $username,
-                'email'      => $billing_email_address,
-                'contact_id' => $contact_id,
-            ));
-
-            pg_set_password_link_issue($user_id);
-
-            // Remember the account in the session, so the receipt can name it
-            // and give the customer its set password link. A staff member
-            // ordering for the customer (ghosting) is not the customer: their
-            // receipt page names the account only (pg_order_new_account_link()).
-            $_SESSION['software']['auto_registration'] = array(
-                'email_address' => $billing_email_address,
-                'user_id'       => (int) $user_id,
-                'ghost'         => (bool) $ghost,
-            );
-
-            // If there is a contact for this user, and there is a registration contact group,
-            // then add contact to registration contact group.  There should probably always
-            // be a contact, but we just add that check to make sure, in case there is some
-            // situation where there is not one.
-            if (
-                ($contact_id)
-                && (REGISTRATION_CONTACT_GROUP_ID)
-                && (db_value("SELECT id FROM contact_groups WHERE id = '" . REGISTRATION_CONTACT_GROUP_ID  . "'"))
-            ) {
-                db(
-                    "INSERT INTO contacts_contact_groups_xref (
-                        contact_id,
-                        contact_group_id)
-                    VALUES (
-                        '" . $contact_id . "',
-                        '" . REGISTRATION_CONTACT_GROUP_ID . "')");
-            }
+            // Remember the account in the session, so the receipt page can
+            // name it and give the customer its set password link. A staff
+            // member ordering for the customer (ghosting) is not the
+            // customer: their receipt page names the account only
+            // (pg_order_new_account_link()).
+            $registration['account']['ghost'] = (bool) $ghost;
+            $_SESSION['software']['auto_registration'] = $registration['account'];
 
             // If this user is not ghosting, then auto-login user.  We don't want to auto-login the
             // user if they are ghosting, because they probably want to remain logged in to their
             // main account.
             if (!$ghost) {
 
-                pg_session_sign_in($user_id, $username);
+                pg_session_sign_in($registration['user_id'], $registration['username']);
 
                 // Bind this fresh session to a device token while the device
                 // limit is on, so it counts toward the limit and can be signed
@@ -3333,15 +3287,6 @@ function submit_order($type) {
                     'user was auto-logged in by order auto-registration',
                     $_SESSION['sessionusername'] ?? '');
             }
-
-            // Remember that a new user was created, so later we can create address book items for
-            // the new user.
-            $auto_registration_type = 'new';
-
-        // Otherwise a user was found, so just take note, so later we can create address book items
-        // for the existing user.
-        } else {
-            $auto_registration_type = 'existing';
         }
     }
 
@@ -3496,8 +3441,8 @@ function submit_order($type) {
                 'footer' => $order_receipt_email_footer,
                 'page_id' => $order_receipt_email_page_id,
             ),
-            'new_account' => pg_order_new_account_email() !== '',
-            'auto_registration' => $auto_registration_type,
+            'new_account' => $registration['account'],
+            'auto_registration' => $registration['type'],
             'key_code' => $key_code,
             'affiliate_rate' => $affiliate_rate,
             'recurring_products' => $recurring_products,

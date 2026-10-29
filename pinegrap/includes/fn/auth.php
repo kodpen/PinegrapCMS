@@ -4971,8 +4971,8 @@ function pg_set_password_link_issue($user_id)
  * Who the order receipt being drawn now is for: 'screen' (the receipt page of
  * the session that placed the order; the default), 'customer' (their copy of
  * the receipt e-mail) or 'store' (the copy for the store's BCC addresses).
- * submit_order.php sets it around each copy it draws. Pass a value to set it,
- * nothing to ask.
+ * pg_order_complete_receipt() sets it around each copy it draws. Pass a
+ * value to set it, nothing to ask.
  *
  * @param string|null $audience
  * @return string
@@ -5035,14 +5035,55 @@ function pg_order_receipt_copies($customer_email_address, $bcc_email_addresses, 
 }
 
 /**
- * The e-mail address of the account the last order of this session opened,
- * or ''.
+ * The account an order's auto-registration opened, for the receipt being
+ * drawn now. pg_order_complete_receipt() sets it from the completion's
+ * context around the e-mail copies it draws (array('email_address',
+ * 'user_id', 'ghost'), or array() when the order opened none), so a request
+ * without a visitor hands over the account too; false clears it. Unset, the
+ * receipt page reads the account the session's last order opened. Pass a
+ * value to set it, nothing to ask.
+ *
+ * @param array|false|null $entry
+ * @return array|null null when the receipt reads the session
+ */
+function pg_order_receipt_new_account($entry = null)
+{
+    static $current = null;
+
+    if (is_array($entry)) {
+        $current = $entry;
+    } elseif ($entry === false) {
+        $current = null;
+    }
+
+    return $current;
+}
+
+/**
+ * The new account the receipt being drawn now names: the one set by
+ * pg_order_receipt_new_account(), else the session's.
+ *
+ * @return array|null
+ */
+function pg_order_new_account_entry()
+{
+    $entry = pg_order_receipt_new_account();
+
+    if ($entry === null) {
+        $entry = $_SESSION['software']['auto_registration'] ?? null;
+    }
+
+    return is_array($entry) ? $entry : null;
+}
+
+/**
+ * The e-mail address of the account the order being drawn opened, or ''.
  *
  * @return string
  */
 function pg_order_new_account_email()
 {
-    $entry = $_SESSION['software']['auto_registration'] ?? null;
+    $entry = pg_order_new_account_entry();
 
     return (is_array($entry) && isset($entry['email_address'])) ? (string) $entry['email_address'] : '';
 }
@@ -5055,7 +5096,7 @@ function pg_order_new_account_email()
  */
 function pg_order_new_account_drawn_for_customer()
 {
-    $entry = $_SESSION['software']['auto_registration'] ?? null;
+    $entry = pg_order_new_account_entry();
 
     return pg_order_new_account_for_customer(pg_order_receipt_audience(), is_array($entry) && !empty($entry['ghost']));
 }
@@ -5068,7 +5109,7 @@ function pg_order_new_account_drawn_for_customer()
  */
 function pg_order_new_account_link()
 {
-    $entry = $_SESSION['software']['auto_registration'] ?? null;
+    $entry = pg_order_new_account_entry();
 
     if (!is_array($entry) || empty($entry['user_id']) || !pg_order_new_account_drawn_for_customer()) {
         return '';

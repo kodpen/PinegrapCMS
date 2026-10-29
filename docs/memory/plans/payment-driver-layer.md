@@ -16,14 +16,14 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 - PayPal: Checkout v2 driver beside classic Express Checkout (kept).
 - Saved cards/wallets: PSP tokens only, never PAN; later.
 - 2026-10-20: a new gateway or method value is appended to the `config.ecommerce_payment_gateway` / `orders.payment_method` ENUM by its step's migration (4.48 `install_column_info` append), approved in advance (`workflow/decisions-made-schema.md`, #2389); no VARCHAR change, so add-ons cannot add one. Refund and cancel go to the order's own driver, card orders included (`commerce/payment-refunds.md`).
-- 2026-10-27 (3b): a verified `payment_intent.succeeded` for an incomplete order completes it from the webhook (owner: "en makül güncel yol olsun … global pinegrap kullanıcıları ihtiyaç duyabilir") as Stripe advises: the visitor may never return. Only when intent, amount and currency match; exactly once. How (#2382): `plans/order-completion-function.md`.
+- 2026-10-27 (3b): a verified `payment_intent.succeeded` for an incomplete order completes it from the webhook (owner: "en makül güncel yol olsun … global pinegrap kullanıcıları ihtiyaç duyabilir") as Stripe advises: the visitor may never return. Only when intent, amount and currency match; exactly once. How (#2382): `commerce/order-completion-from-payment.md`.
 
 ## What remains?
 - Done: 1 contract and registry (PR #740), 2 iyzico (#812), 2b its 3-D Secure return (#1710), 3a Stripe PaymentIntents (#937), 4a one list of checkout methods (#1743, `commerce/payment-method-lists.md`), 5 refund and cancel through the driver (#873).
-3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing from the webhook moved to `plans/order-completion-function.md`.
+3b. Stripe webhook (`payment_callback.php?driver=stripe`) (M). First half done (PR #2143, alert only: `commerce/payment-callback.md`); the order keeps the started PaymentIntent (A1, #2199); completing it: #3021.
 4b. PayPal Checkout v2: done (#2377, `commerce/payment-driver-paypal.md`); PENDING capture → awaiting payment (#2408).
 4b2. PayPal capture webhooks: done (#2613, `commerce/payment-driver-paypal-webhook.md`).
-4c. PayTR driver (M), after `order-completion-function.md` A3: it confirms payments only server to server; its iframe needs frame-src CSP.
+4c. PayTR driver (M), after #3021: it confirms payments only server to server; its iframe needs frame-src CSP.
 6b. Driver card fields on the classic order preview and express order pages (built-in and custom layouts, #2407): done (PR #2556, `commerce/payment-hosted-classic-pages.md`).
 6. Memory: keep `commerce/payment-drivers.md` current; the decisions list entry (legacy gateways frozen on purpose, `workflow/decisions-made-product.md`) is the owner's to add.
 
@@ -33,4 +33,4 @@ description: Plan (approved 2026-10-19; 1, 2, 2b, 3a, 3b, 4a, 4b, 4b2, 5 done; 4
 - Answered (#2407): the driver's fields on the classic checkout and express order pages too: 6b, PR #2556.
 
 ## Where to start?
-- 4c: `plans/order-completion-function.md` (A3 first), then `commerce/payment-drivers.md`.
+- 4c: `commerce/order-completion-from-payment.md`, then `commerce/payment-drivers.md`.
