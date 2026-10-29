@@ -21,6 +21,47 @@ $user = validate_user();
 validate_area_access($user, 'designer');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
+// Dropzone posts with X-Requested-With and counts any 2xx answer as success,
+// while output_error() prints an HTML page with status 200. A refusal on that
+// path is therefore answered in JSON with a 4xx status; the fallback form
+// (no Dropzone) keeps the HTML error pages.
+$upload_wants_json = (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest');
+
+// Answers the Dropzone caller with a refusal and stops. "error" repeats the
+// sentence because Dropzone writes that key into each file's bubble.
+$upload_refusal_answer = function ($status, $message) {
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo encode_json(array(
+        'status'  => 'error',
+        'message' => $message,
+        'error'   => $message));
+    exit();
+};
+
+// A POST whose body PHP threw away for being over post_max_size. Without this
+// the script falls through to the form branch below, renders the form again
+// with 200, and Dropzone reports that the files were uploaded.
+if (pg_post_body_discarded()) {
+
+    $upload_limits = pg_upload_limits();
+    $upload_sent = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+
+    $upload_message = lang(array(
+        'string' => 'Nothing was uploaded. The request was {var:1} and this server accepts at most {var:2} in one upload. Send fewer files at a time, or raise post_max_size and upload_max_filesize on the server.',
+        'vars'   => array(
+            convert_bytes_to_string($upload_sent, 1),
+            convert_bytes_to_string($upload_limits['post_max'], 1))));
+
+    log_activity($upload_message);
+
+    if ($upload_wants_json) {
+        $upload_refusal_answer(413, $upload_message);
+    }
+
+    output_error(h($upload_message) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+}
+
 if (!$_POST) {
     $max_file_uploads = ini_get('max_file_uploads');
 
@@ -70,6 +111,7 @@ if (!$_POST) {
             dictCancelUploadConfirmation : "' . lang('Are you sure you want to cancel this upload?') . '",
             dictMaxFilesExceeded : "' . lang('You can not upload any more files.') . '",
             dictCancelUpload : "' . lang('Cancel upload') . '",
+            dictResponseError : ' . encode_json(lang(array('string' => 'The server answered {var:1} without a readable error message.', 'vars' => array('{{statusCode}}')))) . ',
 
             dictRemoveFile : "<span class=\'material-icons btn btn-sm fg-danger p-1 rounded-4 position-absolute top-0 end-0\' style=\'z-index:20;\'>delete</span>",
             // Had to set high value for parallelUploads in order for
@@ -99,6 +141,7 @@ if (!$_POST) {
                 });
 
                 this.on("sendingmultiple", function() {
+                    $("#pg_upload_error").prop("hidden", true).text("");
                     $("#submit").prop("disabled", true);
                     $("#submit").addClass("disabled");
                 });
@@ -113,10 +156,32 @@ if (!$_POST) {
                     }
                     
                 });
-                this.on("errormultiple", function(files, response) {
+                this.on("errormultiple", function(files, response, xhr) {
                     $("#submit").prop("disabled", false);
                     $("#submit").removeClass("disabled");
-                    console.log("' . lang('Sorry, the files could not be uploaded.  Please refresh and try again.') . '");
+
+                    // A refusal answers JSON {status, message}; a timeout or an
+                    // answer with no body gives a string; any other answer is
+                    // the raw text of an error page, which is not shown as is.
+                    var message = "";
+                    if (response && typeof response === "object" && response.message) {
+                        message = String(response.message);
+                    } else if (typeof response === "string" && $.trim(response) !== "" && !/<[a-z!\/]/i.test(response)) {
+                        message = response;
+                    } else if (xhr && xhr.status) {
+                        message = ' . encode_json(lang('The server answered {var:1} without a readable error message.')) . '.replace("{var:1}", xhr.status);
+                    } else {
+                        message = ' . encode_json(lang('Sorry, the files could not be uploaded.  Please refresh and try again.')) . ';
+                    }
+
+                    $("#pg_upload_error").text(message).prop("hidden", false);
+
+                    // Dropzone wrote the raw answer into each file bubble.
+                    $.each(files, function(i, file) {
+                        if (file.previewElement) {
+                            $(file.previewElement).find("[data-dz-errormessage]").text(message);
+                        }
+                    });
                 });
             }
         }
@@ -129,6 +194,7 @@ if (!$_POST) {
                         <p>' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
                     </div>
                 </div>
+                <div id="pg_upload_error" class="alert theme-danger" role="alert" hidden></div>
                 <form enctype="multipart/form-data" action="add_design_file.php" method="post" id="dropzone" class="dropzone" style="border: none;background: unset;padding: unset;">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -176,10 +242,24 @@ if (!$_POST) {
     output_footer();
 
 } else {
+    if ($upload_wants_json) {
+        // The same comparison validate_token_field() makes, answered in JSON.
+        $session_token = (string) ($_SESSION['software']['token'] ?? '');
+        $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+        $get_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+        if (($session_token === '') || (!hash_equals($session_token, $post_token) && !hash_equals($session_token, $get_token))) {
+            $upload_refusal_answer(403, lang('Your session expired. Reload the page and try again.'));
+        }
+    }
+
     validate_token_field();
 
     // If the user didn't select a file then output error.
-    if ($_FILES['file']['name'][0] == '') {
+    if (($_FILES['file']['name'][0] ?? '') == '') {
+        if ($upload_wants_json) {
+            $upload_refusal_answer(400, lang('Please select a file.'));
+        }
+
         output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -189,6 +269,11 @@ if (!$_POST) {
     foreach ($_FILES['file']['name'] as $file_name) {
         if (pg_upload_name_blocked($file_name)) {
             log_activity(lang(array('string' => 'upload of {var:1} was refused because files of that type are not allowed', 'vars' => $file_name)), $_SESSION['sessionusername']);
+
+            if ($upload_wants_json) {
+                $upload_refusal_answer(415, pg_upload_blocked_message($file_name));
+            }
+
             output_error(h(pg_upload_blocked_message($file_name)) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
