@@ -1,6 +1,6 @@
 ---
 name: phone-width-rows
-description: Phone-width layout fixes (#PR): v6 .input-group does not wrap (Shipping Method base rate tiers), save bar two actions per row, Login Region code fields without a fixed width
+description: Phone-width layout fixes (#3006): v6 .input-group does not wrap (Shipping Method base rate tiers), save bar two actions per row, Login Region code fields without a fixed width
 ---
 
 ## Why did the Shipping Method "or" tiers spill past the card on a phone?
