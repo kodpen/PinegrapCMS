@@ -17,4 +17,4 @@ description: Create Order screen (add_order.js): focus kept on the cart row, qui
 ## What is out of scope?
 - The customer picker (`openPicker()`/`closePicker()`/`pickCustomer()`), `newSale()` and the clear-cart dialog place focus themselves. `add_order.js` is not a `pg_js_bundles()` bundle (no build step).
 
-Test: `tests/order_cart_focus_test.php` (source pins).
+PR #3065. Test: `tests/order_cart_focus_test.php` (source pins).
