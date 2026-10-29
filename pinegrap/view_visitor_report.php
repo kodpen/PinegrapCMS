@@ -81,6 +81,10 @@ if (isset($id) == true) {
     $query_string_visitor_report_id = '&visitor_report_id=' . $id;
 }
 
+// The detail rows mark a step the visitor reached with a named icon, not a
+// bare '*' that a screen reader reads as "star".
+$output_yes_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
+
 // get session index in order to store different session values for this screen depending on the report that is being edited
 $session_index = 0;
 
@@ -1416,16 +1420,16 @@ if (!$_POST) {
                     <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . nl2br(h($summarize_by_1_name)) . '</td>
                     ' . $output_report_detail_cells . '
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['count'], 0) . '</td>
-                    <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . pg_format_number($summarize_by_1_result['page_views'], 0) . '</td>
-                    <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
-                    <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_completed_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['order_total'] / 100) . '</td>
-                    <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                 </tr>';
             
@@ -1465,16 +1469,16 @@ if (!$_POST) {
                             <td class="align-middle text-nowrap" colspan="' . $colspan . '">' . nl2br(h($summarize_by_2_name)) . '</td>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['count'], 0) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . pg_format_number($summarize_by_2_result['page_views'], 0) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_completed_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['order_total'] / 100) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                         </tr>';
                     
@@ -1513,16 +1517,16 @@ if (!$_POST) {
                                     <td class="align-middle text-nowrap">' . nl2br(h($summarize_by_3_name)) . '</td>
                                     ' . $output_report_detail_cells . '
                                     <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['count'], 0) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_number($count_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($count_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . pg_format_number($summarize_by_3_result['page_views'], 0) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . pg_format_number($custom_form_submitted_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . pg_format_number($order_created_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . pg_format_number($order_retrieved_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . pg_format_number($order_checked_out_percentage, 2) . '%</td>
-                                    <td class="align-middle text-end">' . pg_format_number($order_completed_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($custom_form_submitted_percentage, 2)))) . '</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_created_percentage, 2)))) . '</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_retrieved_percentage, 2)))) . '</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_checked_out_percentage, 2)))) . '</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_completed_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['order_total'] / 100) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                                    <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                     <td class="align-middle text-end">' . prepare_amount($average_order_total / 100) . '</td>
                                 </tr>';
                             
@@ -1533,30 +1537,30 @@ if (!$_POST) {
                                     $page_views_percentage = ($summarize_by_3_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_3_result['page_views'] * 100 : 0;
                                     $order_total_percentage = ($summarize_by_3_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_3_result['order_total'] * 100 : 0;
                                     
-                                    $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? '*' : '';
-                                    $output_order_created = ($visitor['order_created']) ? '*' : '';
-                                    $output_order_retrieved = ($visitor['order_retrieved']) ? '*' : '';
-                                    $output_order_checked_out = ($visitor['order_checked_out']) ? '*' : '';
-                                    $output_order_completed = ($visitor['order_completed']) ? '*' : '';
+                                    $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? $output_yes_mark : '';
+                                    $output_order_created = ($visitor['order_created']) ? $output_yes_mark : '';
+                                    $output_order_retrieved = ($visitor['order_retrieved']) ? $output_yes_mark : '';
+                                    $output_order_checked_out = ($visitor['order_checked_out']) ? $output_yes_mark : '';
+                                    $output_order_completed = ($visitor['order_completed']) ? $output_yes_mark : '';
                                     
-                                    $output_link_url = 'view_visitor.php?id=' . $visitor['id'] . h(escape_javascript($query_string_visitor_report_id));
+                                    $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                                     
                                     print
-                                        '<tr style="color: #969696" class="pointer" onclick="window.location.href=\'' . $output_link_url . '\'">
+                                        '<tr style="color: #969696">
                                             <td colspan="3">&nbsp;</td>
-                                            <td class="align-middle">' . $visitor['id'] . '</td>
+                                            <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                             <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                             <td>&nbsp;</td>
                                             <td>&nbsp;</td>
                                             <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
-                                            <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                             <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                             <td class="align-middle text-end">' . $output_order_created . '</td>
                                             <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                             <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                             <td class="align-middle text-end">' . $output_order_completed . '</td>
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                            <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                             <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                         </tr>';
                                 }
@@ -1572,30 +1576,30 @@ if (!$_POST) {
                                 $page_views_percentage = ($summarize_by_2_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_2_result['page_views'] * 100 : 0;
                                 $order_total_percentage = ($summarize_by_2_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_2_result['order_total'] * 100 : 0;
                                 
-                                $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? '*' : '';
-                                $output_order_created = ($visitor['order_created']) ? '*' : '';
-                                $output_order_retrieved = ($visitor['order_retrieved']) ? '*' : '';
-                                $output_order_checked_out = ($visitor['order_checked_out']) ? '*' : '';
-                                $output_order_completed = ($visitor['order_completed']) ? '*' : '';
+                                $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? $output_yes_mark : '';
+                                $output_order_created = ($visitor['order_created']) ? $output_yes_mark : '';
+                                $output_order_retrieved = ($visitor['order_retrieved']) ? $output_yes_mark : '';
+                                $output_order_checked_out = ($visitor['order_checked_out']) ? $output_yes_mark : '';
+                                $output_order_completed = ($visitor['order_completed']) ? $output_yes_mark : '';
                                 
-                                $output_link_url = 'view_visitor.php?id=' . $visitor['id'] . h(escape_javascript($query_string_visitor_report_id));
+                                $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                                 
                                 print
-                                    '<tr style="color: #969696;" class="pointer" onclick="window.location.href=\'' . $output_link_url . '\'">
+                                    '<tr style="color: #969696">
                                         <td colspan="2">&nbsp;</td>
-                                        <td class="align-middle">' . $visitor['id'] . '</td>
+                                        <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                         <td>&nbsp;</td>
                                         <td>&nbsp;</td>
                                         <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
-                                        <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                                        <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                         <td class="align-middle text-end">' . $output_order_created . '</td>
                                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                         <td class="align-middle text-end">' . $output_order_completed . '</td>
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                        <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                                        <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                                     </tr>';
                             }
@@ -1612,30 +1616,30 @@ if (!$_POST) {
                         $page_views_percentage = ($summarize_by_1_result['page_views'] > 0) ? $visitor['page_views'] / $summarize_by_1_result['page_views'] * 100 : 0;
                         $order_total_percentage = ($summarize_by_1_result['order_total'] > 0) ? $visitor['order_total'] / $summarize_by_1_result['order_total'] * 100 : 0;
                         
-                        $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? '*' : '';
-                        $output_order_created = ($visitor['order_created']) ? '*' : '';
-                        $output_order_retrieved = ($visitor['order_retrieved']) ? '*' : '';
-                        $output_order_checked_out = ($visitor['order_checked_out']) ? '*' : '';
-                        $output_order_completed = ($visitor['order_completed']) ? '*' : '';
+                        $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? $output_yes_mark : '';
+                        $output_order_created = ($visitor['order_created']) ? $output_yes_mark : '';
+                        $output_order_retrieved = ($visitor['order_retrieved']) ? $output_yes_mark : '';
+                        $output_order_checked_out = ($visitor['order_checked_out']) ? $output_yes_mark : '';
+                        $output_order_completed = ($visitor['order_completed']) ? $output_yes_mark : '';
                         
-                        $output_link_url = 'view_visitor.php?id=' . $visitor['id'] . h(escape_javascript($query_string_visitor_report_id));
+                        $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                         
                         print
-                            '<tr style="color: #969696" class="pointer" onclick="window.location.href=\'' . $output_link_url . '\'">
+                            '<tr style="color: #969696">
                                 <td>&nbsp;</td>
-                                <td class="align-middle">' . $visitor['id'] . '</td>
+                                <td class="align-middle"><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                                 <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                                 <td>&nbsp;</td>
                                 <td>&nbsp;</td>
                                 <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
-                                <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                                <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                                 <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                                 <td class="align-middle text-end">' . $output_order_created . '</td>
                                 <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                                 <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                                 <td class="align-middle text-end">' . $output_order_completed . '</td>
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                                <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                                <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                                 <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                             </tr>';
                     }
@@ -1652,30 +1656,30 @@ if (!$_POST) {
                 $page_views_percentage = ($grand_page_views > 0) ? $visitor['page_views'] / $grand_page_views * 100 : 0;
                 $order_total_percentage = ($grand_order_total > 0) ? $visitor['order_total'] / $grand_order_total * 100 : 0;
                 
-                $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? '*' : '';
-                $output_order_created = ($visitor['order_created']) ? '*' : '';
-                $output_order_retrieved = ($visitor['order_retrieved']) ? '*' : '';
-                $output_order_checked_out = ($visitor['order_checked_out']) ? '*' : '';
-                $output_order_completed = ($visitor['order_completed']) ? '*' : '';
+                $output_custom_form_submitted = ($visitor['custom_form_submitted']) ? $output_yes_mark : '';
+                $output_order_created = ($visitor['order_created']) ? $output_yes_mark : '';
+                $output_order_retrieved = ($visitor['order_retrieved']) ? $output_yes_mark : '';
+                $output_order_checked_out = ($visitor['order_checked_out']) ? $output_yes_mark : '';
+                $output_order_completed = ($visitor['order_completed']) ? $output_yes_mark : '';
                 
-                $output_link_url = 'view_visitor.php?id=' . $visitor['id'] . h(escape_javascript($query_string_visitor_report_id));
+                $output_link_url = 'view_visitor.php?id=' . (int) $visitor['id'] . $query_string_visitor_report_id;
                 
                 print
-                    '<tr style="color: #969696" class="pointer" onclick="window.location.href=\'' . $output_link_url . '\'">
+                    '<tr style="color: #969696">
                         <td>&nbsp;</td>
-                        <td>' . $visitor['id'] . '</td>
+                        <td><a href="' . h($output_link_url) . '">' . h($visitor['id']) . '</a></td>
                         <td class="align-middle text-nowrap">' . get_relative_time(array('timestamp' => $visitor['timestamp'])) . '</td>
                         <td>&nbsp;</td>
                         <td>&nbsp;</td>
                         <td class="align-middle text-end">' . pg_format_number($visitor['page_views'], 0) . '</td>
-                        <td class="align-middle text-end">' . pg_format_number($page_views_percentage, 2) . '%</td>
+                        <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($page_views_percentage, 2)))) . '</td>
                         <td class="align-middle text-end">' . $output_custom_form_submitted . '</td>
                         <td class="align-middle text-end">' . $output_order_created . '</td>
                         <td class="align-middle text-end">' . $output_order_retrieved . '</td>
                         <td class="align-middle text-end">' . $output_order_checked_out . '</td>
                         <td class="align-middle text-end">' . $output_order_completed . '</td>
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
-                        <td class="align-middle text-end">' . pg_format_number($order_total_percentage, 2) . '%</td>
+                        <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($order_total_percentage, 2)))) . '</td>
                         <td class="align-middle text-end">' . prepare_amount($visitor['order_total'] / 100) . '</td>
                     </tr>';
             }
@@ -1752,16 +1756,16 @@ if (!$_POST) {
                             <td class="align-middle text-nowrap" colspan="' . $number_of_summarize_bys . '">' . lang('Grand Total') . '</td>
                             ' . $output_report_detail_cells . '
                             <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
                             <td class="align-middle text-end">' . pg_format_number($grand_page_views, 0) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($grand_custom_form_submitted_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($grand_order_created_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($grand_order_retrieved_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($grand_order_checked_out_percentage, 2) . '%</td>
-                            <td class="align-middle text-end">' . pg_format_number($grand_order_completed_percentage, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_custom_form_submitted_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_created_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_retrieved_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_checked_out_percentage, 2)))) . '</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($grand_order_completed_percentage, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_order_total / 100) . '</td>
-                            <td class="align-middle text-end">' . pg_format_number(100, 2) . '%</td>
+                            <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
                             <td class="align-middle text-end">' . prepare_amount($grand_average_order_total / 100) . '</td>
                         </tr>
                     </tbody>

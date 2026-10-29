@@ -39,7 +39,7 @@ function test_report_tables_have_no_click_only_rows()
 
 	$source = report_tables_links_source('view_visitor_report.php');
 	pg_assert_contains("<a href=\"' . h(\$output_link_url) . '\">' . h(\$visitor['id']) . '</a>", $source, 'visitor id is a link');
-	pg_assert_contains("'view_visitor.php?id=' . (int) \$visitor['id'] . '&send_to=' . urlencode(", $source, 'visitor link url');
+	pg_assert_contains("'view_visitor.php?id=' . (int) \$visitor['id'] . \$query_string_visitor_report_id;", $source, 'visitor link url');
 
 	$source = report_tables_links_source('view_shipping_report.php');
 	pg_assert_contains("<a href=\"' . h('edit_product.php?id=' . (int) \$product['id']) . '\">", $source, 'product name is a link');
@@ -51,7 +51,7 @@ function test_report_tables_percent_follows_panel_language()
 	foreach (array('view_order_report.php', 'view_visitor_report.php') as $screen) {
 		$source = report_tables_links_source($screen);
 
-		pg_assert_false((bool) preg_match("/\\) \\. '%/", $source), $screen . ': a percent sign glued after a number');
+		pg_assert_false((bool) preg_match("/\\) \\. '%</", $source), $screen . ': a percent sign glued after a number');
 		pg_assert_contains("h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2))))", $source, $screen . ': Grand Total percent');
 	}
 
