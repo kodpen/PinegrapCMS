@@ -478,6 +478,16 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
 //if parasut configuration enabled from site settings.
 //output export for parasut.
 $output_generate_xlsl_button = '';
+
+// Carrier labels of the selected orders (shipment_label.php): open the
+// missing ones, or print them all as one PDF in a new tab.
+$output_shipment_label_buttons = '';
+
+if (pg_shipment_labels_ready() && pg_shipment_label_drivers()) {
+    $output_shipment_label_buttons =
+        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h(lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
+        <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>';
+}
 $output_xlsl_setup_modal = '';
 if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     $output_xlsl_setup_modal = 
@@ -3238,6 +3248,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                         ' . $output_generate_xlsl_button . '
                                         <button type="button" value="Remove Card Data for Selected" class="btn mb-1 mt-1 btn-solid theme-primary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: {var:1} will be permanently removed from the selected order(s).','vars'=>array(lang('Card Data')))) . '"><span class="material-icons me-3">credit_card_off</span>' . lang(array('string'=>'Remove Card Data for Selected') ) . '</button>
                                         <button type="button" value="Mark Shipped Selected" class="btn mb-1 mt-1 btn-solid theme-success disabled" data-confirm-content="' . h(lang('The selected order(s) will be marked shipped today and their customers sent the shipping e-mail. Orders that already have a tracking number are skipped.')) . '"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Mark Shipped Selected') . '</button>
+                                        ' . $output_shipment_label_buttons . '
                                         <button type="button" value="Cancel Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected order(s) will be cancelled. This cannot be undone.')) . '"><i class="bi bi-x-octagon me-3"></i>' . lang('Cancel Selected') . '</button>
                                         <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('orders')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>

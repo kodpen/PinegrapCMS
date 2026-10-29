@@ -1021,6 +1021,7 @@
     "Order {var:1}": "Sipariş {var:1}",
     "Order {var:1} was imported from {var:2}.": "{var:1} numaralı sipariş {var:2} üzerinden içe aktarıldı.",
     "Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} takip bağlantısıyla kargolandı olarak işaretlendi.",
+    "Order {var:1}: {var:2} ({var:3})": "Sipariş {var:1}: {var:2} ({var:3})",
     "Order — identity & status": "Sipariş — kimlik & durum",
     "Order — totals": "Sipariş — toplamlar",
     "Order(s)": "Sipariş",

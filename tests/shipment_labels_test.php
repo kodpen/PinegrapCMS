@@ -170,3 +170,53 @@ function test_shipment_label_row_from_a_stub_answer()
 	pg_assert_same(1, $unsafe['is_return'], 'a return');
 	pg_assert_same(array('source' => 'carrier', 'carrier' => 'aras'), pg_label_shipment_options($answer), 'what reaches the parcel row');
 }
+
+// Only active outbound labels are printed, in the order the orders were
+// selected, then by address and age; a non-PDF one is set apart.
+function test_shipment_label_print_selection()
+{
+	$rows = array(
+		array('id' => 5, 'order_id' => 20, 'ship_to_id' => 2, 'state' => 'active', 'is_return' => 0, 'label_format' => 'pdf'),
+		array('id' => 3, 'order_id' => 10, 'ship_to_id' => 9, 'state' => 'active', 'is_return' => 0, 'label_format' => 'pdf'),
+		array('id' => 4, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 6, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'cancelled', 'is_return' => 0, 'label_format' => 'pdf'),
+		array('id' => 7, 'order_id' => 20, 'ship_to_id' => 2, 'state' => 'active', 'is_return' => 1, 'label_format' => 'pdf'),
+		array('id' => 2, 'order_id' => 20, 'ship_to_id' => 2, 'state' => 'active', 'is_return' => 0, 'label_format' => ''),
+		array('id' => 8, 'order_id' => 30, 'ship_to_id' => 4, 'state' => 'active', 'is_return' => 0, 'label_format' => 'pdf'),
+	);
+
+	$selection = pg_shipment_label_print_selection($rows, array(20, 10));
+
+	pg_assert_same(array(2, 5, 4, 3), array_map(function ($row) {
+		return $row['id'];
+	}, $selection), 'active outbound labels of the selected orders, in order');
+}
+
+// Cancelling a label keeps every other number of the address.
+function test_shipment_label_numbers_after_cancel()
+{
+	pg_assert_same(array('AB123', '777'), pg_shipment_label_numbers_after_cancel(array('AB123', ' ab999 ', '777'), 'AB999'), 'case and spaces ignored');
+	pg_assert_same(array('AB123'), pg_shipment_label_numbers_after_cancel(array('AB123'), ''), 'nothing named, nothing removed');
+}
+
+// What a cancel answer writes: only a success changes the row.
+function test_shipment_label_cancel_update()
+{
+	pg_assert_same(array('state' => 'cancelled', 'cancelled_at' => 1700000000), pg_shipment_label_cancel_update(array('success' => true), 1700000000), 'cancelled');
+	pg_assert_same(array(), pg_shipment_label_cancel_update(array('success' => false, 'unclear' => true), 1700000000), 'unclear: nothing written');
+	pg_assert_same(array(), pg_shipment_label_cancel_update(array('success' => false), 1700000000), 'refused: nothing written');
+}
+
+// A return shipment carries the flag the driver reads; its row is marked.
+function test_shipment_label_return_flag()
+{
+	$shipment = pg_shipment_label_shipment(array(), array('first_name' => 'A'), array(), '', true);
+
+	pg_assert_same(true, $shipment['return'], 'return shipment');
+
+	shipment_labels_test_register();
+	$answer = pg_label_call('pgtestlabel', 'create', array(array('order_number' => '1002', 'return' => true), array()));
+	$row = pg_shipment_label_row(7, 9, 'pgtestlabel', $answer, '', 3, 1700000000, true);
+
+	pg_assert_same(1, $row['is_return'], 'return row');
+}
