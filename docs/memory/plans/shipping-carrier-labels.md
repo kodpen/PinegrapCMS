@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; 1-4, 6 Basit Kargo, 7 Shippo done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; 1-4, 6, 7, 8a partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -10,7 +10,7 @@ description: Plan (approved 2026-10-19; 1-4, 6 Basit Kargo, 7 Shippo done): carr
 - This plan starts only after `shipping-management.md` steps 1–3 exist: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` are the base; this plan never writes tracking numbers another way.
 - First driver: one shipping aggregator (single API, many carriers, contracted rates without a carrier contract), chosen by the owner from the current Turkish aggregators; then Yurtiçi Kargo and Aras Kargo direct APIs. Owner (2026-10-29, #3073): start with the services whose integration is open (public reference and test mode); every aggregator and direct carrier follows; international drivers too, the US and Europe first, since the product is global. Driver interface `includes/shipping/<driver>.php`: create shipment → label (PDF/ZPL) + barcode + tracking number; cancel; track; pickup request where supported.
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), reprint, status refresh; the carrier comes from the shipping method's `carrier` or the order's method code.
-- Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, the campaign e-mail and SMS (`sms-and-iys.md`) fire exactly once. Carrier webhooks are used when the driver offers them.
+- Status write-back: the job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, e-mail and SMS fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns with the named return carrier (step 8).
 - UPS/FedEx/USPS rate code and box packing stay untouched; their labels are a later driver on the same interface.
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is handled inside the marketplace connector, not here.
@@ -23,6 +23,7 @@ description: Plan (approved 2026-10-19; 1-4, 6 Basit Kargo, 7 Shippo done): carr
    - 3b. Done in PR #3137 (`commerce/shipment-label-bulk.md`): bulk create and one merged PDF from the orders list, Cancel Label, return labels.
 4. Status polling job in the dispatcher, write-back through the single path (S). Done in PR #3157 (`commerce/shipment-tracking.md`).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
+   - 5c. API: create (dry run), labels list, document route (in progress).
 6. Further aggregators as their references open: Basit Kargo done in PR #3163 (`commerce/carrier-label-basitkargo.md`; one `.zpl` per bulk run open), Kargonomi; MNG ApiZone a candidate (M each).
 7. International (#3124): Shippo done in PR #3192 (`commerce/carrier-label-shippo.md`, no customs yet); Sendcloud for the rest of Europe.
 8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
@@ -30,7 +31,7 @@ description: Plan (approved 2026-10-19; 1-4, 6 Basit Kargo, 7 Shippo done): carr
 
 ## Open questions?
 - Answered (#3073): Geliver first (public reference and test mode); the owner confirms its prices; no aggregator-specific fields in the shipment row.
-- Formats (#3123): PDF, ZPL and SVG; ZPL never sent to an external converter.
+- Formats (#3123): PDF, ZPL, SVG; ZPL never sent to a converter.
 
 ## Where to start?
-- Step 8b (Shippo has landed), step 7 Sendcloud or step 5: Yurtiçi and Aras direct drivers; one with `track()` is tracked by the job as it is. Live checks of Geliver and Shippo with the owner's keys.
+- Step 8b, step 7 Sendcloud or step 5 Yurtiçi/Aras drivers (one with `track()` is tracked by the job as it is). Live checks of Geliver and Shippo with the owner's keys.
