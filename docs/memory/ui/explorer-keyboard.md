@@ -4,7 +4,7 @@ description: File manager (view_folders.php) from the keyboard: shortcuts leave 
 ---
 
 ## When do the listing's shortcuts take a key?
-- The document keydown handler skips inputs, open dialogs/drawers, and (after the Quick Look branch) any key whose target `keyBelongsToControl()` matches: a button, `a[href]`, `[role=button]`, `[role=menuitem]`, `[tabindex]`, `summary`, media, `#pg-chat-root`, `#explorer_menu`, an open `.menu.show`.
+- The document keydown handler skips inputs, open dialogs/drawers, and (after the Quick Look branch) any key whose target `keyBelongsToControl()` matches: a button, `a[href]`, `[role=button]`, `[role=menuitem]`, `[tabindex]`, `summary`, media, `#pg-chat-root`, `#explorer_menu`, an open `.menu.show`, and `#menu`: the tree is in the main menu's panel on the explorer's screen, and keys there are the menu's and the tree's, not the listing's (`explorer-menu-tree.md`).
 - Before #2783 only inputs were skipped: with one item selected, Enter on a focused toolbar button opened the item's file window instead of pressing the button; Space, Escape, Backspace, the arrows and type-ahead were taken the same way.
 - A pointer click on a button or link inside `#explorer_app` (not a `data-bs-toggle`) blurs it (`event.detail > 0`), so Enter after a mouse click still opens the selected item as before.
 

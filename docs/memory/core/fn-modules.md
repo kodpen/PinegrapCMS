@@ -30,6 +30,7 @@ description: Generated from the module field of the memory files: each includes/
 - `editor`: [[rich-text-profiles]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
+- `explorer_side`: [[explorer-menu-tree]]
 - `imap_client`: [[mail-imap-client]]
 - `lang_files`: [[lang-files]]
 - `layout_convert`: [[layout-form-converter]]

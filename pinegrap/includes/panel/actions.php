@@ -225,6 +225,9 @@ function pg_panel_actions()
         'shared_component' => array('file' => 'shared_component.php', 'handler' => 'pg_panel_shared_component', 'exempt' => true, 'token' => true, 'write' => true),
 
         'file_explorer' => array('file' => 'explorer.php', 'handler' => 'pg_panel_file_explorer', 'exempt' => true, 'token' => true, 'write' => true),
+        // The File Manager's and the Catalog Manager's tree in their menu
+        // panels, one branch at a time; read only.
+        'explorer_side' => array('file' => 'explorer_side.php', 'handler' => 'pg_panel_explorer_side', 'exempt' => true, 'token' => true, 'write' => false),
 
         'backend_search' => array('file' => 'search.php', 'handler' => 'pg_panel_backend_search', 'exempt' => true, 'token' => false, 'write' => false),
 

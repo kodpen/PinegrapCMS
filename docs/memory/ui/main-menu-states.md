@@ -5,7 +5,9 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 
 ## What are the states?
 - lg and up (Bootstrap 6's lg, 1024px; the menu's media queries in `backend.src.css`): `expanded` (icons and labels, `--pg-rail-w-expanded`), `collapsed` (the icon rail, the default) and `hidden` (no column, the content takes the width). Below lg the menu is a drawer of its own (`.drawer-open`, not Bootstrap's `.drawer`), open or shut; the drawer never writes the wide-screen state. `backend.src.js` decides drawer mode with `MENU_DRAWER_BREAKPOINT` (1024, the stylesheet's width; keep the two equal).
-- A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`). With the menu hidden, `pgMenu.openPanel()` slides it in the same way (the channel screen's Channels pill, `main-menu-panel-scripts.md`).
+- A row that opens a panel widens the collapsed rail over the content while the panel is open (`.pg-menu-peek`); that is not a state and writes no cookie (`main-menu-panels.md`). With the menu hidden, `pgMenu.openPanel()` slides it in the same way (`main-menu-panel-scripts.md`).
+
+- A navigator screen (the workspace, the File Manager, the Catalog Manager) is open or the rail only, from a cookie of its own (`main-menu-navigator-screens.md`).
 
 ## Which control does what?
 - One button, at the left end of the bar (`pg_menu_mode_button()`, `#menu_mode_toggle`, `includes/fn/output.php`). Above lg each click moves on to the next state: mini (collapsed) → open (expanded) → hidden → mini. Below lg it opens and shuts the drawer.
@@ -21,4 +23,4 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 - The grid column goes to 0 and the rail slides out (`translateX(-100%)`), its `visibility: hidden` delayed by the slide so its links leave the tab order; the pocket corner (`.software-sidebar::before/::after`) goes with it. Above lg the bar button's `li` is the rail's width, so its icon sits over the menu icons.
 
 ## What does the tour say?
-- The frame tour's menu step says that a row with an arrow opens its pages in the menu and that the button at the top left walks the three states; its narrow step rings `#menu_mode_toggle`. `PG_TOUR_SHELL_KEY` went to `shell.5` so everybody sees the changed frame once (it went to `shell.4` for the earlier controls, #598).
+- The frame tour's menu step says that a row with an arrow opens its pages in the menu and that the button at the top left walks the three states, only narrowing on the navigator screens; its narrow step rings `#menu_mode_toggle`. `PG_TOUR_SHELL_KEY` is `shell.6` (the navigator sentence); `shell.5` for the one button, `shell.4` for the earlier controls (#598).

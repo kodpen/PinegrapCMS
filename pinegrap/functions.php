@@ -101,6 +101,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_placement.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/custom_form.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/signature.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/files.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/explorer_side.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/cron.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/currency_rates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/tour.php');

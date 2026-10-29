@@ -2021,14 +2021,28 @@ function output_header($properties = false)
     $menu_state = pg_menu_state(isset($_COOKIE['softwaremenustatus']) ? $_COOKIE['softwaremenustatus'] : '');
     $menu_expanded_class = ($menu_state === 'expanded') ? ' expanded' : '';
     $menu_hidden_class = '';
+    $menu_navigator_attribute = '';
 
     // The button in the bar sets how the menu shows: on a phone it slides the
-    // drawer in and out, on a wide screen it walks mini, open and hidden.
+    // drawer in and out, on a wide screen it walks mini, open and hidden
+    // (open and mini only on a navigator screen, below).
     $output_menu_mode_button = '';
     $output_software_sidebar = '';
     if (isset($properties['hide_menu']) && $properties['hide_menu'] == true) {
         $output_software_sidebar = '';
     } else {
+        // The menu first: a screen whose own navigation sits in one of its
+        // panels (pg_menu_navigator()) shows it open, or narrowed to the
+        // rail, from a cookie of its own; never hidden there, since the
+        // screen would lose its way around.
+        $output_menu = output_menu(array('toolbar' => $toolbar));
+
+        if (pg_menu_navigator()) {
+            $menu_state = pg_menu_navigator_state(isset($_COOKIE['softwaremenunav']) ? $_COOKIE['softwaremenunav'] : '');
+            $menu_expanded_class = ($menu_state === 'expanded') ? ' expanded' : '';
+            $menu_navigator_attribute = ' data-pg-menu-navigator';
+        }
+
         $output_menu_mode_button = pg_menu_mode_button($menu_state);
 
         // Only a screen that draws the menu gives up its column for it.
@@ -2039,7 +2053,7 @@ function output_header($properties = false)
             <nav id="menu" class="z-1  ' . $menu_expanded_class . '" style="position:sticky;left:0;top:0;bottom:0;">
 
                 <div class="menu-body">
-                    ' . output_menu(array('toolbar' => $toolbar)) . '
+                    ' . $output_menu . '
                 </div>
             </nav>
         </div>';
@@ -2201,7 +2215,7 @@ function output_header($properties = false)
     ' . pg_output_email_off_open() . '
     ' . pg_preloader_markup() . '
     <a class="pg-skip-link" href="#content">' . lang('Skip to main content') . '</a>
-    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '">
+    <div class="software-container ' . $menu_expanded_class . $menu_hidden_class . '"' . $menu_navigator_attribute . '>
         <div class="software-navbar fixed-top pg-print-none ">
             <nav id="header" class="z-1 position-sticky h-100 p-0 top-0 start-100 navbar navbar-expand bg-software-navbar backdrop" >
                 <ul class="navbar-nav">
@@ -2640,11 +2654,46 @@ function pg_menu_state($value)
 }
 
 /**
+ * The state of the main menu on a navigator screen, a screen whose own way
+ * around sits in a panel of the menu (the Workspace list, the explorer's
+ * tree), from its softwaremenunav cookie: open, unless it was narrowed to
+ * the rail there. Never hidden. The other screens keep softwaremenustatus.
+ *
+ * @param mixed $value
+ * @return string expanded or collapsed
+ */
+function pg_menu_navigator_state($value)
+{
+    return ($value === 'collapsed') ? 'collapsed' : 'expanded';
+}
+
+/**
+ * Whether the menu being drawn holds the screen's own navigation: a panel
+ * output_menu() prints to open by itself (data-pg-menu-auto). output_menu()
+ * raises the flag; output_header() reads it once the menu is built.
+ *
+ * @param bool|null $set true to raise it
+ * @return bool
+ */
+function pg_menu_navigator($set = null)
+{
+    static $navigator = false;
+
+    if ($set === true) {
+        $navigator = true;
+    }
+
+    return $navigator;
+}
+
+/**
  * The button at the left end of the bar that sets how the main menu shows.
  *
  * On a wide screen each click moves the menu on to the next of its three
  * states: mini (the icon rail), open (icons and labels), hidden (no column),
- * then mini again; Ctrl+D presses it. On a phone the menu is a drawer and the
+ * then mini again; on a navigator screen (pg_menu_navigator()) it only
+ * switches between open and mini, kept in softwaremenunav, and never hides
+ * the menu. Ctrl+D presses it. On a phone the menu is a drawer and the
  * button slides it in and out. Its picture is the state the menu is in: every
  * picture is printed and the stylesheet shows the one that fits the state and
  * the width, so the right one is there before any script has run. The label
@@ -3107,26 +3156,25 @@ function output_menu($properties = false)
 
     if (($user['role'] < 3) || (no_acl_check($user['id']) == true)) {
         // FILE MANAGER. The row opens the explorer itself; its panel holds the
-        // explorer's views across every file and the ways to add to it. The
-        // files live in the file manager: the Files and Pictures entries open
-        // its views across every file, and the two actions under them open the
-        // same screen with the upload window, or a new file, already in hand
-        // (view_files.php, add_file.php and create_file.php are not linked
-        // from here). Slot 3, the Files row these came from, is retired and
-        // never reused.
+        // ways to add to it, then the explorer's tree (pg_menu_explorer_side()):
+        // its views across every file (Files, Pictures, Pages, ...) and the
+        // folders. The two actions open the explorer with the upload window,
+        // or a new file, already in hand (view_files.php, add_file.php and
+        // create_file.php are not linked from here). Slot 3, the Files row,
+        // is retired and never reused.
         $menu_items[1]['id'] = 1;
         $menu_items[1]['href'] = 'view_folders.php';
         $menu_items[1]['menu_icon'] = 'folders';
         $menu_items[1]['color_class'] = 'folders-color';
         $menu_items[1]['title'] = 'File Manager';
         $menu_items[1]['context'] = true;
-        $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
+        // The tree below marks the folder or view that is open, so the
+        // explorer's own home leaves the current mark to it (data-pg-menu-skip).
+        $menu_items[1]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php\'' . $output_parent_target . ' data-pg-menu-skip class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-folder bi-me-2\'>' . lang('File Manager') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_folder.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Folder'))) . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-file-earmark bi-me-2\'>' . lang('Files') . '</a>';
-        $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=images\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-images bi-me-2\'>' . lang('Pictures') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&upload=1\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-upload bi-me-2\'>' . lang('Upload Files or Folders') . '</a>';
         $menu_items[1]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_folders.php?view=files&create=file\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang('Create File') . '</a>';
+        $menu_items[1]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . pg_menu_explorer_side('files', $user, $toolbar, $menu_tail);
         // PAGES
         $menu_items[2]['id'] = 2;
         $menu_items[2]['href'] = 'view_pages.php';
@@ -3392,11 +3440,14 @@ function output_menu($properties = false)
             // same in both. The name is the cheapest way to say so.
             $menu_items[12]['title'] = 'Catalog Manager';
             $menu_items[12]['context'] = true;
-            $menu_items[12]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-boxes bi-me-2\'>' . lang('Catalog Manager') . '</a>';
+            // As in the File Manager panel, the tree marks the open group.
+            $menu_items[12]['data-bs-content'] = '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_product_groups.php\'' . $output_parent_target . ' data-pg-menu-skip class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-boxes bi-me-2\'>' . lang('Catalog Manager') . '</a>';
             $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/add_product_group.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-plus-lg bi-me-2\'>' . lang(array('string' => 'Create {var:1}', 'vars' => lang('Product Group'))) . '</a>';
             // ECOMMERCE > > Featured and New
             $menu_items[12]['data-bs-content'] .= '<hr class=\'divider my-3\' />';
             $menu_items[12]['data-bs-content'] .= '<a href=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_featured_and_new_items.php\'' . $output_parent_target . ' class=\'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate bi bi-star bi-me-2\'>' . lang('Edit Featured & New Items') . '</a>';
+            // ECOMMERCE > Product Groups > the tree (pg_menu_explorer_side())
+            $menu_items[12]['data-bs-content'] .= '<hr class=\'divider my-3\' />' . pg_menu_explorer_side('catalog', $user, $toolbar, $menu_tail);
 
             // ECOMMERCE > Offers
             $menu_items[14]['id'] = 14;
@@ -3704,6 +3755,10 @@ function output_menu($properties = false)
             // by counting its links.
             $menu_items[23]['panel'] = true;
             $ws_side_screen = ($toolbar == true) ? '' : ws_side_screen($_SERVER['SCRIPT_NAME'] ?? '');
+
+            if ($ws_side_screen !== '') {
+                pg_menu_navigator(true);
+            }
             $menu_items[23]['data-bs-content'] = ws_side_markup(array(
                 'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
                 'target'  => ($toolbar == true) ? '_parent' : '',
@@ -4243,6 +4298,51 @@ function output_menu($properties = false)
     return '<div class="pg-menu-main list-group list-group-flush" style="--bs-list-group-bg:transparent;">' . $output_all_menu_items . '</div>'
         . (($output_menu_panels !== '') ? '<div class="pg-menu-panels">' . $output_menu_panels . '</div>' : '')
         . $menu_tail;
+}
+
+/**
+ * The explorer's tree in an area's menu panel (includes/fn/explorer_side.php).
+ * Called inside the area's row, under its gate. On the area's own screen the
+ * box is empty, opens by itself and marks the screen a navigator
+ * (pg_menu_navigator()): the screen moves its tree into it. Anywhere else it
+ * holds the fixed entries as links and the script that fills the tree is
+ * added to what follows the menu, once.
+ *
+ * @param string $area      files or catalog
+ * @param array  $user      the row validate_user() returned
+ * @param bool   $toolbar   the menu is the front-end toolbar's
+ * @param string $menu_tail what output_menu() prints after the menu
+ * @return string
+ */
+function pg_menu_explorer_side($area, $user, $toolbar, &$menu_tail)
+{
+    static $script = false;
+
+    if (pg_explorer_side_screen($_SERVER['SCRIPT_NAME'] ?? '', $toolbar == true) === $area) {
+        pg_menu_navigator(true);
+
+        return pg_explorer_side_markup(array('area' => $area, 'inplace' => true));
+    }
+
+    if (!$script) {
+        $script = true;
+        $menu_tail .= pg_js_bundle_tags('assets/js/explorer_side.min.js');
+    }
+
+    $erp = defined('ERP_ENABLED') && ERP_ENABLED && (($user['role'] < 3) || !empty($user['manage_erp']));
+
+    return pg_explorer_side_markup(array(
+        'area'    => $area,
+        'api'     => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/api.php',
+        'base'    => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/',
+        'target'  => ($toolbar == true) ? '_parent' : '',
+        'quick'   => pg_explorer_side_quick($area, (int) $user['role'], $erp),
+        'loading' => lang('Loading…'),
+        'error'   => lang('Something went wrong. Please try again.'),
+        'retry'   => lang('Try again'),
+        'expand'  => lang('Expand'),
+        'close'   => lang('Collapse'),
+    ));
 }
 
 /**
@@ -6399,6 +6499,8 @@ function pg_js_bundles()
         // The panel's own script, on every panel screen. Loaded without
         // defer: the inline scripts of the screens call it as they run.
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),
+        // The explorer's tree in the File Manager and Catalog Manager panels.
+        'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
     );
 }
 

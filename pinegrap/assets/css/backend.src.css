@@ -2328,10 +2328,10 @@ body:not(.toolbar) .software-content {
   padding-top: 0.5rem;
   padding-bottom: 100px;
 }
-/* The Workspace list (#ws-menu-side) sizes its own icons, as on the channel
-   screen; :where() keeps this rule at the weight the panel rules below are
-   written against. */
-#menu .menu-body .bi:not(:where(#ws-menu-side *)) {
+/* The Workspace list (#ws-menu-side) and the explorer's tree
+   (.pg-explorer-side) size their own icons, as on their screens; :where()
+   keeps this rule at the weight the panel rules below are written against. */
+#menu .menu-body .bi:not(:where(#ws-menu-side *, .pg-explorer-side *)) {
   font-size: 1.3rem;
 }
 /* The rail is 50px wide and the sidebar carries a hairline on its right, so an
@@ -2504,6 +2504,104 @@ body:not(.toolbar) .software-content {
     overflow: hidden;
     clip: rect(0 0 0 0);
     white-space: nowrap;
+  }
+}
+
+/* ── The explorer's tree in a panel ─────────────────────────────────────
+   The File Manager's and the Catalog Manager's tree (pg_explorer_side_markup(),
+   explorer_side.js; on the explorer's own screens its pane, moved in). The
+   look of the explorer's tree: a row per folder or group, an arrow for a
+   branch, nested lists drawn with a line. It scrolls sideways in its box,
+   since the menu clips sideways. */
+#menu .pg-explorer-side {
+  overflow-x: auto;
+  font-size: 0.8rem;
+  padding-bottom: 0.5rem;
+}
+#menu .pg-explorer-side ul {
+  list-style: none;
+  margin: 0 0 0 0.62rem;
+  padding-left: 0.55rem;
+  border-left: var(--pg-border-width) solid var(--pg-border-color-translucent);
+}
+#menu .pg-explorer-side :is([data-explorer-side-root], #explorer_tree_root) {
+  margin-left: 0;
+  padding-left: 0;
+  border-left: 0;
+}
+#menu .pg-explorer-side .tree-row {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--pg-radius-lg);
+  white-space: nowrap;
+  line-height: 1.35;
+  color: var(--pg-fg-body);
+  text-decoration: none;
+}
+#menu .pg-explorer-side a.tree-row:hover,
+#menu .pg-explorer-side .tree-row:has(> a:hover) {
+  background: var(--pg-tint-hover);
+}
+#menu .pg-explorer-side .pg-explorer-side-link {
+  display: flex;
+  align-items: center;
+  gap: 0.32rem;
+  min-width: 0;
+  flex: 1 1 auto;
+  color: inherit;
+  text-decoration: none;
+}
+#menu .pg-explorer-side .tree-toggle {
+  width: 0.95rem;
+  height: 0.95rem;
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  border-radius: 0.3rem;
+  color: var(--pg-fg-2);
+  font-size: 0.58rem;
+  transition: transform 0.12s ease;
+}
+#menu .pg-explorer-side button.tree-toggle:hover {
+  background: var(--pg-bg-2);
+}
+#menu .pg-explorer-side .tree-toggle.open {
+  transform: rotate(90deg);
+}
+#menu .pg-explorer-side .tree-row .bi:not(.tree-toggle) {
+  font-size: 0.92rem;
+  line-height: 1;
+}
+#menu .pg-explorer-side .tree-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#menu .pg-explorer-side .tree-section-label {
+  padding: 0.6rem 0.45rem 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--pg-fg-2);
+  user-select: none;
+}
+#menu .pg-explorer-side .catalog-off .tree-label,
+#menu .pg-explorer-side .bi.catalog-off {
+  color: var(--pg-danger);
+}
+#menu .pg-explorer-side .pg-explorer-side-wait {
+  padding: 0.2rem 0.4rem;
+  color: var(--pg-fg-2);
+}
+@media (prefers-reduced-motion: reduce) {
+  #menu .pg-explorer-side .tree-toggle {
+    transition: none;
   }
 }
 
@@ -11952,8 +12050,9 @@ html[data-bs-theme="dark"] .ws-group-icon {
   min-width: 0;
 }
 /* The way to the channel list where the menu's Workspace list is out of
-   sight: below lg, where the menu is a drawer, on the mini rail and while
-   the menu is hidden; the open menu shows the list itself. A labelled back
+   sight: below lg, where the menu is a drawer, and on the mini rail (the
+   workspace never hides the menu: main-menu-navigator-screens); the open
+   menu shows the list itself. A labelled back
    arrow, so it is not taken for a second main menu button. */
 .ws-channels-toggle {
   display: inline-flex;

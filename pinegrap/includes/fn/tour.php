@@ -68,7 +68,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 // everybody once more, which is what has to happen when the frame itself
 // changes underneath them.
 if (!defined('PG_TOUR_SHELL_KEY')) {
-    define('PG_TOUR_SHELL_KEY', 'shell.5');
+    define('PG_TOUR_SHELL_KEY', 'shell.6');
 }
 
 function pg_tour_ready()
@@ -250,7 +250,7 @@ function pg_tour_shell_steps()
             'target' => '#menu',
             'placement' => 'right',
             'title' => lang('The menu on the left'),
-            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and the arrow at the top takes you back. The button at the top left changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden.')),
+            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and the arrow at the top takes you back. The button at the top left changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden. On the Workspace, File Manager and Catalog Manager screens their own way around is in the menu, so there it only narrows it to its icons and back.')),
 
         array(
             'at' => 'menu_drawer',
