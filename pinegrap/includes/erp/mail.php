@@ -432,13 +432,16 @@ function erp_mail_settle($mail_id, $sent, $attachments, $error)
  * @param int    $user_id
  * @param string $mode      'manual' | 'auto'
  * @param int    $mail_id   A row already recorded (the automatic path), or 0
- * @return array ['success' => bool, 'error' => string, 'official' => bool]
+ * @return array ['success' => bool, 'error' => string, 'field' => string, 'official' => bool]
+ *               field: the form field the error belongs to ('mail_to' or '_error')
  */
 function erp_mail_invoice_send($invoice_id, $to, $subject, $message, $user_id = 0, $mode = 'manual', $mail_id = 0)
 {
-    $fail = function ($message) use (&$mail_id) {
+    // An address refusal belongs to the To box; everything else is about
+    // the invoice, the settings or the mail server.
+    $fail = function ($message, $field = '_error') use (&$mail_id) {
         erp_mail_settle($mail_id, false, '', $message);
-        return array('success' => false, 'error' => $message, 'official' => false);
+        return array('success' => false, 'error' => $message, 'field' => $field, 'official' => false);
     };
 
     $invoice = erp_mail_invoice($invoice_id);
@@ -456,7 +459,7 @@ function erp_mail_invoice_send($invoice_id, $to, $subject, $message, $user_id = 
     $addresses = erp_mail_addresses($to);
 
     if ($addresses['error'] !== '') {
-        return $fail($addresses['error']);
+        return $fail($addresses['error'], 'mail_to');
     }
 
     $subject = trim((string) $subject);
@@ -495,8 +498,9 @@ function erp_mail_invoice_send($invoice_id, $to, $subject, $message, $user_id = 
     ));
 
     if (!$sent) {
-        erp_mail_settle($mail_id, false, $attachment['name'], lang('The e-mail could not be sent. The details are in the activity log.'));
-        return array('success' => false, 'error' => lang('The e-mail could not be sent. The details are in the activity log.'), 'official' => $attachment['official']);
+        $error = pg_mail_failure_sentence(lang('The e-mail could not be sent.'));
+        erp_mail_settle($mail_id, false, $attachment['name'], $error);
+        return array('success' => false, 'error' => $error, 'field' => '_error', 'official' => $attachment['official']);
     }
 
     erp_mail_settle($mail_id, true, $attachment['name'], '');

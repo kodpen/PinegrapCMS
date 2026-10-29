@@ -456,7 +456,7 @@ if (!$_POST) {
             $liveform_settings->add_notice(lang(['string'=>'Test email accepted by SMTP server. Please check mailbox: {var:1}', 'vars'=>[h(EMAIL_ADDRESS)]]));
             log_activity(lang(['string'=>'Test email accepted by SMTP server. Mailbox: {var:1}', 'vars'=>[EMAIL_ADDRESS]]), $_SESSION['sessionusername']);
         } else {
-            $liveform_settings->add_warning(lang('Test email could not be sent. Check logs for details.'));
+            $liveform_settings->add_warning(h(pg_mail_failure_sentence(lang('Test email could not be sent.'), true)));
         }
 
         header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php');

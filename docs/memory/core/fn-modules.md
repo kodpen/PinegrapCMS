@@ -45,7 +45,7 @@ description: Generated from the module field of the memory files: each includes/
 - `list_paging`: [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-week]]
 - `mail_parse`: [[mail-parse]]
-- `mail_queue`: [[fn-module-errors-mail-backup-consent]]
+- `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]]
 - `merchant_center`: [[merchant-center]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]]
 - `order_list`: [[orders-list-amount-column]]
