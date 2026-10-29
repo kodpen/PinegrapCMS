@@ -1,9 +1,12 @@
 ---
 name: decisions-made-workspace-3
-description: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after the Scheduled actions section goes: refused rows, cancelled rows, a converted row's Run now and History
+description: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after the Scheduled actions section goes; the For each loop of the flows engine (D9)
 ---
 
 ## Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
 - Decided (architect, 2026-10-29; plan `workspace-flows-look.md` V5, under the owner's "no feature lost" rule of 2026-10-24): refused rows (`kind = 'action'`, `flow_id = 0`, `anchor = ''`, not cancelled: the conversion `ws_flow_problems()` turned away, still run by `ws_scheduled_execute()`) form a second last group of the flow list, "Not converted · N", each drawn by `scheduledCard()` with its buttons as today (Edit retries the conversion, #2753). Cancelled unconverted rows are not listed in Flows: nothing can be done with them there, and their channel or note card stays (answer 4 of the merge). A converted row keeps Run now (`ws_scheduled_run_now`, the only hand start of a time- or event-started flow) and History (`ws_scheduled_get`: the anchor's `ws_scheduled_runs` lines, before and after the conversion, not swept) beside Open flow. A Run on the canvas for a non-manual flow (2b) is not built: a product change for a step of its own if staff ask. No schema.
+
+## How does a "For each" box loop over a list? (#3312)
+- Decided (architect, 2026-10-29, plan `workspace-flows-data-passing.md` D9): a marked body: the For each box's `each` arrow leads into the body, which ends at an "End for each" (collect) box; the flow continues after it once every item has settled. Items run one after another, `pass` = the 1-based item index on `(run_id, node_id, pass)`. The End box outputs `count`, `done`, `failed` and `list`: one chosen body output collected per item as a JSON array of at most 16 KB (the webhook body's limit). At most 50 items a run; a longer list fails the For each box with its reason, never a silent cut; `WS_FLOW_MAX_BOX_RUNS` (200) still bounds the whole run. Side-effect boxes are allowed inside the loop under a per-run cap (20 tasks, approvals or e-mails opened inside loops); the webhook idempotency key already carries `pass`. No schema: `ws_flow_run_steps` has `UNIQUE uq_node (run_id, node_id, pass)` and the collected list fits on the run and step rows like the webhook body.
 
 Related: docs/memory/workflow/decisions-made-workspace-2.md, docs/memory/workflow/decisions-made.md
