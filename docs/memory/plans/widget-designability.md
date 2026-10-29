@@ -4,7 +4,7 @@ description: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in wid
 ---
 
 ## What is built, and why?
-- Legacy layouts (`data/layouts/<id>.php`) branch on any value, loop nested arrays, place every piece. Widgets: one loop, fixed flags (none in 7 kinds) and tokens, server-built blocks.
+- Legacy layouts (`data/layouts/<id>.php`) branch on any value, loop nested arrays, place every piece; widgets had one loop and fixed tokens.
 - One mechanism for every kind (30 today): a finish pass in the outer callback of `_expand_system_widgets()` (page, e-mail, Preview, ghosts, nested) resolves the markers `_render_tree_node()` and `_split_widget_tree()` write. `_apply_bindings()` is not edited.
 
 ## What are the rules?
