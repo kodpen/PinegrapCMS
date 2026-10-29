@@ -23,6 +23,14 @@
  * a *_with() function that takes the settings and the HTTP caller, so the
  * whole flow can run against a stand-in for Stripe.
  *
+ * Subscriptions run store-side ('recurring' => 'store'): the first payment of
+ * an order with a recurring line makes a Customer and confirms the intent
+ * with setup_future_usage off_session, so Stripe keeps the card, and answers
+ * card_ref ("<customer id>|<payment method id>"). charge_renewal() charges it
+ * off-session, update_card() opens Checkout in setup mode where the customer
+ * adds a new card (the newest card of the Customer is the one charged), and
+ * subscription_cancel() detaches the Customer's cards.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -35,7 +43,8 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_payment_stripe_capabilities()
 {
-    return array('wallets', 'partial_refund', 'threeds', 'hosted_fields');
+    // Stripe charges a kept card off-session for any account: no switch.
+    return array('wallets', 'partial_refund', 'threeds', 'hosted_fields', 'recurring' => 'store');
 }
 
 function pg_payment_stripe_fields()
@@ -100,6 +109,21 @@ function pg_payment_stripe_cancel($order, $transaction_id)
 function pg_payment_stripe_notify($headers, $body)
 {
     return pg_payment_stripe_notify_with($headers, $body, pg_payment_stripe_settings(), time());
+}
+
+function pg_payment_stripe_charge_renewal($subscription)
+{
+    return pg_payment_stripe_charge_renewal_with($subscription, pg_payment_stripe_settings(), 'pg_payment_stripe_request');
+}
+
+function pg_payment_stripe_update_card($subscription)
+{
+    return pg_payment_stripe_update_card_with($subscription, pg_payment_stripe_settings(), 'pg_payment_stripe_request', time());
+}
+
+function pg_payment_stripe_subscription_cancel($subscription)
+{
+    return pg_payment_stripe_subscription_cancel_with($subscription, pg_payment_stripe_settings(), 'pg_payment_stripe_request');
 }
 
 /* ---------------------------------------------------------------------------
@@ -498,21 +522,27 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
         return pg_payment_failure(lang('No payment is required for this order.'));
     }
 
-    return array(
-        'success' => true,
-        'client'  => array(
-            'script'               => 'https://js.stripe.com/v3/',
-            'publishable_key'      => $settings['publishable_key'],
-            'amount'               => $units,
-            'currency'             => $settings['currency'],
-            'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
-            // The Payment Element must be built with the capture method the
-            // intent is created with (authorize()), or Stripe refuses the
-            // confirmation.
-            'capture_method'       => $settings['capture'],
-            'locale'               => $settings['locale'],
-        ),
+    $client = array(
+        'script'               => 'https://js.stripe.com/v3/',
+        'publishable_key'      => $settings['publishable_key'],
+        'amount'               => $units,
+        'currency'             => $settings['currency'],
+        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        // The Payment Element must be built with the capture method the
+        // intent is created with (authorize()), or Stripe refuses the
+        // confirmation.
+        'capture_method'       => $settings['capture'],
+        'locale'               => $settings['locale'],
     );
+
+    // An order with a recurring line keeps the card for its renewals; the
+    // Payment Element must say so too, or Stripe refuses the confirmation
+    // token for an intent with setup_future_usage.
+    if (is_array($order) && !empty($order['recurring'])) {
+        $client['setup_future_usage'] = 'off_session';
+    }
+
+    return array('success' => true, 'client' => $client);
 }
 
 /**
@@ -522,11 +552,15 @@ function pg_payment_stripe_prepare_with($order, $amount, $settings)
  *
  * @param array    $order    orders row
  * @param int      $amount   hundredths: the order total
- * @param array    $payment  token (the ConfirmationToken's id), return_url
+ * @param array    $payment  token (the ConfirmationToken's id), return_url,
+ *                           recurring (the order has a recurring line: a
+ *                           Customer is made and the card kept for it),
+ *                           customer_id (the store's user id, 0 for a guest)
  * @param array    $settings pg_payment_stripe_settings()
  * @param callable $http
  * @return array an answer: paid, authorized, pending, or redirect to the
- *               card's 3-D Secure page with state for complete()
+ *               card's 3-D Secure page with state for complete(); card_ref
+ *               when the card was kept
  */
 function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, $http)
 {
@@ -572,6 +606,17 @@ function pg_payment_stripe_authorize_with($order, $amount, $payment, $settings, 
 
     if ($return_url !== '') {
         $params['return_url'] = $return_url;
+    }
+
+    if (!empty($payment['recurring'])) {
+        $customer = pg_payment_stripe_customer_with($order, $payment, $token, $settings, $http);
+
+        if (!$customer['ok']) {
+            return pg_payment_stripe_refused($order, pg_payment_stripe_visitor_error($customer['code'], $customer['message']), $customer['message'], $customer['code']);
+        }
+
+        $params['customer'] = $customer['id'];
+        $params['setup_future_usage'] = 'off_session';
     }
 
     // A second post of the same token (a double click, a retried request) is
@@ -683,6 +728,7 @@ function pg_payment_stripe_intent_answer($order, $amount, $intent, $settings, $h
         'success'        => true,
         'transaction_id' => $intent_id,
         'amount'         => (int) $amount,
+        'card_ref'       => pg_payment_stripe_intent_card_ref($intent),
     ));
 
     switch ($status) {
@@ -870,6 +916,446 @@ function pg_payment_stripe_cancel_with($order, $transaction_id, $settings, $http
     }
 
     return array('success' => true, 'status' => 'cancelled', 'refund_reference' => $void['reference']);
+}
+
+/* ---------------------------------------------------------------------------
+   Store-run subscriptions
+   --------------------------------------------------------------------------- */
+
+/**
+ * A kept card as one card_ref: Stripe charges it by the Customer and the
+ * payment method together.
+ *
+ * @param string $customer       cus_...
+ * @param string $payment_method pm_... (card_... for a card of the Charges era)
+ * @return string '' when either is not Stripe's id, or the pair would not fit
+ *                pg_payment_answer()'s card_ref
+ */
+function pg_payment_stripe_card_ref($customer, $payment_method)
+{
+    if ((preg_match('/^cus_[A-Za-z0-9]{1,100}$/', (string) $customer) !== 1)
+        || (preg_match('/^(pm|card)_[A-Za-z0-9]{1,100}$/', (string) $payment_method) !== 1)) {
+        return '';
+    }
+
+    $card_ref = $customer . '|' . $payment_method;
+
+    return (strlen($card_ref) <= 150) ? $card_ref : '';
+}
+
+/**
+ * The Customer and the payment method of a card_ref.
+ *
+ * @param mixed $card_ref
+ * @return array|null array(customer, payment method), null when it is not one
+ */
+function pg_payment_stripe_card_ref_parts($card_ref)
+{
+    $parts = explode('|', is_scalar($card_ref) ? (string) $card_ref : '', 2);
+
+    if ((count($parts) !== 2) || (pg_payment_stripe_card_ref($parts[0], $parts[1]) !== (string) $card_ref)) {
+        return null;
+    }
+
+    return $parts;
+}
+
+/**
+ * The card_ref of a PaymentIntent that keeps its card (setup_future_usage
+ * off_session), '' for one that does not.
+ *
+ * @param array $intent payment_method expanded or not
+ * @return string
+ */
+function pg_payment_stripe_intent_card_ref($intent)
+{
+    if (!isset($intent['setup_future_usage']) || ($intent['setup_future_usage'] !== 'off_session')) {
+        return '';
+    }
+
+    $id = function ($value) {
+        if (is_array($value)) {
+            $value = isset($value['id']) ? $value['id'] : '';
+        }
+
+        return is_string($value) ? $value : '';
+    };
+
+    return pg_payment_stripe_card_ref($id(isset($intent['customer']) ? $intent['customer'] : ''), $id(isset($intent['payment_method']) ? $intent['payment_method'] : ''));
+}
+
+/**
+ * Makes the Customer the first payment of a recurring order keeps its card
+ * for. The same token asked again is the same request to Stripe, so a retried
+ * post makes no second Customer.
+ *
+ * @param array    $order
+ * @param array    $payment  customer_id
+ * @param string   $token    the ConfirmationToken's id
+ * @param array    $settings
+ * @param callable $http
+ * @return array ok, id (cus_...), message, code
+ */
+function pg_payment_stripe_customer_with($order, $payment, $token, $settings, $http)
+{
+    $order_id = pg_payment_stripe_order_value($order, 'id');
+    $params = array('metadata' => array('order_id' => $order_id));
+
+    $user_id = (int) (isset($payment['customer_id']) ? $payment['customer_id'] : 0);
+
+    if ($user_id > 0) {
+        $params['metadata']['user_id'] = (string) $user_id;
+    }
+
+    $email = pg_payment_stripe_order_value($order, 'billing_email_address');
+
+    if ($email !== '') {
+        $params['email'] = $email;
+    }
+
+    $name = trim(pg_payment_stripe_order_value($order, 'billing_first_name') . ' ' . pg_payment_stripe_order_value($order, 'billing_last_name'));
+
+    if ($name !== '') {
+        $params['name'] = $name;
+    }
+
+    $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/customers', $params, 'pg-cus-' . sha1($order_id . '|' . $token));
+    $id = (isset($call['body']['id']) && is_string($call['body']['id'])) ? $call['body']['id'] : '';
+
+    if ($call['ok'] && (preg_match('/^cus_[A-Za-z0-9]{1,100}$/', $id) !== 1)) {
+        return array('ok' => false, 'id' => '', 'message' => 'Customer ' . ($id !== '' ? $id : '(none)') . ' cannot be read', 'code' => '');
+    }
+
+    return array('ok' => $call['ok'], 'id' => $id, 'message' => $call['message'], 'code' => $call['code']);
+}
+
+/**
+ * The payment methods kept for a Customer, newest first, as Stripe lists them.
+ *
+ * @param string   $customer
+ * @param array    $settings
+ * @param callable $http
+ * @return array|null ids; null when Stripe did not give the list
+ */
+function pg_payment_stripe_customer_cards_with($customer, $settings, $http)
+{
+    $call = pg_payment_stripe_call($http, $settings, 'GET', '/v1/customers/' . $customer . '/payment_methods', array('limit' => 100));
+
+    if (!$call['ok'] || !isset($call['body']['data']) || !is_array($call['body']['data'])) {
+        return null;
+    }
+
+    $ids = array();
+
+    foreach ($call['body']['data'] as $method) {
+        $id = (isset($method['id']) && is_string($method['id'])) ? $method['id'] : '';
+
+        if (pg_payment_stripe_card_ref($customer, $id) !== '') {
+            $ids[] = $id;
+        }
+    }
+
+    return $ids;
+}
+
+/**
+ * Where the customer comes back to from Stripe's pages: the address the
+ * caller gives, else the site's home page.
+ *
+ * @param array $subscription
+ * @return string
+ */
+function pg_payment_stripe_subscription_return_url($subscription)
+{
+    $return_url = (isset($subscription['return_url']) && is_string($subscription['return_url'])) ? $subscription['return_url'] : '';
+
+    if (($return_url === '') && defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH')) {
+        $return_url = URL_SCHEME . HOSTNAME_SETTING . PATH;
+    }
+
+    return $return_url;
+}
+
+/**
+ * A renewal Stripe did not clearly answer: it may have been charged.
+ *
+ * @param int    $id      the subscription's id
+ * @param string $message Stripe's or the transport's words
+ * @param string $code
+ * @return array
+ */
+function pg_payment_stripe_renewal_unclear($id, $message, $code)
+{
+    $answer = pg_payment_unclear(lang(array(
+        'string' => 'No clear answer came from the payment service ({var:1}). Check the payment on the service\'s own screen before trying again.',
+        'vars'   => array(($message !== '') ? $message : lang('no answer')))),
+        array('message' => $message, 'code' => $code));
+    $answer['log'] = array('Stripe renewal of subscription #' . (int) $id . ' got no clear answer: ' . (($message !== '') ? $message : '(no message)') . (($code !== '') ? ' (' . $code . ')' : '') . '.');
+
+    return $answer;
+}
+
+/**
+ * A renewal Stripe refused.
+ *
+ * @param int    $id
+ * @param string $message
+ * @param string $code
+ * @return array
+ */
+function pg_payment_stripe_renewal_refused($id, $message, $code)
+{
+    return array(
+        'success' => false,
+        'error'   => pg_payment_stripe_visitor_error($code, $message),
+        'log'     => array('Stripe renewal of subscription #' . (int) $id . ' was not accepted: ' . (($message !== '') ? $message : '(no message)') . (($code !== '') ? ' (' . $code . ')' : '') . '.'),
+        'raw'     => array('message' => $message, 'code' => $code),
+    );
+}
+
+/**
+ * Charges one period of a subscription to the kept card, off-session: the
+ * customer is not there. The Customer's newest card is charged, so a card
+ * added on Stripe's page (pg_payment_stripe_update_card_with()) takes over;
+ * it is answered as the new card_ref for the caller to keep, and the card it
+ * replaced is detached once the new one paid.
+ *
+ * A card whose bank asks the holder to confirm (authentication_required) is
+ * confirmed again with a return address: the answer is a redirect to Stripe's
+ * confirmation page, for the customer to open.
+ *
+ * The idempotency key is the subscription, its charge date, its retry count,
+ * the card and the amount: the same attempt asked again (a cron run cut
+ * short) is answered with its first result, the next step of the retry
+ * ladder is a new charge.
+ *
+ * @param array    $subscription pg_subscription_driver_row(), card_ref opened
+ * @param array    $settings     pg_payment_stripe_settings()
+ * @param callable $http
+ * @return array an answer: paid, pending, redirect, a refusal, or unclear
+ */
+function pg_payment_stripe_charge_renewal_with($subscription, $settings, $http)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $card = pg_payment_stripe_card_ref_parts(isset($subscription['card_ref']) ? $subscription['card_ref'] : '');
+    $id = (int) (isset($subscription['id']) ? $subscription['id'] : 0);
+    $amount = (int) (isset($subscription['amount']) ? $subscription['amount'] : 0);
+    $currency = strtolower(trim((string) (isset($subscription['currency']) ? $subscription['currency'] : '')));
+    $currency = ($currency !== '') ? $currency : $settings['currency'];
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    $units = pg_payment_stripe_amount($amount, $currency);
+
+    if (($settings['secret_key'] === '') || ($currency === '') || ($id <= 0) || ($units <= 0)) {
+        return pg_payment_failure(lang('This payment method is not available.'));
+    }
+
+    // The wallet not read leaves the stored card to be charged.
+    $payment_method = $card[1];
+    $cards = pg_payment_stripe_customer_cards_with($card[0], $settings, $http);
+
+    if ($cards === array()) {
+        return pg_payment_failure_logged(lang('The subscription has no stored card.'), array('Stripe renewal of subscription #' . $id . ' was not made: the customer has no card left on Stripe.'));
+    }
+
+    if ($cards !== null) {
+        $payment_method = $cards[0];
+    }
+
+    $params = array(
+        'amount'               => $units,
+        'currency'             => $currency,
+        'customer'             => $card[0],
+        'payment_method'       => $payment_method,
+        'off_session'          => true,
+        'confirm'              => true,
+        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        // Nobody is there to take a held renewal on Stripe's screen.
+        'capture_method'       => 'automatic',
+        // No order_id: the webhook would take the renewal for the first order.
+        'metadata'             => array('subscription_id' => (string) $id),
+        'description'          => 'Subscription #' . $id,
+        'expand'               => array('payment_method'),
+    );
+
+    $key = 'pg-renew-' . sha1($id . '|' . (isset($subscription['next_charge_at']) ? (string) $subscription['next_charge_at'] : '') . '|'
+        . (int) (isset($subscription['retry_count']) ? $subscription['retry_count'] : 0) . '|' . $payment_method . '|' . $units . '|' . $currency);
+    $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_intents', $params, $key);
+
+    if (!$call['ok']) {
+        if (($call['status'] === 0) || ($call['status'] >= 500)) {
+            return pg_payment_stripe_renewal_unclear($id, $call['message'], $call['code']);
+        }
+
+        if ($call['code'] === 'authentication_required') {
+            return pg_payment_stripe_renewal_confirmation($id, $call, $payment_method, $subscription, $settings, $http);
+        }
+
+        return pg_payment_stripe_renewal_refused($id, $call['message'], $call['code']);
+    }
+
+    $intent = $call['body'];
+    $intent_id = (isset($intent['id']) && is_string($intent['id'])) ? $intent['id'] : '';
+    $belongs = (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $intent_id) === 1)
+        && (isset($intent['object']) && ($intent['object'] === 'payment_intent'))
+        && (isset($intent['metadata']['subscription_id']) && ((string) $intent['metadata']['subscription_id'] === (string) $id))
+        && (isset($intent['amount']) && ((int) $intent['amount'] === $units))
+        && (isset($intent['currency']) && (strtolower((string) $intent['currency']) === $currency));
+
+    if (!$belongs) {
+        return pg_payment_stripe_renewal_unclear($id, 'PaymentIntent ' . ($intent_id !== '' ? $intent_id : '(none)') . ' does not match the subscription', '');
+    }
+
+    $status = (isset($intent['status']) && is_string($intent['status'])) ? $intent['status'] : '';
+
+    if (!in_array($status, array('succeeded', 'processing'), true)) {
+        $error = (isset($intent['last_payment_error']) && is_array($intent['last_payment_error'])) ? $intent['last_payment_error'] : array();
+        $code = isset($error['decline_code']) && is_scalar($error['decline_code']) ? (string) $error['decline_code'] : (isset($error['code']) && is_scalar($error['code']) ? (string) $error['code'] : '');
+        $message = (isset($error['message']) && is_scalar($error['message'])) ? (string) $error['message'] : 'PaymentIntent ' . $intent_id . ' is ' . ($status !== '' ? $status : '(no status)');
+
+        return pg_payment_stripe_renewal_refused($id, $message, $code);
+    }
+
+    $answer = array_merge(pg_payment_stripe_card_details($intent), array(
+        'success'        => true,
+        'status'         => ($status === 'succeeded') ? 'paid' : 'pending',
+        'transaction_id' => $intent_id,
+        'amount'         => $amount,
+        'log'            => array('Stripe renewal of subscription #' . $id . ' ' . (($status === 'succeeded') ? 'was paid' : 'is processing') . ' (' . $intent_id . ').'),
+    ));
+
+    if ($payment_method !== $card[1]) {
+        $answer['card_ref'] = pg_payment_stripe_card_ref($card[0], $payment_method);
+
+        // The card it replaced is let go once the new one paid.
+        $detach = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_methods/' . $card[1] . '/detach');
+
+        if (!$detach['ok']) {
+            $answer['log'][] = 'Stripe kept the replaced card of subscription #' . $id . ': ' . (($detach['message'] !== '') ? $detach['message'] : '(no message)') . '.';
+        }
+    }
+
+    return $answer;
+}
+
+/**
+ * A renewal the card holder must confirm: the intent Stripe refused off-session
+ * is confirmed again with a return address, which gives the confirmation page.
+ *
+ * @param int      $id
+ * @param array    $call           pg_payment_stripe_call() of the refused charge
+ * @param string   $payment_method
+ * @param array    $subscription
+ * @param array    $settings
+ * @param callable $http
+ * @return array an answer: redirect, or a refusal
+ */
+function pg_payment_stripe_renewal_confirmation($id, $call, $payment_method, $subscription, $settings, $http)
+{
+    $intent_id = (isset($call['body']['error']['payment_intent']['id']) && is_string($call['body']['error']['payment_intent']['id'])) ? $call['body']['error']['payment_intent']['id'] : '';
+    $return_url = pg_payment_stripe_subscription_return_url($subscription);
+
+    if ((preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $intent_id) !== 1) || ($return_url === '')) {
+        return pg_payment_stripe_renewal_refused($id, $call['message'], 'authentication_required');
+    }
+
+    $confirm = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_intents/' . $intent_id . '/confirm',
+        array('payment_method' => $payment_method, 'return_url' => $return_url), 'pg-renew-confirm-' . sha1($intent_id . '|' . $payment_method));
+    $next = (isset($confirm['body']['next_action']) && is_array($confirm['body']['next_action'])) ? $confirm['body']['next_action'] : array();
+    $url = (isset($next['type'], $next['redirect_to_url']['url']) && ($next['type'] === 'redirect_to_url') && is_string($next['redirect_to_url']['url'])) ? $next['redirect_to_url']['url'] : '';
+
+    if (!$confirm['ok'] || !isset($confirm['body']['status']) || ($confirm['body']['status'] !== 'requires_action') || (preg_match('#^https://[^\s/]+#i', $url) !== 1)) {
+        return pg_payment_stripe_renewal_refused($id, ($confirm['message'] !== '') ? $confirm['message'] : $call['message'], 'authentication_required');
+    }
+
+    return array(
+        'success'        => true,
+        'status'         => 'redirect',
+        'transaction_id' => $intent_id,
+        'redirect_url'   => $url,
+        'log'            => array('Stripe renewal of subscription #' . $id . ' waits for the card holder to confirm it (' . $intent_id . ').'),
+        'raw'            => array('code' => 'authentication_required'),
+    );
+}
+
+/**
+ * Stripe's page where the customer adds a new card: Checkout in setup mode
+ * for the subscription's Customer. The card added there is the Customer's
+ * newest, which the next renewal charges.
+ *
+ * @param array    $subscription pg_subscription_driver_row(); return_url
+ *                               where Stripe sends the customer back
+ * @param array    $settings
+ * @param callable $http
+ * @param int      $now          unix time: one page a day for the same request
+ * @return array an answer: redirect to Stripe's page
+ */
+function pg_payment_stripe_update_card_with($subscription, $settings, $http, $now)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $card = pg_payment_stripe_card_ref_parts(isset($subscription['card_ref']) ? $subscription['card_ref'] : '');
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    $id = (string) (int) (isset($subscription['id']) ? $subscription['id'] : 0);
+    $return_url = pg_payment_stripe_subscription_return_url($subscription);
+
+    $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/checkout/sessions', array(
+        'mode'                 => 'setup',
+        'customer'             => $card[0],
+        'payment_method_types' => $settings['link'] ? array('card', 'link') : array('card'),
+        'success_url'          => $return_url,
+        'cancel_url'           => $return_url,
+        'locale'               => $settings['locale'],
+        'metadata'             => array('subscription_id' => $id),
+        'setup_intent_data'    => array('metadata' => array('subscription_id' => $id)),
+    ), 'pg-setup-' . sha1($id . '|' . $card[0] . '|' . $return_url . '|' . gmdate('Y-m-d', (int) $now)));
+
+    $url = (isset($call['body']['url']) && is_string($call['body']['url'])) ? $call['body']['url'] : '';
+
+    // Asking for a page changes nothing at Stripe: never unclear.
+    if (!$call['ok'] || (preg_match('#^https://[^\s/]+#i', $url) !== 1)) {
+        return pg_payment_failure(($call['message'] !== '') ? $call['message'] : lang('The payment service could not be reached.'), array('message' => $call['message'], 'code' => $call['code']));
+    }
+
+    return array('success' => true, 'status' => 'redirect', 'redirect_url' => $url);
+}
+
+/**
+ * Lets go of the subscription's cards at Stripe: every card of its Customer
+ * is detached (the one a card update added too); the subscription itself ends
+ * store-side.
+ *
+ * @param array    $subscription pg_subscription_driver_row()
+ * @param array    $settings
+ * @param callable $http
+ * @return array an answer: cancelled
+ */
+function pg_payment_stripe_subscription_cancel_with($subscription, $settings, $http)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $card = pg_payment_stripe_card_ref_parts(isset($subscription['card_ref']) ? $subscription['card_ref'] : '');
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    $cards = pg_payment_stripe_customer_cards_with($card[0], $settings, $http);
+
+    foreach (($cards === null) ? array($card[1]) : $cards as $payment_method) {
+        $call = pg_payment_stripe_call($http, $settings, 'POST', '/v1/payment_methods/' . $payment_method . '/detach');
+
+        if (!$call['ok']) {
+            return pg_payment_failure(($call['message'] !== '') ? $call['message'] : lang('The payment service could not be reached.'), array('message' => $call['message'], 'code' => $call['code']));
+        }
+    }
+
+    return array('success' => true, 'status' => 'cancelled');
 }
 
 /* ---------------------------------------------------------------------------

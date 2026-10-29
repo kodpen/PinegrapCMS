@@ -1345,6 +1345,27 @@ function pg_payment_hosted_card_driver($gateway = null)
 }
 
 /**
+ * Whether an order has a recurring line with a price, as submit_order.php
+ * decides it before the payment: the card is then kept for the renewals, and
+ * the hosted card fields must be built saying so.
+ *
+ * @param int $order_id
+ * @return bool
+ */
+function pg_payment_order_recurring($order_id)
+{
+    if ((int) $order_id <= 0) {
+        return false;
+    }
+
+    return (bool) db_value("SELECT 1
+        FROM order_items
+        LEFT JOIN products ON order_items.product_id = products.id
+        WHERE (order_items.order_id = '" . e((int) $order_id) . "') AND (products.recurring = '1') AND (order_items.price > 0)" . pg_order_item_active_sql() . "
+        LIMIT 1");
+}
+
+/**
  * The sources the site's built-in Content-Security-Policy adds for the
  * payment drivers whose pages load from their service: the card gateway's
  * driver while the store takes cards, and each redirect driver that frames
