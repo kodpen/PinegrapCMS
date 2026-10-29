@@ -95,9 +95,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
     return '
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($form['is_new'] ? lang('New Product Group Information') : lang('Product Group Information')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-4 my-3">
@@ -116,9 +116,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Catalog Page Display Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         ' . $form['parent_row'] . '
@@ -170,9 +170,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Image Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-5">
@@ -205,9 +205,9 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('SEO') . $form['seo_badge'] . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-1 mb-3">
@@ -251,7 +251,7 @@ function pg_product_group_form_products_card($form)
     return '
                         <div class="col-12">
                             <div class="card my-7' . $form['card_class'] . '">
-                                <div class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . $form['title'] . '</div>
+                                <h2 class="card-header bg-reset text-uppercase fg-primary h5 fw-bold">' . $form['title'] . '</h2>
                                 <div class="card-body p-0 position-relative">
                                     <table id="' . $form['table_id'] . '" class="chart table-hover table datatable-restricted-mode" style="width:100%;display:none">
                                         <thead>

@@ -107,9 +107,9 @@ function pg_folder_form_markup($values)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($values['edit'] ? lang('Folder Information') : lang('New Folder Information')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-8 my-3">
@@ -137,9 +137,9 @@ function pg_folder_form_markup($values)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Content Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">' . $parent_row . '
                                         <div class="col-12 md:col-6 lg:col-auto my-3">

@@ -32,9 +32,9 @@ function pg_email_campaign_card($title, $body)
     return
         '<div class="col-12">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . $title . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
                         ' . $body . '
