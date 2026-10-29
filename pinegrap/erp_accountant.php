@@ -256,6 +256,7 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                                 <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h($link_url) . '" readonly aria-label="' . h(lang('Link')) . '" />
                                 <button type="button" class="btn btn-outline theme-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                             </div>
+                            <span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="' . h(lang('Copied')) . '"></span>
                             <div class="form-text">' . h(lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.')) . '</div>
                             ' . (($output_link_download !== '') ? '<div class="mt-3">' . $output_link_download . '</div>' : '') . '
                         </div>
@@ -268,13 +269,20 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                 var modal = document.getElementById("erp_accountant_link_modal");
                 var button = document.getElementById("erp_accountant_link_copy");
                 var input = document.getElementById("erp_accountant_link");
-                if (!modal || !button || !input) { return; }
+                var status = document.getElementById("erp_accountant_link_status");
+                if (!modal || !button || !input || !status) { return; }
                 input.addEventListener("focus", function () { input.select(); });
                 button.addEventListener("click", function () {
+                    // Only the icon changes, so the focused button keeps its
+                    // name; the live region says the copy happened.
                     var done = function () {
-                        var original = button.innerHTML;
-                        button.innerHTML = "<i class=\"bi bi-check-lg\" aria-hidden=\"true\"></i>";
-                        setTimeout(function () { button.innerHTML = original; }, 1500);
+                        var icon = button.querySelector("i");
+                        icon.className = "bi bi-check-lg me-1";
+                        status.textContent = status.getAttribute("data-copied");
+                        setTimeout(function () {
+                            icon.className = "bi bi-clipboard me-1";
+                            status.textContent = "";
+                        }, 1500);
                     };
                     if (navigator.clipboard && window.isSecureContext) {
                         navigator.clipboard.writeText(input.value).then(done);

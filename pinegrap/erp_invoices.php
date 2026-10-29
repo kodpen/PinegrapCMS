@@ -315,8 +315,11 @@ foreach ($invoices as $invoice) {
             if ($days > 0) {
                 // Reminders put off: the bell is crossed out until the date.
                 $snoozed_until = (int) ($invoice['overdue_snoozed_until'] ?? 0);
-                $output_snoozed = ($snoozed_until > $now)
-                    ? ' <i class="bi bi-bell-slash fg-secondary" title="' . h(lang(array('string' => 'Reminders put off until {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d', $snoozed_until), 'date')))) . '"></i>'
+                $snoozed_text = ($snoozed_until > $now)
+                    ? lang(array('string' => 'Reminders put off until {var:1}', 'vars' => prepare_form_data_for_output(date('Y-m-d', $snoozed_until), 'date')))
+                    : '';
+                $output_snoozed = ($snoozed_text !== '')
+                    ? ' <i class="bi bi-bell-slash fg-secondary" aria-hidden="true" title="' . h($snoozed_text) . '"></i><span class="visually-hidden">' . h($snoozed_text) . '</span>'
                     : '';
                 $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
             } elseif ($days === 0) {

@@ -395,6 +395,10 @@ $can_cancel = $can_cancel && ($cancel_locked === '');
 // there at all: an e-Invoice that has gone is answered with a return.
 $provider_cancellable = $can_cancel ? erp_edoc_invoice_cancellable($invoice) : array('ok' => true, 'manual' => false, 'reason' => '', 'url' => '');
 $can_cancel = $can_cancel && !empty($provider_cancellable['ok']);
+
+// The reason is printed under the buttons: a title on a disabled button is a
+// hover popover that keyboard and touch users never see.
+$cancel_note = ($cancel_locked !== '') ? $cancel_locked : ($can_cancel ? (string) $provider_cancellable['reason'] : '');
 $can_return = (!$is_cancelled && !$is_return && ($invoice['doc_type'] === 'invoice'));
 
 $status_labels = array(
@@ -1513,21 +1517,22 @@ pg_page_shell([
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 <input type="hidden" name="erp_action" value="cancel" />
-                <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
+                <nav class="buttons navigation text-center position-sticky ' . (($cancel_note !== '') ? 'mb-3' : 'mb-7') . '" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
                             ' . ($can_return
                                 ? '<a class="btn my-1 btn-outline theme-warning" href="add_erp_return.php?invoice_id=' . $invoice_id . '"><i class="bi bi-arrow-return-left me-3" aria-hidden="true"></i>' . lang('Return an Invoice') . '</a>'
                                 : '') . '
                             ' . ($can_cancel
-                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger"' . (((string) $provider_cancellable['reason'] !== '') ? ' title="' . h((string) $provider_cancellable['reason']) . '"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
+                                ? '<button type="submit" name="submit_cancel" value="Cancel" class="btn my-1 btn-outline theme-danger"' . (($cancel_note !== '') ? ' aria-describedby="erp_cancel_note"' : '') . '><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . (!empty($provider_cancellable['manual']) ? lang('Cancelled there: cancel it here too') : lang('Cancel the Document')) . '</span></button>'
                                 : '') . '
                             ' . (($cancel_locked !== '')
-                                ? '<span class="d-inline-block my-1" tabindex="0" title="' . h($cancel_locked) . '"><button type="button" class="btn btn-outline theme-danger" disabled><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button></span>'
+                                ? '<button type="button" class="btn my-1 btn-outline theme-danger" disabled aria-describedby="erp_cancel_note"><i class="bi bi-x-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang('Cancel the Document') . '</span></button>'
                                 : '') . '
                         </div>
                     </div>
                 </nav>
+                ' . (($cancel_note !== '') ? '<p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_cancel_note">' . h($cancel_note) . '</p>' : '') . '
             </form>'
                 : '') . '
 
