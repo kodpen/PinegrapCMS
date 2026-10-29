@@ -11,6 +11,7 @@ description: Where a panel screen's help goes: get_help_url.php maps script name
 ## What does a new screen need?
 - A row in the table: its script name -> `page#anchor` (the anchor from the page's table of contents).
 - A screen whose subject depends on more than its script name passes `'help' => 'page#anchor'` to `output_header()` / `pg_page_shell()`. A topic that is not `[a-z0-9_-]+(#[a-z0-9_-]+)?` falls back to `introduction`.
+- `tests/help_url_test.php` guards it: every root `*.php` that calls `pg_page_shell(` or `output_header(` needs a table row, a literal `'help' => 'page#anchor'` argument, or an entry with a reason in the test's short exempt list (popup, redirect-only, private screen). A row whose anchor pinegrap.com does not have yet is fine: the owner writes the section (the PR body proposes it), the link lands on the page top until then.
 - The header's help button (`#help_button`), the account menu's Help row (`#help_link`) and F1 (`backend.src.js`, opens a new tab) use that one address; never write a help link of your own. While the settings dialog is open, F1 opens the help of the category on view (`#pg_settings_modal_help`).
 
 Related: docs/memory/ui/account-menu.md, docs/memory/ui/admin-screen-toolbar.md
