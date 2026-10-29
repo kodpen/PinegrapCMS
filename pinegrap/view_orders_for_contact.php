@@ -135,7 +135,7 @@ while ($row = mysqli_fetch_assoc($result)) {
     '<tr class="unselectable ">
         
         <td class="align-middle text-start action-buttons">
-            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
+            <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('View Order')) . '" aria-label="' . h(lang('View Order')) . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-eye" aria-hidden="true"></i></button>
             <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
         </td>
         <td>' . h($row['order_number'] ?? '') . '</td>
