@@ -364,6 +364,14 @@
 .sd-category-header .bi { font-size:.5rem; margin-right:.45rem; transition:transform .2s; }
 .sd-category.collapsed .sd-category-header .bi { transform:rotate(-90deg); }
 .sd-category.collapsed .sd-category-items { display:none; }
+/* The header's title is a real button, drawn as the header's text. */
+.sd-category-toggle {
+    display:flex; align-items:center; flex:1; min-width:0;
+    margin:0; padding:0; border:0; background:none; cursor:pointer;
+    font:inherit; color:inherit; text-transform:inherit; letter-spacing:inherit; text-align:start;
+}
+.sd-category-toggle:focus-visible,
+.sd-drag-item:focus-visible { outline:2px solid var(--sd-accent, #58a6ff); outline-offset:-2px; }
 .sd-category-items { padding:.1rem .35rem .35rem; }
 
 .sd-drag-item {
@@ -397,6 +405,8 @@
     color:var(--sd-text-muted); padding:0; line-height:1; flex-shrink:0;
 }
 .sd-search-clear:hover { color:var(--sd-danger); }
+.sd-search-clear:focus-visible,
+.sd-recent-clear-btn:focus-visible { outline:2px solid var(--sd-accent, #58a6ff); outline-offset:1px; border-radius:2px; }
 
 /* ── Bottom Panel (Tree + Attributes) ── */
 .sd-panel-bottom {

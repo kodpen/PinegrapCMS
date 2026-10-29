@@ -22633,6 +22633,8 @@ const StyleDesigner = (function () {
         // panel: clickable section header (collapses everything) on top,
         // full-width tabs row below, content below that. The tree-collapse-
         // all button moves into the search row so the tab strip stays clean.
+        _sdWirePaletteKeys(panel);
+
         panel.innerHTML =
             '<div class="sd-comp-section" id="sd-comp-outer"></div>' +
             '<div class="sd-left-vsep" id="sd-left-vsep"></div>' +
@@ -22733,16 +22735,16 @@ const StyleDesigner = (function () {
             '<div id="sd-tab-components" class="sd-tab-pane">' +
                 '<div class="sd-search-box">' +
                     '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" style="display:none"></button>' +
+                    '<input type="text" id="sd-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search components')) + '" autocomplete="off">' +
+                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
                 '</div>' +
                 '<div id="sd-comp-list" class="sd-comp-items-scroll"></div>' +
             '</div>' +
             '<div id="sd-tab-blocks" style="display:none" class="sd-tab-pane">' +
                 '<div class="sd-search-box">' +
                     '<span class="bi bi-search"></span>' +
-                    '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" autocomplete="off">' +
-                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" style="display:none"></button>' +
+                    '<input type="text" id="sd-blocks-search" placeholder="' + esc(_sdT('Search...')) + '" aria-label="' + esc(_sdT('Search blocks')) + '" autocomplete="off">' +
+                    '<button type="button" class="sd-search-clear bi bi-x" id="sd-blocks-search-clear" aria-label="' + esc(_sdT('Clear search')) + '" style="display:none"></button>' +
                 '</div>' +
                 '<div id="sd-blocks-list" class="sd-comp-items-scroll"></div>' +
             '</div>' +
@@ -23183,20 +23185,32 @@ const StyleDesigner = (function () {
             if (rest.length) {
                 var open = !!_paletteShowAll[kind];
                 html += '<div class="sd-category-header sd-pal-group-toggle" data-pal-kind="' + kind + '" style="margin-top:6px;cursor:pointer" title="' + esc(_sdT('Shared components used elsewhere on the site')) + '">' +
+                            '<button type="button" class="sd-category-toggle" aria-expanded="' + (open ? 'true' : 'false') + '" aria-controls="' + listId + '-all">' +
                             '<span class="bi ' + (open ? 'bi-chevron-down' : 'bi-chevron-right') + ' me-1"></span>' + esc(_sdT('Site-wide')) + ' <span class="sd-shared-tab-count">' + rest.length + '</span>' +
                             '<span class="sd-pal-group-showall">' + esc(open ? _sdT('Hide') : _sdT('Show all')) + '</span>' +
+                            '</button>' +
                         '</div>' +
                         '<div class="sd-category-items" id="' + listId + '-all"' + (open ? '' : ' style="display:none"') + '>' + body(rest) + '</div>';
             }
             return html;
         }
+        // The list is drawn again when the group folds, so a toggle that
+        // had focus hands it to its redrawn twin (the shared list redraws
+        // after a request, hence the flag rather than a focus call here).
+        var _paletteToggleFocus = null;
         function _bindPaletteGroupToggles(listEl, reload) {
             listEl.querySelectorAll('.sd-pal-group-toggle').forEach(function (h) {
                 h.addEventListener('click', function () {
                     var k = this.dataset.palKind;
                     _paletteShowAll[k] = !_paletteShowAll[k];
+                    _paletteToggleFocus = this.contains(document.activeElement) ? k : null;
                     reload();
                 });
+                if (_paletteToggleFocus && _paletteToggleFocus === h.dataset.palKind) {
+                    _paletteToggleFocus = null;
+                    var btn = h.querySelector('.sd-category-toggle');
+                    if (btn) btn.focus();
+                }
             });
         }
 
@@ -23257,7 +23271,7 @@ const StyleDesigner = (function () {
                         var _cnt = _usage.length;
                         var _titleText = _sharedUsageTip(_usage);
                         var _badgeCls = _cnt ? 'sd-shared-usage-badge' : 'sd-shared-usage-badge sd-shared-usage-unused';
-                        html += '<div class="sd-drag-item sd-shared-drag-item" draggable="true"' +
+                        html += '<div class="sd-drag-item sd-shared-drag-item" draggable="true" tabindex="0" role="button"' +
                             ' data-type="shared_ref" data-search="' + esc(item.name || '').toLowerCase() + '"' +
                             ' data-label="' + esc(item.name || '') + '" data-icon="bi-puzzle-fill"' +
                             ' data-sid="' + _sid + '"' +
@@ -23450,7 +23464,7 @@ const StyleDesigner = (function () {
             // at the end is the old way in: an empty widget whose kind is
             // picked in the panel.
             var newItems = SW_TYPES.map(function (t) {
-                return '<div class="sd-drag-item sd-system-drag-item sd-system-new-item" draggable="true"' +
+                return '<div class="sd-drag-item sd-system-drag-item sd-system-new-item" draggable="true" tabindex="0" role="button"' +
                        ' data-label="' + esc(t.label) + '" data-region-type="' + esc(t.type) + '"' +
                        ' data-search="' + esc(t.label.toLowerCase()) + '"' +
                        ' title="' + esc(_sdT('{var} — added to this page with its ready-made layout.', t.label)) + '">' +
@@ -23458,7 +23472,7 @@ const StyleDesigner = (function () {
                        '<span class="sd-drag-label">' + esc(t.label) + '</span>' +
                        '</div>';
             }).join('') +
-                '<div class="sd-drag-item sd-system-drag-item sd-system-new-item" draggable="true"' +
+                '<div class="sd-drag-item sd-system-drag-item sd-system-new-item" draggable="true" tabindex="0" role="button"' +
                 ' data-label="' + esc(_sdT('Empty System Widget')) + '" data-region-type=""' +
                 ' title="' + esc(_sdT('An empty data-binding area; the content type is chosen in the right-hand panel.')) + '">' +
                 '<span class="sd-drag-icon bi bi-cpu" style="color:#6366f1;opacity:.7"></span>' +
@@ -23496,7 +23510,7 @@ const StyleDesigner = (function () {
                     // clicking it doesn't trigger drag-select; right-click on the card opens
                     // a full context menu (rename + delete) for power users.
                     html +=
-                        '<div class="sd-drag-item sd-system-drag-item sd-system-existing-item" draggable="true"' +
+                        '<div class="sd-drag-item sd-system-drag-item sd-system-existing-item" draggable="true" tabindex="0" role="button"' +
                         ' data-sid="' + sid + '"' +
                         ' data-label="' + esc(name) + '" title="' + esc(tip) + '"' +
                         " data-extra='" + extraStr + "'>" +
@@ -23811,10 +23825,11 @@ const StyleDesigner = (function () {
 
             rows.forEach(function (el) {
                 el.setAttribute('draggable', 'false');
+                // The box is the one tab stop of a row in select mode.
+                el.setAttribute('tabindex', '-1');
                 var box = document.createElement('input');
                 box.type = 'checkbox';
-                box.className = 'form-check-input sd-bulk-check';
-                box.tabIndex = -1;
+                box.className = 'check sd-bulk-check';
                 box.checked = !!sel[el.dataset.sid];
                 box.setAttribute('aria-label', el.dataset.label || '');
                 el.insertBefore(box, el.firstChild);
@@ -23881,7 +23896,10 @@ const StyleDesigner = (function () {
                     if (!listEl.classList.contains('sd-bulk-on') || e.target.closest('.sd-bulk-bar')) return;
                     var row = e.target.closest(_bulkRowSelector(kind));
                     if (!row || !listEl.contains(row)) return;
-                    e.preventDefault();
+                    // A click on the box itself keeps its default: a
+                    // cancelled click puts the box back after pick() has
+                    // set it, so it showed the opposite of the selection.
+                    if (!(e.type === 'click' && e.target.classList.contains('sd-bulk-check'))) e.preventDefault();
                     e.stopPropagation();
                     if (e.type === 'click' && listEl._sdBulkPick) listEl._sdBulkPick(row);
                 };
@@ -73308,6 +73326,22 @@ const StyleDesigner = (function () {
             if (item) _sdPalTip.mute = item;
             _sdPalTipHide();
         };
+        // A row reached with Tab shows its card too, after the same pause.
+        root.addEventListener('focusin', function (e) {
+            var item = e.target;
+            if (!item || !item.classList || !item.classList.contains('sd-drag-item')) return;
+            if (item === _sdPalTip.item || item === _sdPalTip.mute) return;
+            clearTimeout(_sdPalTip.timer);
+            _sdPalTip.item = item;
+            _sdPalTip.timer = setTimeout(function () {
+                if (_sdPalTip.item === item && document.activeElement === item) _sdPalTipShow(item);
+            }, 450);
+        });
+        root.addEventListener('focusout', function (e) {
+            var item = e.target;
+            if (!item || !item.classList || !item.classList.contains('sd-drag-item')) return;
+            if (_sdPalTip.item === item) _sdPalTipHide();
+        });
         root.addEventListener('mousedown', quiet, true);
         root.addEventListener('dragstart', quiet, true);
         root.addEventListener('scroll', _sdPalTipHide, true);
@@ -73319,7 +73353,7 @@ const StyleDesigner = (function () {
     // markup and the wiring so a fix to one is a fix to all.
 
     function _sdPaletteItemHTML(it, extraClass) {
-        return '<div class="sd-drag-item' + (extraClass ? ' ' + extraClass : '') + '" draggable="true"' +
+        return '<div class="sd-drag-item' + (extraClass ? ' ' + extraClass : '') + '" draggable="true" tabindex="0" role="button"' +
             ' data-type="' + it.type + '" data-search="' + _sdPalSearchText(it) + '"' +
             ' data-label="' + (it.label || '').replace(/"/g, '&quot;') + '" data-icon="' + (it.icon || '') + '"' +
             (it.extra && Object.keys(it.extra).length ? " data-extra='" + JSON.stringify(it.extra).replace(/'/g, '&#39;') + "'" : '') + '>' +
@@ -73332,8 +73366,8 @@ const StyleDesigner = (function () {
         cats.forEach(function (cat) {
             var items = '';
             cat.items.forEach(function (it) { items += _sdPaletteItemHTML(it); });
-            html += '<div class="sd-category"><div class="sd-category-header"><span class="bi bi-chevron-down"></span>' + cat.title +
-                '</div><div class="sd-category-items">' + items + '</div></div>';
+            html += '<div class="sd-category"><div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true"><span class="bi bi-chevron-down"></span>' + cat.title +
+                '</button></div><div class="sd-category-items">' + items + '</div></div>';
         });
         return html + '<div style="height:24px"></div>';
     }
@@ -73399,7 +73433,44 @@ const StyleDesigner = (function () {
 
         root.querySelectorAll('.sd-category-header:not([data-sd-wired])').forEach(function (el) {
             el.setAttribute('data-sd-wired', '1');
-            el.addEventListener('click', function () { this.closest('.sd-category').classList.toggle('collapsed'); });
+            el.addEventListener('click', function () {
+                var cat = this.closest('.sd-category');
+                cat.classList.toggle('collapsed');
+                _sdPalSyncExpanded(cat);
+            });
+        });
+    }
+
+    // A folding header's toggle tells a screen reader whether its rows show.
+    function _sdPalSyncExpanded(cat) {
+        var btn = cat && cat.querySelector('.sd-category-header > .sd-category-toggle');
+        if (btn) btn.setAttribute('aria-expanded', cat.classList.contains('collapsed') ? 'false' : 'true');
+    }
+
+    // Enter or Space on a focused palette row does what a double-click
+    // does: the row's own dblclick handler runs, with its insert spot and
+    // view-mode checks. A row in select mode (Shared, System) is picked
+    // with a click instead, the select-mode guard's own path. The keys a
+    // row answers, and Delete, Backspace and N, stop here, so a focused
+    // row never reaches the canvas shortcuts (delete the selection, leave
+    // a note).
+    function _sdWirePaletteKeys(panel) {
+        if (!panel || panel._sdPalKeysWired) return;
+        panel._sdPalKeysWired = true;
+        panel.addEventListener('keydown', function (e) {
+            var row = e.target;
+            if (!row || !row.classList || !row.classList.contains('sd-drag-item')) return;
+            if (e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                e.stopPropagation();
+                _sdPalTipHide();
+                var bulk = row.closest('.sd-bulk-on');
+                row.dispatchEvent(new MouseEvent(bulk ? 'click' : 'dblclick', { bubbles: true, cancelable: true }));
+                return;
+            }
+            if (e.key === 'Escape') { _sdPalTipHide(); return; }
+            if (e.key === 'Delete' || e.key === 'Backspace' || String(e.key).toLowerCase() === 'n') e.stopPropagation();
         });
     }
 
@@ -73429,6 +73500,7 @@ const StyleDesigner = (function () {
                 if (q) {
                     cat.style.display = hasVisible ? '' : 'none';
                     cat.classList.remove('collapsed');
+                    _sdPalSyncExpanded(cat);
                 } else {
                     cat.style.display = '';
                 }
@@ -73463,8 +73535,8 @@ const StyleDesigner = (function () {
         var items = '';
         recent.forEach(function (it) { items += _sdPaletteItemHTML(it, 'sd-recent-item'); });
 
-        sec.innerHTML = '<div class="sd-category-header"><span class="bi bi-chevron-down"></span>' + esc(_sdT('Recently Used')) + '' +
-            '<button type="button" class="sd-recent-clear-btn" title="' + esc(_sdT('Clear')) + '"><span class="bi bi-x-circle"></span></button>' +
+        sec.innerHTML = '<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true"><span class="bi bi-chevron-down"></span>' + esc(_sdT('Recently Used')) + '</button>' +
+            '<button type="button" class="sd-recent-clear-btn" title="' + esc(_sdT('Clear')) + '" aria-label="' + esc(_sdT('Clear')) + '"><span class="bi bi-x-circle" aria-hidden="true"></span></button>' +
             '</div><div class="sd-category-items">' + items + '</div>';
 
         sec.querySelector('.sd-recent-clear-btn').addEventListener('click', function(e) {

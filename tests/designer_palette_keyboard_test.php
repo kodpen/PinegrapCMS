@@ -54,8 +54,7 @@ function test_designer_palette_keyboard_enter_space_insert()
 
 	pg_assert_true($fn !== '', '_sdWirePaletteKeys exists');
 	pg_assert_contains("e.key === 'Enter' || e.key === ' '", $fn, 'Enter and Space');
-	pg_assert_contains("new MouseEvent('dblclick'", $fn, 'the row\'s own double-click insert runs');
-	pg_assert_contains("new MouseEvent('click'", $fn, 'select mode picks the row');
+	pg_assert_contains("new MouseEvent(bulk ? 'click' : 'dblclick'", $fn, 'the row\'s own double-click insert runs, a click in select mode');
 	pg_assert_contains('e.stopPropagation()', $fn, 'a focused row keeps Delete and N away from the canvas shortcuts');
 	pg_assert_contains("_sdWirePaletteKeys(panel)", $source, 'wired on the left panel');
 }
