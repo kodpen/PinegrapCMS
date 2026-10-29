@@ -46,6 +46,29 @@
  *                                               own (webhook, server callback); the
  *                                               driver checks its signature
  *
+ * A driver that declares 'recurring' gives its mode with it
+ * ('recurring' => 'store' or 'psp', pg_payment_recurring_mode()). In store
+ * mode the store keeps the subscription and runs the renewals from its cron;
+ * the first payment registers the card and answers its token as card_ref.
+ * The store-mode operations take the subscriptions row with card_ref opened
+ * (pg_subscription_driver_row(), includes/fn/subscriptions.php):
+ *
+ *   pg_payment_<key>_charge_renewal($subscription)
+ *                                               charge the stored card off-session
+ *                                               for one period (amount, currency
+ *                                               from the row); a charge the card
+ *                                               holder must confirm answers redirect
+ *                                               with the confirmation address
+ *   pg_payment_<key>_update_card($subscription) the service's hosted page where the
+ *                                               customer replaces the stored card
+ *   pg_payment_<key>_subscription_cancel($subscription)
+ *                                               forget the stored card at the
+ *                                               service; the subscription itself
+ *                                               ends store-side
+ *
+ * A driver that does not define one of them does not support it:
+ * pg_payment_call() answers a failure, as for any operation.
+ *
  * $order is the orders row (SELECT *), $amount whole hundredths of the order's
  * currency as everywhere in the store: the driver converts to the service's
  * units (pg_payment_decimal()). A driver never reads $_POST, $_GET, the
@@ -73,6 +96,9 @@
  *   card_last4        string  the card's last four digits, '' when not given
  *   card_exp_month    string  the card's expiry month (1-12), '' when not given
  *   card_exp_year     string  the card's expiry year (four digits), ''
+ *   card_ref          string  the service's token of the card it stored for
+ *                             renewals, '' when none; at most 150 characters,
+ *                             so its sealed form fits subscriptions.card_ref
  *   refund_reference  string  the service's id of a refund
  *   order_reference   string  notify(): which order the message is about: its
  *                             id, or the payment id the order keeps as its
@@ -122,6 +148,11 @@ function pg_payment_operations()
         'refund'    => 3,
         'cancel'    => 2,
         'notify'    => 2,
+
+        // Store-run subscriptions (recurring mode 'store').
+        'charge_renewal'      => 1,
+        'update_card'         => 1,
+        'subscription_cancel' => 1,
     );
 }
 
@@ -137,7 +168,8 @@ function pg_payment_capability_names()
     return array(
         'installments',   // the visitor picks a number of instalments
         'wallets',        // Apple Pay, Google Pay or a similar wallet
-        'recurring',      // a recurring payment plan is charged through it
+        'recurring',      // a recurring payment plan is charged through it;
+                          // declared with its mode: 'recurring' => 'store'
         'saved_cards',    // a customer's card is kept as the service's token
         'partial_refund', // refund() takes less than the whole payment
         'threeds',        // 3-D Secure; complete() finishes the payment
@@ -181,6 +213,15 @@ function pg_payment_operation_statuses($operation)
 
         case 'capture':
             return array('paid');
+
+        case 'charge_renewal':
+            return array('paid', 'pending', 'redirect');
+
+        case 'update_card':
+            return array('redirect');
+
+        case 'subscription_cancel':
+            return array('cancelled');
 
         case 'refund':
             return array('refunded', 'pending');
@@ -226,7 +267,9 @@ function pg_payment_function_name($key, $operation)
 
 /**
  * A driver's declared capabilities, reduced to the known names, each once,
- * in the order pg_payment_capability_names() lists them.
+ * in the order pg_payment_capability_names() lists them. 'recurring' counts
+ * only with a mode ('recurring' => 'store'): a bare 'recurring' says nothing
+ * about who runs the renewals, so it is not offered.
  *
  * @param mixed $declared what pg_payment_<key>_capabilities() returned
  * @return array
@@ -237,9 +280,75 @@ function pg_payment_capabilities_normalize($declared)
         return array();
     }
 
-    $declared = array_filter($declared, 'is_string');
+    $names = array();
 
-    return array_values(array_intersect(pg_payment_capability_names(), $declared));
+    foreach ($declared as $index => $name) {
+        if (is_int($index) && is_string($name) && ($name !== 'recurring')) {
+            $names[] = $name;
+        }
+    }
+
+    if (pg_payment_recurring_mode_declared($declared) !== '') {
+        $names[] = 'recurring';
+    }
+
+    return array_values(array_intersect(pg_payment_capability_names(), $names));
+}
+
+/**
+ * Who runs the renewals of a recurring payment plan.
+ *
+ *   store  the store keeps the subscription, charges the stored card from
+ *          its cron (charge_renewal()) and retries on its own ladder
+ *   psp    the service keeps the subscription and charges it; the store
+ *          mirrors what notify() reports
+ *
+ * @return array
+ */
+function pg_payment_recurring_modes()
+{
+    return array('store', 'psp');
+}
+
+/**
+ * The recurring mode a capabilities() list declares: 'recurring' => 'store',
+ * or 'recurring' => array('mode' => 'store').
+ *
+ * @param mixed $declared what pg_payment_<key>_capabilities() returned
+ * @return string a pg_payment_recurring_modes() value, '' when none
+ */
+function pg_payment_recurring_mode_declared($declared)
+{
+    if (!is_array($declared) || !array_key_exists('recurring', $declared)) {
+        return '';
+    }
+
+    $mode = $declared['recurring'];
+
+    if (is_array($mode)) {
+        $mode = isset($mode['mode']) ? $mode['mode'] : '';
+    }
+
+    return (is_string($mode) && in_array($mode, pg_payment_recurring_modes(), true)) ? $mode : '';
+}
+
+/**
+ * A driver's recurring mode.
+ *
+ * @param string $key
+ * @return string 'store', 'psp', or '' when it declares no recurring plan
+ */
+function pg_payment_recurring_mode($key)
+{
+    if (!pg_payment_load($key)) {
+        return '';
+    }
+
+    try {
+        return pg_payment_recurring_mode_declared(call_user_func(pg_payment_function_name($key, 'capabilities')));
+    } catch (\Throwable $exception) {
+        return '';
+    }
 }
 
 /**
@@ -350,6 +459,7 @@ function pg_payment_answer($operation, $answer)
         'card_last4'       => '',
         'card_exp_month'   => '',
         'card_exp_year'    => '',
+        'card_ref'         => '',
         'redirect_url'     => '',
         'html'             => '',
         'client'           => array(),
@@ -391,6 +501,15 @@ function pg_payment_answer($operation, $answer)
     foreach ($card_patterns as $card_key => $card_pattern) {
         if (isset($answer[$card_key]) && is_scalar($answer[$card_key]) && (preg_match($card_pattern, trim((string) $answer[$card_key])) === 1)) {
             $shape[$card_key] = trim((string) $answer[$card_key]);
+        }
+    }
+
+    // A stored card's token, only when its sealed form fits the column.
+    if (isset($answer['card_ref']) && is_scalar($answer['card_ref'])) {
+        $card_ref = trim((string) $answer['card_ref']);
+
+        if ((strlen($card_ref) <= 150) && (preg_match('/^[\x21-\x7E]+$/', $card_ref) === 1)) {
+            $shape['card_ref'] = $card_ref;
         }
     }
 

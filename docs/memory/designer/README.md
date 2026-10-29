@@ -324,6 +324,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-default-parts.md: W16 placed beats pushed: the one placement rule (pg_sw_placed()), default parts drawing old HTML tokens with design elements, tail and lead parts, slices left
 - widget-designability-decisions-2.md: Owner's 2026-10-27 widget designability answers: OR conditions, hide-if-empty, words beside a value, converter (W22), page facts, placement settings, form parts, express lists, W12, W19.
 - widget-designability-decisions.md: The owner's 2026-10-26 answers for widget designability: W16 old blocks equal in look and behaviour (not bytes), W5 gallery sources, W8 entity fields (who sees what, secrets, yes/no, words).
+- widget-designability.md: Legacy-layout power in system widgets (W1-W26, done): the finish pass, its rules, the owner's decisions, and the topic file of each piece
 - widget-edit-chip-coverage.md: Which system widget records carry the front-end edit pencil (products, groups, form records, calendar events), the calendar rule, and which renders and widget kinds draw none.
 - widget-entity-fields-account.md: W8 account values (the member's own): which widgets offer them, the __member_ names, gates (reward and affiliate programs), country and time zone words, when they are read.
 - widget-entity-fields-address.md: W8 address values: the order's recipients (ship_to, order view, receipt e-mail, recipient list) and the address book's saved recipients; tokens, words, dates, row tokens of the order lists.
@@ -351,6 +352,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-parts-anywhere.md: W17 parts anywhere (#3074, #3085, #3111): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-parts-palette.md: W20a parts palette: a Components group following the selection with a widget's parts and values, row items kept in their loop, the detail widget's placed outside it as parts
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
-- widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the binding test, kinds left
+- widget-starters-detail.md: W20b-2 whole-layout starters of the detail widgets (#3234): the starterKeep markers that put the Default tree's parts in place, what each kind keeps, one main loop
+- widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the kinds, the binding test
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

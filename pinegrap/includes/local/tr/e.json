@@ -1045,6 +1045,7 @@
     "Exchange Rate": "Döviz Kuru",
     "Exchange Rate ({var:1})": "Kur ({var:1})",
     "Exchange Rate Date": "Kur Tarihi",
+    "Exchange Rate Note": "Kur Notu",
     "Exchange Rates Jobs": "Döviz Kuru Görevleri",
     "Exchange difference on {var:1}": "{var:1} kur farkı",
     "Exchange rate": "Kur",
