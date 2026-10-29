@@ -1267,10 +1267,10 @@ if (!$_POST) {
                 $output_image = '';
                 // if a product was found, include link to product
                 if ($product_id) {
-                    $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</span>';
+                    $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<img  class="rounded-9 card-img cursor-pointer pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" onclick="document.location.href = \'edit_product.php?id=' . (int) $product_id . '\'"/>';
+                        $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                     } 
                 
                 // else a product was not found, so do not include a link to product   
@@ -1278,7 +1278,7 @@ if (!$_POST) {
                     $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                     // if a product image_name found, output
                     if ($image_name) {
-                        $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . $image_name . '"/>';
+                        $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
                     } 
                 }
                 
@@ -1743,10 +1743,10 @@ if (!$_POST) {
             $output_image = '';
             // if a product was found, include link to product
             if ($product_id) {
-                $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</span>';
+                $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="fg-primary text-decoration-none">' . lang('Product ID / SKU') . ': ' .  h($product_name) . '</a>';
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<img  class="rounded-9 card-img cursor-pointer pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" onclick="document.location.href = \'edit_product.php?id=' . (int) $product_id . '\'"/>';
+                    $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
                 } 
             
             // else a product was not found, so do not include a link to product   
@@ -1754,7 +1754,7 @@ if (!$_POST) {
                 $output_product_name = lang('Product ID / SKU') . ': ' .h($product_name);
                 // if a product image_name found, output
                 if ($image_name) {
-                    $output_image = '<img  class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . $image_name . '"/>';
+                    $output_image = '<img class="rounded-9 card-img pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" alt=""/>';
                 } 
             }
             

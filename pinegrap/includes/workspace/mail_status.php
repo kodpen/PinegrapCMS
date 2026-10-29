@@ -512,6 +512,10 @@ function ws_mail_auto_reply($box, $item_id)
         $properties['smtp'] = $route['smtp'];
     }
 
+    if (!empty($route['connection'])) {
+        $properties['connection'] = (int) $route['connection'];
+    }
+
     if (!email($properties)) {
         return false;
     }

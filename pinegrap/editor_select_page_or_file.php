@@ -541,7 +541,7 @@ if ($items) {
 
                 $output_rows .=
                     '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
-                        <td class="align-middle chart_label">' . h($item['url']) . '</td>
+                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . h(get_page_type_name($item['page_type'])) . '</td>
                         <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
@@ -594,7 +594,7 @@ if ($items) {
                 $output_rows .=
                     '<tr class="pointer ' . h($item['access_control_type']) . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
                         <td class="align-middle text-center" style="min-width:50px;height:50px;">' . $output_thumbnail . '</td>
-                        <td class="align-middle chart_label">' . h($item['url']) . '</td>
+                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . h(convert_bytes_to_string($item['size'])) . '</td>
                         <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
@@ -618,7 +618,7 @@ if ($items) {
 
                 $output_rows .=
                     '<tr class="pointer' . $output_access_control_type_class . '" onclick="window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">
-                        <td class="align-middle chart_label">' . h($item['url']) . '</td>
+                        <td class="align-middle chart_label"><button type="button" class="btn btn-link p-0 text-start" onclick="event.stopPropagation(); window.opener.CKEDITOR.tools.callFunction(\'' . h(escape_javascript(($_GET['CKEditorFuncNum'] ?? ''))) . '\', \'' . h(escape_javascript($item['href'])) . '\'); window.close();">' . h($item['url']) . '</button></td>
                         <td class="align-middle">' . h($item['destination_url']) . '</td>
                         <td class="align-middle">' . h($item['folder_name']) . '</td>
                         <td class="align-middle">' . get_relative_time(array('timestamp' => $item['last_modified_timestamp'])) . $output_last_modified_username . '</td>
@@ -664,9 +664,9 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
                 <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                     <div class=" btn-group btn-group-sm flex-wrap">
 
-                        <a class="btn btn-outline theme-secondary my-3' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">desktop_windows</span>' . lang('Pages') . '</a>
-                        <a class="btn btn-outline theme-secondary my-3' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">insert_drive_file</span>' . lang('Files') . '</a>
-                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline theme-secondary my-3' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1">link</span>' . lang('Short Links') . '</a>' : '') . '
+                        <a class="btn btn-outline theme-secondary my-3' . $output_type_page_class . '" href="editor_select_page_or_file.php?type=page&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">desktop_windows</span>' . lang('Pages') . '</a>
+                        <a class="btn btn-outline theme-secondary my-3' . $output_type_file_class . '" href="editor_select_page_or_file.php?type=file&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">insert_drive_file</span>' . lang('Files') . '</a>
+                        ' . ((USER_ROLE < 3) ? '<a class="btn btn-outline theme-secondary my-3' . $output_type_short_link_class . '" href="editor_select_page_or_file.php?type=short_link&CKEditorFuncNum=' . h(urlencode(($_GET['CKEditorFuncNum'] ?? ''))) . '"><span class="material-icons me-1" aria-hidden="true">link</span>' . lang('Short Links') . '</a>' : '') . '
                     </div>
                 </form>
                 <div class="pg-toolbar-grow"></div>

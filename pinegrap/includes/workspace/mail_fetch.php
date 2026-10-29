@@ -201,14 +201,15 @@ function ws_mail_fetch($box)
 function ws_mail_fetch_box($box, $out)
 {
     $settings = ws_mail_box_settings($box);
-    $secret = pg_connect_unseal((string) ($settings['secret'] ?? ''));
 
     if ((string) ($settings['host'] ?? '') === '') {
         return array_merge($out, array('error' => 'no_server'));
     }
 
-    if (!isset($secret['password'])) {
-        return array_merge($out, array('error' => 'no_password'));
+    $credentials = ws_mail_box_credentials($box);
+
+    if (!$credentials['ok']) {
+        return array_merge($out, array('error' => $credentials['error'], 'detail' => $credentials['detail']));
     }
 
     $connected = pg_imap_connect((string) $settings['host'], (int) ($settings['port'] ?? 993), array('budget' => WS_MAIL_FETCH_BUDGET));
@@ -224,7 +225,7 @@ function ws_mail_fetch_box($box, $out)
         return $said;
     };
 
-    if (!pg_imap_login($session, (string) ($settings['user'] ?? ''), (string) $secret['password'])) {
+    if (!ws_mail_box_login($session, $box, $credentials)) {
         return $failed();
     }
 

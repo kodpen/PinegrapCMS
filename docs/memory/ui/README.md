@@ -84,6 +84,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
 - design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
+- detail-screen-values.md: Read-only values on details screens (Visit Details, submitted forms) as text not headings, escaped once, long links wrapping; ERP quarter option wording
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
 - email-campaign-profile-shared-form.md: The campaign profile create and edit screens share includes/forms/email_campaign_profile_form.php
@@ -123,6 +124,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - notifications-menu.md: The header notifications panel (#notifications, bell #notification_toggle): one Bootstrap 6 Menu on the bell, Ctrl+Q clicks the bell, menu events and open state read on the toggle (#2578)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
+- order-view-picker-links.md: Order view product name and image are real links to edit_product.php; the editor's Browse Server link picker rows hold a button; its type icons are aria-hidden
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
 - page-button-bar.md: The #button_bar strip under a screen's heading is the .pg-toolbar component: full-width nav, buttons as direct children, which wrappers are allowed, fields in it, the list filter select.
