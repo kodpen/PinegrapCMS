@@ -519,7 +519,10 @@
                 running.appendChild(h.el('span', 'ws-grow', h.t('tt_running_other', mine.running.number)));
                 running.appendChild(counter);
                 ticker(counter, mine.running.started_at, mine.now);
-                running.addEventListener('click', function () { h.openTask(mine.running.task_id); });
+                var openRunning = function () { h.openTask(mine.running.task_id); };
+
+                running.addEventListener('click', openRunning);
+                h.pressKeys(running, openRunning);
                 box.appendChild(running);
             }
 
@@ -547,9 +550,10 @@
                     row.appendChild(h.el('span', 'ws-task-time-amount', item.label));
 
                     if (item.visible) {
-                        row.tabIndex = 0;
-                        row.setAttribute('role', 'button');
-                        row.addEventListener('click', function () { h.openTask(item.id); });
+                        var openItem = function () { h.openTask(item.id); };
+
+                        row.addEventListener('click', openItem);
+                        h.pressKeys(row, openItem);
                     }
 
                     box.appendChild(row);
