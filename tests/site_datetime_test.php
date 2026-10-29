@@ -91,3 +91,45 @@ function test_site_datetime_library_stylesheet_is_the_release_file()
 	pg_assert_contains('[data-vc-theme=dark]', $css, 'with its dark theme');
 	pg_assert_contains('[data-vc=time]', $css, 'and its time row');
 }
+
+function test_site_datetime_bind_marker()
+{
+	pg_assert_same('', pg_site_datetime_bind(array()), 'no ids, no marker');
+	pg_assert_same('', pg_site_datetime_bind(array('date' => array(), 'datetime' => array())), 'empty lists, no marker');
+
+	$mark = pg_site_datetime_bind(array('date' => array(12, '13'), 'time' => array('t"1'), 'other' => array('x')));
+	pg_assert_same('<span hidden data-pg-date-bind="' . h(json_encode(array('date' => array('12', '13'), 'time' => array('t"1')))) . '"></span>', $mark, 'ids per kind, as text, escaped; unknown kinds dropped');
+	pg_assert_same(1, preg_match(pg_site_datetime_pattern(), $mark), 'the marker brings the control');
+	pg_assert_contains('pg_fields.js', pg_site_datetime_inject('<form><input id="12">' . $mark . '</form>'));
+}
+
+function test_site_datetime_renderers_hook_their_fields()
+{
+	$source = function ($path) {
+		return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $path);
+	};
+
+	// A custom layout's inputs come from the site's database: bound by id.
+	$screen = $source('get_custom_form_screen_content.php');
+	pg_assert_contains("\$system .= pg_site_datetime_bind(array(", $screen, 'the custom form screen binds its fields by id');
+	pg_assert_contains("'time' => \$time_fields", $screen, 'time fields too, on the time row alone');
+
+	foreach (array('get_form_item_view.php', 'get_form_list_view.php') as $path) {
+		foreach (array("'data-pg-date' => ''", "'data-pg-datetime' => ''", "'data-pg-time' => ''") as $hook) {
+			pg_assert_contains($hook, $source($path), $path . ' hooks ' . $hook);
+		}
+	}
+
+	pg_assert_contains("'data-pg-datetime' => '')) . ' &nbsp; ' .", $source('get_page_content.php'), 'the classic comment publish time');
+	pg_assert_contains('name="publish_date_and_time" maxlength="19" size="21" data-pg-datetime', $source('includes/fn/widgets_comments.php'), 'the comments widget publish time');
+
+	foreach (array('get_custom_form_screen_content.php', 'get_form_item_view.php', 'get_form_list_view.php', 'includes/fn/content.php', 'includes/fn/widgets_comments.php') as $path) {
+		pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(datetimepicker_options\\)/', $source($path)), $path . ' calls no jQuery UI picker');
+	}
+
+	foreach (array('frontend.src.js', 'frontend.min.js') as $path) {
+		$js = $source($path);
+		pg_assert_false(strpos($js, '.datetimepicker('), $path . ': the comment publish time is no jQuery UI picker');
+		pg_assert_contains('window.pgFields.focus(', $js, $path . ': focus lands on the box people type in');
+	}
+}

@@ -1679,18 +1679,31 @@ var software = {
 
     },
 
-    // Setup add comment publish pick list functionality and date/time picker.
+    // Focuses a date field drawn by the date-and-time control on the box
+    // people type in (pgFields.focus()), never on its hidden posted field;
+    // the field itself while the control is not drawn.
+    focus_date_field: function(field) {
+        if (!field) {
+            return;
+        }
+
+        if (window.pgFields) {
+            window.pgFields.focus(field);
+        } else {
+            field.focus();
+        }
+    },
+
+    // Setup add comment publish pick list functionality. The date and time
+    // field carries data-pg-datetime: the date-and-time control draws it.
     init_add_comment_publish: function() {
         var publish = software_$('#publish');
-        var publish_date_and_time = software_$('#publish_date_and_time');
         var publish_schedule = software_$('.publish_schedule');
 
         // If the schedule option is selected by default when the page first loaded,
-        // then show fields for it and init date/time picker.
+        // then show fields for it.
         if (publish.val() == 'schedule') {
             publish_schedule.fadeIn();
-
-            publish_date_and_time.datetimepicker(datetimepicker_options);
         } 
 
         // When the publish pick list is changed, then update fields.
@@ -1699,11 +1712,9 @@ var software = {
             if (publish.val() == 'schedule') {
                 publish_schedule.fadeIn();
 
-                publish_date_and_time.datetimepicker(datetimepicker_options);
-
-                // Place the focus in the date & time field,
-                // so that the date/time picker automatically appears.
-                publish_date_and_time.focus();
+                // Place the focus in the date & time box,
+                // so that its calendar automatically appears.
+                software.focus_date_field(document.getElementById('publish_date_and_time'));
 
             // Otherwise the schedule option is not selected, so hide its fields.
             } else {
@@ -1754,24 +1765,19 @@ var software = {
                 var select = publish.find('[data-pg-comment-publish-select]');
                 var schedule = publish.find('[data-pg-comment-publish-schedule]');
                 var date = schedule.find('input[name="publish_date_and_time"]');
-                var picker = false;
 
                 // The hidden attribute rather than a fade: Bootstrap's
                 // [hidden] { display: none !important } wins over an inline
-                // style.
+                // style. The date and time field is drawn by the
+                // date-and-time control (data-pg-datetime).
                 var update = function(focus) {
                     var scheduled = (select.val() == 'schedule');
 
                     schedule.prop('hidden', !scheduled);
 
-                    if (scheduled && !picker && software_$.fn.datetimepicker && (typeof datetimepicker_options !== 'undefined')) {
-                        date.datetimepicker(datetimepicker_options);
-                        picker = true;
-                    }
-
-                    // Focused, the date & time field opens its picker.
+                    // Focused, the date & time box opens its calendar.
                     if (scheduled && focus) {
-                        date.focus();
+                        software.focus_date_field(date[0]);
                     }
                 };
 

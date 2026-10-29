@@ -22,6 +22,6 @@ description: Plan (decided in #2693, 2026-10-28): one date-and-time control for 
 - Each step about 1,000 product lines; claim as `[plan:datetime-picker] P<n> — <topic>`.
 
 ## Where to start?
-- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`). Next, after the claim check (`CLAUDE.md`, Claim work): S2 (`datetime-picker-site-steps.md`); F1 is the Flows team's.
+- The panel is done: P1-P11 merged (P7 #2862, P9 #2867, P10 #2881 last). S1 #3113 (site loader, `ui/site-datetime-loader.md`), S2 #3132. Next, after the claim check (`CLAUDE.md`, Claim work): S3 (`datetime-picker-site-steps.md`); F1 is the Flows team's.
 
 Related: docs/memory/plans/datetime-picker-steps.md, docs/memory/plans/datetime-picker-site-steps.md, docs/memory/ui/pg-datepicker.md, docs/memory/ui/pg-date-stores.md, docs/memory/ui/pg-field-wrappers.md, docs/memory/workflow/decisions-made-panel.md

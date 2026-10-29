@@ -1058,20 +1058,20 @@ function test_comments_widget_name_options_html()
 
 function test_comments_widget_publish_html()
 {
-	$html = pg_comments_publish_html('schedule', '10/24/2026 3:00 PM', true, 'comment', '<script>init()</script>');
+	$html = pg_comments_publish_html('schedule', '10/24/2026 3:00 PM', true, 'comment');
 	pg_assert_same(0, strpos($html, '<div class="pg-comment-publish" data-pg-comment-publish>'), 'the wrapper hook');
 	pg_assert_contains('id="comment_publish" name="publish" data-pg-comment-publish-select>', $html, 'the select hook');
 	pg_assert_contains('<option value="schedule" selected>At a Scheduled Time</option>', $html, 'the chosen option');
 	pg_assert_contains('<option value="now">Now</option>', $html, 'now');
 	pg_assert_contains('<option value="manual">Maybe Later</option>', $html, 'later');
 	pg_assert_contains('<span class="ms-2" data-pg-comment-publish-schedule>', $html, 'the schedule shows');
-	pg_assert_contains('name="publish_date_and_time" maxlength="19" size="21" value="10/24/2026 3:00 PM"', $html, 'the date');
+	pg_assert_contains('name="publish_date_and_time" maxlength="19" size="21" data-pg-datetime value="10/24/2026 3:00 PM"', $html, 'the date, drawn by the date-and-time control');
 	pg_assert_true((bool) preg_match('#name="publish_cancel" value="1" checked#', $html), 'cancel ticked');
 	pg_assert_contains('Cancel if a new comment is added first.', $html, 'its label');
-	pg_assert_same(strlen($html) - strlen('<script>init()</script></div>'), strpos($html, '<script>init()</script></div>'), 'the scripts last');
+	pg_assert_false(strpos($html, '<script'), 'no script: the hook brings the control');
 	pg_assert_false(strpos($html, 'style='), 'no inline style');
 
-	$now = pg_comments_publish_html('now', '"><b>^^x^^', false, 'comment', '');
+	$now = pg_comments_publish_html('now', '"><b>^^x^^', false, 'comment');
 	pg_assert_contains('data-pg-comment-publish-schedule hidden>', $now, 'the schedule hidden');
 	pg_assert_contains('value="&quot;&gt;&lt;b&gt;&#94;&#94;x&#94;&#94;"', $now, 'the date escaped');
 	pg_assert_false((bool) preg_match('#name="publish_cancel" value="1" checked#', $now), 'cancel unticked');

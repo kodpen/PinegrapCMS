@@ -1330,18 +1330,11 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 $form_info['file_upload_exists'] = true;
                 break;
             case 'date':
-                // The panel preview hooks the field for pgDatePicker; the site
-                // keeps its jQuery UI call.
+                // Hooked for the date-and-time control: the panel preview
+                // prints its scripts after the table, a site page gets them
+                // from pg_site_datetime_inject().
                 if ($interface == 'backend') {
-                    $date_hook = array('data-pg-date' => '');
-                    $date_script = '';
                     $picker_kinds['date'] = true;
-                } else {
-                    $date_hook = array();
-                    $date_script = get_date_picker_format() . '
-                            <script>
-                                software_$("#' . $html_field_name . '").datepicker(datetimepicker_options);
-                            </script>';
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
@@ -1357,10 +1350,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'size' => $field['size'],
                                 'maxlength' => '10',
                                 'class' => 'software_input_text',
-                                'required' => $required
-                            ) + $date_hook) . '
-
-                            ' . $date_script . '
+                                'required' => $required,
+                                'data-pg-date' => ''
+                            )) . '
 
                         </td>
 
@@ -1368,16 +1360,7 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                 break;
             case 'date and time':
                 if ($interface == 'backend') {
-                    $date_hook = array('data-pg-datetime' => '');
-                    $date_script = '';
                     $picker_kinds['date and time'] = true;
-                } else {
-                    $date_hook = array();
-                    $date_script = '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                            ' . get_date_time_picker_format() . '
-                            <script>
-                                software_$("#' . $html_field_name . '").datetimepicker(datetimepicker_options);
-                            </script>';
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
 
@@ -1393,10 +1376,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'size' => $field['size'],
                                 'maxlength' => '22',
                                 'class' => 'software_input_text',
-                                'required' => $required
-                            ) + $date_hook) . '
-
-                            ' . $date_script . '
+                                'required' => $required,
+                                'data-pg-datetime' => ''
+                            )) . '
 
                         </td>
 
@@ -1418,11 +1400,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                     </tr>';
                 break;
             case 'time':
-                // The panel preview draws the time on the date-and-time
-                // control; the site keeps the plain text box.
-                $time_hook = array();
+                // The time row of the date-and-time control, in the panel
+                // preview and on the site alike.
                 if ($interface == 'backend') {
-                    $time_hook = array('data-pg-time' => '');
                     $picker_kinds['time'] = true;
                 }
                 $form_info['content'] .= '<tr' . $row_class . $output_hidden_style . '>
@@ -1437,8 +1417,9 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
                                 'size' => $field['size'],
                                 'maxlength' => '11',
                                 'class' => 'software_input_text',
-                                'required' => $required
-                            ) + $time_hook) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
+                                'required' => $required,
+                                'data-pg-time' => ''
+                            )) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
 
                     </tr>';
                 break;

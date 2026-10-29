@@ -719,11 +719,7 @@ function get_form_item_view($properties) {
                                 '<tr' . $row_class . '>
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">
-                                        ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'10', 'class'=>'software_input_text')) . '
-                                        ' . get_date_picker_format() . '
-                                        <script>
-                                            software_$("#' . $field['id'] . '").datepicker(datetimepicker_options);
-                                        </script>
+                                        ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'10', 'class'=>'software_input_text', 'data-pg-date' => '')) . '
                                     </td>
                                 </tr>';
                             break;
@@ -733,12 +729,7 @@ function get_form_item_view($properties) {
                                 '<tr' . $row_class . '>
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
                                     <td style="vertical-align: top">
-                                        ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'22', 'class'=>'software_input_text')) . '
-                                        <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                                        ' . get_date_time_picker_format() . '
-                                        <script>
-                                            software_$("#' . $field['id'] . '").datetimepicker(datetimepicker_options);
-                                        </script>
+                                        ' . $liveform->output_field(array('type'=>'text', 'id' => $field['id'], 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'22', 'class'=>'software_input_text', 'data-pg-datetime' => '')) . '
                                     </td>
                                 </tr>';
                             break;
@@ -761,7 +752,7 @@ function get_form_item_view($properties) {
                             $output_fields .=
                                 '<tr' . $row_class . '>
                                     <td style="vertical-align: top' . $output_label_column_width . '">' . h($field['label']) . '</td>
-                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text')) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
+                                    <td style="vertical-align: top">' . $liveform->output_field(array('type'=>'text', 'name'=>$field['id'], 'value'=>$field['default_value'], 'size'=>$field['size'], 'maxlength'=>'11', 'class'=>'software_input_text', 'data-pg-time' => '')) . ' ' . ((pg_time_format_code() === 'H:i') ? lang('(Format: HH:mm)') : lang('(Format: h:mm AM/PM)')) . '</td>
                                 </tr>';
                             break;
                     }
