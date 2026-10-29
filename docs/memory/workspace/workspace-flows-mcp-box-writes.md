@@ -23,7 +23,7 @@ description: The MCP box with a tool that asks first (F8c-1 #3144, canvas F8c-2 
 - A run cancelled while it waits: the box is skipped, the request stays open, as the approval box's; approving it then calls nothing.
 
 ## How is it built on the canvas (F8c-2, #3321)?
-- `mcpFields()` offers the server's `asks` tools after those that read, named "<tool> · Ask for approval"; for one (`mcpToolAsks()`) it adds "Channel to ask in" (`channel_id`) and "Hours to decide" (`closes_in`, `closesField()`, shared with the approval box). The "only the tools that read" help shows only for a server without such tools.
+- `mcpFields()` offers the server's `asks` tools after those that read, named "<tool> · Ask for approval"; for one (`mcpToolAsks()`) it adds "Channel to ask in" (`channel_id`) and "Hours to decide" (`closes_in`, `closesField()`, shared with the approval box). Its help (`fl_mcp_tool_help`) says so; `fl_mcp_tool_asks` went.
 - `mcpToolProblem()` refuses it only without a channel; its meta line names it. A new box carries `channel_id: 0`, `closes_in: ''`; an API-built box keeps its keys.
 - `KINDS.mcp.out` = the server's five outcomes; `test_workspace_flows_canvas_kinds_leave_on_the_servers_outcomes` checks every kind.
 - A server whose tools all ask first is not in `steps.mcp` (`ws_step_mcp_form_servers()`): built over the API.

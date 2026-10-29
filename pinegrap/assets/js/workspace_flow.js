@@ -5517,9 +5517,7 @@
                 refreshNode(node);
             });
             K.clear(toolWrap);
-            // The help says only tools that read are offered: true while the
-            // server has none that asks first.
-            toolWrap.appendChild(field(t('fl_mcp_tool'), tools, asks.length ? '' : t('fl_mcp_tool_help')));
+            toolWrap.appendChild(field(t('fl_mcp_tool'), tools, t('fl_mcp_tool_help')));
             toolWrap.appendChild(about);
         };
 
