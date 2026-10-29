@@ -539,6 +539,7 @@
     "Only the owner of the flow can try a box again or skip it.": "Bir kutuyu yalnızca akışın sahibi yeniden deneyebilir veya atlayabilir.",
     "Only the owner of the flow or the person who started the run can cancel it.": "Çalıştırmayı yalnız akışın sahibi ya da çalıştırmayı başlatan kişi iptal edebilir.",
     "Only the owner of the flow shares it.": "Akışı yalnız sahibi paylaşır.",
+    "Only the owner of the table may do this.": "Bunu yalnızca tablonun sahibi yapabilir.",
     "Only the owner publishes this flow; your changes are kept in its draft.": "Bu akışı yalnız sahibi yayımlar; değişiklikleriniz taslağında kalır.",
     "Only the people given access to the folder open it.": "Yalnız bu klasöre erişim verilmiş kişiler açabilir.",
     "Only the people in a channel choose how it notifies them.": "Kanalın nasıl haber vereceğini yalnız kanalın üyeleri seçer.",

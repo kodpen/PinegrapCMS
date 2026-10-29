@@ -279,7 +279,7 @@ function output_control_panel_header_includes($include_assistant = true, $help_t
     <script>window.pgCodeEditorConfig = ' . pg_code_editor_json(pg_code_editor_urls()) . ';</script>
     <link rel="stylesheet" type="text/css" href="' . h(CONTROL_PANEL_STYLESHEET_URL) . '" />
     ' . $assistant_snippet . '
-    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/backend.src.js?v=' . @filemtime(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js') . '"></script>
+    ' . pg_js_bundle_tags('assets/js/backend.min.js', false) . '
     <style>' . CUSTOM_CSS . '</style>';
 
 
@@ -6371,6 +6371,9 @@ function pg_js_bundles()
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // The panel's own script, on every panel screen. Loaded without
+        // defer: the inline scripts of the screens call it as they run.
+        'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),
     );
 }
 

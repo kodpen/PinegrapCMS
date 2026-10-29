@@ -30,7 +30,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - datetime-picker-site-steps.md: Site steps S1-S4 of plans/datetime-picker.md (after the panel stop): on-demand loader, classic renderers, checkout, designer widgets and palette; claim as [plan:datetime-picker] S<n>
 - datetime-picker-steps.md: Panel steps P1-P11 of plans/datetime-picker.md: what each changes, its files, tests and size, its dependencies; claim as [plan:datetime-picker] P<n>
 - datetime-picker.md: Plan (decided in #2693, 2026-10-28): one date-and-time control for the whole software, the time in the same popup, on vanilla-calendar-pro; panel P1-P11, sites S1-S4, steps in datetime-picker-steps.md
-- designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
+- designer-code-editor.md: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (bottom-view Format button)
 - designer-collections-steps.md: Plan (collections half of designer-interactions-collections, steps C1–C7): typed collections over designer forms and their schema
 - designer-interactions-collections.md: Plan (approved 2026-10-19, watch list, designer session): interaction/animation builder for designer nodes and typed collections with relations and dynamic pages beyond forms-as-collections
 - designer-prototype-links-code.md: What the code holds for plans/designer-prototype-links.md: where links sit, the two href places, page links by id, renames, the resolver's limits, editor state, rights and Publish
@@ -76,7 +76,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1c #2745 #2794 #2820): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-composer-tools.md: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-create-command.md: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; creates in a chat go through one /oluştur (/create) command, single preview or bulk card; the pasted-list window and file button go
 - workspace-crm-seams.md: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
