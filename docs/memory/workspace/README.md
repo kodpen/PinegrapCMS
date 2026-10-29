@@ -25,6 +25,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 
 ## Files
 
+- mail-api.md: Workspace e-mail conversations in the external API and MCP (api_mail.php, G7): routes, which are tools, who may answer, errors, the workspace.mail.received webhook, a mail message's mail object
 - mail-card.md: How a mail is drawn in a Workspace channel (ws_mail_card_html(), sender like a guest) and the Mailboxes card of Workspace settings with the .eml upload (mail_settings.php)
 - mail-fetch.md: Reading Workspace mailboxes over IMAP (ws_mail_fetch(), inline in job.php): what is searched, the UID position, held mail, limits, after-fetch, what the box records, the System status tile
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests

@@ -47,6 +47,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mail.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -133,6 +134,7 @@ function ws_webhook_events()
         'workspace.wtable.row.created'  => 'A row was added to a workflow table shared in a public workspace channel: table (id, name), row (as GET /workspace/tables/{id}/rows/{row_id} gives it), by (who added it), channel_ids (the public channels the table is shared in) and channel_id (the first of them, which a subscription narrowed to a channel group is matched by). One event however many channels show the table; a table shared only with people or in private channels is never announced',
         'workspace.wtable.row.updated'  => 'A row of a workflow table shared in a public workspace channel was changed: as workspace.wtable.row.created, with changed (the column ids written). A move is not announced',
         'workspace.wtable.row.deleted'  => 'A row of a workflow table shared in a public workspace channel was deleted: as workspace.wtable.row.created, row carrying only id and position',
+        'workspace.mail.received'       => 'An e-mail reached a workspace mailbox and was written into a channel: ids only (conversation_id, channel_id, message_id, box_id), new (it opened a conversation) and verified (the mailbox\'s checking server vouched for the sender). Never the address, subject or text: read the conversation with GET /workspace/mail/conversations/{id}, which answers only where the owner reads the channel. Delivery failures, automatic and held mail are not announced',
         'workspace.app.command'         => 'Somebody typed a / command the application registered (POST /workspace/commands) in a workspace channel or discussion. The line is not posted: only that application\'s own subscriptions hear it, and only where it may read the channel: its key active, not expired and holding workspace:commands, in a public channel or in a private channel, guest room or discussion its owner is in; elsewhere the writer is told the command is unknown and nothing is sent. command is the name with its slash, text the words after it as the owner reads them, body as stored, user_id the writer. In a discussion, channel_id is the discussion\'s own and thread holds the channel and the message it is about. Answer with POST /workspace/channels/{channel_id}/messages',
         'workspace.app.mentioned'       => 'An application was mentioned (<@app:N>) in a workspace channel or discussion. Only that application\'s own subscriptions hear it, once per message (an edit tells only the applications it adds, with edited true), and only where it may read the words: its key active, not expired and holding workspace:read, in a public channel or in a private channel, guest room or discussion its owner is in. Elsewhere nothing is sent, nor to the applications Claude and Pinegrap AI work through. Its own messages never reach it; app_id names another application that wrote. In a discussion, channel_id is the discussion\'s own and thread holds the channel and the message it is about. Answer with POST /workspace/channels/{channel_id}/messages',
     );
@@ -241,6 +243,9 @@ function ws_openapi_objects()
         'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
         'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
         'WorkspaceTableShare'       => 'ws_api_wtable_share_schema',
+        'WorkspaceMessageMail'      => 'ws_api_message_mail_schema',
+        'WorkspaceMailConversation' => 'ws_api_mail_conversation_schema',
+        'WorkspaceMail'             => 'ws_api_mail_schema',
     );
 }
 
@@ -2542,7 +2547,7 @@ function ws_api_routes()
     );
 
     // Asking Claude in a channel (api_claude.php), the changes an
-    // application proposes (api_proposals.php) and workflow tables
-    // (api_wtables.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes());
+    // application proposes (api_proposals.php), workflow tables
+    // (api_wtables.php) and e-mail conversations (api_mail.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes(), ws_mail_api_routes());
 }

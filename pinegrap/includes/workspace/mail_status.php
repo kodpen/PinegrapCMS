@@ -114,33 +114,17 @@ function ws_mail_state_offer($item, $offer, $viewer_id)
  */
 function ws_mail_conversation_set($viewer, $conversation_id, $changes)
 {
-    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
-    $channel = is_array($conversation) && $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+    $checked = ws_mail_conversation_check($viewer, $conversation_id, $changes);
 
-    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
-        return array('ok' => false, 'error' => 'no_access');
+    if (!$checked['ok']) {
+        return array('ok' => false, 'error' => $checked['error']);
     }
 
-    $assign = (string) ($changes['assign'] ?? '');
-
-    // Somebody else holds it only where they may answer it.
-    if (ctype_digit($assign) && ((int) $assign > 0) && ((int) $assign !== (int) $viewer['id'])) {
-        $person = ws_change_viewer_for_id((int) $assign);
-
-        if (!is_array($person) || empty($person['member']) || !ws_can_post_channel($person, $channel)) {
-            return array('ok' => false, 'error' => 'assignee');
-        }
-    }
-
-    $changed = ws_mail_conversation_changes($conversation, $changes, (int) $viewer['id'], time());
-
-    if (!$changed['ok']) {
-        return array('ok' => false, 'error' => $changed['error']);
-    }
-
+    $conversation = $checked['conversation'];
+    $channel = $checked['channel'];
     $set = array();
 
-    foreach ($changed['fields'] as $column => $value) {
+    foreach ($checked['fields'] as $column => $value) {
         $set[] = $column . " = '" . e((string) $value) . "'";
     }
 
@@ -154,13 +138,52 @@ function ws_mail_conversation_set($viewer, $conversation_id, $changes)
     }
 
     // The person it was given to hears of it; who takes it knows already.
-    $holder = (int) ($changed['fields']['assignee_id'] ?? 0);
+    $holder = (int) ($checked['fields']['assignee_id'] ?? 0);
 
     if (($holder > 0) && ($holder !== (int) $viewer['id'])) {
         ws_notify($holder, 'mail_assigned', array('channel_id' => (int) $channel['id'], 'message_id' => (int) $conversation['message_id'], 'actor_id' => (int) $viewer['id']));
     }
 
     return array('ok' => true, 'error' => '');
+}
+
+/**
+ * Whether this person may make this change, and what it writes; writes
+ * nothing. Shared by the panel and the external API's dry run.
+ *
+ * @param array $viewer
+ * @param int   $conversation_id
+ * @param array $changes status, assign (each optional)
+ * @return array ok, error (no_access | status | assignee | nothing), conversation, channel, fields
+ */
+function ws_mail_conversation_check($viewer, $conversation_id, $changes)
+{
+    $out = array('ok' => false, 'error' => 'no_access', 'conversation' => null, 'channel' => null, 'fields' => array());
+    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $conversation_id . "'");
+    $channel = is_array($conversation) && $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+
+    if (!$channel || !ws_can_post_channel($viewer, $channel)) {
+        return $out;
+    }
+
+    $assign = (string) ($changes['assign'] ?? '');
+
+    // Somebody else holds it only where they may answer it.
+    if (ctype_digit($assign) && ((int) $assign > 0) && ((int) $assign !== (int) $viewer['id'])) {
+        $person = ws_change_viewer_for_id((int) $assign);
+
+        if (!is_array($person) || empty($person['member']) || !ws_can_post_channel($person, $channel)) {
+            return array_merge($out, array('error' => 'assignee'));
+        }
+    }
+
+    $changed = ws_mail_conversation_changes($conversation, $changes, (int) $viewer['id'], time());
+
+    if (!$changed['ok']) {
+        return array_merge($out, array('error' => $changed['error']));
+    }
+
+    return array('ok' => true, 'error' => '', 'conversation' => $conversation, 'channel' => $channel, 'fields' => $changed['fields']);
 }
 
 /**

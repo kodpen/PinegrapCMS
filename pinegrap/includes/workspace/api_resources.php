@@ -751,6 +751,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
     }
 
     $sender = null;
+    $mail = null;
 
     if ($row['sender_kind'] === 'user') {
         $people = ws_people(array($row['sender_id']));
@@ -771,6 +772,19 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         $sender = array('user_id' => null, 'name' => $app['name']);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
+    } elseif (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender')) {
+        // A mail: its sender as the mail names them, or the team's writer
+        // of an answer (mail.php); mail tells its conversation.
+        $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $row['sender_id'] . "'");
+        $item = (is_array($item) && $item) ? $item : null;
+        $from = ws_mail_sender($item);
+        $sender = array('user_id' => ((int) $from['id'] > 0) ? (int) $from['id'] : null, 'name' => (string) $from['name']);
+        $mail = $item ? array(
+            'item_id'         => (int) $item['id'],
+            'conversation_id' => ((int) $item['conversation_id'] > 0) ? (int) $item['conversation_id'] : null,
+            'direction'       => (string) $item['direction'],
+            'from_email'      => (string) $item['from_email'],
+        ) : null;
     }
 
     $deleted = ((int) $row['deleted_at'] > 0);
@@ -816,6 +830,7 @@ function ws_api_message_present($viewer, $row, $refs, $reactions = null, $acks =
         'from_thread_id' => $deleted ? null : ($threads['copies'][(int) $row['id']] ?? null),
         'poll'           => (!$deleted && isset($polls[(int) $row['id']])) ? ws_api_poll_present($polls[(int) $row['id']]) : null,
         'note_card'      => ws_api_message_note_card($row, $note_cards),
+        'mail'           => $deleted ? null : $mail,
         'created_at'  => api_time($row['created_at']),
     );
 }
@@ -842,8 +857,16 @@ function ws_api_message_schema()
         'from_thread_id' => 'integer?',
         'poll'           => 'WorkspacePoll?',
         'note_card'      => 'WorkspaceMessageNoteCard?',
+        'mail'           => 'WorkspaceMessageMail?',
         'created_at'  => 'string',
     );
+}
+
+// A message of sender_kind mail: the mail it carries (GET
+// /workspace/mail/conversations/{conversation_id} reads it whole).
+function ws_api_message_mail_schema()
+{
+    return array('item_id' => 'integer', 'conversation_id' => 'integer?', 'direction' => 'string', 'from_email' => 'string');
 }
 
 // The parts of a message that are null when it has none: written by the
@@ -4417,6 +4440,19 @@ function ws_api_decision_present($viewer, $row, $refs, $channels, $people, $chan
         $sender = array('user_id' => null, 'name' => $app['name']);
     } elseif (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
         $sender = array('user_id' => null, 'name' => ws_guest_sender((int) $row['sender_id'])['name']);
+    } elseif (($row['sender_kind'] === 'mail') && function_exists('ws_mail_sender')) {
+        // A mail: its sender as the mail names them, or the team's writer
+        // of an answer (mail.php); mail tells its conversation.
+        $item = db_item("SELECT * FROM ws_mail_items WHERE id = '" . (int) $row['sender_id'] . "'");
+        $item = (is_array($item) && $item) ? $item : null;
+        $from = ws_mail_sender($item);
+        $sender = array('user_id' => ((int) $from['id'] > 0) ? (int) $from['id'] : null, 'name' => (string) $from['name']);
+        $mail = $item ? array(
+            'item_id'         => (int) $item['id'],
+            'conversation_id' => ((int) $item['conversation_id'] > 0) ? (int) $item['conversation_id'] : null,
+            'direction'       => (string) $item['direction'],
+            'from_email'      => (string) $item['from_email'],
+        ) : null;
     }
 
     $marked_by = null;
