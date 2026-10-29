@@ -14,7 +14,7 @@ description: Endpoints that speak JSON: rejections and CSRF failures in JSON wit
 - Look at the raw stream instead: `php://input` is truly empty only when the body was really discarded.
 
 ## What does a session or token refusal say?
-- The way out, in the panel language: a missing session answers "Your session has expired. Reload the page and sign in again." (`panel_login_refusal()` in `api.php`, `code: session`), a token that does not match the session "Your session expired. Reload the page and try again.". Never the bare "Invalid login." / "Invalid token.": the panel toasts `message` as is (#PR, `tests/panel_session_refusal_test.php`). Only a request that sent a wrong user name and password still gets "Invalid login.".
+- The way out, in the panel language: a missing session answers "Your session has expired. Reload the page and sign in again." (`panel_login_refusal()` in `api.php`, `code: session`), a token that does not match the session "Your session expired. Reload the page and try again.". Never the bare "Invalid login." / "Invalid token.": the panel toasts `message` as is (#3307, `tests/panel_session_refusal_test.php`). Only a request that sent a wrong user name and password still gets "Invalid login.".
 - A barcode scan whose request got no answer says the quantity may already have changed: the UPDATE can run before a dropped connection or a failed page, so a blind re-scan could count twice.
 
 ## Does `api.php` read a form body?
