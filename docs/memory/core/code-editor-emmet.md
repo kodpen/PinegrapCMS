@@ -27,4 +27,4 @@ description: The code editor's Emmet: the MIT emmet core in the lazy bundle, ed.
 ## How is it tested?
 - `tests/code_editor_emmet_test.php`: the pins and licences in the lock file, the entry and banner, the context and snippet blocks under Node on the bundle (a fake editor for `snippet()`), the facade wiring. Mod+E, read-only, locks, islands, Tab between fields and undo were run once in jsdom on a real view.
 
-Related: docs/memory/core/code-editor-facade-and-bundle.md, docs/memory/plans/designer-code-editor.md
+Related: docs/memory/core/code-editor-facade-and-bundle.md, docs/memory/designer/designer-code-editor-decisions.md
