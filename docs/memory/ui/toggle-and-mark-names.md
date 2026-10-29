@@ -20,7 +20,7 @@ description: Toggle aria-labels follow state, icon marks carry visually-hidden t
 
 ## Why do the Site Settings cards name everything in their own markup?
 - Each pane arrives over Ajax and `pgInitInjected()` does not run the label binder or the required marker of `pgInjectAriaAndRequiredMarkers()`, so a label without `for` names nothing there (#2995).
-- 19 radio groups are `<fieldset>` + `<legend class="form-label fs-md">` inside their cell (the social networking Setup legend holds only its two radios, not the blocks they open); radio cells sit outside the `:has()` row rules, so the layout did not change. `Current Site Time` names no control and is a `div.form-label`.
+- 18 radio groups are `<fieldset>` + `<legend class="form-label fs-md">` inside their cell (the social networking Setup legend holds only its two radios, not the blocks they open); radio cells sit outside the `:has()` row rules, so the layout did not change. `Current Site Time` names no control and is a `div.form-label`.
 - The Cron Jobs dialog's command boxes are `aria-labelledby` their `<h5 id="cron_job_*_title">`; the card's dispatch box has an `aria-label`; Custom CSS and Default Barcode Type labels carry `for`.
 - A hand-written marker is `<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>` after the text. The e-document fields get `aria-required="true"`, never `required`: they sit in a collapsed block and the browser would refuse the whole save.
 
