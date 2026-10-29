@@ -105,7 +105,7 @@ if (!$_POST) {
                                     ' . $liveform->output_field(array('type' => 'textarea', 'name' => 'head', 'id' => 'head')) . '
                                 </div>
                                 ' . pg_code_editor_attach(array('id' => 'head', 'code_type' => 'mixed', 'height' => '150px', 'readonly' => false)) . '
-                                <div class="d-flex gap-3 mt-5">
+                                <div class="d-flex flex-wrap gap-3 mt-5">
                                     <button type="submit" name="submit_save_and_return" value="Save &amp; Return" class="btn btn-solid theme-primary">' . lang('Save & Return') . '</button>
                                     <button type="submit" name="submit_save" value="Save" class="btn btn-outline theme-secondary">' . lang('Save') . '</button>
                                     <button type="button" class="btn btn-outline theme-secondary" onclick="window.location.href=\'' . h(escape_javascript(pg_safe_back_url($liveform->get_field_value('send_to'), 'view_styles.php'))) . '\'">' . lang('Cancel') . '</button>
