@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the names screen readers get on the state, ship date adjustment,
- * shipping method, product group and product forms: labels point at their
- * own field, weekday sets, rate tiers and rate boxes are named groups, and
- * radio groups sit under a legend.
+ * shipping method, product group, product and container forms: labels point
+ * at their own field, weekday sets, rate tiers and rate boxes are named
+ * groups, and radio groups sit under a legend.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -81,4 +81,22 @@ function test_gift_card_email_format_is_a_legend()
 	pg_assert_contains('<legend class="form-label fs-md">\' . lang(\'Format\') . \'</legend>', $src, 'Format is a legend');
 	pg_assert_true(strpos($src, '<label class="form-label">\' . lang(\'Format\')') === false, 'no orphan Format label');
 	pg_assert_contains('data-bs-target="#gift_card_email_format_html_row"', $src, 'HTML still opens its row');
+}
+
+function test_container_dimensions_are_a_legend_with_labelled_boxes()
+{
+	$src = commerce_form_group_names_source('includes/forms/container_form.php');
+
+	pg_assert_contains('<legend class="form-label fs-md">\' . lang(\'Dimensions\') . \'</legend>', $src, 'Dimensions is a legend');
+	pg_assert_true(strpos($src, '<label class="form-label">\' . lang(\'Dimensions\')') === false, 'no orphan Dimensions label');
+	$boxes = array('length' => 'Length', 'width' => 'Width', 'height' => 'Height', 'lengthcm' => 'Length', 'widthcm' => 'Width', 'heightcm' => 'Height');
+	foreach ($boxes as $id => $word) {
+		pg_assert_contains('<label for="' . $id . '" class="form-label">\' . lang(\'' . $word . '\') . \'</label>', $src, $id . ' has a visible label');
+		pg_assert_contains('id="' . $id . '" name="' . $id . '"', $src, $id . ' keeps its id and name');
+	}
+	foreach (array('L', 'W', 'H') as $letter) {
+		pg_assert_true(strpos($src, '>' . $letter . '<') === false, 'no bare ' . $letter . ' add-on');
+	}
+	pg_assert_contains('id="length_inches"', $src, 'the inch row keeps its id');
+	pg_assert_contains('id="length_cm"', $src, 'the cm row keeps its id');
 }

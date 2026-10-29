@@ -1,6 +1,6 @@
 ---
 name: panel-picture-viewer-focus
-description: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails
+description: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 ---
 
 ## Where is the viewer used?
@@ -15,6 +15,10 @@ description: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, f
 ## How are the dialog and thumbnails named?
 - The overlay: `aria-label` "Image viewer". Thumbnails: `<button>`s with "Image {var:1} of {var:2}" (passed to the script with `{n}`/`{total}`) and `aria-current` on the shown picture. `L(key, true)` returns a label unescaped for `setAttribute()`.
 - `.pgl-overlay :focus-visible` draws a white 2px ring: the panel ring colour is lost on the dark overlay.
+
+## When does it close?
+- Escape, the Close button, or a tap on the dark background: a primary press on the overlay or stage element itself, released over the background, moved under `TAP_MAX_MOVE` (8 px) and held under `TAP_MAX_TIME` (220 ms). Judged in the overlay's `pointerdown`/`pointerup` listeners in `build()`; the release spot comes from `document.elementFromPoint()`, because the stage's `setPointerCapture()` makes every event target the stage.
+- No `click` or `mousedown` close: with the press captured, Chromium sent the click on the picture to the stage, so a click, the first click of a double-click (zoom never ran), a click on a zoomed picture and a drag closed the viewer, and a margin press closed on the press (#3276). Pinned by `tests/lightbox_pointer_test.php`; checked headless in Chromium (mouse and touch).
 
 ## Symptom it fixed
 - Focus stayed on the thumbnail under the 96%-opaque overlay; Tab walked the list behind it and Space/Enter acted on rows nobody could see. After closing, the invisible toolbar buttons stayed at the end of the tab order and screen readers found a hidden modal dialog.

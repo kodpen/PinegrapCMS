@@ -138,9 +138,10 @@ if (!$_POST) {
                 'downloading' => lang('Downloading the file to the server…'),
                 'failed'      => lang('Sorry, the file could not be added. Please try again.'),
                 'load_failed' => lang('The picker could not be loaded. Check the connection and try again.'),
+                'popup_blocked' => lang('The browser blocked the picker window. Allow pop-ups for this site and try again.'),
             ));
 
-        $cloud_icons = array('google' => 'bi-google', 'dropbox' => 'bi-dropbox');
+        $cloud_icons = array('google' => 'bi-google', 'onedrive' => 'bi-microsoft', 'dropbox' => 'bi-dropbox');
 
         foreach ($cloud_choices['pick'] as $cloud_key => $cloud_pick) {
             $cloud_config['pick'][$cloud_key] = $cloud_pick['client'];
@@ -159,7 +160,7 @@ if (!$_POST) {
 
             $output_cloud_forms .= '
     <form id="pg_cloud_connect_' . h($cloud_key) . '" action="connect.php" method="post" hidden>
-        ' . pg_connect_start_fields($cloud_key, 'file_picker', 'add_file.php?picker_connect=1', 'person') . '
+        ' . pg_connect_start_fields(pg_cloud_picker_connect_provider($cloud_key), 'file_picker', 'add_file.php?picker_connect=1', 'person') . '
     </form>';
         }
 
@@ -345,7 +346,8 @@ if (!$_POST) {
     output_footer();
 
 } else {
-    // The Google Picker's token, asked for when the person opens it.
+    // The Google Picker's or the OneDrive picker's token, asked for when the
+    // person opens it.
     if (($_POST['cloud_action'] ?? '') === 'token') {
         pg_cloud_picker_token_answer($user);
     }

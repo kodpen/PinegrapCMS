@@ -2238,7 +2238,11 @@ function _eo_hosted_card_html($amount_cents)
     }
 
     $order = db_item("SELECT * FROM orders WHERE id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "'");
-    $answer = pg_payment_call($key, 'prepare', array(is_array($order) ? $order : array(), (int) $amount_cents));
+    $order = is_array($order) ? $order : array();
+    // A card kept for renewals is asked for before it is typed (Stripe's
+    // setup_future_usage), as the payment will ask for it.
+    $order['recurring'] = pg_payment_order_recurring((int) ($order['id'] ?? 0));
+    $answer = pg_payment_call($key, 'prepare', array($order, (int) $amount_cents));
     $client = $answer['client'];
 
     // The service's script is loaded only from a host the driver lists for

@@ -9,7 +9,8 @@
             "next": "Sonraki",
             "previous": "Önceki",
             "number": ""
-        }
+        },
+        "paging": "Sayfalama"
     },
     "decimal": ",",
     "emptyTable": "Tabloda veri yok",

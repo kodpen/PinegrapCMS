@@ -3,13 +3,15 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The cloud file picker of the Upload File screen (add_file.php): a file
- * from the person's Google Drive or Dropbox goes into the file library.
+ * from the person's Google Drive, OneDrive or Dropbox goes into the file
+ * library.
  *
  * The browser opens the provider's own picker (the Google Picker, the
- * Dropbox Chooser) and hands back only the chosen file's id or link. The
- * server downloads the bytes - Google with the person's own connection
- * (purpose file_picker, includes/connect/purposes/file_picker.php), Dropbox
- * from the Chooser's direct link, which needs no token - into a temporary
+ * OneDrive file picker v8, the Dropbox Chooser) and hands back only the
+ * chosen file's id or link. The server downloads the bytes - Google and
+ * OneDrive with the person's own connection (purpose file_picker,
+ * includes/connect/purposes/file_picker.php), Dropbox from the Chooser's
+ * direct link, which needs no token - into a temporary
  * file, never past the biggest single upload the server accepts, and passes
  * that file to pg_file_store_upload() (includes/fn/files.php), the function
  * every browser upload goes through. Every download goes through
@@ -32,16 +34,42 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 /**
  * The providers the picker offers, in the order the screen shows them.
- * account: whether the person must have connected an account for it.
+ * account: whether the person must have connected an account for it;
+ * connect: the connected-accounts provider behind it.
  *
- * @return array key => label, account
+ * @return array key => label, account, connect
  */
 function pg_cloud_picker_providers()
 {
     return array(
-        'google'  => array('label' => 'Google Drive', 'account' => true),
-        'dropbox' => array('label' => 'Dropbox', 'account' => false),
+        'google'   => array('label' => 'Google Drive', 'account' => true, 'connect' => 'google'),
+        'onedrive' => array('label' => 'OneDrive', 'account' => true, 'connect' => 'microsoft'),
+        'dropbox'  => array('label' => 'Dropbox', 'account' => false, 'connect' => 'dropbox'),
     );
+}
+
+/**
+ * The connected-accounts provider of a picker ('onedrive' is 'microsoft').
+ *
+ * @param string $key
+ * @return string '' for an unknown picker
+ */
+function pg_cloud_picker_connect_provider($key)
+{
+    $providers = pg_cloud_picker_providers();
+
+    return isset($providers[$key]) ? $providers[$key]['connect'] : '';
+}
+
+/**
+ * The Graph scope the OneDrive download reads with: the purpose's own,
+ * read-only.
+ *
+ * @return array
+ */
+function pg_cloud_picker_graph_scopes()
+{
+    return array('https://graph.microsoft.com/Files.Read');
 }
 
 /**
@@ -65,15 +93,20 @@ function pg_cloud_picker_google_app_id($client_id)
  * then its bytes, both with the person's token. Dropbox: the Chooser's
  * direct link, only on Dropbox's own download host, read without a token;
  * its name and size come from the Chooser and the download is held to the
- * size limit whatever they say.
+ * size limit whatever they say. OneDrive: the picked item's drive id and
+ * item id; its metadata and then its content are asked from Graph with the
+ * person's Graph token (never from the endpoint the picker names), and
+ * Graph answers the content with a pre-authenticated download address.
  *
  * @param string $provider
- * @param array  $choice   id (Google) or link, name, bytes (Dropbox)
- * @return array ok, error, url, meta_url, token (bool), name, size
+ * @param array  $choice   id (Google), drive_id and item_id (OneDrive) or
+ *                         link, name, bytes (Dropbox)
+ * @return array ok, error, url, meta_url, content_url, token (bool),
+ *               scopes, name, size
  */
 function pg_cloud_picker_source($provider, $choice)
 {
-    $source = array('ok' => false, 'error' => '', 'url' => '', 'meta_url' => '', 'token' => false, 'name' => '', 'size' => 0);
+    $source = array('ok' => false, 'error' => '', 'url' => '', 'meta_url' => '', 'content_url' => '', 'token' => false, 'scopes' => array(), 'name' => '', 'size' => 0);
 
     $choice = is_array($choice) ? $choice : array();
 
@@ -92,6 +125,29 @@ function pg_cloud_picker_source($provider, $choice)
         $source['token'] = true;
         $source['meta_url'] = $base . '?fields=name%2CmimeType%2Csize&supportsAllDrives=true';
         $source['url'] = $base . '?alt=media&supportsAllDrives=true';
+
+        return $source;
+    }
+
+    if ($provider === 'onedrive') {
+        $drive_id = (isset($choice['drive_id']) && is_string($choice['drive_id'])) ? $choice['drive_id'] : '';
+        $item_id = (isset($choice['item_id']) && is_string($choice['item_id'])) ? $choice['item_id'] : '';
+
+        // Personal ids carry a "!" (D4648F06C91D9D3D!54927), work drive ids
+        // start with "b!"; no slash, dot or query can reach the path.
+        if ((preg_match('/^[A-Za-z0-9!_-]{1,200}$/', $drive_id) !== 1) || (preg_match('/^[A-Za-z0-9!_-]{1,200}$/', $item_id) !== 1)) {
+            $source['error'] = lang('The chosen file could not be found.');
+
+            return $source;
+        }
+
+        $base = 'https://graph.microsoft.com/v1.0/drives/' . $drive_id . '/items/' . $item_id;
+
+        $source['ok'] = true;
+        $source['token'] = true;
+        $source['scopes'] = pg_cloud_picker_graph_scopes();
+        $source['meta_url'] = $base . '?$select=name,size,file';
+        $source['content_url'] = $base . '/content';
 
         return $source;
     }
@@ -149,6 +205,164 @@ function pg_cloud_picker_google_meta($data)
     }
 
     return array('ok' => true, 'error' => '', 'name' => $name, 'size' => isset($data['size']) ? max(0, (int) $data['size']) : 0);
+}
+
+/**
+ * The name and size of a OneDrive item from its Graph metadata, or the
+ * reason it cannot be taken: an item without the file facet (a OneNote
+ * notebook, a folder) has no bytes of its own to download.
+ *
+ * @param array|null $data the decoded answer of the metadata request
+ * @return array ok, error, name, size
+ */
+function pg_cloud_picker_onedrive_meta($data)
+{
+    $data = is_array($data) ? $data : array();
+    $name = pg_basename(isset($data['name']) ? (string) $data['name'] : '');
+
+    if ($name === '') {
+        return array('ok' => false, 'error' => lang('The chosen file could not be found.'), 'name' => '', 'size' => 0);
+    }
+
+    if (!isset($data['file']) || !is_array($data['file'])) {
+        return array('ok' => false, 'name' => $name, 'size' => 0, 'error' => lang(array(
+            'string' => '{var:1} is a OneNote notebook or another OneDrive item without a file of its own. Export it from OneDrive as a file and upload that.',
+            'vars'   => array($name))));
+    }
+
+    return array('ok' => true, 'error' => '', 'name' => $name, 'size' => isset($data['size']) ? max(0, (int) $data['size']) : 0);
+}
+
+/**
+ * Whether the address Graph sends a OneDrive item's content to is one of
+ * Microsoft's storage hosts (SharePoint for work accounts, 1drv.com and
+ * microsoftpersonalcontent.com for personal ones). The address carries its
+ * own short-lived permission and is read without a token.
+ *
+ * @param string $url
+ * @return bool
+ */
+function pg_cloud_picker_onedrive_download_url($url)
+{
+    $parts = @parse_url((string) $url);
+
+    if (!is_array($parts) || (strtolower($parts['scheme'] ?? '') !== 'https') || isset($parts['user']) || isset($parts['port']) || !isset($parts['host'])) {
+        return false;
+    }
+
+    $host = strtolower($parts['host']);
+
+    foreach (array('.sharepoint.com', '.1drv.com', '.microsoftpersonalcontent.com', '.livefilestore.com') as $suffix) {
+        if ((strlen($host) > strlen($suffix)) && (substr($host, -strlen($suffix)) === $suffix)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Where the OneDrive picker opens for this person, from Graph's answer for
+ * their drive (/me/drive). A personal account opens Microsoft's consumer
+ * picker; a work or school account the picker page of its own SharePoint
+ * host (https://<tenant>-my.sharepoint.com), the resource its tokens are for.
+ *
+ * @param array|null $data the decoded answer of /me/drive
+ * @return array ok, kind (personal|work), picker_url, resource, error
+ */
+function pg_cloud_picker_onedrive_drive($data)
+{
+    $drive = array('ok' => false, 'kind' => '', 'picker_url' => '', 'resource' => '', 'error' => lang('Your OneDrive could not be read.'));
+    $data = is_array($data) ? $data : array();
+    $type = isset($data['driveType']) ? (string) $data['driveType'] : '';
+
+    if ($type === 'personal') {
+        $drive['ok'] = true;
+        $drive['kind'] = 'personal';
+        $drive['picker_url'] = 'https://onedrive.live.com/picker';
+        $drive['error'] = '';
+
+        return $drive;
+    }
+
+    if ($type !== 'business') {
+        return $drive;
+    }
+
+    $resource = pg_cloud_picker_sharepoint_origin(isset($data['webUrl']) ? (string) $data['webUrl'] : '');
+
+    if ($resource === '') {
+        return $drive;
+    }
+
+    $drive['ok'] = true;
+    $drive['kind'] = 'work';
+    $drive['resource'] = $resource;
+    $drive['picker_url'] = $resource . '/_layouts/15/FilePicker.aspx';
+    $drive['error'] = '';
+
+    return $drive;
+}
+
+/**
+ * The origin (https://host) of a SharePoint Online address, or ''.
+ *
+ * @param string $url
+ * @return string
+ */
+function pg_cloud_picker_sharepoint_origin($url)
+{
+    $parts = @parse_url(trim((string) $url));
+
+    if (!is_array($parts) || (strtolower($parts['scheme'] ?? '') !== 'https') || isset($parts['user']) || isset($parts['port']) || !isset($parts['host'])) {
+        return '';
+    }
+
+    $host = strtolower($parts['host']);
+
+    return (preg_match('/^[a-z0-9-]+\.sharepoint\.com$/', $host) === 1) ? 'https://' . $host : '';
+}
+
+/**
+ * The scopes of the token the OneDrive picker is handed. The picker reads
+ * with OneDrive or SharePoint tokens, not Graph ones: a personal account gets
+ * OneDrive.ReadOnly whatever the picker names; a work account a token for
+ * the SharePoint host the picker names, only on the person's own tenant
+ * (contoso.sharepoint.com and contoso-my.sharepoint.com).
+ *
+ * @param array  $drive    what pg_cloud_picker_onedrive_drive() returned
+ * @param string $resource the picker's authenticate command's resource; ''
+ *                         for the drive's own
+ * @return array empty when refused
+ */
+function pg_cloud_picker_onedrive_scopes($drive, $resource)
+{
+    if (empty($drive['ok'])) {
+        return array();
+    }
+
+    if ($drive['kind'] === 'personal') {
+        return array('OneDrive.ReadOnly');
+    }
+
+    // A SharePoint token is for a host, whatever site path the picker names.
+    $origin = ((string) $resource === '') ? $drive['resource'] : pg_cloud_picker_sharepoint_origin($resource);
+
+    if ($origin === '') {
+        return array();
+    }
+
+    $tenant = function ($origin) {
+        $label = substr($origin, strlen('https://'), -strlen('.sharepoint.com'));
+
+        return (substr($label, -3) === '-my') ? substr($label, 0, -3) : $label;
+    };
+
+    if ($tenant($origin) !== $tenant($drive['resource'])) {
+        return array();
+    }
+
+    return array($origin . '/.default');
 }
 
 /**
@@ -258,7 +472,7 @@ function pg_cloud_picker_download($url, $headers, $max, $path)
  *
  * @param string $provider
  * @param array  $choice        what the browser sent
- * @param int    $connection_id the person's connection (Google), else 0
+ * @param int    $connection_id the person's connection (Google, OneDrive), else 0
  * @param int    $max           bytes; 0 is no limit
  * @return array ok, message, path, name, size
  */
@@ -285,13 +499,13 @@ function pg_cloud_picker_fetch($provider, $choice, $connection_id, $max)
     $size = $source['size'];
 
     if ($source['meta_url'] !== '') {
-        $meta = pg_connect_api($connection_id, 'GET', $source['meta_url'], array('max_body' => 65536));
+        $meta = pg_connect_api($connection_id, 'GET', $source['meta_url'], array('max_body' => 65536), $source['scopes']);
 
         if (!$meta['ok']) {
             return $fail(pg_cloud_picker_failed_message($label, $meta));
         }
 
-        $taken = pg_cloud_picker_google_meta($meta['data']);
+        $taken = ($provider === 'onedrive') ? pg_cloud_picker_onedrive_meta($meta['data']) : pg_cloud_picker_google_meta($meta['data']);
 
         if (!$taken['ok']) {
             return $fail($taken['error']);
@@ -310,6 +524,22 @@ function pg_cloud_picker_fetch($provider, $choice, $connection_id, $max)
 
     if ($problem !== '') {
         return $fail($problem);
+    }
+
+    // Graph answers a OneDrive item's content with a redirect to a short-lived
+    // download address on Microsoft's storage, which carries its own
+    // permission. api_http_request() follows no redirect, so the address is
+    // checked here and read without the token.
+    if ($source['content_url'] !== '') {
+        $content = pg_connect_api($connection_id, 'GET', $source['content_url'], array('max_body' => 4096, 'response_headers' => true), $source['scopes']);
+        $location = isset($content['headers']['location']) ? (string) $content['headers']['location'] : '';
+
+        if (((int) $content['status'] !== 302) || !pg_cloud_picker_onedrive_download_url($location)) {
+            return $fail(pg_cloud_picker_failed_message($label, $content['ok'] ? array('status' => $content['status']) : $content));
+        }
+
+        $source['url'] = $location;
+        $source['token'] = false;
     }
 
     $path = @tempnam(sys_get_temp_dir(), 'pgpick');
@@ -376,15 +606,21 @@ function pg_cloud_picker_failed_message($label, $result)
 // ----------------------------------------------------------------------------
 
 /**
- * The person's connection for a provider, or 0.
+ * The person's connection for a picker, or 0.
  *
- * @param string $provider
+ * @param string $provider the picker's key
  * @param int    $user_id
  * @return int
  */
 function pg_cloud_picker_connection($provider, $user_id)
 {
-    foreach (pg_connect_accounts(array('provider' => $provider, 'user_id' => (int) $user_id, 'purpose' => 'file_picker')) as $account) {
+    $connect = pg_cloud_picker_connect_provider($provider);
+
+    if ($connect === '') {
+        return 0;
+    }
+
+    foreach (pg_connect_accounts(array('provider' => $connect, 'user_id' => (int) $user_id, 'purpose' => 'file_picker')) as $account) {
         if ($account['status'] === 'active') {
             return (int) $account['id'];
         }
@@ -412,7 +648,7 @@ function pg_cloud_picker_choices($user_id)
     }
 
     foreach (pg_cloud_picker_providers() as $key => $provider) {
-        $app = pg_connect_app($key);
+        $app = pg_connect_app($provider['connect']);
 
         if (!pg_connect_app_ready($app)) {
             continue;
@@ -420,6 +656,22 @@ function pg_cloud_picker_choices($user_id)
 
         if ($key === 'dropbox') {
             $choices['pick'][$key] = array('label' => $provider['label'], 'client' => array('app_key' => $app['client_id']));
+
+            continue;
+        }
+
+        if ($key === 'onedrive') {
+            if (!pg_connect_can_seal()) {
+                continue;
+            }
+
+            // Where the picker opens depends on the person's account
+            // (personal or work), asked for when they open it.
+            if (pg_cloud_picker_connection($key, $user_id) > 0) {
+                $choices['pick'][$key] = array('label' => $provider['label'], 'client' => array('account' => true));
+            } else {
+                $choices['connect'][$key] = $provider['label'];
+            }
 
             continue;
         }
@@ -474,9 +726,11 @@ function pg_cloud_picker_json($status, $data)
 }
 
 /**
- * The Google Picker's access token for this person (cloud_action=token).
- * It is the person's own drive.file token, which the Picker needs in the
- * browser to show their Drive.
+ * The picker's access token for this person (cloud_action=token). Google:
+ * the person's own drive.file token, which the Picker needs in the browser
+ * to show their Drive. OneDrive (cloud_provider=onedrive): a OneDrive or
+ * SharePoint token for the resource the picker asks for (resource; empty on
+ * opening), with where the picker opens for this account.
  *
  * @param array $user
  */
@@ -486,17 +740,56 @@ function pg_cloud_picker_token_answer($user)
         pg_cloud_picker_json(403, array('status' => 'error', 'message' => lang('Your session expired. Reload the page and try again.')));
     }
 
-    $connection_id = pg_cloud_picker_connection('google', (int) $user['id']);
+    $provider = (($_POST['cloud_provider'] ?? '') === 'onedrive') ? 'onedrive' : 'google';
+    $connection_id = pg_cloud_picker_connection($provider, (int) $user['id']);
 
     if ($connection_id === 0) {
-        pg_cloud_picker_json(404, array('status' => 'error', 'message' => lang('Connect your Google Drive account first.')));
+        $labels = pg_cloud_picker_providers();
+
+        pg_cloud_picker_json(404, array('status' => 'error', 'message' => lang(array(
+            'string' => 'Connect your {var:1} account first.',
+            'vars'   => array($labels[$provider]['label'])))));
     }
 
-    $token = pg_connect_access_token($connection_id);
+    if ($provider === 'google') {
+        $token = pg_connect_access_token($connection_id);
+
+        if (!$token['ok']) {
+            pg_cloud_picker_json(502, array('status' => 'error', 'message' => $token['error']));
+        }
+
+        pg_cloud_picker_json(200, array('status' => 'success', 'token' => $token['token']));
+    }
+
+    $me = pg_connect_api($connection_id, 'GET', 'https://graph.microsoft.com/v1.0/me/drive?$select=driveType,webUrl', array('max_body' => 65536), pg_cloud_picker_graph_scopes());
+    $drive = pg_cloud_picker_onedrive_drive($me['ok'] ? $me['data'] : null);
+
+    if (!$drive['ok']) {
+        pg_cloud_picker_json(502, array('status' => 'error', 'message' => ($me['ok'] || ($me['error'] === '')) ? $drive['error'] : $me['error']));
+    }
+
+    $resource = (isset($_POST['resource']) && is_string($_POST['resource'])) ? $_POST['resource'] : '';
+    $scopes = pg_cloud_picker_onedrive_scopes($drive, $resource);
+
+    if (!$scopes) {
+        pg_cloud_picker_json(403, array('status' => 'error', 'message' => lang('The picker asked for a token this site does not give.')));
+    }
+
+    $token = pg_connect_access_token($connection_id, $scopes);
 
     if (!$token['ok']) {
-        pg_cloud_picker_json(502, array('status' => 'error', 'message' => $token['error']));
+        // A work account whose organization has not allowed the SharePoint
+        // permission the picker reads with.
+        $message = (strpos($token['error'], 'AADSTS65001') !== false)
+            ? lang('Your organization has not allowed this site to read OneDrive files yet: an administrator has to grant the application the SharePoint permission MyFiles.Read.')
+            : $token['error'];
+
+        pg_cloud_picker_json(502, array('status' => 'error', 'message' => $message));
     }
 
-    pg_cloud_picker_json(200, array('status' => 'success', 'token' => $token['token']));
+    pg_cloud_picker_json(200, array(
+        'status'     => 'success',
+        'token'      => $token['token'],
+        'kind'       => $drive['kind'],
+        'picker_url' => $drive['picker_url']));
 }
