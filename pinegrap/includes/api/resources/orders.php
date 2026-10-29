@@ -177,6 +177,8 @@ function api_order_shipments($order_id) {
 
 	}
 
+	$labels = api_order_labels($order_id);
+
 	$shipments = array();
 
 	foreach ($rows as $row) {
@@ -214,7 +216,9 @@ function api_order_shipments($order_id) {
 			'tracking_numbers' => isset($numbers[$key]) ? $numbers[$key] : array(),
 			// Each number with the carrier, link, status and dates the order
 			// screen shows for it; tracking_numbers stays for older clients.
-			'parcels'          => pg_shipment_api_parcels($key, (string)$row['shipping_method_code'])
+			'parcels'          => pg_shipment_api_parcels($key, (string)$row['shipping_method_code']),
+			// The carrier labels made for the address, newest first.
+			'labels'           => isset($labels[$key]) ? $labels[$key] : array()
 		);
 
 	}
@@ -1757,8 +1761,280 @@ function api_order_schema() {
 				'status'       => 'string',
 				'shipped_at'   => 'string?',
 				'delivered_at' => 'string?'
-			))
+			)),
+			'labels' => array(api_order_label_schema())
 		))
 	);
+
+}
+
+// A carrier label (shipment_labels row) as GET /orders/{id} lists it under its
+// shipment. Only what names the shipment at the service: the document itself,
+// which carries the recipient's name and address, is fetched from
+// document_url with the same credentials, never put inline. Pure.
+function api_order_label_present($row, $base_url) {
+
+	$format = (string)$row['label_format'];
+
+	return array(
+		'id'           => (int)$row['id'],
+		'driver'       => (string)$row['driver'],
+		'number'       => ((string)$row['number'] !== '') ? (string)$row['number'] : null,
+		'reference'    => (string)$row['reference'],
+		'barcode'      => ((string)$row['barcode'] !== '') ? (string)$row['barcode'] : null,
+		'format'       => ($format !== '') ? $format : null,
+		'state'        => (string)$row['state'],
+		'is_return'    => ((int)$row['is_return'] === 1),
+		'created_at'   => api_time((int)$row['created_at']),
+		'cancelled_at' => api_time((int)$row['cancelled_at']),
+		'file_kept'    => (((string)$row['label_file'] !== '') && ((int)$row['label_removed_at'] === 0)),
+		'document_url' => $base_url . '/orders/' . (int)$row['order_id'] . '/shipments/labels/' . (int)$row['id'] . '/document'
+	);
+
+}
+
+function api_order_label_schema() {
+
+	return array(
+		'id'           => 'integer',
+		'driver'       => 'string',
+		'number'       => 'string?',
+		'reference'    => 'string',
+		'barcode'      => 'string?',
+		'format'       => 'string?',
+		'state'        => 'string',
+		'is_return'    => 'boolean',
+		'created_at'   => 'string?',
+		'cancelled_at' => 'string?',
+		'file_kept'    => 'boolean',
+		'document_url' => 'string'
+	);
+
+}
+
+// The integration.php address the document links start from.
+function api_order_label_base_url() {
+
+	$scheme = defined('URL_SCHEME') ? URL_SCHEME : 'https://';
+
+	$host = defined('HOSTNAME_SETTING') ? HOSTNAME_SETTING : '';
+
+	$path = (defined('OUTPUT_PATH') ? OUTPUT_PATH : '') . (defined('OUTPUT_SOFTWARE_DIRECTORY') ? OUTPUT_SOFTWARE_DIRECTORY : '');
+
+	return $scheme . $host . $path . '/integration.php';
+
+}
+
+// The order's labels by ship_to_id, in one query. Empty on a site whose
+// database lacks the table.
+function api_order_labels($order_id) {
+
+	if (!pg_shipment_labels_ready()) {
+
+		return array();
+
+	}
+
+	$base_url = api_order_label_base_url();
+
+	$labels = array();
+
+	foreach (api_rows("SELECT * FROM shipment_labels
+			WHERE order_id = '" . (int)$order_id . "'
+			ORDER BY created_at DESC, id DESC") as $row) {
+
+		$labels[(int)$row['ship_to_id']][] = api_order_label_present($row, $base_url);
+
+	}
+
+	return $labels;
+
+}
+
+// The HTTP answer for a refusal of pg_shipment_label_create_check(), or of
+// the service behind pg_shipment_label_create(): the same message the order
+// screen shows. Pure.
+function api_order_label_refusal($result) {
+
+	$code = isset($result['code']) ? (string)$result['code'] : '';
+
+	$map = array(
+		'not_ready'     => array(503, 'service_unavailable'),
+		'not_found'     => array(404, 'not_found'),
+		'not_completed' => array(409, 'order_not_completed'),
+		'label_exists'  => array(409, 'label_exists'),
+		'no_driver'     => array(409, 'no_label_service')
+	);
+
+	if (isset($map[$code])) {
+
+		return array($map[$code][0], $map[$code][1], (string)$result['error']);
+
+	}
+
+	return array(409, !empty($result['unclear']) ? 'label_unclear' : 'label_refused', (string)$result['error']);
+
+}
+
+// POST /orders/{id}/shipments/label: the order screen's Create Label (or
+// Create Return Label) for one address of the order, through
+// pg_shipment_label_create(). A dry run stops after its check, before any
+// service is called.
+function api_orders_label_create($params) {
+
+	$id = (int)$params['id'];
+
+	$order = api_row("SELECT id, order_number FROM orders WHERE id = '" . $id . "' LIMIT 1");
+
+	if ($order === null) {
+
+		api_fail_not_found(lang('Order'));
+
+	}
+
+	$recipients = api_rows("SELECT id FROM ship_tos WHERE order_id = '" . $id . "' ORDER BY id ASC");
+
+	if (empty($recipients)) {
+
+		api_fail(409, 'no_shipping_address',
+			lang('This order has no shipping address, so there is nothing to ship.'));
+
+	}
+
+	$ship_to_id = 0;
+
+	if (isset($params['ship_to_id'])) {
+
+		foreach ($recipients as $row) {
+
+			if ((int)$row['id'] === (int)$params['ship_to_id']) {
+
+				$ship_to_id = (int)$row['id'];
+
+			}
+
+		}
+
+		if ($ship_to_id === 0) {
+
+			api_fail_validation(lang('That shipping address does not belong to this order.'), 'ship_to_id');
+
+		}
+
+	} elseif (count($recipients) === 1) {
+
+		$ship_to_id = (int)$recipients[0]['id'];
+
+	} else {
+
+		api_fail_validation(
+			lang('This order ships to more than one address: say which one this shipment is for.'), 'ship_to_id');
+
+	}
+
+	$return = !empty($params['is_return']);
+
+	$check = pg_shipment_label_create_check($ship_to_id, $return);
+
+	if (!$check['ok']) {
+
+		$refusal = api_order_label_refusal($check);
+
+		api_fail($refusal[0], $refusal[1], $refusal[2]);
+
+	}
+
+	api_dry_run_stop('created', 'shipment_label', array(
+		'order_id'   => $id,
+		'ship_to_id' => $ship_to_id,
+		'driver'     => $check['driver'],
+		'is_return'  => $return
+	));
+
+	$app = api_current_app();
+
+	$result = pg_shipment_label_create($ship_to_id, (int)$app['owner']['id'], $return);
+
+	if (!$result['ok']) {
+
+		$refusal = api_order_label_refusal($result);
+
+		api_fail($refusal[0], $refusal[1], $refusal[2]);
+
+	}
+
+	$row = api_row("SELECT * FROM shipment_labels WHERE id = '" . (int)$result['id'] . "' LIMIT 1");
+
+	if ($row === null) {
+
+		api_fail_server();
+
+	}
+
+	api_ok(api_order_label_present($row, api_order_label_base_url()), 201);
+
+}
+
+// GET /orders/{id}/shipments/labels/{label_id}/document: the kept file, else
+// the service's copy, with the headers the panel's download uses. An SVG
+// always goes as a sandboxed attachment: an API client has no print page.
+function api_orders_label_document($params) {
+
+	$id = (int)$params['id'];
+
+	$row = pg_shipment_labels_ready()
+		? api_row("SELECT * FROM shipment_labels WHERE id = '" . (int)$params['label_id'] . "' AND order_id = '" . $id . "' LIMIT 1")
+		: null;
+
+	if ($row === null) {
+
+		api_fail_not_found(lang('Shipping Label'));
+
+	}
+
+	$document = pg_shipment_label_document($row);
+
+	if (!$document['ok']) {
+
+		api_fail(409, 'label_unavailable', $document['error']);
+
+	}
+
+	while ((ob_get_level() > 0) && @ob_end_clean()) {
+
+	}
+
+	if (!headers_sent()) {
+
+		header('X-Request-Id: ' . api_request_id());
+
+		foreach (api_order_label_headers((string)$document['format'], $row) as $header) {
+
+			header($header);
+
+		}
+
+		header('Content-Length: ' . strlen($document['document']));
+
+		http_response_code(200);
+
+	}
+
+	api_log_request(200, '');
+
+	echo $document['document'];
+
+	exit();
+
+}
+
+// The headers of a label document sent over the API: pg_shipment_label_headers()
+// with the download form, so an SVG is an attachment under
+// Content-Security-Policy: sandbox. Pure.
+function api_order_label_headers($format, $row) {
+
+	$file_name = 'label-' . preg_replace('/[^A-Za-z0-9-]+/', '', (string)(((string)$row['number'] !== '') ? $row['number'] : $row['id']));
+
+	return pg_shipment_label_headers($format, $file_name, true);
 
 }

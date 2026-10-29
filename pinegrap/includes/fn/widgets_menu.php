@@ -101,6 +101,10 @@ function _render_system_widget_menu_region($tree_json, $widget_id, $cfg = array(
         $by_parent = pg_sw_list_menu_rows($items, _pg_sa_page_id(),
             function ($folder_id) { return check_view_access($folder_id) == true; },
             defined('FRONTEND_LANGUAGE') ? function ($name) { return pg_tr_text($name, 'text'); } : null);
+        // The items' addresses for the page's prefetch list (speculation.php).
+        foreach ($by_parent as $level) {
+            foreach ($level as $row) pg_speculation_note(array(html_entity_decode($row['__menu_item_url'], ENT_QUOTES | ENT_HTML5, 'UTF-8')));
+        }
     }
     $top = isset($by_parent[0]) ? $by_parent[0] : array();
 

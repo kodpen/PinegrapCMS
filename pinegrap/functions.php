@@ -186,3 +186,4 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/cart_quotes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_list.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/order_view.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_icon.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/speculation.php');

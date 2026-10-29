@@ -199,6 +199,7 @@
     "Image optimization is not available on this server.": "Bu sunucuda görsel optimizasyonu kullanılamıyor.",
     "Image selector is not available.": "Görsel seçici kullanılamıyor.",
     "Image src": "Görsel src",
+    "Image viewer": "Görsel görüntüleyici",
     "Image without alternative text": "Alternatif metni olmayan görsel",
     "Image {var:1} of {var:2}": "Görsel {var:1} / {var:2}",
     "Image: Carousel": "Görsel: Karusel",

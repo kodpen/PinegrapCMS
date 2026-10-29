@@ -183,6 +183,14 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('Channels for the team, tasks with owners and dates, and a planning board. Basic users are given it from their user screen.') . '</div>
                                             </div>
                                         </div>' : '') . '
+                                        ' . (array_key_exists('speculation_prefetch', $row) ? '
+                                        <div class="col-12 ">
+                                            <div class="form-field">
+                                                <div class="switch"><input value="1"' . (!empty($row['speculation_prefetch']) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="speculation_prefetch" name="speculation_prefetch"/></div>
+                                                <label class="" for="speculation_prefetch">' . lang('Prefetch Menu Links') . '</label>
+                                                <div class="form-text">' . lang('Pages tell the browser the addresses in their menus, so a page a visitor points at or presses is fetched a moment before it is opened and appears at once. Chrome and Edge do this; other browsers ignore it. Not for signed-in members and staff, and never for sign-in, cart, download or panel links. A page fetched this way and then opened is counted once.') . '</div>
+                                            </div>
+                                        </div>' : '') . '
                                    </div>
                                 </div>
                             </div>

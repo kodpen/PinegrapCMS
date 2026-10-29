@@ -191,7 +191,7 @@ function test_workspace_flows_canvas_detail_carries_the_start_kind()
 function test_workspace_flows_canvas_list_filters_by_start_kind()
 {
 	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 1600);
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 2000);
 
 	pg_assert_contains("\$start['kind']", $list, 'the list hands each flow its start');
 
@@ -401,7 +401,7 @@ function test_workspace_flows_canvas_list_start_sentence_per_kind()
 function test_workspace_flows_canvas_list_carries_sentence_and_channel()
 {
 	$actions = file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 1600);
+	$list = substr($actions, strpos($actions, "case 'ws_flow_list':"), 2000);
 
 	pg_assert_contains('ws_flows_starts($viewer, $rows)', $list, 'starts read once for the list');
 	pg_assert_contains("'start_text'", $list, 'the start sentence');

@@ -21,5 +21,5 @@ module: shipment_labels
 - Erasure (`pg_privacy_erase_tables()` `shipment_labels`, anonymise): `_pg_privacy_erase_apply_shipment_labels()` removes the files, then `label_file` is blanked; the rows stay (reference and barcode name nobody). `delete_order.php` deletes files and rows (`pg_shipment_labels_delete_for_order()`).
 
 ## What came after?
-- Bulk create and print, Cancel Label, return labels: `shipment-label-bulk.md` (plan step 3b).
+- Bulk create and print, Cancel Label, return labels: `shipment-label-bulk.md` (plan step 3b). The API: `shipment-label-api.md`.
 - Not run against a live service. Tests: `tests/shipment_labels_test.php` (carrier and driver choice, retention dates, file name and path safety, shipment shape, row shape from a stub driver).
