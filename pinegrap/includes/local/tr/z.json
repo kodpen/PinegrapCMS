@@ -4,6 +4,7 @@
     "ZIP creation failed or resulted in empty archive.": "ZIP oluşturulamadı ya da arşiv boş çıktı.",
     "ZIP file not readable.": "ZIP dosyası okunamıyor.",
     "ZIP, {var:1} MB. The link works until {var:2}; ask for a new one after that.": "ZIP, {var:1} MB. Bağlantı {var:2} tarihine kadar çalışır; sonrasında yenisini isteyin.",
+    "ZPL (thermal printer)": "ZPL (termal yazıcı)",
     "ZPL II (thermal printer)": "ZPL II (termal yazıcı)",
     "Zip / Postal Code": "Zip / posta kodu",
     "Zip Code": "Posta kodu",
