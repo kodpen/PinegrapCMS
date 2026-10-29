@@ -27,4 +27,4 @@ description: Decisions list, workspace part: a typed @username in /task, a flow 
 ## What do Edit and the three starters do once the scheduled form is retired?
 - Decided (architect, 2026-10-28, #2753; plan `workspace-flows-scheduled-merge.md` R1b, R2): Edit on an action row the conversion refused (`flow_id = 0`) retries `ws_scheduled_convert()`: converted, it opens the canvas; refused, it lists the problems and offers Duplicate; the row runs on until cancelled; no schema. The `forms`, `orders` and `chain` starters come over with flow semantics: counts read the last day (the texts say so), `chain` is a manual start another flow's start-a-flow box starts.
 
-Related: docs/memory/workflow/decisions-made.md
+Related: docs/memory/workflow/decisions-made.md, decisions-made-workspace-2.md (part 2)
