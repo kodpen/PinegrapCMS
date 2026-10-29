@@ -1,6 +1,6 @@
 ---
 name: shipment-label-returns
-description: Customer return labels (#3178): Create Return Label on an approved request, one per request, code into carrier_code, a short mail (#3194); the customer's download (#3239, widget 8c)
+description: Customer return labels (#3178): Create Return Label on an approved request, one per request, code into carrier_code, a short mail (#3194); the customer's download (#3239, widget #3268)
 module: shipment_labels
 ---
 
@@ -20,7 +20,7 @@ module: shipment_labels
 
 ## How does the customer get the label document? (#3239)
 - A "Download return label" link on the request in `pg_returns_list_html()` (the classic order view; `pg_return_present()` carries `label_url`, filled by `pg_return_customer_view()`). Offered while the request is `approved` or `shipped` and has an active label (`pg_shipment_label_customer_offered()`, ids from `pg_shipment_label_labelled_returns()`); a cancelled label never.
-- The `__returns` widget lacks it (step 8c): a row token `__return_label_url` needs a line in the editor's list descriptor (`style_designer.src.js`); the wire pass (`pg_sw_order_return_form_wire()`) can append the link to the `order.returns` box unless placed.
+- The widget's returns part shows it too (#3268): row tokens `__return_label_url`, `__return_has_label`, empty unless offered ([[widget-default-parts-returns]]). A layout saved with the part earlier gets it only when the designer places it.
 - `order_return.php` GET `action=label&order_id&return_id` (before the POST token check): `pg_shipment_label_customer_refusal()` (pure) refuses anybody but the signed-in owner on `orders.user_id` with one 403 answer, then the returns' hourly allowance (the same `return|<user>` bucket as the moves, 429), then a return of another order or no offered label (404). Then `pg_shipment_label_document()`: the kept file, else the service's copy through the driver; on failure the log keeps the driver's words, the customer is told to contact the shop (502).
 - Headers `pg_shipment_label_customer_headers()`: PDF inline, ZPL a download, SVG only the sandboxed attachment (never the panel's print page).
 

@@ -891,8 +891,9 @@ function pg_sw_return_badge_classes()
 // and a status badge per status; its products (order.return_lines); the
 // reason, the notes; how to send the goods back once approved, the code
 // after it; the tracking number, the refund date; then the customer's
-// moves (pg_sw_part_order_return_moves()). Shown when
-// the order has returns (has_returns).
+// moves (pg_sw_part_order_return_moves()) and the return label's download
+// link while one is offered (__return_has_label). Shown when the order has
+// returns (has_returns).
 function pg_sw_part_order_returns_list($cfg = array())
 {
     $detail = function ($label, $token, $sample, $test = '') {
@@ -935,6 +936,11 @@ function pg_sw_part_order_returns_list($cfg = array())
                 $detail(lang('Tracking number'), '__return_tracking_number', ''),
                 $detail(lang('Refund due by'), '__return_refund_deadline', ''),
                 pg_sw_part_el('div', '', 'The customer\'s moves', array(), pg_sw_part_order_return_moves($cfg)),
+                pg_sw_part_el('div', 'mt-2', 'Return label', pg_sw_part_when('__return_has_label', 'not_empty'), array(
+                    pg_sw_part_el('a', 'btn btn-sm btn-outline-primary', 'Download return label', array(
+                        'text' => lang('Download return label'), 'href' => '#', '_bindings' => array('href' => '__return_label_url'),
+                    )),
+                )),
             )),
         )),
     )));
