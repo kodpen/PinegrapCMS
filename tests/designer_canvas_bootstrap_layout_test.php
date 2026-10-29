@@ -10,7 +10,7 @@
  * width inline element, inline wrappers on the text line).
  *
  * The canvas stylesheet (IFRAME_CSS) is cut out of
- * assets/js/style_designer.js and evaluated under Node; on a machine without
+ * assets/js/style_designer.src.js and evaluated under Node; on a machine without
  * Node those tests are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -27,7 +27,7 @@ function _test_canvas_bs_js()
 {
 	static $js = null;
 	if ($js === null) {
-		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	}
 	return $js;
 }

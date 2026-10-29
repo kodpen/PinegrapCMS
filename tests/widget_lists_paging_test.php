@@ -127,7 +127,7 @@ function test_widget_lists_paging_renderer_wiring()
 // The editor offers the list in the form list, anywhere in the widget.
 function test_widget_lists_paging_editor()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("extra: { listSource: 'paging.pages' }", $js);
 	pg_assert_contains("'paging.pages': {", $js);
 	pg_assert_contains("kinds: ['form_list_view', 'catalog_listing', 'search_results'],", $js);

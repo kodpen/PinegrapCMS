@@ -7,7 +7,7 @@
  * back as a plain space), a label of a colour, date or file input does not
  * open the browser's chooser, bound text does not advertise a double-click
  * edit, and the canvas document carries the same <html lang> as the export.
- * The helpers are cut out of assets/js/style_designer.js and run under Node
+ * The helpers are cut out of assets/js/style_designer.src.js and run under Node
  * with stub documents; on a machine without Node those cases are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function designer_inline_text_test_source()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // One function of the designer, from its declaration to the closing brace

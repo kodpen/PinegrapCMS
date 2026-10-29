@@ -51,7 +51,7 @@ function test_search_collect_catalog_needs_detail_page()
 // says when neither the site nor the design has a page to open a product.
 function test_search_results_editor_names_missing_detail_page()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, '// ── search_results settings');
 	$end = ($start !== false) ? strpos($js, '// ── shopping_cart settings', (int) $start) : false;
 	pg_assert_true($start !== false && $end !== false, 'the search results settings are found');

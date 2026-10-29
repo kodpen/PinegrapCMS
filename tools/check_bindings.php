@@ -52,7 +52,7 @@ if (PHP_SAPI !== 'cli') {
 	exit('Forbidden');
 }
 
-$designer_file = 'assets/js/style_designer.js';
+$designer_file = 'assets/js/style_designer.src.js';
 
 $renderer_glob = 'includes/fn/widgets*.php';
 

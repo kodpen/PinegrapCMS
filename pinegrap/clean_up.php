@@ -148,6 +148,9 @@ $file_list = array(
     // completion (assets/js/pg_style_suggest.js with the predictor and the
     // generated vocabulary). Dropped from the package with 2026.11.0.
     'assets/js/class_suggestions.js',
+    // The designer's script, now served as assets/js/style_designer.min.js
+    // built from assets/js/style_designer.src.js. Renamed with 2026.11.0.
+    'assets/js/style_designer.js',
     'assets/codemirror',
     'assets/codemirror-5.65.9',
     'assets/codemirror_modal.js',

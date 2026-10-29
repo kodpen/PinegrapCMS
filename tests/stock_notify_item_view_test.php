@@ -206,7 +206,7 @@ function test_stock_notify_item_view_variant_script()
 // the block.
 function test_stock_notify_item_view_designer()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_contains("['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]", $js, 'the flag');
 	pg_assert_contains("if (isRealButton) aOpts.push(['stock_notify', _sdT('Notify me when back in stock')]);", $js, 'the button, on a real button only');

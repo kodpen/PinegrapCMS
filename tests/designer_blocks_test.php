@@ -37,7 +37,7 @@ function _test_blocks_js()
 {
 	static $js = null;
 	if ($js === null) {
-		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	}
 	return $js;
 }

@@ -69,7 +69,7 @@ function test_widget_condition_rows_join_vectors()
 	}
 	if (!_widget_cond_rows_node_ok()) return;
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$a = strpos($js, "\n    function _sdCondEvalAll(");
 	pg_assert_true($a !== false, 'the twin is found');
 	$src = _widget_cond_rows_twin_source() . substr($js, $a, strpos($js, "\n    }\n", $a) + 7 - $a);
@@ -97,7 +97,7 @@ function test_widget_condition_rows_specs_twin()
 		array('_bindings' => array('show_if_2' => '__b')),
 		array('_bindings' => array('show_if' => array('x'))),
 	);
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));
@@ -130,7 +130,7 @@ function _widget_cond_rows_node_ok()
 // The editor's test of one condition, cut out of style_designer.js.
 function _widget_cond_rows_twin_source()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$a = strpos($js, "\n    var SD_COND_WS = ");
 	$src = substr($js, $a, strpos($js, ";\n", $a) + 2 - $a);
 	foreach (array('_sdCondPlain', '_sdCondText', '_sdCondFold', '_sdCondFigureOk', '_sdCondFigureNumber', '_sdCondAmount',

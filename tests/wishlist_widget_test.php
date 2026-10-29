@@ -31,7 +31,7 @@ function wishlist_widget_test_function_source($name)
 // The text of style_designer.js from $from to the next $to.
 function wishlist_widget_test_js_between($from, $to)
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, $from);
 
 	if ($start === false) {

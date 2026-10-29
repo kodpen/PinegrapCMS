@@ -146,7 +146,7 @@ function test_collections_ref_editor_spec()
 		return;
 	}
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'function _swRefSpec(');
 	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
 	pg_assert_true(($start !== false) && ($end !== false), 'the designer has _swRefSpec()');
@@ -183,7 +183,7 @@ function test_collections_ref_editor_spec()
 // keeps the spec beside it.
 function test_collections_ref_panel_wiring()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("var SW_REF_TOKEN = '__ref';", $js);
 	pg_assert_contains('var withRef = _pageLinkOffered && _SW_REF_PROPS[prop] === 1;', $js, 'offered in the widget kinds that expand it');
 	pg_assert_contains("bp._bindParams[propName] = { field: '', page_id: 0, show: '', kind: '' };", $js, 'picking it starts an empty spec');

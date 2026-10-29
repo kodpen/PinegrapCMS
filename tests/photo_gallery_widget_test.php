@@ -72,7 +72,7 @@ function test_photo_gallery_widget_registered()
 	pg_assert_same('photo_gallery', $map['photo gallery'], 'stands in for the classic type');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_photo_gallery(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'photo_gallery'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'photo_gallery': {", $js, 'has a starter tree');
 	pg_assert_contains("photo_gallery:     SW_PHOTO_GALLERY_TOKEN_GROUPS", $js, 'has a token palette');

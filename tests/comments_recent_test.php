@@ -76,7 +76,7 @@ function comments_recent_test_node($names, $script)
 		return null;
 	}
 
-	$js = comments_recent_test_source('assets/js/style_designer.js');
+	$js = comments_recent_test_source('assets/js/style_designer.src.js');
 	$code_js = '';
 	$found = true;
 
@@ -1220,7 +1220,7 @@ function comments_recent_test_php_walk($node, &$out, $key = '')
 // line to the next case or the default.
 function comments_recent_test_starter_block($kind)
 {
-	$js = comments_recent_test_source('assets/js/style_designer.js');
+	$js = comments_recent_test_source('assets/js/style_designer.src.js');
 	$start = strpos($js, "\n            case '" . $kind . "': {");
 	if ($start === false) {
 		return '';

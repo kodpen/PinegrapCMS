@@ -39,7 +39,7 @@ function _form_list_result_count_render()
 
 function _form_list_result_count_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // $before is found in $body, and so is $after, later.

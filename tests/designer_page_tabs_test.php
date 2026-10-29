@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for how the visual designer builds a page tab from the page the
- * server sends (assets/js/style_designer.js): when the editor opens
+ * server sends (assets/js/style_designer.src.js): when the editor opens
  * (_pgTabsInit()) and when a page of another design is opened as a tab
  * (_pgTabsAttachLoaded()). A page setting the tab does not take from the
  * server is shown empty and is sent back empty on the next save; for the
@@ -24,7 +24,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // the next function declared at the same depth.
 function designer_page_tabs_test_body($name)
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, "\n    function " . $name . '(');
 
 	if ($from === false) {
@@ -39,7 +39,7 @@ function designer_page_tabs_test_body($name)
 // The page settings a tab carries and the save sends (_PG_PAGE_FIELDS).
 function designer_page_tabs_test_fields()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	if (preg_match('/var _PG_PAGE_FIELDS = \[(.*?)\];/s', $source, $m) !== 1) {
 		return array();

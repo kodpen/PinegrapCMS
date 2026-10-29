@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the options panel selects the visual designer builds from a list
- * of utility classes (selStyleGroup() in assets/js/style_designer.js): the
+ * of utility classes (selStyleGroup() in assets/js/style_designer.src.js): the
  * placeholder and the option labels read in the panel's language ("Küçük",
  * "Üst 3", "Normal" for the bare shadow class) instead of the class names
  * they are cut from, and a label without a translation keeps its old form.
@@ -57,7 +57,7 @@ function _test_sol_run($cases, $keys = array())
 		$i18n[$key] = isset($language[$key]) ? $language[$key] : $key;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$script = 'var sdDesign = {i18n: ' . json_encode((object) $i18n) . "};\n"
 		. _test_sol_cut($source, '    function _sdT(key, vars) {') . "\n"
 		. _test_sol_cut($source, '    function capFirst(s) {') . "\n"
@@ -240,7 +240,7 @@ function test_designer_style_option_labels_english()
 function test_designer_style_option_labels_colour_row_keys()
 {
 	$language = pg_test_language_map();
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("row(_sdT('Text Color'),", $source);
 	pg_assert_contains("row(_sdT('Background Color'),", $source);
 	pg_assert_contains("esc(_sdT('Custom Background Color'))", $source);

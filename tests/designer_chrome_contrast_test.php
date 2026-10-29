@@ -108,7 +108,7 @@ function test_designer_chrome_contrast()
 
 function test_designer_chrome_markup_without_fades()
 {
-	$js = designer_chrome_source('assets/js/style_designer.js');
+	$js = designer_chrome_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($js, 'color:var(--sd-accent);opacity:') === false, 'inline lock icons are not faded');
 	pg_assert_contains('<span class="sd-breadcrumb-empty">', $js, '"No selection" carries its class, not an opacity');

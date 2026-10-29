@@ -817,21 +817,21 @@ The visual editor's settings dialog: the Reset Layout button goes into the
 dialog's footer; paste and the note shortcut leave the editor's own dialogs
 alone (a code editor in one is contenteditable, not an input).
 
-@@ assets/js/style_designer.js
+@@ assets/js/style_designer.src.js
 <<<
 var footer = phpModal.querySelector('.modal-footer');
 ===
 var footer = phpModal.querySelector('.dialog-footer');
 >>>
 
-@@ assets/js/style_designer.js
+@@ assets/js/style_designer.src.js
 <<<
 '#sd-properties, #sd-bp-attrs, .modal, input, textarea, select'
 ===
 '#sd-properties, #sd-bp-attrs, dialog, input, textarea, select'
 >>>
 
-@@ assets/js/style_designer.js
+@@ assets/js/style_designer.src.js
 <<<
 e.target.closest('.modal, .sd-note-overlay')
 ===

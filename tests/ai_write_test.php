@@ -774,7 +774,7 @@ function test_ai_write_image_alt_messages()
 function test_ai_write_image_alt_script()
 {
 	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_write.js');
-	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_contains("inputs.push({ type: 'image' })", $script, 'image input');
 	pg_assert_contains("{ type: 'image', value: picture }", $script, 'image prompt');

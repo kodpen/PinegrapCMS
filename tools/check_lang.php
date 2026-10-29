@@ -46,7 +46,7 @@ $skip_directories = array(
 
 $language_file = 'includes/local/tr.json';
 
-$designer_file = 'assets/js/style_designer.js';
+$designer_file = 'assets/js/style_designer.src.js';
 
 $root = isset($argv[1]) ? rtrim($argv[1], '/\\') : dirname(__DIR__) . '/pinegrap';
 

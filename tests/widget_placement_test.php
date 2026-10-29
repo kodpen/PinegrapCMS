@@ -110,7 +110,7 @@ function test_widget_placement_editor_twin()
 	if ($code !== 0) {
 		return;
 	}
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$fn = function ($name) use ($source) {
 		$from = strpos($source, "\n    function " . $name . '(');
 		pg_assert_true($from !== false, 'the designer has ' . $name . '()');

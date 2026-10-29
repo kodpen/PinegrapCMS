@@ -92,7 +92,7 @@ function test_designer_widget_output_fluid_alias_leaves_the_rest()
 // catalog detail starter binds it to a div, never to a paragraph.
 function test_designer_widget_output_description_in_a_div()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(preg_match("/createNode\('semantic', \{ tag: 'div'[^}]*\n\s*customName: _sdT\('Description'\),\n\s*_bindings: \{ text: '__description' \} \}\)/", $source) === 1, 'a div');
 	pg_assert_true(preg_match("/contentType: 'paragraph',[^}]*\n[^}]*_bindings: \{ text: '__description' \}/", $source) === 0, 'no paragraph');
 }
@@ -102,7 +102,7 @@ function test_designer_widget_output_description_in_a_div()
 // every design template's own.
 function test_designer_widget_output_account_toggle_is_a_button()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(preg_match("/createNode\('semantic', \{ tag: 'button', cssClass: 'btn btn-link [^']*dropdown-toggle',\n\s*customName: _sdT\('Account Button'\),\n\s*_attrs: \[\{ name: 'type', value: 'button' \}, \{ name: 'data-bs-toggle', value: 'dropdown' \}/", $source) === 1, 'starter layout');
 
 	foreach (glob(PG_FUNCTIONS_DIR . '/includes/design_templates/*.php') as $file) {
@@ -131,7 +131,7 @@ function test_designer_widget_output_calendar_empty_message()
 // The editor writes and shows the same default, through its twin.
 function test_designer_widget_output_calendar_empty_message_editor()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(0, substr_count($source, "_sdT('There are no events this month.')"), 'the month sentence is not written any more');
 	pg_assert_contains("if (cfg.empty_message === undefined) cfg.empty_message = _sdT('There are no events to show.');", $source);
 	pg_assert_contains("var _cvNoEvents   = _swCalendarEmptyMessage(_cfg.empty_message);", $source);

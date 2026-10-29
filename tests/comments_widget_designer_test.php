@@ -74,7 +74,7 @@ function comments_widget_designer_test_node($names, $script)
 		return null;
 	}
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$code_js = '';
 	$found = true;
 
@@ -132,7 +132,7 @@ function comments_widget_designer_test_js_object_keys($js, $name)
 // and the live preview.
 function test_comments_widget_designer_panel_wiring()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 
 	$sect = comments_widget_designer_test_js_function($js, '_sdCommentSettingsSect');
 	pg_assert_true($sect !== '', '_sdCommentSettingsSect is found');
@@ -396,7 +396,7 @@ function test_comments_widget_designer_js_field_lists()
 		return;
 	}
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$keys = pg_comment_editor_keys();
 	$cmt = comments_widget_designer_test_js_list($js, '_PG_CMT_FIELDS');
 	pg_assert_same(array_keys($keys), $cmt, '_PG_CMT_FIELDS follows pg_comment_editor_keys()');
@@ -447,7 +447,7 @@ function test_comments_widget_designer_screen_wiring()
 // Every place the editor builds a page object names the new settings.
 function test_comments_widget_designer_page_literals()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$new = array('pg_comments_attachments', 'pg_comments_select_name', 'pg_comments_message', 'pg_comments_closed_message', 'pg_comments_watchers_managed');
 
 	foreach (array('_pgTabsAddNew', '_pgTabsDuplicateActive', '_pgTabsAddCopy', '_pgTabsAttachLoaded', '_pgImportApplyPages', '_pgTemplateApply', '_pgTabsInit') as $name) {
@@ -551,7 +551,7 @@ JS;
 // before, on the fixed block and on the widget alike.
 function test_comments_widget_designer_settings_rows()
 {
-	$sect = comments_widget_designer_test_js_function(comments_widget_designer_test_source('assets/js/style_designer.js'), '_sdCommentSettingsSect');
+	$sect = comments_widget_designer_test_js_function(comments_widget_designer_test_source('assets/js/style_designer.src.js'), '_sdCommentSettingsSect');
 	foreach (array("_cmtSwitch('pg_comments_attachments',", "_cmtSwitch('pg_comments_select_name',", 'data-cmt-txt="pg_comments_message"',
 		'data-cmt-txt="pg_comments_closed_message"', "_cmtSwitch('pg_comments_watchers_managed',") as $needle) {
 		pg_assert_contains($needle, $sect, 'the settings section has ' . $needle);
@@ -1000,7 +1000,7 @@ function test_comments_widget_designer_email_drops_twin()
 	pg_assert_true($res['btn button'] && $res['cancel'] && $res['replying'] && $res['form'], 'what the e-mail drops');
 	pg_assert_false($res['btn a'] || $res['reply'] || $res['share'] || $res['staff'], 'links and flagged boxes stay (their flags decide)');
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$samples = comments_widget_designer_test_js_function($js, '_sdAppendCommentSamples');
 	$no_comments = strpos($samples, 'if (!thread.has_comments) return;');
 	$email = strpos($samples, 'if (thread.is_email) return;');
@@ -1215,7 +1215,7 @@ JS;
 // The panel's canvas preview section and the Preview's request.
 function test_comments_widget_designer_canvas_wiring()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('_sdCommentsCanvasSect(', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the widget panel has the canvas preview');
 	$canvas = comments_widget_designer_test_js_function($js, '_sdCommentsCanvasSect');
@@ -1762,7 +1762,7 @@ function test_comments_widget_designer_templates_ship_the_kind()
 	);
 	pg_assert_same(array('comments'), pg_design_template_starter_kinds($tpl), 'a comments starter is a starter kind');
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$starter = comments_widget_designer_test_js_function($js, '_buildStarterTree');
 	pg_assert_contains("case 'comments':", $starter, 'the editor builds the starter');
 	pg_assert_contains("{ type: 'comments',", $js, 'and knows the kind');
@@ -1771,7 +1771,7 @@ function test_comments_widget_designer_templates_ship_the_kind()
 // The conversion buttons and the save's warnings are wired.
 function test_comments_widget_designer_conversion_wiring()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('sd-cmt-make-designable', comments_widget_designer_test_js_function($js, 'propsRegion'), 'the region offers Make designable');
 	pg_assert_contains('sd-cmt-make-designable', comments_widget_designer_test_js_function($js, 'bindPropEvents'), 'and it is wired');
@@ -1966,7 +1966,7 @@ JS;
 	pg_assert_same(array('comments_recent', 'comments'), pg_design_template_starter_kinds($tpl), 'the server asks for both starters');
 
 	// Every place that builds a starter from a stored config reads the kind.
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	pg_assert_contains('_swTemplateStarterTree(w)', comments_widget_designer_test_js_function($js, '_pgTemplateApply'), 'opening a template');
 	pg_assert_contains('_buildStarterTree(_swKindOf(tcfg))', $js, 'the repair of a template placeholder');
 	pg_assert_contains('_SW_NO_MESSAGES[_swKindOf(mcfg)]', $js, 'the Messages drop on load');
@@ -2029,7 +2029,7 @@ JS;
 	pg_assert_same(array('tab:topic', 12, 13, 14, 15, 16), $res['pages_no_max'], 'without a maximum');
 	pg_assert_same(array(3, 5), $res['ids'], 'an id list as before');
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	pg_assert_contains('_swCfgListValues(', comments_widget_designer_test_js_function($js, '_wireSystemWidgetProps'), 'the generic handler reads them');
 }
 
@@ -2214,7 +2214,7 @@ JS;
 // handlers write the key they read.
 function test_comments_widget_designer_filter_editor_key()
 {
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	$html = comments_widget_designer_test_js_function($js, '_swFormListFiltersHtml');
 	pg_assert_contains('function _swFormListFiltersHtml(sid, filters, fields, loading, note, withUrl, key)', $html, 'the key is a parameter');
 	pg_assert_same(4, substr_count($html, 'keyAttr'), 'set once, on the rows and on the Add button, whose id only the default list keeps');
@@ -2306,7 +2306,7 @@ JS;
 	pg_assert_same(1, $res['fetchedAgain'], 'nothing is fetched twice');
 	pg_assert_same(1, $res['rendersAgain'], 'and the panel is not drawn again for nothing');
 
-	$js = comments_widget_designer_test_source('assets/js/style_designer.js');
+	$js = comments_widget_designer_test_source('assets/js/style_designer.src.js');
 	pg_assert_contains('_sdCommentsRecentLoad(_cfg);', comments_widget_designer_test_js_function($js, 'propsSharedRef'), 'the panel loads them');
 }
 

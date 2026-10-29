@@ -62,7 +62,7 @@ function test_designer_scroller_inject()
 // expression, so the preview and the page agree on which pages get the file.
 function test_designer_scroller_preview_pattern()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$found = preg_match("~\\{ test: (/[^\\n]*?/[a-z]*), file: 'assets/js/pg_scroller\\.js' \\}~", $js, $m);
 	pg_assert_true((bool) $found, 'the preview has a row for pg_scroller.js');
 	pg_assert_same(pg_scroller_pattern(), $found ? $m[1] : '', 'the preview tests the same expression as the server');

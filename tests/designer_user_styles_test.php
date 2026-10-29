@@ -175,7 +175,7 @@ function test_designer_user_styles_parse_tolerates_broken_text()
 // before the write), and no card edit rewrites the whole text from the list.
 function test_designer_user_styles_wiring()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, 'function _stylesCreateRule()');
 	$create = ($from !== false) ? substr($js, $from, strpos($js, "\n    }\n", $from) - $from) : '';
 
@@ -184,7 +184,7 @@ function test_designer_user_styles_wiring()
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	$helpers = strpos($screen, 'assets/js/pg_user_styles.js');
-	$designer = strpos($screen, '<script src="assets/js/style_designer.js');
+	$designer = strpos($screen, "pg_js_bundle_tags('assets/js/style_designer.min.js'");
 
 	pg_assert_true(($helpers !== false) && ($designer !== false) && ($helpers < $designer), 'the helpers load before the designer');
 }

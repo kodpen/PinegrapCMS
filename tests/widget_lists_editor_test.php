@@ -19,7 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function _widget_lists_editor_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // The text of a `var NAME = <open> ... <close>;` block of style_designer.js

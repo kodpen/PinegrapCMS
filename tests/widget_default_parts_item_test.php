@@ -330,7 +330,7 @@ function test_widget_parts_item_editor_twin()
 	@exec('node --version 2>&1', $out, $code);
 	if ($code !== 0) return;
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));

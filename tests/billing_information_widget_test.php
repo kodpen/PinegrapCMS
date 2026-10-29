@@ -61,7 +61,7 @@ function test_billing_information_widget_registered()
 	$known = new ReflectionFunction('pg_order_page_known');
 	$src = implode('', array_slice(file($known->getFileName()), $known->getStartLine() - 1, $known->getEndLine() - $known->getStartLine() + 1));
 	pg_assert_contains('billing_information_pages.page_id IS NOT NULL', $src, 'the handler takes a designed page with a row');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'billing_information'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'billing_information': {", $js, 'has a starter tree');
 }

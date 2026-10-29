@@ -51,7 +51,7 @@ function _legacy_region_node($names, $script)
 		return null;
 	}
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = '';
 	$found = true;
 
@@ -168,7 +168,7 @@ function test_legacy_region_preview_endpoint()
 // addresses.
 function test_legacy_region_preview_canvas()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_contains('if (_sdLegacyRegionOwn(node)) _sdLegacyRegionAppend(doc, rg);', $js);
 	pg_assert_false(strpos($js, "if (node.props.regionType === 'system') _sdLegacyRegionAppend(doc, rg);") !== false,

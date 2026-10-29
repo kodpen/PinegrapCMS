@@ -73,7 +73,7 @@ function test_menu_sequence_widget_registered()
 	pg_assert_true(isset($labels['menu_sequence_region']), 'panel label');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_menu_sequence_region(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'menu_sequence_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'menu_sequence_region': {", $js, 'has a starter tree');
 	pg_assert_contains("menu_sequence_region: SW_MENU_SEQUENCE_TOKEN_GROUPS", $js, 'has a token palette');

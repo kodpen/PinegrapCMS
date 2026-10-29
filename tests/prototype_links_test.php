@@ -563,7 +563,7 @@ function test_prototype_links_fallback_notice_names_the_start_page()
 
 function test_prototype_links_share_dialog_is_named_and_copies_with_a_fallback()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($source, 'function _pgPrototypeShareDialog(');
 	$end = strpos($source, 'function _pgTabsSyncViewButton(');
 	$dialog = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';
@@ -587,7 +587,7 @@ function test_prototype_links_share_dialog_is_named_and_copies_with_a_fallback()
 // it would go on offering a dead address to copy.
 function test_prototype_links_share_dialog_drops_the_new_address_once_revoked()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($source, 'function _pgPrototypeShareDialog(');
 	$end = strpos($source, 'function _pgTabsSyncViewButton(');
 	$dialog = (($start !== false) && ($end !== false)) ? substr($source, $start, $end - $start) : '';

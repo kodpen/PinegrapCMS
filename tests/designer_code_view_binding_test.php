@@ -6,7 +6,7 @@
  * view applies what is typed after a short pause, and a token still being
  * typed (or picked from the completion list) must not count as the value,
  * or the binding ends and "{{" becomes the element's design-time text. The
- * code view's binding helpers are cut out of assets/js/style_designer.js
+ * code view's binding helpers are cut out of assets/js/style_designer.src.js
  * and run under Node; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -31,7 +31,7 @@ function designer_code_view_binding_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'var _SD_CODE_BIND_RE =');
 	$to = strpos($source, 'function _sdCodeNodeAtPos(', $from);
 	$set_from = strpos($source, 'function _sdNodeSetBinding(');

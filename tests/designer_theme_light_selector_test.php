@@ -9,7 +9,7 @@
  * theme colours) stays under `:root, [data-bs-theme="light"]` so it still
  * applies in dark mode. The old combined block is split the same way when
  * the design loads and on every panel write. The panel's rule-block helpers
- * are cut out of assets/js/style_designer.js and run under Node; on a
+ * are cut out of assets/js/style_designer.src.js and run under Node; on a
  * machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -37,7 +37,7 @@ function designer_theme_light_selector_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _findRuleBlock(');
 	$to = ($from !== false) ? strpos($source, '// Read the current value of a single theme var', $from) : false;
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has the theme rule-block helpers');
@@ -311,7 +311,7 @@ JS
 // count.
 function test_designer_theme_light_selector_call_sites()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	$sentinels = strpos($source, 'function _ensureBootstrapSentinels(');
 	$sentinels_end = ($sentinels !== false) ? strpos($source, '_ensureBootstrapSentinels();', $sentinels) : false;

@@ -6503,6 +6503,9 @@ function pg_js_bundles()
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),
         // The explorer's tree in the File Manager and Catalog Manager panels.
         'assets/js/explorer_side.min.js'           => array('assets/js/explorer_side.js'),
+        // The visual designer. Loaded without defer, before the inline
+        // script that starts it and the scripts that extend it.
+        'assets/js/style_designer.min.js'          => array('assets/js/style_designer.src.js'),
     );
 }
 

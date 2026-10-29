@@ -351,7 +351,7 @@ function test_ai_fields_designer_page_save()
 function test_ai_fields_designer_agrees()
 {
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
-	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	pg_assert_contains("pg_ai_fields_marker('page_title', 'pg_page_title'", $screen, 'title marker');
 	pg_assert_contains("pg_ai_fields_marker('page_meta_description', 'pg_page_meta_description'", $screen, 'description marker');

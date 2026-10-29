@@ -34,7 +34,7 @@ function test_designer_chrome_names_dark_dialogs_carry_theme()
 
 function test_designer_chrome_names_choose_buttons_are_bs6()
 {
-	$source = designer_chrome_names_source('assets/js/style_designer.js');
+	$source = designer_chrome_names_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($source, "'btn btn-sm btn-' + esc(c.variant") === false, 'no v5 btn-<variant> class in sdChoose');
 	pg_assert_contains("function _sdChoiceBtnClass(variant)", $source, 'variant mapper');
@@ -44,7 +44,7 @@ function test_designer_chrome_names_choose_buttons_are_bs6()
 
 function test_designer_chrome_names_close_buttons_are_named()
 {
-	$source = designer_chrome_names_source('assets/js/style_designer.js');
+	$source = designer_chrome_names_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($source, '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>') === false, 'every dialog btn-close has a name');
 	foreach (array('sd-gf-modal-close', 'sd-as-co-close', 'sd-fp-close', 'sd-snap-close-btn') as $id) {
@@ -54,7 +54,7 @@ function test_designer_chrome_names_close_buttons_are_named()
 
 function test_designer_chrome_names_new_file_labels_bound()
 {
-	$source = designer_chrome_names_source('assets/js/style_designer.js');
+	$source = designer_chrome_names_source('assets/js/style_designer.src.js');
 
 	foreach (array('sd-as-co-name', 'sd-as-co-folder', 'sd-as-co-desc') as $id) {
 		pg_assert_contains('<label class="sd-as-co-label" for="' . $id . '">', $source, $id . ' label');
@@ -71,7 +71,7 @@ function test_designer_chrome_names_design_chooser_error_tone()
 
 function test_designer_chrome_names_texts_translated()
 {
-	$source = designer_chrome_names_source('assets/js/style_designer.js');
+	$source = designer_chrome_names_source('assets/js/style_designer.src.js');
 
 	foreach (array('Dropdown', 'Nav', 'Navbar') as $text) {
 		pg_assert_true(strpos($source, "labelEl.textContent = '" . $text . "';") === false, $text . ' context label translated');

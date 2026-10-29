@@ -222,7 +222,7 @@ function test_widget_passkeys_recovery_send_button()
 // regenerate button; its email_code field leaves the add form's rule alone.
 function test_widget_passkeys_starter_tree_recovery_form()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$at = strpos($js, "asForm(_sdT('New Codes by E-mail Form'), 'mfa_email_recovery'");
 	pg_assert_true($at !== false, 'the form under its flag');
 	$form = substr($js, (int) $at, 3000);

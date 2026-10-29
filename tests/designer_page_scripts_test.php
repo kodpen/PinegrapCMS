@@ -6,7 +6,7 @@
  * pg_bs_tips_inject() adds assets/js/pg_bs_tips.js (Bootstrap tooltips and
  * popovers) to a page holding data-bs-toggle="tooltip" or "popover", once,
  * before the last </body>; the editor's Preview asks the same table of
- * markers (_SD_PAGE_SCRIPTS in assets/js/style_designer.js) with the same
+ * markers (_SD_PAGE_SCRIPTS in assets/js/style_designer.src.js) with the same
  * expression, and loads the framework's script only when the design's
  * Bootstrap JS row does not.
  *
@@ -29,7 +29,7 @@ function _test_page_scripts_src()
 // The source of the visual editor.
 function _test_page_scripts_designer_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // The body of one function of the editor's source, from its declaration to
@@ -154,7 +154,7 @@ function test_page_scripts_preview_loads_bootstrap_once()
 // installed (the test is skipped). Output that is not JSON fails the test
 // and is shown: the extracted source ends in a comment, so $steps starts on
 // a line of its own or it would be commented out and print nothing.
-function _test_page_scripts_run($steps, $script_src = 'https://example.test/pinegrap/assets/js/style_designer.js?v=1700000000')
+function _test_page_scripts_run($steps, $script_src = 'https://example.test/pinegrap/assets/js/style_designer.src.js?v=1700000000')
 {
 	$out = array();
 	$code = 1;
@@ -253,7 +253,7 @@ function test_page_scripts_preview_files_carry_the_editor_stamp()
 
 	$bare = _test_page_scripts_run(
 		'console.log(JSON.stringify(_sdPageScriptFiles("<a data-bs-toggle=\"tooltip\">x</a>")));',
-		'https://example.test/pinegrap/assets/js/style_designer.js'
+		'https://example.test/pinegrap/assets/js/style_designer.src.js'
 	);
 	if ($bare !== null) {
 		pg_assert_same(array('https://example.test/pinegrap/assets/js/pg_bs_tips.js'), $bare, 'no stamp, no ?v=');

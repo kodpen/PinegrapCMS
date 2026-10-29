@@ -35,7 +35,7 @@ function designer_panel_names_function($source, $name)
 
 function test_designer_panel_names_pass_ties_labels()
 {
-	$source = designer_panel_names_source('assets/js/style_designer.js');
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 	$pass   = designer_panel_names_function($source, '_sdNamePropsPanel');
 
 	pg_assert_true($pass !== '', 'the naming pass exists');
@@ -52,7 +52,7 @@ function test_designer_panel_names_pass_ties_labels()
 
 function test_designer_panel_names_pass_runs_on_every_render()
 {
-	$source = designer_panel_names_source('assets/js/style_designer.js');
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 	$init   = designer_panel_names_function($source, '_sdPropsA11yInit');
 
 	pg_assert_contains('MutationObserver', $init, 'the pass follows every redraw of the panel');
@@ -63,7 +63,7 @@ function test_designer_panel_names_pass_runs_on_every_render()
 
 function test_designer_panel_names_section_headers_are_buttons()
 {
-	$source = designer_panel_names_source('assets/js/style_designer.js');
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 
 	foreach (array('sd-props-section-title sd-sect-hdr', 'sd-app-sect-hdr sd-sect-hdr', 'sd-bg-img-grp-hdr sd-sect-hdr') as $cls) {
 		pg_assert_true((bool) preg_match('/class="' . preg_quote($cls, '/') . '[^\n]*role="button" tabindex="0" aria-expanded="/', $source), $cls . ' is a keyboard button');
@@ -74,7 +74,7 @@ function test_designer_panel_names_section_headers_are_buttons()
 
 function test_designer_panel_names_toggles_are_named()
 {
-	$pass = designer_panel_names_function(designer_panel_names_source('assets/js/style_designer.js'), '_sdNamePropsPanel');
+	$pass = designer_panel_names_function(designer_panel_names_source('assets/js/style_designer.src.js'), '_sdNamePropsPanel');
 
 	pg_assert_contains("_sdT('More settings for {var}'", $pass, 'toggle name');
 	pg_assert_contains("'aria-controls'", $pass, 'toggle points at its rows');
@@ -82,7 +82,7 @@ function test_designer_panel_names_toggles_are_named()
 
 function test_designer_panel_names_styles_inspector_translated()
 {
-	$source = designer_panel_names_source('assets/js/style_designer.js');
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 
 	foreach (array('placeholder="property"', 'placeholder="value"', 'placeholder="selector"', 'margin-left:auto">inline</span>', '#6e7681">overlay</span>') as $raw) {
 		pg_assert_true(strpos($source, $raw) === false, $raw . ' is translated');
@@ -94,7 +94,7 @@ function test_designer_panel_names_styles_inspector_translated()
 
 function test_designer_panel_names_no_light_border_on_dark_panel()
 {
-	$source = designer_panel_names_source('assets/js/style_designer.js');
+	$source = designer_panel_names_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($source, 'border-top:1px solid #e5e7eb') === false, 'dark panel border token');
 }

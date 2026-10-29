@@ -133,7 +133,7 @@ function test_shipping_address_widget_registered()
 	pg_assert_true(isset($labels['shipping_address_and_arrival']), 'panel label');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("'shipping_address_and_arrival'", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'shipping_address_and_arrival'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'shipping_address_and_arrival': {", $js, 'has a starter tree');
 	pg_assert_contains("shipping_address_and_arrival: SW_SHIPPING_ADDRESS_TOKEN_GROUPS", $js, 'has a token palette');

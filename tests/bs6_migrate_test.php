@@ -243,7 +243,7 @@ function test_bs6_scope_kind()
 		'includes/fn/output.php' => 'panel',
 		'includes/fn/forms.php' => 'shared',
 		'liveform.class.php' => 'shared',
-		'assets/js/style_designer.js' => 'editor',
+		'assets/js/style_designer.src.js' => 'editor',
 		'includes/designer_screen.php' => 'editor',
 		'assets/js/pg_style_predict.js' => 'editor',
 		'includes/fn/designer_vocab.php' => 'editor',
@@ -432,7 +432,7 @@ function test_bs6_class_strings()
 		. "x.classList.toggle(on ? 'btn-primary' : 'btn-outline-secondary');\nvar label = 'Save it';\nvar wide = 'col-12 md:col-6 p-3';\n", $r['source']);
 	pg_assert_same(2, count($r['reviews']), 'the split button classes');
 	pg_assert_same($js, bs6_convert_source($js)['source'], 'not read unless asked');
-	pg_assert_false(bs6_reads_class_strings('assets/js/style_designer.js'), 'the editor names canvas classes as data');
+	pg_assert_false(bs6_reads_class_strings('assets/js/style_designer.src.js'), 'the editor names canvas classes as data');
 
 	$ids = "echo '<td id=\"modal-date\"></td>'; document.getElementById(\"modal-date\"); var s = 'lead';\n";
 	pg_assert_same(array(), bs6_find_class_strings($ids), 'an id, an element lookup and a lone word name no class');

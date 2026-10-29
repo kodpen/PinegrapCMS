@@ -103,7 +103,7 @@ function test_folder_view_widget_registered()
 	pg_assert_false(isset(pg_sw_kind_lists('menu_region')['folder_view.children']), 'only in its own kind');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_folder_view(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'folder_view'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'folder_view': {", $js, 'has a starter tree');
 	pg_assert_contains("folder_view:       SW_FOLDER_VIEW_TOKEN_GROUPS", $js, 'has a token palette');

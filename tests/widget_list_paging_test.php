@@ -182,7 +182,7 @@ function test_list_paging_renderer_wiring()
 // The panel writes the two settings; the editor lists the tokens and flags.
 function test_list_paging_editor()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains('data-sw-cfg="offset" data-sw-cfg-kind="int" min="0" max="100000"', $js);
 	pg_assert_contains('data-sw-cfg="page_param" data-sw-cfg-kind="param"', $js);
 	pg_assert_contains("} else if (kind === 'param') {", $js);
@@ -246,7 +246,7 @@ function test_search_results_paging_wiring()
 // The two widgets' panels and palettes.
 function test_catalog_and_search_paging_editor()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains('((_isFormListView || _isCatalogListing) ? row(_sdT(\'Skip the first records\'),', $js);
 	pg_assert_contains("row(_sdT('Skip the first results'),", $js);
 	pg_assert_same(2, substr_count($js, 'data-sw-cfg="page_param" data-sw-cfg-kind="param"'), 'two panels write page_param');

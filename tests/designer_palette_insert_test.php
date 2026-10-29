@@ -11,7 +11,7 @@
  * place has to be one the operator may edit, and the item is wrapped as a
  * drop there would wrap it. _sdInsertSpot(), _sdInsertAt(),
  * _sdWrapForParent() and _sdPlacementOnPage() are cut out of
- * assets/js/style_designer.js and run under Node with stubs for what they
+ * assets/js/style_designer.src.js and run under Node with stubs for what they
  * call; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -53,7 +53,7 @@ function designer_palette_insert_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdInsertSpot(');
 	$to = strpos($source, '// One choice of a checkbox/radio group', $from);
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has the insert helpers');

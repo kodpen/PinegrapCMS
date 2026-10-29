@@ -70,7 +70,7 @@ function test_save_shortcut_settings_dialog_takes_the_key()
 // its code unapplied.
 function test_save_shortcut_designer_leaves_the_code_dialog_alone()
 {
-	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$dialog = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/codemirror_modal.js');
 
 	pg_assert_true(

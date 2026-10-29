@@ -299,7 +299,7 @@ function test_page_revisions_seed_then_identical_save()
 // drawn, as loading a tree does.
 function test_page_revisions_compare_fetches_the_revision_shared_components()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdRevisionOpenCompare(');
 	$section = ($from === false) ? '' : substr($source, $from, strpos($source, 'function _sdRevisionShowCompare(', $from) - $from);
 

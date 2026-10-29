@@ -665,7 +665,7 @@ function test_code_editor_dialog_offers_a_format_button()
 // a read-only tab get none. The button runs the tab editor's format().
 function test_code_editor_designer_view_offers_a_format_button()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, '    function _sdCodeFormats(tab) {');
 	$check = ($from !== false) ? substr($js, $from, strpos($js, "\n    }\n", $from) - $from) : '';
 

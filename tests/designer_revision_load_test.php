@@ -7,7 +7,7 @@
  * canvas, and at the content level (manager, user) the save keeps only its
  * texts and image addresses, so a content operator compares and does not
  * load. The designer's _sdRevisionLoadRefusal() is cut out of
- * assets/js/style_designer.js and run under Node; on a machine without Node
+ * assets/js/style_designer.src.js and run under Node; on a machine without Node
  * that half is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function designer_revision_load_test_source()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // The refusal: another person editing, then the content level; none for a designer.

@@ -9,7 +9,7 @@
  * of headings and paragraphs, no form goes inside a form at any depth (nor
  * into a widget the server wraps in one), and a ready-made palette block is
  * judged by what it holds. canDrop() and its helpers, and _paletteInsert(),
- * are cut out of assets/js/style_designer.js and run under Node with stubs
+ * are cut out of assets/js/style_designer.src.js and run under Node with stubs
  * for the lock, editing, shared-component, system widget and loop checks,
  * for createFromPalette() and for the component list; on a machine without
  * Node the test is skipped.
@@ -38,7 +38,7 @@ function designer_inline_drop_test_run($setup, $cases)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, '// ── Semantic HTML validation helpers');
 	$to = strpos($source, '// insertCtx: null (append)', $from);
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has canDrop() and its helpers');
@@ -384,7 +384,7 @@ function test_designer_inline_drop_palette_insert_payload()
 
 	// The double-click insert sits in a click handler; no palette check may
 	// go back to the type-only payload.
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(0, preg_match('/canDrop\(\{\s*type\s*:\s*type\s*\}/', $source), 'no palette check passes { type: type } alone');
 	$payloads = preg_match_all('/var _pd = \{([^}]*)\}/', $source, $found);
 	pg_assert_same(2, $payloads, 'the command palette and the double-click insert build a palette payload');
@@ -397,7 +397,7 @@ function test_designer_inline_drop_palette_insert_payload()
 // createFromPalette() every write of block styles waits for a real build.
 function test_designer_inline_drop_dry_build_writes_no_styles()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function createFromPalette(');
 	pg_assert_true($from !== false, 'the designer has createFromPalette()');
 	$to = strpos($source, "\n    function ", $from + 1);
@@ -527,7 +527,7 @@ function test_designer_inline_drop_no_form_in_member_widget()
 
 	// The widget double-clicks sit in click handlers: each passes the
 	// payload its drag carries, so a new widget is judged by its kind.
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$calls = preg_match_all('/_sdInsertSpot\(\{([^}]*)/', $source, $found);
 	pg_assert_true($calls >= 3, 'the widget double-clicks ask _sdInsertSpot() with a payload');
 	foreach ($found[1] as $payload) {

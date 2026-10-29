@@ -113,7 +113,7 @@ function test_comments_product_view_rating_markup()
 // The canvas reads a designed product page as catalog detail, as the server.
 function test_comments_product_view_canvas()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("if (_sdCommentsProductViewPage(p)) type = 'catalog detail';", $js, 'the thread');
 	pg_assert_contains("return _swTabHasWidget(p, ['catalog_item_view']) && !_swTabHasWidget(p, ['form_item_view']);", $js, 'the same rule');
 }

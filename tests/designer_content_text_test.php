@@ -8,7 +8,7 @@
  * what the save takes (pg_designer_merge_restricted_tree() copies props.text),
  * and the code view offers a text only where it can write it back
  * (_sdCodeLockOf(), _sdCodeTextKind()).
- * The designer's functions are cut out of assets/js/style_designer.js and run
+ * The designer's functions are cut out of assets/js/style_designer.src.js and run
  * under Node with the editor's state stubbed; on a machine without Node that
  * part is skipped.
  *
@@ -68,7 +68,7 @@ function designer_content_text_test_run($script)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$functions = '';
 
 	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdCodeLockOf', '_sdCodeTextKind', '_sdIsSentence') as $name) {

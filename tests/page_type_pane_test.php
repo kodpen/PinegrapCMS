@@ -95,6 +95,6 @@ function test_page_type_pane_wiring()
 	$screen = file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_true(strpos($screen, "\$rail('page-type', 'bi-sliders', lang('Page Type'), 'page', false, true)") !== false, 'pill hidden until a classic page is open');
 
-	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, '_sdPageTypeSync(p);') !== false, 'the pill follows the page on screen');
 }

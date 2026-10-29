@@ -82,7 +82,7 @@ function test_order_preview_widget_registered()
 	pg_assert_contains('order_preview_pages.page_id IS NOT NULL', $src, 'the handler takes a designed page with a row');
 	$classic = (string) file_get_contents(PG_FUNCTIONS_DIR . '/get_order_preview.php');
 	pg_assert_contains("if (\$layout_data_only) {\n            return \$layout_data;", $classic, 'the classic computation hands its values to the widget');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'order_preview'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'order_preview': {", $js, 'has a starter tree');
 }

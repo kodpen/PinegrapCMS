@@ -7,7 +7,7 @@
  * first drawn, the save compares against it (read past the keys a selection
  * writes), an in-place text edit marks the component it lives in, and a
  * prefetch keeps a changed tree. The helpers are cut out of
- * assets/js/style_designer.js and run under Node; on a machine without Node
+ * assets/js/style_designer.src.js and run under Node; on a machine without Node
  * those cases are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -22,7 +22,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function designer_shared_edit_test_source()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // One function of the designer, from its declaration to the closing brace

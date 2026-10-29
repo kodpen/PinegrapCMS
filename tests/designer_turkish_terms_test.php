@@ -30,7 +30,7 @@ function _test_tt_language()
 // sentence punctuation, which is what a layer name, label or row title is.
 function _test_tt_designer_short_keys()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	preg_match_all("/_sdT\\('((?:[^'\\\\]|\\\\.)*)'/", $source, $matches);
 	$keys = array();
 	foreach ($matches[1] as $key) {
@@ -112,7 +112,7 @@ function test_designer_turkish_terms_no_english_halves()
 // would stay English in the layer tree.
 function test_designer_turkish_terms_carousel_layer_name_translated()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(0, preg_match_all("/customName:\\s*'Carousel'/", $source));
 	pg_assert_true(preg_match_all("/customName:\\s*_sdT\\('Carousel'\\)/", $source) >= 3, 'carousel blocks do not name their root through _sdT()');
 	pg_assert_same('Karusel', _test_tt_language()['Carousel']);
@@ -126,7 +126,7 @@ function test_designer_turkish_terms_carousel_layer_name_translated()
 function test_designer_turkish_terms_flex_wrap_has_own_key()
 {
 	$language = _test_tt_language();
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("['wrap',_sdT('Wrap Lines')]", $source);
 	pg_assert_contains("row(_sdT('Wrap'),", $source);
 	pg_assert_contains("mkRespRow(_sdT('Flex Wrap'),", $source);

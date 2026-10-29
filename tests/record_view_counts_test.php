@@ -224,7 +224,7 @@ function test_record_view_counts_automated_clients()
 
 function test_record_view_counts_editor_lockstep()
 {
-	$js = _record_view_counts_source('assets/js/style_designer.js');
+	$js = _record_view_counts_source('assets/js/style_designer.src.js');
 
 	pg_assert_true((bool) preg_match('/var _SW_FORM_ORDER_COUNTERS = \[([^\]]*)\];/', $js, $m));
 	$list = array();

@@ -4,7 +4,7 @@
  *
  * Tests for the attributes every content and semantic node carries on the
  * page (_render_tree_node()) and in the editor's HTML (_sdEmitNode() and
- * addGlobalAttrs() in assets/js/style_designer.js): one style attribute in
+ * addGlobalAttrs() in assets/js/style_designer.src.js): one style attribute in
  * one order (font, old inline style, the type's own style, Display & Sizing,
  * the Attributes panel's style), the sizing classes once, the title and
  * tooltip, and the Attributes panel's entries without a second class, style,
@@ -105,7 +105,7 @@ function _test_designer_attrs_js($nodes, $first = false)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$parts = array(
 		array('var CONTENT = {', '// ========================= IFRAME CSS'),
 		array('var _SD_CONTENT_GLOBAL_ATTRS', '// ── Sizing / Tooltip / A11y helpers ──'),
@@ -207,7 +207,7 @@ function test_designer_attrs_divider_classes_once()
 	pg_assert_same('<hr class="my-2 border-secondary">', _test_designer_attrs_php($cases['divider repeated classes']));
 	pg_assert_same('<hr class="my-4 opacity-50">', _test_designer_attrs_php($cases['divider default margin']));
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, "if (ctype === 'divider_line') {");
 	$block = ($from !== false) ? substr($source, $from, 160) : '';
 	pg_assert_contains("createNode('content', { contentType: 'divider', margin: '4' })", $block, 'the Divider component sets the margin, no class');

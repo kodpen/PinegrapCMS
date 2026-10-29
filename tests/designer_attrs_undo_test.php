@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the undo steps of the designer's Attributes panel
- * (assets/js/style_designer.js, renderAttrsPanel()): a text field takes one
+ * (assets/js/style_designer.src.js, renderAttrsPanel()): a text field takes one
  * snapshot before its first change, and the style row is written on Enter or
  * blur. Runs the panel's binding block under Node on fake fields; skipped
  * where there is no Node.
@@ -36,7 +36,7 @@ function designer_attrs_undo_node($script)
 		return null;
 	}
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		$b = ($a !== false) ? strpos($js, $to, $a) : false;

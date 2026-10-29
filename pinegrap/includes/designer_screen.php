@@ -610,7 +610,7 @@ function pg_designer_screen_render($ctx)
         ' . get_image_editor_includes() . '
         ' . $sd_ws_tasks . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
-             the editor script. style_designer.js resolves _sdT() at module
+             the editor script. style_designer.min.js resolves _sdT() at module
              init for the palette registries (COMPONENTS, CONTENT, the form
              palette); with sdDesign declared after the script those labels
              froze at the English key and no amount of translating tr.json
@@ -660,7 +660,7 @@ function pg_designer_screen_render($ctx)
         <script src="assets/js/pg_custom_style.js?v=' . pg_designer_asset_stamp('assets/js/pg_custom_style.js') . '"></script>
         <!-- The search keyword chips (pgChips) and the date-and-time control of the page schedule and the filter rows. -->
         ' . get_date_picker_format() . pg_fields_script() . '
-        <script src="assets/js/style_designer.js?v=' . pg_designer_asset_stamp('assets/js/style_designer.js') . '"></script>
+        ' . pg_js_bundle_tags('assets/js/style_designer.min.js', false) . '
         ' . pg_ai_write_assets() . '
         ' . (!empty($sd_ai['enabled']) ? '<script src="assets/js/designer_ai.js?v=' . pg_designer_asset_stamp('assets/js/designer_ai.js') . '"></script>' : '') . '
         <script>

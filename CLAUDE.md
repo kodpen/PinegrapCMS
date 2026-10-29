@@ -186,7 +186,7 @@ decision questions.
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,
    round with `round()`, never truncate with `(int)`; edit `.src.js` **and**
    serve `.min.js`: after editing a bundled script (`pg_js_bundles()`,
-   `workspace*.js` and `backend.src.js` included) run `php tools/build_js.php`,
+   `workspace*.js`, `backend.src.js` and `style_designer.src.js` included) run `php tools/build_js.php`,
    after editing `backend.src.css` run `php tools/build_css.php`; in the role
    hierarchy Designer (1) is above Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
@@ -226,5 +226,5 @@ context lacks the line "git push runs tools/pre_push.sh first", run
 
 Also: a test in `tests/<topic>_test.php` for a pure function you add or
 change (red first when behaviour changes); a schema step rerun twice on a dev
-DB; `node --check` after touching `style_designer.js`. The PR says what
+DB; `node --check` after touching `style_designer.src.js`. The PR says what
 changed, why, and what could not be verified.

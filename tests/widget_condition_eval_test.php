@@ -31,7 +31,7 @@ function _cond_eval_node_ok()
 // The twin's source, cut out of style_designer.js.
 function _cond_eval_js_source()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));
@@ -161,7 +161,7 @@ function test_widget_condition_eval_text()
 // conditions and "Hide when empty".
 function _cond_eval_canvas_source()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));
@@ -251,7 +251,7 @@ function test_widget_condition_eval_canvas_states()
 	pg_assert_same('code:__order_status_stage:complete', $a['sampleOnOrder'], 'a state the tree does not offer draws its first');
 	// The canvas opens on each widget's first state, and a page opened in a
 	// tab starts there again.
-	$js = (string) file_get_contents(__DIR__ . '/../pinegrap/assets/js/style_designer.js');
+	$js = (string) file_get_contents(__DIR__ . '/../pinegrap/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, "\n    var _sdCondCanvasState = '';\n") !== false, 'the canvas opens on the first state');
 	$a = strpos($js, "\n    function _pgTabsSwitch(");
 	$b = strpos($js, "\n    }\n", $a);
@@ -263,7 +263,7 @@ function test_widget_condition_eval_canvas_states()
 // knows and only the row values of their source.
 function test_widget_condition_eval_list_sample_rows_name_known_tokens()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, "\n    var SD_LIST_SAMPLE_ROWS = {");
 	pg_assert_true($from !== false, 'SD_LIST_SAMPLE_ROWS is found');
 	$block = substr($js, $from, strpos($js, "\n    };\n", $from) - $from);
@@ -288,7 +288,7 @@ function test_widget_condition_eval_list_sample_rows_name_known_tokens()
 function test_widget_condition_eval_timeline_sample_rows()
 {
 	if (!_cond_eval_node_ok()) return;
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));
@@ -335,7 +335,7 @@ function test_widget_condition_eval_timeline_sample_rows()
 function test_widget_condition_eval_main_loop_sample_rows()
 {
 	if (!_cond_eval_node_ok()) return;
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$cut = function ($from, $to) use ($js) {
 		$a = strpos($js, $from);
 		pg_assert_true($a !== false, 'found: ' . trim($from));

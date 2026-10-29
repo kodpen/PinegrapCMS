@@ -21,7 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // section banner.
 function bs6_designer_toast_source()
 {
-	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.js');
+	$source = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
 	$start = strpos($source, 'function sdToast(msg, type, duration)');
 	pg_assert_true($start !== false, 'sdToast() keeps its signature');
 	$end = strpos($source, '// =========================', (int) $start);

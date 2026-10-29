@@ -19,7 +19,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function test_region_widget_convert_map()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true((bool) preg_match('/var SD_REGION_WIDGETS = \{(.*?)\};/s', $js, $m), 'the map is there');
 	preg_match_all("/(\w+):\s*\{ kind: '(\w+)',\s*key: '(\w+)' \}/", $m[1], $rows, PREG_SET_ORDER);
 	pg_assert_same(array('menu', 'menu_sequence', 'ad', 'tag_cloud'), array_column($rows, 1), 'the four data-driven regions');

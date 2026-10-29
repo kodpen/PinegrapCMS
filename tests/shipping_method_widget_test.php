@@ -54,7 +54,7 @@ function test_shipping_method_widget_registered()
 	pg_assert_same('shipping_method', $map['shipping method'], 'stands in for the classic type');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_shipping_method(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'shipping_method'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'shipping_method': {", $js, 'has a starter tree');
 	pg_assert_contains("shipping_method:   SW_SHIPPING_METHOD_TOKEN_GROUPS", $js, 'has a token palette');
