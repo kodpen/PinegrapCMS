@@ -89,6 +89,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_menu`: [[menu-widget]]
 - `widgets_order_form`: [[order-form-widget]]
 - `widgets_order_preview`: [[order-preview-widget]]
+- `widgets_outside_parts`: [[widget-parts-outside]]
 - `widgets_parts`: [[widget-default-parts]]
 - `widgets_parts_forms`: [[widget-default-parts-cart-form]], [[widget-default-parts-order-forms]]
 - `widgets_photo_gallery`: [[photo-gallery-widget]]

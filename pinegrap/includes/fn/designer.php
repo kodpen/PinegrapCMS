@@ -876,7 +876,13 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
     // text written for the classic theme keeps its pictures in their column
     // on a Bootstrap 5 page through the same pass (pg_img_fluid_alias()).
-    $render = function ($m, $placement = array()) use ($configs, $mode, $email) {
+    // The parts of a detail widget the page places outside its box
+    // (widgets_outside_parts.php): drawn by the widget's first render.
+    $outside_parts = pg_sw_outside_parts_find($html);
+    $parts_pending = $outside_parts;
+    $parts_drawn   = array();
+
+    $render = function ($m, $placement = array(), $own_parts = array()) use ($configs, $mode, $email) {
             $sid = (int)$m[1];
             if (!isset($configs[$sid])) return '';
 
@@ -887,6 +893,7 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 $cfg = pg_sw_placement_narrow(is_string($region_type) ? $region_type : '', $cfg, $placement, 'pg_sw_placement_group_within');
             }
             $tree_json   = isset($cfg['_tree_json']) ? $cfg['_tree_json'] : '';
+            if ($own_parts && $tree_json) $tree_json = pg_sw_outside_parts_tree($tree_json, $own_parts);
 
             // The widget points at a custom form via page.page_id. Field name evolved:
             //   custom_form_page_id  ← current (matches Pinegrap's existing convention)
@@ -1209,24 +1216,30 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // Each render runs inside its widget's scope, in which a node with a
     // value condition is drawn between markers; the finish pass resolves
     // them on the widget's own output (widgets_finish.php).
-    return preg_replace_callback(
+    $html = preg_replace_callback(
         '/(?:<!--pg-placement:([A-Za-z0-9_-]*)-->)?<!--pg-system-widget:(\d+)-->/',
-        function ($m) use ($render, $email, $configs) {
+        function ($m) use ($render, $email, $configs, &$parts_pending, &$parts_drawn) {
             $sid       = (int)$m[2];
             $placement = ($m[1] !== '') ? pg_sw_placement_decode($m[1]) : array();
             $m         = array($m[0], $sid);
             $kind  = (isset($configs[$sid]['regionType']) && is_string($configs[$sid]['regionType'])) ? $configs[$sid]['regionType'] : '';
+            $own   = ($parts_pending && isset($configs[$sid])) ? pg_sw_outside_parts_for($parts_pending, $sid, $kind) : array();
             $scope = pg_sw_finish_open(array('sid' => $sid, 'kind' => $kind, 'email' => $email));
             try {
-                $out = $render($m, $placement);
+                $out = $render($m, $placement, $own);
             } finally {
                 pg_sw_finish_close();
             }
-            if ($email) return pg_sw_finish_widget_html($out, $scope);
-            return pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));
+            $out = $email ? pg_sw_finish_widget_html($out, $scope)
+                          : pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));
+            return $own ? pg_sw_outside_parts_take($out, array_keys($own), $parts_drawn, pg_sw_marker_nonce()) : $out;
         },
         $html
     );
+    if ($outside_parts) {
+        $html = pg_sw_outside_parts_place($html, array_diff_key($outside_parts, $parts_pending), $parts_drawn);
+    }
+    return $html;
 }
 
 /**
@@ -5001,6 +5014,22 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
             if ($sc_id > 0) {
                 $placement = pg_sw_placement_marker(isset($props['placement']) ? $props['placement'] : null);
                 $html .= $pad . $placement . '<!--pg-shared-ref:' . $sc_id . '-->' . "\n";
+            }
+            break;
+
+        case 'widget_part':
+            // A read-only part of a detail widget's record placed outside
+            // the widget (widgets_outside_parts.php): on the page a marker
+            // carrying its elements; in the widget's own render, the
+            // elements between the marks its output is cut at.
+            if (!pg_sw_finish_active()) {
+                $marker = pg_sw_outside_part_marker($props, $children);
+                if ($marker !== '') $html .= $pad . $marker . "\n";
+            } elseif (isset($props['_partNo'])) {
+                list($open, $close) = pg_sw_outside_part_marks(pg_sw_marker_nonce(), (int)$props['_partNo']);
+                $html .= $open;
+                foreach ($children as $child) { $html .= _render_tree_node($child, $indent, $depth); }
+                $html .= $close;
             }
             break;
     }

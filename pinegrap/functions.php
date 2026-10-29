@@ -65,6 +65,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/page_facts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_attrs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_parts_forms.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_outside_parts.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_fill.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_entity_fields.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_catalog.php');

@@ -549,6 +549,12 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         }
     }
 
+    // A part of a detail widget the page does not draw leaves nothing
+    // (widgets_outside_parts.php).
+    if (strpos($content, '<!--pg-widget-part:') !== false) {
+        $content = pg_sw_outside_parts_sweep($content);
+    }
+
     // ── Page conditions ─────────────────────────────────────────────────────────
     // Elements shown by a fact of the visit (signed in, cart) or by the
     // page's record stand between
