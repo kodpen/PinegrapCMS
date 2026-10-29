@@ -337,3 +337,125 @@ function ws_saved_reply_present($row)
         'updated_at' => ws_flow_time($row['updated_at']),
     );
 }
+
+/**
+ * What a refusal of ws_saved_reply_save_check() says to the person, shared by
+ * the panel and the API.
+ *
+ * @param string $error
+ * @return string
+ */
+function ws_saved_reply_error_text($error)
+{
+    $messages = array(
+        'shortcut_invalid'  => lang('A shortcut is one word of letters, digits, - and _, at most 32 characters.'),
+        'shortcut_taken'    => lang('Another of your saved replies has this shortcut.'),
+        'title_too_long'    => lang('The title is longer than 100 characters.'),
+        'body_empty'        => lang('The reply is empty.'),
+        'body_too_long'     => lang(array('string' => 'A message can be at most {var:1} characters long.', 'vars' => ws_saved_reply_body_max())),
+        'nothing_to_change' => lang('Nothing to change was sent.'),
+        'limit_reached'     => lang(array('string' => 'A person may keep {var:1} saved replies.', 'vars' => WS_SAVED_REPLIES_MAX)),
+        'not_ready'         => lang('The database has to be updated first.'),
+    );
+
+    return $messages[(string) $error] ?? (string) $error;
+}
+
+/**
+ * A reply's body with {customer} and {order} filled, in any case. A
+ * placeholder without a value stays as typed, so the writer sees what is
+ * left to fill before sending.
+ *
+ * @param string $body
+ * @param array  $values customer, order (ws_saved_reply_values())
+ * @return string
+ */
+function ws_saved_reply_fill($body, $values)
+{
+    return (string) preg_replace_callback('/\{(customer|order)\}/i', function ($match) use ($values) {
+        $value = trim((string) ($values[strtolower($match[1])] ?? ''));
+
+        return ($value !== '') ? $value : $match[0];
+    }, (string) $body);
+}
+
+/**
+ * The values a reply is filled with in a channel, as the reader sees its
+ * customer (ws_customer_summary()): the customer's name when the reader may
+ * see the record, the number of their latest order when the reader holds
+ * the ecommerce right. Empty for a channel about nobody.
+ *
+ * @param array $viewer
+ * @param array $channel a ws_channels row the reader may read
+ * @return array customer, order; a value missing is not there
+ */
+function ws_saved_reply_values($viewer, $channel)
+{
+    $identity = ws_customer_identity($viewer, $channel);
+
+    if (!is_array($identity)) {
+        return array();
+    }
+
+    $values = array();
+
+    if (!empty($identity['customer']['known'])) {
+        $values['customer'] = (string) $identity['customer']['label'];
+    }
+
+    $summary = ws_customer_summary($viewer, $channel, $identity);
+    $order = (string) ($summary['orders']['latest'][0]['number'] ?? '');
+
+    if ($order !== '') {
+        $values['order'] = $order;
+    }
+
+    return $values;
+}
+
+/**
+ * The person's replies for the composer's ; list and the list that manages
+ * them: each as kept, its body filled for the channel being written in
+ * (text) and the names of the tags it holds (labels), for the writing box.
+ *
+ * @param array      $viewer
+ * @param array|null $channel the channel being written in; null fills nothing
+ * @return array[] ws_saved_reply_present() and text, labels
+ */
+function ws_saved_replies_for_box($viewer, $channel = null)
+{
+    $rows = ws_saved_replies_rows((int) $viewer['id']);
+
+    if (empty($rows)) {
+        return array();
+    }
+
+    $values = is_array($channel) ? ws_saved_reply_values($viewer, $channel) : array();
+    $tokens = array();
+
+    foreach ($rows as $row) {
+        $tokens = array_merge($tokens, ws_tokens((string) $row['body']));
+    }
+
+    $refs = $tokens ? ws_refs_resolve($viewer, $tokens) : array();
+    $items = array();
+
+    foreach ($rows as $row) {
+        $labels = array();
+
+        foreach (ws_tokens((string) $row['body']) as $token) {
+            $key = $token['type'] . ':' . $token['id'];
+
+            if (isset($refs[$key])) {
+                $labels['<' . $token['sigil'] . $key . '>'] = $refs[$key]['label'];
+            }
+        }
+
+        $items[] = array_merge(ws_saved_reply_present($row), array(
+            'text'   => ws_saved_reply_fill((string) $row['body'], $values),
+            'labels' => $labels,
+        ));
+    }
+
+    return $items;
+}

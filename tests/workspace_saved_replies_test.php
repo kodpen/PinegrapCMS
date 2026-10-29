@@ -206,3 +206,18 @@ function test_ws_saved_replies_table_wiring()
 	pg_assert_contains('upgrade_2026_11_0_workspace_saved_replies(); // 11.0.114', $migration);
 	pg_assert_contains('UNIQUE KEY uq_shortcut (user_id, scope, shortcut)', $migration);
 }
+
+// {customer} and {order} filled from the channel's customer; one with no
+// value stays as typed, so the writer sees what is left to fill.
+function test_ws_saved_reply_fill()
+{
+	$values = array('customer' => 'Ayşe Yılmaz', 'order' => '1045');
+
+	pg_assert_same('Dear Ayşe Yılmaz, order 1045 left.', ws_saved_reply_fill('Dear {customer}, order {order} left.', $values));
+	pg_assert_same('Ayşe Yılmaz / Ayşe Yılmaz', ws_saved_reply_fill('{Customer} / {CUSTOMER}', $values), 'any case');
+	pg_assert_same('Order {order}', ws_saved_reply_fill('Order {order}', array('customer' => 'A')), 'no order: kept');
+	pg_assert_same('Dear {customer}', ws_saved_reply_fill('Dear {customer}', array()), 'a channel about nobody');
+	pg_assert_same('Dear {customer}', ws_saved_reply_fill('Dear {customer}', array('customer' => '  ')), 'an empty value is no value');
+	pg_assert_same('{name} {order', ws_saved_reply_fill('{name} {order', $values), 'other braces stay');
+	pg_assert_same('a $1 \\1', ws_saved_reply_fill('a {customer}', array('customer' => '$1 \\1')), 'a value is never a pattern');
+}

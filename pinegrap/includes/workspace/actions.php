@@ -2490,6 +2490,52 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('kind' => $result['kind'], 'markup' => $result['markup'], 'from' => $result['from'])) : ws_action_error($result['error']);
 
+        // Saved replies (saved_replies.php): the person's own, for the
+        // composer's ; list (filled for the channel written in) and the list
+        // that manages them.
+        case 'ws_saved_replies':
+            $channel = null;
+
+            if ((int) ($request['channel_id'] ?? 0) > 0) {
+                $channel = ws_action_channel($viewer, $request);
+
+                if (!is_array($channel)) {
+                    return ws_action_error($channel);
+                }
+            }
+
+            return ws_action_ok(array('items' => ws_saved_replies_for_box($viewer, $channel), 'ready' => ws_saved_replies_ready()));
+
+        case 'ws_saved_reply_save':
+            $row = null;
+
+            if ((int) ($request['id'] ?? 0) > 0) {
+                $row = ws_saved_reply_find((int) $viewer['id'], (int) $request['id']);
+
+                if (!$row) {
+                    return ws_action_error(lang('That saved reply could not be found.'));
+                }
+            }
+
+            $input = array();
+
+            foreach (array('shortcut', 'title', 'body') as $field) {
+                $input[$field] = (string) ($request[$field] ?? '');
+            }
+
+            $result = ws_saved_reply_save($viewer, $input, $row);
+
+            return $result['ok'] ? ws_action_ok(array('id' => $result['id'])) : ws_action_error(ws_saved_reply_error_text($result['error']), (string) ($result['field'] ?? ''));
+
+        case 'ws_saved_reply_delete':
+            $row = ws_saved_reply_find((int) $viewer['id'], (int) ($request['id'] ?? 0));
+
+            if (!$row) {
+                return ws_action_error(lang('That saved reply could not be found.'));
+            }
+
+            return ws_saved_reply_delete($viewer, $row) ? ws_action_ok() : ws_action_error(lang('The saved reply could not be deleted.'));
+
         // Messages chosen together, forwarded (forward.php).
         case 'ws_forward':
             $ids = is_array($request['message_ids'] ?? null) ? $request['message_ids'] : array();

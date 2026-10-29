@@ -297,6 +297,7 @@ function pg_panel_actions()
         'ws_channel_leave', 'ws_channel_make_public',
         'ws_channel_make_private', 'ws_channel_eras', 'ws_pin',
         'ws_pin_hide', 'ws_forward', 'ws_block_search', 'ws_block_pull',
+        'ws_saved_replies', 'ws_saved_reply_save', 'ws_saved_reply_delete',
         'ws_channel_clear', 'ws_channel_era_rename', 'ws_group_save',
         'ws_group_move', 'ws_group_remove', 'ws_group_access',
         'ws_group_access_grant', 'ws_group_access_revoke',
