@@ -31,6 +31,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - mail-imap-client.md: The socket IMAP client pg_imap_*() (includes/fn/imap_client.php, G2a of incoming e-mail): why no imap extension, TLS and address check, sign-in, commands, error codes, limits, tests
 - mail-ingest.md: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loop gate, DMARC from the box's server, threading, card and answers, attachments, .eml for 30 days
 - mail-list.md: The Workspace E-mails list (workspace_mail.php, mail_list.php, G5b): who sees it, which conversations, the filters, the overdue filter, the menu entry
+- mail-microsoft.md: A Workspace mailbox on Microsoft 365 or Outlook.com (G4): purpose mail_read, IMAP sign-in with XOAUTH2 through a connected account, answers through Graph, the box form's account, what stays unverified
 - mail-notices-and-event.md: Who hears of a Workspace e-mail conversation (inbox kinds mail_assigned, mail_customer) and the workspace.mail.received event for scheduled actions and flows (G5b)
 - mail-parse.md: Incoming mail MIME parser pg_mail_parse() (G1a of incoming e-mail): result shape, charset fallback, limits, error codes, what it leaves to ws_mail_ingest()
 - mail-reply.md: Answering a Workspace e-mail conversation by e-mail (mail_reply.php, workspace_mail.js): route, sending fields, the drawer, headers, subject tag, the outgoing item, email() headers/smtp, site mark

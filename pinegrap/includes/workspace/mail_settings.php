@@ -57,8 +57,12 @@ function ws_mail_providers()
             'hint' => lang('Turn on IMAP access in the Zoho Mail settings; with two-factor sign-in use an app password.')),
         'yahoo'  => array('label' => 'Yahoo', 'host' => 'imap.mail.yahoo.com', 'port' => 993, 'smtp_host' => 'smtp.mail.yahoo.com', 'smtp_port' => 465, 'auth_server' => '',
             'hint' => lang('Use an app password made in the Yahoo account security settings.')),
+        // No password: the box signs in with a connected account's token
+        // and answers through it (purpose mail_read).
+        'microsoft' => array('label' => lang('Microsoft 365 or Outlook.com'), 'host' => 'outlook.office365.com', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 587, 'auth_server' => '', 'connection' => true,
+            'hint' => lang('Connect the Microsoft account for Reading mailboxes, choose it as the connected account and send answers through it; no password is typed. The user is the mailbox\'s address.')),
         'other'  => array('label' => lang('Another server'), 'host' => '', 'port' => 993, 'smtp_host' => '', 'smtp_port' => 587, 'auth_server' => '',
-            'hint' => lang('The server must accept IMAP over TLS (usually port 993). Microsoft 365 and Outlook.com accept no password for IMAP; they are read through a connected account later.')),
+            'hint' => lang('The server must accept IMAP over TLS (usually port 993). Microsoft 365 and Outlook.com accept no password for IMAP: choose Microsoft 365 for them.')),
     );
 }
 
@@ -70,7 +74,7 @@ function ws_mail_providers()
  * @param array $input name, address, channel_id, auth_server, enabled,
  *                     provider, host, port, user, password, folder,
  *                     after_fetch, move_folder, smtp_host, smtp_port,
- *                     reply_via, sent_copy, sent_folder
+ *                     reply_via, sent_copy, sent_folder, connection_id
  * @return array ok, error, values (the same keys; password as typed, '' to keep)
  */
 function ws_mail_box_input($input)
@@ -90,7 +94,8 @@ function ws_mail_box_input($input)
     $auth_server = strtolower($line('auth_server', $preset['auth_server']));
     $port = (int) $line('port', (string) $preset['port']);
     $after_fetch = (($input['after_fetch'] ?? '') === 'move') ? 'move' : 'seen';
-    $reply_via = (($input['reply_via'] ?? '') === 'site') ? 'site' : 'box';
+    $connection_id = max(0, (int) ($input['connection_id'] ?? 0));
+    $reply_via = in_array(($input['reply_via'] ?? ''), array('site', 'connection'), true) ? (string) $input['reply_via'] : 'box';
     $smtp_host = ($reply_via === 'box') ? strtolower($line('smtp_host', $preset['smtp_host'])) : '';
     $values = array(
         'name'        => $line('name'),
@@ -101,7 +106,8 @@ function ws_mail_box_input($input)
         'provider'    => $provider,
         'host'        => $host,
         'port'        => $port,
-        'user'        => $line('user'),
+        // A connected account's mailbox signs in as its own address.
+        'user'        => $line('user', ($connection_id > 0) ? strtolower($line('address')) : ''),
         'password'    => (string) ($input['password'] ?? ''),
         'folder'      => $line('folder', 'INBOX'),
         'after_fetch' => $after_fetch,
@@ -111,6 +117,7 @@ function ws_mail_box_input($input)
         'smtp_port'   => ($smtp_host !== '') ? (int) $line('smtp_port', (string) $preset['smtp_port']) : 0,
         'sent_copy'   => !empty($input['sent_copy']) ? 1 : 0,
         'sent_folder' => $line('sent_folder'),
+        'connection_id' => $connection_id,
     );
     $fail = function ($error) use ($values) {
         return array('ok' => false, 'error' => $error, 'values' => $values);
@@ -130,6 +137,16 @@ function ws_mail_box_input($input)
 
     if (($auth_server !== '') && ((strlen($auth_server) > 255) || !preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/', $auth_server))) {
         return $fail(lang('The checking server is a host name such as mx.google.com.'));
+    }
+
+    // A connected account signs in instead of a password, and is what
+    // answers leave through.
+    if (($reply_via === 'connection') && ($connection_id <= 0)) {
+        return $fail(lang('Choose the connected account answers are sent through.'));
+    }
+
+    if (($connection_id > 0) && ($host === '')) {
+        return $fail(lang('A connected account reads the mailbox over IMAP: enter its server, or choose the service.'));
     }
 
     if (($smtp_host !== '') && (!pg_imap_host_valid($smtp_host) || ($values['smtp_port'] < 1) || ($values['smtp_port'] > 65535))) {
@@ -179,6 +196,97 @@ function ws_mail_box_settings($box)
     $settings = $box ? json_decode((string) $box['settings'], true) : null;
 
     return is_array($settings) ? $settings : array();
+}
+
+/**
+ * What a box signs in to its IMAP server with: its kept password, or a token
+ * of its connected account (purpose mail_read). Asks the account's provider
+ * for a token when it holds none fresh; talks to no IMAP server.
+ *
+ * @param array $box ws_mail_boxes row
+ * @return array ok, error (no_password | no_account), detail, password, token
+ */
+function ws_mail_box_credentials($box)
+{
+    $settings = ws_mail_box_settings($box);
+    $out = array('ok' => false, 'error' => '', 'detail' => '', 'password' => '', 'token' => '');
+    $connection_id = (int) ($settings['connection_id'] ?? 0);
+
+    if ($connection_id > 0) {
+        $account = function_exists('pg_connect_account') ? pg_connect_account($connection_id) : null;
+        $purpose = function_exists('pg_connect_purpose') ? pg_connect_purpose('mail_read') : null;
+
+        if (!is_array($account) || !in_array('mail_read', (array) $account['purposes'], true) || !isset($purpose['imap_scopes'][$account['provider']])) {
+            return array_merge($out, array('error' => 'no_account'));
+        }
+
+        $token = pg_connect_access_token($connection_id, $purpose['imap_scopes'][$account['provider']]);
+
+        return $token['ok']
+            ? array_merge($out, array('ok' => true, 'token' => (string) $token['token']))
+            : array_merge($out, array('error' => 'no_account', 'detail' => (string) $token['error']));
+    }
+
+    $secret = pg_connect_unseal((string) ($settings['secret'] ?? ''));
+
+    return isset($secret['password'])
+        ? array_merge($out, array('ok' => true, 'password' => (string) $secret['password']))
+        : array_merge($out, array('error' => 'no_password'));
+}
+
+/**
+ * Signs a box in on an open IMAP session with what ws_mail_box_credentials()
+ * found: XOAUTH2 with a token, else the user and password.
+ *
+ * @param array $session
+ * @param array $box
+ * @param array $credentials
+ * @return bool
+ */
+function ws_mail_box_login(&$session, $box, $credentials)
+{
+    $user = (string) (ws_mail_box_settings($box)['user'] ?? '');
+
+    return ((string) $credentials['token'] !== '')
+        ? pg_imap_login_xoauth2($session, $user, (string) $credentials['token'])
+        : pg_imap_login($session, $user, (string) $credentials['password']);
+}
+
+/**
+ * The connected accounts a box may sign in with: those serving Reading
+ * mailboxes.
+ *
+ * @return array[] pg_connect_account() rows
+ */
+function ws_mail_box_accounts()
+{
+    return function_exists('pg_connect_accounts') ? pg_connect_accounts(array('purpose' => 'mail_read')) : array();
+}
+
+/**
+ * The button that connects a Microsoft account for Reading mailboxes, for a
+ * person who may connect the site's accounts (connect.php: a manager and
+ * above); others are told who can.
+ *
+ * @param array $viewer
+ * @return string HTML
+ */
+function ws_mail_connect_form($viewer)
+{
+    if (!function_exists('pg_connect_start_fields') || !function_exists('pg_connect_purpose') || !pg_connect_purpose('mail_read')) {
+        return '';
+    }
+
+    if ((int) $viewer['role'] > 2) {
+        return '<div class="form-text mt-3">' . h(lang('A Microsoft 365 mailbox is read through a connected account; a manager or an administrator connects it here or in Settings › Connections.')) . '</div>';
+    }
+
+    return '
+                <form method="post" action="connect.php" class="mt-3 d-flex flex-wrap align-items-center gap-3">
+                    ' . pg_connect_start_fields('microsoft', 'mail_read', 'workspace_settings.php#ws-mail') . '
+                    <button type="submit" class="btn btn-sm btn-outline theme-secondary"><i class="bi bi-microsoft me-1" aria-hidden="true"></i>' . h(lang('Connect a Microsoft account for mailboxes')) . '</button>
+                    <span class="form-text m-0">' . h(lang('Sign in with the mailbox\'s own account; the site\'s Microsoft application must be set up in Settings › Connections first.')) . '</span>
+                </form>';
 }
 
 /**
@@ -279,10 +387,10 @@ function ws_mail_box_test($box)
         return array_merge($out, array('error' => 'no_server'));
     }
 
-    $secret = pg_connect_unseal((string) ($settings['secret'] ?? ''));
+    $credentials = ws_mail_box_credentials($box);
 
-    if (!isset($secret['password'])) {
-        return array_merge($out, array('error' => 'no_password'));
+    if (!$credentials['ok']) {
+        return array_merge($out, array('error' => $credentials['error'], 'detail' => $credentials['detail']));
     }
 
     $connected = pg_imap_connect((string) $settings['host'], (int) ($settings['port'] ?? 993), array('budget' => 20));
@@ -298,7 +406,7 @@ function ws_mail_box_test($box)
         return $said;
     };
 
-    if (!pg_imap_login($session, (string) ($settings['user'] ?? ''), (string) $secret['password'])) {
+    if (!ws_mail_box_login($session, $box, $credentials)) {
         return $failed();
     }
 
@@ -344,6 +452,7 @@ function ws_mail_error_text($error, $detail, $host)
     $texts = array(
         'no_server'     => lang('Enter the mailbox\'s IMAP server first.'),
         'no_password'   => lang('Enter the mailbox\'s password again; the kept one cannot be read.'),
+        'no_account'    => lang('The connected account is gone, no longer serves Reading mailboxes, or must be connected again.'),
         'connect'       => lang('The server could not be reached on its port.'),
         'tls'           => lang('The server\'s certificate could not be verified.'),
         'timeout'       => lang('The server did not answer in time.'),
@@ -522,7 +631,19 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         $settings['secret'] = pg_connect_seal(array('password' => $values['password']));
     }
 
-    $signs_in = ($values['host'] !== '') || ($values['smtp_host'] !== '');
+    // A connected account (purpose mail_read) the box signs in with: only
+    // one that serves reading mailboxes.
+    if ($values['connection_id'] > 0) {
+        $account = function_exists('pg_connect_account') ? pg_connect_account($values['connection_id']) : null;
+
+        if (!is_array($account) || !in_array('mail_read', (array) $account['purposes'], true)) {
+            $liveform->add_error(lang('Choose a connected account that serves Reading mailboxes.'));
+            return;
+        }
+    }
+
+    // With a connected account nothing signs in with the password.
+    $signs_in = ($values['connection_id'] <= 0) && (($values['host'] !== '') || ($values['smtp_host'] !== ''));
 
     // The kept password goes only to the servers it was typed for: a new
     // server, sending or reading, or a new user asks for it again.
@@ -536,7 +657,7 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         unset($settings['secret']);
     }
 
-    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder') as $key) {
+    foreach (array('auth_server', 'provider', 'host', 'port', 'user', 'move_folder', 'smtp_host', 'smtp_port', 'sent_copy', 'sent_folder', 'connection_id') as $key) {
         $settings[$key] = $values[$key];
     }
 
@@ -645,7 +766,21 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
 
     $kept = !empty($settings['secret']);
     $move = $box && ((string) $box['after_fetch'] === 'move');
-    $site = $box && ((string) ($box['reply_via'] ?? 'box') === 'site');
+    $via = $box ? (string) ($box['reply_via'] ?? 'box') : 'box';
+    $connection_id = (int) ($settings['connection_id'] ?? 0);
+    $accounts = '<option value="0">' . h(lang('None: sign in with the password')) . '</option>';
+    $listed = false;
+
+    foreach (ws_mail_box_accounts() as $account) {
+        $listed = $listed || ((int) $account['id'] === $connection_id);
+        $accounts .= '<option value="' . (int) $account['id'] . '"' . (((int) $account['id'] === $connection_id) ? ' selected' : '') . '>'
+            . h((string) $account['label'] . (((string) $account['status'] !== 'active') ? ' (' . lang('connect again') . ')' : '')) . '</option>';
+    }
+
+    // A chosen account since disconnected stays named until another is picked.
+    if (($connection_id > 0) && !$listed) {
+        $accounts .= '<option value="' . $connection_id . '" selected>' . h(lang('An account no longer connected')) . '</option>';
+    }
     $copy = !isset($settings['sent_copy']) || !empty($settings['sent_copy']);
 
     return '
@@ -672,6 +807,11 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                     <label class="form-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
                     <input class="form-control form-control-sm" type="password" name="password" id="' . $prefix . 'password" value="" autocomplete="new-password" placeholder="' . h($kept ? lang('Stored. Type a new one to replace it.') : '') . '">
                 </div>
+                <div class="md:col-12">
+                    <label class="form-label" for="' . $prefix . 'connection">' . h(lang('Connected account')) . '</label>
+                    <select class="form-control form-control-sm" name="connection_id" id="' . $prefix . 'connection">' . $accounts . '</select>
+                    <div class="form-text">' . h(lang('Microsoft 365 and Outlook.com sign in with a connected account instead of a password.')) . '</div>
+                </div>
                 <div class="md:col-4">
                     <label class="form-label" for="' . $prefix . 'folder">' . h(lang('Folder to read')) . '</label>
                     <input class="form-control form-control-sm" type="text" name="folder" id="' . $prefix . 'folder" maxlength="255" value="' . h($box ? (string) $box['folder'] : 'INBOX') . '">
@@ -693,8 +833,9 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 <div class="md:col-4">
                     <label class="form-label" for="' . $prefix . 'reply_via">' . h(lang('Send through')) . '</label>
                     <select class="form-control form-control-sm" name="reply_via" id="' . $prefix . 'reply_via">
-                        <option value="box"' . ($site ? '' : ' selected') . '>' . h(lang('The mailbox\'s sending server')) . '</option>
-                        <option value="site"' . ($site ? ' selected' : '') . '>' . h(lang('The site\'s mail settings')) . '</option>
+                        <option value="box"' . (($via === 'box') ? ' selected' : '') . '>' . h(lang('The mailbox\'s sending server')) . '</option>
+                        <option value="site"' . (($via === 'site') ? ' selected' : '') . '>' . h(lang('The site\'s mail settings')) . '</option>
+                        <option value="connection"' . (($via === 'connection') ? ' selected' : '') . '>' . h(lang('The connected account')) . '</option>
                     </select>
                 </div>
                 <div class="md:col-5">
@@ -881,6 +1022,7 @@ function ws_mail_settings_card($self_url, $viewer)
                 <div class="collapse" id="ws-mail-new">' . ws_mail_box_form($self_url, null, $channels) . '</div>
                 ' . $rows . '
                 <div class="form-text mt-5">' . h(lang('A mailbox with a server is read every minute while the general scheduled job runs; an .eml file saved from a mail program can also be brought in by hand.')) . '</div>
+                ' . ws_mail_connect_form($viewer) . '
             </div>
         </div>';
 }

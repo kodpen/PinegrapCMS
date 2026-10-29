@@ -1,19 +1,17 @@
 ---
 name: incoming-email-plan
-description: Incoming e-mail into Workspace channels (G1-G3, G5-G7 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
+description: Incoming e-mail into Workspace channels (G1-G7 done, owner 2026-10-27): IMAP transport over Cloudflare push and a Kodpen broker, slices G1–G9, the owner's eleven answers
 ---
 
 ## What is it and where does it stand?
 - Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
-- Done: G1 core #2586, #2676, #2710, #2738; G2 IMAP read #2764, #2788, #2806, #2828; G3 reply #2846, #2872, #2885; G6 routing #2904; G5a status and auto-reply #2923; G5b holder, notices, first-response target, event, E-mails list #2942; G7 API and MCP #2952 (`workspace/mail-api.md`). Each has its `workspace/mail-*.md` file (workspace README). Next: G4 (connected Microsoft 365 account, answer 2); G8 needs an AI key; G9 only for push transports.
+- Done: G1 core #2586, #2676, #2710, #2738; G2 IMAP read #2764, #2788, #2806, #2828; G3 reply #2846, #2872, #2885; G6 routing #2904; G5a status and auto-reply #2923; G5b holder, notices, first-response target, event, E-mails list #2942; G7 API and MCP #2952 (`workspace/mail-api.md`). Each has its `workspace/mail-*.md` file (workspace README). G4 Microsoft 365 through a connected account #2961 (`workspace/mail-microsoft.md`). Left: G8 needs an AI key; G9 only if a push transport is chosen; a live check of G4 on a Microsoft tenant.
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
 
 ## Which transport options were compared?
-- A, IMAP pull (recommended): the site reads the customer's existing mailbox every minute with its own small IMAP client over `stream_socket_client()` (the PHP `imap` extension left core in 8.4). Mail stays in the box (no loss, provider spam filter). Costs: ~1 min delay, needs cron and outbound port 993; Microsoft 365 needs OAuth (no password IMAP), Google Workspace closed password IMAP on 2025-05-01 (app passwords a narrow exception), personal Gmail uses an app password.
-- B, the site's Cloudflare Email Routing + Worker POSTing raw mail: seconds, but Cloudflare DNS required (else a subdomain), no copy kept, no spam score, 25 MiB, per-site setup.
-- C, a Kodpen broker (`in.pinegrap.com`) the customer forwards to: easiest, but Kodpen becomes a KVKK data processor, Microsoft 365 blocks external forwarding (5.7.520), separate repo.
+- A, IMAP pull (chosen, answer 1): the site reads the customer's own mailbox every minute with its own socket client; mail stays in the box. B, Cloudflare Email Routing + Worker push, and C, a Kodpen broker, were left; G9 builds a push endpoint only if one is chosen later.
 
 ## What are the slices?
 One PR each. G1 core (schema 10.85 if still free): tables, MIME parser, `ws_mail_ingest()`, channel card, `.eml` upload in settings to test without a transport. G2 IMAP client, box card, "Test connection", inline cron job, System status row. G3 reply by e-mail from the channel. G4 read and send through a connected Microsoft 365 (or Google) account, new purpose `mail_read`. G5 request status, assignee, first-response target, "E-postalar" tab, events, auto-reply. G6 routing rules (+tag or address → channel, line in the customer's channel). G7 external API and MCP. G8 `@ai` triage suggestion (needs an AI key). G9 push endpoint, only if B or C is chosen (replaces G2).
