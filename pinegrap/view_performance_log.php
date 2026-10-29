@@ -327,13 +327,17 @@ function pmon_sort_header($key, $label, $sort_param, $dir_param, $current_sort, 
     $is_active = ($key === $current_sort);
     $next_dir = 'desc';
     $arrow = '<i class="bi bi-arrow-down-up fg-3 ms-1 small"></i>';
+    // The caret alone shows the direction only to the eye.
+    $aria_sort = '';
     if ($is_active) {
         if ($current_dir === 'asc') {
             $next_dir = 'desc';
             $arrow = '<i class="bi bi-caret-up-fill ms-1 small"></i>';
+            $aria_sort = ' aria-sort="ascending"';
         } else {
             $next_dir = 'asc';
             $arrow = '<i class="bi bi-caret-down-fill ms-1 small"></i>';
+            $aria_sort = ' aria-sort="descending"';
         }
     }
     $params = $base_params;
@@ -341,7 +345,7 @@ function pmon_sort_header($key, $label, $sort_param, $dir_param, $current_sort, 
     $params[$dir_param]  = $next_dir;
     $href = 'view_performance_log.php?' . h(http_build_query($params));
     $th_class = trim($extra_th_classes . ($is_active ? ' table-active' : ''));
-    return '<th class="' . $th_class . '"><a href="' . $href . '" class="text-decoration-none fg-body d-inline-flex align-items-center">' . $label . $arrow . '</a></th>';
+    return '<th class="' . $th_class . '"' . $aria_sort . '><a href="' . $href . '" class="text-decoration-none fg-body d-inline-flex align-items-center">' . $label . $arrow . '</a></th>';
 }
 
 // ---- Build filter form -----------------------------------------------------

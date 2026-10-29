@@ -3528,7 +3528,7 @@ function get_system_status_checks()
                             ),
                         )),
                         'state' => ($efatura_row['state'] === 'reached') ? 'fail' : (($efatura_row['state'] === 'near') ? 'warn' : 'ok'),
-                        'when'  => $efatura_row['share'] . '%',
+                        'when'  => lang(array('string' => '{var:1}%', 'vars' => array($efatura_row['share']))),
                     );
 
                     if ($efatura_row['state'] === 'reached') {
@@ -3542,7 +3542,7 @@ function get_system_status_checks()
                         'fg-danger',
                         'e-Fatura Threshold',
                         'This year\'s sales reached an e-Fatura threshold: the store must issue e-Fatura from the date shown. Ask your accountant and set up an e-document provider.',
-                        lang(array('string' => 'From {var:1}', 'vars' => array(date('d.m.Y', strtotime($efatura_deadline))))),
+                        lang(array('string' => 'From {var:1}', 'vars' => array(date(get_date_format_code() . '/Y', strtotime($efatura_deadline))))),
                         $efatura_href,
                         $efatura_detail
                     );
