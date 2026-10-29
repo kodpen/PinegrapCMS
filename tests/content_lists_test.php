@@ -59,8 +59,9 @@ function test_content_lists_folder_and_home_ligatures()
 	foreach (array('view_pages.php', 'view_files.php', 'view_design_files.php') as $path) {
 		$source = content_lists_source($path);
 		pg_assert_false(strpos($source, '<span class="material-icons d-inline">folder</span>') !== false, $path . ': folder ligature read aloud');
-		pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', $source, $path);
+		pg_assert_contains('pg_folder_list_name($', $source, $path);
 	}
+	pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', pg_folder_list_name('Docs'));
 
 	pg_assert_contains('<span class="material-icons" role="img" aria-label="\' . h(lang(\'Home Page\')) . \'">home</span>', content_lists_source('view_pages.php'));
 }
