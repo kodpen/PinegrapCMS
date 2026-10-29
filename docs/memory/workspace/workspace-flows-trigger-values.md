@@ -16,5 +16,6 @@ description: What a flow's step boxes read of what started the run (#2205, D5 #2
 - Check: an undeclared field is `bad_reference` (`ws_flow_trigger_fields()`); no skippable warning, the start always ran. A box try fills them, and the scheduled tokens, from the chosen run (`workspace-flows-box-try.md`).
 - Tests `tests/workspace_flow_trigger_values_test.php`.
 
-## What is left?
-- The waiting task box fills no values at run time.
+## What does the waiting task box fill? (PR #2919)
+- Its title and description, through `ws_flow_task_texts()` (flow_runs.php): box and trigger values from `ws_step_run_values()` (owner's rights now, shared with `ws_step_run()`), escaped as task_open's, then the scheduled tokens via `ws_scheduled_fill()`. Title one line, at most 200, the box's name when it fills empty. Before, both were written raw.
+- A retry finds its task by owner and the box's line only (`ws_flow_step_task_find()`): a filled title may differ on the retry.
