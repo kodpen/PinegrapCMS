@@ -1,6 +1,6 @@
 ---
 name: workspace-customer-summary
-description: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote seam
+description: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote section
 ---
 
 ## What is it?
@@ -25,7 +25,7 @@ description: A channel's customer summary (GET /workspace/channels/{id}/customer
 - Integer minor units throughout (`ws_customer_minor()` rounds, never cuts). Text by `ws_customer_money_text()`: the site's currency as the order screens write it (`prepare_amount()`, no visitor conversion, symbol decoded), a sales quote's own currency by `erp_money_out_currency()`.
 
 ## Where are cart quotes?
-- A seam: `ws_customer_cart_quote_rows()` reads nothing until plans/workspace-quotes.md slice 5 adds the tables; then their own section under the ecommerce right, never among sales quotes. Not in the API yet.
+- Their own section under the ecommerce right, never among sales quotes: `ws_customer_cart_quote_rows()` (commerce/cart-quotes.md). Not in the API yet.
 
 ## How does the API answer?
 - GET /workspace/channels/{id}/customer (`workspace.channels.customer`, row in includes/workspace/api.php, code api_customer.php): `workspace:read`, an MCP tool and resource like the context (#1970, api/mcp-resources-prompts.md).
