@@ -386,6 +386,7 @@
     "Only a message, a note, a decision or a task card can be pinned.": "Yalnız bir mesaj, not, karar ya da görev kartı sabitlenebilir.",
     "Only a paused flow can be resumed.": "Yalnızca duraklatılmış bir akış sürdürülebilir.",
     "Only a picture has a smaller copy.": "Küçük kopyası yalnız görselin olur.",
+    "Only a product, form record or event view lends parts: this part shows nothing.": "Yalnızca ürün, form kaydı veya etkinlik görünümü parça verir: bu parça hiçbir şey göstermez.",
     "Only a public or a private channel goes into a group.": "Gruba yalnız herkese açık ya da özel bir kanal taşınır.",
     "Only a published flow that is live can be run.": "Yalnız yayımlanmış ve yayında olan bir akış çalıştırılabilir.",
     "Only a repeat written as paid takes money from a till.": "Yalnız ödenmiş olarak yazılan bir tekrar bir hesaptan para çıkarır.",

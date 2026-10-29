@@ -1543,7 +1543,7 @@ const StyleDesigner = (function () {
     // The settings (system_region_config) of the system widget a node sits
     // in, or null.
     function _sdSystemWidgetCfgOf(node) {
-        var sid = _isInsideSystemWidget(node);
+        var sid = _sdValueSidOf(node);
         if (!sid) return null;
         var cached = _sharedCache[sid];
         if (!cached || !cached.system_region_config) return null;
@@ -1551,7 +1551,7 @@ const StyleDesigner = (function () {
     }
 
     function _getSystemWidgetCustomFormPageId(node) {
-        var sid = _isInsideSystemWidget(node);
+        var sid = _sdValueSidOf(node);
         if (!sid) return 0;
         var cached = _sharedCache[sid];
         if (!cached || !cached.system_region_config) return 0;
@@ -6562,6 +6562,10 @@ const StyleDesigner = (function () {
         // being designed — untouchable, faintly hatched so they read as a
         // preview of the card, not as more cards to edit.
         '.sd-ghost { pointer-events:none !important; user-select:none; position:relative; }',
+        // A part placed outside its widget (buildNodeEl()): dashed in the
+        // widget colour; faded when the page draws nothing for it.
+        '.sd-wrap.sd-part:not(.sd-selected) { outline:1px dashed rgba(99,102,241,.6); outline-offset:2px; }',
+        '.sd-wrap.sd-part-off { opacity:.45; }',
         '.sd-ghost::after { content:""; position:absolute; inset:0; pointer-events:none; background:repeating-linear-gradient(135deg, rgba(99,102,241,.07) 0 6px, transparent 6px 14px); }',
         '.sd-loop-area:has(> .sd-wrap[data-sd-type="col"]) > .sd-ghost { padding-left:.5rem; padding-right:.5rem; }',
         // A loop area inside a row renders its records as that row's columns:
@@ -12748,6 +12752,9 @@ const StyleDesigner = (function () {
 
     /* @pg-site-output */
     function buildNodeEl(node) {
+        // A part placed outside its widget (props.partOf).
+        var _part = _sdPartToDraw(node);
+        if (_part) return _sdBuildPartEl(node, _part);
         // Delegate table structural nodes to the wrapper-free builder
         if (node.type === 'semantic' &&
             TABLE_STRUCT_TAGS.indexOf((node.props.tag || '').toLowerCase()) !== -1) {
@@ -14660,7 +14667,7 @@ const StyleDesigner = (function () {
             return _sdListSample[fieldName];
         }
         // A value of the page's record outside a widget reads as its name.
-        if (String(fieldName || '').indexOf('__record__') === 0 && !_isInsideSystemWidget(node)) {
+        if (String(fieldName || '').indexOf('__record__') === 0 && !_sdValueSidOf(node)) {
             if (prop === 'src') return _sdImgPlaceholderForToken(fieldName);
             if (prop === 'href') return '#';
             var _rec = _sdPageRecordOptions().filter(function (o) { return o.token === fieldName; })[0];
@@ -30056,6 +30063,14 @@ const StyleDesigner = (function () {
                 scrollTreeToNode(parent);
             }},
             { sep: true },
+            // An element of a detail widget shown outside the widget too, or
+            // instead (parts anywhere).
+            ((!multi && _sdAccess() === 'full' && _sdPartOffered(node))
+                ? _sdGuardItem({ icon: 'bi-box-arrow-up-right', label: _sdT('Copy outside the widget'), handler: function() { _sdPlacePart(node, false); } }, [node])
+                : null),
+            ((!multi && _sdAccess() === 'full' && _sdPartOffered(node))
+                ? _sdGuardItem({ icon: 'bi-arrows-move', label: _sdT('Move outside the widget'), handler: function() { _sdPlacePart(node, true); } }, [node])
+                : null),
             { icon: 'bi-list-tree', label: _sdT('Show in Overview'), handler: function() { scrollTreeToNode(node); }},
             { sep: true },
             // Design decisions, but still changes to the page — same guard
@@ -30195,7 +30210,7 @@ const StyleDesigner = (function () {
         }
 
         var idBadge = node.props.id ? '<span class="sd-tree-id">#' + esc(node.props.id) + '</span>' : '';
-        var displayLabel = getNodeLabel(node);
+        var displayLabel = _sdPartTreeLabel(node, getNodeLabel(node));
         var userLabelBadge = node.props._label
             ? '<span class="sd-tree-user-label" title="' + esc(node.props._label) + '"><i class="bi bi-tag-fill"></i>' + esc(node.props._label) + '</span>'
             : '';
@@ -32372,9 +32387,10 @@ const StyleDesigner = (function () {
 
         // The Appearance section runs in the same flow as the options
         panel.innerHTML = '<div class="sd-tab-content">' + _cfSettingsShortcut(selectedNode) + _sdCommentsSettingsShortcut(selectedNode) +
-            _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
+            _sdPartSettingsBox(selectedNode) + _sdTrSection(selectedNode) + ctxHtml + optHtml + rowCss(selectedNode) + '</div>';
         _sdHideBootstrapControls(panel);
         bindPropEvents();
+        _sdPartSettingsBind(selectedNode);
         var _cfOpenBtn = document.getElementById('sd-cf-open-settings');
         if (_cfOpenBtn) _cfOpenBtn.addEventListener('click', function () { _cfOpenFormSettings(this.dataset.swId); });
         var _cmtOpenBtn = document.getElementById('sd-cmt-open-settings');
@@ -41110,7 +41126,7 @@ const StyleDesigner = (function () {
     // Returns one of: 'form_list_view' (default), 'form_item_view',
     // 'catalog_listing', or '' if not in a SW.
     function _getSystemWidgetRegionType(node) {
-        var sid = _isInsideSystemWidget(node);
+        var sid = _sdValueSidOf(node);
         if (!sid) return '';
         var cached = _sharedCache[sid];
         if (!cached || !cached.system_region_config) return 'form_list_view';
@@ -46036,6 +46052,184 @@ const StyleDesigner = (function () {
         if (!copy.props || typeof copy.props !== 'object' || Array.isArray(copy.props)) copy.props = {};
         copy.props.partOf = parseInt(sid, 10) || 0;
         return copy;
+    }
+
+    // The kind (regionType) of system widget `sid`, or ''.
+    function _sdPartKindOf(sid) {
+        var c = _sharedCache[sid];
+        if (!c || !c.system_region_config) return '';
+        try {
+            var cfg = JSON.parse(c.system_region_config);
+            return (cfg && typeof cfg.regionType === 'string') ? cfg.regionType : '';
+        } catch (e) { return ''; }
+    }
+
+    // What becomes of part node `node` on the open page: null for a node
+    // that is no part, else { sid, name, state }. state is 'ok' (drawn with
+    // its widget's record), 'inside' (it stands in a shared tree, where
+    // partOf means nothing), 'gone' (the page shows no such widget), 'kind'
+    // (a widget that opens no record of the address) or a refusal of
+    // _sdPartRefusal(): the server draws nothing for any state but 'ok'.
+    function _sdPartInfo(node) {
+        var sid = _sdPartOf(node);
+        if (!sid) return null;
+        var cached = _sharedCache[sid];
+        var info = { sid: sid, name: (cached && cached.name) ? String(cached.name) : ('#' + sid), state: 'ok' };
+        if (_resolveSharedSid(node)) info.state = 'inside';
+        else if (!cached || !cached.system_region_config || !_sdPlacementOnPage(sid)) info.state = 'gone';
+        else if (SD_PART_KINDS.indexOf(_sdPartKindOf(sid)) === -1) info.state = 'kind';
+        else info.state = _sdPartRefusal(node) || 'ok';
+        return info;
+    }
+
+    // The sentence that tells the designer what a part state means.
+    function _sdPartNote(state, name) {
+        switch (state) {
+            case 'ok':       return _sdT('Part of {var}: it shows the record this widget shows, and nothing when the page opens none.', name);
+            case 'inside':   return _sdT('This element stands inside a widget: it belongs to that widget and is not a part placed outside.');
+            case 'gone':     return _sdT('The widget this part belongs to is not on this page: the part shows nothing.');
+            case 'kind':     return _sdT('Only a product, form record or event view lends parts: this part shows nothing.');
+            case 'control':  return _sdT('A part only shows values: a form, a control, a button or another element that sends something stays inside its widget.');
+            case 'action':   return _sdT('A part only shows values: an element bound to an action or a server-built section stays inside its widget.');
+            case 'messages': return _sdT('A messages element stays inside its widget.');
+            case 'code':     return _sdT('Code stays inside its widget.');
+            default:         return _sdT('A shared component, a region or a main loop cannot be a part.');
+        }
+    }
+
+    // What part `info` (_sdPartInfo()) does on the page, in one sentence.
+    function _sdPartStateText(info) {
+        if (info.state === 'ok') return _sdPartNote('ok', info.name);
+        var text = _sdT('Part of {var}', info.name) + ' — ' + _sdPartNote(info.state);
+        return (info.state === 'gone' || info.state === 'kind') ? text : (text + ' ' + _sdT('This part shows nothing.'));
+    }
+
+    // The overview's name for `node`: its label, and for a part the widget
+    // it belongs to.
+    function _sdPartTreeLabel(node, label) {
+        var info = _sdPartInfo(node);
+        if (!info || info.state === 'inside') return label;
+        return _sdT('{var:1} — part of {var:2}', [label, info.name]);
+    }
+
+    // Whether `node`, inside a widget, is offered as a part to place
+    // outside: a node below the widget's root in a detail view.
+    function _sdPartOffered(node) {
+        var sid = _isInsideSystemWidget(node);
+        if (!sid || SD_PART_KINDS.indexOf(_sdPartKindOf(sid)) === -1) return 0;
+        var cached = _sharedCache[sid];
+        return (cached && cached.tree && cached.tree !== node) ? sid : 0;
+    }
+
+    // `node` of a detail widget placed on the page right after the widget,
+    // as a part (props.partOf). `move` takes it out of the widget; else the
+    // widget keeps it and the page gets a copy. What the server would not
+    // draw is refused with its reason, and nothing changes.
+    function _sdPlacePart(node, move) {
+        var sid = _sdPartOffered(node);
+        if (!sid) return;
+        var why = _sdPartRefusal(node);
+        if (why) { sdToast(_sdPartNote(why), 'warning'); return; }
+        var place = _sdPlacementOnPage(sid);
+        if (!place) { sdToast(_sdPartNote('gone'), 'warning'); return; }
+        if (move && (node.props._locked || hasLockedAncestor(node) || _blockDeleteWithToast(node))) return;
+        saveState();
+        var part = _sdPartNode(node, sid, gid);
+        // A widget placed inside a component (the header) takes the part
+        // at the end of the page.
+        var at = findParent(place, tree);
+        if (at) at.children.splice(at.children.indexOf(place) + 1, 0, part);
+        else tree.children.push(part);
+        if (move) {
+            var owner = _sdAnyParent(node);
+            if (owner) {
+                owner.parent.children = owner.parent.children.filter(function (c) { return c !== node; });
+                _sharedDirty[sid] = true;
+            }
+        }
+        selectedNodes = []; selectedNode = part;
+        render();
+        scrollTreeToNode(part);
+    }
+
+    // The settings panel's box for a part (which widget it belongs to,
+    // whether it is drawn, a button to the widget) and, for an element
+    // inside a detail widget, the buttons that place it outside.
+    function _sdPartSettingsBox(node) {
+        var info = _sdPartInfo(node);
+        if (info && info.state !== 'inside') {
+            var ok = info.state === 'ok';
+            return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+                '<div style="font-size:.72rem;line-height:1.45;margin-bottom:4px;color:' + (ok ? 'inherit' : '#b45309') + '">' +
+                    '<span class="bi ' + (ok ? 'bi-box-arrow-up-right' : 'bi-exclamation-triangle-fill') + ' me-1"></span>' +
+                    esc(_sdPartStateText(info)) +
+                '</div>' +
+                (_sdPlacementOnPage(info.sid)
+                    ? '<button type="button" class="btn btn-sm btn-outline theme-primary w-100" id="sd-part-widget" data-sw-id="' + info.sid + '">' +
+                          '<i class="bi bi-cpu me-1"></i>' + esc(_sdT('Select the widget')) + '</button>'
+                    : '') +
+            '</div>';
+        }
+        if (!_sdPartOffered(node) || _sdAccess() !== 'full' || !_collab.mayEdit) return '';
+        return '<div class="sd-prop-row" style="margin-bottom:6px">' +
+            '<div class="d-flex gap-2">' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary flex-fill" id="sd-part-copy" title="' + esc(_sdT('Show this element of the record outside the widget too')) + '">' +
+                    '<i class="bi bi-box-arrow-up-right me-1"></i>' + esc(_sdT('Copy outside')) + '</button>' +
+                '<button type="button" class="btn btn-sm btn-outline theme-secondary flex-fill" id="sd-part-move" title="' + esc(_sdT('Show this element of the record outside the widget instead')) + '">' +
+                    '<i class="bi bi-arrows-move me-1"></i>' + esc(_sdT('Move outside')) + '</button>' +
+            '</div>' +
+        '</div>';
+    }
+
+    function _sdPartSettingsBind(node) {
+        var w = document.getElementById('sd-part-widget');
+        if (w) w.addEventListener('click', function () {
+            var ref = _sdPlacementOnPage(parseInt(this.dataset.swId, 10));
+            if (!ref) return;
+            selectedNodes = []; selectedNode = ref;
+            renderSelectionOnly(); renderProperties();
+            scrollTreeToNode(ref);
+        });
+        var c = document.getElementById('sd-part-copy');
+        if (c) c.addEventListener('click', function () { if (_sdMayEdit(node)) _sdPlacePart(node, false); });
+        var m = document.getElementById('sd-part-move');
+        if (m) m.addEventListener('click', function () { if (_sdMayEdit(node)) _sdPlacePart(node, true); });
+    }
+
+    // The widget whose preview values a part draws with, while the canvas
+    // draws the part (buildNodeEl()); 0 elsewhere.
+    var _sdPartDrawing = 0;
+    var _sdPartBuilding = false;
+
+    // The part info (_sdPartInfo()) of `node` when the canvas draws it as a
+    // part: a node of the page tree, not inside a part being drawn.
+    function _sdPartToDraw(node) {
+        if (_sdPartBuilding || _sysWidgetRenderTreeRoot || !_sdPartOf(node)) return null;
+        var info = _sdPartInfo(node);
+        return (info && info.state !== 'inside') ? info : null;
+    }
+
+    // Part `node` on the canvas: drawn with its widget's preview values, as
+    // the page draws it with the widget's record; one the page would not
+    // draw fades, with the reason as its tip.
+    function _sdBuildPartEl(node, info) {
+        var el;
+        _sdPartBuilding = true;
+        if (info.state === 'ok') _sdPartDrawing = info.sid;
+        try { el = buildNodeEl(node); } finally { _sdPartBuilding = false; _sdPartDrawing = 0; }
+        if (el && el.classList) {
+            el.classList.add('sd-part');
+            if (info.state !== 'ok') el.classList.add('sd-part-off');
+            el.setAttribute('data-sd-part', String(info.sid));
+            el.title = _sdPartStateText(info);
+        }
+        return el;
+    }
+
+    // The system widget whose preview values `node` shows: the widget it
+    // stands in, else the part's being drawn.
+    function _sdValueSidOf(node) {
+        return _isInsideSystemWidget(node) || _sdPartDrawing;
     }
 
     // The placement of shared component `sid` that the open page shows: a
