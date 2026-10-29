@@ -292,8 +292,8 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_import" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Take the ticked cards into the ERP as new accounts? A card whose number an account already carries is linked to that account instead.')) . '"><i class="bi bi-box-arrow-in-down me-1" aria-hidden="true"></i>' . lang('Take into the ERP') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
@@ -319,8 +319,8 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_push" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang(array('string' => 'Open a card at {var:1} for each ticked account?', 'vars' => $provider_label))) . '"><i class="bi bi-cloud-upload me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Send to {var:1}', 'vars' => $provider_label))) . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_aside" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-archive me-1" aria-hidden="true"></i>' . lang('Set aside') . '</button>
                 </span>';
         break;
 
@@ -355,7 +355,7 @@ switch ($tab) {
 
         $bulk = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
+                    <button type="submit" form="erp_account_sync_bulk" name="erp_action" value="bulk_restore" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-counterclockwise me-1" aria-hidden="true"></i>' . lang('Bring back') . '</button>
                 </span>';
         break;
 }
