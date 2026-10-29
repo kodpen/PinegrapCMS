@@ -154,7 +154,7 @@ $output_status = $last_run
     : h(lang('No full check has finished yet.'));
 
 if (!pg_cron_job_is_enabled('seo_a11y_job')) {
-    $output_status .= ' ' . h(lang('The nightly check is off: switch on "Accessibility report" under the scheduled jobs in Settings, or check the pages now.'));
+    $output_status .= ' ' . h(lang('The nightly check is off: in Site Settings › General › Cron Jobs, with Run Cron Jobs Automatically on, switch on "Accessibility report", or check the pages now.'));
 }
 
 echo pg_page_shell($shell) . '
