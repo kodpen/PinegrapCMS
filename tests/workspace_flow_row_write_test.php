@@ -301,6 +301,12 @@ function test_workspace_flow_row_write_runs_through_the_store()
 
 	pg_assert_contains('ws_step_row_recheck($step)', workspace_flow_row_write_test_source('ws_flow_step_recheck'), 'a waiting table box looks again');
 
+	$wait = workspace_flow_row_write_test_source('ws_step_row_wait');
+
+	pg_assert_contains("status = 'waiting', effect = '', wait_event = ''", $wait, 'it forgets that it began: nothing was written');
+	pg_assert_contains("AND status = 'running'", $wait, 'from running only');
+	pg_assert_contains('time() + WS_FLOW_RECHECK', $wait, 'it looks again in an hour');
+
 	$again = workspace_flow_row_write_test_source('ws_step_row_recheck');
 
 	pg_assert_contains("=== 'paused'", $again, 'still away: it waits on');

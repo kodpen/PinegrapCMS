@@ -32,6 +32,13 @@
  * the site's, once they approve it (ws_step_mcp_ask(),
  * ws_step_mcp_approved_call()).
  *
+ * Two kinds write a row of a workflow table, no scheduled action's step
+ * either: one adds a row, the other changes cells of one, the cells a JSON
+ * object by column id whose values may read the run's. They write through
+ * the table's own store with the owner's rights, so each cell is checked by
+ * its column as any write is; a table whose owner has left the team pauses
+ * the box until they are back (ws_step_row_check(), ws_step_row_do()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -57,6 +64,9 @@ define('WS_STEP_TRIGGER', '@trigger');
 // at most this many bytes of JSON (as from its form, mcp_form.php).
 define('WS_STEP_MCP_ARGUMENTS_MAX', 20000);
 
+// The longest a table box's cells are, as JSON text, in characters.
+define('WS_STEP_ROW_CELLS_MAX', 20000);
+
 // A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
 // (group 1 the box id, empty for the trigger; group 2 the field).
 define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})\}\}/');
@@ -67,6 +77,8 @@ define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.
  * when the box runs, and of those the ones kept on one line (a value read
  * into an e-mail's subject brings no line break into its header). A task
  * opened without waiting is task_open: the kind task is the box that waits.
+ * The MCP box and the two table boxes are no scheduled action's step: their
+ * type is their own.
  *
  * outputs: the values the box writes into its result's data for the boxes
  * after it (key, type, label; mode: only for a web check of that mode). A
@@ -117,6 +129,10 @@ function ws_step_kinds()
         'mcp'       => array('label' => lang('Run a tool of an MCP server'), 'type' => 'mcp', 'texts' => array('arguments'), 'lines' => array(),
             'outputs' => array($text('result', lang('Answer')), $number('duration_ms', lang('Time taken (ms)'))),
             'outcomes' => array('done', 'failed', 'rejected', 'expired', 'withdrawn')),
+        'row_add'   => array('label' => lang('Add a row to a table'), 'type' => 'row_add', 'texts' => array('cells'), 'lines' => array(),
+            'outputs' => array($number('row_id', lang('Row')))),
+        'row_set'   => array('label' => lang('Change a row of a table'), 'type' => 'row_set', 'texts' => array('row', 'cells'), 'lines' => array('row'),
+            'outputs' => array($number('row_id', lang('Row')))),
     );
 }
 
@@ -125,13 +141,15 @@ function ws_step_kinds()
  * its sentence is (ws_step_result_shown()): a change box's record and the
  * run a start-a-flow box started (all its values), a webhook's or an MCP
  * tool's answer, which may carry what the service tells only the flow's
- * owner.
+ * owner, and the row a table box wrote, in a table the reader may not
+ * reach.
  *
  * @return array kind => keys, ['*'] for all
  */
 function ws_step_outputs_held()
 {
-    return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'));
+    return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
+        'row_add' => array('*'), 'row_set' => array('*'));
 }
 
 /**
@@ -287,6 +305,11 @@ function ws_step_outcomes()
  *            object is written as its JSON), channel_id and closes_in (for a
  *            tool that asks first: where the owner is asked to approve each
  *            call, and the request's deadline as an approval box's)
+ * row_add:   table_id (a workflow table), cells (a JSON object of column id
+ *            => value as text, '' for none; one given as an object is
+ *            written as its JSON)
+ * row_set:   table_id, row (the row's id, or one value such as
+ *            {{trigger.row_id}}), cells
  *
  * @param string $kind
  * @param mixed  $config
@@ -479,6 +502,22 @@ function ws_step_config_normalize($kind, $config)
                 'channel_id' => $number($config['channel_id'] ?? 0),
                 'closes_in'  => (is_bool($closes_in) || !is_numeric($closes_in)) ? '' : max(1, min(WS_STEP_APPROVAL_CLOSES_MAX, (int) $closes_in)),
             );
+
+        case 'row_add':
+        case 'row_set':
+            $cells = $config['cells'] ?? '';
+
+            if (is_array($cells) || is_object($cells)) {
+                $cells = (string) json_encode((object) $cells, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            }
+
+            $out = array('table_id' => $number($config['table_id'] ?? 0));
+
+            if ($kind === 'row_set') {
+                $out['row'] = ws_flow_line($config['row'] ?? '', 200);
+            }
+
+            return $out + array('cells' => ws_flow_lines($cells, WS_STEP_ROW_CELLS_MAX));
     }
 
     return array();
@@ -628,6 +667,30 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
             }
 
             break;
+
+        // A table box writes cells, named by their columns' ids, into one
+        // table; a change names its row.
+        case 'row_add':
+        case 'row_set':
+            if ((int) $config['table_id'] <= 0) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the table it writes in.', 'vars' => $name));
+            }
+
+            if (($kind === 'row_set') && (trim($config['row']) === '')) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs the row it changes.', 'vars' => $name));
+            } elseif (($kind === 'row_set') && !ws_step_row_names_row($config['row'])) {
+                $problems[] = lang(array('string' => 'The box {var:1} names its row by its id or by one value, such as {{trigger.row_id}}.', 'vars' => $name));
+            }
+
+            $cells = ws_step_row_cells($config['cells']);
+
+            if ($cells === null) {
+                $problems[] = lang(array('string' => 'The cells of the box {var:1} are not a JSON object of column ids and values.', 'vars' => $name));
+            } elseif (empty($cells)) {
+                $problems[] = lang(array('string' => 'The box {var:1} needs at least one cell to write.', 'vars' => $name));
+            }
+
+            break;
     }
 
     return $problems;
@@ -654,7 +717,8 @@ function ws_step_action($kind, $config)
  * @param array  $config
  * @param bool   $joined the flow starts when somebody joins a channel: a
  *                       post box may write in the channel joined (-1)
- * @return array ok, error, action
+ * @return array ok, error, action; paused for a table box whose table's
+ *               owner has left the team (ws_step_row_check())
  */
 function ws_step_check($viewer, $kind, $config, $joined = false)
 {
@@ -665,6 +729,11 @@ function ws_step_check($viewer, $kind, $config, $joined = false)
     // An MCP tool is no scheduled action's step: the box checks it itself.
     if ($kind === 'mcp') {
         return ws_step_mcp_check($viewer, ws_step_config_normalize('mcp', $config));
+    }
+
+    // Nor is a table box: it writes through the table's store.
+    if (in_array($kind, ws_step_row_kinds(), true)) {
+        return ws_step_row_check($viewer, $kind, ws_step_config_normalize($kind, $config));
     }
 
     return ws_scheduled_action_input($viewer, ws_step_action($kind, $config), 0, 0, $joined);
@@ -927,7 +996,9 @@ function ws_step_value_box($match)
  * (a webhook's text read by Slack, Teams or Google Chat), discord, or text
  * (a plain e-mail, an inbox notice, a webhook's JSON body, the task e-mail,
  * which escapes its HTML where it writes it), or json (an MCP box's
- * arguments: a value goes in as the inside of a JSON string). Pure.
+ * arguments, a table box's cells and row: a value goes in as the inside of
+ * a JSON string; a cell is plain data the table's screens escape where they
+ * show it, so the value lands as it was given). Pure.
  *
  * @param string $kind   a step kind, or task (the box that waits)
  * @param array  $action ws_scheduled_action_input()
@@ -950,6 +1021,8 @@ function ws_step_fill_target($kind, $action)
             return ($format === 'text') ? 'chat' : (($format === 'discord') ? 'discord' : 'text');
 
         case 'mcp':
+        case 'row_add':
+        case 'row_set':
             return 'json';
     }
 
@@ -1160,10 +1233,10 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
 /**
  * What a box of a run says it did, as a reader of the run sees it. A change
  * box's sentence names the record and the values it wrote, a condition box's
- * the record, the value and the count it looked at, a start box's the flow
- * it started, which only whoever may change the flow reads
- * (ws_flow_graph_present() keeps them back the same way); everybody else
- * reads that a change was made, or not.
+ * the record, the value and the count it looked at (ws_flow_graph_present()
+ * keeps them back the same way), a start box's the flow it started, a table
+ * box's the table and its columns: only whoever may change the flow reads
+ * them; everybody else reads that a change was made, or not.
  * Pure.
  *
  * @param string $kind    the box's kind
@@ -1174,8 +1247,18 @@ function ws_step_idempotency_key($run_id, $node_id, $pass)
  */
 function ws_step_result_shown($kind, $outcome, $text, $edit)
 {
-    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow'), true) || ((string) $text === '')) {
+    if ($edit || !in_array((string) $kind, array('change', 'condition', 'start_flow', 'row_add', 'row_set'), true) || ((string) $text === '')) {
         return (string) $text;
+    }
+
+    // The table may be one the reader does not reach: its name and its
+    // columns stay back.
+    if ((string) $kind === 'row_add') {
+        return ((string) $outcome === 'done') ? lang('A row was added to a table.') : lang('No row was added to the table.');
+    }
+
+    if ((string) $kind === 'row_set') {
+        return ((string) $outcome === 'done') ? lang('A row of a table was changed.') : lang('The row of the table was not changed.');
     }
 
     // The flow started may be one the reader does not reach: its name stays
@@ -1297,7 +1380,8 @@ function ws_step_run_values($run, $graph, $owner, $context)
  * Carries out a step box this request claimed, with the owner's rights now:
  * writes that it began, checks the step again, fills in the values of the
  * boxes before it and does it. An MCP box whose call was approved makes the
- * call instead (ws_step_mcp_approved_call()).
+ * call instead (ws_step_mcp_approved_call()); a table box whose table's
+ * owner has left the team waits for them (ws_step_row_wait()).
  *
  * @param array $run   ws_flow_runs row
  * @param array $step  ws_flow_run_steps row, running
@@ -1328,7 +1412,9 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $check = ws_step_check($owner, $kind, $node['config'], ws_flow_starts_on_join($graph));
 
     if (!$check['ok']) {
-        if (!ws_flow_retry_wait($step, $node, $check['error'])) {
+        if (!empty($check['paused'])) {
+            ws_step_row_wait($step, (int) ($node['config']['table_id'] ?? 0), $check['error']);
+        } elseif (!ws_flow_retry_wait($step, $node, $check['error'])) {
             $end = ws_step_settlement(false, $routed);
             ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $check['error']);
         }
@@ -1390,13 +1476,17 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     ws_event_depth((int) ($run['depth'] ?? 0));
 
     // An MCP tool is no scheduled action's step; one that asks before each
-    // call asks the owner to approve it instead of making it.
+    // call asks the owner to approve it instead of making it. Nor is a
+    // table box's row, which the table's store writes; the event it sends
+    // carries this depth.
     $asks = ($kind === 'mcp') && !empty($action['asks']);
 
     if ($asks) {
         $done = ws_step_mcp_ask($owner, $action, (string) $row['name'], (int) ($run['started_by'] ?? 0));
     } elseif ($kind === 'mcp') {
         $done = ws_step_mcp_do($owner, $action);
+    } elseif (in_array($kind, ws_step_row_kinds(), true)) {
+        $done = ws_step_row_do($owner, $action);
     } else {
         $done = ws_scheduled_do($owner, $row, $action, $step_context);
     }
@@ -1538,9 +1628,17 @@ function ws_flow_box_try($viewer, $flow, $data)
             $action['text'] = lang(array('string' => 'Flow “{var:1}”: {var:2}', 'vars' => array((string) $flow['name'], $action['text'])));
         }
 
+        if ($kind === 'mcp') {
+            $said = ws_step_mcp_text($action);
+        } elseif (in_array($kind, ws_step_row_kinds(), true)) {
+            $said = ws_step_row_text($action);
+        } else {
+            $said = ws_scheduled_action_text($owner, $action);
+        }
+
         return array(
             'outcome' => 'done',
-            'said'    => ($kind === 'mcp') ? ws_step_mcp_text($action) : ws_scheduled_action_text($owner, $action),
+            'said'    => $said,
             'texts'   => $tried['texts'],
             'empty'   => $tried['empty'],
         ) + $answer;
@@ -2096,4 +2194,470 @@ function ws_step_mcp_approved_call($step, $node, $graph, $owner, $approval_id)
     $end = ws_step_settlement(!empty($done['ok']), $routed);
 
     ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], (string) $done['text'], $data);
+}
+
+/* ---------------------------------------------------------------------------
+   A row of a workflow table (the boxes row_add and row_set)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The kinds of box that write a row of a workflow table: one adds a row,
+ * the other changes cells of one.
+ *
+ * @return string[]
+ */
+function ws_step_row_kinds()
+{
+    return array('row_add', 'row_set');
+}
+
+/**
+ * A table box's cells, column id => value as written: none for '', else a
+ * JSON object whose keys are column ids. A {{node.*}} or {{trigger.*}} value
+ * goes in as the inside of a JSON string (ws_step_fill_value()), so the text
+ * is also looked at with each one empty: one written outside quotes leaves
+ * no object. A record link is an object of its own, {"kind": …, "id": …}.
+ * Pure.
+ *
+ * @param string $text
+ * @return array|null column id => value, null when the text is no such object
+ */
+function ws_step_row_cells($text)
+{
+    $text = trim((string) $text);
+
+    if ($text === '') {
+        return array();
+    }
+
+    $bare = trim((string) preg_replace(WS_STEP_VALUE_PATTERN, '', $text));
+    $cells = json_decode($text, true);
+
+    if (($bare === '') || ($bare[0] !== '{') || !is_array(json_decode($bare, true)) || !is_array($cells)) {
+        return null;
+    }
+
+    $out = array();
+
+    foreach ($cells as $id => $value) {
+        if (!preg_match('/^[1-9][0-9]{0,9}$/', (string) $id)) {
+            return null;
+        }
+
+        $out[(string) $id] = $value;
+    }
+
+    return $out;
+}
+
+/**
+ * Does a cell's value read a value of the run ({{node.*}}, {{trigger.*}}),
+ * known only as the box runs? A record link's id may. Pure.
+ *
+ * @param mixed $value
+ * @return bool
+ */
+function ws_step_row_value_in($value)
+{
+    if (is_array($value)) {
+        foreach ($value as $item) {
+            if (ws_step_row_value_in($item)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    return is_string($value) && (preg_match(WS_STEP_VALUE_PATTERN, $value) === 1);
+}
+
+/**
+ * The row a row text names once it is filled in: its id, 0 for none. Pure.
+ *
+ * @param string $text
+ * @return int
+ */
+function ws_step_row_id($text)
+{
+    $text = trim((string) $text);
+
+    return preg_match('/^[1-9][0-9]{0,9}$/', $text) ? (int) $text : 0;
+}
+
+/**
+ * Does a change box's row text name a row: its id, or one value of the run
+ * alone, such as the row that started the flow ({{trigger.row_id}}) or the
+ * one an earlier box added? Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_step_row_names_row($text)
+{
+    $text = trim((string) $text);
+
+    if (ws_step_row_id($text) > 0) {
+        return true;
+    }
+
+    return (preg_replace(WS_STEP_VALUE_PATTERN, '', $text, -1, $count) === '') && ($count === 1);
+}
+
+/**
+ * A cell's code (ws_wtable_cell_check()) in a box's words: as the tables
+ * screen says it, but money in minor units and a record link as the object
+ * the box writes. Pure but for lang().
+ *
+ * @param string $code
+ * @return string
+ */
+function ws_step_row_cell_reason($code)
+{
+    switch ((string) $code) {
+        case 'not_minor_units':
+            return lang('Money is written in minor units: 1250 for 12.50.');
+
+        case 'not_link':
+            return lang('A record link is written as {"kind": "contact", "id": 12}.');
+
+        case 'unknown_column':
+            return lang('The column is not in the table.');
+
+        case 'computed':
+            return lang('The column is worked out from the others.');
+    }
+
+    return ws_wtable_screen_error_text($code);
+}
+
+/**
+ * Why a table box may not write these cells into these columns, '' when it
+ * may: each a column of the table that keeps cells (a formula's value is
+ * worked out), and a value written as it is one its column takes. A value
+ * read from the run is looked at once it is filled in. Pure but for lang().
+ *
+ * @param array $columns column id => column (name, type, options), ws_wtable_columns()
+ * @param array $cells   ws_step_row_cells()
+ * @return string
+ */
+function ws_step_row_cells_refusal($columns, $cells)
+{
+    foreach ($cells as $id => $value) {
+        $column = $columns[(string) $id] ?? null;
+
+        if (!$column) {
+            return lang(array('string' => 'The table has no column {var:1}.', 'vars' => (string) $id));
+        }
+
+        if (!ws_wtable_type_stores((string) $column['type'])) {
+            return lang(array('string' => 'The column “{var:1}” is worked out from the others: it cannot be written.', 'vars' => (string) $column['name']));
+        }
+
+        if (ws_step_row_value_in($value)) {
+            continue;
+        }
+
+        $check = ws_wtable_cell_check($column, $value);
+
+        if (!$check['ok']) {
+            return lang(array('string' => 'The column “{var:1}” does not take that value: {var:2}', 'vars' => array((string) $column['name'], ws_step_row_cell_reason($check['error']))));
+        }
+    }
+
+    return '';
+}
+
+/**
+ * Why the table's store refused a table box's write, in a sentence: each
+ * column whose value it refused, by name, or what else stopped it. Pure but
+ * for lang().
+ *
+ * @param array  $written ws_wtable_row_create() or ws_wtable_row_update()
+ * @param array  $columns column id => column
+ * @param string $table   the table's name
+ * @return string
+ */
+function ws_step_row_write_refusal($written, $columns, $table)
+{
+    switch ((string) ($written['error'] ?? '')) {
+        case 'cells_invalid':
+            $said = array();
+
+            foreach ((array) ($written['errors'] ?? array()) as $id => $code) {
+                $said[] = (isset($columns[(string) $id]) ? '“' . $columns[(string) $id]['name'] . '”' : '#' . $id) . ': ' . ws_step_row_cell_reason($code);
+            }
+
+            return lang(array('string' => 'The table “{var:1}” refused a value. {var:2}', 'vars' => array($table, implode(' ', $said))));
+
+        case 'too_many_rows':
+            return lang(array('string' => 'The table “{var:1}” has {var:2} rows, the most a table may have.', 'vars' => array($table, ws_wtable_limits()['rows'])));
+
+        case 'changed_meanwhile':
+            return lang(array('string' => 'Somebody changed the row in the table “{var:1}” while the box wrote it, twice; it was not changed.', 'vars' => $table));
+
+        case 'not_found':
+            return lang(array('string' => 'The flow\'s owner may no longer change the table “{var:1}”.', 'vars' => $table));
+    }
+
+    return lang(array('string' => 'The row could not be written in the table “{var:1}”.', 'vars' => $table));
+}
+
+/**
+ * What a table box does, in words. Pure.
+ *
+ * @param array $action ws_step_row_check()
+ * @return string
+ */
+function ws_step_row_text($action)
+{
+    $columns = implode(', ', array_map('strval', (array) ($action['columns'] ?? array())));
+    $table = (string) ($action['table_name'] ?? '');
+
+    if ((string) ($action['type'] ?? '') === 'row_set') {
+        return lang(array('string' => 'Changes {var:1} in a row of the table “{var:2}”.', 'vars' => array($columns, $table)));
+    }
+
+    return lang(array('string' => 'Adds a row to the table “{var:1}”, filling in: {var:2}.', 'vars' => array($table, $columns)));
+}
+
+/**
+ * Checks a table box with somebody's rights, the owner as they publish and
+ * again each time the box runs: a table they may change (ws_wtable_flow_check()
+ * at edit) whose owner is in the team (else the box waits for them: paused),
+ * every cell one of its columns that keeps cells, a value written as it is
+ * one the column takes, and a row named by its id there. Whoever may only
+ * read the table, or reaches it through no share, may not. The run's values
+ * are looked at once they are filled in.
+ *
+ * @param array  $viewer the flow's owner
+ * @param string $kind   row_add | row_set
+ * @param array  $config ws_step_config_normalize()
+ * @return array ok, error, paused (the table's owner has left the team),
+ *               action (type, table_id, table_name, row, cells, columns: the
+ *               names of the columns it writes)
+ */
+function ws_step_row_check($viewer, $kind, $config)
+{
+    $refuse = function ($error, $paused = false) {
+        return array('ok' => false, 'error' => $error, 'paused' => $paused, 'action' => null);
+    };
+
+    if (!function_exists('ws_wtable_flow_check') || !ws_wtables_ready()) {
+        return $refuse(lang('The database has to be updated first.'));
+    }
+
+    $table = ws_wtable((int) $config['table_id']);
+    $gate = $table ? ws_wtable_flow_check($viewer, (int) $table['id'], 'edit') : 'refused';
+
+    if ($gate === 'paused') {
+        return $refuse(lang(array('string' => 'The owner of the table “{var:1}” has left the team: nothing is written in it until they are back.', 'vars' => (string) $table['name'])), true);
+    }
+
+    if ($gate !== '') {
+        return $refuse(lang('Choose a table you may change.'));
+    }
+
+    $cells = ws_step_row_cells($config['cells']);
+
+    if (empty($cells)) {
+        return $refuse(lang('The cells are not a JSON object of column ids and values.'));
+    }
+
+    $columns = ws_wtable_columns((int) $table['id']);
+    $refusal = ws_step_row_cells_refusal($columns, $cells);
+
+    if ($refusal !== '') {
+        return $refuse($refusal);
+    }
+
+    $row = ($kind === 'row_set') ? (string) $config['row'] : '';
+
+    if (($kind === 'row_set') && !ws_step_row_names_row($row)) {
+        return $refuse(lang('Name the row by its id or by one value, such as {{trigger.row_id}}.'));
+    }
+
+    if ((ws_step_row_id($row) > 0) && !ws_wtable_row((int) $table['id'], ws_step_row_id($row))) {
+        return $refuse(lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array((string) $table['name'], ws_step_row_id($row)))));
+    }
+
+    $names = array();
+
+    foreach (array_keys($cells) as $id) {
+        $names[] = (string) $columns[(string) $id]['name'];
+    }
+
+    return array('ok' => true, 'error' => '', 'paused' => false, 'action' => array(
+        'type'       => $kind,
+        'table_id'   => (int) $table['id'],
+        'table_name' => (string) $table['name'],
+        'row'        => $row,
+        'cells'      => (string) $config['cells'],
+        'columns'    => $names,
+    ));
+}
+
+/**
+ * Writes a table box's row with the flow owner's rights, through the table's
+ * store, so each cell is checked by its column, the table's limit is kept
+ * and its row event goes out as for any write: ws_wtable_row_create() adds
+ * the row at the end, ws_wtable_row_update() lays the cells over the row
+ * named, on the revision it has now. The run's values are filled in
+ * already, inside the JSON strings (ws_step_fill_action()). A row somebody
+ * changed in between is read again and written once more; a second change
+ * in between leaves it as it is.
+ *
+ * @param array $owner  the flow's owner, checked (ws_step_row_check())
+ * @param array $action ws_step_row_check(), filled
+ * @return array ok, text, row_id, data
+ */
+function ws_step_row_do($owner, $action)
+{
+    $fail = function ($text) {
+        return array('ok' => false, 'text' => $text, 'row_id' => 0, 'data' => array());
+    };
+
+    $table = ws_wtable((int) $action['table_id']);
+    $name = $table ? (string) $table['name'] : (string) $action['table_name'];
+    $cells = ws_step_row_cells($action['cells']);
+
+    if (!$table) {
+        return $fail(lang(array('string' => 'The table “{var:1}” is gone.', 'vars' => $name)));
+    }
+
+    if (empty($cells)) {
+        return $fail(lang('The cells are not a JSON object of column ids and values.'));
+    }
+
+    $columns = ws_wtable_columns((int) $table['id']);
+    $written = array('ok' => false, 'error' => '');
+
+    if ((string) $action['type'] === 'row_add') {
+        $written = ws_wtable_row_create($owner, $table, array('cells' => $cells));
+        $row_id = (int) ($written['row_id'] ?? 0);
+    } else {
+        $row_id = ws_step_row_id($action['row']);
+
+        if ($row_id <= 0) {
+            return $fail(lang(array('string' => 'The box has no row to change: “{var:1}” is not the id of a row.', 'vars' => (string) $action['row'])));
+        }
+
+        for ($try = 0; $try < 2; $try++) {
+            $row = ws_wtable_row((int) $table['id'], $row_id);
+
+            if (!$row) {
+                return $fail(lang(array('string' => 'The table “{var:1}” has no row with the id {var:2}.', 'vars' => array($name, $row_id))));
+            }
+
+            $written = ws_wtable_row_update($owner, $table, $row, array('cells' => $cells, 'revision' => (int) $row['revision']));
+
+            if ((string) ($written['error'] ?? '') !== 'changed_meanwhile') {
+                break;
+            }
+        }
+    }
+
+    if (empty($written['ok'])) {
+        return $fail(ws_step_row_write_refusal($written, $columns, $name));
+    }
+
+    return array(
+        'ok'     => true,
+        'text'   => ((string) $action['type'] === 'row_add')
+            ? lang(array('string' => 'Added a row to the table “{var:1}”.', 'vars' => $name))
+            : lang(array('string' => 'Changed {var:1} in a row of the table “{var:2}”.', 'vars' => array(implode(', ', array_map('strval', (array) ($action['columns'] ?? array()))), $name))),
+        'row_id' => $row_id,
+        'data'   => array(),
+    );
+}
+
+/**
+ * The key a table box waits on while its table's owner is away
+ * (ws_step_row_wait()): wtable:<table id>. Pure.
+ *
+ * @param int $table_id
+ * @return string
+ */
+function ws_step_row_wait_key($table_id)
+{
+    return 'wtable:' . (int) $table_id;
+}
+
+/**
+ * The table a table box's wait key names, 0 for a key of another kind. Pure.
+ *
+ * @param string $key
+ * @return int
+ */
+function ws_step_row_wait_table($key)
+{
+    return preg_match('/^wtable:([1-9][0-9]{0,9})$/', (string) $key, $match) ? (int) $match[1] : 0;
+}
+
+/**
+ * A table box whose table's owner has left the team waits for them, as the
+ * table's gate says (ws_wtable_flow_gate(), paused): in one conditional
+ * write it forgets that it began (nothing was written), waits on no event
+ * and has its next look in WS_FLOW_RECHECK seconds (ws_step_row_recheck()),
+ * keyed by the table. Its result says why it waits.
+ *
+ * @param array  $step     ws_flow_run_steps row, running
+ * @param int    $table_id
+ * @param string $text     why it waits
+ */
+function ws_step_row_wait($step, $table_id, $text)
+{
+    $next = time() + WS_FLOW_RECHECK;
+    $said = lang(array('string' => '{var:1} The box waits and looks again at {var:2}.', 'vars' => array(rtrim((string) $text), ws_scheduled_moment($next))));
+
+    db("UPDATE ws_flow_run_steps SET status = 'waiting', effect = '', wait_event = '',
+            wait_key = '" . e(ws_step_row_wait_key($table_id)) . "', wake_at = '" . $next . "',
+            result = '" . e(ws_flow_result_pack($said)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'running'");
+
+    if ((int) mysqli_affected_rows(db::$con) === 1) {
+        ws_flow_run_refresh((int) $step['run_id']);
+    }
+}
+
+/**
+ * A table box waiting for its table's owner looks again: still away, it
+ * goes on waiting (ws_flow_steps_recheck() has moved its next look on);
+ * back, or the table no longer one to wait for, it is ready again, from
+ * waiting only, so two looks make it ready once; its next claim checks it
+ * and writes or fails, and counts no new try. A run that ended meanwhile
+ * lets it go.
+ *
+ * @param array $step ws_flow_run_steps row, waiting
+ * @return bool whether the box changed
+ */
+function ws_step_row_recheck($step)
+{
+    $run = ws_flow_run($step['run_id']);
+
+    if (!$run) {
+        return false;
+    }
+
+    if (!ws_flow_run_open($run['status'])) {
+        return ws_flow_step_settle($step, 'waiting', 'skipped', '', lang('Not reached in this run.'));
+    }
+
+    $owner = ws_change_viewer_for_id((int) $run['actor_id']);
+
+    if (is_array($owner) && (ws_wtable_flow_check($owner, ws_step_row_wait_table($step['wait_key']), 'edit') === 'paused')) {
+        return false;
+    }
+
+    ws_flow_run_touch((int) $step['run_id']);
+
+    db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '', wait_event = '', wait_key = '', wake_at = 0,
+            ready_at = '" . time() . "', claimed_at = 0, finished_at = 0, attempt = '" . max(0, (int) ($step['attempt'] ?? 0) - 1) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wait_key = '" . e((string) $step['wait_key']) . "'");
+
+    $ready = ((int) mysqli_affected_rows(db::$con) === 1);
+
+    ws_flow_run_refresh((int) $step['run_id']);
+
+    return $ready;
 }

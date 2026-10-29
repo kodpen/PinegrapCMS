@@ -1728,6 +1728,7 @@
     "Some quick example text to build on the card title and make up the bulk of the card's content.": "Kart başlığının üstüne kurulan ve kartın içeriğinin çoğunu oluşturan kısa bir örnek metin.",
     "Some quick example text to build on the card title.": "Kart başlığının üstüne kurulacak kısa bir örnek metin.",
     "Some scheduled tasks have stopped running, and backups and mail wait until they start again.": "Bazı zamanlanmış görevler durmuş; yeniden çalışana kadar yedekler ve e-postalar bekliyor.",
+    "Somebody changed the row in the table “{var:1}” while the box wrote it, twice; it was not changed.": "Kutu yazarken biri “{var:1}” tablosundaki satırı iki kez değiştirdi; satır değiştirilmedi.",
     "Somebody changed this note meanwhile.": "Bu arada başka biri notu değiştirdi.",
     "Somebody changed this row meanwhile: look at it again and repeat your change.": "Bu satırı bu arada başka biri değiştirdi: satıra yeniden bakıp değişikliğinizi tekrarlayın.",
     "Somebody else": "Başka biri",
