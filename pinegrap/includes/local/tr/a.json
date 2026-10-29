@@ -1111,6 +1111,7 @@
     "About your return request": "İade talebiniz hakkında",
     "About your return request for order #{var:1}": "#{var:1} numaralı siparişinizin iade talebi hakkında",
     "About your topics": "Konularınız hakkında",
+    "Above a single payment, PayTR offers the card's installments up to this number. The order records what PayTR took: an installment difference the customer pays becomes the order's installment charge and raises its total.": "Tek çekimin üstünde PayTR, kartın taksitlerini bu sayıya kadar sunar. Sipariş PayTR'ın çektiği tutarı kaydeder: müşterinin ödediği taksit farkı siparişin taksit masrafı olur ve toplamını büyütür.",
     "Absolute": "Mutlak",
     "Accept": "Onayla",
     "Accept Backorders": "Ön Sipariş Kabul Et",
