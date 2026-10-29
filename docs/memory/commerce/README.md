@@ -33,6 +33,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-label-basitkargo.md: Basit Kargo label driver and SVG labels (2026.11.0, #3163): create, SVG only, no test mode, 600 a minute and Retry-After, idempotency key; SVG checks, print page, sandboxed download, bulk PDF
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offer choice, barcode as the first tracking number, PDF only, status mapping, the stand-in transport, what is unverified without a live key
+- carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, no customs (EU or domestic only), cancel, tracking phases
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
 - cart-line-removal.md: How a line leaves the cart (quantity 0 on the designer or classic cart, the remove link): remove_order_item(), pg_cart_remove_line(), gift refusals, the emptied recipient, shipping, required products
@@ -182,6 +183,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
+- subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal
 - trendyol-listing-status.md: Trendyol listing approval read onto the mapping row: the two filter calls, what each state writes, which rows are asked about, what is not stored, unverified points.

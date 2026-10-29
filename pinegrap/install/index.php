@@ -8932,6 +8932,8 @@ function get_tables() {
 		'submitted_form_info',
 		'submitted_form_view_stats',
 		'submitted_form_views',
+		'subscription_events',
+		'subscriptions',
 		'system_style_cells',
 		'system_theme_css_rules',
 		'tag_cloud_keywords',
