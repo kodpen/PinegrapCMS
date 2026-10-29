@@ -216,11 +216,19 @@ window.PgTour = (function () {
         bubble.setAttribute('role', 'dialog');
         bubble.setAttribute('aria-modal', 'true');
         bubble.setAttribute('aria-labelledby', 'pg_tour_title');
+        bubble.setAttribute('aria-describedby', 'pg_tour_count pg_tour_text');
+        // The words scroll inside their own body, so a long step on a short
+        // screen keeps its foot (Skip, Next) in view.  The bubble itself does
+        // not clip: its arrow sits outside its edge.  The status region reads
+        // a step out when focus is already on Next and so does not move.
         bubble.innerHTML =
             '<span class="pg-tour-arrow" aria-hidden="true"></span>' +
-            '<div class="pg-tour-count" data-part="count"></div>' +
-            '<h2 class="pg-tour-title" id="pg_tour_title" data-part="title"></h2>' +
-            '<div class="pg-tour-text" data-part="text"></div>' +
+            '<div class="pg-tour-status" role="status" aria-live="polite" data-part="status"></div>' +
+            '<div class="pg-tour-body">' +
+                '<div class="pg-tour-count" id="pg_tour_count" data-part="count"></div>' +
+                '<h2 class="pg-tour-title" id="pg_tour_title" data-part="title"></h2>' +
+                '<div class="pg-tour-text" id="pg_tour_text" data-part="text"></div>' +
+            '</div>' +
             '<div class="pg-tour-foot">' +
                 '<button type="button" class="pg-tour-btn pg-tour-ghost" data-part="skip"></button>' +
                 '<span class="pg-tour-dots" data-part="dots" aria-hidden="true"></span>' +
@@ -321,10 +329,7 @@ window.PgTour = (function () {
         // The bubble then sits over the target rather than beside it, which at
         // least keeps every word readable.
         if (!chosen) {
-            bubble.setAttribute('data-side', 'none');
-            bubble.style.left = Math.round((viewportWidth - width) / 2) + 'px';
-            bubble.style.top = Math.round((viewportHeight - height) / 2) + 'px';
-            parts.arrow.style.display = 'none';
+            centre();
             return;
         }
 
@@ -405,14 +410,21 @@ window.PgTour = (function () {
             hole.style.top = '0px';
             hole.style.top = '0px';
 
-            var viewportWidth = document.documentElement.clientWidth;
-            var viewportHeight = document.documentElement.clientHeight;
-
-            bubble.setAttribute('data-side', 'none');
-            bubble.style.left = Math.round((viewportWidth - bubble.offsetWidth) / 2) + 'px';
-            bubble.style.top = Math.round((viewportHeight - bubble.offsetHeight) / 2) + 'px';
-            parts.arrow.style.display = 'none';
+            centre();
         }
+    }
+
+    // The bubble in the middle of the screen, never above or left of its edge:
+    // a bubble taller than a short screen starts at the top and scrolls.
+    function centre() {
+
+        var viewportWidth = document.documentElement.clientWidth;
+        var viewportHeight = document.documentElement.clientHeight;
+
+        bubble.setAttribute('data-side', 'none');
+        bubble.style.left = Math.round(Math.max(EDGE, (viewportWidth - bubble.offsetWidth) / 2)) + 'px';
+        bubble.style.top = Math.round(Math.max(EDGE, (viewportHeight - bubble.offsetHeight) / 2)) + 'px';
+        parts.arrow.style.display = 'none';
     }
 
     // ── Steps ───────────────────────────────────────────────────────────
@@ -442,6 +454,27 @@ window.PgTour = (function () {
         return (resolveAll(step.target).length > 0);
     }
 
+    // The steps that will show, as indexes into steps: the count, the dots and
+    // Back go by these, not by every registered step.  The frame tour always
+    // passes over one of its two menu steps, so counting all of them read
+    // "1, 2, 4 ... 9 of 9".  A step with before() is counted when it is not
+    // ruled out, because its target may only appear once before() has run;
+    // the one being shown is always counted.
+    function shownSteps() {
+
+        var shown = [];
+
+        for (var i = 0; i < steps.length; i++) {
+
+            if ((i === index) ||
+                ((!ruledOut(steps[i])) && ((typeof steps[i].before === 'function') || (targetReady(steps[i]))))) {
+                shown.push(i);
+            }
+        }
+
+        return shown;
+    }
+
     function show() {
 
         var step = steps[index];
@@ -449,29 +482,47 @@ window.PgTour = (function () {
         if (!step) { finish(true); return; }
 
         var labels = tour.labels || {};
-        var total = steps.length;
+        var shown = shownSteps();
+        var total = shown.length;
+        var position = shown.indexOf(index);
 
-        parts.count.textContent = fill(labels.of || '{var:1} / {var:2}', [index + 1, total]);
+        parts.count.textContent = fill(labels.of || '{var:1} / {var:2}', [position + 1, total]);
         parts.title.textContent = step.title || '';
         parts.text.innerHTML = step.html ? step.html : escapeHtml(step.text || '').split('\n').join('<br>');
         parts.skip.textContent = labels.skip || 'Skip';
         parts.back.textContent = labels.back || 'Back';
-        parts.next.textContent = (index === (total - 1)) ? (labels.done || 'Done') : (labels.next || 'Next');
+        parts.next.textContent = (position === (total - 1)) ? (labels.done || 'Done') : (labels.next || 'Next');
 
-        parts.back.style.visibility = (index === 0) ? 'hidden' : '';
+        parts.back.style.visibility = (position === 0) ? 'hidden' : '';
 
         var dots = '';
 
         for (var i = 0; i < total; i++) {
-            dots += '<i class="pg-tour-dot' + ((i === index) ? ' is-on' : '') + '"></i>';
+            dots += '<i class="pg-tour-dot' + ((i === position) ? ' is-on' : '') + '"></i>';
         }
 
         parts.dots.innerHTML = dots;
+
+        // Emptied now and filled once the step is painted, so the same words
+        // twice in a row are still read out as a change.
+        parts.status.textContent = '';
+
+        var spoken = [parts.count.textContent, parts.title.textContent, parts.text.textContent]
+            .filter(function (value) { return value.replace(/\s+/g, ''); })
+            .join('. ');
 
         var elements = resolveAll(step.target);
 
         var reveal = function () {
             paint();
+
+            // Focus moving onto Next reads the dialog's name and description;
+            // from the second step on focus is already there, nothing moves
+            // and the status region is what reads the new step.
+            if ((document.activeElement === parts.next) || (bubble.contains(document.activeElement))) {
+                parts.status.textContent = spoken;
+            }
+
             parts.next.focus();
         };
 
@@ -529,6 +580,11 @@ window.PgTour = (function () {
 
         if (!running) { return; }
 
+        // Nothing earlier can be shown: the steps before this one were ruled
+        // out (the tree steps on a phone).  Back is hidden then, and
+        // ArrowLeft does nothing rather than leaving and re-entering the step.
+        if ((step < 0) && (shownSteps().indexOf(index) === 0)) { return; }
+
         leave();
 
         direction = (step < 0) ? -1 : 1;
@@ -542,7 +598,9 @@ window.PgTour = (function () {
     // all, so a step that opens a menu never leaves that menu hanging open.
     function goTo(next) {
 
-        if (next < 0) { next = 0; }
+        // Walked back past the start: turn forward.  Clamping to 0 and going
+        // on backwards recursed for ever when step 0 was ruled out.
+        if (next < 0) { direction = 1; next = 0; }
 
         if (next >= steps.length) { finish(true); return; }
 
@@ -589,7 +647,8 @@ window.PgTour = (function () {
             if (bubble) { bubble.style.display = 'none'; }
         }, 200);
 
-        if (lastFocus) { try { lastFocus.focus(); } catch (error) { } lastFocus = null; }
+        focusBack(lastFocus);
+        lastFocus = null;
 
         // Watched to the end or skipped, it is the same answer to the only
         // question being stored: do not open this by itself again.
@@ -612,6 +671,38 @@ window.PgTour = (function () {
         if (completed) {
 
             window.setTimeout(function () { beginFirstUnseen(0); }, 900);
+        }
+    }
+
+    // Focus goes back where the tour was started from.  That is usually a row
+    // in a menu (Interface tour, Watch the tour) which has closed by now, and
+    // focusing a hidden row does nothing: the bubble then lost focus to the
+    // page when it was hidden.  The toggle of that menu takes it instead.
+    function focusBack(element) {
+
+        var usable = function (node) {
+            return (!!node) && (node.isConnected !== false) && (document.contains(node)) &&
+                (typeof node.focus === 'function') && (node.getClientRects().length > 0);
+        };
+
+        var target = element;
+
+        if ((!usable(target)) && (element) && (element.closest)) {
+
+            var menu = element.closest('.menu');
+            var wrap = (menu) ? menu.parentElement : null;
+
+            target = (wrap) ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
+        }
+
+        if (usable(target)) {
+            try { target.focus(); } catch (error) { }
+        }
+
+        // Nowhere to go: focus leaves the bubble rather than sitting on a
+        // button that is about to be hidden.
+        if ((bubble) && (bubble.contains(document.activeElement))) {
+            document.activeElement.blur();
         }
     }
 

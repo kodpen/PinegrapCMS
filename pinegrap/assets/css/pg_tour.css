@@ -65,6 +65,14 @@
     z-index: 2060;
     width: 330px;
     max-width: calc(100vw - 24px);
+    /* Never taller than the screen: the words scroll in .pg-tour-body and the
+       foot stays in view.  No overflow here, or the arrow outside the edge
+       would be clipped. */
+    max-height: calc(100vh - 24px);
+    max-height: calc(100dvh - 24px);
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
     padding: .95rem 1.05rem 0.8rem;
     border-radius: .9rem;
     background: var(--pg-bg-body);
@@ -77,6 +85,26 @@
 }
 
 .pg-tour-bubble.is-on { opacity: 1; transform: none; }
+
+.pg-tour-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+}
+
+/* Read out by screen readers, never seen. */
+.pg-tour-status {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 
 .pg-tour-arrow {
     position: absolute;
@@ -126,6 +154,7 @@
 .pg-tour-text .bi { color: var(--pg-primary); }
 
 .pg-tour-foot {
+    flex: none;
     display: flex;
     align-items: center;
     gap: .35rem;
@@ -170,7 +199,9 @@
 
 .pg-tour-primary {
     background: var(--pg-primary);
-    color: #fff;
+    /* The panel's ink on filled accents: white on the light accent was
+       about 2.2:1. */
+    color: var(--pg-on-accent);
 }
 
 .pg-tour-primary:hover { filter: brightness(1.08); }
@@ -192,6 +223,8 @@ body.pg-tour-open { overflow: hidden; }
         bottom: 10px;
         width: auto;
         max-width: none;
+        max-height: calc(100vh - 20px);
+        max-height: calc(100dvh - 20px);
     }
 
     .pg-tour-arrow { display: none !important; }
