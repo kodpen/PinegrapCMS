@@ -109,7 +109,7 @@ function test_liveform_prepare_tag_without_type_or_value()
 function test_liveform_output_field_without_id()
 {
 	_test_liveform_with_session(function ($form) {
-		$types = array('text', 'number', 'hidden', 'textarea', 'password', 'checkbox', 'radio', 'select');
+		$types = array('text', 'number', 'hidden', 'textarea', 'password', 'file', 'checkbox', 'radio', 'select');
 		foreach ($types as $type) {
 			$field = array('type' => $type, 'name' => 'f_' . $type);
 			if ($type === 'select') $field['options'] = array('A' => 'a');
