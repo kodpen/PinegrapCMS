@@ -321,6 +321,7 @@
     "Partner": "Partner",
     "Parts of a field, split at commas": "Bir alanın virgülle ayrılmış parçaları",
     "Parts of the menu": "Menünün bölümleri",
+    "Parts of {var}": "{var} parçaları",
     "Party": "Parti",
     "Pass a value of {var:1} to a field": "{var:1} kutusunun bir değerini bir alana aktar",
     "Pass it on to an account other than the one it came from.": "Geldiği cariden başka bir cariye ciro edin.",

@@ -16249,6 +16249,13 @@ const StyleDesigner = (function () {
         // and goes wherever one goes.
         var map = { 'container-fluid': 'container', 'system_widget': 'shared_ref', 'cf_field': 'semantic' };
         var t = map[data.type] || data.type;
+        // A widget's part or value lands in its widget, a row's inside the
+        // loop it needs; the detail widget's outside every widget.
+        if (data.type === 'widget_part') {
+            var _wp = data.extra || {};
+            if (!_sdPaletteFitsAt(_wp, target)) return false;
+            t = (_wp.prop === 'src' && !_wp.part) ? 'content' : 'semantic';
+        }
 
         // ── Bootstrap structure rules ───────────────────────────────────────
         // 1. container → container is FORBIDDEN (containers cannot nest without a row)
@@ -16679,6 +16686,8 @@ const StyleDesigner = (function () {
             case 'region': return createNode('region', { regionType: extra.regionType || 'page', regionName: '', cssClass: '' });
             case 'loop_area': return (extra && extra.listSource) ? _sdListStarter(String(extra.listSource)) : createNode('loop_area', {}, []);
             case 'recipient_loop_area': return createNode('recipient_loop_area', {}, []);
+            // A part or value of a widget (WIDGET PALETTE).
+            case 'widget_part': return _sdPaletteCreate(extra);
             case 'component':
                 var ctype = extra.componentType;
                 // Rules this block needs go to the Styles panel, not inline;
@@ -32212,6 +32221,7 @@ const StyleDesigner = (function () {
     function renderProperties() {
         var panel = document.getElementById('sd-properties');
         if (!panel) return;
+        _sdPaletteRefresh();
         _sdPropsA11yInit(panel);
         if (!selectedNode) {
             panel.innerHTML = '<div class="sd-props-empty"><div><span class="bi bi-cursor d-block mb-3" style="font-size:1.5rem"></span>' + esc(_sdT('Select an element to edit its properties')) + '</div></div>';
@@ -46261,6 +46271,301 @@ const StyleDesigner = (function () {
         return direct || nested;
     }
 
+    /* =====================================================================
+     * WIDGET PALETTE
+     * ---------------------------------------------------------------------
+     * A Components palette group that follows the selection: the parts
+     * (SW_DEFAULT_PARTS) and values (_swBindTokenOptions()) of the system
+     * widget the selection stands in; outside every widget those of the
+     * page's detail widget, which land outside it as its parts
+     * (props.partOf, PARTS ANYWHERE above). A part or value drawn per row
+     * of a loop is offered and placed only inside that loop (canDrop()).
+     * The helpers from SD_PALETTE_ROW_PARTS to _sdPaletteNode() are pure.
+     * ===================================================================== */
+
+    // Parts drawn once per row of their widget's main loop.
+    var SD_PALETTE_ROW_PARTS = ['__item_form_data_html', '__item_gift_card_html', '__item_recurring_schedule_html', '__comment_stars_html'];
+
+    // Values that need settings of their own (a page to link, a referenced
+    // field, the two link texts): bound from the Bind Data panel only.
+    var SD_PALETTE_SKIP = ['__page_link', '__ref', '__link_label'];
+
+    // The palette name of each part token; a part without one is not offered.
+    function _sdPalettePartLabels() {
+        return {
+            '__timeline':                     _sdT('Order timeline'),
+            '__order_status_badge':           _sdT('Status Badge'),
+            '__item_form_data_html':          _sdT('Product Form Answers'),
+            '__item_gift_card_html':          _sdT('Gift Card Details'),
+            '__item_recurring_schedule_html': _sdT('Payment Schedule'),
+            '__returns':                      _sdT('Return requests'),
+            '__cancel_form':                  _sdT('Cancellation form'),
+            '__return_form':                  _sdT('Return request form'),
+            '__return_actions_html':          _sdT('The customer\'s moves'),
+            '__comment_stars_html':           _sdT('Stars'),
+            '__breadcrumb_html':              _sdT('Breadcrumb'),
+            '__filter_chips':                 _sdT('Filter Chips'),
+            '__active_filters_html':          _sdT('Active filters'),
+            '__cross_sell_html':              _sdT('Products bought together')
+        };
+    }
+
+    // The parts a widget kind offers, from the keys of its SW_DEFAULT_PARTS
+    // entry: [{ token, label, loop }]. A section or content spelling and an
+    // "_inner_html" twin draw the same part and are left out. loop is
+    // 'main' for a part drawn per row of the main loop, 'list' for one
+    // drawn per row of a list (rowOf(token)), else ''.
+    function _sdPalettePartItems(keys, rowOf) {
+        var labels = _sdPalettePartLabels(), out = [];
+        (keys || []).forEach(function (k) {
+            if (/^(section|content):/.test(k) || /_inner_html$/.test(k) || !labels[k]) return;
+            out.push({ token: k, label: labels[k], loop: SD_PALETTE_ROW_PARTS.indexOf(k) !== -1 ? 'main' : (rowOf(k) || '') });
+        });
+        return out;
+    }
+
+    // The values beside them: [{ token, label, prop, loop }] from the
+    // widget's own Bind Data options (`base`), the row values of the lists
+    // the place stands in (`rows`, loop 'list') and the row positions
+    // (`positions`, loop 'position'). A yes/no value only decides a
+    // condition and is left out, as are a part's token, a value that needs
+    // settings and a token already listed (the widget's own first).
+    function _sdPaletteValueItems(base, rows, positions, partTokens) {
+        var seen = {}, out = [];
+        (partTokens || []).concat(SD_PALETTE_SKIP).forEach(function (t) { seen[t] = true; });
+        [[base, ''], [rows, 'list'], [positions, 'position']].forEach(function (src) {
+            (src[0] || []).forEach(function (o) {
+                if (!o || !o.token || o.cond || seen[o.token]) return;
+                seen[o.token] = true;
+                out.push({ token: o.token, label: String(o.label || o.token).replace(/<[^>]*>/g, ''),
+                           prop: _sdPaletteValueProp(o.token), loop: src[1] });
+            });
+        });
+        return out;
+    }
+
+    // The element prop a value is bound to, by what the token holds: a
+    // picture's address 'src', another address 'href', anything else 'text'.
+    function _sdPaletteValueProp(token) {
+        var t = String(token || '').toLowerCase();
+        if (/(image|thumbnail|photo|picture|logo|avatar)(_url|_src|_[0-9]+)?$/.test(t)) return 'src';
+        return /(_url|_href)$/.test(t) ? 'href' : 'text';
+    }
+
+    // The loops a node placed in `chain` repeats in: chain is the parent it
+    // lands in, then that parent's ancestors. any: a loop area of any kind;
+    // main: the widget's own loop (a loop area without a list source);
+    // rows: the row tokens (listRows(source)) of the lists around it, by
+    // name. A recipient loop ends the walk, as in _swInMainLoop().
+    function _sdPaletteLoops(chain, listRows) {
+        var loops = { any: false, main: false, rows: {} };
+        for (var i = 0; i < (chain || []).length; i++) {
+            var n = chain[i];
+            if (!n) continue;
+            if (n.type === 'recipient_loop_area') break;
+            if (n.type !== 'loop_area') continue;
+            loops.any = true;
+            var src = (n.props && typeof n.props.source === 'string') ? n.props.source : '';
+            if (!src) loops.main = true;
+            else (listRows(src) || []).forEach(function (t) { loops.rows[t] = true; });
+        }
+        return loops;
+    }
+
+    // Whether palette item `item` fits where `loops` (_sdPaletteLoops())
+    // were read: a row's part or value only inside its loop.
+    function _sdPaletteFits(item, loops) {
+        if (!item || !item.loop) return true;
+        if (item.loop === 'position') return !!loops.any;
+        if (item.loop === 'main') return !!loops.main;
+        return !!loops.rows[item.token];
+    }
+
+    // The element a value item creates, bound to its token: a picture, a
+    // link (its words the value's name, to rewrite), a box for a value
+    // that is markup, else a span.
+    /* @pg-site-output */
+    function _sdPaletteValueNode(item) {
+        var name = item.label;
+        if (item.prop === 'src') {
+            return createNode('content', { contentType: 'image', src: '', alt: '', fluid: true, rounded: false, loading: 'lazy',
+                cssClass: '', customName: name, _bindings: { src: item.token } }, []);
+        }
+        if (item.prop === 'href') {
+            return createNode('semantic', { tag: 'a', cssClass: '', href: '#', text: name, customName: name, _bindings: { href: item.token } }, []);
+        }
+        return createNode('semantic', { tag: /_html$/.test(item.token) ? 'div' : 'span', cssClass: '', text: '', customName: name,
+            _bindings: { text: item.token } }, []);
+    }
+
+    // The node palette item `item` creates: a part as its builder drew it
+    // (`built`, several elements in one box), else the value's element.
+    // An item of the page's detail widget placed outside it (away) is that
+    // widget's part.
+    /* @pg-site-output */
+    function _sdPaletteNode(item, built) {
+        var node;
+        if (built && built.length) {
+            node = (built.length === 1) ? built[0] : createNode('semantic', { tag: 'div', cssClass: '', customName: item.label }, built);
+        } else {
+            node = _sdPaletteValueNode(item);
+        }
+        if (item.away) node.props.partOf = parseInt(item.sid, 10) || 0;
+        return node;
+    }
+
+    // The row tokens of list source `src`.
+    function _sdPaletteListRows(src) {
+        var s = SW_LIST_SOURCES[src];
+        return s ? s.rows.map(function (r) { return r[0]; }) : [];
+    }
+
+    // `node` and its ancestors, nearest first.
+    function _sdPaletteChain(node) {
+        var chain = [], cur = node;
+        for (var guard = 0; cur && guard < 500; guard++) {
+            chain.push(cur);
+            var up = _sdAnyParent(cur);
+            cur = up ? up.parent : null;
+        }
+        return chain;
+    }
+
+    // fn(probe) run as if `probe`, a node of no tree, stood in widget
+    // `sid`: the value lookups read the widget through _sdValueSidOf().
+    function _sdPaletteAsIn(sid, fn) {
+        var keep = _sdPartDrawing;
+        _sdPartDrawing = sid;
+        try { return fn({ type: 'semantic', props: {}, children: [] }); } finally { _sdPartDrawing = keep; }
+    }
+
+    // The first detail widget (SD_PART_KINDS) the open page shows, on the
+    // page or inside a component placed on it; 0 for none.
+    function _sdPaletteDetailSid() {
+        var found = 0, seen = {};
+        (function walk(n) {
+            if (!n || found) return;
+            if (n.type === 'shared_ref') {
+                var s = parseInt(n.props && n.props.sharedId, 10) || 0;
+                if (!s || seen[s]) return;
+                seen[s] = true;
+                if (SD_PART_KINDS.indexOf(_sdPartKindOf(s)) !== -1) { found = s; return; }
+                if (_sharedCache[s] && _sharedCache[s].tree) walk(_sharedCache[s].tree);
+                return;
+            }
+            if (Array.isArray(n.children)) n.children.forEach(walk);
+        })(tree);
+        return found;
+    }
+
+    // The widget settings part builders read, or null.
+    function _sdPaletteCfg(sid) {
+        var c = _sharedCache[sid];
+        try { return (c && c.system_region_config) ? JSON.parse(c.system_region_config) : null; } catch (e) { return null; }
+    }
+
+    // What the group offers for the selection: { sid, name, kind, away,
+    // parts, values } (items as the palette lists them), or null.
+    function _sdPaletteOffer() {
+        if (!tree || _sdAccess() !== 'full') return null;
+        var sel = (selectedNode && selectedNode !== tree) ? selectedNode : null;
+        var sid = sel ? _isInsideSystemWidget(sel) : 0, away = false;
+        if (!sid) {
+            // In a shared component (a header) a part means nothing.
+            if (sel && _sdSharedOwnerOf(sel)) return null;
+            sid = _sdPaletteDetailSid();
+            away = true;
+        }
+        if (!sid) return null;
+        var kind = _sdPaletteAsIn(sid, _getSystemWidgetRegionType);
+        var base = _sdPaletteAsIn(sid, _swBindTokenOptions);
+        var rowOf = function (t) { return _sdListRowLabel(t) ? 'list' : ''; };
+        var parts = _sdPalettePartItems(Object.keys(SW_DEFAULT_PARTS[kind] || {}), rowOf);
+        var rows = away ? [] : _sdListRowOptions(sel);
+        var positions = [];
+        if (!away) SW_LOOP_POSITION_TOKEN_GROUPS.forEach(function (g) {
+            g.tokens.forEach(function (t) { positions.push({ token: t[0], label: t[1] }); });
+        });
+        var values = _sdPaletteValueItems(base, rows, positions, parts.map(function (p) { return p.token; }));
+        var loops = _sdPaletteLoops(sel ? _sdPaletteChain(sel) : [], _sdPaletteListRows);
+        var fits = function (it) { return away ? !it.loop : _sdPaletteFits(it, loops); };
+        var cached = _sharedCache[sid];
+        var offer = { sid: sid, kind: kind, away: away, name: (cached && cached.name) ? String(cached.name) : ('#' + sid),
+                      parts: parts.filter(fits), values: values.filter(fits) };
+        // Outside the widget only what the server draws as a part (a part
+        // with a form or a button stays inside).
+        if (away) offer.parts = offer.parts.filter(function (p) {
+            var ids = nodeIdCounter, why = 'control';
+            try { why = _sdPartRefusal(_sdPaletteCreate(_sdPaletteItem(offer, p, true).extra) || {}); } catch (e) { why = 'control'; }
+            finally { nodeIdCounter = ids; }
+            return !why;
+        });
+        return offer;
+    }
+
+    // The palette row of part or value `it` of `offer`.
+    function _sdPaletteItem(offer, it, part) {
+        var icon = part ? 'bi-puzzle' : ({ src: 'bi-image', href: 'bi-link-45deg' }[it.prop] || 'bi-fonts');
+        var extra = { sid: offer.sid, kind: offer.kind, token: it.token, label: it.label, loop: it.loop };
+        if (part) extra.part = 1; else extra.prop = it.prop;
+        if (offer.away) extra.away = 1;
+        return { label: esc(it.label), type: 'widget_part', icon: icon, extra: extra };
+    }
+
+    // The node a palette row of the group creates (createFromPalette()).
+    /* @pg-site-output */
+    function _sdPaletteCreate(item) {
+        var built = null;
+        if (!item || !item.token) return null;
+        if (item.part) {
+            var parts = SW_DEFAULT_PARTS[item.kind];
+            if (!parts || typeof parts[item.token] !== 'function') return null;
+            built = parts[item.token](_sdPaletteCfg(item.sid));
+        }
+        return _sdPaletteNode(item, built);
+    }
+
+    // Whether the group's row `item` may land in `target` (canDrop()): in
+    // its widget, inside the loop a row's part or value needs; for the
+    // page's detail widget outside every widget, the widget on the page.
+    function _sdPaletteFitsAt(item, target) {
+        if (!item || !target) return false;
+        var sid = parseInt(item.sid, 10) || 0, owner = _sdSharedOwnerOf(target);
+        if (item.away) return !owner && !!_sdPlacementOnPage(sid);
+        return owner === sid && _sdPaletteFits(item, _sdPaletteLoops(_sdPaletteChain(target), _sdPaletteListRows));
+    }
+
+    // Draws the group at the top of the Components list (below the
+    // recently used strip) when what it offers changed; removes it when
+    // the selection offers nothing.
+    var _sdPaletteDrawn = null;
+    function _sdPaletteRefresh() {
+        var list = document.getElementById('sd-comp-list');
+        if (!list) return;
+        var offer = null;
+        try { offer = _sdPaletteOffer(); } catch (e) { offer = null; }
+        var old = list.querySelector('#sd-widget-palette');
+        var key = offer ? JSON.stringify([offer.sid, offer.name, offer.away, offer.parts, offer.values]) : '';
+        if (key === _sdPaletteDrawn && (!!old === !!key)) return;
+        _sdPaletteDrawn = key;
+        if (old) old.remove();
+        if (!offer || (!offer.parts.length && !offer.values.length)) return;
+        var sec = document.createElement('div');
+        sec.id = 'sd-widget-palette';
+        var cat = function (title, items, part) {
+            if (!items.length) return '';
+            return '<div class="sd-category"><div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true"><span class="bi bi-chevron-down"></span>' +
+                esc(title) + '</button></div><div class="sd-category-items">' +
+                (offer.away ? '<div style="font-size:.66rem;color:#888;line-height:1.4;padding:2px 10px 4px">' +
+                    esc(_sdT('Outside the widget these land as its parts: they show the record it shows.')) + '</div>' : '') +
+                items.map(function (it) { return _sdPaletteItemHTML(_sdPaletteItem(offer, it, part)); }).join('') + '</div></div>';
+        };
+        sec.innerHTML = cat(_sdT('Parts of {var}', offer.name), offer.parts, true) + cat(_sdT('Values of {var}', offer.name), offer.values, false);
+        var recent = list.querySelector('#sd-recent-comps-section');
+        list.insertBefore(sec, recent ? recent.nextSibling : list.firstChild);
+        _sdWirePaletteItems(sec, list);
+    }
+
     // One choice of a checkbox/radio group is a BLOCK — the .form-check the
     // input sits in, or the input plus the <label for> beside it. Editing a
     // choice edits that block, which is why styling survives: nothing is
@@ -58688,11 +58993,11 @@ const StyleDesigner = (function () {
             }
             (isItem ? SW_FORM_ITEM_VIEW_BUILTIN_OPTIONS : SW_BUILTIN_FIELD_OPTIONS).forEach(function (o) {
                 if (_swStandardYields(o[0], fields)) return;
-                out.push({ token: o[0], label: _swBindLabel(type, o[0]) });
+                out.push(_swTokenCondOnly(o) ? { token: o[0], label: _swBindLabel(type, o[0]), cond: true } : { token: o[0], label: _swBindLabel(type, o[0]) });
             });
         } else {
             _swBindTokenGroups(type).forEach(function (g) {
-                g.tokens.forEach(function (t) { out.push({ token: t[0], label: t[1] }); });
+                g.tokens.forEach(function (t) { out.push(_swTokenCondOnly(t) ? { token: t[0], label: t[1], cond: true } : { token: t[0], label: t[1] }); });
             });
         }
         // Inside a list inside the record, its row's values.
@@ -72733,6 +73038,8 @@ const StyleDesigner = (function () {
     }
 
     function _trackRecentComp(type, extra, hintLabel, hintIcon) {
+        // A widget's part or value is offered only while its widget is selected.
+        if (type === 'widget_part') return;
         try {
             var id = type +
                 (extra && extra.componentType ? ':' + extra.componentType : '') +
