@@ -15,3 +15,9 @@ description: pgToast() timing: danger and warning toasts stay until closed and a
 
 ## Do callers need to change?
 - No caller sets anything: the rule sits in `pgToast()` (`backend.src.js`). `tests/panel_timers_test.php` pins it.
+
+## Where does it sit?
+- On the body under the panel's top bar, `#pg-toast-container` starts at `top: var(--pg-navbar-h)` with z-index 1025: under the bar (1030), above sticky bars (99, 1020) and the DataTables floating header (3). `placeToastContainer()` sets it on every `pgToast()`, after `pgUI.hostLayer()`.
+- Why: at `top-0` and 1090 a lasting error toast covered the bell, the account button and the header menus they open (they sit in the bar's stacking context, not the top layer).
+- Inside an open dialog (moved there by `hostLayer()`) or on a screen without the bar it keeps `top-0` and 1090.
+- The open chat panel (1080) covers a toast where they overlap, as it covers the header menus. `tests/panel_toast_place_test.php` pins this.
