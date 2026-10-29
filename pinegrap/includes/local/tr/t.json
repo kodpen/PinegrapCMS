@@ -4372,6 +4372,7 @@
     "This flow was changed meanwhile, on another screen or device. Load it again.": "Bu akış bu arada başka bir ekranda ya da cihazda değiştirildi. Yeniden yükleyin.",
     "This flow was published meanwhile.": "Bu akış bu arada yayımlandı.",
     "This flow was started {var:1} times in the last hour; try again later.": "Bu akış son bir saatte {var:1} kez başlatıldı; daha sonra yeniden deneyin.",
+    "This flow: {var:1}": "Bu akış: {var:1}",
     "This folder could not be loaded. The connection or the server may have timed out during a long operation.": "Bu klasör yüklenemedi. Uzun süren bir işlem sırasında bağlantı veya sunucu zaman aşımına uğramış olabilir.",
     "This folder is a bit quiet.": "Bu klasör biraz sessiz.",
     "This form has expired. Please submit it again.": "Bu formun süresi doldu. Lütfen yeniden gönderin.",

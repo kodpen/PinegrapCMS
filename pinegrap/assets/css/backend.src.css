@@ -19000,7 +19000,7 @@ button.ws-ack-count:hover {
 @supports (height: 100dvh) {
   .wsf-app { height: calc(100dvh - 14rem); }
 }
-.wsf-list,
+.wsf-palette,
 .wsf-side {
   min-height: 0;
   overflow-y: auto;
@@ -19012,7 +19012,6 @@ button.ws-ack-count:hover {
 .wsf-app.wsf-nothing .wsf-side {
   visibility: hidden;
 }
-.wsf-list-title,
 .wsf-side-title {
   margin-bottom: var(--ws-space-2);
   font-size: .72rem;
@@ -19021,45 +19020,8 @@ button.ws-ack-count:hover {
   text-transform: uppercase;
   color: var(--pg-fg-2);
 }
-.wsf-list-item {
-  display: flex;
-  align-items: center;
-  gap: var(--ws-space-2);
-  width: 100%;
-  padding: .4rem .5rem;
-  border: 0;
-  border-radius: var(--ws-radius-sm);
-  background: transparent;
-  color: var(--pg-fg-body);
-  font-size: .875rem;
-  text-align: left;
-}
-.wsf-list-item:hover {
-  background: var(--pg-bg-2);
-}
-.wsf-list-item.active {
-  background: var(--ws-soft);
-  color: var(--ws-accent);
-  font-weight: 600;
-}
-.wsf-list-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.wsf-status-sm {
-  font-size: .65rem;
-}
-/* Somebody else's flow in the list: its name, and under it what the person
-   may do with it (Can view, Can run, Can edit). */
-.wsf-list-text {
-  display: flex;
-  flex: 1 1 auto;
-  flex-direction: column;
-  min-width: 0;
-}
+/* Somebody else's flow in the list: under its name what the person may do
+   with it (Can view, Can run, Can edit). */
 .wsf-list-level {
   font-size: .72rem;
   font-weight: 400;
@@ -19429,7 +19391,6 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   text-align: center;
   pointer-events: none;
 }
-.wsf-palette,
 .wsf-zoom {
   position: absolute;
   display: flex;
@@ -19440,15 +19401,43 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   background: var(--pg-bg-body);
   box-shadow: var(--ws-shadow);
 }
+/* The palette, the editor's left column (drawPalette()): a search field,
+   then the boxes to add in their groups, each heading in its group's
+   colour. Without it (a flow read-only, no flow open) the canvas takes its
+   width. */
 .wsf-palette {
-  top: var(--ws-space-3);
-  left: var(--ws-space-3);
+  display: flex;
   flex-direction: column;
+  gap: var(--ws-space-2);
+}
+.wsf-app.wsf-no-palette {
+  grid-template-columns: minmax(0, 1fr) 19rem;
+}
+.wsf-app.wsf-no-palette .wsf-palette {
+  display: none;
+}
+.wsf-palette-group {
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--ws-space-2);
+}
+.wsf-palette-head {
+  margin: 0 0 var(--ws-space-1);
+  padding-left: .5rem;
+  border-left: 3px solid var(--wsf-kind);
+  font-size: .72rem;
+  font-weight: 700;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--wsf-kind);
 }
 .wsf-palette-item {
   justify-content: flex-start;
   text-align: left;
   cursor: grab;
+}
+.wsf-palette-item .ws-flow-icon {
+  color: var(--wsf-kind);
 }
 .wsf-zoom {
   right: var(--ws-space-3);
@@ -20023,10 +20012,6 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   width: 208px;
   transform: translateY(calc(-100% - 8px));
 }
-/* Under a flow's entry in the list. */
-.wsf-list .wsf-flag {
-  margin: -.15rem .75rem .35rem 2.1rem;
-}
 @media (prefers-reduced-motion: reduce) {
   .wsf-flag-fold .bi { transition: none; }
 }
@@ -20150,6 +20135,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 @media (max-width: 1279.98px) {
   .wsf-app { grid-template-columns: 12rem minmax(0, 1fr) 16rem; }
+  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr) 16rem; }
 }
 @media (max-width: 767.98px) {
   .wsf-app {
@@ -20157,8 +20143,8 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
     height: auto;
     min-height: 0;
   }
-  .wsf-list { display: none; }
-  .wsf-app.wsf-show-list .wsf-list { display: block; }
+  .wsf-app.wsf-no-palette { grid-template-columns: minmax(0, 1fr); }
+  .wsf-palette { display: none; }
   .wsf-stage { height: 60vh; }
   .wsf-outline { height: auto; overflow: visible; }
   .wsf-bar .wsf-name { flex: 1 1 8rem; min-width: 0; }
