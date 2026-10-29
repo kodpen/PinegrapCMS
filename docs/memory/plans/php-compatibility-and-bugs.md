@@ -1,13 +1,13 @@
 ---
 name: php-compatibility-and-bugs
-description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #972, #1039, #1930, #1450, #1669, #1744, #1757
+description: Open items of the 2026-10-19 static analysis: undefined variables, a duplicate key, leftover deprecations, dead remnants; done: #3139, #972, #1039, #1930, #1450, #1669, #1744, #1757
 ---
 
 ## Where does this come from?
 - `php -l`, PHPStan 2.3 level 0 and PHPCompatibility (`testVersion 7.1-`) over the product tree, vendor libraries excluded; verified in the source, not on a running site. Architecture refactors: `refactor-candidates.md`. Done: the `url_to_absolute()` PCRE2 failure (`designer/import-zip-url-resolution.md`); the undefined folder list in `select_files_for_theme_designer()` (#615); undefined `$output` in `get_update_address_book.php` and `$crc`/`$c_len`/`$unc_len` in the `view_orders.php` zip `add_dir()` (#616); the duplicate `delete_folder_title` key in `view_folders.php` (#617); whitespace after the closing `?>` of the root `index.php`, `includes/templates/pagination.php` and `software_update.php` (#618).
 
 ## Which bugs are confirmed? (one PR each)
-1. `get_catalog.php:556-568`: `$output_featured_items`, `$output_image`, `$output_short_description`, `$output_price` used before assignment in the "top items" branch; decided (#3125, `workflow/decisions-made-product-3.md`): the dead block 561-576 goes with its four baseline entries, output byte-identical, a test pins it.
+1. Done (#3139): the dead top-item block of `get_catalog.php` (it read `$output_featured_items`, `$output_image`, `$output_short_description`, `$output_price` before assignment) is gone with its four baseline entries; its text was reset or never read, so the legacy custom style layer's output is unchanged (decision #3125, `workflow/decisions-made-product-3.md`; `tests/get_catalog_top_item_test.php`).
 2. Done (#1930): the second `'å' => 'a'` of `pg_ascii_file_name()` (`includes/fn/files.php`) is gone with its baseline entry; both mapped to `a`, so no file name changed.
 3. Done (#972): the named functions declared inside functions are closures or plain values; the PHPStan baseline holds none (`code-audit-2026-10-followups.md` item 2).
 4. Done (#1039): the unguarded `imagecreatefrombmp()` of `edit_file.php`'s WebP conversion is gone with the screen's own GD code; its Rotate and WebP buttons go through `pg_process_image_file()` (`platform/image-processing-engine.md`).
