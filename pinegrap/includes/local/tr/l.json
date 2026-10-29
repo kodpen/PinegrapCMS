@@ -340,6 +340,7 @@
     "Let us talk about your project": "Projenizi konuşalım",
     "Let {var:1} know: “{var:2}”": "{var:1} kişisine haber ver: “{var:2}”",
     "Lets the Workspace use the tools of the service's MCP server under its alias.": "Çalışma Alanı'nın, hizmetin MCP sunucusundaki araçları takma adıyla kullanmasını sağlar.",
+    "Lets this person bring their own OneNote pages in as Workspace notes.": "Bu kişinin kendi OneNote sayfalarını Çalışma Alanı notu olarak içe aktarmasını sağlar.",
     "Lets this person pick a file from their own cloud storage when uploading.": "Bu kişinin yükleme yaparken kendi bulut depolamasından dosya seçmesini sağlar.",
     "Lets {var:1} use the pages to train AI models. Turned off, robots.txt asks them to stay away and says ai-train=no. The firewall turns GPTBot, ClaudeBot and CCBot away either way, unless they are listed under Allowed Bots.": "{var:1} botlarının sayfaları yapay zekâ modellerini eğitmek için kullanmasına izin verir. Kapalıyken robots.txt onlardan uzak durmalarını ister ve ai-train=no der. Güvenlik duvarı GPTBot, ClaudeBot ve CCBot'u, İzin Verilen Botlar'da yazılı değillerse her durumda geri çevirir.",
     "Letter": "Mektup",

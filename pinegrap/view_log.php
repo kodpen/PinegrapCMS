@@ -686,32 +686,44 @@ if (!$_POST) {
                 return;
             }
 
-            // Copy the full message text to the clipboard.
+            // Copy the full message text to the clipboard. The button keeps
+            // its label; only the icon changes and the status beside it says
+            // whether the copy happened.
             var copy = target.closest(".pg-log-copy");
             if (copy) {
                 event.preventDefault();
                 var source = document.getElementById(copy.getAttribute("data-target"));
-                if (!source || !navigator.clipboard) {
+                var copy_status = copy.parentNode.querySelector("[role=status]");
+                if (!source || !copy_status) {
                     return;
                 }
-                navigator.clipboard.writeText(source.innerText).then(function () {
-                    var copy_label = copy.querySelector(".pg-log-copy-label");
-                    var copy_icon = copy.querySelector("i");
-                    if (copy_label) {
-                        copy_label.textContent = copy.getAttribute("data-copied");
-                    }
-                    if (copy_icon) {
-                        copy_icon.className = "bi bi-check2 me-1";
-                    }
+                var copy_icon = copy.querySelector("i");
+                var done = function () {
+                    copy_icon.className = "bi bi-check2 me-1";
+                    copy_status.textContent = copy_status.getAttribute("data-copied");
                     setTimeout(function () {
-                        if (copy_label) {
-                            copy_label.textContent = copy.getAttribute("data-copy");
-                        }
-                        if (copy_icon) {
-                            copy_icon.className = "bi bi-clipboard me-1";
-                        }
+                        copy_icon.className = "bi bi-clipboard me-1";
+                        copy_status.textContent = "";
                     }, 1500);
-                });
+                };
+                // Plain http has no clipboard API and a write can be refused:
+                // select the message and copy it the old way; when that fails
+                // too, leave it selected and say so.
+                var fallback = function () {
+                    var copied = false;
+                    window.getSelection().selectAllChildren(source);
+                    try { copied = document.execCommand("copy"); } catch (e) {}
+                    if (copied) {
+                        done();
+                    } else {
+                        copy_status.textContent = copy_status.getAttribute("data-refused");
+                    }
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(source.innerText).then(done, fallback);
+                } else {
+                    fallback();
+                }
                 return;
             }
 

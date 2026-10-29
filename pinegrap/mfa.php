@@ -26,10 +26,33 @@ if (!headers_sent()) {
     header('Cache-Control: no-store, no-cache, must-revalidate');
 }
 
+// A sign-in that waited longer than the second step allows: back to the
+// screen it started on with the account name and destination kept, and the
+// reason given. Not for a browser already signed in, which the sign-in
+// screen would otherwise hold on the message instead of sending home.
+if (
+    (pg_sign_in_step_state($_SESSION['software']['mfa_pending'] ?? null, pg_mfa_pending_lifetime(), time()) === 'expired')
+    && !pg_session_signed_in()
+) {
+    $expired = $_SESSION['software']['mfa_pending'];
+    pg_mfa_pending_clear();
+
+    $expired_origin = pg_mfa_origin_screen($expired['origin'] ?? '');
+    list($expired_form, $expired_field) = pg_mfa_origin_form($expired_origin);
+
+    $expired_liveform = new liveform($expired_form);
+    $expired_liveform->mark_error('', lang('Your sign-in waited more than 10 minutes for its second step. Please sign in again.'));
+    $expired_liveform->assign_field_value($expired_field, (string) ($expired['username'] ?? ''));
+
+    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/'
+        . pg_mfa_origin_back_path($expired_origin, (string) ($expired['send_to'] ?? '')));
+    exit();
+}
+
 $pending = pg_mfa_pending();
 
-// Nothing pending (never started, expired, cancelled or completed): back to
-// the sign-in screen.
+// Nothing pending (never started, cancelled or completed): back to the
+// sign-in screen.
 if ($pending === null) {
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/');
     exit();
@@ -57,11 +80,9 @@ $remember = !empty($pending['remember']);
 $mode     = (string) $pending['mode'];
 
 // Where Cancel goes: the screen the sign-in started on, from a fixed list.
-$origin = in_array($pending['origin'] ?? '', array('index.php', 'membership_entrance.php', 'registration_entrance.php'), true)
-    ? (string) $pending['origin'] : 'index.php';
+$origin = pg_mfa_origin_screen($pending['origin'] ?? '');
 
-$back_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . (($origin === 'index.php') ? '' : $origin)
-    . (($send_to !== '') ? ('?send_to=' . urlencode($send_to)) : '');
+$back_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/' . pg_mfa_origin_back_path($origin, $send_to);
 
 // Complete the sign-in the way the sign-in flows do once nothing more is
 // owed: device limit (told the second step is done), device token, session,

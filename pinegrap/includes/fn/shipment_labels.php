@@ -1568,9 +1568,10 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
 
 /**
  * The labels of the selected orders as one PDF, merged now and never kept.
- * An SVG label is drawn into a page of its own. A label that is not a PDF
- * or an SVG (ZPL for a thermal printer) or cannot be read or drawn is
- * listed on a last page instead, to be printed from its order.
+ * An SVG label is drawn into a page of its own. A readable ZPL label (for a
+ * thermal printer) is counted on a last page as part of the .zpl download
+ * (pg_shipment_label_bulk_zpl()); a label that cannot be read or drawn is
+ * listed there instead, to be printed from its order.
  *
  * @param array $order_ids in the order selected
  * @return array ok, error, document, count (labels in the PDF)
@@ -1591,9 +1592,16 @@ function pg_shipment_label_bulk_pdf($order_ids)
     $documents = array();
     $labels = array();
     $left_out = array();
+    $zpl_count = 0;
 
     foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
         $document = pg_shipment_label_document($row);
+
+        // A readable ZPL label goes into the .zpl download instead.
+        if (pg_shipment_label_bulk_zpl_readable($document)) {
+            $zpl_count++;
+            continue;
+        }
 
         // An SVG joins as a page dompdf draws; one it cannot draw is listed.
         $pdf = ($document['ok'] && ($document['format'] === 'svg')) ? pg_shipment_label_svg_pdf($document['document']) : '';
@@ -1615,24 +1623,127 @@ function pg_shipment_label_bulk_pdf($order_ids)
 
     $out['count'] = count($documents) - count($skipped);
 
-    if ($left_out) {
-        $note = '<meta charset="utf-8"><h3>' . h(lang('Labels not in this PDF')) . '</h3><p>' . h(lang('Print these from their orders.')) . '</p><ul>';
+    $note = pg_shipment_label_bulk_note($left_out, $zpl_count);
 
-        foreach ($left_out as $row) {
-            $note .= '<li>' . h(lang(array('string' => 'Order {var:1}: {var:2} ({var:3})', 'vars' => array($row['order_number'], $row['number'], strtoupper($row['label_format']))))) . '</li>';
-        }
-
-        $page = pg_privacy_export_pdf($note . '</ul>');
+    if ($note !== '') {
+        $page = pg_privacy_export_pdf($note);
         $merged = is_string($page) ? pg_pdf_merge(array_merge($merged !== '' ? array($merged) : array(), array($page))) : $merged;
     }
 
-    if (($merged === '') || (($out['count'] === 0) && !$left_out)) {
+    if (($merged === '') || (($out['count'] === 0) && ($note === ''))) {
         $out['error'] = lang('The selected orders have no active shipping label.');
         return $out;
     }
 
     $out['ok'] = true;
     $out['document'] = $merged;
+
+    return $out;
+}
+
+/**
+ * The last page of a bulk PDF: how many ZPL labels are in the .zpl
+ * download, and the labels in neither file, to be printed from their
+ * orders. Empty when there is nothing to say. Pure.
+ *
+ * @param array $left_out  shipment_labels rows with order_number
+ * @param int   $zpl_count readable ZPL labels of the same run
+ * @return string HTML for pg_privacy_export_pdf(), or ''
+ */
+function pg_shipment_label_bulk_note($left_out, $zpl_count)
+{
+    if (!$left_out && ($zpl_count < 1)) {
+        return '';
+    }
+
+    $note = '<meta charset="utf-8">';
+
+    if ($zpl_count > 0) {
+        $note .= '<p>' . h(lang(array('string' => '{var:1} ZPL label(s) are in the Download ZPL Labels file.', 'vars' => array(pg_format_number($zpl_count, 0))))) . '</p>';
+    }
+
+    if ($left_out) {
+        $note .= '<h3>' . h(lang('Labels not in this PDF')) . '</h3><p>' . h(lang('Print these from their orders.')) . '</p><ul>';
+
+        foreach ($left_out as $row) {
+            $note .= '<li>' . h(lang(array('string' => 'Order {var:1}: {var:2} ({var:3})', 'vars' => array($row['order_number'], $row['number'], strtoupper($row['label_format']))))) . '</li>';
+        }
+
+        $note .= '</ul>';
+    }
+
+    return $note;
+}
+
+/**
+ * Whether a label's document (pg_shipment_label_document()) goes into the
+ * bulk .zpl: read, ZPL, and holding a label. Pure.
+ *
+ * @param array $document ok, document, format
+ * @return bool
+ */
+function pg_shipment_label_bulk_zpl_readable($document)
+{
+    return !empty($document['ok']) && (($document['format'] ?? '') === 'zpl') && pg_label_document_valid($document['document'] ?? '', 'zpl');
+}
+
+/**
+ * ZPL documents as one file for a thermal printer: in the given order,
+ * trailing whitespace trimmed, one newline between and after them. A
+ * document with several labels (one per box or piece) stays whole. Pure.
+ *
+ * @param string[] $documents
+ * @return string
+ */
+function pg_shipment_label_zpl_join($documents)
+{
+    $documents = array_map('rtrim', array_map('strval', (array) $documents));
+
+    return $documents ? implode("\n", $documents) . "\n" : '';
+}
+
+/**
+ * The ZPL labels of the selected orders as one .zpl file, joined now and
+ * never kept: the same labels and order as the bulk PDF, only the readable
+ * ZPL ones. Labels whose document could not be read are returned for the
+ * caller; a PDF or SVG label is the bulk PDF's.
+ *
+ * @param array $order_ids in the order selected
+ * @return array ok, error, document, count, unreadable (shipment_labels rows)
+ */
+function pg_shipment_label_bulk_zpl($order_ids)
+{
+    $out = array('ok' => false, 'error' => '', 'document' => '', 'count' => 0, 'unreadable' => array());
+    $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+    $rows = ($order_ids && pg_shipment_labels_ready())
+        ? db_items(
+            "SELECT shipment_labels.*, orders.order_number
+            FROM shipment_labels
+            LEFT JOIN orders ON orders.id = shipment_labels.order_id
+            WHERE shipment_labels.order_id IN ('" . implode("','", $order_ids) . "')")
+        : array();
+
+    $documents = array();
+
+    foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
+        $document = pg_shipment_label_document($row);
+
+        if (pg_shipment_label_bulk_zpl_readable($document)) {
+            $documents[] = $document['document'];
+        } elseif (!$document['ok'] || ($document['format'] === 'zpl')) {
+            $out['unreadable'][] = $row;
+        }
+    }
+
+    if (!$documents) {
+        $out['error'] = lang('The selected orders have no active ZPL label.');
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['count'] = count($documents);
+    $out['document'] = pg_shipment_label_zpl_join($documents);
 
     return $out;
 }
