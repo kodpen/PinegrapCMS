@@ -39,6 +39,22 @@ pg_tr_load();
 $source = pg_tr_source_language();
 $targets = array();
 
+// The lang attribute (and dir="rtl" for a right-to-left language) of an
+// element that holds text in the language $code: the panel's own <html lang>
+// is the panel language, so screen readers would read the text in the wrong
+// voice and a right-to-left translation would be typed left to right.
+$text_lang = function ($code) {
+    $code = (string) $code;
+
+    if ($code === '') {
+        return '';
+    }
+
+    $known = pg_tr_known_languages();
+
+    return ' lang="' . h($code) . '"' . ((isset($known[$code]) && ($known[$code][5] === 1)) ? ' dir="rtl"' : '');
+};
+
 foreach (pg_tr_languages() as $code => $row) {
     if ($code !== $source) {
         $targets[$code] = $row;
@@ -309,7 +325,7 @@ $output_language_menu = '';
 
 foreach ($targets as $code => $row) {
     $output_language_menu .= '<li><a class="menu-item' . (($code === $language) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'p' => 0))) . '">'
-        . '<span class="badge theme-secondary font-monospace me-3">' . h($code) . '</span>' . h(pg_tr_language_label($code)) . '</a></li>';
+        . '<span class="badge theme-secondary font-monospace me-3">' . h($code) . '</span><span' . $text_lang($code) . '>' . h(pg_tr_language_label($code)) . '</span></a></li>';
 }
 
 $output_language_menu .= '<li><hr class="menu-divider"></li>'
@@ -431,7 +447,7 @@ foreach ($rows as $row) {
                         // in the source": the action leaves it as it is.
                         . (($state !== 'reviewed') ? '<input class="check flex-shrink-0 mt-1 pg-tr-pick" type="checkbox" value="' . (int) $row['id'] . '" aria-label="' . h(lang('Select this text')) . '"/>' : '<span class="flex-shrink-0" style="width: 1em;"></span>') . '
                         <div class="flex-grow-1" style="min-width: 0;">
-                        <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '">' . h($row['source_text']) . '</div>
+                        <div class="pg-tr-source' . (($row['format'] === 'inline') ? ' pg-tr-inline' : '') . '"' . $text_lang($source) . '>' . h($row['source_text']) . '</div>
                         <div class="mt-1 small fg-secondary">'
                             . ($row_owner ? '<span class="badge badge-subtle theme-secondary border me-1">' . h($index_owner_label($row_owner['kind'], $row_owner_name)) . '</span>' : '')
                             . (($row['kind'] === 'seo') ? '<span class="badge badge-subtle theme-secondary border me-1">SEO</span>' : '')
@@ -441,7 +457,7 @@ foreach ($rows as $row) {
                         </div>
                     </div>
                     <div class="col-12 xl:col-5">
-                        <textarea class="form-control pg-tr-target" rows="2" aria-label="' . h(lang('Translation')) . '" lang="' . h($language) . '" placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
+                        <textarea class="form-control pg-tr-target" rows="2" aria-label="' . h(lang('Translation')) . '"' . $text_lang($language) . ' placeholder="' . h(lang('Not translated yet: the source text is shown on the page.')) . '">' . h($has ? (string) $row['text'] : '') . '</textarea>
                     </div>
                     <div class="col-12 xl:col-2">
                         <div class="d-flex xl:flex-column align-items-start gap-3">
@@ -536,10 +552,10 @@ foreach ($glossary as $term) {
         . ' data-id="' . (int) $term['id'] . '" data-term="' . h($term['term']) . '" data-translation="' . h($term['translation']) . '"'
         . ' data-keep="' . (int) $term['keep'] . '" data-case="' . (int) $term['case_sensitive'] . '" data-note="' . h($term['note']) . '" data-all="' . ($for_all ? 1 : 0) . '">'
         . '<div class="flex-grow-1 text-break">'
-        . '<span class="fw-semibold">' . h($term['term']) . '</span>'
+        . '<span class="fw-semibold"' . $text_lang($source) . '>' . h($term['term']) . '</span>'
         . (((int) $term['keep'] === 1)
             ? ' <span class="badge theme-secondary fw-normal">' . lang('keep as written') . '</span>'
-            : ' <span class="fg-secondary">→</span> ' . h($term['translation']))
+            : ' <span class="fg-secondary">→</span> <span' . $text_lang($language) . '>' . h($term['translation']) . '</span>')
         . ($for_all ? ' <span class="badge badge-subtle theme-secondary fw-normal">' . lang('all languages') . '</span>' : '')
         . (((int) $term['case_sensitive'] === 1) ? ' <span class="badge badge-subtle theme-secondary fw-normal font-monospace">Aa</span>' : '')
         . (($term['note'] !== '') ? '<div class="fg-secondary">' . h($term['note']) . '</div>' : '')
@@ -731,7 +747,7 @@ echo pg_page_shell(array(
         <div class="pg-toolbar d-flex flex-wrap align-items-center gap-3 mb-5">' . ($targets ? '
             <div class="pg-menu-wrap">
                 <button class="btn btn-sm btn-solid theme-primary rounded-pill px-5 pg-menu-caret no-popover" type="button" data-bs-toggle="menu" aria-expanded="false">
-                    <i class="bi bi-translate me-3" aria-hidden="true"></i>' . h(pg_tr_language_label($language)) . ' <span class="opacity-75 font-monospace">' . h($language) . '</span>
+                    <i class="bi bi-translate me-3" aria-hidden="true"></i><span' . $text_lang($language) . '>' . h(pg_tr_language_label($language)) . '</span> <span class="opacity-75 font-monospace">' . h($language) . '</span>
                 </button>
                 <ul class="menu">' . $output_language_menu . '</ul>
             </div>
@@ -911,7 +927,7 @@ echo pg_page_shell(array(
                     <div class="dialog-body">
                         <div class="mb-5">
                             <label class="form-label" for="pg_tr_term">' . lang('Term') . ' <span class="fg-secondary fw-normal">(' . h(pg_tr_language_label($source)) . ')</span></label>
-                            <input type="text" class="form-control" id="pg_tr_term" name="term" maxlength="255" required="required" autocomplete="off"/>
+                            <input type="text" class="form-control" id="pg_tr_term" name="term" maxlength="255" required="required" autocomplete="off"' . $text_lang($source) . '/>
                         </div>
                         <div class="form-field mb-5">
                             <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_keep" name="keep"/></div>
@@ -919,7 +935,7 @@ echo pg_page_shell(array(
                         </div>
                         <div class="mb-5 pg-tr-term-translation">
                             <label class="form-label" for="pg_tr_term_translation">' . lang('Translation to use') . ' <span class="fg-secondary fw-normal">(' . h(pg_tr_language_label($language)) . ')</span></label>
-                            <input type="text" class="form-control" id="pg_tr_term_translation" name="translation" maxlength="255" autocomplete="off"/>
+                            <input type="text" class="form-control" id="pg_tr_term_translation" name="translation" maxlength="255" autocomplete="off"' . $text_lang($language) . '/>
                         </div>
                         <div class="form-field mb-3 pg-tr-term-all">
                             <div class="switch"><input value="1" class="" type="checkbox" role="switch" id="pg_tr_term_all" name="all_languages"/></div>
