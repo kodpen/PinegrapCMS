@@ -133,6 +133,23 @@ function pg_label_aras_field($data, $name)
 }
 
 /**
+ * The account's user name and password under the names an operation gives
+ * them: the WSDL spells them three ways.
+ *
+ * @param array  $account
+ * @param string $user
+ * @param string $password
+ * @return array
+ */
+function pg_label_aras_login($account, $user, $password)
+{
+    return array(
+        $user     => pg_label_aras_field($account, 'username'),
+        $password => isset($account['password']) ? (string) $account['password'] : '',
+    );
+}
+
+/**
  * Text as XML character data: control characters dropped, a byte that is
  * not UTF-8 replaced. Pure.
  *
@@ -541,9 +558,7 @@ function pg_label_aras_order($shipment, $account, $code)
     $order_number = mb_substr($field($shipment, 'order_number'), 0, 30);
     $order_number = ($order_number !== '') ? $order_number : $code;
 
-    $order = array(
-        'UserName'             => $field($account, 'username'),
-        'Password'             => isset($account['password']) ? (string) $account['password'] : '',
+    $order = pg_label_aras_login($account, 'UserName', 'Password') + array(
         'TradingWaybillNumber' => $order_number,
         'InvoiceNumber'        => $order_number,
         'ReceiverName'         => mb_substr($field($recipient, 'name'), 0, 100),
@@ -731,7 +746,9 @@ function pg_label_aras_fold($text)
         'Ü' => 'U', 'ü' => 'U', 'Ö' => 'O', 'ö' => 'O', 'Ç' => 'C', 'ç' => 'C',
     ));
 
-    return strtoupper(trim(preg_replace('/\s+/', ' ', $text)));
+    // ASCII capitals whatever the locale: strtoupper() follows LC_CTYPE
+    // before PHP 8.2, and a Turkish locale turns i into a dotted capital.
+    return strtr(trim(preg_replace('/\s+/', ' ', $text)), 'abcdefghijklmnopqrstuvwxyz', 'ABCDEFGHIJKLMNOPQRSTUVWXYZ');
 }
 
 /**
@@ -746,6 +763,24 @@ function pg_label_aras_row_number($row)
     $number = preg_replace('/\.0*$/', '', pg_label_aras_value($row, 'KARGO_TAKIP_NO'));
 
     return (preg_match('/^\d{5,40}$/', $number) === 1) ? $number : '';
+}
+
+/**
+ * A waybill row's return reason (IADE_SEBEBI) when it names one: words,
+ * not a dash or a word for none. Pure.
+ *
+ * @param array $row
+ * @return string '' when it gives no reason
+ */
+function pg_label_aras_return_reason($row)
+{
+    $reason = pg_label_aras_value($row, 'IADE_SEBEBI');
+
+    if ((preg_match('/\pL/u', $reason) !== 1) || in_array(pg_label_aras_fold($reason), array('YOK', 'YOKTUR', 'BOS', 'NULL', 'NONE'), true)) {
+        return '';
+    }
+
+    return $reason;
 }
 
 /**
@@ -767,7 +802,7 @@ function pg_label_aras_status($row)
 
     $words = pg_label_aras_fold(pg_label_aras_value($row, 'DURUMU'));
 
-    if ((preg_match('/\pL/u', pg_label_aras_value($row, 'IADE_SEBEBI')) === 1) || (strpos($words, 'IADE') !== false)) {
+    if ((pg_label_aras_return_reason($row) !== '') || (strpos($words, 'IADE') !== false)) {
         return 'returned';
     }
 
@@ -813,10 +848,7 @@ function pg_label_aras_latest_row($rows)
 
 function pg_label_aras_test($account)
 {
-    $read = pg_label_aras_call('GetAddressList', array(
-        'userName' => pg_label_aras_field($account, 'username'),
-        'password' => isset($account['password']) ? (string) $account['password'] : '',
-    ), $account);
+    $read = pg_label_aras_call('GetAddressList', pg_label_aras_login($account, 'userName', 'password'), $account);
 
     if (!$read['ok']) {
         return pg_label_aras_failure($read, false);
@@ -866,11 +898,7 @@ function pg_label_aras_create($shipment, $account)
 
     $code = pg_label_aras_integration_code(pg_label_aras_field($shipment, 'order_number'), random_int(0, 999999));
     $test = ($account['mode'] !== 'live') ? ' (test)' : '';
-    $read = pg_label_aras_call('SetOrder', array(
-        'orderInfo' => array('Order' => pg_label_aras_order($shipment, $account, $code)),
-        'userName'  => pg_label_aras_field($account, 'username'),
-        'password'  => isset($account['password']) ? (string) $account['password'] : '',
-    ), $account);
+    $read = pg_label_aras_call('SetOrder', array('orderInfo' => array('Order' => pg_label_aras_order($shipment, $account, $code))) + pg_label_aras_login($account, 'userName', 'password'), $account);
 
     if (!$read['ok']) {
         $failure = pg_label_aras_failure($read, true);
@@ -915,17 +943,21 @@ function pg_label_aras_create($shipment, $account)
 
     $log = array('Aras Kargo shipment ' . $code . ' registered' . $test . '.');
     $format = ($account['label_format'] === 'zpl') ? 'zpl' : 'pdf';
-    $label = pg_label_aras_call('GetArasBarcode', array(
-        'Username'        => pg_label_aras_field($account, 'username'),
-        'Password'        => isset($account['password']) ? (string) $account['password'] : '',
-        'integrationCode' => $code,
-    ), $account);
+    $label = pg_label_aras_call('GetArasBarcode', pg_label_aras_login($account, 'Username', 'Password') + array('integrationCode' => $code), $account);
     $barcode = $label['ok'] ? pg_label_aras_barcode_read($label['result'], $format) : null;
-    $number = ($barcode === null) ? '' : (($barcode['tracking_number'] !== '') ? $barcode['tracking_number'] : $barcode['barcode']);
+    $number = '';
+
+    // The tracking number, else the barcode the branch scans (a parcel row
+    // takes 5-40 letters, digits, spaces and hyphens).
+    foreach (($barcode === null) ? array() : array($barcode['tracking_number'], $barcode['barcode']) as $candidate) {
+        if (($number === '') && (preg_match('/^[A-Za-z0-9][A-Za-z0-9 -]{4,39}$/', $candidate) === 1)) {
+            $number = $candidate;
+        }
+    }
 
     // No number to give the parcel: the registration is taken back, so the
     // shipment can be made again rather than wait at Aras with no label.
-    if (($barcode === null) || !$barcode['ok'] || (preg_match('/^[A-Za-z0-9][A-Za-z0-9 -]{4,39}$/', $number) !== 1)) {
+    if (($barcode === null) || !$barcode['ok'] || ($number === '')) {
         $words = ($barcode === null) ? $label['message'] : $barcode['message'];
         $log[] = 'Aras Kargo gave no label for ' . $code . (($words !== '') ? ': ' . $words : '') . '.';
         $cancel = pg_label_aras_cancel($code, $account);
@@ -984,11 +1016,7 @@ function pg_label_aras_label($reference, $format, $account)
         return array('success' => false, 'error' => lang('No shipment of the carrier label service is known for this parcel.'));
     }
 
-    $read = pg_label_aras_call('GetArasBarcode', array(
-        'Username'        => pg_label_aras_field($account, 'username'),
-        'Password'        => isset($account['password']) ? (string) $account['password'] : '',
-        'integrationCode' => $code,
-    ), $account);
+    $read = pg_label_aras_call('GetArasBarcode', pg_label_aras_login($account, 'Username', 'Password') + array('integrationCode' => $code), $account);
 
     if (!$read['ok']) {
         return pg_label_aras_failure($read, false);
@@ -1015,11 +1043,7 @@ function pg_label_aras_cancel($reference, $account)
         return array('success' => false, 'error' => lang('No shipment of the carrier label service is known for this parcel.'));
     }
 
-    $read = pg_label_aras_call('CancelDispatch', array(
-        'userName'        => pg_label_aras_field($account, 'username'),
-        'password'        => isset($account['password']) ? (string) $account['password'] : '',
-        'integrationCode' => $code,
-    ), $account);
+    $read = pg_label_aras_call('CancelDispatch', pg_label_aras_login($account, 'userName', 'password') + array('integrationCode' => $code), $account);
 
     if (!$read['ok']) {
         return pg_label_aras_failure($read, true);
@@ -1063,9 +1087,7 @@ function pg_label_aras_track($reference, $account)
         return array('success' => false, 'error' => lang('Aras Kargo needs the customer code to say where a parcel is; enter it in the Aras Kargo settings.'));
     }
 
-    $read = pg_label_aras_call('GetCargoInfo', array(
-        'username'        => pg_label_aras_field($account, 'username'),
-        'password'        => isset($account['password']) ? (string) $account['password'] : '',
+    $read = pg_label_aras_call('GetCargoInfo', pg_label_aras_login($account, 'username', 'password') + array(
         'customerCode'    => pg_label_aras_field($account, 'customer_code'),
         'integrationCode' => $code,
     ), $account);
@@ -1081,8 +1103,16 @@ function pg_label_aras_track($reference, $account)
         return array('success' => false, 'error' => lang('Aras Kargo gives no status for this shipment yet.'), 'raw' => $read['raw']);
     }
 
-    $at = ($status === 'delivered') ? pg_label_aras_time(pg_label_aras_value($row, 'TESLIM_TARIHI'), pg_label_aras_value($row, 'TESLIM_SAATI')) : 0;
-    $at = ($at > 0) ? $at : pg_label_aras_time(pg_label_aras_value($row, 'IRSALIYE_TARIH'));
+    // The row dates the delivery and the waybill (the parcel taken in); for
+    // another status the tracking job takes the moment it learnt of it.
+    $at = 0;
+
+    if ($status === 'delivered') {
+        $at = pg_label_aras_time(pg_label_aras_value($row, 'TESLIM_TARIHI'), pg_label_aras_value($row, 'TESLIM_SAATI'));
+    } elseif ($status === 'in_transit') {
+        $at = pg_label_aras_time(pg_label_aras_value($row, 'IRSALIYE_TARIH'));
+    }
+
     $number = pg_label_aras_row_number($row);
     $carriers = pg_shipping_carriers();
     $words = trim(pg_label_aras_value($row, 'DURUMU') . ' ' . pg_label_aras_value($row, 'DURUM_KODU'));

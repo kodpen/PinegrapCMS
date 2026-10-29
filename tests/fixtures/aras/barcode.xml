@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <GetArasBarcodeResponse xmlns="http://tempuri.org/">
+      <GetArasBarcodeResult>
+        <Images>
+          <base64Binary>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==</base64Binary>
+        </Images>
+        <ZebraZpl>
+          <string>^XA^CI28^FO40,40^A0N,36,36^FDARAS KARGO^FS^FO40,100^BCN,120,Y,N,N^FD3401234567890^FS^XZ</string>
+        </ZebraZpl>
+        <ZebraEpl>
+          <string>N
+A40,40,0,4,1,1,N,"ARAS KARGO"
+B40,100,0,1,2,4,120,B,"3401234567890"
+P1</string>
+        </ZebraEpl>
+        <ZebraPdf>
+          <string>JVBERi0xLjQKMSAwIG9iaiA8PCAvVHlwZSAvQ2F0YWxvZyA+PiBlbmRvYmoKdHJhaWxlciA8PCAvUm9vdCAxIDAgUiA+PgolJUVPRgo=</string>
+        </ZebraPdf>
+        <BarcodeModelLst>
+          <BarcodeModel>
+            <Volume>1</Volume>
+            <TotalVolume>1</TotalVolume>
+            <SenderAccountName>ÖRNEK MAĞAZA</SenderAccountName>
+            <SenderAddress>Caferağa Mah. Moda Cad. No:10</SenderAddress>
+            <SenderAddress2>Kadıköy İstanbul</SenderAddress2>
+            <ReceiverAccountName>AYŞE YILMAZ</ReceiverAccountName>
+            <ReceiverAddress>Kızılay Mah. Atatürk Blv. No:5</ReceiverAddress>
+            <ReceiverAddress2>Daire 3</ReceiverAddress2>
+            <ReceiverAddress3 />
+            <ReceiverPhone>05321234567</ReceiverPhone>
+            <ReceiverPhone2 />
+            <ReceiverTown>ÇANKAYA</ReceiverTown>
+            <ReceiverCity>ANKARA</ReceiverCity>
+            <BarcodeDate>2026-10-27T10:15:00+03:00</BarcodeDate>
+            <DeliveryUnitID>612</DeliveryUnitID>
+            <DeliveryUnitName>ÇANKAYA</DeliveryUnitName>
+            <SourceUnitID>341</SourceUnitID>
+            <SourceUnitName>KADIKÖY</SourceUnitName>
+            <TrackingNumber>3401234567890</TrackingNumber>
+            <IntegrationCode>10042483920</IntegrationCode>
+            <Msi>MSI-06</Msi>
+            <MainServiceName>STANDART TESLİMAT</MainServiceName>
+            <RouteName>ANK-06</RouteName>
+            <WaybillSerial>E</WaybillSerial>
+            <WaybillNumber>2026102700</WaybillNumber>
+            <LovShipmentTypeName>KOLİ</LovShipmentTypeName>
+            <LovPacketTypeName>PAKET</LovPacketTypeName>
+            <LovPayorTypeName>GÖNDERİCİ ÖDEMELİ</LovPayorTypeName>
+            <SenderPhone>02161234567</SenderPhone>
+            <PieceNumber>1</PieceNumber>
+            <PieceCount>1</PieceCount>
+            <ExServiceCodes xsi:nil="true" />
+            <WaybillDate>27.10.2026</WaybillDate>
+            <LovDeliveryTypeName>ADRESE TESLİM</LovDeliveryTypeName>
+            <Barcode>90100424839201</Barcode>
+            <PaymentType>GÖNDERİCİ</PaymentType>
+            <CashPrice>0</CashPrice>
+            <WorkArea>A12</WorkArea>
+            <SenderHintCityName>İSTANBUL</SenderHintCityName>
+            <SenderHintTownName>KADIKÖY</SenderHintTownName>
+            <WaybillID>6f9f2b7c-0d55-4c5e-9a1e-3f2d6c8b1a40</WaybillID>
+            <ReceiverMobilePhone>05321234567</ReceiverMobilePhone>
+            <SenderMobilePhone />
+            <SenderAccountNameAndSurName>ÖRNEK MAĞAZA</SenderAccountNameAndSurName>
+            <ReceiverAccountNameAndSurName>AYŞE YILMAZ</ReceiverAccountNameAndSurName>
+            <SpecialField1 />
+          </BarcodeModel>
+        </BarcodeModelLst>
+        <Message>Başarılı</Message>
+        <ResultCode>0</ResultCode>
+      </GetArasBarcodeResult>
+    </GetArasBarcodeResponse>
+  </soap:Body>
+</soap:Envelope>
