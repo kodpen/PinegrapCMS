@@ -27,4 +27,4 @@ description: Panel list and table rules: the DataTables list markup, which lists
 - A new card reusing another card's variable names: the `edit_erp_invoice.php` reminder card reused `$lines` and emptied the invoice lines. Give a card's variables its own prefix (`$reminder_lines`).
 - A card that leaves a `<div>` open swallows every card after it ("cards stuck together", "Save hanging"); count `<div` against `</div>` per card (`settings-card-save-rules.md`).
 
-Related: docs/memory/ui/admin-screen-toolbar.md
+Related: docs/memory/ui/admin-screen-toolbar.md, docs/memory/ui/list-page-state.md

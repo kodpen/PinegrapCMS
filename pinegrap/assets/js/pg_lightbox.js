@@ -125,18 +125,32 @@
             }
         });
 
-        // Background click (clicking the dim area, not the image) closes
-        overlay.addEventListener('mousedown', function (e) {
-            // Only handle clicks DIRECTLY on the overlay or stage (not on
-            // descendants like the image, buttons, caption). Combined with
-            // the tap detection in pointer handlers below.
-            if (e.target === overlay) close();
+        // A tap on the dim background closes. The stage captures every press
+        // for its gestures, so the click event lands on the stage even when
+        // the press was on the image; the tap is therefore judged from the
+        // pointer events: a primary press that starts on the background,
+        // stays under TAP_MAX_MOVE and TAP_MAX_TIME, and is released over
+        // the background. Presses on the image, toolbar, nav, thumbnails or
+        // caption, drags and long presses leave the viewer open.
+        var tapStart = null;   // {id, x, y, time} of a background press
+        function isBackground(el) {
+            return el === overlay || el === stage;
+        }
+        overlay.addEventListener('pointerdown', function (e) {
+            tapStart = (e.isPrimary && e.button === 0 && isBackground(e.target))
+                ? { id: e.pointerId, x: e.clientX, y: e.clientY, time: Date.now() }
+                : null;
         });
-        // Stage tap (image area) — tap on the dim margin around the image
-        // closes; tap on the image itself does nothing (gesture handlers run).
-        stage.addEventListener('click', function (e) {
-            if (e.target === stage) close();
+        overlay.addEventListener('pointerup', function (e) {
+            var t = tapStart;
+            tapStart = null;
+            if (!t || t.id !== e.pointerId) return;
+            if (Math.hypot(e.clientX - t.x, e.clientY - t.y) > TAP_MAX_MOVE) return;
+            if (Date.now() - t.time > TAP_MAX_TIME) return;
+            if (!isBackground(document.elementFromPoint(e.clientX, e.clientY))) return;
+            close();
         });
+        overlay.addEventListener('pointercancel', function () { tapStart = null; });
 
         bindStageGestures();
     }

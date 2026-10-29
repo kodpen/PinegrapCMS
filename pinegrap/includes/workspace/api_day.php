@@ -397,6 +397,7 @@ function ws_api_search_record_scopes()
         'product'        => 'products:read',
         'product_group'  => 'products:read',
         'offer'          => 'offers:read',
+        'cart_quote'     => 'orders:read',
         'contact'        => 'customers:read',
         'erp_account'    => 'erp:read',
         'invoice'        => 'erp:read',

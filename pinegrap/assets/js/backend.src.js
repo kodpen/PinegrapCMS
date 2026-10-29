@@ -1737,9 +1737,15 @@ $(document).ready(function () {
         datatable.columns.adjust();
 
         // A list paged on the server would ask for the same page again.
+        // false keeps the page: a bare draw() puts the list back on page 1
+        // and would throw away the page restored from history.state.
         if (!options.serverSide) {
-            datatable.draw();
+            datatable.draw(false);
         }
+
+        // DataTables names its pager landmark "pagination" in English
+        // whatever the language; the panel language's file names it.
+        $(datatable.table().container()).find('div.dt-paging nav').attr('aria-label', datatable.i18n('aria.paging', 'Pagination'));
         $('table.dataTable tbody tr td.dataTables_empty').parent('tr').addClass('unselectable');
     };
 
@@ -1810,8 +1816,32 @@ $(document).ready(function () {
             pgListServerOptions(options, $('table.chart[data-pg-list-action]'));
         }
 
+        // A list comes back on the page, length and search it was left on:
+        // panel pages are sent no-store, so Back loads the screen again.
+        // Every table.chart shares these options, so only a single list is
+        // restored. DataTables' stateSave stays off: it would also keep the
+        // column order and visibility the Reset button starts afresh.
+        var pgListKey = null;
+        if ($('table.chart').length === 1 && options["paging"]) {
+            pgListKey = $('table.chart').attr('id') || '0';
+            var pgListKept = pgListState(pgListKey);
+            if (pgListKept && options["lengthMenu"][0].indexOf(pgListKept.length) !== -1) {
+                options["displayStart"] = pgListKept.start;
+                options["pageLength"] = pgListKept.length;
+                options["search"] = { search: pgListKept.search };
+            }
+        }
+
         var datatable = $("table.chart").DataTable(options);
         datatable.buttons().container().appendTo($(".chart-buttons"));
+        // Each draw follows a page, length or search change, after
+        // DataTables has settled the start (a new search goes to page 1).
+        if (pgListKey !== null) {
+            datatable.on('draw.dt', function () {
+                var info = datatable.page.info();
+                pgListKeep(pgListKey, { start: info.start, length: info.length, search: datatable.search() });
+            });
+        }
         $(window).on("resize", function () {
             datatable.columns.adjust();
         });
@@ -1822,7 +1852,7 @@ $(document).ready(function () {
             const query = new URLSearchParams(window.location.search).get('query');
             let params = new URLSearchParams(location.search);
             params.delete('query');
-            history.replaceState(null, '', '?' + params + location.hash);
+            history.replaceState(history.state, '', '?' + params + location.hash);
             datatable.search(query).draw();
         }
     }
@@ -2363,7 +2393,9 @@ $(document).ready(function () {
             });
         }
 
+        // Returns the first result button it added (empty when none).
         function appendResults(results) {
+            var $first = $();
             $.each(results, function (_i, r) {
                 var meta = TYPE_META[r.type];
                 if (!meta) return;
@@ -2375,7 +2407,29 @@ $(document).ready(function () {
                 $btn.append($wrap);
                 $btn.on('click', function () { pgUI.dialog.hide($modal); leave(meta.url(r)); });
                 $results.append($btn);
+                if (!$first.length) { $first = $btn; }
             });
+            return $first;
+        }
+
+        // The next 20 results of the same query.
+        function loadMoreButton() {
+            var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline theme-secondary w-100 mt-3 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
+            $more.on('click', function () {
+                if (loading) return;
+                currentOffset += 20;
+                runSearch(currentQuery, currentOffset);
+            });
+            return $more;
+        }
+
+        // A later page that failed: the same page can be asked again, with
+        // the reason above the button that takes the focus back.
+        function loadMoreFailed() {
+            currentOffset -= 20;
+            var $more = loadMoreButton();
+            $results.append($('<p class="srch-more-error fg-danger my-3" role="alert"></p>').text(t('An error occurred.')), $more);
+            $more.trigger('focus');
         }
 
         function runSearch(query, offset) {
@@ -2383,14 +2437,20 @@ $(document).ready(function () {
             loading = true;
             $clearBtn.removeClass('d-none');
             $emptyBox.addClass('d-none');
-            $results.find('.srch-load-more').remove();
+            // Load More is about to go; the result above it holds the focus
+            // until the next page arrives, not <body>.
+            var $oldMore = $results.find('.srch-load-more');
+            if ($oldMore.is(':focus')) {
+                $oldMore.prevAll('button').first().trigger('focus');
+            }
+            $results.find('.srch-load-more, .srch-more-error').remove();
 
             if (offset === 0) {
                 $results.empty().addClass('show').append(
                     '<div class="text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm me-1"></span>' + t('Please Wait') + '</div>'
                 );
             } else {
-                $results.append('<div class="srch-load-more text-center py-3 fg-secondary"><span class="spinner-border spinner-border-sm"></span></div>');
+                $results.append('<div class="srch-load-more text-center py-3 fg-secondary" role="status"><span class="spinner-border spinner-border-sm" aria-hidden="true"></span><span class="visually-hidden">' + t('Loading...') + '</span></div>');
             }
 
             $.ajax({
@@ -2401,6 +2461,12 @@ $(document).ready(function () {
                 success: function (resp) {
                     loading = false;
                     $results.find('.srch-load-more').remove();
+
+                    // Only the first page's branch below reads the status.
+                    if (offset > 0 && !(resp && resp.status === 'success')) {
+                        loadMoreFailed();
+                        return;
+                    }
 
                     if (offset === 0) {
                         $results.empty();
@@ -2494,22 +2560,27 @@ $(document).ready(function () {
                     }
 
                     if (resp.results && resp.results.length) {
-                        appendResults(resp.results);
+                        var $first = appendResults(resp.results);
+                        // The Load More button that held the focus is gone.
+                        if (offset > 0) {
+                            $first.trigger('focus');
+                        }
                     }
 
                     if (resp.has_more) {
-                        var $more = $('<button type="button" class="srch-load-more btn btn-sm btn-outline theme-secondary w-100 mt-3 mb-1"><span class="bi bi-chevron-down me-1"></span>' + t('Load More') + '</button>');
-                        $more.on('click', function () {
-                            currentOffset += 20;
-                            runSearch(currentQuery, currentOffset);
-                        });
+                        var $more = loadMoreButton();
                         $results.append($more);
+                        if (offset > 0 && !(resp.results && resp.results.length)) {
+                            $more.trigger('focus');
+                        }
                     }
                 },
                 error: function () {
                     loading = false;
                     $results.find('.srch-load-more').remove();
-                    if (offset === 0) $results.empty().append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
+                    if (offset > 0) { loadMoreFailed(); } else {
+                        $results.empty().append('<p class="fg-danger my-3">' + t('An error occurred.') + '</p>');
+                    }
                 }
             });
         }
@@ -2729,6 +2800,43 @@ function pgListServerOptions(options, $table) {
             $table.find('img.lazy:not(.delayed)').Lazy();
         }
     });
+}
+
+/**
+ * The page, length and search a paged list was left on, kept in the history
+ * entry by pgListKeep() so Back opens it where it was; null when the entry
+ * holds none for the list or holds something unusable.
+ */
+function pgListState(key) {
+    var state = (window.history && $.isPlainObject(history.state)) ? history.state : {};
+    var lists = $.isPlainObject(state.pgList) ? state.pgList : {};
+    var kept = Object.prototype.hasOwnProperty.call(lists, key) ? lists[key] : null;
+
+    if (kept && typeof kept.start === 'number' && kept.start >= 0 && kept.start % 1 === 0
+        && typeof kept.length === 'number'
+        && typeof kept.search === 'string') {
+        return kept;
+    }
+
+    return null;
+}
+
+// Keeps a list's {start, length, search} in the current history entry,
+// beside whatever else the entry holds.
+function pgListKeep(key, kept) {
+    if (!window.history || !history.replaceState) {
+        return;
+    }
+
+    var state = $.extend({}, $.isPlainObject(history.state) ? history.state : null);
+    state.pgList = $.extend({}, $.isPlainObject(state.pgList) ? state.pgList : null);
+    state.pgList[key] = kept;
+
+    try {
+        history.replaceState(state, '', location.href);
+    } catch (e) {
+        // A refused state (size limit) leaves the entry as it was.
+    }
 }
 
 // An empty page with the reason in the table's empty row.
