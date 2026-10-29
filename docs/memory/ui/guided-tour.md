@@ -9,7 +9,7 @@ description: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who use
 
 ## How are steps counted?
 - `shownSteps()` lists the steps that will show: not `ruledOut()` (skipIf), and for a step without `before()` its target on screen (`targetReady()`); the current step always counts. The count (`labels.of`), the dots and the done label go by that list.
-- Before the fix (#PR) the count used `steps.length`: the frame tour, which always passes over one of its two menu steps, read "1, 2, 4 … 9 of 9", and with the icon-only menu or on a phone the explorer tours opened at "3 of 8" / "3 of 9".
+- Before #3284 the count used `steps.length`: the frame tour, which always passes over one of its two menu steps, read "1, 2, 4 … 9 of 9", and with the icon-only menu or on a phone the explorer tours opened at "3 of 8" / "3 of 9".
 
 ## What does Back do on the first shown step?
 - Nothing: Back is hidden when no earlier step can show, and `move(-1)` returns there (ArrowLeft too). `goTo()` turns forward (`direction = 1`) when it walks past index 0.
