@@ -104,14 +104,14 @@ if ($output_rows === '') {
     $output_rows = '<tr data-pg-sort-fixed><td colspan="6" class="text-center fg-secondary py-7">' . lang('No cheque or note here.') . '</td></tr>';
 }
 
-// The two filters: each keeps the other, as the links they replace did.
+// The two filters: each keeps the other and the search, as the search form keeps both.
 $status_options = array('open' => lang('Open'), 'all' => lang('All'));
 if (isset($statuses[$status])) {
     $status_options[$status] = $statuses[$status][0];
 }
-$output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction')));
+$output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction', 'search')));
 $output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given')), $direction,
-    array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_cheques.php', 'keep' => array('status')));
+    array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_cheques.php', 'keep' => array('status', 'search')));
 
 $accounts = array(lang('Choose an account') => '');
 // Keyed by id with the title as the label, so two accounts of the same name stay two options.
