@@ -7,7 +7,8 @@
  * design made from that template. Only layouts that work where they land
  * are offered: every placeholder resolved against this design's pages, no
  * part that would need rows of its own, and for a form view the field
- * names of the form it was made for.
+ * names of the form it was made for. Also the "Starters" source: the
+ * layouts the release ships per kind (widgets_starters.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -172,6 +173,30 @@ function pg_sw_template_page_map($tpl, $style_id)
             );
             break;
         }
+    }
+    return $out;
+}
+
+/**
+ * The gallery's "Starters" for widgets of $kind (pg_sw_starters()): each
+ * array('key', 'label', 'loop', 'wrap'). A starter whose repeated part is
+ * empty, or that is not an array of nodes, is left out.
+ *
+ * @param string $kind pg_sw_widget_kind() of the widget
+ * @return array
+ */
+function pg_sw_starter_layouts($kind)
+{
+    if (!is_string($kind) || !in_array($kind, pg_sw_starter_kinds(), true)) return array();
+    $out = array();
+    foreach (pg_sw_starters($kind) as $s) {
+        if (!is_array($s) || empty($s['key']) || empty($s['loop']) || !is_array($s['loop'])) continue;
+        $out[] = array(
+            'key'   => (string)$s['key'],
+            'label' => isset($s['label']) ? (string)$s['label'] : (string)$s['key'],
+            'loop'  => array_values($s['loop']),
+            'wrap'  => (isset($s['wrap']) && is_array($s['wrap'])) ? $s['wrap'] : array(),
+        );
     }
     return $out;
 }

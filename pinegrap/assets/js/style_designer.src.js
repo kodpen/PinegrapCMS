@@ -64264,6 +64264,7 @@ const StyleDesigner = (function () {
     var _sdLgState = null;   // { sid, original: json, label, key } while a layout is tried
     var _sdLgSite  = {};     // sid → { kind, loading, items: [{ id, name, tree }] }
     var _sdLgTpl   = {};     // sid → { kind, loading, items: [{ key, label, tree }] }
+    var _sdLgStart = {};     // sid → { kind, loading, items: [{ key, label, loop, wrap }] }
     var _sdLgDrawing = false; // the gallery's own redraw is not an edit
 
     function _sdLgApi(body, cb) {
@@ -64439,6 +64440,59 @@ const StyleDesigner = (function () {
         });
     }
 
+    // The starters the release ships for this kind (pg_sw_starter_layouts()),
+    // once per widget.
+    function _sdLgLoadStarters(sid, kind) {
+        var have = _sdLgStart[sid];
+        if (have && have.kind === kind) return;
+        var entry = _sdLgStart[sid] = { kind: kind, loading: true, items: [] };
+        _sdLgApi({ action: 'shared_component', sub_action: 'starter_layouts', kind: kind }, function (resp) {
+            ((resp && resp.layouts) || []).forEach(function (l) {
+                if (!l || !Array.isArray(l.loop) || !l.loop.length) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), loop: l.loop,
+                                   wrap: (l.wrap && typeof l.wrap === 'object' && !Array.isArray(l.wrap)) ? l.wrap : {} });
+            });
+            entry.loading = false;
+            if (_sdLgStart[sid] !== entry || !entry.items.length || typeof renderProperties !== 'function') return;
+            _sdLgDrawing = true;
+            try { renderProperties(); } finally { _sdLgDrawing = false; }
+        });
+    }
+
+    // The kind's default layout with a starter's repeated part in its first
+    // loop area and the starter's props on the element holding it; a form
+    // list's record goes where the starter marks it (props.starterFields),
+    // drawn from the form's fields as the default layout draws it.
+    /* @pg-site-output */
+    function _sdLgStarterTree(kind, it, fields) {
+        var base = _buildStarterTree(kind, fields ? { formFields: fields } : undefined);
+        if (!base) return null;
+        var loop = null, holder = null;
+        (function walk(n, parent) {
+            if (loop || !n) return;
+            if (n.type === 'loop_area') { loop = n; holder = parent; return; }
+            (n.children || []).forEach(function (c) { walk(c, n); });
+        })(base, null);
+        if (!loop) return null;
+        var kids = JSON.parse(JSON.stringify(it.loop));
+        (function fill(list) {
+            list.forEach(function (n) {
+                if (!n || typeof n !== 'object') return;
+                if (n.props && n.props.starterFields) {
+                    delete n.props.starterFields;
+                    n.children = _swFormFieldNodes(fields || [], 'list');
+                    return;
+                }
+                if (Array.isArray(n.children)) fill(n.children);
+            });
+        })(kids);
+        loop.children = kids;
+        if (holder && holder.props) {
+            Object.keys(it.wrap || {}).forEach(function (k) { holder.props[k] = it.wrap[k]; });
+        }
+        return base;
+    }
+
     // A tree without its node ids, for comparing two layouts.
     function _sdLgStrip(t) {
         return JSON.parse(JSON.stringify(t, function (k, v) { return k === '_id' ? undefined : v; }));
@@ -64465,6 +64519,14 @@ const StyleDesigner = (function () {
             return '<div class="fg-secondary py-1" style="font-size:.72rem">' + esc(text) + '</div>';
         };
         var h = head(_sdT('Default')) + rowHtml('default', _sdT('Default layout'), 'bi-stars');
+        // Ready-made layouts of the release, shown once they are read: most
+        // kinds have none.
+        _sdLgLoadStarters(sid, kind);
+        var sEntry = _sdLgStart[sid];
+        if (sEntry && !sEntry.loading && sEntry.items.length) {
+            h += head(_sdT('Starters'));
+            sEntry.items.forEach(function (it) { h += rowHtml('st:' + it.key, it.label, 'bi-layout-text-window'); });
+        }
         // Only the template this design was made from: its layouts carry
         // that template's styles.
         var tplId = _sdLgTemplateId();
@@ -64556,6 +64618,25 @@ const StyleDesigner = (function () {
             var t = _buildStarterTree(cfg.regionType || kind);
             if (!t) { sdToast(_sdT('There is no default layout for this widget type.'), 'warning'); return; }
             _sdLgShow(sid, key, label, t);
+            return;
+        }
+        if (String(key).indexOf('st:') === 0) {
+            var sk = String(key).slice(3);
+            var se = _sdLgStart[sid];
+            var si = se ? se.items.filter(function (x) { return x.key === sk; })[0] : null;
+            if (!si) return;
+            var showStarter = function (fields) {
+                var built = _sdLgStarterTree(kind, si, fields);
+                var st = built ? _sdLgPrepare(JSON.stringify(built), kind, cfg) : null;
+                if (!st) { sdToast(_sdT('This starter could not be built for this widget.'), 'warning'); return; }
+                _sdLgShow(sid, key, si.label, st);
+            };
+            var sfid = _sdLgFormId(cfg);
+            if ((kind === 'form_list_view' || kind === 'form_item_view') && sfid) {
+                _fetchFormFields(sfid, function (fields) { showStarter(fields || []); });
+            } else {
+                showStarter(null);
+            }
             return;
         }
         if (String(key).indexOf('tpl:') === 0) {

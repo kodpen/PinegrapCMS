@@ -334,7 +334,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-fill-shop.md: A bound value's format in the shop widgets (catalog, catalog detail, cart, express order, order view): fills, no change without a format, order view dates, fallback words (#1701).
 - widget-finish-pass.md: The finish pass every system widget render goes through: scope, markers, carriers, nonce, row positions, cut points, pg-hide-if-empty, the edit pencil, the strip (#1592).
 - widget-hide-if-empty.md: pg-hide-if-empty in every widget kind (W23, #2225): how an element is judged, the value element, the finish pass, the variant wait, the editor switch and its canvas state
-- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
+- widget-layout-gallery.md: W5 layout gallery of a system widget: sources (Default, Starters, From the template, On this site), the filters, Try/Keep/Cancel, undo, saves and rights
 - widget-list-flags.md: A widget flag (eo_visible_if) inside a list's row naming a row value is a value condition on it (W23): the alias, the two tree walkers that leave it, the editor's offer, what is not covered
 - widget-list-paging-catalog-search.md: Catalog listing and search results paging (W12c, #1968): own page parameter, offset, paging tokens and flags as the form list has them; what differs from the form list, the canonical, what is left
 - widget-list-paging.md: Form list widget paging (W12a, #1924): own page parameter (page_param), offset, paging tokens and flags, canonical of a later page; what W12 still leaves for its next slices
@@ -351,5 +351,6 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-parts-anywhere.md: W17 parts anywhere (#3074, #3085, #3111): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-parts-palette.md: W20a parts palette: a Components group following the selection with a widget's parts and values, row items kept in their loop, the detail widget's placed outside it as parts
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
+- widget-starters.md: W20b layout starters (#3179): style-neutral layouts per widget kind shipped as files, the gallery's fourth source, how the editor builds one, the binding test, kinds left
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.
