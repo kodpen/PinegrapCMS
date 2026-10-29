@@ -28,4 +28,4 @@ description: Plan (2026-10-21; steps 1 #1121, 2 and 3 #2924 done; step 4 left): 
 6. Answers address the latest message (`parent_id`).
 
 ## Where to start?
-- Step 4 (screen and API, answer 4a): workspace.js (check no open PR holds it), threads.php `ws_thread_present()`, api_threads.php; `ws_thread_follow_set()` is the write.
+- Step 4 (screen and API, answer 4a) is under way on feature/ws-discussion-follow-4: workspace.js, threads.php `ws_thread_present()`, actions.php, api_threads.php, api.php; `ws_thread_follow_set()` is the write.
