@@ -4484,6 +4484,7 @@
     "This paragraph is part of a content control or a form. Change it in a word processor.": "Bu paragraf bir içerik denetiminin ya da formun parçası. Bir kelime işlemcide değiştirin.",
     "This passkey is registered already.": "Bu geçiş anahtarı zaten kayıtlı.",
     "This payment cannot be refunded here. Refund it on PayPal's own screen.": "Bu ödeme buradan iade edilemez. İadeyi PayPal'ın kendi ekranından yapın.",
+    "This payment cannot be refunded here. Refund it on PayTR's own screen.": "Bu ödeme buradan iade edilemez. İadeyi PayTR'ın kendi ekranından yapın.",
     "This payment cannot be refunded here. Refund it on Stripe's own screen.": "Bu ödeme buradan iade edilemez. İadeyi Stripe'ın kendi ekranından yapın.",
     "This payment method cannot do that.": "Bu ödeme yöntemi bu işlemi yapamıyor.",
     "This payment method is not available.": "Bu ödeme yöntemi kullanılamıyor.",
