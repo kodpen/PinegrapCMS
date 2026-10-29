@@ -150,7 +150,7 @@ while ($row = mysqli_fetch_array($result)) {
     $realtime_rate = '';
 
     if ($row['realtime_rate']) {
-        $realtime_rate = '<span class="material-icons">task_alt</span>';
+        $realtime_rate = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
     }
 
     // The cells a quick edit can change, drawn by the same function that
@@ -164,13 +164,13 @@ while ($row = mysqli_fetch_array($result)) {
     }
 
     if ($row['street_address']) {
-        $street_address = '<span class="material-icons">task_alt</span>';
+        $street_address = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
     } else {
         $street_address = '';
     }
 
     if ($row['po_box']) {
-        $po_box = '<span class="material-icons">task_alt</span>';
+        $po_box = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
     } else {
         $po_box = '';
     }
@@ -195,7 +195,7 @@ while ($row = mysqli_fetch_array($result)) {
     }
 
     if ($row['protected']) {
-        $protected = '<span class="material-icons">task_alt</span>';
+        $protected = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>';
     } else {
         $protected = '';
     }
@@ -243,7 +243,7 @@ pg_page_shell([
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_shipping_method.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_shipping_methods.php', $sort_columns, $sort_levels, $sort_default) . '

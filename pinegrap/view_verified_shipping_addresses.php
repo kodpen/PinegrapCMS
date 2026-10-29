@@ -47,7 +47,8 @@ $states = db_items(
     "SELECT
         states.id,
         states.name,
-        countries.name AS country_name
+        countries.name AS country_name,
+        countries.code AS country_code
     FROM states
     LEFT JOIN countries ON states.country_id = countries.id
     ORDER BY countries.name ASC, states.name ASC");
@@ -58,7 +59,7 @@ foreach ($states as $state) {
     $selected = ($state['id'] == ($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) ? ' selected="selected"' : '';
 
     $output_state_label = $foreign_states
-        ? h($state['country_name']) . ': ' . h($state['name'])
+        ? h(pg_geo_country_label($state['country_name'], $state['country_code'])) . ': ' . h($state['name'])
         : h($state['name']);
 
     $count = (int) db_value("SELECT COUNT(*) FROM verified_shipping_addresses WHERE state_id = '" . escape($state['id']) . "'");
@@ -119,6 +120,7 @@ $verified_shipping_addresses = db_items(
         states.name AS state_name,
         verified_shipping_addresses.zip_code,
         countries.name AS country_name,
+        countries.code AS country_code,
         created_user.user_username AS created_username,
         verified_shipping_addresses.created_timestamp,
         last_modified_user.user_username AS last_modified_username,
@@ -159,7 +161,7 @@ foreach ($verified_shipping_addresses as $address) {
             <td class="align-middle">' . h($address['city']) . '</td>
             <td class="align-middle">' . h($address['state_name']) . '</td>
             <td class="align-middle">' . h($address['zip_code']) . '</td>
-            <td class="align-middle">' . h($address['country_name']) . '</td>
+            <td class="align-middle">' . h(pg_geo_country_label($address['country_name'], $address['country_code'])) . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $address['created_timestamp'])) . $created_username . '</td>
             <td class="align-middle">' . get_relative_time(array('timestamp' => $address['last_modified_timestamp'])) . $last_modified_username . '</td>
         </tr>';
@@ -183,7 +185,7 @@ echo
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="add_verified_shipping_address.php?state_id=' . h(urlencode($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '')) . '"><span class="bi bi-plus-circle me-3"></span>' . lang('Create') . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_verified_shipping_addresses.php', $sort_columns, $sort_levels, $sort_default) . '
@@ -194,8 +196,8 @@ echo
                     <div class="card-body p-0 position-relative">
                         <div class="p-5 border-bottom">
                             <form id="state_filter" action="view_verified_shipping_addresses.php" method="get" class="d-flex align-items-center gap-3 flex-wrap">
-                                <label class="fw-semibold">' . lang('State') . ':</label>
-                                <select name="state_id" class="form-control form-control-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
+                                <label for="state_id" class="fw-semibold">' . lang('State') . ':</label>
+                                <select id="state_id" name="state_id" class="form-control form-control-sm w-auto" onchange="document.getElementById(\'state_filter\').submit()">
                                     <option value="[All]"' . (($_SESSION['software']['ecommerce']['view_verified_shipping_addresses']['state_id'] ?? '') == '[All]' ? ' selected="selected"' : '') . '>[' . lang('All') . '] (' . pg_format_number($all_verified_shipping_addresses, 0) . ')</option>
                                     ' . $output_state_options . '
                                 </select>

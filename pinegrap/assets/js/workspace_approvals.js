@@ -467,77 +467,9 @@
         return section.node;
     }
 
-    // The box of a scheduled action that asks for approval in a channel.
-    // Fills `detail` and returns what the action reads as.
-    function scheduledEditor(detail, data, h) {
-        var t = h.t;
-        var el = h.el;
-
-        data = data || { channel_id: null, title: '', text: '', approvers: [], rule: 'any' };
-
-        var channel = h.saChannelSelect(data.channel_id, '');
-        var title = h.saText(data.title, '', 255);
-        var wrap = el('div', 'ws-note-compose ws-sa-body');
-        var rich = h.richField(wrap, { placeholder: t('apv_sa_text'), previews: true });
-        var area = null;
-        var peopleBox = el('div');
-        var people = null;
-        var rule = h.select([['any', t('apv_rule_any')], ['all', t('apv_rule_all')]], data.rule || 'any');
-        var chosen = data.approvers || [];
-
-        detail.appendChild(h.saLabelled(t('sa_channel'), channel));
-        detail.appendChild(h.saLabelled(t('apv_sa_title'), title));
-
-        if (rich) {
-            rich.caretPicker = true;
-            rich.set(data.text || '', {});
-            wrap.appendChild(rich.input);
-            wrap.appendChild(rich.tools(false));
-        } else {
-            area = el('textarea', 'form-control form-control-sm');
-            area.rows = 3;
-            area.value = data.text || '';
-            wrap.appendChild(area);
-        }
-
-        detail.appendChild(h.saLabelled(t('apv_sa_text'), wrap));
-        detail.appendChild(h.saLabelled(t('apv_sa_people'), peopleBox, t('apv_sa_people_help')));
-        detail.appendChild(h.saLabelled(t('apv_sa_rule'), rule));
-
-        // The people offered are the members of the channel chosen.
-        function drawPeople() {
-            if (people) {
-                chosen = people.value();
-            }
-
-            h.api('ws_channel_get', { channel_id: parseInt(channel.value, 10) || 0 }).then(function (result) {
-                var members = ((result.channel || {}).members || []).map(function (member) { return member.id; });
-
-                people = h.peoplePicker(chosen, members);
-                h.clear(peopleBox);
-                peopleBox.appendChild(people);
-            }).catch(h.fail);
-        }
-
-        channel.addEventListener('change', drawPeople);
-        drawPeople();
-
-        return function () {
-            return {
-                type: 'approval',
-                channel_id: parseInt(channel.value, 10) || 0,
-                title: title.value,
-                text: rich ? rich.value() : area.value,
-                approvers: people ? people.value() : chosen,
-                rule: rule.value
-            };
-        };
-    }
-
     window.PGWsApprovals = {
         card: card,
         form: form,
-        home: home,
-        scheduledEditor: scheduledEditor
+        home: home
     };
 })();
