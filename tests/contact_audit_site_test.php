@@ -61,9 +61,10 @@ function test_contact_audit_site_storefront_writers_record_their_contacts()
 		'my_account_profile.php'    => 2,
 		'billing_information.php'   => 2,
 		'express_order.php'         => 2,
-		'submit_order.php'          => 3,
-		// The membership renewal of an order line (pg_order_complete_line_membership()).
-		'includes/fn/order_completion.php' => 2,
+		'submit_order.php'          => 2,
+		// The membership renewal of an order line (pg_order_complete_line_membership())
+		// and the reward program's membership (pg_order_complete_rewards()).
+		'includes/fn/order_completion.php' => 3,
 		'email_preferences.php'     => 3,
 		'affiliate_sign_up_form.php' => 2,
 		'custom_form.php'           => 2,
