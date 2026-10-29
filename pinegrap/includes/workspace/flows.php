@@ -2133,6 +2133,33 @@ function ws_flows_scheduled_groups($rows)
 }
 
 /**
+ * The scheduled actions at the end of a staff member's flow list: the
+ * converted ones as their cards present them (when, step, state, the flow
+ * they run) and how many the conversion refused; that group draws its own
+ * cards (ws_scheduled_list() with refused). Nothing for anybody else.
+ *
+ * @param array $viewer
+ * @return array|null converted (ws_scheduled_present() items), refused (count)
+ */
+function ws_flows_scheduled_rows($viewer)
+{
+    if (!ws_flows_scheduled($viewer) || !function_exists('ws_scheduled_present')) {
+        return null;
+    }
+
+    $rows = (array) db_items("SELECT * FROM ws_scheduled_actions WHERE 1 = 1" . ws_scheduled_actions_only() . ws_scheduled_anchors_out() . "
+        ORDER BY (status = 'active') DESC, IF(status = 'active' AND next_run_at > 0, next_run_at, 4294967295), id DESC LIMIT 300");
+    $groups = ws_flows_scheduled_groups($rows);
+
+    return array(
+        'converted' => array_map(function ($row) use ($viewer) {
+            return ws_scheduled_present($viewer, ws_scheduled_decode($row));
+        }, $groups['converted']),
+        'refused'   => count($groups['refused']),
+    );
+}
+
+/**
  * Does the Workspace show Flows to this person? Staff, who build them,
  * anybody who may run the live flow of a channel they read, and anybody a
  * flow is shared with, themselves or in a channel they read.
@@ -2362,6 +2389,11 @@ function ws_flow_js_strings()
         'fl_thread_full'      => lang('This field has no room for another value.'),
         'fl_new'              => lang('New flow'),
         'fl_list_search'      => lang('Search flows'),
+        'fl_conv_title'       => ws_js_template('Converted from scheduled actions · {var:1}', 1),
+        'fl_conv_mark'        => lang('Converted'),
+        'fl_open_flow'        => lang('Open flow'),
+        'fl_refused_title'    => ws_js_template('Not converted · {var:1}', 1),
+        'fl_refused_help'     => lang('These scheduled actions could not become flows and still run as before. Edit tries the conversion again.'),
         'fl_list_filter'      => lang('Filter flows'),
         'fl_list_back'        => lang('Back to the flow list'),
         'fl_list_none_match'  => lang('No flow matches.'),

@@ -9,7 +9,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
 ## Where are staff's scheduled actions?
-- A section of the screen: `workspace-flows-scheduled-section.md`.
+- At the end of the flow list, converted and not converted (V5, #3222); no section of their own, `?view=scheduled` opens the list: `workspace-flows-scheduled-section.md`.
 
 ## Which panel actions?
 - `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`, `ws_flow_run_start`, `ws_flow_runs_list` (20 a page), `ws_flow_run_get`, `_cancel`, `ws_flow_shares`, `ws_flow_share_set`, `_remove`: `ws_` rows (exempt, token, write); the store's, runner's, shares' `*_check()` decide.

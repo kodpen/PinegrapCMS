@@ -45,3 +45,23 @@ function test_workspace_flows_list_scheduled_groups()
 	pg_assert_same(array(2, 7, 8), $ids($groups['refused']), 'refused rows of any state but cancelled; a row from before the kind and anchor columns counts');
 	pg_assert_same(array('converted' => array(), 'refused' => array()), ws_flows_scheduled_groups(array()));
 }
+
+// The Scheduled actions section and its entry are gone; ?view=scheduled
+// (old links, notifications) opens the list, and a failed action's notice
+// without a card points at the list itself. The converted rows keep Run
+// now and History; the not converted ones are drawn by the cards of
+// scheduled actions, whose list leaves out converted and cancelled rows
+// where Flows lists them.
+function test_workspace_flows_list_no_scheduled_section()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$notify = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/notify.php');
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	pg_assert_false(strpos($js, 'function showScheduled(') !== false, 'no Scheduled actions section');
+	pg_assert_false((bool) preg_match('~view=scheduled\(|\?view=scheduled\'~', $js), 'the flows screen neither reads nor writes ?view=scheduled');
+	pg_assert_true(strpos($js, 'K.scheduledList(') !== false, 'the not converted group is drawn by the cards of scheduled actions');
+	pg_assert_true(strpos($js, "'ws_scheduled_run_now'") !== false && strpos($js, "'ws_scheduled_get'") !== false, 'a converted row keeps Run now and History');
+	pg_assert_false(strpos($notify, 'workspace_flows.php?view=scheduled') !== false, 'a notice points at the flow list');
+	pg_assert_true(strpos($actions, "empty(\$item['flow']) && ((string) \$item['status'] !== 'cancelled')") !== false, 'the cards list only rows not converted and not cancelled');
+}

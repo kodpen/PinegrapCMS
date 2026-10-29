@@ -393,10 +393,21 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('Only staff can schedule actions.'));
             }
 
-            return ws_action_ok(array('items' => ws_scheduled_list($viewer, array(
+            $items = ws_scheduled_list($viewer, array(
                 'status'     => (string) ($request['status'] ?? ''),
                 'channel_id' => (int) ($request['channel_id'] ?? 0),
-            ))));
+            ));
+
+            // Where Flows lists them, this list is the flow list's "Not
+            // converted" group: a converted action is a row of its own
+            // there and a cancelled one never converted is not listed.
+            if (ws_flows_scheduled($viewer)) {
+                $items = array_values(array_filter($items, function ($item) {
+                    return empty($item['flow']) && ((string) $item['status'] !== 'cancelled');
+                }));
+            }
+
+            return ws_action_ok(array('items' => $items));
 
         case 'ws_scheduled_get':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
@@ -605,7 +616,7 @@ function ws_handle_action($action, $request)
             $last = ws_flow_last_runs($viewer, $rows);
             $run_numbers = ws_flow_version_numbers($last);
 
-            return ws_action_ok(array('flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $last, $run_numbers) {
+            return ws_action_ok(array('scheduled' => ((int) ($request['runnable_in'] ?? 0) > 0) ? null : ws_flows_scheduled_rows($viewer), 'flows' => array_map(function ($row) use ($viewer, $numbers, $starts, $channels, $last, $run_numbers) {
                 $run = $last[(int) $row['id']] ?? null;
                 $start = $starts[(int) $row['id']] ?? array('kind' => '', 'text' => '');
 

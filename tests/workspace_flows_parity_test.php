@@ -2540,7 +2540,7 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_changes_input'), 4, 'AI drafts on the canvas: an application\'s proposed scheduled action, rehearsed by the save\'s check, is kept as a flow draft card (ws_scheduled_draft_proposal_row(), C5b)'),
 		),
 		'links_in' => array(
-			array(array('?view=scheduled'), 1, 'staff land on the Scheduled actions section of Flows, their Messages tab kept; others on Scheduled messages'),
+			array(array('?view=scheduled'), 1, 'staff land on the flow list of Flows, which ends with their scheduled actions, their Messages tab kept; others on Scheduled messages'),
 			array(array('menu data-ws-nav="scheduled" Scheduled actions'), 1, 'the Workspace list of the main menu (ws_nav_groups()): staff get one Flows entry in its place'),
 			array(array('menu data-ws-nav="scheduled" Scheduled messages'), 1, 'the Workspace list of the main menu: others keep Scheduled messages, and so do staff once Flows lists their actions'),
 			array(array('menu data-ws-nav from the ws_nav_groups() key'), 1, 'workspace_side.js draws each place with data-ws-nav from its key, so the list has one source'),
@@ -2802,19 +2802,21 @@ function test_workspace_flows_parity_whole_action_uses()
 	}
 }
 
-// A new rule is made on the canvas: the Scheduled actions section puts New
-// flow in the toolbar, and the list offers no New anywhere.
+// A new rule is made on the canvas: the flow list, which ends with the
+// scheduled actions, puts New flow in the toolbar, and the list of their
+// cards offers no New anywhere.
 function test_workspace_flows_parity_scheduled_section_new_is_a_flow()
 {
 	$flow = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
-	$start = strpos($flow, 'function showScheduled(');
+	$start = strpos($flow, 'function showNone(');
 
-	pg_assert_true($start !== false, 'showScheduled() in workspace_flow.js');
+	pg_assert_true($start !== false, 'showNone() in workspace_flow.js');
 
 	$body = substr($flow, $start, strpos($flow, "\n    }\n", $start) - $start);
 
-	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the section\'s toolbar');
-	pg_assert_true(strpos($body, 'K.scheduledList(ui.scheduled);') !== false, 'the list without its New');
+	pg_assert_true(strpos($body, 'newFlowButton();') !== false, 'New flow in the flow list\'s toolbar');
+	pg_assert_true(strpos($body, 'drawFlows();') !== false, 'the flow list, with its scheduled groups');
+	pg_assert_true(strpos($flow, 'K.scheduledList(cards);') !== false, 'the not converted group: the list without its New');
 
 	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	$start = strpos($channels, 'function scheduledList(body) {');

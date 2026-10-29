@@ -391,10 +391,11 @@ function ws_inbox_describe($viewer, $row)
                 'icon'  => 'bi-table',
             );
 
-        // Without a card in a channel, the list of scheduled actions: in
-        // Flows when it lists them (ws_flows_scheduled()).
+        // Without a card in a channel, the list of scheduled actions: the
+        // flow list, which ends with them, when Flows lists them
+        // (ws_flows_scheduled()).
         case 'scheduled_failed':
-            $list = (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) ? 'workspace_flows.php?view=scheduled' : 'workspace.php?view=scheduled';
+            $list = (function_exists('ws_flows_scheduled') && ws_flows_scheduled($viewer)) ? 'workspace_flows.php' : 'workspace.php?view=scheduled';
 
             return array(
                 'title' => lang('A scheduled action you wrote failed'),

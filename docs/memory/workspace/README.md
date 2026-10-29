@@ -132,7 +132,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a, #3145, decision #3122): rows compiled once into a draft flow (wtable_flow.php, ws_flow_from_wtable()), the column window on the table screen, rights; F6c-b left
-- workspace-flows-list.md: The Flows screen's flow list (#3172): full-width table, start sentence, state, last run flag, home channel, search, filter chips with counts, "Flows ›" back
+- workspace-flows-list.md: The Flows screen's flow list (#3172, #3222): full-width table, start sentence, state, last run flag, home channel, search, filter chips, the scheduled actions' groups at its end, "Flows ›" back
 - workspace-flows-mcp-box-writes.md: The MCP box with a tool that asks first (F8c-1, #3144): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
 - workspace-flows-mcp-box.md: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's tool through ws_mcp_tool_call() with the owner's account, its answer an output; asking first: F8c
 - workspace-flows-outputs.md: Values a flow box gives later boxes (data-passing D1-D3): outputs per kind, ws_step_outputs(), ws_step_result_data(), null rules, one-pass fill, escaping per destination
@@ -147,7 +147,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
-- workspace-flows-scheduled-section.md: Staff's Scheduled actions as a section of the Flows screen (?view=scheduled): the entry under the flow list, scheduledList(), Show on canvas
+- workspace-flows-scheduled-section.md: Staff's scheduled actions at the end of the Flows list (V5, #3222): converted rows with Run now and History, the Not converted cards, ?view=scheduled opens the list, Show on canvas
 - workspace-flows-scheduled-ways-in.md: Scheduled work opens on the flow canvas (merge plan 4b, R2): Add › Scheduled flow's mini window (C3, #3066), Duplicate, Edit retrying the conversion; no New on the list, no note toolbar entry
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP and table boxes, outcomes, owner rights, {{node.ID.FIELD}}, never twice
