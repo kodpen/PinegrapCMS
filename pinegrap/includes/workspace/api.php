@@ -998,6 +998,23 @@ function ws_api_routes()
         ),
 
         array(
+            'id'          => 'workspace.threads.follow',
+            'method'      => 'POST',
+            'path'        => '/workspace/threads/{id}/follow',
+            'scope'       => 'workspace:write',
+            'handler'     => 'ws_api_threads_follow',
+            'dry_run'     => true,
+            'mcp'         => false,
+            'returns'     => 'WorkspaceThread',
+            'summary'     => 'Stop or restart the assistant a discussion follows',
+            'description' => 'A discussion follows the assistant asked last in it (follow on the discussion: claude, ai or mcp:<server id>, with follow_handle as it is written): every later message there of a person that mentions nobody asks it, without its name. follow false stops that, the way Stop in the discussion header does; follow true brings back the assistant follow_again names, the way Follow again does. Anybody in an open discussion may (can_follow says so); somebody not in it is refused with 403 forbidden, a concluded discussion, or follow true where no assistant was ever asked, with 422. The discussion gets a line saying who changed it; asking for what is already so changes nothing. Asking an assistant by name in the discussion makes it the followed one again. Only a device session may - a team devices session (a Bearer token from POST /auth/login) or an OAuth connection: an application key is refused with 403 forbidden.',
+            'params'      => array(
+                array('name' => 'id', 'in' => 'path', 'type' => 'int', 'min' => 1, 'required' => true),
+                array('name' => 'follow', 'in' => 'body', 'type' => 'bool', 'required' => true, 'description' => 'false stops the following, true follows again.'),
+            ),
+        ),
+
+        array(
             'id'          => 'workspace.scheduled_messages.list',
             'method'      => 'GET',
             'path'        => '/workspace/channels/{id}/scheduled-messages',

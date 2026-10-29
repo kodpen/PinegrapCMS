@@ -537,6 +537,168 @@ function ws_thread_follow_set($channel_id, $agent)
 }
 
 /**
+ * The handle an agent is written with: @Claude, @ai, or an MCP server's
+ * @alias; '' for an agent that is not there any more.
+ *
+ * @param string $agent claude | ai | mcp:<server id>
+ * @return string
+ */
+function ws_thread_follow_handle($agent)
+{
+    $agent = ws_thread_follow_clean($agent);
+
+    if ($agent === 'claude') {
+        return '@Claude';
+    }
+
+    if ($agent === 'ai') {
+        return '@ai';
+    }
+
+    if (($agent === '') || !function_exists('ws_mcp_server')) {
+        return '';
+    }
+
+    $server = ws_mcp_server((int) substr($agent, 4));
+
+    return (is_array($server) && ((string) ($server['alias'] ?? '') !== '')) ? '@' . (string) $server['alias'] : '';
+}
+
+/**
+ * The agent Follow again brings back to a discussion that follows nobody:
+ * the one asked last there, else the one its message belongs to, else the
+ * last assistant noted on it.
+ *
+ * @param array $thread the ws_threads row
+ * @return string agent key, '' for none
+ */
+function ws_thread_follow_last($thread)
+{
+    $mcp = function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready();
+    $row = db_item("SELECT agent" . ($mcp ? ", mcp_server_id" : "") . " FROM ws_ai_requests
+        WHERE channel_id = '" . (int) $thread['channel_id'] . "' ORDER BY id DESC LIMIT 1");
+
+    if (is_array($row)) {
+        $agent = ((string) ($row['agent'] ?? 'claude') === 'mcp') ? 'mcp:' . (int) ($row['mcp_server_id'] ?? 0) : (string) ($row['agent'] ?? 'claude');
+
+        if (ws_thread_follow_clean($agent) !== '') {
+            return ws_thread_follow_clean($agent);
+        }
+    }
+
+    $message = ws_message((int) $thread['message_id']);
+    $agent = $message ? ws_thread_message_agent($message) : '';
+
+    if ($agent !== '') {
+        return $agent;
+    }
+
+    $noted = array_values(array_filter(explode(',', (string) $thread['assistants'])));
+
+    return empty($noted) ? '' : ws_thread_follow_clean((string) end($noted));
+}
+
+/**
+ * What the header of a discussion says about the agent it follows, and what
+ * the person reading it may do: anybody in an open discussion may stop the
+ * following or bring the last agent back.
+ *
+ * @param string $followed the agent followed now, '' for none
+ * @param string $last     the agent Follow again brings back (ws_thread_follow_last())
+ * @param bool   $mine     the reader is in the discussion
+ * @param bool   $closed   the discussion is concluded
+ * @return array follow (agent key or ''), again (agent key or ''), can_change (bool)
+ */
+function ws_thread_follow_state($followed, $last, $mine, $closed)
+{
+    $followed = ws_thread_follow_clean($followed);
+    $again = ($followed === '') ? ws_thread_follow_clean($last) : '';
+
+    return array(
+        'follow'     => $followed,
+        'again'      => $again,
+        'can_change' => $mine && !$closed && (($followed !== '') || ($again !== '')),
+    );
+}
+
+/**
+ * Why a person may not stop or start the following of a discussion: '' when
+ * they may. The panel and the API ask the same.
+ *
+ * @param array $viewer
+ * @param array $channel the discussion
+ * @param bool  $follow  follow again (true) or stop (false)
+ * @return string
+ */
+function ws_thread_follow_refusal($viewer, $channel, $follow)
+{
+    $thread = ws_channel_is_thread($channel) ? ws_thread($channel['id']) : null;
+
+    if (!$thread) {
+        return lang('That discussion could not be found.');
+    }
+
+    if (!ws_thread_follow_ready()) {
+        return lang('The workspace is not installed yet: the database has to be updated first.');
+    }
+
+    if (!ws_channel_membership($channel['id'], $viewer['id'])) {
+        return lang('Only the people in a discussion can change it.');
+    }
+
+    if (((int) $thread['closed_at'] > 0) || ((int) $channel['archived_at'] > 0)) {
+        return lang('The discussion was concluded.');
+    }
+
+    if ($follow && (ws_thread_follow_agent($channel['id']) === '') && (ws_thread_follow_last($thread) === '')) {
+        return lang('No assistant was asked in this discussion yet.');
+    }
+
+    return '';
+}
+
+/**
+ * Stops the following of a discussion, or brings the last agent back. The
+ * discussion gets a line saying who did it; nothing changes when it is as
+ * asked already.
+ *
+ * @param array $viewer
+ * @param array $channel the discussion
+ * @param bool  $follow  follow again (true) or stop (false)
+ * @return array ok, error, follow (agent key or '')
+ */
+function ws_thread_follow_change($viewer, $channel, $follow)
+{
+    $error = ws_thread_follow_refusal($viewer, $channel, $follow);
+
+    if ($error !== '') {
+        return array('ok' => false, 'error' => $error, 'follow' => '');
+    }
+
+    $thread = ws_thread($channel['id']);
+    $now = ws_thread_follow_agent($channel['id']);
+    $agent = $follow ? (($now !== '') ? $now : ws_thread_follow_last($thread)) : '';
+
+    if ($agent === $now) {
+        return array('ok' => true, 'error' => '', 'follow' => $now);
+    }
+
+    ws_thread_follow_set($channel['id'], $agent);
+
+    $handle = ws_thread_follow_handle($follow ? $agent : $now);
+    $handle = ($handle !== '') ? $handle : lang('the assistant');
+    $who = '<@user:' . (int) $viewer['id'] . '>';
+
+    ws_message_system($channel['id'], $follow
+        ? lang(array('string' => '{var:1} asked {var:2} to follow the discussion again', 'vars' => array($who, $handle)))
+        : lang(array('string' => '{var:1} stopped {var:2} following the discussion', 'vars' => array($who, $handle))));
+
+    ws_message_touch((int) $thread['message_id']);
+
+    return array('ok' => true, 'error' => '', 'follow' => $agent);
+}
+
+/**
  * The agents a message asks by name or by answering one of their answers,
  * as ws_message_ask_assistants() asks them: Claude, then an MCP server that
  * is an agent itself or Pinegrap AI.
@@ -759,6 +921,8 @@ function ws_thread_present($viewer, $thread, $channel)
         WHERE channel_id = '" . (int) $channel['id'] . "' AND deleted_at = 0 AND sender_kind <> 'system'");
     $closed = ((int) $thread['closed_at'] > 0);
     $agents = array_values(array_filter(explode(',', (string) $thread['assistants'])));
+    $followed = ws_thread_follow_ready() ? ws_thread_follow_clean($thread['follow_agent'] ?? '') : '';
+    $follow = ws_thread_follow_state($followed, (($followed === '') && $member && !$closed && ws_thread_follow_ready()) ? ws_thread_follow_last($thread) : '', (bool) $member, $closed);
     $names = array();
 
     foreach ($agents as $agent) {
@@ -782,6 +946,11 @@ function ws_thread_present($viewer, $thread, $channel)
         'closed_text' => $closed ? lang(array('string' => 'Concluded by {var:1} on {var:2}; kept until {var:3}', 'vars' => array(
             ws_person_name($thread['closed_by']), date('d.m.Y', (int) $thread['closed_at']), date('d.m.Y', (int) $thread['purge_at'])))) : '',
         'assistants' => $names,
+        'follow'     => $follow['follow'],
+        'follow_handle' => ws_thread_follow_handle($follow['follow']),
+        'follow_again' => $follow['again'],
+        'follow_again_handle' => ws_thread_follow_handle($follow['again']),
+        'can_follow' => $follow['can_change'],
     );
 }
 
@@ -1068,6 +1237,12 @@ function ws_threads_js_strings()
         'th_bar_last'       => ws_js_template('last {var:1}', 1),
         'th_bar_closed'     => lang('Concluded'),
         'th_bar_assistants' => ws_js_template('{var:1} was asked in this discussion', 1),
+        'th_follows'        => ws_js_template('{var:1} follows this discussion', 1),
+        'th_follows_help'   => lang('It answers every message here that mentions nobody, without its name being written.'),
+        'th_follow_stop'    => lang('Stop'),
+        'th_follow_again'   => lang('Follow again'),
+        'th_follow_again_label' => ws_js_template('Ask {var:1} to follow the discussion again', 1),
+        'th_follow_stop_label' => ws_js_template('Stop {var:1} following the discussion', 1),
         'th_section'        => lang('Discussions'),
         'th_in'             => ws_js_template('in #{var:1}', 1),
         'th_about'          => lang('The message it is about'),

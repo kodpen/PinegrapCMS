@@ -2648,6 +2648,7 @@
     "Ask what to read next; the answer comes from someone who has read it.": "Sırada ne okuyacağınızı sorun; yanıt, o kitabı okumuş birinden gelir.",
     "Ask your customers before you publish their words, and use their real names only with their permission.": "Müşterilerinizin sözlerini yayımlamadan önce onlara sorun; gerçek adlarını yalnızca izinleriyle kullanın.",
     "Ask {var:1} to approve “{var:2}” in {var:3}": "{var:3} kanalında “{var:2}” için onay iste: {var:1}",
+    "Ask {var:1} to follow the discussion again": "{var:1} tartışmayı yeniden izlesin",
     "Ask, share and learn with the people who use the app every day.": "Uygulamayı her gün kullananlarla birlikte sorun, paylaşın ve öğrenin.",
     "Asked": "Talep",
     "Asked by {var:1}": "İsteyen: {var:1}",

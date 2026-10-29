@@ -131,3 +131,67 @@ function test_workspace_thread_follow_prompts()
 	pg_assert_contains('ws_ai_followed_sentence()', workspace_thread_follow_test_source('ws_ai_briefing'));
 	pg_assert_contains('Answer the latest messages', ws_ai_followed_sentence());
 }
+
+// The header says whom the discussion follows; anybody in an open one may
+// stop it, and once stopped bring the last agent back.
+function test_workspace_thread_follow_state()
+{
+	pg_assert_same(array('follow' => 'claude', 'again' => '', 'can_change' => true), ws_thread_follow_state('claude', 'ai', true, false), 'followed: Stop');
+	pg_assert_same(array('follow' => '', 'again' => 'ai', 'can_change' => true), ws_thread_follow_state('', 'ai', true, false), 'stopped: Follow again');
+	pg_assert_same(array('follow' => '', 'again' => '', 'can_change' => false), ws_thread_follow_state('', '', true, false), 'nobody was ever asked');
+	pg_assert_false(ws_thread_follow_state('claude', '', false, false)['can_change'], 'somebody not in it only reads');
+	pg_assert_false(ws_thread_follow_state('mcp:4', '', true, true)['can_change'], 'a concluded discussion stays as it was');
+	pg_assert_same('mcp:4', ws_thread_follow_state(' MCP:4 ', '', true, false)['follow']);
+	pg_assert_same('@Claude', ws_thread_follow_handle('claude'));
+	pg_assert_same('@ai', ws_thread_follow_handle('ai'));
+	pg_assert_same('', ws_thread_follow_handle(''));
+}
+
+// Stop and Follow again: a person's own choice, rehearsed, written through
+// the panel's own function, with the system line.
+function test_workspace_thread_follow_change_route()
+{
+	$routes = array();
+
+	foreach (ws_api_routes() as $route) {
+		$routes[$route['id']] = $route;
+	}
+
+	$route = $routes['workspace.threads.follow'] ?? null;
+
+	pg_assert_true(is_array($route), 'the route is declared');
+	pg_assert_same('POST', $route['method']);
+	pg_assert_same('/workspace/threads/{id}/follow', $route['path']);
+	pg_assert_same('WorkspaceThread', $route['returns']);
+	pg_assert_true(!empty($route['dry_run']), 'it rehearses');
+	pg_assert_false(pg_mcp_route_is_offered($route), 'no MCP tool');
+
+	$handler = workspace_thread_follow_test_source('ws_api_threads_follow');
+
+	pg_assert_contains('ws_api_person_only(', $handler);
+	pg_assert_contains('ws_thread_follow_refusal(', $handler);
+	pg_assert_true(strpos($handler, 'api_dry_run_stop(') < strpos($handler, 'ws_thread_follow_change('), 'the rehearsal stops before the write');
+
+	$change = workspace_thread_follow_test_source('ws_thread_follow_change');
+
+	pg_assert_contains('ws_thread_follow_refusal(', $change);
+	pg_assert_contains('ws_thread_follow_set(', $change);
+	pg_assert_contains('ws_message_system(', $change);
+	pg_assert_contains("ws_channel_membership(", workspace_thread_follow_test_source('ws_thread_follow_refusal'), 'anybody in it, nobody else');
+	pg_assert_contains("'ws_thread_follow'", file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel action is allowed');
+}
+
+// The API's discussion carries the follow fields in the declared order.
+function test_workspace_thread_follow_api_fields()
+{
+	$fields = ws_api_thread_follow_fields(array('follow' => 'claude', 'follow_handle' => '@Claude', 'follow_again' => '', 'can_follow' => true));
+
+	pg_assert_same(array('follow' => 'claude', 'follow_handle' => '@Claude', 'follow_again' => null, 'can_follow' => true), $fields);
+	pg_assert_same(array('follow' => null, 'follow_handle' => null, 'follow_again' => 'ai', 'can_follow' => false),
+		ws_api_thread_follow_fields(array('follow' => '', 'follow_handle' => '', 'follow_again' => 'ai', 'can_follow' => false)));
+
+	$schema = array_keys(ws_api_thread_schema());
+	$at = array_search('assistants', $schema, true);
+
+	pg_assert_same(array_keys($fields), array_slice($schema, $at + 1, 4), 'declared after assistants');
+}
