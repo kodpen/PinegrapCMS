@@ -15,7 +15,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C6a — templates opt in. Done, #2969:** the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised; installed sites change nothing (`designer/collection-fields.md`).
 - **C6b1 — template references resolved. Done, #3025:** resolve `_cf.ref 'tab:<key>'` at Publish (server and editor cache), create the forms in order (target first), map `_cf.ref` in the design export (`designer/collection-template-refs.md`).
-- **C6b2 — seeded references and blog categories.** Seed sample records' reference values by the target record's label (stored as its `reference_code`); then a categories collection for the blog template, its posts referencing it, the template's version raised.
+- **C6b2 — seeded references and blog categories. In progress.** Seed sample records' reference values by the target record's label (stored as its `reference_code`); then a categories collection for the blog template, its posts referencing it, the template's version raised.
 
 - **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
 
