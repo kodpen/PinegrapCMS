@@ -33,7 +33,7 @@ description: Mark on texts written with AI (products.ai_fields, page.ai_fields, 
 - `duplicate_style.php` takes `page.ai_fields` with the texts; the product and page copies write it with `pg_ai_fields_copy()`: the marks of the texts copied unchanged. A text the copy changes (letters replaced, find and replace) loses it (#2123).
 
 ## What does not mark yet?
-- The API, imports, Workspace proposals; the token `__ai_generated`. See docs/memory/plans/ai-write-buttons.md.
+- The API, imports, Workspace proposals. Site note: ai-write-note.md.
 
 ## How was it checked?
 - Sandbox (MariaDB 10.11): the step twice; saves over HTTP (marked, kept, hand edit with or without the list, changed elsewhere, emptied, x); Playwright, stand-in Prompt API (typing, editor, submit, x).

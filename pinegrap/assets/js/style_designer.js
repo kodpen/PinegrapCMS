@@ -39618,6 +39618,7 @@ const StyleDesigner = (function () {
             ['__short_description', _sdT('Short description')],
             ['__description',       _sdT('Description (long)')],
             ['__details',           _sdT('Details (rich text)')],
+            ['__ai_generated',      _sdT('AI note (when a description was written with AI)')],
             ['__address_name',      'URL slug'],
             ['__detail_url',        _sdT('Page URL (canonical)')],
             ['__sort_order',        _sdT('Sort order (within the group)')],

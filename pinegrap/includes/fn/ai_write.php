@@ -2169,6 +2169,43 @@ function pg_ai_fields_for_variant($marks, $set_text, $variant_text)
 }
 
 /**
+ * The columns of a record that its page on the site shows to a visitor, and
+ * so the ones a note on that page speaks for: a product's short description
+ * (its title on the page) and its long description. A page's own texts have
+ * none yet: no widget prints a note for them. The SEO title and meta
+ * description are read by search engines, not printed in the page's body.
+ *
+ * @param string $record product | page
+ * @return array columns
+ */
+function pg_ai_fields_shown($record)
+{
+    return ($record === 'product') ? array('short_description', 'full_description') : array();
+}
+
+/**
+ * The note a site prints where a design binds ^^__ai_generated^^ (the
+ * product detail widget): a sentence when a text the visitor reads on the
+ * record's page is a "Write with AI" draft as it was used
+ * (pg_ai_fields_marked()), else '' so the bound element stays empty and the
+ * site's [data-pg-bind]:empty rule hides it.
+ *
+ * @param string $record product | page
+ * @param mixed  $row    the record's row; its ai_fields and the texts it marks
+ * @return string plain text, escaped by the token pass
+ */
+function pg_ai_fields_note($record, $row)
+{
+    if (!is_array($row) || !isset($row['ai_fields'])) {
+        return '';
+    }
+
+    $marked = pg_ai_fields_marked($record, $row['ai_fields'], pg_ai_fields_values($record, $row));
+
+    return (count(array_intersect($marked, pg_ai_fields_shown($record))) > 0) ? lang('Written with the help of AI.') : '';
+}
+
+/**
  * The marker beside a field's label: "AI" with the words "Written with AI" in
  * a tooltip and for screen readers, and a button that removes the mark. Drawn
  * for every field that can carry one and hidden while the field has none, so

@@ -35,6 +35,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
 - ai-write-marks-designer.md: The AI mark on the visual designer's page settings (Page Title, Meta Description): page aiText/ai_fields in style_designer.js, pg_ai_fields_page_save() on the save
 - ai-write-marks.md: Mark on texts written with AI (products.ai_fields, page.ai_fields, 11.0.23): what is stored, the fingerprint, when a field gets or loses it (a hand edit removes it), the marker, pg:ai-write-used
+- ai-write-note.md: The site note ^^__ai_generated^^ (product detail widget): when it prints, which columns it speaks for, pg_ai_fields_note(), a page's own marks still open
 - ai-write-panel.md: The "Write with AI" button and draft panel (pg_ai_write_button(), pg_ai_write.js): where it is, adding it to a field, what the panel does, what the server adds
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer

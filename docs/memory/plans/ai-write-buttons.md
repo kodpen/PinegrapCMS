@@ -1,6 +1,6 @@
 ---
 name: ai-write-buttons
-description: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel and designer AI marks done): "Write with AI"; image alt text and the __ai_generated token left
+description: Plan (approved 2026-10-19, in progress: endpoint, text buttons, browser model, panel and designer AI marks done): "Write with AI"; image alt text left
 ---
 
 ## Why?
@@ -12,6 +12,7 @@ description: Plan (approved 2026-10-19, in progress: endpoint, text buttons, bro
 - Step 3 (PRs #585 and #586): custom form records (`record_field`) on the record add and edit screens; the visual designer's page settings (title, meta description). Behaviour: the same two files.
 - The browser's built-in AI (PR #597): a site without Pinegrap AI drafts with the person's browser model (Prompt API), Turkish through the Translator API. Behaviour: docs/memory/ui/ai-write-browser.md.
 - Step 4, first part (PR #811): `products.ai_fields`, `page.ai_fields` (11.0.23), the marker on the product and page properties screens; copies (#2123); 4a, the designer's page settings (PR #2453). Behaviour: docs/memory/ui/ai-write-marks.md.
+- Step 4b (PR #2949): the token `__ai_generated` in the product detail widget, for the short and long description. Behaviour: docs/memory/ui/ai-write-note.md.
 
 ## What is decided?
 - One endpoint (`ai_write`, `includes/panel/ai_write.php` + `includes/fn/ai_write.php`), no new provider. The draft never saves itself; the person accepts it.
@@ -25,8 +26,10 @@ description: Plan (approved 2026-10-19, in progress: endpoint, text buttons, bro
 
 ## What remains?
 3. The alt-text button in the designer once the Pinegrap AI connection can say its model reads images, or on the browser's model, whose Prompt API takes images (`expectedInputs` type `image`) (S).
-4b. The widget token `__ai_generated` (S): a note printed where `pg_ai_fields_marked()` names a column; the product detail renderers (`widgets_catalog.php`, `__short_description`/`__description`) and the designer's binding list, `php tools/check_bindings.php`. Which widget shows a page's own marks is not settled yet.
 5. When done: decisions move to docs/memory/ui/ai-write.md and this file is deleted.
 
+## What is open?
+- Which widget shows a page's own marks (`page.ai_fields`): none yet; the page's marked texts (title, meta description) are not in its body.
+
 ## Where to start?
-- Step 4b: docs/memory/ui/ai-write-marks.md and docs/memory/designer/token-dictionary.md.
+- Step 3: docs/memory/ui/ai-write-browser.md and docs/memory/ui/ai-write-panel.md.

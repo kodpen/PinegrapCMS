@@ -1024,6 +1024,7 @@
     "AI assistant · asked with @Claude": "Yapay zekâ asistanı · @Claude ile çağrılır",
     "AI can be wrong: read the text before you save.": "Yapay zekâ yanılabilir: kaydetmeden önce metni okuyun.",
     "AI integration": "AI entegrasyonu",
+    "AI note (when a description was written with AI)": "Yapay zekâ notu (bir açıklama yapay zekâ ile yazıldığında)",
     "AI search ({var:1}): let in by the firewall.": "Yapay zekâ araması ({var:1}): güvenlik duvarı içeri alıyor.",
     "AI search ({var:1}): turned away by the firewall.": "Yapay zekâ araması ({var:1}): güvenlik duvarı geri çeviriyor.",
     "AI summary box (written in the visitor's browser)": "Yapay zekâ özet kutusu (ziyaretçinin tarayıcısında yazılır)",
