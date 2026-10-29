@@ -147,7 +147,7 @@ function test_workspace_mail_box_copy_fields()
 	pg_assert_contains('value="Gönderilmiş"', $html);
 
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
-	pg_assert_contains("'smtp_port', 'sent_copy', 'sent_folder') as \$key", $source, 'kept in the box\'s settings');
+	pg_assert_contains("'smtp_port', 'sent_copy', 'sent_folder', 'connection_id') as \$key", $source, 'kept in the box\'s settings');
 }
 
 function test_workspace_mail_sent_copy_and_bounce_wiring()

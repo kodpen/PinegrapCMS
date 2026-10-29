@@ -1,6 +1,6 @@
 ---
 name: passkey-ceremonies
-description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; what is not built yet
+description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; decisions in passkey-decisions
 ---
 
 ## What is built? (PR #672, passkeys step 2)
@@ -15,7 +15,8 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 ## What removes an account's passkeys?
 - `pg_mfa_reset()`: the administrator two-step reset on `edit_user.php` (after a suspected compromise an old passkey must not answer the second step once TOTP is set up again) and both account deletion paths (PR #672).
 - The account page's remove, one at a time (`core/passkey-account-section.md`).
-- The self-disable on the account page (`pg_mfa_disable()` after `pg_mfa_self_disable_check()`) keeps them, listed and removable: the person proved the password and a code, and passkeys become a first factor in step 4.
+- The self-disable on the account page (`pg_mfa_disable()` after `pg_mfa_self_disable_check()`) keeps them, listed and removable: the person proved the password and a code, and a passkey is a proof on its own (sign-in with a passkey alone: [[passkey-passwordless]]).
+- Removing one ends its sessions ([[passkey-sessions]]); a password reset keeps them ([[passkey-passwordless]]).
 
 ## Why is the sign-in answer posted to mfa.php, not passkey.php?
 - Completing a sign-in redirects (device limit screen, send_to, home page); a JSON answer to fetch() cannot. The screen that owns the step takes the answer; passkey.php only hands out options and keeps registrations.
@@ -27,8 +28,5 @@ description: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys
 ## What does a visitor see on a refusal?
 - One sentence per site/session/list code (`unavailable`, `host`, `challenge`, `none`, `limit`, `duplicate`); every refusal of the credential itself reads "The passkey was not accepted." The code goes to the activity log (`access denied (passkey not accepted: …)`, `passkey not added (…)`).
 
-## When does a passkey count as the second factor?
-- [[passkey-second-factor]] (PR #1862).
-
-## What is not built yet? (plans/passkeys.md)
-- The designed widget's add form without TOTP and new recovery codes for passkey-only accounts (step 4c2); Passwordless sign-in and autofill: [[passkey-passwordless]].
+## Where are the decisions and later pieces?
+- [[passkey-decisions]].

@@ -97,7 +97,7 @@ function test_workspace_mail_box_input()
 	pg_assert_same(array(
 		'name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => 'mx.google.com', 'enabled' => 1,
 		'provider' => '', 'host' => '', 'port' => 993, 'user' => '', 'password' => '', 'folder' => 'INBOX', 'after_fetch' => 'seen', 'move_folder' => '',
-		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0, 'sent_copy' => 0, 'sent_folder' => '',
+		'reply_via' => 'box', 'smtp_host' => '', 'smtp_port' => 0, 'sent_copy' => 0, 'sent_folder' => '', 'connection_id' => 0,
 	), $ok['values'], 'cleaned; no server is an .eml-only box');
 
 	$base = array('name' => 'Support', 'address' => 'support@example.com', 'channel_id' => 4, 'auth_server' => '');
@@ -234,7 +234,17 @@ function test_workspace_mail_box_input_sending()
 
 	$site = ws_mail_box_input(array_merge($base, array('provider' => 'gmail', 'user' => 'u', 'reply_via' => 'site', 'smtp_host' => 'smtp.example.com')));
 	pg_assert_same(array('site', '', 0), array($site['values']['reply_via'], $site['values']['smtp_host'], $site['values']['smtp_port']), 'the site\'s settings keep no server');
-	pg_assert_same('box', ws_mail_box_input(array_merge($base, array('reply_via' => 'connection')))['values']['reply_via'], 'a connected account is not chosen here yet');
+	pg_assert_same(lang('Choose the connected account answers are sent through.'), ws_mail_box_input(array_merge($base, array('reply_via' => 'connection')))['error'], 'answers through an account need one');
+	pg_assert_same('box', ws_mail_box_input(array_merge($base, array('reply_via' => 'odd')))['values']['reply_via'], 'an unknown way is the box\'s server');
+
+	// Microsoft 365: a connected account signs in as the box's address and
+	// answers through it; no password, no sending server.
+	$microsoft = ws_mail_box_input(array_merge($base, array('provider' => 'microsoft', 'connection_id' => '7', 'reply_via' => 'connection', 'smtp_host' => 'smtp.example.com')));
+	pg_assert_true($microsoft['ok'], (string) $microsoft['error']);
+	pg_assert_same(array('outlook.office365.com', 993, 7, 'connection', '', $base['address']),
+		array($microsoft['values']['host'], $microsoft['values']['port'], $microsoft['values']['connection_id'], $microsoft['values']['reply_via'], $microsoft['values']['smtp_host'], $microsoft['values']['user']));
+	pg_assert_same(lang('A connected account reads the mailbox over IMAP: enter its server, or choose the service.'), ws_mail_box_input(array_merge($base, array('connection_id' => '7')))['error']);
+	pg_assert_true(!empty(ws_mail_providers()['microsoft']['connection']));
 
 	foreach (ws_mail_providers() as $key => $provider) {
 		pg_assert_true(($provider['smtp_host'] === '') || pg_imap_host_valid($provider['smtp_host']), $key . ' sending server is a host name');
