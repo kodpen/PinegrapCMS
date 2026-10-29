@@ -20,6 +20,7 @@ include('init.php');
 include_once('liveform.class.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 
 // Stop early when the screen is opened without an existing record (stale
 // link, hand-typed URL, row deleted meanwhile, an id sent as an array): a
@@ -122,13 +123,13 @@ if (!$_POST) {
         
         // if this is a system theme then output the edit theme button
         if ($row[0] > 0) {
-            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'">' . lang('Edit Theme') . '</button>';
-            $output_export_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'">' . lang('Export') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-palette me-2" aria-hidden="true"></i>' . lang('Edit Theme') . '</button>';
+            $output_export_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i>' . lang('Export') . '</button>';
             $output_download_file_button = '';
         } else {
-            $output_edit_theme_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'">' . lang('Edit CSS') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-filetype-css me-2" aria-hidden="true"></i>' . lang('Edit CSS') . '</button>';
             $output_export_button = '';
-            $output_download_file_button = '<button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')">' . lang('Download File') . '</button>';
+            $output_download_file_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang('Download File') . '</button>';
         }
 
         // A theme recorded here but missing from the disk says so before it is
@@ -160,55 +161,70 @@ if (!$_POST) {
                             <div class="col-12 text-center md:text-start">
                                 <h2 class="d-inline-block text-break"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a></h2>
                                 <p class="fg-secondary small">' . lang('Page Style Head Tag') . ': ' . h('<stylesheet></stylesheet>') . '</p>
+                                <nav id="button_bar" class="navigation pg-toolbar" aria-label="' . h(lang('Button Bar')) . '">
+                                    ' . $output_edit_theme_button . '
+                                    ' . $output_export_button . '
+                                    ' . $output_download_file_button . '
+                                </nav>
                             </div>
                         </div>
                 <form action="edit_theme_file.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>(isset($_GET['id']) ? $_GET['id'] : ''))) . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>$from)) . '
-                    <table class="field">
-                        <tr>
-                            <th colspan="2"><h2>' . lang('Theme File Name') . '</h2></th>
-                        </tr>
-                        <tr>
-                            <td>' . lang('Name') . ':</td>
-                            <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'value'=>$file_name, 'size'=>'60', 'maxlength'=>'100')) . '</td>
-                        </tr>
-                        <tr>
-                            <th colspan="2"><h2>' . lang('Theme File Access Control') . '</h2></th>
-                        </tr>
-                        <tr>
-                            <td>' . lang('Folder') . ':</td>
-                            <td><select name="folder">' . select_folder($file_folder) . '</select></td>
-                        </tr>
-                        <tr>
-                            <td colspan="2"><h2>' . lang('Theme File Description') . '</h2></td>
-                        </tr>
-                        <tr>
-                            <td style="vertical-align: top">' . lang('Description') . ':</td>
-                            <td>' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'value'=>$description, 'rows'=>'3', 'cols'=>'50')) . '</td>
-                        </tr>
-                        <tr>
-                            <td colspan="2"><h2>' . lang('Activate Theme to Make it Live') . '</h2></td>
-                        </tr>
-                        <tr>
-                            <td><label for="activated_desktop_theme">' . lang('Activate for Desktop') . ':</label></td>
-                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'checkbox check')) . '</td>
-                        </tr>
-                        <tr>
-                            <td><label for="activated_mobile_theme">' . lang('Activate for Mobile') . ':</label></td>
-                            <td>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_mobile_theme', 'id'=>'activated_mobile_theme', 'value'=>'1', 'class'=>'checkbox check')) . '</td>
-                        </tr>
-                    </table>
+                    <div class="row">
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Theme File Name') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="col-12 my-3">
+                                        <label for="name" class="form-label">' . lang('Name') . '</label>
+                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control')) . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 md:col-6">' . pg_design_file_form_access_card(select_folder($file_folder)) . '
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Theme File Description') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="col-12 my-3">
+                                        <label for="description" class="form-label">' . lang('Description') . '</label>
+                                        ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'description', 'id'=>'description', 'value'=>$description, 'rows'=>'3', 'class'=>'form-control')) . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-12 md:col-6">
+                            <div class="card my-7">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Activate Theme to Make it Live') . '
+                                </div>
+                                <div class="card-body">
+                                    <div class="form-field my-3">
+                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_desktop_theme', 'id'=>'activated_desktop_theme', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                        <label for="activated_desktop_theme">' . lang('Activate for Desktop') . '</label>
+                                    </div>
+                                    <div class="form-field my-3">
+                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'activated_mobile_theme', 'id'=>'activated_mobile_theme', 'value'=>'1', 'class'=>'no-bs')) . '</div>
+                                        <label for="activated_mobile_theme">' . lang('Activate for Mobile') . '</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class="btn-group flex-wrap justify-content-center">
-                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                                <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
                                 <button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
-                                ' . $output_edit_theme_button . '
-                                ' . $output_export_button . '
-                                ' . $output_download_file_button . '
-                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                             </div>
                         </div>
                     </nav>
