@@ -260,7 +260,7 @@ function _parasut_shipment_identity_refusal($field, $order, $contact_tax_number)
         }
 
         return lang(array(
-            'string' => 'The buyer\'s VKN/TCKN is read from the order\'s "{var:1}" field (Paraşüt card of the commerce settings), and that field is empty on this order.',
+            'string' => 'The buyer\'s VKN/TCKN is read from the order\'s "{var:1}" field, chosen on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), and that field is empty on this order.',
             'vars' => array(lang('Custom Field') . ' #' . (($field === 'custom_field_1') ? '1' : '2')),
         ));
     }
@@ -789,8 +789,8 @@ function parasut_get_token()
             'success' => false,
             'token' => null,
             'error' => ($credentials['client_secret'] === '')
-                ? lang('Parasut credentials are not set. Enter them in Settings, E-commerce, Invoicing.')
-                : lang('Pinegrap is not connected to Paraşüt. On the Paraşüt card of the commerce settings, authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.'),
+                ? lang('Parasut credentials are not set. Enter them on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).')
+                : lang('Pinegrap is not connected to Paraşüt. On the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), authorize it with the code Paraşüt shows (Connect), or enter the Paraşüt user name and password.'),
         ];
     }
 
@@ -847,7 +847,7 @@ function parasut_get_token()
         // is, because authorizing again would not cure it.
         if ((string) ($data['error'] ?? '') === 'invalid_grant') {
             $data['error_description'] = lang(array(
-                'string' => 'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on the Paraşüt card of the commerce settings.',
+                'string' => 'The Paraşüt connection has expired ({var:1}). Authorize Pinegrap once more on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration).',
                 'vars' => (string) ($data['error_description'] ?? 'invalid_grant'),
             ));
         }
@@ -3366,7 +3366,7 @@ function parasut_stale_kept_notice($type, $id, $tried = true)
 function parasut_default_product_gone_refusal($id)
 {
     return lang(array(
-        'string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
+        'string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.',
         'vars' => array((string) $id),
     ));
 }

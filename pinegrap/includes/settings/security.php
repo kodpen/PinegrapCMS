@@ -197,7 +197,7 @@ $pg_settings_cards[] = '
                                             <label for="mfa_required_role" class="form-label">' . lang('Required for') . '</label>
                                             <select name="mfa_required_role" id="mfa_required_role" class="form-control pg-f-md"' . ($mfa_available ? '' : ' disabled="disabled"') . '>' . $mfa_role_options . '</select>
                                             <div class="form-text">' . lang('Two-step verification asks for a code from an authenticator app after the password. People in a required role who have not set it up are asked to when they next sign in. Anybody can turn it on from their account page.') . '</div>
-                                            ' . ($mfa_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php; set one from Settings › Commerce (Reset Encryption Key) first.') . '</div>') . '
+                                            ' . ($mfa_available ? '' : '<div class="alert theme-warning mt-3 mb-0" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . lang('Two-step verification needs an encryption key in config.php. Make one in Site Settings › Ecommerce › Payment Methods: with Enable Commerce and Credit/Debit Card on, switch on Reset Encryption Key and save.') . '</div>') . '
                                         </div>
                                         ' . ($passkey_signin_ready ? '<div class="col-12">
                                             <div class="form-field">

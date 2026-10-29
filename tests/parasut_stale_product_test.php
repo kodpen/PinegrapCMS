@@ -378,7 +378,7 @@ function test_parasut_stale_product_notices_and_refusal()
 	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds shipment document {var:1}, which E-Shipment on the order screen wrote for this order: the id was forgotten, but the invoice could not be sent once more without it.', 'vars' => array('1003775252'))), parasut_stale_kept_notice('ShipmentDocument', '1003775252', false));
 	pg_assert_same('', parasut_stale_kept_notice('SalesInvoice', '1', false));
 
-	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the Paraşüt card of the commerce settings, which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.', 'vars' => array('1079201749'))), parasut_default_product_gone_refusal('1079201749'));
+	pg_assert_same(lang(array('string' => 'Paraşüt no longer holds the default product/service {var:1} entered on the E-Invoice card of the Ecommerce settings (Enable Parasut Configuration), which invoice lines without a product card of their own go on. Enter there the id of a product or service Paraşüt holds; the document was not written.', 'vars' => array('1079201749'))), parasut_default_product_gone_refusal('1079201749'));
 }
 
 // What forgetting writes: every product holding the card, the warehouse
