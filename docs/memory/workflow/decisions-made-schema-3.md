@@ -1,0 +1,14 @@
+---
+name: decisions-made-schema-3
+description: Decisions list, schema part 3, approved from 2026-10-29 on: the checkout page and the legal acceptance on the order, the record_revisions table for collection items; rules in part 1
+---
+
+## Where are the rules and the earlier steps?
+- `decisions-made-schema.md` (rules, 2026-10-27), `decisions-made-schema-2.md` (2026-10-28). Reasons are on the issues.
+
+## Which schema was approved on 2026-10-29?
+- Checkout page on the order (#2984, architect, step 11.0.120): `orders.checkout_page_id INT UNSIGNED NOT NULL DEFAULT 0` by `install_add_column()`, written where the page is known (the A1 redirect UPDATE and the completing UPDATE, `pg_order_complete_columns()`), read behind `pg_schema_has()` (built in A3a, #2998: `upgrade_2026_11_0_order_checkout_page()`); the webhook completion takes the receipt settings and the auto-registration switch from that page; 0 (orders started before the step) falls back to a plain-text receipt and no account (`commerce/order-completion-from-payment.md`). General labels continue from 11.0.120 (`release/version-numbering.md`).
+- Legal acceptance on the order (#3001, architect; step 11.0.121 `upgrade_2026_11_0_order_legal_acceptance()`, built in #3021): `orders.legal_acceptance TEXT NULL` by `install_add_column()`, JSON `{types, ip, user_agent, at}` written by the redirect UPDATE from the checkout's boxes, `waf_client_ip()` and the browser when the documents feature is on; the webhook completion hands them to `pg_legal_documents_store()` (optional ip, agent and time arguments; the visitor's path keeps reading its request). NULL: preinfo and contract accepted, kvkk not, IP from `orders.ip_address`, browser ''. Reason: the stored evidence and the consent-log rows are the ones the visitor gave; `orders.ip_address` holds IPv4 only.
+- Collection item revisions C7 (#3051, architect, the next free general label when pushed, 11.0.123 as of 2026-10-29): `record_revisions` by `install_create_table()` in the `page_revisions` shape (`form_id`, `page_id`, `revision_no` unique per item and taken in the INSERT, `values_json` MEDIUMTEXT, `record_json` TEXT, `values_hash` CHAR(40), `user_id`, `source` VARCHAR(16): edit, restore, api, workspace, `created_at`; no foreign keys, files kept by `file_id` only). Only items of forms with `custom_form_pages.collection = 1`; every path that changes an item's values or address name writes one (panel edit, restore, API, Workspace), a `complete`-only change none; retention by the page settings `page_revisions_keep` / `page_revisions_days` (no new config column), trimmed after each write and swept daily with the rows of deleted items; erasure deletes the revisions of every item it deletes or blanks, the export shows current values only; restore from the edit screen under its edit rights is a new revision; no API endpoints in C7.
+
+Related: docs/memory/workflow/decisions-made-schema.md, docs/memory/workflow/decisions-made-schema-2.md
