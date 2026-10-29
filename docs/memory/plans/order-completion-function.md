@@ -1,6 +1,6 @@
 ---
 name: order-completion-function
-description: Plan (#2382; A1 done in #2199, A2 in #2638–#2972): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
+description: Plan (#2382; A1 #2199, A2 #2638–#2972, A3 decided in #2984): the submit_order() tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
 ---
 
 ## What did the owner decide?
@@ -9,25 +9,16 @@ description: Plan (#2382; A1 done in #2199, A2 in #2638–#2972): submit_order()
 
 ## What is done?
 - A1 (#2199): when `authorize()` answers `redirect` with a payment id, the incomplete order keeps that id in `orders.transaction_id` and the amount it was started for in `orders.total` (`pg_payment_started_order_values()`, `UPDATE … AND status = 'incomplete'`). Stripe's 3-D Secure redirect has one; iyzico's 3-D Secure page names none, so nothing is written for it. Completion writes both again.
+- A2 (#2638, #2687, #2713, #2740, #2766, #2844, #2896, #2914, #2937, #2972): `pg_order_complete()` runs every stage of the tail session-free with a `$context` (`commerce/order-completion.md` and the files it names). Stays in `submit_order()`: auto-registration, the six frozen legacy gateways and their recurring profiles, the session values the receipt page reads, the post-save hook, the redirect.
 
-- A2a (#2638): `pg_order_complete()` (`commerce/order-completion.md`) holds the lock and the writes from the completing UPDATE to the order SMS; `submit_order()` calls it.
+## What did the architect decide for A3? (#2984)
+- Receipt settings: `orders.checkout_page_id` (step 11.0.120, `decisions-made-schema-2.md`) names the checkout page; written by the A1 redirect UPDATE and the completing UPDATE, read by A3 for the receipt settings and the auto-registration switch with `submit_order()`'s page query. 0 or a deleted page: plain-text receipt, fixed subject with the order number, always sent; no account.
+- Guest account: A3 links an existing account by the billing e-mail when the page's switch is on (`user_id`, `auto_registration = 'existing'`) and opens none. A3b opens one without signing in (`decisions-made-product-2.md`).
 
 ## What remains?
-- A2 (L), steps of about 1,000 product lines: each moves the next part of the tail into session-free functions of `includes/fn/order_completion.php` (`commerce/order-completion.md`), called by `submit_order()` where the code stood (same order of writes). `tests/order_completion_test.php` pins that order.
-  - A2a: done (#2638).
-  - A2b: done (#2687): `pg_order_complete_receipt()`, `pg_order_complete_ship_dates()`.
-  - A2c, per-line functions: A2c1 (#2713), A2c2 (#2740), A2c3a (#2766), A2c3b (#2844), A2c4 (#2896) done (`commerce/order-completion-lines.md`, `commerce/order-completion-line-comments.md`).
-  - A2d, cut in three:
-    - A2d1: done (#2914) (`commerce/order-completion-after-lines.md`); the ERP invoice call was already session-free and stays a call.
-    - A2d2: done (#2937) (`commerce/order-completion-before-lock.md`): key code use, gift card redemption and its error mail, commission rows behind the lock; auto-registration stays with the request (sign-in; its user id goes into the UPDATE).
-    - A2d3: done (#2972): `pg_order_complete()` runs every stage with a `$context` (`commerce/order-completion.md`).
-  - Stays in `submit_order()`: auto-registration, the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the post-save hook, the redirect.
-- A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
-
-## Open questions?
-- For A3: a guest's order completed by a payment service's message opens no account (auto-registration needs the visitor); is that wanted?
-- For A3: the receipt e-mail's settings (on, subject, format, header, footer, page) live on the checkout page (`order_preview_pages` / `express_order_pages`), and the order does not name the page it was placed from. A3 needs them without the visitor; if that takes a column, it is an architect question first.
+- A3 (M): the migration step and the column writes; `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
+- A3b (S): account creation (user without a password, set-password link, registration group, blocked-address refusal) moves out of `submit_order()` into a session-free function both paths call; the visitor's path keeps the sign-in and device cookie; `pg_order_new_account_email()` / `pg_order_new_account_link()` read `$context`, not `$_SESSION`, so the receipt carries the set-password link on both paths. Tests: the webhook path signs nobody in; the e-mail carries the link.
 
 ## Where to start?
-- A3, after the architect answers its open questions (receipt settings without the visitor; a guest's account): ask first, do not start before. Then build the context from the order row and the line query of `submit_order()`, call `pg_order_complete()`, then `pg_erp_auto_invoice()`.
+- A3: the step, then build the context from the order row and the line query of `submit_order()`, call `pg_order_complete()`, then `pg_erp_auto_invoice()`. A3b after A3 lands.
 - `commerce/order-completion.md`, `commerce/order-completion-after-lines.md`, `commerce/order-completion-before-lock.md`, `commerce/payment-callback.md`.

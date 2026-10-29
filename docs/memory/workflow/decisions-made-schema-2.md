@@ -1,6 +1,6 @@
 ---
 name: decisions-made-schema-2
-description: Decisions list, schema part 2: tables and columns approved from 2026-10-28 on (e-mail, workflow tables, MCP preamble, secret widths, AI prompt version, discussion follow); part 1 has the rules
+description: Decisions list, schema part 2: what was approved from 2026-10-28 on (e-mail, workflow tables, MCP preamble, secret widths, AI prompt version, discussion follow, checkout page); part 1 has the rules
 ---
 
 ## Where are the rules and the earlier steps?
@@ -13,5 +13,8 @@ description: Decisions list, schema part 2: tables and columns approved from 202
 - Gateway secret columns (#2792): the four VARCHAR(100) `config` columns stay; a sealed secret fits 47 plain characters, longer new values are refused. Widening them to VARCHAR(255) by `install_modify_column()` is approved in advance should a gateway ever need it.
 - AI request prompt version (#2829, architect, step 11.0.112): `ws_ai_requests.prompt_version` VARCHAR(16) NOT NULL DEFAULT '' by `install_add_column()`, read behind `waf_table_has_column()` like the table's other added columns; the value is `pg_ai_prompt_version()` (derived from the rules text), old rows stay '' (unknown); no table of rule texts, git history holds them.
 - Discussion follow (#2419, architect, step 11.0.113): `ws_threads.follow_agent` VARCHAR(64) NOT NULL DEFAULT '' by `install_add_column()`, values '', `claude`, `ai`, `mcp:<server id>` (room for the agent-handle keys), read behind `pg_schema_has()` (`ws_thread_follow_ready()`); old discussions stay '' (`workspace/workspace-discussion-follow.md`).
+
+## Which schema was approved on 2026-10-29?
+- Checkout page on the order (#2984, architect, step 11.0.120): `orders.checkout_page_id INT UNSIGNED NOT NULL DEFAULT 0` by `install_add_column()`, written where the page is known (the A1 redirect UPDATE and the completing UPDATE, `pg_order_complete_columns()`), read behind `pg_schema_has()`; the webhook completion takes the receipt settings and the auto-registration switch from that page; 0 (orders started before the step) falls back to a plain-text receipt and no account (`plans/order-completion-function.md`). General labels continue from 11.0.120 (`release/version-numbering.md`).
 
 Related: docs/memory/workflow/decisions-made-schema.md
