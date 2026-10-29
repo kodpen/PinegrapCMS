@@ -57,7 +57,7 @@ function test_panel_message_lang_contacts_opt_in()
 {
 	$source = panel_message_lang_source('view_contacts.php');
 	pg_assert_true(strpos($source, '>Opt-In</option>') === false && strpos($source, '>Opt-Out</option>') === false, 'view_contacts.php: literal opt-in options');
-	pg_assert_contains("\$output_opt_status = lang('Opt-In');", $source);
+	pg_assert_contains("<input value=\"' . h(lang('Opt-In')) . '\" type=\"text\"", $source, 'My Subscribers shows the translated status in a box');
 	pg_assert_contains("title=\"' . h(lang('Hide Contact Groups')) . '\"", $source);
 	pg_assert_contains("title=\"' . h(lang('Show Contact Groups')) . '\"", $source);
 }
