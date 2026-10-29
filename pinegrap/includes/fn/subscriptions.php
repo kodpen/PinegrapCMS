@@ -589,7 +589,11 @@ function pg_subscription_set_status($id, $to, $detail = '')
         return false;
     }
 
-    pg_subscription_event_write((int) $row['id'], 'status_' . $to, 0, 0, '', $detail);
+    $event_id = pg_subscription_event_write((int) $row['id'], 'status_' . $to, 0, 0, '', $detail);
+
+    // A cancelled or ended subscription is mailed through its campaign
+    // profiles (includes/fn/subscription_renewal.php).
+    pg_subscription_mail_send((int) $row['id'], $event_id, 'status_' . $to, (string) $row['status'], (string) $to);
 
     return true;
 }

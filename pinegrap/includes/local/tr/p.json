@@ -1120,6 +1120,7 @@
     "Press and hold to select the part you need, then copy it.": "İstediğiniz kısmı basılı tutarak seçin, sonra kopyalayın.",
     "Press any key and it plays a note; hold shift and it plays a worse one. Built with the Web Audio API in a weekend and still my favourite thing to show at parties.": "Herhangi bir tuşa basın, bir nota çalar; shift'e basılı tutun, daha kötüsünü çalar. Bir hafta sonunda Web Audio API ile yapıldı ve hâlâ partilerde göstermeyi en sevdiğim şey.",
     "Press the button below to confirm your subscription.": "Aboneliğinizi onaylamak için aşağıdaki düğmeye basın.",
+    "Press the button below to enter a new card for your subscription on the payment service's page.": "Aboneliğiniz için ödeme hizmetinin sayfasında yeni bir kart girmek üzere aşağıdaki düğmeye basın.",
     "Pressed again, it looks for the invoice at Paraşüt first and writes one only if none is there.": "Yeniden basıldığında önce faturayı Paraşüt'te arar, yalnızca orada yoksa yenisini yazar.",
     "Pressing, coming up": "Yaklaşan acil",
     "Pretty URLs are off: a record opens by its reference code (?r=…). They are turned on on the form's own page.": "Güzel URL'ler kapalı: kayıt referans koduyla (?r=…) açılır. Formun kendi sayfasından açılabilir.",

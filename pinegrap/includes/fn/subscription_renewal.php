@@ -278,6 +278,18 @@ function pg_subscription_renewal_card_fields($answer, $current, $seal)
     return $fields;
 }
 
+/**
+ * The status a row has after its plan was saved. Pure.
+ *
+ * @param array $row  the row as read
+ * @param array $plan pg_subscription_renewal_plan()
+ * @return string
+ */
+function pg_subscription_renewal_status_after($row, $plan)
+{
+    return ((string) ($plan['status'] ?? '') !== '') ? (string) $plan['status'] : (string) ($row['status'] ?? '');
+}
+
 /* ---------------------------------------------------------------------------
    One renewal
    --------------------------------------------------------------------------- */
@@ -290,7 +302,7 @@ function pg_subscription_renewal_card_fields($answer, $current, $seal)
  * @param int   $id
  * @param int   $now
  * @param array $io lock, unlock, read, first_order, charge, seal, save,
- *                  write_order, log, event
+ *                  write_order, log, event, mail
  * @return string the outcome, 'skipped' when another run holds the row or
  *                it is no longer due, 'refused' when it cannot be charged
  */
@@ -320,8 +332,9 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
         // a payment, so nothing is charged and the ladder runs as for a refusal.
         $plan = pg_subscription_renewal_plan($row, 'failed', array('error' => lang('The subscription\'s first order or its line is missing.')), $now);
         call_user_func($io['save'], $row, $plan);
-        call_user_func($io['event'], $id, $plan['event'], 0, 0, $plan['detail']);
+        $event_id = call_user_func($io['event'], $id, $plan['event'], 0, 0, $plan['detail']);
         call_user_func($io['unlock'], $id);
+        call_user_func($io['mail'], $id, (int) $event_id, $plan['event'], (string) $row['status'], pg_subscription_renewal_status_after($row, $plan), 0, $plan['detail']);
 
         return 'refused';
     }
@@ -353,8 +366,12 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
         )));
     }
 
-    call_user_func($io['event'], $id, $plan['event'], $order_id, ($outcome === 'paid') ? (int) $row['amount'] : 0, $plan['detail']);
+    $event_id = call_user_func($io['event'], $id, $plan['event'], $order_id, ($outcome === 'paid') ? (int) $row['amount'] : 0, $plan['detail']);
     call_user_func($io['unlock'], $id);
+
+    // After the lock is let go: the mail renders a page, and the row has
+    // already moved.
+    call_user_func($io['mail'], $id, (int) $event_id, $plan['event'], (string) $row['status'], pg_subscription_renewal_status_after($row, $plan), $order_id, $plan['detail']);
 
     return $outcome;
 }
@@ -389,6 +406,7 @@ function pg_subscription_renewal_io()
         'event' => function ($id, $kind, $order_id, $amount, $detail, $remote_event_id = '') {
             return pg_subscription_event_write($id, $kind, $order_id, $amount, $remote_event_id, $detail);
         },
+        'mail' => 'pg_subscription_mail_send',
     );
 }
 
@@ -641,8 +659,9 @@ function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = nu
 
     $order_id = (int) call_user_func($io['write_order'], $row, $first, $answer, $now);
 
-    call_user_func($io['event'], $id, 'renewed', $order_id, (int) $row['amount'], '', (string) ($answer['transaction_id'] ?? ''));
+    $event_id = call_user_func($io['event'], $id, 'renewed', $order_id, (int) $row['amount'], '', (string) ($answer['transaction_id'] ?? ''));
     call_user_func($io['unlock'], $id);
+    call_user_func($io['mail'], $id, (int) $event_id, 'renewed', (string) $row['status'], pg_subscription_renewal_status_after($row, $plan), $order_id, '');
 
     return 'paid';
 }
@@ -703,4 +722,223 @@ function pg_subscription_renewals_run($now, $limit = 200)
     }
 
     return $counts;
+}
+
+/* ---------------------------------------------------------------------------
+   Mails
+   --------------------------------------------------------------------------- */
+
+/**
+ * The campaign profile action an event of a subscription mails through.
+ * A failure that ends the ladder says the subscription stopped; a row that
+ * is ended after it was cancelled has been told already. Pure.
+ *
+ * @param string $event         subscription_events.kind
+ * @param string $status_before the status the row had
+ * @param string $status_after  the status the event left it in
+ * @return string subscription_renewed, subscription_failed,
+ *                subscription_cancelled, or '' for no mail
+ */
+function pg_subscription_mail_action($event, $status_before, $status_after)
+{
+    switch ((string) $event) {
+        case 'renewed':
+            return 'subscription_renewed';
+
+        case 'renewal_failed':
+            return ((string) $status_after === 'ended') ? 'subscription_cancelled' : 'subscription_failed';
+
+        case 'confirm_needed':
+            return 'subscription_failed';
+
+        case 'status_cancelled':
+            return 'subscription_cancelled';
+
+        case 'status_ended':
+            return ((string) $status_before === 'cancelled') ? '' : 'subscription_cancelled';
+    }
+
+    return '';
+}
+
+/**
+ * The mail-merge fields of a subscription mail, every one always passed (empty
+ * when unknown) so a [[...||...]] block takes its else part. Pure but for the
+ * site's number separators.
+ *
+ * @param array $row     the subscriptions row
+ * @param array $context product_name, order_number (the renewal order),
+ *                       confirm_url, card_url
+ * @return array name, data, type
+ */
+function pg_subscription_mail_fields($row, $context)
+{
+    $next = (int) ($row['next_charge_at'] ?? 0);
+    $amount = (int) ($row['amount'] ?? 0);
+    $currency = (string) ($row['currency'] ?? '');
+
+    return array(
+        array('name' => 'subscription_product', 'data' => (string) ($context['product_name'] ?? ''), 'type' => ''),
+        array('name' => 'subscription_amount', 'data' => ($amount > 0) ? trim(pg_format_number($amount / 100, 2) . ' ' . $currency) : '', 'type' => ''),
+        array('name' => 'subscription_next_date', 'data' => ($next > 0) ? date('Y-m-d', $next) : '', 'type' => 'date'),
+        array('name' => 'subscription_card_url', 'data' => (string) ($context['card_url'] ?? ''), 'type' => ''),
+        array('name' => 'subscription_confirm_url', 'data' => (string) ($context['confirm_url'] ?? ''), 'type' => ''),
+        array('name' => 'order_number', 'data' => (string) ($context['order_number'] ?? ''), 'type' => ''),
+    );
+}
+
+/**
+ * How long a card update link from a mail stays open: past the last step of
+ * the 1/3/7 ladder.
+ *
+ * @return int seconds
+ */
+function pg_subscription_card_link_ttl()
+{
+    return 2592000;
+}
+
+/**
+ * The signature of a card update link. Its own prefix keeps it apart from any
+ * other HMAC made with the same key.
+ *
+ * @param int    $id        the subscription
+ * @param int    $issued_at
+ * @param string $key
+ * @return string 64 hex characters, '' when any part is missing
+ */
+function pg_subscription_card_token($id, $issued_at, $key)
+{
+    if (((int) $id <= 0) || ((int) $issued_at <= 0) || ((string) $key === '')) {
+        return '';
+    }
+
+    return hash_hmac('sha256', 'subscription-card:' . (int) $id . ':' . (int) $issued_at, (string) $key);
+}
+
+/**
+ * The card update link a mail carries (subscription_card.php).
+ *
+ * @param int $id
+ * @param int $now
+ * @return string '' without the site's key
+ */
+function pg_subscription_card_url($id, $now)
+{
+    $token = pg_subscription_card_token($id, $now, defined('ENCRYPTION_KEY') ? (string) ENCRYPTION_KEY : '');
+
+    if ($token === '') {
+        return '';
+    }
+
+    $base = defined('URL_SCHEME') ? URL_SCHEME . HOSTNAME_SETTING . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY : '';
+
+    return $base . '/subscription_card.php?s=' . (int) $id . '&t=' . (int) $now . '&k=' . $token;
+}
+
+/**
+ * What a card update link can do now. Pure.
+ *
+ * invalid: not a link of this form, a signature that does not match, or
+ *          issued more than five minutes ahead of this clock;
+ * expired: older than pg_subscription_card_link_ttl();
+ * closed:  the subscription no longer runs;
+ * open:    the button may send the customer to the payment service.
+ *
+ * @param array  $source   $_GET or $_POST
+ * @param string $key
+ * @param array|null $row  the subscriptions row the link names
+ * @param int    $now
+ * @return string
+ */
+function pg_subscription_card_link_state($source, $key, $row, $now)
+{
+    $id = is_array($source) ? ($source['s'] ?? null) : null;
+    $issued_at = is_array($source) ? ($source['t'] ?? null) : null;
+    $token = is_array($source) ? ($source['k'] ?? null) : null;
+
+    if (!is_string($id) || !is_string($issued_at) || !is_string($token)
+        || (preg_match('/^[1-9][0-9]{0,9}$/', $id) !== 1)
+        || (preg_match('/^[1-9][0-9]{0,10}$/', $issued_at) !== 1)
+        || (preg_match('/^[0-9a-f]{64}$/', $token) !== 1)) {
+        return 'invalid';
+    }
+
+    $expected = pg_subscription_card_token((int) $id, (int) $issued_at, $key);
+
+    if (($expected === '') || !hash_equals($expected, $token) || ((int) $issued_at > (int) $now + 300)) {
+        return 'invalid';
+    }
+
+    if ((int) $now > (int) $issued_at + pg_subscription_card_link_ttl()) {
+        return 'expired';
+    }
+
+    if (!is_array($row) || ((int) ($row['id'] ?? 0) !== (int) $id)
+        || !in_array((string) ($row['status'] ?? ''), array('active', 'past_due', 'paused'), true)) {
+        return 'closed';
+    }
+
+    return 'open';
+}
+
+/**
+ * Starts the mail of a subscription event through the campaign profiles of
+ * its action (create_auto_email_campaigns()). Only an event that was written
+ * mails: a webhook delivered twice writes no second event, so the customer
+ * gets one mail per event. With no enabled profile for the action nothing is
+ * sent. A failure here never stops the renewal that called it.
+ *
+ * @param int    $id            the subscription
+ * @param int    $event_id      the event's id, 0 when it was not written
+ * @param string $event         its kind
+ * @param string $status_before
+ * @param string $status_after
+ * @param int    $order_id      the renewal order, 0 for none
+ * @param string $detail        the event's detail (the confirmation link)
+ * @return bool true when the profiles were asked
+ */
+function pg_subscription_mail_send($id, $event_id, $event, $status_before, $status_after, $order_id = 0, $detail = '')
+{
+    $action = pg_subscription_mail_action($event, $status_before, $status_after);
+
+    if (((int) $event_id <= 0) || ($action === '')) {
+        return false;
+    }
+
+    try {
+        $row = db_item("SELECT * FROM subscriptions WHERE id = '" . e((int) $id) . "'");
+        $first = $row ? pg_subscription_renewal_first_order($row) : null;
+
+        if (!$first) {
+            return false;
+        }
+
+        $context = array(
+            'product_name' => (string) $first['item']['product_name'],
+            'order_number' => ((int) $order_id > 0) ? (string) db_value("SELECT order_number FROM orders WHERE id = '" . e((int) $order_id) . "'") : '',
+            'confirm_url'  => ((string) $event === 'confirm_needed') ? (string) $detail : '',
+            'card_url'     => ($action === 'subscription_failed') ? pg_subscription_card_url((int) $id, time()) : '',
+        );
+
+        unset($row['card_ref']);
+
+        create_auto_email_campaigns(array(
+            'action'        => $action,
+            'order_id'      => ((int) $order_id > 0) ? (int) $order_id : (int) $row['order_id'],
+            'contact_id'    => $first['order']['contact_id'],
+            'email_address' => $first['order']['billing_email_address'],
+            'fields'        => pg_subscription_mail_fields($row, $context),
+            'data'          => array('subscription' => $row),
+        ));
+    } catch (\Throwable $exception) {
+        log_activity(lang(array(
+            'string' => 'The e-mail of subscription {var:1} could not be prepared: {var:2}',
+            'vars'   => array((int) $id, $exception->getMessage()),
+        )), 'UNKNOWN');
+
+        return false;
+    }
+
+    return true;
 }

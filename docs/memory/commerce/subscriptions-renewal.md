@@ -25,8 +25,8 @@ module: subscription_renewal
 - `pg_subscription_renewal_order_write()`: an `incomplete` online order copying the first order's customer, billing and currency (new `reference_code`), its recipient, one line at the stored price, the rest of the amount as `tax_total` (`pg_subscription_renewal_figures()`); then `pg_order_complete()` with the checkout page's receipt and `pg_erp_auto_invoice()`. Stock, membership days, folder access, receipt, campaigns, webhooks and invoice run as for any order; no shipping, discount or commission. Marked only through `subscription_events.order_id`.
 - `charge_renewal` gets the first order as `order` (iyzico's buyer and address).
 
-## What is not here yet?
-- The three campaign e-mails and the confirmation link mail (slice 4b; `email_campaigns.action` asked in #3288).
+## Which mails?
+- Renewed, failed (incl. the confirmation link) and cancelled, once per event: `subscriptions-mails.md`.
 
 ## Tested?
 - `tests/subscriptions_renewal_test.php` (pure rules, stand-in io: lock, order of writes, one charge). Not run against a database or a live service.

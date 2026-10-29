@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-mcp-box-writes
-description: The MCP box with a tool that asks first (F8c-1, #3144): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
+description: The MCP box with a tool that asks first (F8c-1 #3144, canvas F8c-2 #3321): asks the flow's owner in a channel, waits on approval:<id>, calls once with their own account and the approved arguments
 ---
 
 ## Which tools, which settings?
@@ -22,8 +22,11 @@ description: The MCP box with a tool that asks first (F8c-1, #3144): asks the fl
 - Stopped half way: before `approval:<id>` it fails (never asked twice); at `approved:<id>` it is tried once more (`ws_flow_stale_action()`); at `began:mcp` it fails (never called twice).
 - A run cancelled while it waits: the box is skipped, the request stays open, as the approval box's; approving it then calls nothing.
 
-## What is left (F8c-2)?
-- Canvas: `mcpFields()`/`mcpToolProblem()` still refuse a tool that asks first (`fl_mcp_tool_asks`); `KINDS.mcp.out` lacks rejected, expired, withdrawn; no channel or deadline field. Such a box is built over the API meanwhile.
+## How is it built on the canvas (F8c-2, #3321)?
+- `mcpFields()` offers the server's `asks` tools after those that read, named "<tool> · Ask for approval"; for one (`mcpToolAsks()`) it adds "Channel to ask in" (`channel_id`) and "Hours to decide" (`closes_in`, `closesField()`, shared with the approval box). Its help (`fl_mcp_tool_help`) says so; `fl_mcp_tool_asks` went.
+- `mcpToolProblem()` refuses it only without a channel; its meta line names it. A new box carries `channel_id: 0`, `closes_in: ''`; an API-built box keeps its keys.
+- `KINDS.mcp.out` = the server's five outcomes; `test_workspace_flows_canvas_kinds_leave_on_the_servers_outcomes` checks every kind.
+- A server whose tools all ask first is not in `steps.mcp` (`ws_step_mcp_form_servers()`): built over the API.
 
 ## Tests
-- tests/workspace_flow_mcp_asks_test.php; tests/workspace_flow_steps_test.php (kind, config, tools turned on).
+- tests/workspace_flow_mcp_asks_test.php; tests/workspace_flow_steps_test.php (kind, config, tools turned on); `mcp_box` and the outcomes test in tests/workspace_flows_canvas_test.php.
