@@ -83,7 +83,7 @@ function ws_viewer($user)
 function ws_record_type_keys()
 {
     return array(
-        'order', 'product', 'product_group', 'offer',
+        'order', 'product', 'product_group', 'offer', 'cart_quote',
         'contact', 'user_account',
         'erp_account', 'invoice', 'waybill', 'receipt', 'edoc', 'erp_quote',
         'form', 'calendar_event',
@@ -108,7 +108,7 @@ function ws_record_type_keys()
  *   (ws_ai_type_scope()); workspace:read when no API scope reads the kind;
  * - change: the ws_change_types() kind that writes it, '' when the Workspace
  *   never writes it (the ERP's documents are tag-only, but a sales quote,
- *   which it adds);
+ *   which it adds; a cart quote is tag-only too);
  * - audit: the pg_audit_tables() table a Workspace write of it is recorded
  *   on (ws_change_audit_target()), '' when the trail does not follow it;
  * - quick_edit: the record drawer edits it (ws_quick_edit_types());
@@ -157,6 +157,20 @@ function ws_record_kinds()
             'change'     => 'offer',
             'audit'      => 'offers',
             'quick_edit' => true,
+            'customer'   => false,
+        ),
+        // The products and quantities sent to a customer as a link that fills
+        // their cart (cart_quotes), never the ERP's sales quote (erp_quote).
+        // Made and changed on its own screens: the Workspace writes none.
+        // Read with the order routes' scope: its screens open to the same
+        // right as the order screens.
+        'cart_quote' => array(
+            'prefixes'   => array('sepet', 'sepetteklifi', 'cartquote'),
+            'right'      => 'ecommerce',
+            'scope'      => 'orders:read',
+            'change'     => '',
+            'audit'      => '',
+            'quick_edit' => false,
             'customer'   => false,
         ),
         'contact' => array(
@@ -311,6 +325,9 @@ function ws_ref_types($viewer)
         $add('product', lang('Product'), 'bi-box-seam', array('urun', 'ürün', 'product', 'p'));
         $add('product_group', lang('Product Group'), 'bi-collection', array('grup', 'urungrubu', 'ürüngrubu', 'kategori', 'group'));
         $add('offer', lang('Offer'), 'bi-tag', array('teklif', 'kampanya', 'kupon', 'offer'));
+        // The product list sent to a customer as a link (cart_quotes): neither
+        // the offer's "teklif" nor the sales quote's "satis" picks it.
+        $add('cart_quote', lang('Cart quote'), 'bi-cart3', array('sepet', 'sepetteklifi', 'cartquote'));
     }
 
     // A contact (the address book), a user (a login) and a current account
@@ -932,6 +949,34 @@ function ws_erp_quotes_readable()
 }
 
 /**
+ * What a cart quote's tag shows a reader with the ecommerce right: its
+ * number, whom it was made for and how many lines it holds, where it stands
+ * now and its row on the cart quote list. An open quote past its last day
+ * reads as expired, as on that list: nothing writes the expired status.
+ * Pure.
+ *
+ * @param array  $row  cart_quotes row (id, status, valid_until) with its
+ *                     contact's first_name, last_name, company and its
+ *                     line_count
+ * @param int    $now
+ * @param string $base the panel's address, ending in /
+ * @return array label, url, meta, status
+ */
+function ws_cart_quote_ref($row, $now, $base)
+{
+    $person = trim(trim((string) ($row['first_name'] ?? '')) . ' ' . trim((string) ($row['last_name'] ?? '')));
+    $customer = ($person !== '') ? $person : trim((string) ($row['company'] ?? ''));
+    $lines = lang(array('string' => '{var:1} item(s)', 'vars' => array((int) ($row['line_count'] ?? 0))));
+
+    return array(
+        'label'  => lang('Cart quote') . ' #' . (int) $row['id'],
+        'url'    => $base . 'view_cart_quotes.php?id=' . (int) $row['id'],
+        'meta'   => ($customer !== '') ? $customer . ' · ' . $lines : $lines,
+        'status' => pg_cart_quote_state_label(pg_cart_quote_state($row, $now)),
+    );
+}
+
+/**
  * What each tag in a set looks like to this reader.
  *
  * One query per type, however many messages the tags came from.
@@ -1171,6 +1216,31 @@ function ws_refs_resolve($viewer, $tokens)
                     ($row['status'] === 'enabled') ? '' : lang('Disabled'), true, 'bi-tag');
             } else {
                 $put('offer', $row['id'], lang('Offer'), '', '', '', false, 'bi-tag');
+            }
+        }
+    }
+
+    if (!empty($ids['cart_quote'])) {
+        // Whom each quote was made for and how many lines it holds, in one
+        // query. The contact's name is shown to whoever opens the cart quote
+        // list, which names it too: the ecommerce right.
+        $rows = ((defined('ECOMMERCE') && ECOMMERCE === true) && pg_cart_quotes_ready())
+            ? (array) db_items("SELECT q.id, q.status, q.valid_until, c.first_name, c.last_name, c.company,
+                    (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+                FROM cart_quotes AS q
+                LEFT JOIN contacts AS c ON c.id = q.contact_id
+                WHERE q.id IN (" . $in('cart_quote') . ")")
+            : array();
+
+        $now = time();
+
+        foreach ($rows as $row) {
+            if ($viewer['ecommerce']) {
+                $ref = ws_cart_quote_ref($row, $now, $base);
+
+                $put('cart_quote', $row['id'], $ref['label'], $ref['url'], $ref['meta'], $ref['status'], true, 'bi-cart3');
+            } else {
+                $put('cart_quote', $row['id'], lang('Cart quote'), '', '', '', false, 'bi-cart3');
             }
         }
     }
@@ -1590,6 +1660,26 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             $found = db_values("SELECT id FROM offers
                 WHERE (code LIKE '%" . $like . "%' OR description LIKE '%" . $like . "%')
                 ORDER BY (status = 'enabled') DESC, id DESC LIMIT " . $limit);
+            break;
+
+        case 'cart_quote':
+            // By its number (12 or #12), else by whom it was made for;
+            // newest first.
+            if (preg_match('/^#?([0-9]{1,10})$/', $query, $digits)) {
+                $where = "q.id = '" . (int) $digits[1] . "'";
+            } elseif ($query === '') {
+                $where = "1 = 1";
+            } else {
+                $where = "(c.first_name LIKE '%" . $like . "%' OR c.last_name LIKE '%" . $like . "%'
+                    OR CONCAT(c.first_name, ' ', c.last_name) LIKE '%" . $like . "%'
+                    OR c.company LIKE '%" . $like . "%' OR c.email_address LIKE '%" . $like . "%')";
+            }
+
+            $found = pg_cart_quotes_ready()
+                ? db_values("SELECT q.id FROM cart_quotes AS q LEFT JOIN contacts AS c ON c.id = q.contact_id
+                    WHERE " . $where . "
+                    ORDER BY q.id DESC LIMIT " . $limit)
+                : array();
             break;
 
         case 'user_account':

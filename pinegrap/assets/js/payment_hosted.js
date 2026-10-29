@@ -39,13 +39,21 @@
             // captureMethod and allowedPaymentMethodTypes mirror the
             // capture_method and payment_method_types the server creates the
             // intent with; Stripe refuses a confirmation when they differ.
-            var elements = stripe.elements({
+            var options = {
                 mode: 'payment',
                 amount: client.amount,
                 currency: client.currency,
                 captureMethod: client.capture_method || 'automatic',
                 allowedPaymentMethodTypes: client.payment_method_types
-            });
+            };
+
+            // An order with a recurring line keeps the card for its renewals:
+            // the intent is created with the same setup_future_usage.
+            if (client.setup_future_usage) {
+                options.setupFutureUsage = client.setup_future_usage;
+            }
+
+            var elements = stripe.elements(options);
 
             elements.create('payment').mount(mount);
 
