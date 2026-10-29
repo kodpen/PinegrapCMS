@@ -4,7 +4,7 @@ description: api.php general role gate before handlers, the exempt column, the d
 ---
 
 ## Is there a role check before an api.php handler runs?
-- Yes, a general gate BEFORE the handler: a non-exempt action needs a session, then `USER_ROLE > 1` gives "The User must have a Designer or Administrator role." An allowlist written inside a handler does nothing if the request never reaches it.
+- Yes, a general gate BEFORE the handler: a non-exempt action needs a session, then `USER_ROLE > 1` gives "The User must have a Designer or Administrator role." (through `lang()`) An allowlist written inside a handler does nothing if the request never reaches it.
 - Exemption used to be an `and ($action != '...')` chain before the `switch`; since 2026-10-13 it is the `exempt` column of the `includes/panel/actions.php` table (`pg_panel_gate()`), and `api.php` has no `switch` left. Adding an action: `panel-action-table.md`.
 - `designer` is exempt; a content-level operator (manager, user) gets only the sub-actions in `$content_ok` of `pg_panel_designer()` (`includes/panel/designer.php`): `presence`, `leave`, `lock_release`, `note_save`, `notes_fetch`, `page_load`, `seo_check`, `import_fragment`, `form_fields`, `preview_widgets`, `widget_ghosts`, `revisions_list`, `revision_get`. A new sub-action stays closed to them until it is added there; the refusal is JSON, not `validate_area_access()`.
 - Symptom of missing the gate: "two people opened the same page, no warning" (presence never sent); SEO check and canvas paste were also silently dead.

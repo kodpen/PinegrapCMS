@@ -19,10 +19,10 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - Slice 1 done (#3236): tables, the `recurring` mode and the store-mode operations in the contract, `includes/fn/subscriptions.php` (`commerce/subscriptions.md`).
 - Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Future-start lines get no row yet.
 - Slice 3 done (#3270): Stripe store mode (`commerce/subscriptions-stripe.md`).
-- Slice 4a (#3290): renewal writer + ladder (`commerce/subscriptions-renewal.md`). 4b: the three e-mails + Stripe's confirmation link mail (`email_campaigns.action`: #3288); then account widget + API (M).
+- Slice 4a done (#3290): renewal writer + ladder (`commerce/subscriptions-renewal.md`). 4b done (#3318): the mails (`commerce/subscriptions-mails.md`). Next: account widget + API (M).
 
 ## Open questions?
-- Price changes on existing subscriptions: apply at the next period only, with a notice e-mail 14 days before.
+- Price changes: next period only, 14-day notice mail (#3311); later-starting lines: #3310.
 
 ## Where to start?
 - Owner (2026-10-29, #3183): start now. Slice 1: contract operations and the tables (`workflow/decisions-made-schema-5.md`), then iyzico, Stripe, renewal writer + dunning + e-mails, account widget + API. Read `docs/memory/commerce/` recurring and membership files and `recurring_payment_job.php`.

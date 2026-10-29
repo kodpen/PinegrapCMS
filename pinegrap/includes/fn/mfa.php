@@ -577,6 +577,63 @@ function pg_mfa_pending()
     return $pending;
 }
 
+/**
+ * Where a short-lived sign-in record (the second step's, the device-limit
+ * question's) stands: 'live', 'expired' when it is well formed but older than
+ * its lifetime, 'missing' when there is none or it is malformed. Lets a screen
+ * say the step ran out rather than send the visitor back without a word.
+ *
+ * @param mixed $record
+ * @param int $lifetime Seconds.
+ * @param int $now
+ * @return string
+ */
+function pg_sign_in_step_state($record, $lifetime, $now)
+{
+    if (!is_array($record) || empty($record['user_id']) || !isset($record['time'])) {
+        return 'missing';
+    }
+
+    return (((int) $now - (int) $record['time']) <= (int) $lifetime) ? 'live' : 'expired';
+}
+
+/**
+ * The sign-in screen a second step started on, from a fixed list.
+ *
+ * @param mixed $origin
+ * @return string
+ */
+function pg_mfa_origin_screen($origin)
+{
+    return in_array($origin, array('index.php', 'membership_entrance.php', 'registration_entrance.php'), true)
+        ? (string) $origin : 'index.php';
+}
+
+/**
+ * The path, under the software directory, back to a sign-in screen with the
+ * destination kept.
+ *
+ * @param string $origin A value of pg_mfa_origin_screen().
+ * @param string $send_to
+ * @return string
+ */
+function pg_mfa_origin_back_path($origin, $send_to)
+{
+    return (($origin === 'index.php') ? '' : $origin)
+        . (((string) $send_to !== '') ? ('?send_to=' . urlencode((string) $send_to)) : '');
+}
+
+/**
+ * The liveform a sign-in screen reads and its account name field.
+ *
+ * @param string $origin A value of pg_mfa_origin_screen().
+ * @return array array(form name, field name)
+ */
+function pg_mfa_origin_form($origin)
+{
+    return ($origin === 'membership_entrance.php') ? array('membership_entrance', 'u') : array('login', 'email');
+}
+
 function pg_mfa_pending_clear()
 {
     unset($_SESSION['software']['mfa_pending']);

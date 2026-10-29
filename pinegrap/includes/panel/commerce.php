@@ -1009,10 +1009,7 @@ function pg_panel_get_product_barcodes($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1050,10 +1047,7 @@ function pg_panel_generate_product_barcode($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1113,10 +1107,7 @@ function pg_panel_save_product_barcode($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1170,10 +1161,7 @@ function pg_panel_delete_product_barcode($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1207,10 +1195,7 @@ function pg_panel_bulk_assign_barcodes($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1294,10 +1279,7 @@ function pg_panel_save_barcode_template($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a
@@ -1339,10 +1321,7 @@ function pg_panel_product_name_check($request, $action)
     global $user;
 
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     // The product screens' own rule, answered in JSON: roles 0-2, or a

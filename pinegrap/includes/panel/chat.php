@@ -30,10 +30,7 @@ function pg_panel_chat($request, $action)
     // pg_chat_handle_backend_action returns a polite error — no page
     // breaks (pg_chat_ready probe).
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
 
     validate_token();

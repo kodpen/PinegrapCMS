@@ -813,11 +813,12 @@ function get_email_campaign_profile_options()
  * @param string $body   the e-mail's HTML
  * @param array  $fields names of the fields that hold a whole address; by
  *                       default those of the auto campaigns: review_url
- *                       (review request) and tracking_url (order shipped and
- *                       order delivered)
+ *                       (review request), tracking_url (order shipped and
+ *                       order delivered), subscription_card_url and
+ *                       subscription_confirm_url (subscription payment failed)
  * @return string
  */
-function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url'))
+function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'tracking_url', 'subscription_card_url', 'subscription_confirm_url'))
 {
     $body = (string) $body;
     $names = array();
@@ -844,7 +845,7 @@ function pg_mail_merge_address_hrefs($body, $fields = array('review_url', 'track
 // Create function that is used to see if auto email campaigns need to be created after a specific action has occurred
 // and then create them if necessary.
 // Properties:
-// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered"
+// action: "calendar_event_reserved", "custom_form_submitted", "email_campaign_sent", "order_abandoned", "order_completed", "order_review_request", "order_shipped", "order_delivered", "product_ordered", "subscription_renewed", "subscription_failed", "subscription_cancelled"
 // action_item_id: The id of item that is related to the action (e.g. the calendar event id)
 // calendar_event_recurrence_number
 // order_id: Used by the order_abandoned and order_review_request actions.
@@ -975,7 +976,7 @@ function create_auto_email_campaigns($properties)
             require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
             // Get html for page.
             $body = get_page_content($email_campaign_profile['page_id'], $system_content = '', $extra_system_content = '', $mode = 'preview', $email = true, $data);
-            // A link made with the editor's Link button to ^^review_url^^ or ^^tracking_url^^ was stored with http:// in front of it.
+            // A link made with the editor's Link button to a field holding a whole address (^^review_url^^, ^^tracking_url^^, ...) was stored with http:// in front of it.
             $body = pg_mail_merge_address_hrefs($body);
             // Find if there is a base tag in the HTML.
             $base_in_html = preg_match('/<\s*base\s+[^>]*href\s*=\s*["\'](?:http:\/\/|https:\/\/|ftp:\/\/).*?["\']/is', $body);
@@ -1300,6 +1301,18 @@ function create_auto_email_campaigns($properties)
                     break;
                 case 'product_ordered':
                     $log_action = lang('product ordered');
+                    break;
+                case 'subscription_renewed':
+                    $log_action = lang('subscription renewed');
+                    break;
+                case 'subscription_failed':
+                    $log_action = lang('subscription payment failed');
+                    break;
+                case 'subscription_cancelled':
+                    $log_action = lang('subscription cancelled');
+                    break;
+                default:
+                    $log_action = $action;
                     break;
             }
 

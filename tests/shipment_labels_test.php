@@ -463,3 +463,59 @@ function test_shipment_label_driver_name()
 	pg_assert_same('no_such_maker', pg_shipment_label_driver_name('no_such_maker'));
 	pg_assert_same('../x', pg_shipment_label_driver_name('../x'), 'not a key: shown as it is, nothing loaded for it');
 }
+
+// A bulk .zpl keeps the selection's order, one newline between labels and
+// one at the end; no label gives an empty file.
+function test_shipment_label_zpl_join()
+{
+	pg_assert_same("^XA^FDone^XZ\n^XA^FDtwo^XZ\n^XA^FDthree^XZ\n", pg_shipment_label_zpl_join(array("^XA^FDone^XZ\r\n\n", "^XA^FDtwo^XZ", "^XA^FDthree^XZ \n")), 'order kept, one newline between and after');
+	pg_assert_same('', pg_shipment_label_zpl_join(array()), 'an empty list is an empty file');
+}
+
+// Only active outbound labels whose document is readable ZPL go into the
+// bulk .zpl.
+function test_shipment_label_bulk_zpl_filter()
+{
+	$rows = array(
+		array('id' => 1, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 2, 'order_id' => 10, 'ship_to_id' => 1, 'state' => 'cancelled', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 3, 'order_id' => 10, 'ship_to_id' => 2, 'state' => 'active', 'is_return' => 1, 'label_format' => 'zpl'),
+		array('id' => 4, 'order_id' => 10, 'ship_to_id' => 3, 'state' => 'active', 'is_return' => 0, 'label_format' => 'pdf'),
+		array('id' => 5, 'order_id' => 10, 'ship_to_id' => 4, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+		array('id' => 6, 'order_id' => 10, 'ship_to_id' => 5, 'state' => 'active', 'is_return' => 0, 'label_format' => 'zpl'),
+	);
+	$documents = array(
+		1 => array('ok' => true, 'document' => '^XA^FD1^XZ', 'format' => 'zpl'),
+		2 => array('ok' => true, 'document' => '^XA^FD2^XZ', 'format' => 'zpl'),
+		3 => array('ok' => true, 'document' => '^XA^FD3^XZ', 'format' => 'zpl'),
+		4 => array('ok' => true, 'document' => '%PDF-1.4', 'format' => 'pdf'),
+		5 => array('ok' => true, 'document' => 'not a label', 'format' => 'zpl'),
+		6 => array('ok' => false, 'document' => '', 'format' => ''),
+	);
+	$kept = array();
+
+	foreach (pg_shipment_label_print_selection($rows, array(10)) as $row) {
+		if (pg_shipment_label_bulk_zpl_readable($documents[$row['id']])) {
+			$kept[] = $row['id'];
+		}
+	}
+
+	pg_assert_same(array(1), $kept, 'only an active outbound label with readable ZPL');
+}
+
+// The bulk PDF's last page counts the ZPL labels of the .zpl download and
+// lists only the labels that are in neither file.
+function test_shipment_label_bulk_note()
+{
+	$unreadable = array('order_number' => '1001', 'number' => 'AB12', 'label_format' => 'zpl');
+	$note = pg_shipment_label_bulk_note(array($unreadable), 2);
+
+	pg_assert_true(strpos($note, 'Download ZPL Labels') !== false, 'the ZPL count names the download');
+	pg_assert_true(strpos($note, 'AB12') !== false, 'an unreadable label is listed');
+
+	$only_zpl = pg_shipment_label_bulk_note(array(), 3);
+
+	pg_assert_true(strpos($only_zpl, '<li>') === false, 'a readable ZPL label is not listed');
+	pg_assert_true(strpos($only_zpl, 'Labels not in this PDF') === false, 'no list heading without a left-out label');
+	pg_assert_same('', pg_shipment_label_bulk_note(array(), 0), 'nothing to say, no page');
+}

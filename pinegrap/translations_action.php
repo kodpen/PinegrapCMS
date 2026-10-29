@@ -116,7 +116,7 @@ if (!$translations_is_import && !$translations_is_export) {
 
     if (($session_token === '') || !hash_equals($session_token, $sent_token)) {
         http_response_code(403);
-        translations_respond(array('status' => 'error', 'message' => lang('Invalid token.')));
+        translations_respond(array('status' => 'error', 'message' => lang('Your session expired. Reload the page and try again.')));
     }
 
     if (!pg_tr_ready()) {

@@ -813,6 +813,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'notes_import' => $base . 'workspace_notes_import.php',
             'file_save' => $base . 'workspace_file_save.php',
             'settings'  => $base . 'workspace_settings.php',
+            // Where a From OneNote Connect button posts (connect.php).
+            'connect'   => $base . 'connect.php',
             'edit_user' => $base . 'edit_user.php',
             // The quote editor's copy (?copy=<id>), for whoever may write
             // ERP documents: the accountant's read-only right saves none.
@@ -831,6 +833,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
         // A From Notion part in the import window: the site has a Notion
         // MCP server (notes_notion.php).
         'notes_notion' => function_exists('ws_note_notion_server') && (ws_note_notion_server() !== null),
+        // A From OneNote part: the site's Microsoft application is set up
+        // (notes_onenote.php); the person connects their own account there.
+        'notes_onenote' => function_exists('ws_note_onenote_offered') && ws_note_onenote_offered(),
         // The paperclip also picks from the file manager (library.php).
         'library'      => function_exists('ws_library_browse'),
         // Word and Excel files of a conversation, drawn by a script fetched

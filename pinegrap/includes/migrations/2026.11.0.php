@@ -113,6 +113,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_speculation_prefetch();   // 11.0.127
 	upgrade_2026_11_0_subscriptions();          // 11.0.128
 	upgrade_2026_11_0_workspace_personal_ical(); // 11.0.117
+	upgrade_2026_11_0_subscription_campaigns(); // 11.0.129
 
 }
 
@@ -3626,5 +3627,55 @@ function upgrade_2026_11_0_workspace_personal_ical() {
 	install_add_index('ws_holiday_feeds', 'idx_user', "INDEX idx_user (user_id)");
 
 	install_note('Workspace: a person can add the secret address of their own Google, Outlook or Apple calendar under My calendar subscription and see it on their Work Calendar, read-only and only for themselves. The public holiday calendars of the site stay as they were.');
+
+}
+
+// A campaign made from a subscription profile copies the profile's action into
+// email_campaigns.action (create_auto_email_campaigns()). 11.0.128 widened only
+// the profiles' enum with the three subscription actions, so such a campaign
+// would be stored with action ''. As in upgrade_2026_11_0_delivered_campaigns():
+// the list is read first and only widened at its end, each value once, and the
+// null rule and the default are kept as they are.
+function upgrade_2026_11_0_subscription_campaigns() {
+
+	$action = install_column_info('email_campaigns', 'action');
+
+	if (!$action) {
+
+		return;
+
+	}
+
+	preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+	$values = $matches[1];
+	$added = false;
+
+	foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled') as $value) {
+
+		if (!in_array($value, $values, true)) {
+
+			$values[] = $value;
+			$added = true;
+
+		}
+
+	}
+
+	if (!$added) {
+
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'email_campaigns.action subscription_*')));
+
+		return;
+
+	}
+
+	$definition = "ENUM('" . implode("','", $values) . "')"
+		. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+		. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+	install_modify_column('email_campaigns', 'action', $definition);
+
+	install_note('E-mail campaigns: a campaign started by a subscription renewed, failed or cancelled profile keeps its action.');
 
 }

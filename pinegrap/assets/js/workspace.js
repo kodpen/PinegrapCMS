@@ -21165,16 +21165,26 @@
             // server as files would be, and the preview below takes them.
             var notion = { state: null, query: '', pages: [], chosen: {} };
 
-            // Files or Notion, above either: only where the site has a
-            // Notion server.
+            // Files, Notion or OneNote, above them: only where the site has
+            // a Notion server or a Microsoft application.
             function sourceTabs(current) {
-                if (!CFG.notes_notion) {
+                var tabs = [['files', t('notes_files_tab'), 'bi-cloud-arrow-up']];
+
+                if (CFG.notes_notion) {
+                    tabs.push(['notion', t('notes_notion_tab'), 'bi-journal-text']);
+                }
+
+                if (CFG.notes_onenote) {
+                    tabs.push(['onenote', t('notes_onenote_tab'), 'bi-microsoft']);
+                }
+
+                if (tabs.length < 2) {
                     return;
                 }
 
-                var row = el('div', 'd-flex gap-2 mb-4');
+                var row = el('div', 'd-flex flex-wrap gap-2 mb-4');
 
-                [['files', t('notes_files_tab'), 'bi-cloud-arrow-up'], ['notion', t('notes_notion_tab'), 'bi-journal-text']].forEach(function (tab) {
+                tabs.forEach(function (tab) {
                     var on = (tab[0] === current);
                     var item = button('btn btn-sm rounded-pill px-4 ' + (on ? 'btn-solid theme-primary' : 'btn-text theme-secondary'), tab[1], tab[2]);
 
@@ -21186,8 +21196,10 @@
 
                         if (tab[0] === 'files') {
                             drawPick().focus();
-                        } else {
+                        } else if (tab[0] === 'notion') {
                             drawNotion();
+                        } else {
+                            drawOneNote();
                         }
                     });
                     row.appendChild(item);
@@ -21336,17 +21348,20 @@
                     body.appendChild(notice);
                 }
 
-                go.addEventListener('click', fetchPages);
+                go.addEventListener('click', function () {
+                    fetchPages('notion_stage', Object.keys(notion.chosen), t('notes_notion_fetching'), drawNotion, function () {
+                        notion.chosen = {};
+                    });
+                });
                 footer.appendChild(go);
                 update();
                 input.focus();
             }
 
             // The pages picked, fetched and staged; the preview follows as
-            // after an upload.
-            function fetchPages() {
-                var ids = Object.keys(notion.chosen);
-
+            // after an upload. A refusal goes back to the picker it came
+            // from.
+            function fetchPages(step, ids, waiting, back, done) {
                 if (!ids.length) {
                     return;
                 }
@@ -21356,7 +21371,7 @@
                 clear(body);
                 clear(footer);
 
-                var label = el('div', 'small fg-secondary mb-3', t('notes_notion_fetching'));
+                var label = el('div', 'small fg-secondary mb-3', waiting);
                 var bar = progressBar({ percent: 100 });
 
                 label.setAttribute('role', 'status');
@@ -21367,24 +21382,226 @@
                 footer.appendChild(closeButton());
                 window.addEventListener('beforeunload', leaveGuard);
 
-                send({ step: 'notion_stage', token: CFG.token, pages: ids }).then(function (data) {
+                send({ step: step, token: CFG.token, pages: ids }).then(function (data) {
                     if (closed) {
                         send({ step: 'discard', token: CFG.token, stage: data.stage || '' }).catch(function () {});
                         return;
                     }
 
-                    notion.chosen = {};
+                    done();
                     stage = data.stage || '';
                     rows = data.rows || [];
                     capacity = data.capacity || 0;
                     drawPreview(data);
                 }, function (failure) {
                     if (!closed) {
-                        drawNotion(failure.message);
+                        back(failure.message);
                     }
                 }).then(function () {
                     window.removeEventListener('beforeunload', leaveGuard);
                 });
+            }
+
+            // ── OneNote pages ──
+
+            // The person's own notebooks through Microsoft Graph: a section
+            // is opened, its pages picked, and they are staged on the server
+            // as Notion's are. Picks stay while other sections are opened.
+            var onenote = { state: null, notebooks: null, section: null, pages: [], more: false, chosen: {} };
+
+            function onenoteCount() {
+                return Object.keys(onenote.chosen).length;
+            }
+
+            function drawOneNote(error) {
+                phase = 'onenote';
+                clear(body);
+                clear(footer);
+                sourceTabs('onenote');
+                footer.appendChild(closeButton());
+
+                var wait = el('div', 'small fg-secondary', t('loading'));
+
+                // A step asked, then this drawn again; a refusal is shown on
+                // the notebooks (or alone, when the state itself failed).
+                function reload(step, payload, keep) {
+                    error = '';
+                    body.appendChild(wait);
+                    payload.step = step;
+                    payload.token = CFG.token;
+                    send(payload).then(keep, function (failure) {
+                        if (!onenote.state) {
+                            onenote.state = { state: 'error', message: failure.message };
+                            return;
+                        }
+
+                        error = failure.message;
+                        onenote.section = null;
+                        onenote.notebooks = onenote.notebooks || [];
+                    }).then(function () {
+                        if (!closed && phase === 'onenote') {
+                            drawOneNote(error);
+                        }
+                    });
+                }
+
+                if (!onenote.state) {
+                    reload('onenote_state', {}, function (data) {
+                        onenote.state = data;
+                    });
+                    return;
+                }
+
+                // Not connected: one line, and the button that connects the
+                // person's own Microsoft account.
+                if (onenote.state.state !== 'ready') {
+                    var line = el('div', 'alert theme-secondary small mb-0', onenote.state.message || t('error_generic'));
+
+                    body.appendChild(line);
+
+                    if (onenote.state.connect && CFG.urls.connect) {
+                        var form = el('form', 'mt-4');
+                        var fields = { token: CFG.token, provider: onenote.state.connect.provider, purpose: onenote.state.connect.purpose, owner: onenote.state.connect.owner, 'return': onenote.state.connect['return'], connection_id: '0' };
+
+                        form.method = 'post';
+                        form.action = CFG.urls.connect;
+                        Object.keys(fields).forEach(function (name) {
+                            var input = el('input');
+
+                            input.type = 'hidden';
+                            input.name = name;
+                            input.value = fields[name];
+                            form.appendChild(input);
+                        });
+
+                        var connect = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('notes_onenote_connect'), 'bi-microsoft');
+
+                        connect.type = 'submit';
+                        form.appendChild(connect);
+                        body.appendChild(form);
+                    }
+
+                    return;
+                }
+
+                if (!onenote.notebooks) {
+                    reload('onenote_sections', {}, function (data) {
+                        onenote.notebooks = data.notebooks || [];
+                    });
+                    return;
+                }
+
+                body.appendChild(el('p', 'small fg-secondary', t('notes_onenote_intro')));
+
+                var list = el('div', 'list-group ws-nb-import-list');
+                var note = el('div', 'small fg-secondary');
+                var max = onenote.state.max || 25;
+                var go = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', '', 'bi-box-arrow-in-down');
+                var first = null;
+
+                function update() {
+                    var picked = onenoteCount();
+
+                    go.textContent = '';
+                    go.appendChild(icon('bi-box-arrow-in-down', 'me-1'));
+                    go.appendChild(document.createTextNode(t('notes_notion_go', picked)));
+                    go.disabled = !picked || picked > max;
+                    note.textContent = (picked > max) ? t('notes_notion_max', max) : '';
+                }
+
+                if (!onenote.section) {
+                    // Notebooks, each with its sections to open.
+                    if (!onenote.notebooks.length && !error) {
+                        list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_onenote_empty')));
+                    }
+
+                    onenote.notebooks.forEach(function (book) {
+                        list.appendChild(el('div', 'list-group-item small fw-semibold fg-secondary', book.name || t('notes_notion_untitled')));
+
+                        book.sections.forEach(function (section) {
+                            var open = button('list-group-item list-group-item-action d-flex gap-3 align-items-center ps-6', section.name || t('notes_notion_untitled'), 'bi-folder2');
+
+                            open.addEventListener('click', function () {
+                                onenote.section = section;
+                                onenote.pages = [];
+                                reload('onenote_pages', { section: section.id }, function (data) {
+                                    onenote.pages = data.pages || [];
+                                    onenote.more = !!data.more;
+                                });
+                                clear(list);
+                            });
+                            list.appendChild(open);
+                            first = first || open;
+                        });
+                    });
+                } else {
+                    var back = button('btn btn-sm btn-text theme-secondary mb-3', t('notes_onenote_back'), 'bi-arrow-left');
+
+                    back.addEventListener('click', function () {
+                        onenote.section = null;
+                        drawOneNote();
+                    });
+                    body.appendChild(back);
+                    body.appendChild(el('div', 'fw-semibold mb-2', onenote.section.name || t('notes_notion_untitled')));
+                    first = back;
+
+                    if (!onenote.pages.length) {
+                        list.appendChild(el('div', 'list-group-item small fg-secondary', t('notes_onenote_none')));
+                    }
+
+                    onenote.pages.forEach(function (page) {
+                        var row = el('label', 'list-group-item d-flex gap-3 align-items-start');
+                        var box = el('input', 'check mt-1');
+                        var main = el('div', 'ws-nb-import-main');
+
+                        box.type = 'checkbox';
+                        box.checked = !!onenote.chosen[page.id];
+                        box.addEventListener('change', function () {
+                            if (box.checked) {
+                                onenote.chosen[page.id] = true;
+                            } else {
+                                delete onenote.chosen[page.id];
+                            }
+
+                            update();
+                        });
+                        main.appendChild(el('div', 'fw-semibold text-truncate', page.title || t('notes_notion_untitled')));
+
+                        if (page.when) {
+                            main.appendChild(el('div', 'ws-nb-import-path', new Date(page.when * 1000).toLocaleDateString(CFG.locale || undefined)));
+                        }
+
+                        row.appendChild(box);
+                        row.appendChild(main);
+                        list.appendChild(row);
+                    });
+
+                    if (onenote.more) {
+                        note.appendChild(el('div', '', t('notes_onenote_more')));
+                    }
+                }
+
+                body.appendChild(list);
+                body.appendChild(note);
+
+                if (error) {
+                    var notice = el('div', 'alert theme-danger small mt-4 mb-0', error);
+
+                    notice.setAttribute('role', 'alert');
+                    body.appendChild(notice);
+                }
+
+                go.addEventListener('click', function () {
+                    fetchPages('onenote_stage', Object.keys(onenote.chosen), t('notes_onenote_fetching'), drawOneNote, function () {
+                        onenote.chosen = {};
+                    });
+                });
+                footer.appendChild(go);
+                update();
+
+                if (first) {
+                    first.focus();
+                }
             }
 
             // ── the upload ──
@@ -21605,7 +21822,7 @@
                     body.appendChild(el('div', 'alert theme-warning small py-3', t('notes_import_more', data.more, rows.length)));
                 }
 
-                // Notion pages that could not be fetched.
+                // Notion or OneNote pages that could not be fetched.
                 (data.warnings || []).forEach(function (warning) {
                     body.appendChild(el('div', 'alert theme-warning small py-3', warning));
                 });

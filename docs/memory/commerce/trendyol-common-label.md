@@ -19,7 +19,7 @@ description: Trendyol common label (#3123, PRs #3257, #3281): by cargo number, Z
 
 ## How is it kept?
 - File by `pg_shipment_label_store()`, row by `pg_shipment_label_row()`: driver `trendyol`, reference and number = the cargo number (the import's parcel, whose delivery the sweep reads), format zpl, no barcode. No file, no row.
-- So: Print Label (a ZPL download), the bulk print names it among labels not in the PDF, sweep, erasure and order delete as any label; GET /orders/{id} lists it. The order screen names it Trendyol (`pg_shipment_label_driver_name()`). No Cancel Label, no tracking job (no label driver has the key). After the sweep `pg_shipment_label_document()` reads it from Trendyol again (`mp_label_document()`), not written back.
+- So: Print Label (a ZPL download), the bulk "Download ZPL Labels" file takes it, sweep, erasure and order delete as any label; GET /orders/{id} lists it. The order screen names it Trendyol (`pg_shipment_label_driver_name()`). No Cancel Label, no tracking job (no label driver has the key). After the sweep `pg_shipment_label_document()` reads it from Trendyol again (`mp_label_document()`), not written back.
 
 ## What is unverified or left?
 - No live call; fixtures follow the docs (`tests/marketplace_trendyol_common_label_test.php`, `tests/marketplace_labels_test.php`). Unknown: GET before a request, how long the label takes, whether a second request is refused, a seller-paid or other carrier's answer, `volumetricHeight`, whether GET still answers after delivery.
