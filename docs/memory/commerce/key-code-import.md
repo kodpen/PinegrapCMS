@@ -14,7 +14,7 @@ description: Key code CSV import (import_key_codes.php): a code already there is
 
 ## How are the cells read?
 - Pure helpers in `includes/fn/ecommerce.php`, tested in `tests/key_code_import_test.php`: `pg_key_code_import_column()` (export headings, case, spaces, `_`/`-`, a BOM), `pg_key_code_import_separator()` (comma, semicolon or tab, whichever the header line holds most: Excel in Turkish writes `;`), `pg_key_code_import_flag()`, `pg_key_code_import_date()`, `pg_key_code_import_row()`.
-- The script steps over a UTF-8 BOM before `fgetcsv()` (left in front of a quoted heading it kept the quotes in the name: "A key code column could not be found").
+- A UTF-8 BOM is stepped over by `pg_csv_open()` (core/csv-exports.md); the script reads the header line for the separator and seeks back to where that line started, never to 0, which would land on the mark (left in front of a quoted heading it kept the quotes in the name: "A key code column could not be found").
 - Yes/no (enabled, single_use): 1/0, yes/no, true/false, Excel's TRUE/FALSE and DOĞRU/YANLIŞ, evet/hayır; empty leaves the column out.
 - Expiration date: the export's Y-m-d; day.month.year with dots; slashes or dashes in `DATE_FORMAT` order, else the other order when that one is not a date; empty or 0000-00-00 is "does not expire". A two-digit year or a time is refused (before, MySQL stored it as 0000-00-00: never expires).
 - Report: key_code or offer_code; empty leaves it out. Code and offer code: at most 50 characters (the column), not cut.
