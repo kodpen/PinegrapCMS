@@ -28,6 +28,7 @@ lang(['string' => '{var:1} record{suffix:1}', 'vars' => $count, 'suffix' => ($co
 // 1 -> "1 record" / 5 -> "5 records"
 ```
 - Several suffixes: `'suffix' => [$a, $b]` fills `{suffix:1}`, `{suffix:2}`; a bare `{suffix}` takes the first.
+- A count needs its singular in English: `'{var:1} minute{suffix:1} ago'`, never a plural-only `'{var:1} minutes ago'` ("1 minutes ago"). A verb that agrees with the count goes into two literal keys chosen by the count (`'{var:1} product was deleted.'` / `'{var:1} products were deleted.'`), never `lang($verb . ' deleted')` or a `'was'`/`'were'` `{var:N}`: check_lang cannot see a built key and the Turkish sentence keeps the English verb. A list of changes is verb-free phrases joined with `', '` inside one key (`edit_products.php`, `tests/panel_sentence_keys_test.php`).
 - The Turkish translation leaves `{suffix:N}` out, since Turkish has no English plural ending (kept, the ending is glued onto the Turkish word): `"{var:1} minute{suffix:1} {var:2}": "{var:1} dakika {var:2}"`. Every `{var:N}` stays; their order may change. (The tr.json value is looked up first, then placeholders are filled.)
 
 ## May I add text around a lang() call?

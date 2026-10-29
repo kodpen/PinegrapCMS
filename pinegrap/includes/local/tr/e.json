@@ -1383,7 +1383,7 @@
     "every {var:1} hour{suffix:1}": "{var:1} saatte bir",
     "every {var:1} minutes": "{var:1} dakikada bir",
     "everybody with open tasks": "açık görevi olan herkes",
-    "expired record{suffix}": "süresi dolmuş kayıt{suffix}",
+    "expired record{suffix}": "süresi dolmuş kayıt",
     "export": "dışa aktarma",
     "export, markdown, attachments": "dışa aktarma, markdown, ekler",
     "extra test, add, package": "ek tetkik, ekleme, paket"

@@ -250,7 +250,7 @@ foreach ($order_items as $order_item) {
             
             // if number of forms is greater than 1, then add quantity number to legend
             if ($number_of_forms > 1) {
-                $output_legend_content .= ' (' . $quantity_number . ' of ' . $number_of_forms . ')';
+                $output_legend_content .= ' (' . lang(array('string' => '{var:1} of {var:2}', 'vars' => array($quantity_number, $number_of_forms))) . ')';
             }
             
             $output_legend = '';
