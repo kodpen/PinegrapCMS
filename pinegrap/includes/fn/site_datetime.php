@@ -23,14 +23,38 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * A date hook on an element: the attribute name whole, after a space, so
- * data-pg-datetime-x or text that only mentions the name does not count.
+ * A date hook on an element, or a bind marker (pg_site_datetime_bind()):
+ * the attribute name whole, after a space, so data-pg-datetime-x or text
+ * that only mentions the name does not count.
  *
  * @return string
  */
 function pg_site_datetime_pattern()
 {
-    return '/\sdata-pg-(?:date|datetime|time|date-selects)(?=[\s=>\/])/i';
+    return '/\sdata-pg-(?:date|datetime|time|date-selects|date-bind)(?=[\s=>\/])/i';
+}
+
+/**
+ * A marker that hooks fields by their id: for a screen whose inputs come
+ * from a layout kept in the site's database (a custom form's custom
+ * layout), where the markup cannot carry the hook. pg_fields.js gives each
+ * input with one of the ids the hook of its kind and draws it. Empty when
+ * no id is given.
+ *
+ * @param array $ids kind ('date', 'datetime', 'time') => list of ids
+ * @return string
+ */
+function pg_site_datetime_bind($ids)
+{
+    $bind = array();
+
+    foreach (array('date', 'datetime', 'time') as $kind) {
+        if (!empty($ids[$kind])) {
+            $bind[$kind] = array_values(array_map('strval', (array) $ids[$kind]));
+        }
+    }
+
+    return $bind ? '<span hidden data-pg-date-bind="' . h(json_encode($bind)) . '"></span>' : '';
 }
 
 /**

@@ -61,19 +61,14 @@ function test_bs6_timepicker_addon_left_the_panel_screens()
 
 function test_bs6_timepicker_addon_only_site_files_load_it()
 {
-	// Site renderers and the site branch of get_form_content() keep jQuery UI
-	// and the add-on; every other PHP file is panel code and must not load it.
+	// The checkout renderers keep jQuery UI and the add-on until they move to
+	// the date-and-time control; custom forms, form views and comments have
+	// moved. No other PHP file may load it.
 	$site = array(
 		'get_billing_information.php',
-		'get_custom_form_screen_content.php',
 		'get_express_order.php',
-		'get_form_item_view.php',
-		'get_form_list_view.php',
-		'get_page_content.php',
 		'get_shipping_address_and_arrival.php',
 		'get_shopping_cart.php',
-		'includes/fn/content.php',
-		'includes/fn/widgets_comments.php',
 	);
 
 	$root = dirname(__DIR__) . '/pinegrap/';
@@ -109,10 +104,10 @@ function test_bs6_timepicker_addon_form_content_branches()
 	pg_assert_false(strpos($panel, 'timepicker-addon') !== false, 'the backend picker_scripts do not load the add-on');
 	pg_assert_contains('get_date_time_picker_format()', $panel, 'the backend picker_scripts keep the date and time options');
 
-	// The site branch of a date and time field keeps the jQuery UI add-on.
-	$found = preg_match("/case 'date and time':\\s*if \\(\\\$interface == 'backend'\\)/", $source, $match, PREG_OFFSET_CAPTURE);
-	pg_assert_true($found === 1, 'content.php draws the date and time field per interface');
-	$site = substr($source, $found === 1 ? $match[0][1] : 0, 1200);
-	pg_assert_contains('timepicker-addon', $site, 'the site date and time field still loads the add-on');
-	pg_assert_contains('.datetimepicker(datetimepicker_options)', $site, 'the site date and time field still calls datetimepicker');
+	// Site and panel rows alike carry the hook; the site page brings the
+	// control itself (pg_site_datetime_inject()).
+	foreach (array("'data-pg-date' => ''", "'data-pg-datetime' => ''", "'data-pg-time' => ''") as $hook) {
+		pg_assert_contains($hook, $source, 'content.php hooks its rows: ' . $hook);
+	}
+	pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(datetimepicker_options\\)/', $source), 'content.php calls no jQuery UI picker');
 }
