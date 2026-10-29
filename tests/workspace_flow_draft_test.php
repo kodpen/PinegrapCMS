@@ -608,3 +608,59 @@ function test_ws_flow_ai_sketch_refusals_and_wiring()
 	pg_assert_contains('pg_ai_state(', workspace_flow_draft_code('ws_flow_ai_sketch_ready'), 'licence and hold checked');
 	pg_assert_contains('ws_flows_ready(', workspace_flow_draft_code('ws_flow_ai_sketch_ready'), 'flows ready');
 }
+
+// "Describe it to AI" in New flow: the panel action refuses in words on the
+// sentence field before any call, and answers the new draft flow with its
+// problems and the model's notes.
+function test_ws_flow_ai_sketch_action()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+
+	$called = false;
+	$ask = function () use (&$called) {
+		$called = true;
+
+		return array('ok' => false, 'text' => '', 'error' => '');
+	};
+
+	$refused = ws_action_flow_ai_sketch(array('id' => 9, 'member' => true, 'role' => 3), array('sentence' => 'call back'), $ask);
+	pg_assert_same('error', $refused['status'], 'not staff refused');
+	pg_assert_same('sentence', $refused['field'], 'refusal on the sentence field');
+	pg_assert_contains('Only staff', $refused['message'], 'refusal in words');
+	pg_assert_false($called, 'nothing asked');
+
+	$odd = ws_action_flow_ai_sketch(array('id' => 9, 'member' => true, 'role' => 3), array('sentence' => array('x')), $ask);
+	pg_assert_same('error', $odd['status'], 'a sentence that is no text is refused');
+
+	$fail = ws_action_flow_ai_sketch_answer(array('ok' => false, 'error' => 'Pinegrap AI is not ready.', 'flow_id' => 0, 'problems' => array(), 'notes' => array()), null);
+	pg_assert_same(array('status' => 'error', 'message' => 'Pinegrap AI is not ready.', 'field' => 'sentence'), $fail, 'engine refusal passed on');
+
+	$flow = array('id' => 12, 'status' => 'draft');
+	$ok = ws_action_flow_ai_sketch_answer(array('ok' => true, 'error' => '', 'flow_id' => 12, 'problems' => array('No start box.'), 'notes' => array('Asks the team daily.')), $flow);
+	pg_assert_same('success', $ok['status'], 'drafted');
+	pg_assert_same(array('flow' => $flow, 'problems' => array('No start box.'), 'notes' => array('Asks the team daily.')), $ok['data'], 'flow, problems and notes');
+
+	$gone = ws_action_flow_ai_sketch_answer(array('ok' => true, 'error' => '', 'flow_id' => 12, 'problems' => array(), 'notes' => array()), null);
+	pg_assert_same('error', $gone['status'], 'a flow that cannot be read back is refused');
+}
+
+// The route, its panel action row, the screen's flag and the card: a draft
+// only, never published by this path.
+function test_ws_flow_ai_sketch_wiring()
+{
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	pg_assert_contains("case 'ws_flow_ai_sketch':", $actions, 'action case');
+	pg_assert_contains("'ws_flow_ai_sketch'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'panel action row');
+
+	$code = workspace_flow_draft_code('ws_action_flow_ai_sketch');
+	pg_assert_contains('ws_flow_ai_sketch(', $code, 'drafted by the server function');
+	pg_assert_false(strpos($code, 'publish') !== false, 'never published');
+
+	$config = workspace_flow_draft_code('ws_flow_js_config');
+	pg_assert_contains("'ai_sketch'", $config, 'flag in the screen config');
+	pg_assert_contains('ws_flow_ai_sketch_ready(', $config, 'shown only when ready');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	pg_assert_contains("K.api('ws_flow_ai_sketch'", $js, 'card asks the route');
+	pg_assert_contains('FL.ai_sketch', $js, 'card behind the flag');
+}

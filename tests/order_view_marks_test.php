@@ -27,8 +27,15 @@ function test_order_view_marks_address_verified_check_mark()
 		$source = order_view_marks_source($path);
 		pg_assert_false(strpos($source, 'src="images/check_mark.gif"') !== false, $path . ': check mark points at a missing folder');
 		pg_assert_false(strpos($source, 'alt="check mark"') !== false, $path . ': check mark alt is untranslated');
-		pg_assert_contains("SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif\" width=\"7\" height=\"7\" alt=\"' . h(lang('Yes')) . '\"", $source, $path);
 	}
+
+	// The screen draws a theme ink icon: the black 7px GIF vanished on the
+	// dark card. The printed order keeps the GIF on its light paper.
+	$screen = order_view_marks_source('view_order.php');
+	pg_assert_false(strpos($screen, 'check_mark.gif') !== false, 'view_order.php: black GIF check mark on the dark card');
+	pg_assert_contains("'<i class=\"bi bi-check-lg fg-success\" aria-hidden=\"true\"></i><span class=\"visually-hidden\">' . h(lang('Yes')) . '</span>'", $screen, 'view_order.php');
+
+	pg_assert_contains("SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif\" width=\"7\" height=\"7\" alt=\"' . h(lang('Yes')) . '\"", order_view_marks_source('print_order.php'), 'print_order.php');
 }
 
 function test_order_view_marks_fax_label_translated()

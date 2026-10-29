@@ -330,6 +330,9 @@ $pg_settings_cards[] = '
                         </div>';
 
 // ── Visitor Tracking ──
+// The Google Analytics figures part of the card ($google_analytics_figures).
+require(PG_FUNCTIONS_DIR . '/includes/settings/seo_analytics.php');
+
 $pg_settings_cards[] = '
                         <div id="pgset-analytics" class="pg-set-card">
                             <div class="card">
@@ -410,7 +413,7 @@ $pg_settings_cards[] = '
                                                 <div class="form-text">' . lang('Each day is added up by source, landing page, campaign, place and device first, so the visitor report and the API still count it. Turned off, those days are gone from the visitor report; the dashboard charts keep them either way.') . '</div>
                                                 <div class="form-text"><a href="database_engine.php#visitor-records">' . lang('The size of the table, and a cleanup you can start yourself, are on the Database Engine screen.') . '</a></div>
                                             </div>
-                                        </div>' : '') . '
+                                        </div>' : '') . $google_analytics_figures . '
                                    </div>
                                 </div>
                             </div>

@@ -14,7 +14,7 @@ description: Remaining outside-account connections (calendar, notes, cloud picke
 | Cloud file picker | Drive, Dropbox (#3238), OneDrive (#3261): done (`platform/cloud-file-picker.md`) | S |
 | Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed, WhatsApp Cloud API. Model B only | L |
 | Merchant Center | Merchant API (Content API for Shopping shut 2026-08-18). Slice 1 done (#3213, `commerce/merchant-center.md`). Left: per-item push + sync table (schema question) | M |
-| GA4, Business Profile | Admin/Data API. Google reviews (up to 5, read-only, Places API key): done (#3292, `designer/google-reviews-widget.md`). Business Profile itself needs Google's access form; on demand | M |
+| GA4, Business Profile | GA4 dashboard card: done (#3275, `api/google-analytics-card.md`). Google reviews: done (#3292, `designer/google-reviews-widget.md`). Business Profile needs Google's access form; on demand | M |
 | Social posting | Facebook Page, Instagram, LinkedIn; needs app review; X is paid, not recommended | M + process |
 | AI accounts | Not recommended (subscription OAuth is limited to Anthropic's own products); only OpenRouter PKCE as "bring your own model" (`includes/workspace/ai.php`) | S |
 
