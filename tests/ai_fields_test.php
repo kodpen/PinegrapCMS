@@ -358,3 +358,35 @@ function test_ai_fields_designer_agrees()
 	pg_assert_contains("'.pg-ai-mark-remove'", $designer, 'remove button');
 	pg_assert_contains("'page_canonical_url', 'page_noarchive', 'page_max_snippet', 'ai_fields'", $designer, 'saved with the page settings');
 }
+
+// The site's note (^^__ai_generated^^): a sentence while a description the
+// visitor reads is the draft as used; the SEO texts, a text changed since,
+// a row without the column and a page's own texts print nothing.
+function test_ai_fields_note()
+{
+	$note = lang('Written with the help of AI.');
+	$row = array(
+		'short_description' => 'Soft cotton shirt',
+		'full_description'  => '<p>Breathes all day.</p>',
+		'title'             => 'Cotton shirt',
+		'meta_description'  => 'A soft shirt.',
+	);
+
+	$marks = function ($columns) use ($row) {
+		return pg_ai_fields_encode('product', $columns, $row);
+	};
+
+	pg_assert_same($note, pg_ai_fields_note('product', $row + array('ai_fields' => $marks(array('short_description')))), 'short description');
+	pg_assert_same($note, pg_ai_fields_note('product', $row + array('ai_fields' => $marks(array('full_description')))), 'long description');
+	pg_assert_same('', pg_ai_fields_note('product', $row + array('ai_fields' => $marks(array('title', 'meta_description')))), 'SEO texts only');
+	pg_assert_same('', pg_ai_fields_note('product', $row + array('ai_fields' => null)), 'no marks');
+	pg_assert_same('', pg_ai_fields_note('product', $row), 'no column');
+	pg_assert_same('', pg_ai_fields_note('product', null), 'no row');
+
+	$edited = array('full_description' => '<p>Breathes all day long.</p>') + $row;
+	pg_assert_same('', pg_ai_fields_note('product', $edited + array('ai_fields' => $marks(array('full_description')))), 'text changed since');
+
+	$page = array('page_title' => 'About us', 'page_meta_description' => 'Who we are.');
+	$page['ai_fields'] = pg_ai_fields_encode('page', array('page_title'), $page);
+	pg_assert_same('', pg_ai_fields_note('page', $page), 'a page prints none yet');
+}

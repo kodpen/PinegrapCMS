@@ -4614,6 +4614,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     $select_group_short_desc = '';
 
     $_civ_rating_cols = _pg_catalog_rating_columns(pg_reviews_ready());
+    // The AI marks of the product's texts (^^__ai_generated^^), read only
+    // where the upgrade added the column.
+    $_civ_ai_col = pg_ai_fields_ready('product') ? ', products.ai_fields' : '';
 
     $p = null;
     if ($product_address_name !== '') {
@@ -4627,7 +4630,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -4696,7 +4699,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                          products.out_of_stock_message,
                          products.mpn, products.gtin, products.brand, products.weight,
                          products.shippable, products.taxable, products.reward_points,
-                         products.seo_score, $_civ_rating_cols,
+                         products.seo_score, $_civ_rating_cols$_civ_ai_col,
                          products.custom_field_1, products.custom_field_2,
                          products.custom_field_3, products.custom_field_4
                          " . pg_sw_entity_select('product', 'products') . "
@@ -4720,7 +4723,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
                  products.out_of_stock_message,
                  products.mpn, products.gtin, products.brand, products.weight,
                  products.shippable, products.taxable, products.reward_points,
-                 products.seo_score, $_civ_rating_cols,
+                 products.seo_score, $_civ_rating_cols$_civ_ai_col,
                  products.custom_field_1, products.custom_field_2,
                  products.custom_field_3, products.custom_field_4
                  " . pg_sw_entity_select('product', 'products') . "
@@ -5172,6 +5175,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__rating_count'         => $_civ_rating['__rating_count'],
             '__is_bundle'               => $_civ_bundle['__is_bundle'],
             '__bundle_saving_formatted' => $_civ_bundle['__bundle_saving_formatted'],
+            '__ai_generated'         => '',
             '__not_found_message'            => $not_found_message,
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
@@ -5386,6 +5390,9 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__short_description'    => isset($p['short_description']) ? (string)$p['short_description'] : '',
             '__description'          => isset($p['full_description']) ? (string)$p['full_description'] : '',
             '__details'              => isset($p['details']) ? (string)$p['details'] : '',
+            // A sentence while a text shown here is a "Write with AI" draft
+            // as used (pg_ai_fields_note()), else empty.
+            '__ai_generated'         => pg_ai_fields_note('product', $p),
             '__detail_url'           => $self_url,
             '__sort_order'           => (string)$sort_order_val,
             '__created_at'           => !empty($p['timestamp']) ? date('Y-m-d', (int)$p['timestamp']) : '',
