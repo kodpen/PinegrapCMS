@@ -119,6 +119,42 @@
     accent-color: var(--pg-primary, var(--bs-primary-bg));
   }
 
+  /* In a drawer the calendar is drawn after its field, in the drawer's
+     flow (pg_datetime.js onDemand()), hidden until the field asks for it.
+     Open, it takes the popup's surface and stays inside the field's column:
+     a column narrower than the month scrolls it sideways rather than
+     letting it run over the next one. */
+  .pg-date-inline {
+    min-width: 0;
+    max-width: 100%;
+    margin-top: .25rem;
+  }
+
+  .pg-date-inline[hidden] {
+    display: none;
+  }
+
+  .pg-date-inline > [data-vc=calendar] {
+    box-sizing: border-box;
+    width: fit-content;
+    min-width: 0;
+    max-width: 100%;
+    padding: .5rem;
+    overflow-x: auto;
+    color: var(--pg-fg-body);
+    background-color: var(--pg-bg-body);
+    border: var(--pg-border-width) var(--pg-border-style, solid) var(--pg-border-color-translucent);
+    border-radius: var(--pg-radius-lg);
+    box-shadow: var(--pg-shadow);
+  }
+
+  /* Smaller day cells in a narrow column: the month fits a half-width
+     column of a drawer before it has to scroll. */
+  .pg-date-inline > [data-vc=calendar] [data-vc-date-btn],
+  .pg-date-inline > [data-vc=calendar] [data-vc-week-day] {
+    min-width: 1.5rem;
+  }
+
   [data-vc=calendar] .pg-vc-actions {
     display: flex;
     justify-content: flex-end;
