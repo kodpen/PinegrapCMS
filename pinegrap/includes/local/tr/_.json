@@ -1134,6 +1134,7 @@
     "{var:1} repeating expense(s) were written.": "{var:1} tekrarlayan gider yazıldı.",
     "{var:1} repeating invoice(s) were written.": "{var:1} tekrarlayan fatura yazıldı.",
     "{var:1} report": "{var:1} raporu",
+    "{var:1} request{suffix:1}": "{var:1} istek",
     "{var:1} request{suffix:1} recorded": "{var:1} istek kaydedildi",
     "{var:1} request{suffix:1} · peak {var:2} ms": "{var:1} istek · tepe {var:2} ms",
     "{var:1} requires {var:2}, so {var:2} has been added to your order.": "{var:2}, {var:1} için gereklidir. Bu nedenle {var:2} siparişinize eklendi.",

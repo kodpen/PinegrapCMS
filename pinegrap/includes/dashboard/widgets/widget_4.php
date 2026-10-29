@@ -201,7 +201,9 @@ function pg_dashboard_widget_4($request, $user)
                 $eg_seen_text = h(lang('Online'));
             } elseif ($eg_presence == 'away') {
                 $eg_status_label = lang('Away');
-                $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));
+                // Written out: the avatar dot and its title are the
+                // only other difference from Offline.
+                $eg_seen_text = h(lang('Away')) . ' &middot; ' . get_relative_time(array('timestamp' => $eg_seen));
             } else {
                 $eg_status_label = lang('Offline');
                 $eg_seen_text = get_relative_time(array('timestamp' => $eg_seen));

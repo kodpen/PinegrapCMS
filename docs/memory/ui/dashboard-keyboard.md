@@ -5,7 +5,7 @@ description: Dashboard keyboard and screen-reader access: Online Engagement rows
 
 ## How are Online Engagement's rows reachable by keyboard?
 - A "Waiting for a reply" row is a `<button type="button">` reset with `border-0 bg-transparent w-100 text-start`; its boxes are spans, since a button holds only phrasing content.
-- A roster row the reader may edit has its name as `<a href="edit_user.php?id=N" class="stretched-link">`. The row is `position-relative`, and the Start Chat control is a sibling `<button aria-label="Start Chat">` with `position-relative z-2` above the link, never nested in it. The avatar is `z-2` too, so its presence `title` still shows on hover.
+- A roster row the reader may edit has its name as `<a href="edit_user.php?id=N" class="stretched-link">`. The row is `position-relative`, and the Start Chat control is a sibling `<button aria-label="Start Chat">` with `position-relative z-2` above the link, never nested in it. The avatar is `z-2` too, so its presence `title` still shows on hover; the avatar is `aria-hidden` (`contacts.php`), so Away is also written in the seen line (`Away · <relative time>`), the only other difference from Offline.
 - Before, all three were `onclick` on a div or an `<i>`, so no keyboard reached them. Pinned by `tests/dashboard_keyboard_test.php`.
 
 ## Why does the System Status popover open on focus now?
@@ -29,4 +29,4 @@ description: Dashboard keyboard and screen-reader access: Online Engagement rows
 ## What was not checked in a browser?
 - Nothing was rendered (no panel run in a sandbox). Classes were checked against `assets/lib/bootstrap-6/css` only.
 
-Related: docs/memory/ui/dashboard-card-figures.md, docs/memory/ui/dashboard-widget-files.md, docs/memory/ui/panel-accessible-names.md
+Related: docs/memory/ui/dashboard-hover-figures.md, docs/memory/ui/dashboard-card-figures.md, docs/memory/ui/dashboard-widget-files.md, docs/memory/ui/panel-accessible-names.md
