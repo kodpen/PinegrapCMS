@@ -468,9 +468,10 @@ function pg_coll_ready()
  * The kinds a field of a collection may have beyond its type, and the field
  * types each one is given to. A text, a rich text, a date, a file or an
  * option set is the field's type itself; these say what the type cannot:
- * a number, an image, a reference to another form's records, a product or a
- * page of the site (its id). The editor's twin is _CF_KINDS in
- * style_designer.js.
+ * a number, an image, a reference to another form's records, a product, a
+ * page of the site (its id) or the record's address name (a slug, read by
+ * update_submitted_form_address_name() before the Title field). The
+ * editor's twin is _CF_KINDS in style_designer.js.
  *
  * @return array kind => field types
  */
@@ -482,6 +483,7 @@ function pg_coll_kinds()
         'reference' => array('text box', 'pick list', 'radio button', 'check box'),
         'product'   => array('pick list'),
         'page'      => array('pick list'),
+        'slug'      => array('text box'),
     );
 }
 
@@ -500,6 +502,27 @@ function pg_coll_field_kind($kind, $type)
     $kind  = is_string($kind) ? strtolower(trim($kind)) : '';
     if (!isset($kinds[$kind]) || !in_array((string)$type, $kinds[$kind], true)) return '';
     return $kind;
+}
+
+/**
+ * The text a record's address name is made from: the first non-blank value
+ * of a slug field, else the first non-blank value of the Title field (RSS
+ * title). $rows are the record's values in field order, each with 'data',
+ * 'kind' (form_fields.collection_kind) and 'rss' (form_fields.rss_field).
+ *
+ * @param array $rows
+ * @return string
+ */
+function pg_coll_address_source($rows)
+{
+    $title = '';
+    foreach ((array)$rows as $row) {
+        $data = isset($row['data']) ? trim((string)$row['data']) : '';
+        if ($data === '') continue;
+        if (isset($row['kind']) && $row['kind'] === 'slug') return $data;
+        if ($title === '' && isset($row['rss']) && $row['rss'] === 'title') $title = $data;
+    }
+    return $title;
 }
 
 /**

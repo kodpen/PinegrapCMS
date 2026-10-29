@@ -2032,7 +2032,8 @@ const StyleDesigner = (function () {
         image:     ['file upload'],
         reference: ['text box', 'pick list', 'radio button', 'check box'],
         product:   ['pick list'],
-        page:      ['pick list']
+        page:      ['pick list'],
+        slug:      ['text box']
     };
     // The [kind, label] pairs a field of `type` may take.
     function _cfKindsFor(type) {
@@ -2041,7 +2042,8 @@ const StyleDesigner = (function () {
             image:     _sdT('Image'),
             reference: _sdT('Reference to another form'),
             product:   _sdT('Product'),
-            page:      _sdT('Page')
+            page:      _sdT('Page'),
+            slug:      _sdT('Address name (slug)')
         };
         return Object.keys(_CF_KINDS).filter(function (k) { return _CF_KINDS[k].indexOf(type) !== -1; })
             .map(function (k) { return [k, labels[k]]; });
