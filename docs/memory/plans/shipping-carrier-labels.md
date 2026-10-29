@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 3b #3137): carrier APIs 
 3. Panel actions single + bulk; `shipment_labels` and `data/shipping_labels/`, retention 30/90 days (#3108, `workflow/decisions-made-schema-3.md`) (M).
    - 3a. Done in PR #3117 (`commerce/shipment-labels.md`): table, files, Create Label and reprint on the order, sweep, erasure, order delete.
    - 3b. Done in PR #3137 (`commerce/shipment-label-bulk.md`): bulk create and one merged PDF from the orders list, Cancel Label, return labels.
-4. Status polling job in the dispatcher, write-back through the single path (S).
+4. Status polling job in the dispatcher, write-back through the single path (S). Done in PR #3157 (`commerce/shipment-tracking.md`).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
 6. Further aggregators as their references open: Basit Kargo (SVG labels, no test mode, 600 requests a minute; #3123), Kargonomi; MNG ApiZone a candidate (M each).
 7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
@@ -31,4 +31,4 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 3b #3137): carrier APIs 
 - Formats (#3123): PDF, ZPL and SVG as the service gives them; SVG into the bulk PDF where dompdf renders it; ZPL never sent to an external converter.
 
 ## Where to start?
-- Step 4: status polling of active rows (`shipment_labels`, `track()`). Live check of the Geliver driver with the owner's test key.
+- Step 5: Yurtiçi and Aras direct drivers; one with `track()` is followed by the tracking job as it is. Live check of the Geliver driver with the owner's test key.
