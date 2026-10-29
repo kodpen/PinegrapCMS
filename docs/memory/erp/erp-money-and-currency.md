@@ -12,7 +12,7 @@ description: ERP money storage (integer minor units), the single rounding point 
 - The store's main currency, not `'TRY'`: the ERP follows `BASE_CURRENCY_CODE` (`erp_base_currency()`, `includes/erp/fx.php`). Pinegrap installs worldwide; no country-specific rate source or tax rule enters the core.
 - Converted columns are `*_base` (`amount_base`, `grand_total_base`; renamed from `*_try` before 2026.4.4 shipped, migration 4.49).
 - Convert with `erp_to_base($kurus, $rate)`; rate = home currency per 1 unit of document currency.
-- Display with `erp_money_out_currency($kurus, $code)` (symbol from the `currencies` table); the visitor currency rate is NOT applied. `erp_money_out()` is its home-currency wrapper. Separators and other formats: erp-number-input-and-display.
+- Display with `erp_money_out_currency($kurus, $code)` (symbol from `currencies`, read only for another currency); the visitor currency rate is NOT applied. `erp_money_out()` is its home-currency wrapper. Separators and other formats: erp-number-input-and-display.
 
 ## How is foreign currency switched on?
 - Opt-in: `config.erp_fx_enabled` / `ERP_FX_ENABLED`. Off: forms do not ask for a currency, the home currency is used silently, no FX difference is written. Every FX branch checks `erp_fx_enabled()`.

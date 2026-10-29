@@ -24,6 +24,7 @@ description: How a cancelled or refunded order reaches the ERP: the order card's
 ## How is a card refund chosen with the ERP on?
 - By line and quantity (`includes/erp/order_refund.php`): the server works the amount out with `erp_return_build()` (through `erp_order_refund_amount()`), the function the return invoice uses; an amount posted by the page is never trusted. The refund stops at what is left on the card.
 - After the driver refunds, the return form opens with the same quantities (`qty[line]`); nothing is issued until it is saved. Driver side: commerce/payment-refunds.md.
+- Figures: `erp_money_out()`, script `erp_number_separators()`; a box per line named (`tests/erp_order_refund_money_test.php`).
 
 ## Can an ERP rollback undo an orders write?
 - Do not count on it. `orders` was MyISAM until 2026.4.8, and a table over the conversion limit (250,000 rows or 128 MB) stays MyISAM until the operator converts it, so the flow stays MyISAM-safe (test scripts: erp-dev-environment-traps.md).
