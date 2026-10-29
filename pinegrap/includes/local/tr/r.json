@@ -903,6 +903,7 @@
     "Return code": "İade kodu",
     "Return invoice": "İade faturası",
     "Return invoices": "İade faturaları",
+    "Return label {var:1} of order {var:2} was downloaded by the customer.": "{var:2} siparişinin {var:1} numaralı iade etiketi müşteri tarafından indirildi.",
     "Return or cancellation": "İade veya iptal",
     "Return period ends": "Cayma süresinin son günü",
     "Return refund reminders": "İade ücreti hatırlatmaları",

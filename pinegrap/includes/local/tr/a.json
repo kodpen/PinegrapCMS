@@ -779,6 +779,7 @@
     "A return has been written against this invoice, so its date is not moved.": "Bu faturaya iade kesilmiş, bu yüzden tarihi değiştirilmez.",
     "A return is issued as a return invoice against the original, not as an invoice of type İADE.": "İade, İADE tipli bir fatura olarak değil, asıl faturaya karşı iade faturası olarak düzenlenir.",
     "A return is requested": "İade talep edildi",
+    "A return label download was refused for order {var:1}: the visitor does not own it.": "{var:1} siparişi için iade etiketi indirme reddedildi: ziyaretçi siparişin sahibi değil.",
     "A return label is being created for this request. Wait a moment, then open the request again.": "Bu talep için bir iade etiketi oluşturuluyor. Biraz bekleyin, sonra talebi yeniden açın.",
     "A return label is created only for an approved request.": "İade etiketi yalnızca onaylanmış bir talep için oluşturulur.",
     "A return label is created with {var:1}; the service may charge for it. Its code is sent to the customer by e-mail.": "{var:1} ile bir iade etiketi oluşturulur; servis bunun için ücret alabilir. Kodu müşteriye e-postayla gönderilir.",
