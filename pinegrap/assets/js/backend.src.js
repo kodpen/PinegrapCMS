@@ -8876,12 +8876,22 @@ function pg_background_calls_allowed() {
             c = document.createElement('div');
             c.id = 'pg-toast-container';
             c.className = 'toast-container position-fixed top-0 end-0 p-5';
-            c.style.zIndex = '1090';
             c.setAttribute('aria-live', 'polite');
             c.setAttribute('aria-atomic', 'true');
             document.body.appendChild(c);
         }
         return c;
+    }
+
+    // On the body under the panel's top bar the container starts below the
+    // bar and stays under its stacking level (1030), above sticky bars
+    // (1020): a lasting toast would otherwise cover the bell and account
+    // buttons, and the header menus open inside the bar's stacking context.
+    // Inside a dialog (pgUI.hostLayer) or without a bar it keeps the top.
+    function placeToastContainer(c) {
+        var underBar = c.parentNode === document.body && !!document.querySelector('.software-navbar.fixed-top');
+        c.style.top = underBar ? 'var(--pg-navbar-h)' : '';
+        c.style.zIndex = underBar ? '1025' : '1090';
     }
 
     /**
@@ -8912,6 +8922,7 @@ function pg_background_calls_allowed() {
         if (window.pgUI && pgUI.hostLayer) {
             pgUI.hostLayer(container);
         }
+        placeToastContainer(container);
         var key = variant + '\n' + message;
         if (sticky) {
             for (var i = 0; i < container.children.length; i++) {
