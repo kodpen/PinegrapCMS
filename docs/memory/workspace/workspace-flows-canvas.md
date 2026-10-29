@@ -9,8 +9,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Texts `ws_flow_js_strings()` (`fl_*`). Config `ws_flow_js_config($viewer, $mode)`: `nav`; mode `record`: `nav: false`, no query; `flows` adds build, subjects, limits.
 
 ## Where are staff's scheduled actions?
-- `ws_flows_scheduled($viewer)` (staff; `CFG.flows.scheduled`): an entry under the flow list opens a section in place of the canvas (`?view=scheduled`), drawn by `scheduledList(body, bar)` of workspace.js through `PGWsKit`; the Workspace list then has Scheduled messages, not Scheduled actions, workspace.php's `?view=scheduled` shows their scheduled messages only (`&part=messages` names that tab without flow tables). Parity: `workspace-flows-parity-test.md`.
-- "Show on canvas" on a card there: `ws_scheduled_get` answers `graph` (pure `ws_scheduled_graph()` of the staff card: when, conditions, step, follow-ups by outcome; chips: starters, started, self-retry); `showAction()` draws it read-only on a scrolling stage; Edit opens the form.
+- A section of the screen: `workspace-flows-scheduled-section.md`.
 
 ## Which panel actions?
 - `ws_flow_list`, `_get`, `_create`, `_save`, `_publish`, `_pause`, `_bin`, `ws_flow_run_start`, `ws_flow_runs_list` (20 a page), `ws_flow_run_get`, `_cancel`, `ws_flow_shares`, `ws_flow_share_set`, `_remove`: `ws_` rows (exempt, token, write); the store's, runner's, shares' `*_check()` decide.
@@ -18,9 +17,10 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Runs and shares answer with the API's presenters (`api_flows.php`), times via `ws_flow_time()` (`api_time()` is API-only). `ws_flow_run_get` adds `due` (`ws_scheduled_due()`).
 
 ## How is the editor built?
-- Toolbar: "New flow" (slot 1, primary), "Flows ›", name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: list | stage | side.
+- Toolbar: "New flow" (slot 1, primary), "Flows ›", name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: palette | stage | side.
+- Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, `PALETTE_GROUPS` (start, values, logic, people, message, system) with coloured headings; start says "This flow: <kind>" (`paletteHeading()`). Click or drag; phones: the outline's buttons.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
-- Run/view access: the live graph (never published: its draft) read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
+- Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
 - Box look, kind icons: `workspace-flows-box-look.md`.
 
 ## How is it saved?
