@@ -18,7 +18,7 @@ description: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, f
 
 ## When does it close?
 - Escape, the Close button, or a tap on the dark background: a primary press on the overlay or stage element itself, released over the background, moved under `TAP_MAX_MOVE` (8 px) and held under `TAP_MAX_TIME` (220 ms). Judged in the overlay's `pointerdown`/`pointerup` listeners in `build()`; the release spot comes from `document.elementFromPoint()`, because the stage's `setPointerCapture()` makes every event target the stage.
-- No `click` or `mousedown` close: with the press captured, Chromium sent the click on the picture to the stage, so a click, the first click of a double-click (zoom never ran), a click on a zoomed picture and a drag closed the viewer, and a margin press closed on the press (#PRNUM). Pinned by `tests/lightbox_pointer_test.php`; checked headless in Chromium (mouse and touch).
+- No `click` or `mousedown` close: with the press captured, Chromium sent the click on the picture to the stage, so a click, the first click of a double-click (zoom never ran), a click on a zoomed picture and a drag closed the viewer, and a margin press closed on the press (#3276). Pinned by `tests/lightbox_pointer_test.php`; checked headless in Chromium (mouse and touch).
 
 ## Symptom it fixed
 - Focus stayed on the thumbnail under the 96%-opaque overlay; Tab walked the list behind it and Space/Enter acted on rows nobody could see. After closing, the invisible toolbar buttons stayed at the end of the tab order and screen readers found a hidden modal dialog.
