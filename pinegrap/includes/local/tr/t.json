@@ -2875,6 +2875,7 @@
     "The record is deleted at Paraşüt in the same click.": "Kayıt aynı tıkla Paraşüt'ten silinir.",
     "The record is gone.": "Kayıt artık yok.",
     "The record is shown": "Kayıt gösteriliyor",
+    "The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.": "Bu formların kayıt sayfalarında medya alanı yok ve bu görseli paylaşıyorlar: {var:1}. Form ayarlarından bir Paylaşım Görseli Alanı seçin.",
     "The record the condition looks at is gone: {var:1}.": "Koşulun baktığı kayıt artık yok: {var:1}.",
     "The recording could not be read.": "Kayıt okunamadı.",
     "The recording stops and is sent in {var:1} seconds.": "Kayıt {var:1} saniye içinde durup gönderilecek.",

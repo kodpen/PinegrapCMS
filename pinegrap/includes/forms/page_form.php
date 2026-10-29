@@ -751,6 +751,12 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $custom_form_schema_author_rows .= pg_page_form_schema_type_row($custom_form_properties['schema_type'] ?? '');
     }
 
+    // The share image field of the form's record pages, drawn only once the
+    // 11.0.18 column is there.
+    if (pg_record_share_image_setting_ready()) {
+        $custom_form_schema_author_rows .= pg_page_form_share_image_row($custom_form_properties['share_image_field_id'] ?? 0, $page_id);
+    }
+
     $form_list_view_viewer_filter_checked = '';
 
     if (($form_list_view_properties['viewer_filter'] ?? '') == 1) {
@@ -2936,6 +2942,84 @@ function pg_page_form_schema_type_row($stored)
                 </div>';
 }
 
+/**
+ * The Share Image Field row of a custom form's settings: the file field whose
+ * upload is the record pages' share image, or the RSS media field (0), and
+ * the notice that the records share the site's default image while the form
+ * has neither (pg_record_share_image_sources(), includes/fn/seo.php).
+ *
+ * @param mixed $stored  custom_form_pages.share_image_field_id
+ * @param int   $page_id The page being edited, 0 for a new page
+ * @return string
+ */
+function pg_page_form_share_image_row($stored, $page_id)
+{
+    $stored = (int) $stored;
+    $fields = array();
+
+    if ((int) $page_id > 0) {
+        $result = db_q(
+            "SELECT id, name, label, type, rss_field
+            FROM form_fields
+            WHERE page_id = ?
+            ORDER BY sort_order ASC, id ASC",
+            array((string) (int) $page_id));
+
+        while ($result && ($row = mysqli_fetch_assoc($result))) {
+            $fields[] = $row;
+        }
+    }
+
+    $options = '<option value="0">' . h(lang('The RSS media field')) . '</option>';
+
+    foreach ($fields as $field) {
+        if ($field['type'] !== 'file upload') {
+            continue;
+        }
+
+        $label = ((string) $field['label'] !== '') ? (string) $field['label'] : (string) $field['name'];
+        $options .= '<option value="' . (int) $field['id'] . '"' . (((int) $field['id'] === $stored) ? ' selected="selected"' : '') . '>' . h($label) . '</option>';
+    }
+
+    $notice = '';
+
+    if (((int) $page_id > 0) && pg_record_share_image_uses_default($stored, $fields)) {
+        $notice = '
+                        <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang('This form has no media field: its records share the site\'s default share image.') . '</div>';
+    }
+
+    return '
+                <div class="row mt-3">
+                    <div class="col-12 md:col-6 my-1">
+                        <label class="form-label" for="custom_form_share_image_field_id">' . lang('Share Image Field') . '</label>
+                        <select class="form-control" id="custom_form_share_image_field_id" name="custom_form_share_image_field_id">' . $options . '</select>
+                        <div class="form-text">' . lang('The picture a record page shows when it is shared. It is used only when it is an image every visitor may open.') . '</div>' . $notice . '
+                    </div>
+                </div>';
+}
+
+/**
+ * The share_image_field_id a posted choice stores: the id of a file field of
+ * the form on $page_id, 0 for anything else (the RSS media field).
+ *
+ * @param mixed $posted  The posted field id
+ * @param int   $page_id
+ * @return int
+ */
+function pg_page_form_share_image_value($posted, $page_id)
+{
+    $posted = (int) $posted;
+
+    if (($posted <= 0) || ((int) $page_id <= 0)) {
+        return 0;
+    }
+
+    return (int) db_value(
+        "SELECT id FROM form_fields
+        WHERE (id = '" . $posted . "') AND (page_id = '" . (int) $page_id . "') AND (type = 'file upload')
+        LIMIT 1");
+}
+
 function pg_page_form_new_page_properties()
 {
     $order_receipt_email = array(
@@ -3125,6 +3209,10 @@ function pg_page_form_type_properties_from_post($page_type, $page_id)
 
             if (pg_record_schema_type_setting_ready()) {
                 $properties['schema_type'] = pg_record_schema_type($field('custom_form_schema_type'));
+            }
+
+            if (pg_record_share_image_setting_ready()) {
+                $properties['share_image_field_id'] = pg_page_form_share_image_value($field('custom_form_share_image_field_id'), $page_id);
             }
 
             if ($hooks) {

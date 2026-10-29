@@ -1281,6 +1281,96 @@ function pg_record_share_image_uses_default($configured_field_id, $fields)
 }
 
 /**
+ * The form a designed record page's widget shows (its system region config):
+ * the custom form's page id by custom_form_page_id, form_page_id or, on old
+ * widgets, the page name in source_page, as the widget renderer reads it.
+ * 0 when it names none.
+ *
+ * @param array $cfg shared_components.system_region_config, decoded
+ * @return int
+ */
+function pg_record_widget_form_page_id($cfg)
+{
+    if (!is_array($cfg)) {
+        return 0;
+    }
+
+    foreach (array('custom_form_page_id', 'form_page_id') as $key) {
+        if ((int) ($cfg[$key] ?? 0) > 0) {
+            return (int) $cfg[$key];
+        }
+    }
+
+    if (!empty($cfg['source_page']) && is_string($cfg['source_page'])) {
+        return (int) db_value("SELECT page_id FROM page WHERE page_name = '" . e($cfg['source_page']) . "' LIMIT 1");
+    }
+
+    return 0;
+}
+
+/**
+ * The forms whose record pages always share the default share image
+ * (pg_record_share_image_uses_default()): forms shown by a classic form item
+ * view page or a designed form item view widget, with no RSS media field and
+ * no share image field. Named for the SEO settings card; empty before the
+ * 11.0.18 column is there.
+ *
+ * @return array custom form page id => form name
+ */
+function pg_record_forms_sharing_default_image()
+{
+    if (!pg_record_share_image_setting_ready()) {
+        return array();
+    }
+
+    $form_page_ids = array();
+
+    foreach ((array) db_items("SELECT DISTINCT custom_form_page_id FROM form_item_view_pages") as $row) {
+        $form_page_ids[(int) $row['custom_form_page_id']] = true;
+    }
+
+    foreach ((array) db_items(
+        "SELECT system_region_config FROM shared_components
+        WHERE system_region_config LIKE '%\"regionType\":\"form_item_view\"%'") as $row) {
+        $cfg = json_decode((string) $row['system_region_config'], true);
+
+        if (is_array($cfg) && (($cfg['regionType'] ?? '') === 'form_item_view')) {
+            $form_page_ids[pg_record_widget_form_page_id($cfg)] = true;
+        }
+    }
+
+    unset($form_page_ids[0]);
+
+    $forms = array();
+
+    foreach (array_keys($form_page_ids) as $form_page_id) {
+        $form = db_item(
+            "SELECT custom_form_pages.form_name, custom_form_pages.share_image_field_id, page.page_name
+            FROM custom_form_pages
+            LEFT JOIN page ON page.page_id = custom_form_pages.page_id
+            WHERE custom_form_pages.page_id = '" . (int) $form_page_id . "'
+            LIMIT 1");
+
+        if (!is_array($form)) {
+            continue;
+        }
+
+        $fields = db_items(
+            "SELECT id, type, rss_field FROM form_fields
+            WHERE page_id = '" . (int) $form_page_id . "'");
+
+        if (pg_record_share_image_uses_default($form['share_image_field_id'], $fields)) {
+            $name = trim((string) $form['form_name']);
+            $forms[$form_page_id] = ($name !== '') ? $name : (string) $form['page_name'];
+        }
+    }
+
+    natcasesort($forms);
+
+    return $forms;
+}
+
+/**
  * Resolve the share image of a submitted form.
  *
  * The form's share image field comes first: an upload that is an image and
