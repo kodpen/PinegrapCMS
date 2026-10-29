@@ -342,3 +342,57 @@ function test_imap_client_append()
 	pg_imap_greeting($session);
 	pg_assert_false(pg_imap_append($session, 'Sent', ''), 'nothing to append');
 }
+
+function test_imap_client_xoauth2()
+{
+	$response = pg_imap_xoauth2_response('box@contoso.com', 'tok');
+	pg_assert_same("user=box@contoso.com\x01auth=Bearer tok\x01\x01", base64_decode($response));
+
+	// The token in the command line where the server allows it.
+	list($session, $out) = imap_client_test_session(array(
+		'* OK [CAPABILITY IMAP4rev1 AUTH=XOAUTH2 SASL-IR] ready',
+		'A0001 OK [CAPABILITY IMAP4rev1 MOVE] done',
+	));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_true(pg_imap_login_xoauth2($session, 'box@contoso.com', 'tok'));
+	pg_assert_same("A0001 AUTHENTICATE XOAUTH2 " . $response . "\r\n", imap_client_test_sent($out));
+
+	// After the go-ahead otherwise.
+	list($session, $out) = imap_client_test_session(array(
+		'* OK [CAPABILITY IMAP4rev1 AUTH=XOAUTH2] ready',
+		'+ ',
+		'A0001 OK done',
+		'* CAPABILITY IMAP4rev1',
+		'A0002 OK',
+	));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_true(pg_imap_login_xoauth2($session, 'box@contoso.com', 'tok'));
+	pg_assert_same("A0001 AUTHENTICATE XOAUTH2\r\n" . $response . "\r\nA0002 CAPABILITY\r\n", imap_client_test_sent($out));
+}
+
+function test_imap_client_xoauth2_refused()
+{
+	// A refused token: the reason as a challenge, an empty line, then NO;
+	// the token never reaches the detail.
+	list($session, $out) = imap_client_test_session(array(
+		'* OK [CAPABILITY IMAP4rev1 AUTH=XOAUTH2 SASL-IR] ready',
+		'+ eyJzdGF0dXMiOiI0MDAifQ==',
+		'A0001 NO AUTHENTICATE failed.',
+	));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_false(pg_imap_login_xoauth2($session, 'box@contoso.com', 'secret-token'));
+	pg_assert_same('auth', $session['error']);
+	pg_assert_true(strpos($session['detail'], 'secret-token') === false);
+	pg_assert_same("A0001 AUTHENTICATE XOAUTH2 " . pg_imap_xoauth2_response('box@contoso.com', 'secret-token') . "\r\n\r\n", imap_client_test_sent($out));
+
+	// No XOAUTH2 offered: nothing is sent.
+	list($session, $out) = imap_client_test_session(array('* OK [CAPABILITY IMAP4rev1 AUTH=PLAIN] ready'));
+
+	pg_assert_true(pg_imap_greeting($session));
+	pg_assert_false(pg_imap_login_xoauth2($session, 'box@contoso.com', 'tok'));
+	pg_assert_same('auth_disabled', $session['error']);
+	pg_assert_same('', imap_client_test_sent($out));
+}

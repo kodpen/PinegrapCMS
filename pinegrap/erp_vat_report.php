@@ -300,8 +300,9 @@ for ($i = 0; $i < 24; $i++) {
 $output_quarter_options = '';
 for ($i = 0; $i < 8; $i++) {
     $first = date('Y-m-01', strtotime(date('Y') . '-' . sprintf('%02d', ((int) ceil(date('n') / 3) - 1) * 3 + 1) . '-01 -' . ($i * 3) . ' month'));
-    $value = substr($first, 0, 4) . '-Q' . (int) ceil(((int) substr($first, 5, 2)) / 3);
-    $output_quarter_options .= '<option value="' . h($value) . '"' . ((($range === 'quarter') && ($period['from'] === $first)) ? ' selected' : '') . '>' . h(str_replace('-Q', ' / Q', $value)) . '</option>';
+    $quarter = (int) ceil(((int) substr($first, 5, 2)) / 3);
+    $value = substr($first, 0, 4) . '-Q' . $quarter;
+    $output_quarter_options .= '<option value="' . h($value) . '"' . ((($range === 'quarter') && ($period['from'] === $first)) ? ' selected' : '') . '>' . h(lang(array('string' => '{var:1} / Q{var:2}', 'vars' => array(substr($first, 0, 4), $quarter)))) . '</option>';
 }
 $output_year_options = '';
 for ($year = (int) date('Y'); $year >= (int) date('Y') - 5; $year--) {

@@ -973,6 +973,78 @@ function pg_imap_login(&$session, $user, $password)
 }
 
 /**
+ * The XOAUTH2 response (Microsoft, Google): the user and the bearer token,
+ * base64. Pure.
+ *
+ * @param string $user
+ * @param string $token
+ * @return string
+ */
+function pg_imap_xoauth2_response($user, $token)
+{
+    return base64_encode('user=' . $user . "\x01auth=Bearer " . $token . "\x01\x01");
+}
+
+/**
+ * Signs in with an OAuth access token (AUTHENTICATE XOAUTH2). A refused
+ * token is answered with a challenge carrying the reason; an empty line
+ * ends the exchange, and the reason is kept as the detail.
+ *
+ * @param array  $session
+ * @param string $user  the mailbox's address
+ * @param string $token
+ * @return bool
+ */
+function pg_imap_login_xoauth2(&$session, $user, $token)
+{
+    if (!$session['capabilities'] && !pg_imap_command($session, array('CAPABILITY'))['ok']) {
+        return pg_imap_fail($session, 'protocol', 'CAPABILITY failed.');
+    }
+
+    if (!in_array('AUTH=XOAUTH2', $session['capabilities'], true)) {
+        return pg_imap_fail($session, 'auth_disabled', 'XOAUTH2 is not offered.');
+    }
+
+    $tag = 'A' . str_pad((string) (++$session['tag']), 4, '0', STR_PAD_LEFT);
+    $response = pg_imap_xoauth2_response($user, $token);
+    $initial = in_array('SASL-IR', $session['capabilities'], true);
+
+    if (!pg_imap_write($session, $tag . ' AUTHENTICATE XOAUTH2' . ($initial ? ' ' . $response : '') . "\r\n")) {
+        return pg_imap_broken($session);
+    }
+
+    $reply = pg_imap_read_response($session, $tag, true);
+
+    if ($reply['continue'] && !$initial) {
+        if (!pg_imap_write($session, $response . "\r\n")) {
+            return pg_imap_broken($session);
+        }
+
+        $reply = pg_imap_read_response($session, $tag, true);
+    }
+
+    // The server's reason for refusing, then the tagged NO.
+    if ($reply['continue']) {
+        if (!pg_imap_write($session, "\r\n")) {
+            return pg_imap_broken($session);
+        }
+
+        $reply = pg_imap_read_response($session, $tag, false);
+    }
+
+    if (!$reply['ok']) {
+        // The server's words, never the command (it carried the token).
+        return pg_imap_fail($session, ($reply['status'] === '') ? ($session['error'] ?: 'protocol') : 'auth', $reply['text']);
+    }
+
+    if (!(($reply['code'] !== null) && ($reply['code']['name'] === 'CAPABILITY'))) {
+        pg_imap_command($session, array('CAPABILITY'));
+    }
+
+    return $session['error'] === '';
+}
+
+/**
  * AUTHENTICATE PLAIN, with the response in the command line when the server
  * allows it (SASL-IR), else after its go-ahead.
  *
