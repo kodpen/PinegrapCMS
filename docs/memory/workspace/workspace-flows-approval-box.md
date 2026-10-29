@@ -12,6 +12,7 @@ description: The approval box of a flow (F5c, PR #2142): asks, waits on approval
 - Asked: `ws_flow_approval_wait()` in one conditional UPDATE writes effect and wait_key `approval:<id>`, `wait_event` `workspace.approval.decided` (`WS_FLOW_APPROVAL_WAIT`), `wake_at` +1 h. Not asked: the step's failure settles as any step (failed, or done on a failed arrow).
 - Woken by `ws_flow_wake()` (`ws_flow_wake_key()` maps the event's `id`) or the hourly recheck (`ws_flow_step_recheck()` → `ws_flow_approval_recheck()`), which reads the request itself.
 - Stopped half way after `began:approval`: fails (never asked twice); with `approval:<id>` written: resumes waiting.
+- An MCP box whose tool asks first asks its owner and waits the same way (`ws_flow_approval_wait(…, 'mcp')`); approved, it makes its call instead of settling: `workspace-flows-mcp-box-writes.md`.
 
 ## How does it settle? (`ws_flow_approval_settlement()`)
 - approved, rejected: done on that outcome; no arrow on it ends the branch.
