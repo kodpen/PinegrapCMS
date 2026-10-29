@@ -46,8 +46,8 @@ function test_workspace_settings_names_hours_separator()
 {
 	$source = workspace_settings_names_source('workspace_settings.php');
 
-	pg_assert_true(strpos($source, "number_format(\$hours, 2, '.', '')") === false, 'hours written with a fixed point');
-	pg_assert_true(strpos($source, "pg_number_separators()['decimal']") !== false, 'hours not written with the panel separator');
+	pg_assert_true(strpos($source, "return rtrim(rtrim(number_format(\$hours, 2, '.', ''), '0'), '.');") === false, 'hours written with a fixed point');
+	pg_assert_true(strpos($source, "return str_replace('.', pg_number_separators()['decimal'], \$text);") !== false, 'hours not written with the panel separator');
 }
 
 function test_workspace_settings_names_claude_copy_fields()

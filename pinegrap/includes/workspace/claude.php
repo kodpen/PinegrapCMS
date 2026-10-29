@@ -1936,10 +1936,12 @@ function ws_claude_settings_card($self_url, $viewer, $credentials = null)
     // The short prompt pasted on claude.ai: the rest is read from the site.
     $prompt = ws_claude_bootstrap_prompt();
 
-    $copy = function ($id, $value, $rows = 1) {
+    // $label names a field that has no <label for> beside it.
+    $copy = function ($id, $value, $rows = 1, $label = '') {
+        $name = ($label !== '') ? ' aria-label="' . h($label) . '"' : '';
         $field = ($rows > 1)
-            ? '<textarea class="form-control form-control-sm font-monospace" id="' . h($id) . '" rows="' . (int) $rows . '" readonly>' . h($value) . '</textarea>'
-            : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '" readonly>';
+            ? '<textarea class="form-control form-control-sm font-monospace" id="' . h($id) . '" rows="' . (int) $rows . '"' . $name . ' readonly>' . h($value) . '</textarea>'
+            : '<input class="form-control form-control-sm font-monospace" type="text" id="' . h($id) . '" value="' . h($value) . '"' . $name . ' readonly>';
 
         return '<div class="ws-claude-copy">' . $field
             . '<button type="button" class="btn btn-sm btn-outline theme-secondary no-popover" data-ws-copy-field="' . h($id) . '" data-bs-toggle="tooltip" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button></div>';

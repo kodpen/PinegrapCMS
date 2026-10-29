@@ -81,11 +81,12 @@ function ws_settings_mask($days)
  * @param string $name  the field name, [] is added
  * @param int    $mask
  * @param string $id_prefix
+ * @param string $label  the group's accessible name, "Working days" when empty
  * @return string
  */
-function ws_settings_days_html($name, $mask, $id_prefix)
+function ws_settings_days_html($name, $mask, $id_prefix, $label = '')
 {
-    $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(lang('Working days')) . '">';
+    $output = '<div class="btn-group btn-group-sm ws-days" role="group" aria-label="' . h(($label !== '') ? $label : lang('Working days')) . '">';
 
     foreach (ws_weekday_short_names() as $day => $label) {
         $id = $id_prefix . '_' . $day;
@@ -99,7 +100,8 @@ function ws_settings_days_html($name, $mask, $id_prefix)
 }
 
 /**
- * Minutes as the hours a field shows: "8", "7.5".
+ * Minutes as the hours a field shows: "8", "7.5" (with the panel's decimal
+ * separator, which ws_settings_minutes() reads back).
  *
  * @param int $minutes
  * @return string
@@ -107,8 +109,9 @@ function ws_settings_days_html($name, $mask, $id_prefix)
 function ws_settings_hours($minutes)
 {
     $hours = round(((int) $minutes) / 60, 2);
+    $text = rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
 
-    return rtrim(rtrim(number_format($hours, 2, '.', ''), '0'), '.');
+    return str_replace('.', pg_number_separators()['decimal'], $text);
 }
 
 // Everybody who could be in the team, the ones taken out of it included, so
@@ -453,6 +456,8 @@ foreach ($departments as $department) {
     $primary_ids = array_map('intval', (array) db_values("SELECT user_id FROM ws_department_members WHERE department_id = '" . $id . "' AND is_primary = 1"));
     $channel = ((int) $department['channel_id'] > 0) ? ws_channel($department['channel_id']) : null;
 
+    $archive_label = $department['archived'] ? lang('Bring it back') : lang('Move to the archive');
+
     $output_departments .= '
         <div class="ws-dept-row' . ($department['archived'] ? ' opacity-50' : '') . '">
             <span class="ws-dept-swatch" style="background:' . h($department['color']) . '"></span>
@@ -464,12 +469,12 @@ foreach ($departments as $department) {
                     . ($channel ? ' · <a href="workspace.php?channel=' . (int) $channel['id'] . '">#' . h($channel['name']) . '</a>' : '') . '
                 </div>
             </div>
-            <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-dept-' . $id . '" aria-expanded="false"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
+            <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-toggle="collapse" data-bs-target="#ws-dept-' . $id . '" aria-expanded="false" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Edit'), $department['name'])))) . '"><i class="bi bi-pencil me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</button>
             <form method="post" action="' . h($self_url) . '" class="d-inline">
                 ' . get_token_field() . '
                 <input type="hidden" name="ws_action" value="department_archive">
                 <input type="hidden" name="department_id" value="' . $id . '">
-                <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($department['archived'] ? lang('Bring it back') : lang('Move to the archive')) . '"><i class="bi ' . ($department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>
+                <button type="submit" class="btn btn-sm btn-text theme-secondary" title="' . h($archive_label) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array($archive_label, $department['name'])))) . '"><i class="bi ' . ($department['archived'] ? 'bi-arrow-counterclockwise' : 'bi-archive') . '" aria-hidden="true"></i></button>
             </form>
         </div>
         <div class="collapse" id="ws-dept-' . $id . '">
@@ -511,8 +516,8 @@ function ws_settings_department_form($self_url, $department, $primary_ids, $chan
                         <label class="" for="' . $prefix . '_m' . $person_id . '">' . h($person['name']) . ($person['title'] !== '' ? ' <span class="fg-secondary small">' . h($person['title']) . '</span>' : '') . '</label>
                     </div>
                 </td>
-                <td class="text-center"><input class="check" type="checkbox" name="leads[]" value="' . $person_id . '" aria-label="' . h(lang('Team lead')) . '"' . (in_array($person_id, $leads, true) ? ' checked' : '') . '></td>
-                <td class="text-center"><input class="check" type="checkbox" name="primary[]" value="' . $person_id . '" aria-label="' . h(lang('Own department')) . '"' . (in_array($person_id, $primary_ids, true) ? ' checked' : '') . '></td>
+                <td class="text-center"><input class="check" type="checkbox" name="leads[]" value="' . $person_id . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Team lead'), $person['name'])))) . '"' . (in_array($person_id, $leads, true) ? ' checked' : '') . '></td>
+                <td class="text-center"><input class="check" type="checkbox" name="primary[]" value="' . $person_id . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Own department'), $person['name'])))) . '"' . (in_array($person_id, $primary_ids, true) ? ' checked' : '') . '></td>
             </tr>';
     }
 
@@ -579,12 +584,12 @@ foreach ($candidates as $person) {
                     </div>
                 </div>
             </td>
-            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '" aria-label="' . h(lang('Job title')) . '"></td>
-            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '" aria-label="' . h(lang('Hours a day')) . '"></td>
-            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id) . '</td>
+            <td><input class="form-control form-control-sm" type="text" name="people[' . $person_id . '][title]" maxlength="100" value="' . h($person['title']) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Job title'), $person['name'])))) . '"></td>
+            <td style="width:6rem"><input class="form-control form-control-sm" type="text" inputmode="decimal" name="people[' . $person_id . '][day_hours]" value="' . h(ws_settings_hours($day)) . '" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Hours a day'), $person['name'])))) . '"></td>
+            <td>' . ws_settings_days_html('people[' . $person_id . '][workdays]', $mask, 'ws_p' . $person_id, lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Working days'), $person['name'])))) . '</td>
             <td class="text-center">
                 <div class="form-field d-inline-block mb-0">
-                    <div class="switch"><input class="" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang('Not in the team')) . '"'
+                    <div class="switch"><input class="" type="checkbox" name="people[' . $person_id . '][excluded]" value="1" aria-label="' . h(lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Not in the team'), $person['name'])))) . '"'
                         . ($person['excluded'] ? ' checked' : '')
                         . (($person_id === (int) $viewer['id']) ? ' disabled' : '') . '></div>
                 </div>
