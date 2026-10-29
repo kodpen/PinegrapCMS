@@ -133,6 +133,7 @@ function pg_dashboard_widget_1($request, $user)
             'maps'  => $sm_maps,
             'rows'  => array(),
             'names' => array(),
+            'label' => lang('Sales Map'),
             'none'  => '<span class="fg-secondary">' . h(lang('No sales')) . '</span>');
 
         foreach ($sm_views as $sm_view_key => $sm_view_label) {
@@ -354,7 +355,7 @@ function pg_dashboard_widget_1($request, $user)
             '<div class="pg-menu-wrap pg-smap-menu">'
             . '<button type="button" class="btn btn-sm btn-text theme-secondary pg-smap-menu-btn" id="pg_smap_menu"'
             . ' data-bs-toggle="menu" data-bs-placement="bottom-end" aria-expanded="false" aria-label="' . h(lang('Filter')) . '">'
-            . '<i class="bi bi-sliders"></i></button>'
+            . '<i class="bi bi-sliders" aria-hidden="true"></i></button>'
             . '<ul class="menu pg-menu-end">'
             . '<li><h6 class="menu-header">' . h(lang('Period')) . '</h6></li>'
             . $sm_tabs
@@ -375,8 +376,10 @@ function pg_dashboard_widget_1($request, $user)
             '<div class="card-body p-0 pg-split" id="pg_smap">'
             . '<div class="pg-split-half pg-smap-main">'
             . $sm_heads
-            . '<div class="pg-smap-canvas' . ($sm_can_open ? '' : ' is-static') . '" id="pg_smap_canvas" role="img" aria-label="' . h(lang('Sales Map')) . '">'
-            . '<div class="pg-smap-tip" id="pg_smap_tip"></div>'
+            . '<div class="pg-smap-canvas' . ($sm_can_open ? '' : ' is-static') . '" id="pg_smap_canvas">'
+            // The tooltip repeats what the list beside the map says, and
+            // only a mouse brings it up.
+            . '<div class="pg-smap-tip" id="pg_smap_tip" aria-hidden="true"></div>'
             . $sm_menu
             . '</div>'
             . '</div>'
@@ -451,6 +454,12 @@ function pg_dashboard_widget_1($request, $user)
                         .then(function(markup){
                             var layer = document.createElement("div");
                             layer.className = "pg-smap-layer";
+                            // The layer is the picture, not the box
+                            // around it: that box also holds the
+                            // Filter menu, and everything inside a
+                            // role=img is hidden from screen readers.
+                            layer.setAttribute("role", "img");
+                            layer.setAttribute("aria-label", data.label);
                             layer.innerHTML = markup;
                             canvas.appendChild(layer);
                             layers[view] = layer;

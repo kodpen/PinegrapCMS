@@ -488,7 +488,7 @@ function pg_dashboard_widget_5($request, $user)
             </div>
 
             <div class="pg-vs-chart" id="vs5_chart">
-              ' . (($kpi_today > 0 || $kpi_yesterday > 0 || $has_tw || $has_tm) ? '<canvas id="vs5_canvas"></canvas>' : $vs5_no_data) . '
+              ' . (($kpi_today > 0 || $kpi_yesterday > 0 || $has_tw || $has_tm) ? '<canvas id="vs5_canvas" aria-hidden="true"></canvas><table class="visually-hidden" id="vs5_table"></table>' : $vs5_no_data) . '
             </div>
             <div class="pg-vs-pages d-none" id="vs5_pages">
               <div class="pg-list">
@@ -534,7 +534,10 @@ function pg_dashboard_widget_5($request, $user)
             lastWeek: ' . json_encode(lang('Last Week')) . ',
             thisMonth:' . json_encode(lang('This Month')) . ',
             prevMonth:' . json_encode(lang('Previous Month')) . ',
-            total:    ' . json_encode(lang('Total')) . '
+            total:    ' . json_encode(lang('Total')) . ',
+            hour:     ' . json_encode(lang('Hour')) . ',
+            day:      ' . json_encode(lang('Day')) . ',
+            month:    ' . json_encode(lang('Month')) . '
           };
 
           // The day view has wording of its own -- "by this time
@@ -555,19 +558,19 @@ function pg_dashboard_widget_5($request, $user)
           // "prev" of null means there is nothing to compare with,
           // and the legend drops its second key accordingly.
           var P = {
-            d: { eyebrow:L.daily,   type:"line", labels:[' . $h_yest_labels_js . '],
+            d: { eyebrow:L.daily,   axis:L.hour,  type:"line", labels:[' . $h_yest_labels_js . '],
                  now:{ label:L.today,     data:[' . $h_today_full_js . '], views:[' . $h_today_views_full_js . '], pages:' . json_encode(array_values($h_today_pages)) . ' },
                  prev:{ label:L.yesterday, data:[' . $h_yest_js . '],       views:[' . $h_yest_views_js . '],      pages:' . json_encode(array_values($h_yest_pages)) . ' },
                  kpi:' . $kpi_today . ', cmp:' . $kpi_yesterday_same . ', full:' . $kpi_yesterday . ', nowIndex:' . $current_hour . ' },
-            w: { eyebrow:L.weekly,  type:"line", labels:[' . $w_tw_labels . '],
+            w: { eyebrow:L.weekly,  axis:L.day,   type:"line", labels:[' . $w_tw_labels . '],
                  now:{ label:L.thisWeek, data:[' . $w_tw_data . '] },
                  prev:{ label:L.lastWeek, data:[' . $w_lw_data . '] },
                  kpi:' . $kpi_tw . ', cmp:' . $kpi_lw . ', full:null, nowIndex:null },
-            m: { eyebrow:L.monthly, type:"line", labels:[' . $m_tm_labels . '],
+            m: { eyebrow:L.monthly, axis:L.day,   type:"line", labels:[' . $m_tm_labels . '],
                  now:{ label:L.thisMonth, data:[' . $m_tmd_data . '] },
                  prev:{ label:L.prevMonth, data:[' . $m_pmd_data . '] },
                  kpi:' . $kpi_tm . ', cmp:' . $kpi_pm_prev_same . ', full:null, nowIndex:' . ($today_day - 1) . ' },
-            y: { eyebrow:L.yearly,  type:"bar",  labels:[' . $m_pm_labels . '],
+            y: { eyebrow:L.yearly,  axis:L.month, type:"bar",  labels:[' . $m_pm_labels . '],
                  now:{ label:L.total, data:[' . $m_pm_data . '] },
                  prev:null,
                  kpi:' . $kpi_pm . ', cmp:null, full:null, nowIndex:null }
@@ -706,6 +709,36 @@ function pg_dashboard_widget_5($request, $user)
             sub.innerHTML = (p.full !== null) ? T.allYesterday.replace("%N%", fmtN(p.full)) : "";
           }
 
+          // The chart figures as a table for screen readers, one row
+          // per point of the period on show, rebuilt on every switch.
+          // Built with textContent, so no label needs escaping.
+          var tableEl = document.getElementById("vs5_table");
+          function table() {
+            if (!tableEl) return;
+            var p = P[mode];
+            var series = p.prev ? [p.now, p.prev] : [p.now];
+            var cell = function (tr, tag, text, scope) {
+              var c = document.createElement(tag);
+              c.textContent = text;
+              if (scope) { c.setAttribute("scope", scope); }
+              tr.appendChild(c);
+            };
+            tableEl.textContent = "";
+            tableEl.createCaption().textContent = p.eyebrow + " · " + L.visitors;
+            var hr = tableEl.createTHead().insertRow();
+            cell(hr, "th", p.axis, "col");
+            series.forEach(function (s) { cell(hr, "th", s.label, "col"); });
+            var body = tableEl.createTBody();
+            p.labels.forEach(function (label, i) {
+              var tr = body.insertRow();
+              cell(tr, "th", label, "row");
+              series.forEach(function (s) {
+                var v = s.data[i];
+                cell(tr, "td", (v === null || v === undefined) ? "–" : fmtN(v));
+              });
+            });
+          }
+
           // Sparklines. Same series the chart would draw, at the
           // size a cell can hold: no axes, no interaction, just the
           // shape, because the number beside it is the reading.
@@ -764,11 +797,11 @@ function pg_dashboard_widget_5($request, $user)
                 b.setAttribute("aria-pressed", pressed ? "true" : "false");
               });
               pages(mode === "p");
-              if (mode !== "p") { build(); head(); }
+              if (mode !== "p") { build(); head(); table(); }
             });
           });
 
-          build(); head(); sparks();
+          build(); head(); table(); sparks();
         })();</script>';
 
         $response = array(

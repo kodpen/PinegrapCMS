@@ -3118,6 +3118,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         $payment_summary .= ' — ' . implode(', ', $payment_parts);
     }
 
+    // The bars are drawn only on the canvas, so its name lists every
+    // product with its quantity.
+    $top_summary = lang('Top 5 products');
+
+    if ($top_products) {
+
+        $top_parts = array();
+
+        foreach ($top_products as $top_row) {
+            $top_parts[] = $top_row['label'] . ': ' . pg_format_number($top_row['quantity'], 0);
+        }
+
+        $top_summary .= ' — ' . implode(', ', $top_parts);
+    }
+
     $orders_chart_data = array(
         'labels'   => array_values($spark_keys),
         'counts'   => array_values($spark_counts),
@@ -3154,7 +3169,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <div class="card-body p-5">
                                 <div class="small fg-secondary mb-3"><i class="bi bi-trophy me-1" aria-hidden="true"></i>' . h(lang('Top 5 products')) . '</div>
                                 ' . (!empty($top_products)
-                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_top" role="img" aria-label="' . h(lang('Top 5 products')) . '"></canvas></div>'
+                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_top" role="img" aria-label="' . h($top_summary) . '"></canvas></div>'
                                     : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
                             </div>
                         </div>
