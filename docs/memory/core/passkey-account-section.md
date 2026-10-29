@@ -26,4 +26,4 @@ description: Passkeys on the account page (pg_passkey_account_section(), PR #138
 ## What was not verified?
 - Sandbox 2026-10-23 (PR #1384): proofs, refusals and lockout through curl; no browser authenticator. PR #2226: unit tests only (no mail, no browser).
 
-Related: docs/memory/core/passkey-ceremonies.md, docs/memory/core/two-step-sign-in.md, docs/memory/plans/passkeys.md
+Related: docs/memory/core/passkey-ceremonies.md, docs/memory/core/two-step-sign-in.md
