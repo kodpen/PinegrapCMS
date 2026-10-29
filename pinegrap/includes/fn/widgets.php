@@ -3620,8 +3620,9 @@ function _render_system_widget_form_item_view($custom_form_page_id, $tree_json, 
             'format_stamp' => function ($stamp) { return date(pg_sw_default_date_format('date'), $stamp); },
         ));
         $extra += array_map('h', $_fiv_entity);
-        // The record is the page's record (page_facts.php).
-        pg_page_record_publish('form_record', $_fiv_entity);
+        // The record is the page's record (page_facts.php), with its public
+        // fields by name for the elements outside the widget.
+        pg_page_record_publish('form_record', $_fiv_entity + pg_sw_entity_field_values($data_rows, $custom));
 
         // Optional label tokens: {field}__label beside the value, when toggled on.
         if ($show_field_labels && is_array($data_rows)) {
