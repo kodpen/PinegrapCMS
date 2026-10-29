@@ -220,3 +220,77 @@ function test_shipment_label_return_flag()
 
 	pg_assert_same(1, $row['is_return'], 'return row');
 }
+
+function test_shipment_label_svg_file_name_is_safe()
+{
+	$name = pg_shipment_label_file_name(42, 7, 'basitkargo', '888-6AR-OUP', 'svg');
+	pg_assert_true((bool) preg_match('/^42_7_basitkargo_[0-9a-f]{16}\.svg$/', $name), $name);
+	pg_assert_true(pg_shipment_label_file_safe($name));
+	pg_assert_false(pg_shipment_label_file_safe('42_7_basitkargo_0123456789abcdef.svgz'));
+	pg_assert_same('', pg_shipment_label_file_name(42, 7, 'basitkargo', '888-6AR-OUP', 'html'));
+}
+
+// An SVG never reaches the panel as a document of its own: the print page
+// only holds it as an image, and the download is sandboxed.
+function test_shipment_label_serving_headers()
+{
+	$page = pg_shipment_label_headers('svg', 'label-BK1', false);
+	pg_assert_contains('Content-Type: text/html; charset=utf-8', $page);
+	pg_assert_contains('X-Content-Type-Options: nosniff', $page);
+	pg_assert_contains('Cache-Control: private, no-store', $page);
+	$csp = array_values(preg_grep('/^Content-Security-Policy: /', $page));
+	pg_assert_same(1, count($csp));
+	pg_assert_contains("default-src 'none'", $csp[0]);
+	pg_assert_contains('img-src data:', $csp[0]);
+
+	$download = pg_shipment_label_headers('svg', 'label-BK1', true);
+	pg_assert_contains('Content-Type: image/svg+xml', $download);
+	pg_assert_contains('Content-Disposition: attachment; filename="label-BK1.svg"', $download);
+	pg_assert_contains('Content-Security-Policy: sandbox', $download);
+
+	pg_assert_contains('Content-Disposition: inline; filename="label-BK1.pdf"', pg_shipment_label_headers('pdf', 'label-BK1', false));
+	pg_assert_contains('Content-Disposition: attachment; filename="label-BK1.zpl"', pg_shipment_label_headers('zpl', 'label-BK1', false));
+	pg_assert_contains('Content-Type: application/octet-stream', pg_shipment_label_headers('zpl', 'label-BK1', true));
+}
+
+function test_shipment_label_svg_page_holds_the_svg_as_an_image_only()
+{
+	$svg = '<svg xmlns="http://www.w3.org/2000/svg" width="100mm" height="150mm"><text>&lt;b&gt;</text></svg>';
+	$html = pg_shipment_label_svg_page($svg, 'Label <BK1>', 'shipment_label.php?id=5&download=1');
+
+	pg_assert_contains('<img src="data:image/svg+xml;base64,' . base64_encode($svg) . '"', $html);
+	pg_assert_false(strpos($html, '<svg'), 'never inline');
+	pg_assert_contains('Label &lt;BK1&gt;', $html);
+	pg_assert_contains('href="shipment_label.php?id=5&amp;download=1"', $html);
+}
+
+function test_shipment_label_svg_size_in_points()
+{
+	pg_assert_same(array(283.46, 425.2), pg_shipment_label_svg_size('<svg width="100mm" height="150mm" viewBox="0 0 400 600"></svg>'));
+	pg_assert_same(array(288.0, 432.0), pg_shipment_label_svg_size("<svg height='6in' width='4in'></svg>"));
+	pg_assert_same(array(300.0, 450.0), pg_shipment_label_svg_size('<svg width="400" height="600"></svg>'), 'pixels');
+	pg_assert_same(array(283.46, 425.19), pg_shipment_label_svg_size('<svg viewBox="0 0 400 600"></svg>'), 'the view box at 100 mm wide');
+	pg_assert_same(array(297.64, 419.53), pg_shipment_label_svg_size('<svg width="100%"></svg>'), 'A6 without a size');
+}
+
+function test_shipment_label_svg_drawn_into_a_pdf_page()
+{
+	$svg = (string) file_get_contents(dirname(__FILE__) . '/fixtures/basitkargo/label.svg');
+	$pdf = pg_shipment_label_svg_pdf($svg);
+
+	pg_assert_true(pg_label_document_valid($pdf, 'pdf'), 'dompdf drew the label');
+	pg_assert_true((bool) preg_match('#/MediaBox\s*\[\s*0(?:\.0+)?\s+0(?:\.0+)?\s+283\.4[0-9]*\s+425\.[0-9]+\s*\]#', $pdf), 'a page of the label\'s size');
+	pg_assert_same(1, preg_match_all('#/Type\s*/Page\b(?!s)#', $pdf), 'one page');
+	pg_assert_true(pg_label_document_valid(pg_pdf_merge(array($pdf, $pdf)), 'pdf'), 'the merger reads it');
+}
+
+function test_shipment_label_svg_fonts_name_the_unicode_files()
+{
+	$svg = pg_shipment_label_svg_fonts('<svg width="1"><text font-family="monospace">a</text><text font-family=\'Times New Roman\'>b</text><text style="font-size:9px;font-family:Arial, sans-serif">ş</text></svg>', '/f');
+
+	pg_assert_contains('<svg font-family="/f/DejaVuSans" width="1">', $svg);
+	pg_assert_contains('font-family="/f/DejaVuSansMono"', $svg);
+	pg_assert_contains('font-family="/f/DejaVuSerif"', $svg);
+	pg_assert_contains('font-size:9px;font-family:/f/DejaVuSans"', $svg);
+	pg_assert_same('<svg font-family="/f/DejaVuSans"></svg>', pg_shipment_label_svg_fonts('<svg font-family="sans-serif"></svg>', '/f'), 'the root keeps its own');
+}

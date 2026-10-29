@@ -82,7 +82,7 @@ function pg_shipment_label_dir()
  * @param int    $ship_to_id
  * @param string $driver    a valid driver key
  * @param string $reference the service's reference
- * @param string $format    pdf or zpl
+ * @param string $format    pdf, zpl or svg
  * @return string '' when a part cannot be used
  */
 function pg_shipment_label_file_name($order_id, $ship_to_id, $driver, $reference, $format)
@@ -110,7 +110,7 @@ function pg_shipment_label_file_safe($name)
 {
     return is_string($name)
         && (strlen($name) <= 100)
-        && (preg_match('/^[0-9]+_[0-9]+_[a-z][a-z0-9_]*_[0-9a-f]{16}\.(pdf|zpl)$/', $name) === 1);
+        && (preg_match('/^[0-9]+_[0-9]+_[a-z][a-z0-9_]*_[0-9a-f]{16}\.(pdf|zpl|svg)$/', $name) === 1);
 }
 
 /**
@@ -564,6 +564,167 @@ function pg_shipment_label_document($row)
 }
 
 /**
+ * The headers a label's document is handed out with. A PDF opens in the
+ * browser, a ZPL file is saved for the label printer. An SVG is never sent
+ * as a document the panel's origin would run: it is shown on a print page
+ * that holds it only as an image (pg_shipment_label_svg_page()), or saved
+ * as an attachment the browser sandboxes. Pure.
+ *
+ * @param string $format    pdf, zpl or svg
+ * @param string $file_name without the extension, [A-Za-z0-9-] only
+ * @param bool   $download  true for the SVG file itself
+ * @return string[]
+ */
+function pg_shipment_label_headers($format, $file_name, $download)
+{
+    $headers = array('Cache-Control: private, no-store', 'X-Content-Type-Options: nosniff');
+
+    if ($format === 'svg') {
+        if ($download) {
+            return array_merge($headers, array(
+                'Content-Type: image/svg+xml',
+                'Content-Disposition: attachment; filename="' . $file_name . '.svg"',
+                'Content-Security-Policy: sandbox',
+            ));
+        }
+
+        return array_merge($headers, array(
+            'Content-Type: text/html; charset=utf-8',
+            "Content-Security-Policy: default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'",
+        ));
+    }
+
+    if ($format === 'zpl') {
+        return array_merge($headers, array(
+            'Content-Type: application/octet-stream',
+            'Content-Disposition: attachment; filename="' . $file_name . '.zpl"',
+        ));
+    }
+
+    return array_merge($headers, array(
+        'Content-Type: application/pdf',
+        'Content-Disposition: inline; filename="' . $file_name . '.pdf"',
+    ));
+}
+
+/**
+ * The print page of an SVG label: the label as a data URL image sized to
+ * its own page, a Print button and the link to the SVG file. Pure.
+ *
+ * @param string $svg      a document pg_label_svg_valid() accepted
+ * @param string $title
+ * @param string $download the address of the SVG attachment
+ * @return string HTML
+ */
+function pg_shipment_label_svg_page($svg, $title, $download)
+{
+    $size = pg_shipment_label_svg_size($svg);
+
+    return '<!DOCTYPE html><html lang="' . h(defined('SOFTWARE_LANGUAGE') ? SOFTWARE_LANGUAGE : 'tr') . '"><head><meta charset="utf-8"><title>' . h($title) . '</title>'
+        . '<style>@page{size:' . $size[0] . 'pt ' . $size[1] . 'pt;margin:0}body{margin:0;font-family:sans-serif}'
+        . '.bar{padding:8px;display:flex;gap:12px;align-items:center}img{display:block;width:' . $size[0] . 'pt;height:' . $size[1] . 'pt}'
+        . '@media print{.bar{display:none}}</style></head><body>'
+        . '<div class="bar"><button type="button" onclick="window.print()">' . h(lang('Print')) . '</button>'
+        . '<a href="' . h($download) . '">' . h(lang('Download SVG')) . '</a></div>'
+        . '<img src="data:image/svg+xml;base64,' . base64_encode($svg) . '" alt="' . h($title) . '">'
+        . '</body></html>';
+}
+
+/**
+ * The page size of an SVG label in points: its root's width and height
+ * (mm, cm, in, pt, px or bare numbers), else its view box at 100 mm wide,
+ * else A6. Pure.
+ *
+ * @param string $svg
+ * @return float[] width, height
+ */
+function pg_shipment_label_svg_size($svg)
+{
+    $root = preg_match('/<svg\b[^>]*>/i', (string) $svg, $match) ? $match[0] : '';
+    $points = array('mm' => 72 / 25.4, 'cm' => 72 / 2.54, 'in' => 72.0, 'pt' => 1.0, 'px' => 0.75, '' => 0.75);
+    $length = function ($name) use ($root, $points) {
+        if (!preg_match('/\s' . $name . '\s*=\s*["\']\s*([0-9]+(?:\.[0-9]+)?)\s*(mm|cm|in|pt|px|)\s*["\']/i', $root, $value)) {
+            return 0.0;
+        }
+
+        return (float) $value[1] * $points[strtolower($value[2])];
+    };
+
+    $width = $length('width');
+    $height = $length('height');
+
+    if (($width > 0) && ($height > 0)) {
+        return array(round($width, 2), round($height, 2));
+    }
+
+    if (preg_match('/\sviewBox\s*=\s*["\']\s*[-0-9.]+[\s,]+[-0-9.]+[\s,]+([0-9.]+)[\s,]+([0-9.]+)/i', $root, $box) && ((float) $box[1] > 0)) {
+        $width = round(100 * 72 / 25.4, 2);
+
+        return array($width, round($width * (float) $box[2] / (float) $box[1], 2));
+    }
+
+    return array(round(105 * 72 / 25.4, 2), round(148 * 72 / 25.4, 2));
+}
+
+/**
+ * An SVG label with its fonts named as the bundled DejaVu files, for the
+ * PDF copy only. php-svg-lib draws text in the core PDF fonts, which have
+ * no ı, ş, ğ or İ; a font named by its file stem is loaded as a Unicode
+ * font instead. Monospace becomes DejaVu Sans Mono, serif DejaVu Serif,
+ * any other family DejaVu Sans; the root gets DejaVu Sans when it names
+ * none. Pure.
+ *
+ * @param string $svg
+ * @param string $directory the folder of the DejaVu .ufm files
+ * @return string
+ */
+function pg_shipment_label_svg_fonts($svg, $directory)
+{
+    $font = function ($family) use ($directory) {
+        $family = strtolower($family);
+        $stem = (strpos($family, 'mono') !== false) || (strpos($family, 'courier') !== false) ? 'DejaVuSansMono'
+            : (((strpos($family, 'serif') !== false) && (strpos($family, 'sans') === false)) || (strpos($family, 'times') !== false) ? 'DejaVuSerif' : 'DejaVuSans');
+
+        return htmlspecialchars($directory . '/' . $stem, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    };
+
+    $svg = preg_replace_callback('/(font-family\s*=\s*)(["\'])(.*?)\2/i', function ($match) use ($font) {
+        return $match[1] . '"' . $font($match[3]) . '"';
+    }, (string) $svg);
+
+    $svg = preg_replace_callback('/(font-family\s*:\s*)([^;"\'}]+)/i', function ($match) use ($font) {
+        return $match[1] . $font($match[2]);
+    }, $svg);
+
+    return preg_replace_callback('/<svg\b[^>]*>/i', function ($match) use ($font) {
+        return (stripos($match[0], 'font-family') !== false) ? $match[0] : substr($match[0], 0, 4) . ' font-family="' . $font('sans-serif') . '"' . substr($match[0], 4);
+    }, $svg, 1);
+}
+
+/**
+ * An SVG label drawn into a one-page PDF of its own size by the bundled
+ * dompdf (php-svg-lib), for the bulk PDF.
+ *
+ * @param string $svg
+ * @return string the PDF, '' when it cannot be drawn
+ */
+function pg_shipment_label_svg_pdf($svg)
+{
+    $size = pg_shipment_label_svg_size($svg);
+    $svg = pg_shipment_label_svg_fonts($svg, PG_FUNCTIONS_DIR . '/includes/dompdf/vendor/dompdf/dompdf/lib/fonts');
+    $html = '<html><head><meta charset="utf-8"><style>@page{margin:0}body{margin:0}img{display:block;width:' . $size[0] . 'pt;height:' . $size[1] . 'pt}</style></head><body>'
+        . '<img src="data:image/svg+xml;base64,' . base64_encode($svg) . '"></body></html>';
+
+    try {
+        $pdf = pg_privacy_export_pdf($html, array(0, 0, $size[0], $size[1]));
+    } catch (\Throwable $exception) {
+        $pdf = false;
+    }
+
+    return (is_string($pdf) && pg_label_document_valid($pdf, 'pdf')) ? $pdf : '';
+}
+
+/**
  * Remove the kept files of the rows a condition finds and mark the rows.
  *
  * @param string $where SQL condition on shipment_labels
@@ -869,8 +1030,9 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
 
 /**
  * The labels of the selected orders as one PDF, merged now and never kept.
- * A label that is not a PDF (ZPL for a thermal printer) or cannot be read
- * is listed on a last page instead, to be printed from its order.
+ * An SVG label is drawn into a page of its own. A label that is not a PDF
+ * or an SVG (ZPL for a thermal printer) or cannot be read or drawn is
+ * listed on a last page instead, to be printed from its order.
  *
  * @param array $order_ids in the order selected
  * @return array ok, error, document, count (labels in the PDF)
@@ -895,8 +1057,11 @@ function pg_shipment_label_bulk_pdf($order_ids)
     foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
         $document = pg_shipment_label_document($row);
 
-        if ($document['ok'] && ($document['format'] === 'pdf')) {
-            $documents[] = $document['document'];
+        // An SVG joins as a page dompdf draws; one it cannot draw is listed.
+        $pdf = ($document['ok'] && ($document['format'] === 'svg')) ? pg_shipment_label_svg_pdf($document['document']) : '';
+
+        if ($document['ok'] && (($document['format'] === 'pdf') || ($pdf !== ''))) {
+            $documents[] = ($pdf !== '') ? $pdf : $document['document'];
             $labels[] = $row;
         } else {
             $left_out[] = $row;
