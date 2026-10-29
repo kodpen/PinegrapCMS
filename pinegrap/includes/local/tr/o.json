@@ -737,6 +737,7 @@
     "Open the request": "Talebi aç",
     "Open the return": "İadeyi aç",
     "Open the routine, choose {var:1} in the menu next to its name and open its {var:2} trigger. Copy the URL, press {var:3} and copy the token at once: it is shown only once. Enter both on this card and save.": "Rutini açın, adının yanındaki menüden {var:1} seçin ve {var:2} tetikleyicisini açın. URL'yi kopyalayın, {var:3} düğmesine basın ve token'ı hemen kopyalayın: yalnız bir kez gösterilir. İkisini de bu karta girip kaydedin.",
+    "Open the run": "Koşumu aç",
     "Open the section": "Bölümü aç",
     "Open the session": "Oturumu aç",
     "Open the summary": "Özeti aç",

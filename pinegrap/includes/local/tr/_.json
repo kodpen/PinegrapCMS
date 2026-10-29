@@ -1133,6 +1133,7 @@
     "{var:1} rule(s) were added to {var:2}.": "{var:2} dosyasına {var:1} kural eklendi.",
     "{var:1} running": "{var:1} çalışıyor",
     "{var:1} running low": "{var:1} ürün azalıyor",
+    "{var:1} s": "{var:1} sn",
     "{var:1} saved the invoice as a draft (id {var:2}) but would not hand it to GİB: {var:3}": "{var:1} faturayı taslak olarak kaydetti (kimlik {var:2}) ama GİB'e göndermedi: {var:3}",
     "{var:1} scheduled": "{var:1} zamanlanmış",
     "{var:1} scheduled messages in this channel": "Bu kanalda {var:1} zamanlanmış mesajınız var",

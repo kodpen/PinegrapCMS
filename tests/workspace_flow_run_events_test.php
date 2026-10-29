@@ -136,7 +136,9 @@ function test_workspace_flow_run_events_run_fields_follow_the_api()
 	$fields = ws_flow_run_event_run($run, 4);
 	$schema = array_keys(ws_api_flow_run_schema());
 
-	pg_assert_same(array_values(array_diff($schema, array('access', 'can_cancel', 'steps', 'graph'))), array_keys($fields));
+	// The flag's result is read from the run's boxes, which an event does
+	// not read; its box fields carry each box's own result.
+	pg_assert_same(array_values(array_diff($schema, array('access', 'can_cancel', 'result', 'steps', 'graph'))), array_keys($fields));
 
 	$api = ws_api_flow_run_present(array('id' => 5), $run, 4);
 

@@ -375,6 +375,9 @@ function test_workspace_flows_canvas_run_answer_is_the_api_shape()
 	pg_assert_true($full['can_cancel'], 'its starter may cancel it');
 	pg_assert_false($brief['can_cancel'], 'another reader may not');
 	pg_assert_same(null, $brief['steps'], 'a listing carries no boxes');
+	pg_assert_same('task T-41 opened', $full['result'], 'the flag shows the open box, the latest');
+	pg_assert_same('', $brief['result'], 'a listing gets its results passed in');
+	pg_assert_same('Done.', ws_api_flow_run_present(array('id' => 9), $run, 2, null, null, 'Done.')['result']);
 	pg_assert_same(array('task_1', 'waiting', 41, 'task T-41 opened', '2026-10-14T17:46:41Z'), array($full['steps'][1]['node_id'], $full['steps'][1]['status'], $full['steps'][1]['task_id'], $full['steps'][1]['result'], $full['steps'][1]['started_at']), 'the waiting box and its task');
 	pg_assert_contains('"config":{}', json_encode($full['graph']), 'the graph as the canvas reads it');
 }
