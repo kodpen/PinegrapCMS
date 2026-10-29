@@ -44,14 +44,18 @@ if (!$_POST) {
         // If this item is enabled, then use green color for name and short description.
         if ($item['enabled'] == 1) {
             $status_class = 'status_enabled';
+            $output_status = '';
         
-        // Otherwise this item is disabled, so use red color for name and short description.
+        // Otherwise this item is disabled, so use red color for name and short description,
+        // and say it in words for those who cannot see the color.
         } else {
             $status_class = 'status_disabled';
+            $output_status = ' <span class="visually-hidden">' . h(lang('Disabled')) . '</span>';
         }
 
         // if this item is a product group, then prepare data in a certain way
         if ($item['type'] == 'product group') {
+            $item_label = $item['name'];
             $output_name = '<strong>' . h($item['name']) . '</strong>';
             
             // if this item is not the root product group, then prepare field names
@@ -62,6 +66,7 @@ if (!$_POST) {
             
         // else this item is a product, so prepare data in a different way
         } else {
+            $item_label = $item['name'] . ' - ' . $item['short_description'];
             $output_name = h($item['name']) . ' - ' . h($item['short_description']);
             $featured_sort_order_field_name = 'featured_sort_order_product_group_' . $item['parent_product_group_id'] . '_product_' . $item['id'];
             $new_date_field_name = 'new_date_product_group_' . $item['parent_product_group_id'] . '_product_' . $item['id'];
@@ -93,21 +98,22 @@ if (!$_POST) {
         
         // if this item is not the root product group, then output fields
         if ($item['parent_product_group_id'] != 0) {
-            $output_featured_sort_order_field = $liveform->output_field(array('type'=>'text', 'class'=>'form-control text-end', 'name'=>$featured_sort_order_field_name, 'size'=>'5', 'style'=>'width:60px;', 'maxlength'=>'4', 'inputmode'=>'numeric','data-inputmask-alias'=>'decimal','data-inputmask-placeholder'=>'0', ));
+            $output_featured_sort_order_field = $liveform->output_field(array('type'=>'text', 'class'=>'form-control text-end', 'name'=>$featured_sort_order_field_name, 'aria-label' => lang(array('string' => 'Featured Order of {var:1}', 'vars' => $item_label)), 'size'=>'5', 'style'=>'width:60px;', 'maxlength'=>'4', 'inputmode'=>'numeric','data-inputmask-alias'=>'decimal','data-inputmask-placeholder'=>'0', ));
             $output_new_date_field =
                 $liveform->output_field(array('type'=>'text', 'id' => $new_date_field_name, 'name'=>$new_date_field_name, 'size'=>'10', 'maxlength'=>'10','class'=>'form-control w-auto', 'data-pg-date' => '')) . pg_fields_script();
         }
         
         $output_item_rows .=
             '<tr>
-                <td' . $output_padding . ' class="align-middle ' . $status_class . '">' . $output_name . '</td>
+                <td' . $output_padding . ' class="align-middle ' . $status_class . '">' . $output_name . $output_status . '</td>
                 <td class="align-middle">' . $output_featured_sort_order_field . '</td>
                 <td class="align-middle">' . $output_new_date_field . '</td>
-                <td></td>
             </tr>';
     }
 
-    // output product group tree screen
+    // output product group tree screen; the rows are a plain table, not a DataTable
+    // (table.chart): paging, search and column visibility take the rows and columns
+    // they hide out of the form, and the save clears every item whose boxes were not posted
     echo
     pg_page_shell([
         'title'=> lang('Edit Featured & New Items'),
@@ -125,18 +131,16 @@ if (!$_POST) {
                 
                 <form name="form"  action="edit_featured_and_new_items.php" method="post"> 
                     <div class="card my-7">
-                        <div class="card-header chart-buttons justify-content-end d-flex flex-wrap"></div>
                         <div class="card-body p-0 position-relative">
                             ' . get_token_field() . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'from', 'value'=>($_GET['from'] ?? ''))) . '
                             ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'send_to', 'value'=>($_GET['send_to'] ?? ''))) . '
-                            <table class="chart table-hover table " style="width:100%;display:none">
+                            <table class="table table-hover">
                                 <thead>
                                     <tr>
                                         <th>' . lang('Item') . '</th>
                                         <th>' . lang('Featured Order') . '</th>
                                         <th>' . lang('New on Date') . '</th>
-                                        <th class="noVis"></th>
                                     </tr>
                                 </thead>
                                 <tbody>' . $output_item_rows . '</tbody>

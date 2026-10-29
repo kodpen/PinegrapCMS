@@ -14,6 +14,7 @@ description: Panel list and table rules: the DataTables list markup, which lists
 
 ## Which lists must not be DataTables?
 - Lists whose order is their meaning (account statement, cash ledger, invoice lines): a running balance is right only in date order, and a line number is the document itself. Draw them as a plain `table table-hover` (`erp/erp-list-edit-screen-pattern.md`).
+- A table whose rows hold form fields is never a paged DataTable: DataTables takes rows on other pages, rows the search hides and cells of a hidden column out of the DOM, so the form posts only what is on screen. Edit Featured & New Items (`edit_featured_and_new_items.php`) was a `table.chart`, and a save after a search cleared Featured and New on every item it hid; it is a plain table now, pinned by `tests/featured_new_items_test.php`.
 - Such a table can still sort by its headings: `table[data-pg-sort]` (`backend.src.js`; cell `data-sort`, fixed and paired rows, a heading opts out with `data-pg-sort="none"`): `erp/erp-list-edit-screen-pattern.md`.
 
 ## Where do DataTables' own texts come from?
