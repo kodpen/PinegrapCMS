@@ -1,6 +1,6 @@
 ---
 name: collection-template-refs
-description: A design template's reference field naming another tab's form (_cf.ref tab:<key>): resolved at Publish, forms written target first, the design export (C6b1)
+description: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 module: custom_form
 ---
 
@@ -18,7 +18,11 @@ module: custom_form
 ## How does the design export carry it?
 - `_pg_dtc_tokenize_props()` writes a `_cf.ref` naming a page of the design as `{{tab:<key>}}`, so a template made from a design re-imports with its references; a form outside the design keeps its id.
 
-## What is still open?
-- C6b2 (`plans/designer-collections-steps.md`): sample records' reference values by the target's label, and a categories collection for a blog template.
+## How does a sample record name the record it points at?
+- By the target record's label (C6b2, #3052): `_pg_cf_seed_given_records()` reads the field's `collection_kind` / `reference_page_id`, looks up the target form's records by their Title field (`_pg_cf_seed_reference_labels()`, read fresh, oldest first when two share a label) and stores the `reference_code` (`pg_cf_seed_reference_codes()`, pure: trimmed, any case).
+- Several labels: one value joined by `, `; a check box group or a multiple pick list a row each. A label that names no record is left out, no error; a reference with none left gets no row.
 
-Tests: `tests/collections_template_refs_test.php`.
+## Which template ships a categories collection?
+- hello-pinegrap 2.5.0 (#3052): staff page `blog_category_new` (form Blog Categories, `collection`, fields `name` (title role) and `description`, three sample categories), in the staff bar. The post form's `category` pick list is `_cf.kind 'reference'`, `ref '{{tab:blog_category_new}}'`, RSS role `category`; each sample post names its category; the post page prints its name with a `__ref` badge (`show 'name'`). Installed sites change nothing.
+
+Tests: `tests/collections_template_refs_test.php`, `tests/custom_form_seed_test.php`, `tests/design_template_collections_test.php`.

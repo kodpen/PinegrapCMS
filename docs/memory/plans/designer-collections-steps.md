@@ -15,7 +15,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 
 - **C6a — templates opt in. Done, #2969:** the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised; installed sites change nothing (`designer/collection-fields.md`).
 - **C6b1 — template references resolved. Done, #3025:** resolve `_cf.ref 'tab:<key>'` at Publish (server and editor cache), create the forms in order (target first), map `_cf.ref` in the design export (`designer/collection-template-refs.md`).
-- **C6b2 — seeded references and blog categories. In progress.** Seed sample records' reference values by the target record's label (stored as its `reference_code`); then a categories collection for the blog template, its posts referencing it, the template's version raised.
+- **C6b2 — seeded references and blog categories. Done, #3052:** sample records name a reference's target by its label (stored as its `reference_code`); hello-pinegrap's blog has a categories collection its posts reference (`designer/collection-template-refs.md`).
 
 - **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
 
@@ -26,4 +26,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C5b, C6a and C6b1 are done. Next is C6b2 (seeded references and blog categories): seed in `_pg_cf_seed_given_records()`, the forms already come target first.
+- C1–C6 are done. Next is C7 (item revisions): it needs the architect question for the `record_revisions` table first (Working mode 10).
