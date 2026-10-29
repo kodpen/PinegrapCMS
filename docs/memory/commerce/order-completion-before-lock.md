@@ -5,7 +5,7 @@ module: order_completion
 ---
 
 ## What moved behind the lock?
-- Called by `submit_order()` right after `pg_order_complete()` returned a number (after the order SMS), in this order (`tests/order_completion_test.php` pins it):
+- Run by `pg_order_complete()` right after the order SMS (#2972; before, by `submit_order()` after the call), in this order (`tests/order_completion_test.php` pins it). Inputs from `$values` and the context (`order-completion.md`):
 - `pg_order_complete_key_code($key_code, $actor)`: a single-use key code is disabled. `pg_order_key_code($code)` (read only) runs before the lock: the offer code it stands for (`report = offer_code`) is a value of the completing UPDATE.
 - `pg_order_complete_gift_cards($order_id, $order_number, $required_amount, $actor, $log_user)`: reads `applied_gift_cards` (codes and the balances the checkout refreshed into `old_balance`), redeems in applied order, removes cards not needed or failed; a shortfall logs and e-mails "Gift card error" to the store (`pg_order_gift_card_error_message()`). Only while `ECOMMERCE_GIFT_CARD` is on.
 - `pg_order_complete_commission($order_id, $affiliate_code, $affiliate_rate, $commission, $recurring_products, $user_id)`: the pending `commissions` row (amount > 0) and a `recurring_commission_profiles` row per monthly/yearly commissionable recurring line. Nothing when the rate is null.

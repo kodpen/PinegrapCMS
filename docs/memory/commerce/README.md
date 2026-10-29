@@ -83,12 +83,13 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-cancel-shipping-gate.md: Who the shipping gate blocks on order cancel (customer only, by tracking code), why ship_date is ignored, USER_MANAGE_ECOMMERCE check, validate_user id key.
 - order-cancellation-config.md: Order cancel config defines, cancel_order.php endpoint, order_view cancel tokens/visibility flags, new cancel and refund columns, email and driver auto-refund gates.
 - order-cancellation-flow.md: process_order_cancellation as the only cancel path, admin cancel UI rules (no form in table rows), enum spelling cancelled, the one restore path, what the API status moves call.
-- order-completion-after-lines.md: Order completion stage functions after the product loop (A2d1): private access, reward points and goal, contact groups, abandoned campaigns, visitor record, log and notification
+- order-completion-after-lines.md: Order completion stage functions after the product loop (A2d1, #2914): private access, reward points and goal, contact groups, abandoned campaigns, visitor record, log and notification
 - order-completion-before-lock.md: Order completion A2d2 (#2937): key code use, gift card redemption and its error mail, affiliate commission rows moved behind the order lock; auto-registration stays with the visitor's request, and why
+- order-completion-context.md: pg_order_complete()'s $context (#2972): what the caller passes besides the columns, and what stays in submit_order() after the call
 - order-completion-line-comments.md: Order completion stage functions for a line's comments, its e-mailed page and the product_ordered and order_completed campaigns (A2c4): inputs, unit rules, what changed
 - order-completion-lines.md: Per-line stage functions of the order completion (#2713, #2740, #2766, A2c3b): stock, reservations, membership, folder access, gift cards, product forms, submitted forms, watcher
 - order-completion-stock-and-spots.md: What a completed order or local sale does to stock and event spots: fresh stock read before the decrement, the out_of_stock flag and bell, what is announced, event spots
-- order-completion.md: pg_order_complete() (#2638) and its stage functions (#2687): the session-free completion of an incomplete order, the once-only lock, what each writes
+- order-completion.md: pg_order_complete() (#2638, every stage since #2972): the session-free completion of an incomplete order, the once-only lock, its context, what it writes in order
 - order-delete.md: What deleting an order removes (delete_order.php, the only DELETE FROM orders), the kept legal document copies among them, and who calls it
 - order-discount-charged-today.md: Order discount vs recurring lines not charged today: the cap at today's subtotal (pg_order_charged_discount), which lines are charged, why the cap sits in apply_offers_to_cart()
 - order-legal-documents.md: Legal documents (pre-information form, distance sales contract): settings, templates, order_documents, kept copy for customer and staff, receipt attachments, panel card

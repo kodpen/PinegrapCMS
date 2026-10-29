@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce', 'pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_lines', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce', 'pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -56,6 +56,25 @@ function order_completion_test_tail()
 	}
 
 	return $tail;
+}
+
+// pg_order_complete() and the product loop it runs, as one text.
+function order_completion_test_completion_text()
+{
+	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
+
+	return order_completion_test_function_text($module, 'pg_order_complete') . order_completion_test_function_text($module, 'pg_order_complete_lines');
+}
+
+// A stage function is called once by the completion and never by
+// submit_order() itself, so one call completes the whole order.
+function order_completion_test_assert_staged($name, $label = '')
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$label = ($label === '') ? $name : $label;
+
+	pg_assert_same(0, substr_count($source, $name . '('), $label . ': not called by submit_order()');
+	pg_assert_same(1, substr_count(order_completion_test_completion_text(), $name . '('), $label . ': called once by the completion');
 }
 
 function order_completion_test_bind($query)
@@ -85,7 +104,6 @@ function test_order_completion_tail_writes_in_order()
 		'gift card error mail' => array("'subject' => 'Gift card error'"),
 		'affiliate commission' => array('"INSERT INTO commissions ('),
 		'recurring commission profiles' => array('"INSERT INTO recurring_commission_profiles ('),
-		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] ="),
 		'receipt e-mail' => array('pg_legal_documents_attachments('),
 		'address book' => array('"INSERT INTO address_book ('),
 		'ship and delivery dates' => array("delivery_date = '", 'delivery_date = ?'),
@@ -114,6 +132,8 @@ function test_order_completion_tail_writes_in_order()
 		'visitor record' => array('UPDATE visitors'),
 		'activity log' => array("lang('Order was completed')"),
 		'new_order notification' => array("'action' => 'new_order'"),
+		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] = (\$_SESSION"),
+		'post-save hook' => array('eval(prepare_for_eval($post_save_hook_code))'),
 		'ERP invoice' => array('pg_erp_auto_invoice('),
 		'cart emptied' => array("unset(\$_SESSION['ecommerce']['order_id']);"),
 	);
@@ -236,8 +256,8 @@ function test_order_completion_submit_order_calls_the_stage_functions()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	pg_assert_same(1, substr_count($source, 'pg_order_complete_receipt('), 'the receipt e-mail');
-	pg_assert_same(1, substr_count($source, 'pg_order_complete_ship_dates('), 'the ship dates');
+	order_completion_test_assert_staged('pg_order_complete_receipt', 'the receipt e-mail');
+	order_completion_test_assert_staged('pg_order_complete_ship_dates', 'the ship dates');
 	pg_assert_same(0, substr_count($source, 'INSERT INTO address_book'), 'no address book write of its own');
 	pg_assert_same(0, substr_count($source, 'get_order_receipt_in_plain_text('), 'no receipt of its own');
 }
@@ -284,7 +304,7 @@ function test_order_completion_submit_order_calls_the_line_functions()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
 	foreach (array('pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		order_completion_test_assert_staged($name);
 	}
 
 	pg_assert_same(0, substr_count($source, 'remaining_reservation_spots'), 'no reservation write of its own');
@@ -311,7 +331,7 @@ function test_order_completion_submit_order_issues_gift_cards_through_the_functi
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	pg_assert_same(1, substr_count($source, 'pg_order_complete_line_gift_cards('), 'one call in the product loop');
+	order_completion_test_assert_staged('pg_order_complete_line_gift_cards', 'one call in the product loop');
 	pg_assert_same(0, substr_count($source, 'INSERT INTO gift_cards'), 'no gift card write of its own');
 	pg_assert_same(0, substr_count($source, "'gift_card_ordered'"), 'no gift card e-mail of its own');
 }
@@ -345,7 +365,7 @@ function test_order_completion_submit_order_prepares_line_fields_through_the_fun
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
 	foreach (array('pg_order_line_variable_fields', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		order_completion_test_assert_staged($name);
 	}
 
 	pg_assert_same(0, substr_count($source, "'name' => 'billing_salutation'"), 'no variable fields of its own');
@@ -429,7 +449,7 @@ function test_order_completion_submit_order_creates_forms_through_the_function()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
 	foreach (array('pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_complete_line_watcher') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		order_completion_test_assert_staged($name);
 	}
 
 	pg_assert_same(0, substr_count($source, 'INSERT INTO forms'), 'no form creation of its own');
@@ -476,7 +496,7 @@ function test_order_completion_submit_order_adds_comments_and_pages_through_the_
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
 	foreach (array('pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		order_completion_test_assert_staged($name);
 	}
 
 	pg_assert_same(0, substr_count($source, 'INSERT INTO comments'), 'no comment write of its own');
@@ -536,7 +556,7 @@ function test_order_completion_submit_order_finishes_through_the_stage_functions
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
 	foreach (array('pg_order_line_reward_points', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce', 'pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		order_completion_test_assert_staged($name);
 	}
 
 	pg_assert_same(0, substr_count($source, 'aclfolder'), 'no folder access write of its own');
@@ -567,9 +587,11 @@ function test_order_completion_writes_before_the_lock_moved_behind_it()
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 	$lock = strpos($source, 'pg_order_complete(');
 
+	$completion = order_completion_test_completion_text();
+
 	foreach (array('pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
-		pg_assert_same(1, substr_count($source, $name . '('), $name);
-		pg_assert_true(strpos($source, $name . '(') > $lock, $name . ' after the lock');
+		order_completion_test_assert_staged($name);
+		pg_assert_true(strpos($completion, $name . '(') > strpos($completion, 'mysqli_affected_rows('), $name . ' after the lock');
 	}
 
 	foreach (array('pg_order_key_code', 'pg_order_affiliate_rate', 'pg_order_commission') as $name) {
