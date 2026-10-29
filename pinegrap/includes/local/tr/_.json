@@ -1189,6 +1189,7 @@
     "{var:1} started": "{var:1} başlatıldı",
     "{var:1} started a discussion about your message": "{var:1} mesajınız üzerine bir tartışma başlattı",
     "{var:1} started it, but it is not set to run ({var:2}).": "{var:1} başlattı, ama işlem çalışmaya ayarlı değil ({var:2}).",
+    "{var:1} started the flow {var:2}.": "{var:1}, {var:2} akışını başlattı.",
     "{var:1} started this discussion": "{var:1} bu tartışmayı başlattı",
     "{var:1} starter site": "{var:1} başlangıç sitesi",
     "{var:1} starts at {var:2}": "{var:1} {var:2} saatinde başlayacak",

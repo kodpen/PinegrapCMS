@@ -695,6 +695,7 @@
     "No files have been posted here yet.": "Buraya henüz dosya gönderilmedi.",
     "No firewall events found for this period.": "Bu dönem için güvenlik duvarı olayı bulunamadı.",
     "No firewall events were recorded in this period.": "Bu dönemde güvenlik duvarı olayı kaydedilmedi.",
+    "No flow can be started here. A flow is listed once it is published, started by hand, and its owner may write in this channel.": "Burada başlatılabilecek akış yok. Bir akış yayımlandığında, elle başlatılan bir akış olduğunda ve sahibi bu kanala yazabildiğinde listelenir.",
     "No flow chosen": "Akış seçilmedi",
     "No flow starts this way.": "Bu şekilde başlayan akış yok.",
     "No flows yet.": "Henüz akış yok.",

@@ -1860,6 +1860,7 @@
     "The flow was changed after this draft was made, and the draft no longer fits it.": "Akış bu taslak hazırlandıktan sonra değiştirildi ve taslak artık ona uymuyor.",
     "The flow was deleted.": "Akış silindi.",
     "The flow, drawn small": "Akış, küçük çizimle",
+    "The flows you may start in {var:1}. A run opens its tasks here, and its card here follows it.": "{var:1} kanalında başlatabileceğiniz akışlar. Bir çalıştırma görevlerini burada açar ve kartı burada çalıştırmayı izler.",
     "The folder and its contents were deleted.": "Klasör ve içeriği silindi.",
     "The folder could not be created.": "Klasör oluşturulamadı.",
     "The folder data/geo could not be created.": "data/geo klasörü oluşturulamadı.",
