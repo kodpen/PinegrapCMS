@@ -17,5 +17,5 @@ description: The date calendar in a panel drawer: drawn after the field in a hid
 - `.pg-date-inline[hidden]` takes no room.
 
 ## What did the fix change?
-- Before #3267 the calendar was drawn open for good as soon as the drawer tab showed, with no surface, wider than its `col-6`, over the next field's help text (API application drawer, Security tab).
+- Before #3271 the calendar was drawn open for good as soon as the drawer tab showed, with no surface, wider than its `col-6`, over the next field's help text (API application drawer, Security tab).
 - Tests: `tests/pg_datetime_drawer_test.php` (Node run of `pg_datetime.js` against a fake document, and the CSS rule); `tests/pg_fields_test.php` `dp_drawer` keeps the wrapper and `inputMode: false`.
