@@ -27,4 +27,4 @@ description: Workflow tables (11.0.110, #2746): the four ws_wtable* tables colum
 
 ## How do the privacy paths see person and record-link cells?
 - They live in JSON, so the privacy export and erasure read them with `pg_privacy_wtable_rows()` (`includes/fn/privacy.php`, `core/personal-data-erasure.md`): the export hands over the cells naming the person, the erasure empties them and keeps the row (T1b2). A hit: a person cell with their account, a link of a kind in `pg_privacy_wtable_link_kinds()` (contact, user_account, a person erp_account) to theirs; a deleted column's leftover cell is read as either. SQL `LIKE '%:id,%'`/`'%:id}%'` narrows, PHP decides (`pg_privacy_wtable_cell_hits()`); the erasure writes each row on its revision, re-read up to 3 times. Since then `ws_wtable_row_closed_types()` is empty and both types are written like any other cell.
-- `pg_contact_holders()` still does not re-point them: a contact merge leaves a link to the merged-away contact.
+- A contact merge re-points contact links in the cells (`ws_wtable_cells` holder, `core/contact-holders.md`).
