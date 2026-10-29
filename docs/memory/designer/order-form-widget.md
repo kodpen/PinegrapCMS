@@ -18,7 +18,7 @@ module: widgets_order_form
 
 ## Which flags and tokens?
 - `pg_of_flags()`: `has_products`, `no_products`, `is_list_layout`, `is_dropdown_layout`, `has_quantity` (not only donations), `has_recipient_choice` (multi-recipient and an available shippable product), `has_skip_button`, `has_currency_choice`. Rows: `pg_of_row_flags()`.
-- Row tokens use the catalog's names (`__name`, `__short_description`, `__description`, `__price_formatted`, `__image_url`, `__image_alt`, `__out_of_stock_message`, `__id`). Row section `recurring_schedule`: the classic schedule fields with the date picker.
+- Row tokens use the catalog's names (`__name`, `__short_description`, `__description`, `__price_formatted`, `__image_url`, `__image_alt`, `__out_of_stock_message`, `__id`). Row section `recurring_schedule`: the classic schedule fields, the start date on the date-and-time control (`data-pg-date`, #3168).
 
 ## What is left out?
 - Nothing of the classic custom layout (currency picker: [[checkout-currency-picker]]). No PHP default tree: like the checkout widgets, only the JS starter.

@@ -108,6 +108,7 @@ function get_billing_information($properties) {
     $wysiwyg_fields = array();
     $date_fields = array();
     $date_and_time_fields = array();
+    $time_fields = array();
 
     $form = new liveform('billing_information');
 
@@ -849,6 +850,7 @@ function get_billing_information($properties) {
             $wysiwyg_fields = array();
             $date_fields = array();
             $date_and_time_fields = array();
+            $time_fields = array();
 
             foreach ($fields as $field) {
 
@@ -932,6 +934,11 @@ function get_billing_information($properties) {
 
                     case 'date and time':
                         $date_and_time_fields[] = $html_name;
+
+                        break;
+
+                    case 'time':
+                        $time_fields[] = $html_name;
 
                         break;
 
@@ -1064,37 +1071,15 @@ function get_billing_information($properties) {
             $system .= get_wysiwyg_editor_code($wysiwyg_fields);
         }
 
-        // If there is a date or date and time field, then prepare system content,
-        // for the date/time picker.
-        if ($date_fields || $date_and_time_fields) {
-            $system .= get_date_picker_format();
-
-            foreach ($date_fields as $date_field) {
-                $system .=
-                    '<script>
-                        software_$("#' . escape_javascript($date_field) . '").datepicker({
-                            dateFormat: date_picker_format
-                        });
-                    </script>';
-            }
-
-            // If there is a date and time field, then prepare JS for those.
-            if ($date_and_time_fields) {
-                // Include JS file for timepicker.
-                $system .=
-                    '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                foreach ($date_and_time_fields as $date_and_time_field) {
-                    $system .=
-                        '<script>
-                            software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
-                                dateFormat: date_picker_format,
-                                timeFormat: "' . pg_picker_time_format() . '"
-                            });
-                        </script>';
-                }
-            }
-        }
+        // Date, date and time, and time boxes are drawn by the date-and-time
+        // control, found by their ids: a custom layout's markup carries no
+        // hook. The marker brings the control's scripts
+        // (pg_site_datetime_inject()).
+        $system .= pg_site_datetime_bind(array(
+            'date' => $date_fields,
+            'datetime' => $date_and_time_fields,
+            'time' => $time_fields,
+        ));
 
         $output = render_layout(array(
             'page_id' => $page_id,

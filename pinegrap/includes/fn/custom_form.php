@@ -3341,6 +3341,7 @@ function prepare_custom_form($properties)
     }
     $date_fields = array();
     $date_and_time_fields = array();
+    $time_fields = array();
     $wysiwyg_fields = array();
     $form_type_filter = "";
     if ($form_type) {
@@ -3453,6 +3454,9 @@ function prepare_custom_form($properties)
             case 'date and time':
                 $date_and_time_fields[] = $html_name;
                 break;
+            case 'time':
+                $time_fields[] = $html_name;
+                break;
             case 'pick list':
                 $field['pick_list_options'] = array();
                 foreach ($field['options'] as $option) {
@@ -3529,6 +3533,7 @@ function prepare_custom_form($properties)
         'fields' => $fields,
         'date_fields' => $date_fields,
         'date_and_time_fields' => $date_and_time_fields,
+        'time_fields' => $time_fields,
         'wysiwyg_fields' => $wysiwyg_fields,
         'edit_start' => $edit_start,
         'edit_end' => $edit_end
