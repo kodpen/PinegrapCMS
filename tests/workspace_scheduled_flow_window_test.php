@@ -132,3 +132,78 @@ function test_workspace_scheduled_flow_window_sketch_shape()
 	pg_assert_false($card['nodes'][1]['outbound'], 'a post in the channel is not outbound');
 	pg_assert_true($card['width'] > $card['height']);
 }
+
+// The window in workspace.js: the Add entry opens it, the drawing is D8b's
+// with the pick handed to the form, Publish and Open on the canvas send the
+// draft the window made before.
+function test_workspace_scheduled_flow_window_js_wiring()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("label: t('sa_flow_new'), action: function () {\n                        self.scheduledFlowWindow();", $js);
+	pg_assert_contains('self.flowWindowDraw(drawing, data.graph, function (picked) {', $js);
+	pg_assert_contains('flow_id: saved.flow_id,', $js);
+	pg_assert_contains('draft_rev: saved.draft_rev,', $js);
+	pg_assert_contains('publish: publish ? 1 : 0,', $js);
+	pg_assert_false(strpos($js, "label: t('sa_new')") !== false, 'no Scheduled action entry');
+}
+
+// Runs a script under Node and answers what it printed as JSON; null when
+// Node is not installed.
+function ws_scheduled_flow_window_test_node($script)
+{
+	$out = array();
+	$code = 1;
+	@exec('node --version 2>&1', $out, $code);
+
+	if ($code !== 0) {
+		return null;
+	}
+
+	$file = tempnam(sys_get_temp_dir(), 'pgwssf');
+	file_put_contents($file, $script);
+	$out = array();
+	exec('node ' . escapeshellarg($file) . ' 2>&1', $out, $code);
+	unlink($file);
+
+	$printed = implode("\n", $out);
+	pg_assert_same(0, $code, $printed);
+	$answer = json_decode($printed, true);
+	pg_assert_true(is_array($answer), 'Node printed JSON: ' . $printed);
+
+	return is_array($answer) ? $answer : array();
+}
+
+// Which start settings each repeat shows, and only those are sent.
+function test_workspace_scheduled_flow_window_helpers_node()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	$script = "'use strict';\n";
+
+	foreach (array('scheduledFlowShows', 'scheduledFlowStart') as $name) {
+		$start = strpos($source, "\n    function " . $name . '(');
+		pg_assert_true($start !== false, $name . ' is found');
+		$end = strpos($source, "\n    }\n", (int) $start);
+		$script .= substr($source, (int) $start, (int) $end - (int) $start) . "\n    }\n";
+	}
+
+	$script .= "console.log(JSON.stringify([scheduledFlowShows('none'), scheduledFlowShows('workdays'), scheduledFlowShows('weekly'), scheduledFlowShows('daily'),"
+		. " scheduledFlowStart({ date: '2026-11-03', time: '09:00', repeat: 'none', every: '3', days: ['1'], until: '2026-12-01' }),"
+		. " scheduledFlowStart({ date: '2026-11-03', time: '09:00', repeat: 'weekly', every: 'x', days: ['5', '1', '8'], until: '' }),"
+		. " scheduledFlowStart({ date: '2026-11-03', time: '09:00', repeat: 'daily', every: '2', days: ['1'], until: '2026-12-01' })]));\n";
+	$answer = ws_scheduled_flow_window_test_node($script);
+
+	if ($answer === null) {
+		return;
+	}
+
+	pg_assert_same(array(
+		array('every' => false, 'days' => false, 'until' => false),
+		array('every' => false, 'days' => false, 'until' => true),
+		array('every' => true, 'days' => true, 'until' => true),
+		array('every' => true, 'days' => false, 'until' => true),
+		array('date' => '2026-11-03', 'time' => '09:00', 'repeat' => 'none'),
+		array('date' => '2026-11-03', 'time' => '09:00', 'repeat' => 'weekly', 'every' => 1, 'days' => array(1, 5)),
+		array('date' => '2026-11-03', 'time' => '09:00', 'repeat' => 'daily', 'every' => 2, 'until' => '2026-12-01'),
+	), $answer);
+}

@@ -3100,6 +3100,7 @@
     "The saved template will be replaced by the built-in one. Continue?": "Kayıtlı şablonun yerine yerleşik şablon gelecek. Devam edilsin mi?",
     "The scheduled action could not be saved.": "Programlanmış işlem kaydedilemedi.",
     "The scheduled action to start is gone.": "Başlatılacak programlanmış işlem artık yok.",
+    "The scheduled flow is live.": "Zamanlanmış akış yayında.",
     "The scheduled job has not run yet.": "Zamanlanmış görev henüz çalışmadı.",
     "The scheduled message was deleted.": "Zamanlanmış mesaj silindi.",
     "The scheduled tasks have stopped running, which quietly stalls backups and mail.": "Zamanlanmış görevler çalışmayı bırakmış; bu, yedekleri ve e-postaları sessizce durdurur.",

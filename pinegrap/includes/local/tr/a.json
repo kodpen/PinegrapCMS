@@ -295,6 +295,7 @@
     "A flow is shared with a person or a channel.": "Bir akış bir kişiyle ya da bir kanalla paylaşılır.",
     "A flow is started by one box; {var:1} is a second one.": "Bir akışı tek bir kutu başlatır; {var:1} ikincisi.",
     "A flow needs a name.": "Akışın bir adı olmalı.",
+    "A flow that posts a message in {var:1} at a time you set. Publish it here, or open it on the canvas to add more boxes.": "{var:1} kanalına belirlediğiniz saatte mesaj gönderen bir akış. Burada yayınlayın ya da başka kutular eklemek için tuvalde açın.",
     "A flow's home is a public or private channel you read.": "Bir akışın yeri, okuyabildiğiniz genel ya da özel bir kanaldır.",
     "A folder cannot be moved into itself ({var:1}).": "Bir klasör kendi içine taşınamaz ({var:1}).",
     "A folder cannot be moved into itself or into a folder inside it.": "Bir klasör kendi içine ya da içindeki bir klasöre taşınamaz.",
