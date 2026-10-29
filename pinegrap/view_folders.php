@@ -2066,7 +2066,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     <div class="ql-hint"><?php echo lang('Space closes, the arrow keys walk the folder'); ?></div>
 </div>
 
-<div class="toast-container position-fixed bottom-0 end-0 p-5" id="explorer_toasts"></div>
+<div class="toast-container position-fixed bottom-0 end-0 p-5" id="explorer_toasts" aria-live="polite"></div>
+<div class="visually-hidden" id="explorer_search_status" role="status" aria-live="polite"></div>
 
 <?php echo pg_code_editor_includes(); ?>
 <?php echo get_date_picker_format() . pg_fields_script(); ?>
@@ -2306,7 +2307,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var element = document.createElement('div');
         var tone = ok === false ? 'danger' : 'success';
         element.className = 'toast align-items-center border-0 bg-' + tone + ' fg-contrast-' + tone;
-        element.setAttribute('role', 'status');
+        // The container is a polite live region, so a notice added to it is
+        // read; a failure is an alert, read at once.
+        if (ok === false) { element.setAttribute('role', 'alert'); }
         element.innerHTML = '<div class="d-flex"><div class="toast-body"></div>' +
             (action ? '<button type="button" class="btn btn-sm btn-subtle theme-secondary my-auto me-1 text-nowrap" data-role="toast-action"></button>' : '') +
             '<button type="button" class="btn-close me-3 m-auto" data-bs-dismiss="toast" aria-label="' + L.close + '"></button></div>';
@@ -2641,6 +2644,25 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // kept is shown by itself, since that is a file read like any other.
 
     var erpSearchTimer = null;
+    var searchStatusTimer = null;
+
+    // The status bar's "{shown} of {total} shown" is never read out; the same
+    // count goes into a hidden status region a moment after the typing stops,
+    // so it is said once per search rather than on every key.
+    function announceSearchCount() {
+        if (searchStatusTimer) { window.clearTimeout(searchStatusTimer); }
+        searchStatusTimer = window.setTimeout(function () {
+            searchStatusTimer = null;
+            var region = document.getElementById('explorer_search_status');
+            if (!region) { return; }
+            if (!state.filter || !state.items) {
+                region.textContent = '';
+                return;
+            }
+            var listed = (state.items.folders || []).length + (state.items.pages || []).length + (state.items.files || []).length;
+            region.textContent = fmt(L.filters_showing, [state.ordered.length, listed]);
+        }, 700);
+    }
 
     function insideErp() { return state.mode === 'erp'; }
 
@@ -14844,6 +14866,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // preview too, instead of standing there beside results it is not in.
         var searchSelected = selectedItems();
         renderPreview(searchSelected.length === 1 ? searchSelected[0] : null);
+        announceSearchCount();
     });
 
     // The selection strip is redrawn on every selection change, so its buttons

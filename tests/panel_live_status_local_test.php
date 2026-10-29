@@ -74,7 +74,7 @@ function test_explorer_toasts_are_announced()
 	);
 
 	$toast = panel_live_status_local_slice($source, "\n    function toast(", "\n    function ");
-	pg_assert_contains("ok === false ? 'alert'", $toast, 'a failure notice is an alert');
+	pg_assert_contains("if (ok === false) { element.setAttribute('role', 'alert'); }", $toast, 'a failure notice is an alert');
 	pg_assert_false(strpos($toast, "setAttribute('role', 'status')") !== false, 'a notice is not a status region of its own inside the live container');
 }
 
