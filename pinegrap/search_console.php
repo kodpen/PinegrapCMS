@@ -144,7 +144,7 @@ function search_console_number($value, $decimals = 0) {
 
 function search_console_percent($fraction, $decimals = 1) {
 
-	return h(pg_format_number($fraction * 100, $decimals)) . '%';
+	return h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($fraction * 100, $decimals))));
 
 }
 
@@ -171,7 +171,9 @@ function search_console_change($now, $before, $lower_is_better = false) {
 		}
 
 		$good = ($change > 0);
-		$text = (($change > 0) ? '+' : '') . pg_format_number($change * 100, 0) . '%';
+		// The sign stays outside the template, which Turkish words as %12.
+		$sign = ($change > 0) ? '+' : (($change < 0) ? '-' : '');
+		$text = $sign . lang(array('string' => '{var:1}%', 'vars' => pg_format_number(abs($change) * 100, 0)));
 
 	}
 

@@ -312,7 +312,7 @@ if (count($products) > 0) {
 
         $output_product_rows .=
             '<tr>
-                <td class="chart_label pointer" onclick="window.location.href=\'edit_product.php?id=' . $product['id'] . '\'">' . $output_description . '</td>
+                <td class="chart_label"><a href="' . h('edit_product.php?id=' . (int) $product['id']) . '">' . $output_description . '</a></td>
                 <td style="text-align: center">' . $output_before . '</td>
                 ' . $output_date_cells . '
                 <td style="text-align: center">' . $output_after . '</td>

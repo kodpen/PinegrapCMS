@@ -11,7 +11,7 @@ description: Report and panel controls on Bootstrap 6: period changers, named ar
 - The Summarize by / order by rows (order and visitor reports, `edit_form_list_view.php`) are plain `.row`s of `<label for>` + select; liveform prints a select's id only when `output_field()` gets `'id'`. They sat in an `.input-group-text row` with the texts in divs: six unnamed comboboxes per screen.
 
 ## How is the Grand Total percentage printed?
-- `pg_format_number(100, 2) . '%'` like the other cells, never a literal `100.00%` (a comma-decimal site showed it beside `45,23%`).
+- Through the `'{var:1}%'` template like every other percent cell, never a literal `100.00%` (`report-table-rows.md`).
 
 ## How are the date range filters of list screens named?
 - Each date (orders, submitted forms, contacts, commissions) is a `<fieldset>` whose `<legend class="form-label">` is Start / End, and its month, day and year selects carry `aria-label` Month / Day / Year. A `<label>` without `for` named nothing: the runtime binder in `backend.src.js` only binds a label to a next field that has an id.

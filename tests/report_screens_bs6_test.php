@@ -65,7 +65,7 @@ function test_report_screens_grand_total_percent_follows_number_format()
 		$source = report_screens_bs6_source($screen);
 
 		pg_assert_false(strpos($source, '100.00%') !== false, $screen . ': no hard-coded 100.00%');
-		pg_assert_contains("pg_format_number(100, 2) . '%", $source, $screen . ': 100 % is formatted');
+		pg_assert_contains("'vars' => pg_format_number(100, 2)", $source, $screen . ': 100 % is formatted');
 	}
 }
 
