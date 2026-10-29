@@ -1160,6 +1160,8 @@
     "workspace flow ({var:1}) was started by the flow ({var:2}), run {var:3}": "çalışma alanı akışı ({var:1}), ({var:2}) akışı tarafından başlatıldı, çalışma {var:3}",
     "workspace flow ({var:1}) was started, run {var:2}": "çalışma alanı akışı ({var:1}) başlatıldı, {var:2} numaralı çalıştırma",
     "workspace flow ({var:1}): the share with {var:2} was changed to {var:3}": "çalışma alanı akışı ({var:1}): {var:2} ile paylaşımı {var:3} olarak değiştirildi",
+    "workspace flow template ({var:1}) was deleted": "çalışma alanı akış şablonu ({var:1}) silindi",
+    "workspace flow template ({var:1}) was saved": "çalışma alanı akış şablonu ({var:1}) kaydedildi",
     "workspace flow “{var:1}” did not start on its own: {var:2}": "“{var:1}” çalışma alanı akışı kendiliğinden başlamadı: {var:2}",
     "workspace holiday ({var:1}) is counted again": "çalışma alanı tatili ({var:1}) yeniden sayılıyor",
     "workspace holiday ({var:1}) is no longer counted": "çalışma alanı tatili ({var:1}) artık sayılmıyor",
