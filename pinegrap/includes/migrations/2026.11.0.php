@@ -103,6 +103,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 	upgrade_2026_11_0_paytr();                  // 11.0.122
+	upgrade_2026_11_0_record_revisions();       // 11.0.123
 
 }
 
@@ -3271,5 +3272,38 @@ function upgrade_2026_11_0_paytr() {
 	}
 
 	install_note('PayTR can now take payments: the visitor pays in PayTR\'s payment page, framed in the checkout, and PayTR confirms the payment to the store. Turn on "PayTR" in the Ecommerce settings with the merchant ID, key and salt, and add the webhook address shown there as the Notification URL in the PayTR Merchant Panel.');
+
+}
+
+// Collection item revisions (includes/fn/record_revisions.php).
+//
+// record_revisions keeps one row for every save that changed an item of a
+// collection form (custom_form_pages.collection = 1): the field values as
+// JSON (files by file_id only), the record's own columns (address name and
+// the like) as JSON, the SHA-1 that tells two saves apart, who saved, when
+// and from where (edit, restore, api, workspace). form_id is the record
+// (forms.id), page_id its form; revision_no counts up per record and the
+// unique key makes two saves of one record at the same moment take
+// different numbers. Retention reuses the page settings
+// (config.page_revisions_keep / page_revisions_days).
+function upgrade_2026_11_0_record_revisions() {
+
+	install_create_table('record_revisions', "CREATE TABLE record_revisions (
+		revision_id  INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		form_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		page_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		revision_no  INT UNSIGNED NOT NULL DEFAULT 0,
+		values_json  MEDIUMTEXT NOT NULL,
+		record_json  TEXT NOT NULL,
+		values_hash  CHAR(40) NOT NULL DEFAULT '',
+		user_id      INT UNSIGNED NOT NULL DEFAULT 0,
+		source       VARCHAR(16) NOT NULL DEFAULT 'edit',
+		created_at   INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (revision_id),
+		UNIQUE KEY idx_record_revision (form_id, revision_no),
+		KEY idx_record_page (page_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Collections: every save that changes an item of a collection form is kept as a revision, with who saved it and when; the page revision settings (how many and for how many days) apply to items too.');
 
 }
