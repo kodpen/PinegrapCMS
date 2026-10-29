@@ -32698,8 +32698,15 @@ const StyleDesigner = (function () {
     // Attributes panel (same convention as every other node) — no separate
     // CSS Class row in Options.
     function propsRoot(n) {
+        // A converted classic style keeps its <title> on the root; the site
+        // prints it only for a page without a title of its own.
+        var title = (typeof n.props.title === 'string' && n.props.title !== '')
+            ? row(_sdT('Title'), '<input type="text" class="form-control form-control-sm" data-prop="title" value="' + esc(n.props.title) + '">') +
+              '<div class="sd-prop-row"><div class="form-text small mb-0">' +
+                  esc(_sdT('Used only while a page has no title of its own.')) + '</div></div>'
+            : '';
         return sect('bi-filetype-html', _sdT('Body Options'),
-            fontPickerRow(n)
+            title + fontPickerRow(n)
         );
     }
 
