@@ -124,6 +124,26 @@
         return node;
     }
 
+    // Lets a row drawn as a div act as a button: it takes focus, and Enter or
+    // Space on the row itself runs its action. A control inside the row keeps
+    // its own keys, and Space does not scroll the page.
+    function pressKeys(node, action) {
+        node.tabIndex = 0;
+        node.setAttribute('role', 'button');
+        node.addEventListener('keydown', function (event) {
+            if (event.target === node && (event.key === 'Enter' || event.key === ' ')) {
+                event.preventDefault();
+                action();
+            }
+        });
+    }
+
+    // Minutes as hours with at most one decimal, in the panel language
+    // (7,5 on a Turkish panel).
+    function hoursText(minutes) {
+        return (Math.round(minutes / 6) / 10).toLocaleString(CFG.locale || undefined, { maximumFractionDigits: 1 });
+    }
+
     // The flow box kinds' line icons (16 px, 1.5 px stroke): the canvas,
     // its list and outline (workspace_flow.js, through the kit) and the mini
     // window of a draft draw these, one set for all. Each is the paths of a
@@ -3523,6 +3543,7 @@
         return {
             api: api, ask: ask, toast: toast, fail: fail, t: t, el: el, icon: icon, button: button,
             clear: clear, select: select, avatar: avatar, avatarStack: avatarStack, nextId: nextId, debounce: debounce,
+            pressKeys: pressKeys,
             mcpConnect: mcpConnect, dateField: pgDateField,
             boot: function () { return BOOT; },
             openTask: function (taskId, onSaved) { taskDrawer.open(taskId, null, onSaved || taskDrawer.onSaved); }
@@ -5428,12 +5449,23 @@
                 if (item.join) {
                     var join = el('span', 'btn btn-sm btn-solid theme-primary rounded-pill align-self-start mt-1', t('meeting_join'));
                     join.insertBefore(icon('bi-camera-video', 'me-1'), join.firstChild);
+                    join.tabIndex = 0;
                     join.setAttribute('role', 'button');
                     join.addEventListener('click', function (clicked) {
                         clicked.preventDefault();
                         clicked.stopPropagation();
                         api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
                         joinMeeting(item.join);
+                    });
+                    // Inside the row's link: the keys stop here, so the link
+                    // does not open as well.
+                    join.addEventListener('keydown', function (pressed) {
+                        if (pressed.key === 'Enter' || pressed.key === ' ') {
+                            pressed.preventDefault();
+                            pressed.stopPropagation();
+                            api('ws_inbox_read', { ids: [item.id] }).catch(function () {});
+                            joinMeeting(item.join);
+                        }
                     });
                     row.appendChild(join);
                 }
@@ -16765,8 +16797,6 @@
 
         tasks.forEach(function (task) {
             var row = el('div', 'ws-list-row' + (task.open ? '' : ' ws-row-done'));
-            row.tabIndex = 0;
-            row.setAttribute('role', 'button');
             row.appendChild(el('span', 'ws-status-dot ws-s-' + task.status));
 
             var main = el('div', 'ws-grow');
@@ -16840,11 +16870,7 @@
             }
 
             row.addEventListener('click', openTask);
-            row.addEventListener('keydown', function (event) {
-                if (event.key === 'Enter') {
-                    openTask();
-                }
-            });
+            pressKeys(row, openTask);
 
             onContext(row, function () {
                 var people = task.assignees.map(function (member) {
@@ -17185,7 +17211,7 @@
                 who.appendChild(avatar(row.person));
                 var text = el('div', 'ws-grow');
                 text.appendChild(el('b', '', row.person.name));
-                text.appendChild(el('small', '', t('day_capacity', Math.round(row.capacity.day_minutes / 60 * 10) / 10) + (row.unscheduled ? ' · ' + t('undated', row.unscheduled) : '')));
+                text.appendChild(el('small', '', t('day_capacity', hoursText(row.capacity.day_minutes)) + (row.unscheduled ? ' · ' + t('undated', row.unscheduled) : '')));
 
                 // Staff see the time spent beside what was planned.
                 if (row.time && window.PGWsTaskTime) {
@@ -17290,7 +17316,7 @@
                         bar.appendChild(fill);
                         box.appendChild(bar);
                         box.appendChild(el('span', 'ws-board-pct', cell.load > 998 ? '!' : t('percent', cell.load)));
-                        box.title = t('cell_title', Math.round(cell.minutes / 6) / 10, Math.round(cell.capacity / 6) / 10);
+                        box.title = t('cell_title', hoursText(cell.minutes), hoursText(cell.capacity));
                     } else if (away) {
                         box.appendChild(el('span', 'ws-board-pct', cell.holiday ? t('holiday') : t('away')));
                     }
@@ -17696,8 +17722,6 @@
 
                 week.forEach(function (day, column) {
                     var cell = el('div', 'ws-cal-day' + (day.in_month ? '' : ' ws-cal-out') + (day.today ? ' ws-cal-today' : '') + (day.weekend ? ' ws-cal-weekend' : ''));
-                    cell.tabIndex = 0;
-                    cell.setAttribute('role', 'button');
                     cell.setAttribute('aria-label', day.label);
 
                     var top = el('div', 'ws-cal-day-top');
@@ -17811,11 +17835,7 @@
                     }
 
                     cell.addEventListener('click', function () { openDay(day); });
-                    cell.addEventListener('keydown', function (event) {
-                        if (event.key === 'Enter') {
-                            openDay(day);
-                        }
-                    });
+                    pressKeys(cell, function () { openDay(day); });
                     onContext(cell, function () { return dayMenu(day); });
 
                     grid.appendChild(cell);
@@ -17905,10 +17925,13 @@
                 main.appendChild(el('div', 'ws-row-sub' + (task.overdue ? ' fg-danger' : ''), (task.upcoming ? comingText(task) : BOOT.statuses[task.status]) + (task.span_start ? ' · ' + t('task_span', dmy(task.span_start), dmy(task.span_end)) : '') + (task.people.length ? ' · ' + peopleNames(task.people) : '')));
                 row.appendChild(main);
 
-                row.addEventListener('click', function () {
+                function openDayTask() {
                     hideOffcanvas(node);
                     taskDrawer.open(task.id, null, load);
-                });
+                }
+
+                row.addEventListener('click', openDayTask);
+                pressKeys(row, openDayTask);
                 onContext(row, function () { return comingMenu(task) || taskMenu(task, load); });
                 tasks.appendChild(row);
             });
@@ -17935,12 +17958,15 @@
                         row.appendChild(join);
                     }
 
-                    row.addEventListener('click', function () {
+                    function openPlanItem() {
                         api('ws_event_get', { event_id: event.id }).then(function (result) {
                             hideOffcanvas(node);
                             eventForm(result.event, {}, load);
                         }).catch(fail);
-                    });
+                    }
+
+                    row.addEventListener('click', openPlanItem);
+                    pressKeys(row, openPlanItem);
                     events.appendChild(row);
                 });
             }
@@ -19876,8 +19902,6 @@
                 var open = current && current.id === note.id;
                 var unread = !open && !!note.unread;
                 var item = el('div', 'ws-nb-item' + (open ? ' active' : '') + (unread ? ' ws-nb-item-unread' : ''));
-                item.tabIndex = 0;
-                item.setAttribute('role', 'button');
 
                 var top = el('div', 'ws-nb-item-head');
                 top.appendChild(icon(note.access === 'owner' ? (note.source ? 'bi-chat-square-quote' : 'bi-journal-text') : 'bi-people'));
@@ -19937,16 +19961,14 @@
                     item.appendChild(meta);
                 }
 
-                item.addEventListener('click', function () {
+                function openThis() {
                     if (!current || current.id !== note.id) {
                         openNote(note.id);
                     }
-                });
-                item.addEventListener('keydown', function (event) {
-                    if (event.key === 'Enter') {
-                        openNote(note.id);
-                    }
-                });
+                }
+
+                item.addEventListener('click', openThis);
+                pressKeys(item, openThis);
                 onContext(item, function () { return noteMenu(note); });
 
                 section.appendChild(item);

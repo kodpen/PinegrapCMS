@@ -17,6 +17,7 @@ description: Generated from the module field of the memory files: each includes/
 - `carrier_labels`: [[carrier-label-drivers]]
 - `cart_quotes`: [[cart-quotes]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]
+- `cloud_file_picker`: [[cloud-file-picker]]
 - `collections`: [[collection-references]]
 - `comments`: [[comment-replies]], [[comment-thread-rules]], [[comment-thread-verify]], [[comments-moderation-counters]], [[comments-widget-item-threads]], [[comments-widget-pages]], [[comments-widget-product-page]], [[designed-page-comment-names]], [[product-review-order]]
 - `commission_list`: [[commission-list-paging]]
