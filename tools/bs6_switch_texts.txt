@@ -352,13 +352,6 @@ Poll options whose input is a checkbox or a radio by the poll's setting.
                 bar.style.width = share + '%';
 >>>
 
-@@ assets/js/workspace.js
-<<<
-ai.closest('.form-check')
-===
-ai.closest('.form-field')
->>>
-
 @@ assets/js/workspace_guest.js
 <<<
                 var pick = el('input', 'form-check-input');
