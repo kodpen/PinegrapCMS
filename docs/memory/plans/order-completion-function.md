@@ -19,14 +19,15 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
   - A2c, per-line functions: A2c1 (#2713), A2c2 (#2740), A2c3a (#2766), A2c3b (#2844), A2c4 (#2896) done (`commerce/order-completion-lines.md`, `commerce/order-completion-line-comments.md`).
   - A2d, cut in three:
     - A2d1: done (#2914) (`commerce/order-completion-after-lines.md`); the ERP invoice call was already session-free and stays a call.
-    - A2d2 (in progress): behind the lock: key code use, gift card redemption and its error mail (codes and balances are in `applied_gift_cards`), commission rows; the offer code and commission figures are still settled before. Auto-registration stays with the request (it signs the visitor in; its user id goes into the UPDATE; a repeat finds the account by e-mail).
+    - A2d2: done (#2937) (`commerce/order-completion-before-lock.md`): key code use, gift card redemption and its error mail, commission rows behind the lock; auto-registration stays with the request (sign-in; its user id goes into the UPDATE).
     - A2d3: `pg_order_complete()` calls the stage functions in order (the product loop, with the reward points and contact groups it collects, included), so one call completes the whole order.
   - Stays in `submit_order()`: the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the redirect.
 - A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
 
 ## Open questions?
+- For A3: a guest's order completed by a payment service's message opens no account (auto-registration needs the visitor); is that wanted?
 - For A3: the receipt e-mail's settings (on, subject, format, header, footer, page) live on the checkout page (`order_preview_pages` / `express_order_pages`), and the order does not name the page it was placed from. A3 needs them without the visitor; if that takes a column, it is an architect question first.
 
 ## Where to start?
-- A2d2 (in progress), then A2d3. Do not start A3 before its open question is answered (architect).
-- `commerce/order-completion.md`, `commerce/order-completion-after-lines.md`, `commerce/payment-callback.md`.
+- A2d3: `pg_order_complete()` calls the stage functions in order (`includes/fn/order_completion.php`, `tests/order_completion_test.php`). Do not start A3 before its open question is answered (architect).
+- `commerce/order-completion.md`, `commerce/order-completion-after-lines.md`, `commerce/order-completion-before-lock.md`, `commerce/payment-callback.md`.

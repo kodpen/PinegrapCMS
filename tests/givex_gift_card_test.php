@@ -71,9 +71,10 @@ function test_givex_redemption_reply()
 	pg_assert_same(array('authorization_number' => '', 'balance' => null), pg_givex_parse_response('redemption', givex_test_reply(array('0', '0'))), 'cut-off reply');
 	pg_assert_same(array('error_message' => 'Redemption refused'), pg_givex_parse_response('redemption', givex_test_reply(array('0', '2', 'Redemption refused'))), 'refused');
 
-	$submit_order = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
-	pg_assert_contains("\$new_balance = isset(\$result['balance']) ? \$result['balance'] * 100 : \$applied_gift_card['old_balance'] - \$amount;", $submit_order, 'new balance without one in the reply');
-	pg_assert_same(0, substr_count($submit_order, "escape(\$result['balance'] * 100)"), 'reply balance multiplied unchecked');
+	// The redemption runs behind the order lock (pg_order_complete_gift_cards()).
+	$redemption = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
+	pg_assert_contains("\$new_balance = isset(\$result['balance']) ? \$result['balance'] * 100 : \$applied_gift_card['old_balance'] - \$amount;", $redemption, 'new balance without one in the reply');
+	pg_assert_same(0, substr_count($redemption, "escape(\$result['balance'] * 100)"), 'reply balance multiplied unchecked');
 }
 
 // A code that is empty once dashes and spaces are gone is not sent to Givex.

@@ -22,11 +22,12 @@ if (!defined('PG_TEST_RUNNER')) {
 // The commission is a number before the product loop adds to it.
 function test_order_submit_affiliate_commission_starts_at_zero()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	// The commission sum of the order (pg_order_commission()).
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
 
 	$reset = strpos($source, "\$commission = 0;");
 	$add = strpos($source, "\$commission += \$product_commission;");
-	$round = strpos($source, "\$commission = round(\$commission);");
+	$round = strpos($source, "return round(\$commission);");
 
 	pg_assert_true($reset !== false, 'commission reset');
 	pg_assert_true(($add !== false) && ($round !== false), 'commission sum');

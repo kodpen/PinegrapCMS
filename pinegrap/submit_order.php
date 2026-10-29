@@ -3275,187 +3275,15 @@ function submit_order($type) {
         }
     }
 
+    // A key code the special offer code names: the offer code it stands for
+    // is written with the order; a single-use one is used up once the order
+    // is completed.
+    $key_code = pg_order_key_code($special_offer_code);
+
     $special_offer_values = array();
 
-    // If a special offer code was added to this order, then check if code is a key code that might
-    // require various updates.
-
-    if ($special_offer_code != '') {
-
-        $key_code = db_item(
-            "SELECT
-                id,
-                offer_code,
-                single_use,
-                report
-            FROM key_codes
-            WHERE code = '" . e($special_offer_code) . "'");
-
-        // If a key code was found then continue to check.
-        if ($key_code) {
-
-            // If key code is single-use, then disable key code.
-            if ($key_code['single_use']) {
-                db(
-                    "UPDATE key_codes
-                    SET
-                        enabled = '0',
-                        user = '" . USER_ID . "',
-                        timestamp = UNIX_TIMESTAMP()
-                    WHERE id = '" . $key_code['id'] . "'");
-            }
-
-            // If key code report is set to offer code, then store offer code in order.
-            if ($key_code['report'] == 'offer_code') {
-                $special_offer_values = array('special_offer_code' => $key_code['offer_code']);
-            }
-        }
-    }
-    
-    // if gift cards are enabled, then check if applied gift cards are still valid and refresh balances
-    if (ECOMMERCE_GIFT_CARD == TRUE) {
-        // assume that there is not a gift card error until we find out otherwise
-        $gift_card_error = FALSE;
-        
-        // set the amount that needs to be redeemed from all gift cards
-        $required_redemption_amount = $gift_card_discount;
-        
-        // initialize a variable for tracking the amount that has been redeemed so far
-        $current_redemption_amount = 0;
-        
-        // create array for storing errors so that we can e-mail an administrator about them if necessary
-        // errors normally won't occur, because we have already checked balances earlier in this script, but a network issue or etc. is possible
-        // we will accept the order even if there is an error, because it is too difficult to backtrack (e.g. a payment gateway transaction might have already been submitted)
-        $gift_card_errors = array();
-        
-        // loop through the applied gift cards in order to redeem them or remove them if they are not necessary
-        foreach ($applied_gift_cards as $applied_gift_card) {
-            // if the current redemption amount is less than the required redemption amount, then we have not redeemed enough yet, so redeem this gift card
-            if ($current_redemption_amount < $required_redemption_amount) {
-                $remaining_redemption_amount = $required_redemption_amount - $current_redemption_amount;
-                
-                // if the balance of this applied gift card is less than or equal to the remaining redemption amount, then redeem the full balance of the gift card
-                if ($applied_gift_card['old_balance'] <= $remaining_redemption_amount) {
-                    $amount = $applied_gift_card['old_balance'];
-                    
-                // else the balance of this applied gift card is greater than the remaining redemption amount, so just redeem the remaining redemption amount
-                } else {
-                    $amount = $remaining_redemption_amount;
-                }
-
-                // If this is a gift card in this system (i.e. not givex), then reduce balance of gift card.
-                if ($applied_gift_card['givex'] == 0) {
-                    // Check for a gift card in this system.
-                    $gift_card = db_item(
-                        "SELECT
-                            id,
-                            balance
-                        FROM gift_cards
-                        WHERE id = '" . $applied_gift_card['gift_card_id']  . "'")
-                        ?: array('id' => ''); // the card was deleted after it was applied
-
-                    // If a gift card could not be found or if there is not enough balance, then add error
-                    // and remove applied gift card from order.
-                    // This just protects against a race condition where someone might try to submit multiple
-                    // orders at the same moment to get fraudulent value from the gift card.
-                    if (($gift_card['id'] == '') || ($gift_card['balance'] < $amount)) {
-                        $gift_card_errors[] = array(
-                            'gift_card_code' => $applied_gift_card['code'],
-                            'amount' => $amount,
-                            'error_message' => 'Gift card was deleted or balance of card changed right when order was submitted.',
-                            'givex' => false
-                        );
-
-                        db("DELETE FROM applied_gift_cards WHERE id = '" . escape($applied_gift_card['id']) . "'");
-
-                    // Otherwise we should be able to redeem the gift card successfully,
-                    // so reduce balance, update applied gift card, and update the current redemption amount.
-                    } else {
-                        db(
-                            "UPDATE gift_cards
-                            SET
-                                balance = balance - " . $amount . ",
-                                last_modified_user_id = '" . USER_ID . "',
-                                last_modified_timestamp = UNIX_TIMESTAMP()
-                            WHERE id = '" . $gift_card['id'] . "'");
-
-                        $new_balance = db_value("SELECT balance FROM gift_cards WHERE id = '" . $gift_card['id'] . "'");
-
-                        db(
-                            "UPDATE applied_gift_cards
-                            SET
-                                amount = '" . $amount . "',
-                                new_balance = '" . $new_balance . "'
-                            WHERE id = '" . $applied_gift_card['id'] . "'");
-                        
-                        $current_redemption_amount = $current_redemption_amount + $amount;
-                    }
-
-                // Otherwise this is a givex gift card, so check if gift card still exists
-                // and if balance is good.
-                } else {
-                    // send a redemption request to Givex
-                    $result = send_givex_request('redemption', $applied_gift_card['code'], $amount / 100);
-                    
-                    // if there was an error then add error to errors array and remove gift card from order
-                    if ((isset($result['curl_errno']) == TRUE) || (isset($result['error_message']) == TRUE)) {
-                        // if there was a curl error, then store certain values in array
-                        if (isset($result['curl_errno']) == TRUE) {
-                            $gift_card_errors[] = array(
-                                'gift_card_code' => $applied_gift_card['code'],
-                                'amount' => $amount,
-                                'curl_errno' => $result['curl_errno'],
-                                'curl_error' => $result['curl_error'],
-                                'givex' => true
-                            );
-                            
-                        // else there was a Givex error, so store different values in array
-                        } else {
-                            $gift_card_errors[] = array(
-                                'gift_card_code' => $applied_gift_card['code'],
-                                'amount' => $amount,
-                                'error_message' => $result['error_message'],
-                                'givex' => true
-                            );
-                        }
-                        
-                        // remove applied gift card from database
-                        $query = "DELETE FROM applied_gift_cards WHERE id = ?";
-                        $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error('Query failed.');
-                        
-                    // else the redemption was successful, so update applied gift card and update the current redemption amount
-                    } else {
-                        // Givex took the amount; a new balance its reply did not give is what the card had left.
-                        $new_balance = isset($result['balance']) ? $result['balance'] * 100 : $applied_gift_card['old_balance'] - $amount;
-
-                        $query =
-                            "UPDATE applied_gift_cards
-                            SET
-                                amount = ?,
-                                new_balance = ?,
-                                authorization_number = ?
-                            WHERE id = ?";
-                        $result = db_q($query, array((string) $amount, (string) $new_balance, (string) $result['authorization_number'], (string) $applied_gift_card['id'])) or output_error('Query failed.');
-                        
-                        $current_redemption_amount = $current_redemption_amount + $amount;
-                    }
-                }
-                
-            // else the current redemption amount is greater than or equal to the required redemption amount, so remove this gift card from the order,
-            // because no more gift cards need to be redeemed
-            } else {
-                // remove applied gift card from database
-                $query = "DELETE FROM applied_gift_cards WHERE id = ?";
-                $result = db_q($query, array((string) $applied_gift_card['id'])) or output_error('Query failed.');
-            }
-        }
-        
-        // if the total amount that was redeemed is less than the required redemption amount, then not enough was redeemed because of an error,
-        // so remember that so that we can later e-mail an administrator and log activity
-        // we can't e-mail the administrator or log activity yet because we don't know the order number yet
-        if ($current_redemption_amount < $required_redemption_amount) {
-            $gift_card_error = TRUE;
-        }
+    if ($key_code && ($key_code['report'] == 'offer_code')) {
+        $special_offer_values = array('special_offer_code' => $key_code['offer_code']);
     }
     
     // set order date
@@ -3564,185 +3392,18 @@ function submit_order($type) {
         }
     }
 
-    /* begin: calculate commission for affiliate program */
-    
+    // The affiliate's commission is a value of the order; its rows are
+    // written once the order is completed.
     $affiliate_code = get_affiliate_code();
-    
-    // if affiliate program is on and there is an affiliate code, then determine if commission record and recurring commission profiles should be created
+    $affiliate_rate = null;
+
     if ((AFFILIATE_PROGRAM == true) && ($affiliate_code != '')) {
-        // get affiliate information from contact
-        $query = "SELECT affiliate_commission_rate FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = 1)";
-        $result = db_q($query, array((string) $affiliate_code)) or output_error('Query failed.');
-        
-        // if a valid affiliate contact was found, continue with calculating commission
-        if (mysqli_num_rows($result) > 0) {
-            $row = mysqli_fetch_assoc($result);
-            $affiliate_commission_rate = $row['affiliate_commission_rate'];
-            
-            // if affiliate commission rate is 0, then use default commission rate
-            if ($affiliate_commission_rate == 0) {
-                $affiliate_commission_rate = AFFILIATE_DEFAULT_COMMISSION_RATE;
-            }
-            
-            // If there is an order discount, calculate discount percentage
-            // (pg_order_charged_discount() keeps a discount within a subtotal
-            // above zero; the check keeps the division safe on its own).
-            $discount_percentage = 0;
-            if ($discount && ($subtotal > 0)) {
-                $discount_percentage = $discount / $subtotal;
-            }
-            
-            // if there is a gift card discount, calculate gift card discount percentage
-            if ($gift_card_discount != 0) {
-                $gift_card_discount_percentage = $gift_card_discount / ($total_without_surcharge + $gift_card_discount);
-            }
-            
-            // The order record default above is '', and PHP 8 throws on '' + float
-            // and on round('').
-            $commission = 0;
-            
-            // loop through all nonrecurring products in order
-            foreach ($nonrecurring_products as $product) {
-                if ($product['commissionable'] == 1) {
-                    // if there is a commission rate limit set for the product
-                    // and the commission rate limit is less than the affiliate commission rate
-                    // use commission rate limit for product
-                    if (($product['commission_rate_limit'] != 0) && ($product['commission_rate_limit'] < $affiliate_commission_rate)) {
-                        $commission_rate = $product['commission_rate_limit'];
-                        
-                    // else use affiliate commission rate
-                    } else {
-                        $commission_rate = $affiliate_commission_rate;
-                    }
-                    
-                    $product_commission = $product['quantity'] * $product['price'] * ($commission_rate / 100);
-                    
-                    // if there is an order discount, apply discount to product commission
-                    if ($discount) {
-                        $product_commission = $product_commission - ($product_commission * $discount_percentage);
-                    }
-                    
-                    // if there is a gift card discount, apply gift card discount to product commission
-                    if ($gift_card_discount != 0) {
-                        $product_commission = $product_commission - ($product_commission * $gift_card_discount_percentage);
-                    }
-                    
-                    // add product commission to total commission
-                    $commission += $product_commission;
-                }
-            }
-            
-            $commission = round($commission);
-            
-            // if there is a commission, then add commission record
-            if ($commission > 0) {
-                $query =
-                    "INSERT INTO commissions (
-                        reference_code,
-                        affiliate_code,
-                        order_id,
-                        amount,
-                        status,
-                        created_user_id,
-                        created_timestamp,
-                        last_modified_user_id,
-                        last_modified_timestamp)
-                    VALUES (
-                        ?,
-                        ?,
-                        ?,
-                        ?,
-                        'pending',
-                        ?,
-                        UNIX_TIMESTAMP(),
-                        ?,
-                        UNIX_TIMESTAMP())";
-                $result = db_q($query, array((string) generate_commission_reference_code(), (string) $affiliate_code, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $commission, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
-            }
-            
-            // loop through recurring products in order to create recurring commission profiles
-            foreach ($recurring_products as $product) {
-                // if the product is commissionable and the payment period is monthly or yearly then continue to check if recurring commission profile should be created
-                if (
-                    ($product['commissionable'] == 1)
-                    &&
-                    (
-                        ($product['recurring_payment_period'] == 'Monthly')
-                        || ($product['recurring_payment_period'] == 'Yearly')
-                    )
-                ) {
-                    // if there is a commission rate limit set for the product
-                    // and the commission rate limit is less than the affiliate commission rate
-                    // use commission rate limit for product
-                    if (($product['commission_rate_limit'] != 0) && ($product['commission_rate_limit'] < $affiliate_commission_rate)) {
-                        $commission_rate = $product['commission_rate_limit'];
-                        
-                    // else use affiliate commission rate
-                    } else {
-                        $commission_rate = $affiliate_commission_rate;
-                    }
-                    
-                    $product_commission = $product['quantity'] * $product['price'] * ($commission_rate / 100);
-                    
-                    $product_commission = round($product_commission);
-                    
-                    // if the recurring start date for the order item is less than or equal to today,
-                    // then the order item was included in non-recurring transaction, so determine actual start date for profile
-                    if ($product['recurring_start_date'] <= date('Y-m-d')) {
-                        switch ($product['recurring_payment_period']) {
-                            case 'Monthly':
-                                $start_date = date('Y-m-d', time() + 86400 * 30);
-                                break;
-                            
-                            case 'Yearly':
-                                $start_date = date('Y-m-d', time() + 86400 * 365);
-                                break;
-                        }
-                        
-                    // else the recurring start date is greater than today, so figure out start date from start value
-                    } else {
-                        $start_date = date('Y-m-d', strtotime($product['recurring_start_date']));
-                    }
-                    
-                    // create recurring commission profile
-                    $query =
-                        "INSERT INTO recurring_commission_profiles (
-                            affiliate_code,
-                            order_id,
-                            order_item_id,
-                            amount,
-                            enabled,
-                            start_date,
-                            period,
-                            number_of_commissions,
-                            product_name,
-                            product_short_description,
-                            created_user_id,
-                            created_timestamp,
-                            last_modified_user_id,
-                            last_modified_timestamp)
-                        VALUES (
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            '1',
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            ?,
-                            UNIX_TIMESTAMP(),
-                            ?,
-                            UNIX_TIMESTAMP())";
-                    $result = db_q($query, array((string) $affiliate_code, (string) ($_SESSION['ecommerce']['order_id'] ?? ''), (string) $product['order_item_id'], (string) $product_commission, (string) $start_date, (string) mb_strtolower($product['recurring_payment_period']), (string) $product['recurring_number_of_payments'], (string) $product['product_name'], (string) $product['short_description'], (string) $user_id, (string) $user_id)) or output_error('Query failed.');
-                }
-            }
-        }
+        $affiliate_rate = pg_order_affiliate_rate($affiliate_code);
     }
 
-    /* end: calculate commission for affiliate program */
+    if ($affiliate_rate !== null) {
+        $commission = pg_order_commission($nonrecurring_products, $affiliate_rate, $discount, $subtotal, $gift_card_discount, $total_without_surcharge);
+    }
     
     // if Credit/Debit Card payment method was selected, then prepare to update fields in order table for Credit/Debit Card
     if ($liveform->get_field_value('payment_method') == 'Credit/Debit Card') {
@@ -3880,46 +3541,18 @@ function submit_order($type) {
         exit();
     }
     
-    // we know the order number now, so if gift cards are enabled and there was a gift card error, then e-mail administrator and log activity
-    if ((ECOMMERCE_GIFT_CARD == TRUE) && ($gift_card_error == TRUE)) {
-        $error_message_detail = '';
-        
-        // loop through the gift card errors, in order to prepare error message detail
-        foreach ($gift_card_errors as $gift_card_error) {
-            if ($gift_card_error['givex'] == false) {
-                $protected_gift_card_code = protect_gift_card_code($gift_card_error['gift_card_code']);
-            } else {
-                $protected_gift_card_code = protect_givex_gift_card_code($gift_card_error['gift_card_code']);
-            }
+    // Behind the lock, so a second submit of the same checkout writes none of
+    // them again: the key code used up, the gift cards redeemed (a shortfall
+    // is e-mailed to the store), the affiliate's commission.
+    $completed_order_id = (int) ($_SESSION['ecommerce']['order_id'] ?? 0);
 
-            $error_message_detail .= ' Gift card: ' . $protected_gift_card_code . '. Attempted redemption amount: ' . pg_money_text($gift_card_error['amount'] / 100, BASE_CURRENCY_SYMBOL) . '.';
-            
-            // if there is a cURL error, then add error info to error message detail
-            if (isset($gift_card_error['curl_errno']) == TRUE) {
-                $error_message_detail .= ' cURL Error Number: ' . $gift_card_error['curl_errno'] . '. cURL Error Message: ' . $gift_card_error['curl_error'] . '.';
-                
-            // else if there is an error message from Givex, then add error info to error message detail
-            } else if (isset($gift_card_error['error_message']) == TRUE) {
-                if ($gift_card_error['givex'] == true) {
-                    $error_message_detail .= ' Givex error:';
-                }
+    pg_order_complete_key_code($key_code, USER_ID);
 
-                $error_message_detail .= ' ' . $gift_card_error['error_message'] . '.';
-            }
-        }
-        
-        $error_message = 'Order (' . $order_number . ') was accepted however one or more gift cards could not be redeemed properly because there was an error with at least one gift card. The order should probably not be fulfilled until the payment issue is resolved. Total attempted redemption amount: ' . pg_money_text($required_redemption_amount / 100, BASE_CURRENCY_SYMBOL) . '. Total successfull redemption amount: ' . pg_money_text($current_redemption_amount / 100, BASE_CURRENCY_SYMBOL) . '.' . $error_message_detail;
-        
-        log_activity($error_message, $_SESSION['sessionusername'] ?? '');
-
-        email(array(
-            'to' => ECOMMERCE_EMAIL_ADDRESS,
-            'from_name' => ORGANIZATION_NAME,
-            'from_email_address' => EMAIL_ADDRESS,
-            'subject' => 'Gift card error',
-            'body' => $error_message));
-
+    if (ECOMMERCE_GIFT_CARD == TRUE) {
+        pg_order_complete_gift_cards($completed_order_id, $order_number, $gift_card_discount, USER_ID, $_SESSION['sessionusername'] ?? '');
     }
+
+    pg_order_complete_commission($completed_order_id, $affiliate_code, $affiliate_rate, $commission, $recurring_products, $user_id);
 
     // if a recurring transaction is required
     // and Credit/Debit Card was the selected payment method

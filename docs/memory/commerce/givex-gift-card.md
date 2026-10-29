@@ -7,7 +7,8 @@ description: How Givex gift card replies are read (pg_givex_parse_response), wha
 A code that is no gift card in this system goes to Givex when
 `ecommerce_givex` is on: a balance check when the code is applied
 (`express_order.php`, `order_preview.php`), again in `submit_order()` before
-the order is charged, then a redemption in `submit_order()`.
+the order is charged, then a redemption once the order is completed
+(`pg_order_complete_gift_cards()`, `order-completion-before-lock.md`).
 `send_givex_request()` (`includes/fn/ecommerce.php`) posts XML-RPC to
 `https://<primary host>:50042`, the secondary host after a cURL error, through
 `pg_curl_run()` (15 s, connect 10 s, fresh connection; `PROXY_ADDRESS`,
@@ -31,7 +32,7 @@ values, never neither:
   sentence adds one).
 - Redemption with result `0` went through at Givex, so it stays a success:
   `authorization_number` is `''` when missing, `balance` is `null` when
-  unreadable, and `submit_order()` then stores `new_balance` as old balance
+  unreadable, and the redemption then stores `new_balance` as old balance
   minus the amount (the receipt's remaining balance).
 
 Symptom before (#485): unreadable replies warned and showed "no remaining

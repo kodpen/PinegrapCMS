@@ -128,8 +128,9 @@ function test_db_q_submit_order_forms_value_queries_use_db_q()
 	// took 8 of submit_order.php's db_q() calls to includes/fn/order_completion.php,
 	// the unreachable inline Iyzipay and Pay With Iyzico code took 6 more with it,
 	// the line comments' submitted form info took 3, and the reward points and
-	// contact groups after the line loop took 8.
-	$expected = array('submit_order.php' => 42, 'includes/fn/forms.php' => 20);
+	// contact groups after the line loop took 8, and the gift card redemption
+	// and the affiliate commission, now behind the order lock, took 6.
+	$expected = array('submit_order.php' => 36, 'includes/fn/forms.php' => 20);
 
 	foreach ($expected as $path => $minimum) {
 		$db_q = 0;
