@@ -5282,16 +5282,8 @@ function submit_order($type) {
         // Private folder access and the send-to page.
         pg_order_complete_line_folder_access($product, $user_id);
 
-        // if the reward program is enabled,
-        // and this product gives reward points,
-        // and the visitor is logged in,
-        // then increment reward points (multiply by quantity)
-        if (
-            (ECOMMERCE_REWARD_PROGRAM == TRUE)
-            && ($product['reward_points'] != 0)
-        ) {
-            $reward_points = $reward_points + ($product['reward_points'] * $quantity);
-        }
+        // The reward points the line gives (includes/fn/order_completion.php).
+        $reward_points += pg_order_line_reward_points($product, ECOMMERCE_REWARD_PROGRAM == true);
 
         // Gift cards and their e-mails (includes/fn/order_completion.php).
         pg_order_complete_line_gift_cards($product, (int) ($_SESSION['ecommerce']['order_id'] ?? 0), USER_ID, $_SESSION['sessionusername'] ?? '');
@@ -5414,239 +5406,39 @@ function submit_order($type) {
         pg_order_complete_line_campaigns($product, $contact_id);
     }
 
-    // If the customer has a user account and all customers are granted private access,
-    // then grant access to this user.
-    if ($user_id and ECOMMERCE_PRIVATE_FOLDER_ID) {
+    // Private access for ever to the store's private folder
+    // (includes/fn/order_completion.php).
+    pg_order_complete_private_access($user_id);
 
-        // Get access control values for this user and folder.
-        $row = db_item(
-            "SELECT 
-                aclfolder_rights AS rights,
-                expiration_date
-            FROM aclfolder
-            WHERE
-                (aclfolder_user = '$user_id')
-                AND (aclfolder_folder = '" . ECOMMERCE_PRIVATE_FOLDER_ID . "')");
-
-        // $row is null when the user has no row for this folder yet.
-        $rights = isset($row['rights']) ? $row['rights'] : '';
-        $expiration_date = isset($row['expiration_date']) ? $row['expiration_date'] : '';
-
-        // If the user does not have edit rights and does not have infinite private rights already,
-        // then continue to give user infinite private access.
-        if (
-            ($rights != 2)
-            && 
-            (
-                ($rights != 1)
-                || ($expiration_date != '0000-00-00')
-            )
-        ) {
-            // Delete existing access control record if one exists, so we can add a new one.
-            db(
-                "DELETE FROM aclfolder
-                WHERE
-                    (aclfolder_user = '$user_id')
-                    AND (aclfolder_folder = '" . ECOMMERCE_PRIVATE_FOLDER_ID . "')");
-
-            // Add access control record in order to give user infinite private access.
-            db(
-                "INSERT INTO aclfolder (
-                    aclfolder_user,
-                    aclfolder_folder,
-                    aclfolder_rights)
-                VALUES (
-                    '$user_id',
-                    '" . ECOMMERCE_PRIVATE_FOLDER_ID . "',
-                    '1')");
-        }
-
-    }
-    
-    // if the reward program is enabled,
-    // and products gave reward points for this order,
-    // and the visitor is logged in,
-    // then add rewards points to user
+    // The reward points, and the membership and e-mail of an order that
+    // reaches the program's goal.
     if (
-        (ECOMMERCE_REWARD_PROGRAM == TRUE)
-        && ($reward_points != 0)
-        && ($user_id != '')
+        pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order_number, $billing_email_address)
+        && (MEMBERSHIP_CONTACT_GROUP_ID != 0)
+        && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)
     ) {
-        // get old reward points in order to get new reward points for user
-        $query = "SELECT user_reward_points FROM user WHERE user_id = ?";
-        $result = db_q($query, array((string) $user_id)) or output_error('Query failed.');
-        $row = mysqli_fetch_assoc($result);
-        $old_reward_points = $row['user_reward_points'];
-        
-        $new_reward_points = $old_reward_points + $reward_points;
-        
-        // update reward points for user
-        $query = "UPDATE user SET user_reward_points = ? WHERE user_id = ?";
-        $result = db_q($query, array((string) $new_reward_points, (string) $user_id)) or output_error('Query failed.');
-    
-        // if the user has met the goal,
-        // and the user did not already meet the goal before this order,
-        // then complete actions
-        if (
-            ($new_reward_points >= ECOMMERCE_REWARD_PROGRAM_POINTS)
-            && ($old_reward_points < ECOMMERCE_REWARD_PROGRAM_POINTS)
-        ) {
-            // if the membership action is enabled, then grant or extend membership
-            if (ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP == TRUE) {
-                // get membership information for user
-                $query =
-                    "SELECT
-                        member_id,
-                        expiration_date
-                    FROM contacts
-                    WHERE id = ?";
-                $result = db_q($query, array((string) $contact_id)) or output_error('Query failed.');
-                $row = mysqli_fetch_assoc($result);
-                $member_id = $row['member_id'];
-                $expiration_date = $row['expiration_date'];
-
-                // if user does not have a member id, set member id to order number and set new member id for user
-                $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
-                if ($member_id == '') {
-                    $member_id = $order_number;
-                    $query = "UPDATE contacts SET member_id = ? WHERE id = ?";
-                    $result = db_q($query, array((string) $member_id, (string) $contact_id)) or output_error('Query failed.');
-                }
-                
-                // if membership days is 0, then give lifetime membership (i.e. set expiration date to 0000-00-00)
-                if (ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS == 0) {
-                    $new_expiration_date = '0000-00-00';
-                    
-                // else membership days is greater than 0, so prepare expiration date
-                } else {
-                    // get current date
-                    $current_date = date('Y-m-d');
-                    
-                    // if expiration date is in the past or is today, then add the number of membership days to current date
-                    if ($expiration_date <= $current_date) {
-                        $new_expiration_date = date('Y-m-d', strtotime($current_date) + (ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS * 86400));
-
-                    // else expiration date is in the future, so add the number of membership days to expiration date
-                    } else {
-                        $new_expiration_date = date('Y-m-d', strtotime($expiration_date) + (ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS * 86400));
-                    }
-                }
-
-                // update expiration date for member
-                $query = "UPDATE contacts SET expiration_date = ? WHERE id = ?";
-                $result = db_q($query, array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
-                pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
-                
-                // if a membership contact group is selected and membership contact group has not already been added to the array,
-                // then add membership contact group to array, so that contact is added to contact group
-                if ((MEMBERSHIP_CONTACT_GROUP_ID != 0) && (in_array(MEMBERSHIP_CONTACT_GROUP_ID, $contact_groups) == false)) {
-                    $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
-                }
-            }
-            
-            // if the e-mail action is enabled, then send e-mail
-            if (
-                (ECOMMERCE_REWARD_PROGRAM_EMAIL == TRUE)
-                && (ECOMMERCE_REWARD_PROGRAM_EMAIL_PAGE_ID != 0)
-            ) {
-
-                require_once(dirname(__FILE__) . '/get_page_content.php');
-                
-                $body = get_page_content(ECOMMERCE_REWARD_PROGRAM_EMAIL_PAGE_ID, $system_content = '', $extra_system_content = '', $mode = 'preview', $email = TRUE);
-                
-                email(array(
-                    'to' => $billing_email_address,
-                    'bcc' => ECOMMERCE_REWARD_PROGRAM_EMAIL_BCC_EMAIL_ADDRESS,
-                    'from_name' => ORGANIZATION_NAME,
-                    'from_email_address' => EMAIL_ADDRESS,
-                    'subject' => ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT,
-                    'format' => 'html',
-                    'body' => $body,
-                    'queue' => true));
-
-            }
-        }
-    }
-    
-    // loop through all contact groups that contact should be added to
-    foreach ($contact_groups as $contact_group_id) {
-        // check if contact group exists
-        $query = "SELECT id FROM contact_groups WHERE id = ?";
-        $result = db_q($query, array((string) $contact_group_id)) or output_error('Query failed.');
-        
-        // if contact group exists
-        if (mysqli_num_rows($result) > 0) {
-            // check if contact is already in contact group
-            $query =
-                "SELECT contact_id
-                FROM contacts_contact_groups_xref
-                WHERE
-                    (contact_id = ?)
-                    AND (contact_group_id = ?)";
-            $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-            
-            // if contact is not already in contact group, then add contact to contact group
-            if (mysqli_num_rows($result) == 0) {
-                $query =
-                    "INSERT INTO contacts_contact_groups_xref (
-                        contact_id,
-                        contact_group_id)
-                    VALUES (
-                        ?,
-                        ?)";
-                $result = db_q($query, array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
-            }
-        }
+        $contact_groups[] = MEMBERSHIP_CONTACT_GROUP_ID;
     }
 
-    // Cancel all order abandoned auto campaigns that might exist for this customer,
-    // because the customer has now completed an order so we don't want
-    // to annoy the customer.  This includes the auto campaign for this order,
-    // and any other auto campaigns for different orders for this same customer.
+    // The contact groups the lines and the rewards collected.
+    pg_order_complete_contact_groups($contact_id, $contact_groups);
 
-    db(
-        "UPDATE email_campaigns
-        LEFT JOIN email_recipients ON email_campaigns.id = email_recipients.email_campaign_id
-        SET
-            email_campaigns.status = 'cancelled',
-            email_campaigns.last_modified_user_id = '',
-            email_campaigns.last_modified_timestamp = UNIX_TIMESTAMP()
-        WHERE
-            (email_campaigns.action = 'order_abandoned')
-            AND
-            (
-                (email_campaigns.status = 'ready')
-                OR (email_campaigns.status = 'paused')
-            )
-            AND
-            (
-                (email_campaigns.order_id = '" . ($_SESSION['ecommerce']['order_id'] ?? '') . "')
-                OR
-                (
-                    (email_recipients.contact_id = '$contact_id')
-                    OR (email_recipients.email_address = '" . e($billing_email_address) . "')
-                )
-            )");
-    
-    // if visitor tracking is on, update visitor record with order completed information
-    // (a bot, or a post without a page view first, has no visitor record)
-    if ((VISITOR_TRACKING == true) && !empty($_SESSION['software']['visitor_id'])) {
-        $query = "UPDATE visitors
-                 SET
-                    order_completed = '1',
-                    order_total = order_total + $total,
-                    city = '" . escape($billing_city) . "',
-                    state = '" . escape($billing_state) . "',
-                    zip_code = '" . escape($billing_zip_code) . "',
-                    country = '" . escape($billing_country) . "',
-                    stop_timestamp = UNIX_TIMESTAMP()
-                 WHERE id = '" . $_SESSION['software']['visitor_id'] . "'";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-    }
+    // The customer completed an order: the order_abandoned campaigns of this
+    // order and of the same customer are cancelled.
+    pg_order_complete_abandoned_campaigns((int) ($_SESSION['ecommerce']['order_id'] ?? 0), $contact_id, $billing_email_address);
 
-    log_activity(lang('Order was completed') . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $billing_first_name . ' ' . $billing_last_name . ', ' . $billing_email_address . ').');
+    // The visit that placed the order, when visitor tracking keeps one.
+    pg_order_complete_visitor(
+        $_SESSION['software']['visitor_id'] ?? 0,
+        $total,
+        array('city' => $billing_city, 'state' => $billing_state, 'zip_code' => $billing_zip_code, 'country' => $billing_country));
 
-    create_notification(array('action'=>'new_order', 'type'=>'success', 'title'=>$order_number, 'order_id'=>($_SESSION['ecommerce']['order_id'] ?? ''),'order_total'=>prepare_amount($total / 100), 'user'=>' '. $billing_first_name . ' ' . $billing_last_name . ', ' . $billing_email_address . ' '));
+    // The activity log line and the new_order notification.
+    pg_order_complete_announce(
+        (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+        $order_number,
+        $total,
+        array('first_name' => $billing_first_name, 'last_name' => $billing_last_name, 'email_address' => $billing_email_address));
 
     // If hooks are enabled and there is post-save hook code, then run it.
     if ((defined('PHP_REGIONS') and PHP_REGIONS) && ($post_save_hook_code != '')) {

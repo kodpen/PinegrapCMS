@@ -2137,3 +2137,316 @@ function pg_order_complete_line_campaigns(array $line, $contact_id)
         'action_item_id' => $line['product_id'],
         'contact_id' => $contact_id));
 }
+
+/**
+ * Gives the order's user private access for ever to the store's private
+ * folder, when one is set: not over edit rights, nor over a private access
+ * that already never ends (pg_order_folder_access_extends()).
+ *
+ * @param int $user_id the order's user, 0 or '' for none
+ * @return void
+ */
+function pg_order_complete_private_access($user_id)
+{
+    if (!$user_id || !ECOMMERCE_PRIVATE_FOLDER_ID) {
+        return;
+    }
+
+    $result = db_q(
+        "SELECT
+            aclfolder_rights AS rights,
+            expiration_date
+        FROM aclfolder
+        WHERE
+            (aclfolder_user = ?)
+            AND (aclfolder_folder = ?)",
+        array((string) $user_id, (string) ECOMMERCE_PRIVATE_FOLDER_ID)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+
+    // $row is null when the user has no row for this folder yet.
+    $rights = isset($row['rights']) ? $row['rights'] : '';
+    $expiration_date = isset($row['expiration_date']) ? $row['expiration_date'] : '';
+
+    if (!pg_order_folder_access_extends($rights, $expiration_date)) {
+        return;
+    }
+
+    // The old row goes, so the new one is the only one.
+    db_q(
+        "DELETE FROM aclfolder
+        WHERE
+            (aclfolder_user = ?)
+            AND (aclfolder_folder = ?)",
+        array((string) $user_id, (string) ECOMMERCE_PRIVATE_FOLDER_ID)) or output_error('Query failed.');
+
+    db_q(
+        "INSERT INTO aclfolder (
+            aclfolder_user,
+            aclfolder_folder,
+            aclfolder_rights)
+        VALUES (
+            ?,
+            ?,
+            '1')",
+        array((string) $user_id, (string) ECOMMERCE_PRIVATE_FOLDER_ID)) or output_error('Query failed.');
+}
+
+/**
+ * The reward points an order line gives: the product's points times the
+ * quantity while the reward program is on. Pure.
+ *
+ * @param array $line       reward_points, quantity
+ * @param bool  $program_on ECOMMERCE_REWARD_PROGRAM
+ * @return int
+ */
+function pg_order_line_reward_points(array $line, $program_on)
+{
+    if (!$program_on) {
+        return 0;
+    }
+
+    return (int) $line['reward_points'] * (int) $line['quantity'];
+}
+
+/**
+ * The membership end the reward program gives: lifetime ('0000-00-00') when
+ * it gives 0 days, else the days added to the current end when it is still
+ * ahead, otherwise to today. Pure.
+ *
+ * @param string $end   the contact's expiration date, '' for none
+ * @param int    $days  ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS
+ * @param string $today Y-m-d
+ * @return string Y-m-d
+ */
+function pg_order_reward_membership_until($end, $days, $today)
+{
+    if ($days == 0) {
+        return '0000-00-00';
+    }
+
+    return pg_order_extended_until($end, $days, 1, $today);
+}
+
+/**
+ * Adds the order's reward points to its user and, when this order reaches
+ * the program's goal for the first time, grants or extends the membership
+ * (the order number becomes a member id the contact lacks) and e-mails the
+ * reward page to the billing address.
+ *
+ * @param int    $user_id               the order's user, '' for none
+ * @param int    $contact_id            the order's contact
+ * @param int    $reward_points         the points the order's lines give
+ * @param string $order_number
+ * @param string $billing_email_address
+ * @return bool true when the membership was granted or extended, so the
+ *              caller adds the membership contact group
+ */
+function pg_order_complete_rewards($user_id, $contact_id, $reward_points, $order_number, $billing_email_address)
+{
+    if ((ECOMMERCE_REWARD_PROGRAM != true) || ($reward_points == 0) || ($user_id == '')) {
+        return false;
+    }
+
+    $result = db_q("SELECT user_reward_points FROM user WHERE user_id = ?", array((string) $user_id)) or output_error('Query failed.');
+    $row = mysqli_fetch_assoc($result);
+    $old_reward_points = $row['user_reward_points'];
+
+    $new_reward_points = $old_reward_points + $reward_points;
+
+    db_q("UPDATE user SET user_reward_points = ? WHERE user_id = ?", array((string) $new_reward_points, (string) $user_id)) or output_error('Query failed.');
+
+    // Only the order that reaches the goal completes its actions.
+    if (
+        ($new_reward_points < ECOMMERCE_REWARD_PROGRAM_POINTS)
+        || ($old_reward_points >= ECOMMERCE_REWARD_PROGRAM_POINTS)
+    ) {
+        return false;
+    }
+
+    $membership = false;
+
+    if (ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP == true) {
+        $result = db_q(
+            "SELECT
+                member_id,
+                expiration_date
+            FROM contacts
+            WHERE id = ?",
+            array((string) $contact_id)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+        $member_id = $row['member_id'];
+
+        // A contact without a member id gets the order number as one.
+        $audit_before = pg_audit_fetch('contacts', (int) $contact_id);
+
+        if ($member_id == '') {
+            db_q("UPDATE contacts SET member_id = ? WHERE id = ?", array((string) $order_number, (string) $contact_id)) or output_error('Query failed.');
+        }
+
+        $new_expiration_date = pg_order_reward_membership_until($row['expiration_date'], ECOMMERCE_REWARD_PROGRAM_MEMBERSHIP_DAYS, date('Y-m-d'));
+
+        db_q("UPDATE contacts SET expiration_date = ? WHERE id = ?", array((string) $new_expiration_date, (string) $contact_id)) or output_error('Query failed.');
+        pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
+
+        $membership = true;
+    }
+
+    if (
+        (ECOMMERCE_REWARD_PROGRAM_EMAIL == true)
+        && (ECOMMERCE_REWARD_PROGRAM_EMAIL_PAGE_ID != 0)
+    ) {
+        require_once(PG_FUNCTIONS_DIR . '/get_page_content.php');
+
+        $body = get_page_content(ECOMMERCE_REWARD_PROGRAM_EMAIL_PAGE_ID, '', '', 'preview', true);
+
+        email(array(
+            'to' => $billing_email_address,
+            'bcc' => ECOMMERCE_REWARD_PROGRAM_EMAIL_BCC_EMAIL_ADDRESS,
+            'from_name' => ORGANIZATION_NAME,
+            'from_email_address' => EMAIL_ADDRESS,
+            'subject' => ECOMMERCE_REWARD_PROGRAM_EMAIL_SUBJECT,
+            'format' => 'html',
+            'body' => $body,
+            'queue' => true));
+    }
+
+    return $membership;
+}
+
+/**
+ * Adds the order's contact to each contact group its lines and the reward
+ * program collected, once, skipping a group that no longer exists.
+ *
+ * @param int   $contact_id
+ * @param array $contact_groups contact group ids
+ * @return void
+ */
+function pg_order_complete_contact_groups($contact_id, array $contact_groups)
+{
+    foreach ($contact_groups as $contact_group_id) {
+        $result = db_q("SELECT id FROM contact_groups WHERE id = ?", array((string) $contact_group_id)) or output_error('Query failed.');
+
+        if (mysqli_num_rows($result) == 0) {
+            continue;
+        }
+
+        $result = db_q(
+            "SELECT contact_id
+            FROM contacts_contact_groups_xref
+            WHERE
+                (contact_id = ?)
+                AND (contact_group_id = ?)",
+            array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
+
+        if (mysqli_num_rows($result) == 0) {
+            db_q(
+                "INSERT INTO contacts_contact_groups_xref (
+                    contact_id,
+                    contact_group_id)
+                VALUES (
+                    ?,
+                    ?)",
+                array((string) $contact_id, (string) $contact_group_id)) or output_error('Query failed.');
+        }
+    }
+}
+
+/**
+ * Cancels the order_abandoned auto campaigns still waiting (ready or paused)
+ * for this order or for the same customer (contact or billing address):
+ * the customer has now completed an order.
+ *
+ * @param int    $order_id
+ * @param int    $contact_id
+ * @param string $billing_email_address
+ * @return void
+ */
+function pg_order_complete_abandoned_campaigns($order_id, $contact_id, $billing_email_address)
+{
+    db_q(
+        "UPDATE email_campaigns
+        LEFT JOIN email_recipients ON email_campaigns.id = email_recipients.email_campaign_id
+        SET
+            email_campaigns.status = 'cancelled',
+            email_campaigns.last_modified_user_id = '',
+            email_campaigns.last_modified_timestamp = UNIX_TIMESTAMP()
+        WHERE
+            (email_campaigns.action = 'order_abandoned')
+            AND
+            (
+                (email_campaigns.status = 'ready')
+                OR (email_campaigns.status = 'paused')
+            )
+            AND
+            (
+                (email_campaigns.order_id = ?)
+                OR
+                (
+                    (email_recipients.contact_id = ?)
+                    OR (email_recipients.email_address = ?)
+                )
+            )",
+        array((string) $order_id, (string) $contact_id, (string) $billing_email_address)) or output_error('Query failed.');
+}
+
+/**
+ * Marks the visit the order was placed in as one that completed an order:
+ * its total grows by the order's, and the billing city, state, zip code and
+ * country are kept. Nothing without visitor tracking or a visit (a bot, a
+ * post without a page view first, a payment service's message).
+ *
+ * @param int   $visitor_id the visit's visitors.id, 0 for none
+ * @param int   $total      the order's total in minor units
+ * @param array $billing    city, state, zip_code, country
+ * @return void
+ */
+function pg_order_complete_visitor($visitor_id, $total, array $billing)
+{
+    if ((VISITOR_TRACKING != true) || empty($visitor_id)) {
+        return;
+    }
+
+    db_q(
+        "UPDATE visitors
+        SET
+            order_completed = '1',
+            order_total = order_total + ?,
+            city = ?,
+            state = ?,
+            zip_code = ?,
+            country = ?,
+            stop_timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?",
+        array(
+            (int) round($total),
+            (string) $billing['city'],
+            (string) $billing['state'],
+            (string) $billing['zip_code'],
+            (string) $billing['country'],
+            (string) $visitor_id)) or output_error('Query failed.');
+}
+
+/**
+ * The activity log line and the panel's new_order notification of a
+ * completed order.
+ *
+ * @param int    $order_id
+ * @param string $order_number
+ * @param int    $total      minor units
+ * @param array  $billing    first_name, last_name, email_address
+ * @return void
+ */
+function pg_order_complete_announce($order_id, $order_number, $total, array $billing)
+{
+    $customer = $billing['first_name'] . ' ' . $billing['last_name'] . ', ' . $billing['email_address'];
+
+    log_activity(lang('Order was completed') . ' (' . $order_number . ', ' . prepare_amount($total / 100) . ', ' . $customer . ').');
+
+    create_notification(array(
+        'action' => 'new_order',
+        'type' => 'success',
+        'title' => $order_number,
+        'order_id' => $order_id,
+        'order_total' => prepare_amount($total / 100),
+        'user' => ' ' . $customer . ' '));
+}
