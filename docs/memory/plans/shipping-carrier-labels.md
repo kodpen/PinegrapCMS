@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; step 1 done, step 2 Geliver #3073): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; steps 1-2 done, Geliver #3096): carrier APIs for label/barcode creation, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19; step 1 done, step 2 Geliver #3073): carr
 
 ## What remains?
 1. Driver interface, settings card (credentials encrypted), connection test (S). Done in PR #2378 (`commerce/carrier-label-drivers.md`).
-2. Geliver driver (#3073, `includes/shipping/geliver.php`; in progress): create shipment, accept the chosen offer, PDF label download, cancel, track; the `TRACK_UPDATED` webhook later; built on `tests/fixtures` from the public docs, live check with the owner's test key (M).
+2. Geliver driver (#3073, `includes/shipping/geliver.php`). Done in PR #3096 (`commerce/carrier-label-geliver.md`): create shipment, accept the chosen offer, PDF label download, cancel, track; the `TRACK_UPDATED` webhook later; built on `tests/fixtures` from the public docs, live check with the owner's test key (M).
 3. Panel actions single + bulk, label storage under `data/shipping_labels/` with retention (M).
 4. Status polling job in the dispatcher, write-back through the single path (S).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
@@ -29,4 +29,4 @@ description: Plan (approved 2026-10-19; step 1 done, step 2 Geliver #3073): carr
 - Thermal printer output: PDF A6 always, ZPL only where the carrier supplies it.
 
 ## Where to start?
-- Step 2: `includes/shipping/geliver.php` in `pg_label_builtin_drivers()`, tested on fixtures from the public docs and the owner's test credentials; decide where step 3 keeps the reference, label and barcode (a schema question when step 3 is claimed).
+- Step 3: decide where the reference, label and barcode are kept (a schema question when step 3 is claimed); the create() shipment shape is in `includes/shipping/geliver.php`'s header. Live check of the Geliver driver with the owner's test key.

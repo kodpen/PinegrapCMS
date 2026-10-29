@@ -1,0 +1,22 @@
+{
+  "result": true,
+  "additionalMessage": "Success",
+  "data": {
+    "id": "4aaaf0b4-d071-4edc-a941-cea2f6a78453",
+    "trackingNumber": "KP123456789TR",
+    "trackingUrl": "https://gonderitakip.ptt.gov.tr/Track/summary?id=KP123456789TR",
+    "barcode": "64124002705",
+    "labelFileType": "PDF",
+    "labelURL": "https://labels3.geliver.io/labels/4aaaf0b4-d071-4edc-a941-cea2f6a78453.pdf",
+    "statusCode": "DELIVERED",
+    "providerCode": "PTT",
+    "providerServiceCode": "PTT_STANDART",
+    "trackingStatus": {
+      "trackingStatusCode": "DELIVERED",
+      "trackingSubStatusCode": "delivered",
+      "statusDetails": "Teslim Edildi",
+      "statusDate": "2025-04-23T14:29:45.06Z",
+      "locationName": "Sarnıç Mikro"
+    }
+  }
+}
