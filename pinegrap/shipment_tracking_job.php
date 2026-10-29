@@ -28,6 +28,8 @@ if (!pg_cron_is_background_run()) {
     validate_ecommerce_access($user);
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php');
+
 // The run starts no question after its budget; this leaves room for the
 // last answer and the writes after it.
 if (function_exists('set_time_limit')) {
