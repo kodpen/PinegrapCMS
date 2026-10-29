@@ -207,9 +207,47 @@
 
     var list = document.getElementById('mpp-list');
 
-    function replaceRow(row, html) {
+    // The control in a row that takes the focus: the given action when the
+    // row still has it enabled, else its first action, else its tick box.
+    function rowFocusTarget(row, act) {
+        var pick = function (selector) {
+            var el = row.querySelector(selector);
+
+            return (el && !el.disabled) ? el : null;
+        };
+
+        return (act && pick('[data-mp-act="' + act + '"]')) || pick('[data-mp-act]') || pick('[data-mp-select]');
+    }
+
+    function focusRow(row, act) {
+        var target = row ? rowFocusTarget(row, act) : null;
+
+        if (target) {
+            target.focus();
+        }
+    }
+
+    // A redrawn row replaces the old one, and the focused control goes with
+    // it: the same action in the fresh row takes the focus (act, when given,
+    // instead), so a keyboard user is not dropped to the top of the page. A
+    // row taken out of the view hands the focus to its neighbour.
+    function replaceRow(row, html, act) {
+        var active = document.activeElement;
+        var focused = !!active && row.contains(active);
+
+        if (focused && !act && active.hasAttribute('data-mp-act')) {
+            act = active.getAttribute('data-mp-act');
+        }
+
         if (!html) {
+            var next = row.nextElementSibling || row.previousElementSibling;
+
             row.remove();
+
+            if (focused && next && next.hasAttribute('data-mp-row')) {
+                focusRow(next);
+            }
+
             return null;
         }
 
@@ -220,6 +258,10 @@
         var fresh = holder.firstElementChild;
 
         row.replaceWith(fresh);
+
+        if (focused) {
+            focusRow(fresh, act);
+        }
 
         return fresh;
     }
@@ -473,6 +515,7 @@
 
         cancel.addEventListener('click', function () {
             cell.innerHTML = before;
+            focusRow(row, 'code');
         });
 
         form.addEventListener('submit', function (event) {
@@ -491,7 +534,7 @@
                 }
 
                 if (answer.rows && answer.rows[id]) {
-                    replaceRow(row, answer.rows[id]);
+                    replaceRow(row, answer.rows[id], 'code');
                 }
 
                 setCounts(answer.counts);
@@ -657,6 +700,7 @@
 
         button.addEventListener('click', function () {
             var row = picker.row;
+            var id = row.getAttribute('data-mp-row');
 
             button.disabled = true;
 
@@ -664,7 +708,11 @@
                 button.disabled = false;
 
                 if (answer.ok) {
-                    pgUI.dialog.hide(picker.root);
+                    // The opener row was redrawn, so the dialog has nothing to
+                    // give the focus back to: the fresh row takes it.
+                    Promise.resolve(pgUI.dialog.hide(picker.root)).then(function () {
+                        focusRow(list && list.querySelector('[data-mp-row="' + id + '"]'));
+                    });
                 }
             });
         });

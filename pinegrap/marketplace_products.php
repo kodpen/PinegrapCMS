@@ -199,8 +199,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 			'refused' => count($done['refused']),
 			'message' => $done['refused']
 				? lang(array('string' => '{var:1} matched; {var:2} could not be matched and stay in the list.',
-					'vars' => array($done['matched'], count($done['refused']))))
-				: lang(array('string' => '{var:1} matched.', 'vars' => array($done['matched']))),
+					'vars' => array(pg_format_number($done['matched'], 0), pg_format_number(count($done['refused']), 0))))
+				: lang(array('string' => '{var:1} matched.', 'vars' => array(pg_format_number($done['matched'], 0)))),
 			'counts'  => mp_remote_products_counts($account_id)
 		));
 
@@ -383,6 +383,22 @@ function mp_products_picture($src, $full, $alt, $gallery, $index, $external) {
 
 }
 
+// A pager arrow: a link, or a span when there is no page that way, so a
+// disabled arrow stays out of the tab order and Enter cannot follow it.
+function mp_products_pager_arrow($disabled, $href, $label, $icon) {
+
+	$glyph = '<i class="bi ' . $icon . '" aria-hidden="true"></i>';
+
+	if ($disabled) {
+
+		return '<span class="btn btn-sm btn-outline theme-secondary disabled" aria-disabled="true" aria-label="' . h($label) . '">' . $glyph . '</span>';
+
+	}
+
+	return '<a class="btn btn-sm btn-outline theme-secondary" href="' . h($href) . '" aria-label="' . h($label) . '">' . $glyph . '</a>';
+
+}
+
 // The shop products a picker shows, as the script draws them.
 function mp_products_cards($account_id, $ids) {
 
@@ -453,7 +469,7 @@ function mp_products_row_html($account, $row) {
 	// The tick box, only where there is a suggestion to accept.
 	$output .= '<div class="mpp-check">'
 		. ($suggested
-			? '<input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '">'
+			? '<input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($row['title'])))) . '">'
 			: '')
 		. '</div>';
 
@@ -620,21 +636,21 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 		$done = mp_matches_own_codes($account, $ids);
 
-		$message = lang(array('string' => '{var:1} matched.', 'vars' => array($done['matched'])));
+		$message = lang(array('string' => '{var:1} matched.', 'vars' => array(pg_format_number($done['matched'], 0))));
 
 		$error = $done['refused'] ? implode(' ', array_unique($done['refused'])) : '';
 
 	} elseif ($action === 'shop_remove') {
 
 		$message = lang(array('string' => '{var:1} match(es) removed. Nothing was changed on the marketplace.',
-			'vars' => array(mp_matches_remove($account, $ids))));
+			'vars' => array(pg_format_number(mp_matches_remove($account, $ids), 0))));
 
 	} elseif (($action === 'shop_send') || ($action === 'shop_send_all')) {
 
 		$queued = mp_matches_send($account, ($action === 'shop_send_all') ? null : $ids);
 
 		$message = $queued
-			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array($queued)))
+			? lang(array('string' => '{var:1} product(s) queued. They go out on the next run.', 'vars' => array(pg_format_number($queued, 0))))
 			: '';
 
 		if ($account['status'] !== 'active') {
@@ -650,7 +666,7 @@ function mp_products_shop_step($account, $action, $id, $user) {
 			// The rest are not matched, or their match was refused: a refused
 			// one is sent again once its reason is put right.
 			$error = lang(array('string' => '{var:1} of the ticked products are not matched, or their match was refused, and were not queued.',
-				'vars' => array(count($ids) - $queued)));
+				'vars' => array(pg_format_number(count($ids) - $queued, 0))));
 
 		}
 
@@ -658,7 +674,7 @@ function mp_products_shop_step($account, $action, $id, $user) {
 
 		$queued = mp_matches_listing_update($account_id, $ids);
 
-		$message = $queued ? lang(array('string' => 'The changes of {var:1} listing(s) will be sent on the next run.', 'vars' => array($queued))) : '';
+		$message = $queued ? lang(array('string' => 'The changes of {var:1} listing(s) will be sent on the next run.', 'vars' => array(pg_format_number($queued, 0)))) : '';
 
 		$error = $queued ? '' : lang('Tick at least one product whose listing is approved.');
 
@@ -746,7 +762,7 @@ function mp_products_shop_row_html($account, $row) {
 
 	$output = '<div class="mpp-row' . ($matched ? ' is-matched' : '') . (($state === 'error' || $state === 'rejected') ? ' is-error' : '') . '"'
 		. ' data-mp-row="' . $id . '" data-mp-shop="1" data-mp-code="' . h($matched ? $row['remote_code'] : '') . '" data-mp-own="' . h($own) . '">'
-		. '<div class="mpp-check"><input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '"></div>';
+		. '<div class="mpp-check"><input class="check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($name)))) . '"></div>';
 
 	$meta = array(
 		'<code>' . h($row['name']) . '</code>',
@@ -939,11 +955,9 @@ function mp_products_shop_view($account, $filters, $counts, $view, $search, $pag
 
 		echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
-				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page <= 1, $query(array('page' => max(1, $page - 1))), lang('Previous page'), 'bi-chevron-left') . '
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
-				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page >= $pages, $query(array('page' => min($pages, $page + 1))), lang('Next page'), 'bi-chevron-right') . '
 		</nav>';
 
 	}
@@ -1037,7 +1051,7 @@ function mp_products_listing_step($account, $action, $id, $user) {
 
 		}
 
-		$answer['message'] = lang(array('string' => 'The category of {var:1} article(s) was saved.', 'vars' => array($set['count'])));
+		$answer['message'] = lang(array('string' => 'The category of {var:1} article(s) was saved.', 'vars' => array(pg_format_number($set['count'], 0))));
 
 		$answer['error'] = $set['warning'];
 
@@ -1060,7 +1074,7 @@ function mp_products_listing_step($account, $action, $id, $user) {
 		$done = mp_articles_list_now($account, $ids);
 
 		$answer['message'] = $done['queued']
-			? lang(array('string' => '{var:1} product(s) queued for listing. They go out on the next run.', 'vars' => array($done['queued'])))
+			? lang(array('string' => '{var:1} product(s) queued for listing. They go out on the next run.', 'vars' => array(pg_format_number($done['queued'], 0))))
 			: ($done['refused'] ? '' : lang('Already queued.'));
 
 		$answer['error'] = implode(' ', array_unique($done['refused']));
@@ -1116,7 +1130,7 @@ function mp_products_article_html($account, $article) {
 	$pill = $pills[$article['state']];
 
 	$output = '<div class="mpa-card is-' . h($article['state']) . '" data-mp-row="' . $id . '" data-mp-article="1" data-mp-title="' . h($title) . '">'
-		. '<input class="check mpa-check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang('Select')) . '">'
+		. '<input class="check mpa-check" type="checkbox" data-mp-select="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($title)))) . '">'
 		. mp_products_picture($thumb, ($thumb !== '') ? PATH . encode_url_path($article['image']) : '', $title, 'mpa-' . $id, 0, false)
 		. '<div class="mpa-body">'
 		. '<a class="mpp-title" href="edit_product_group.php?id=' . $id . '" target="_blank" rel="noopener">' . h($title) . '</a>'
@@ -1381,11 +1395,9 @@ function mp_products_listings_view($account, $counts, $category_count, $view, $s
 
 		echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
-				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page <= 1, $query(array('page' => max(1, $page - 1))), lang('Previous page'), 'bi-chevron-left') . '
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
-				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page >= $pages, $query(array('page' => min($pages, $page + 1))), lang('Next page'), 'bi-chevron-right') . '
 		</nav>';
 
 	}
@@ -1545,7 +1557,7 @@ echo pg_page_shell(array(
 .mpp-stats { display: flex; flex-wrap: wrap; gap: 14px 32px; flex: 1 1 420px; }
 .mpp-stat b { display: block; font-size: 26px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
 .mpp-stat span { font-size: 12px; color: var(--pg-fg-2); }
-.mpp-stat.good b { color: var(--pg-success); }
+.mpp-stat.good b { color: var(--pg-success-fg-emphasis); }
 .mpp-meter { height: 6px; border-radius: var(--pg-radius-pill); background: var(--pg-bg-2); overflow: hidden; margin-top: 12px; }
 .mpp-meter > i { display: block; height: 100%; background: var(--pg-success); transition: width .4s ease; }
 .mpp-meter.busy > i { background: var(--pg-primary); }
@@ -1561,7 +1573,7 @@ echo pg_page_shell(array(
 .mpp-row { display: grid; grid-template-columns: 22px minmax(0, 1fr) 112px minmax(0, 1fr) 260px; gap: 16px; align-items: center;
 	padding: 14px 16px; border-top: 1px solid var(--pg-border-color); transition: background-color .2s; }
 .mpp-row.is-matched { background: color-mix(in srgb, var(--pg-success) 6%, transparent); }
-.mpp-row.is-dismissed .mpp-side:not(.shop) { opacity: .6; }
+.mpp-row.is-dismissed .mpp-side:not(.shop) { color: var(--pg-fg-2); }
 .mpp-row.is-busy { opacity: .55; pointer-events: none; }
 .mpp-side { display: flex; gap: 14px; align-items: center; min-width: 0; }
 .mpp-text { min-width: 0; }
@@ -1579,10 +1591,10 @@ a.mpp-title:hover { text-decoration: underline; }
 .mpp-score { display: inline-flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; color: var(--pg-fg-2); }
 .mpp-score b { font-size: 20px; line-height: 1; color: var(--pg-fg-emphasis); font-variant-numeric: tabular-nums; }
 .mpp-score small { font-size: 11px; }
-.mpp-score.sure b, .mpp-score.matched { color: var(--pg-success); }
+.mpp-score.sure b, .mpp-score.matched { color: var(--pg-success-fg-emphasis); }
 .mpp-score.matched i { font-size: 22px; }
 .mpp-score.none i { font-size: 18px; opacity: .5; }
-.mpp-sure-tag { font-size: 10.5px; font-weight: 600; color: var(--pg-success); }
+.mpp-sure-tag { font-size: 10.5px; font-weight: 600; color: var(--pg-success-fg-emphasis); }
 .mpp-empty { display: flex; gap: 10px; align-items: center; min-height: 76px; padding: 12px 14px; width: 100%;
 	border: 1px dashed var(--pg-border-color); border-radius: var(--pg-radius-lg); font-size: 12.5px; color: var(--pg-fg-2); }
 .mpp-actions { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
@@ -1609,10 +1621,10 @@ a.mpp-title:hover { text-decoration: underline; }
 	border: 1px solid var(--pg-border-color); color: inherit; text-decoration: none; font-weight: 600; font-size: 14px; }
 .mpp-mode:hover { border-color: var(--pg-primary); }
 .mpp-mode.active { background: var(--pg-primary-bg-subtle); border-color: var(--pg-primary); color: var(--pg-primary-fg-emphasis); }
-.mpp-stat.bad b { color: var(--pg-danger); }
+.mpp-stat.bad b { color: var(--pg-danger-fg-emphasis); }
 .mpp-row.is-error { background: color-mix(in srgb, var(--pg-danger) 6%, transparent); }
 .mpp-code code { font-size: 14px; font-weight: 600; color: var(--pg-fg-emphasis); }
-.mpp-err { margin-top: 4px; font-size: 12px; color: var(--pg-danger); word-break: break-word; }
+.mpp-err { margin-top: 4px; font-size: 12px; color: var(--pg-danger-fg-emphasis); word-break: break-word; }
 .mpp-pill { display: inline-flex; align-items: center; padding: 1px 9px; border-radius: var(--pg-radius-pill); font-size: 11px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); }
 .mpp-pill.success { color: var(--pg-success-fg-emphasis); background: var(--pg-success-bg-subtle); border-color: var(--pg-success-border-subtle); }
@@ -1853,11 +1865,9 @@ if (!$account) {
 
 			echo '
 		<nav class="d-flex justify-content-center align-items-center gap-3 py-5 border-top" aria-label="' . h(lang('Pages')) . '">
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page <= 1 ? ' disabled' : '') . '" href="' . h($query(array('page' => max(1, $page - 1)))) . '" aria-label="' . h(lang('Previous page')) . '">'
-				. '<i class="bi bi-chevron-left" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page <= 1, $query(array('page' => max(1, $page - 1))), lang('Previous page'), 'bi-chevron-left') . '
 			<span class="small">' . h(lang(array('string' => 'Page {var:1} of {var:2}', 'vars' => array($page, $pages)))) . '</span>
-			<a class="btn btn-sm btn-outline theme-secondary' . ($page >= $pages ? ' disabled' : '') . '" href="' . h($query(array('page' => min($pages, $page + 1)))) . '" aria-label="' . h(lang('Next page')) . '">'
-				. '<i class="bi bi-chevron-right" aria-hidden="true"></i></a>
+			' . mp_products_pager_arrow($page >= $pages, $query(array('page' => min($pages, $page + 1))), lang('Next page'), 'bi-chevron-right') . '
 		</nav>';
 
 		}
