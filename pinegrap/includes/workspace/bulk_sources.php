@@ -3,11 +3,11 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the sources of bulk product drafts a person makes without an
- * assistant: a list pasted into the "Make products" window, or a CSV or
- * spreadsheet file posted in a channel. Either is laid out as a table, the
- * table as the rows of one bulk create (bulk.php), and the rows wait as a
- * card under a message of the person's own, which they apply like any bulk
- * change: checked again and written a slice at a time.
+ * assistant: several lines under /create product (/oluştur ürün), or a CSV
+ * or spreadsheet file posted in a channel. Either is laid out as a table,
+ * the table as the rows of one bulk create (bulk.php), and the rows wait as
+ * a card under a message of the person's own, which they apply like any
+ * bulk change: checked again and written a slice at a time.
  *
  * A spreadsheet is read as the product import reads it
  * (pg_products_import_to_csv()), a price as the import reads one
@@ -25,7 +25,7 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 /**
- * The longest pasted list read, in characters.
+ * The longest list of lines read, in characters.
  */
 define('WS_BULK_TEXT_MAX', 200000);
 
@@ -91,7 +91,19 @@ function ws_bulk_header_key($text)
 }
 
 /**
- * A pasted list as a table: a row per line, cells split on tabs (a range
+ * Is a text a list of several lines (not counting empty ones)? Under
+ * /create product it makes the bulk card; one line is a single product.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_bulk_text_is_list($text)
+{
+    return count(ws_bulk_text_table($text)) > 1;
+}
+
+/**
+ * A list of lines as a table: a row per line, cells split on tabs (a range
  * copied from a sheet), else semicolons, else bars; empty lines left out.
  *
  * @param string $text
@@ -326,16 +338,42 @@ function ws_bulk_message_table($viewer, $message_id)
 }
 
 /**
- * Makes the bulk create card of a pasted list or a channel file, for the
- * person: the rows checked as an assistant's would be, a message of their
- * own in the channel, and the card waiting under it for them to apply.
+ * Makes the bulk create card of a file posted in a channel, for the person
+ * (ws_bulk_create_card()), under a message of their own naming the file.
  *
  * @param array $viewer
  * @param int   $channel_id
- * @param array $source text, or message_id (a file posted in a channel)
+ * @param array $source message_id (the message the file is on)
  * @return array ok, error, message_id, count, ignored
  */
 function ws_bulk_create_propose($viewer, $channel_id, $source)
+{
+    $read = ws_bulk_message_table($viewer, (int) ($source['message_id'] ?? 0));
+
+    if (!$read['ok']) {
+        return array('ok' => false, 'error' => $read['error'], 'message_id' => 0, 'count' => 0, 'ignored' => array());
+    }
+
+    $file_name = $read['name'];
+
+    return ws_bulk_create_card($viewer, (int) $channel_id, ws_bulk_table_rows($read['table']), function ($count) use ($file_name) {
+        return lang(array('string' => 'Product drafts: {var:1} rows from “{var:2}”.', 'vars' => array($count, $file_name)));
+    });
+}
+
+/**
+ * Makes a bulk create card for the person: the rows checked as an
+ * assistant's would be, a message of their own in the channel, and the card
+ * waiting under it for them to apply.
+ *
+ * @param array           $viewer
+ * @param int             $channel_id
+ * @param array           $laid ws_bulk_table_rows()
+ * @param string|Closure  $body the message's text, or a function of the
+ *                              number of rows giving it
+ * @return array ok, error, message_id, count, ignored
+ */
+function ws_bulk_create_card($viewer, $channel_id, $laid, $body)
 {
     $fail = function ($error) {
         return array('ok' => false, 'error' => $error, 'message_id' => 0, 'count' => 0, 'ignored' => array());
@@ -355,29 +393,12 @@ function ws_bulk_create_propose($viewer, $channel_id, $source)
         return $fail(lang('You may not change a record of this kind.'));
     }
 
-    if (!function_exists('pg_pb_price_figure')) {
-        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
-    }
-
-    $file_name = '';
-
-    if ((int) ($source['message_id'] ?? 0) > 0) {
-        $read = ws_bulk_message_table($viewer, (int) $source['message_id']);
-
-        if (!$read['ok']) {
-            return $fail($read['error']);
-        }
-
-        $table = $read['table'];
-        $file_name = $read['name'];
-    } else {
-        $table = ws_bulk_text_table((string) ($source['text'] ?? ''));
-    }
-
-    $laid = ws_bulk_table_rows($table);
-
     if (!$laid['ok']) {
         return $fail($laid['error']);
+    }
+
+    if (!function_exists('pg_pb_price_figure')) {
+        require_once(PG_FUNCTIONS_DIR . '/product_builder.php');
     }
 
     $checked = ws_bulk_create_input($viewer, 'product', $laid['rows']);
@@ -386,9 +407,7 @@ function ws_bulk_create_propose($viewer, $channel_id, $source)
         return $fail($checked['error']);
     }
 
-    $body = ($file_name !== '')
-        ? lang(array('string' => 'Product drafts: {var:1} rows from “{var:2}”.', 'vars' => array($checked['matched'], $file_name)))
-        : lang(array('string' => 'Product drafts: {var:1} rows from a pasted list.', 'vars' => $checked['matched']));
+    $body = ($body instanceof Closure) ? (string) $body($checked['matched']) : (string) $body;
     $sent = ws_message_send($viewer, $channel, mb_substr($body, 0, WS_MESSAGE_MAX));
 
     if (empty($sent['ok'])) {

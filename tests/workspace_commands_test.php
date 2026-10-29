@@ -34,6 +34,9 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/changes.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bulk_sources.php');
 
 // An amount comes back in minor units whichever way it is written: a comma
 // or a point before the cents, thousands grouped by the other mark, a
@@ -394,6 +397,39 @@ function test_workspace_command_group_fields()
 	pg_assert_contains("return ws_command_product(\$viewer, \$channel, \$parsed['rest'], \$options);", $source, '/create product is /product');
 	pg_assert_contains("return ws_command_create_card(\$viewer, \$channel, 'product_group', \$fields, \$options);", $source, 'a group goes through the same card');
 	pg_assert_contains("return ws_command_create_card(\$viewer, \$channel, 'product', ws_command_product_fields(\$parsed), \$options);", $source, 'and so does a product');
+}
+
+// Several lines under /create product (or /product) are one bulk card of
+// drafts, laid out before the database is asked anything: a row with no
+// name, or more rows than a card takes, is refused there, the latter with
+// the import named. One line stays the single preview.
+function test_workspace_command_product_several_lines()
+{
+	$channel = array('id' => 1);
+
+	$answer = ws_command_create(null, $channel, "ürün Mavi kupa 129,90\n;5", array());
+	pg_assert_same(array('type' => 'error', 'error' => 'Row 2 has no name.'), $answer, '/create product with several lines is a list');
+
+	$answer = ws_command_product(null, $channel, "Mavi kupa 129,90\n;5", array());
+	pg_assert_same(array('type' => 'error', 'error' => 'Row 2 has no name.'), $answer, '/product too');
+
+	$lines = array();
+
+	for ($i = 1; $i <= WS_BULK_CREATE_MAX + 1; $i++) {
+		$lines[] = 'Ürün ' . $i;
+	}
+
+	$answer = ws_command_create(null, $channel, "ürün\n" . implode("\n", $lines), array());
+	pg_assert_same('error', $answer['type'], 'over one card is refused');
+	pg_assert_contains('import_products.php', $answer['error'], 'with the import named');
+
+	pg_assert_false(ws_bulk_text_is_list("Mavi kupa 129,90\n"), 'one line is not a list');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+	$product = substr($source, strpos($source, 'function ws_command_product('));
+	pg_assert_true(strpos($product, 'ws_bulk_text_is_list($text)') < strpos($product, 'ws_command_create_card('), 'a list is told apart before the single card');
+	pg_assert_contains("\$options + array('typed' => (string) \$body)", $source, 'the typed text goes along as the card\'s message');
+	pg_assert_contains('ws_bulk_create_card($viewer, (int) $channel[\'id\'], $laid, (string) ($options[\'typed\'] ?? $text))', $source, 'the card hangs under the command\'s own message');
 }
 
 // The words after /product: the name, then a price as the last word (with
