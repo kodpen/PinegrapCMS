@@ -4,7 +4,7 @@ description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs 
 ---
 
 ## Why?
-- The product had tracking links and live rates only for UPS/FedEx/USPS; no label, no Turkish carrier API. Turkish competitors ship 10–26 carrier integrations with thermal labels, tracking write-back and customer SMS.
+- No label is created today and no Turkish carrier API exists (live rates only for UPS/FedEx/USPS); competitors ship 10–26 carrier integrations with thermal labels and tracking write-back.
 
 ## What is decided?
 - This plan starts only after `shipping-management.md` steps 1–3 exist: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` are the base; this plan never writes tracking numbers another way.
@@ -23,12 +23,12 @@ description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs 
    - 3b. Next: bulk labels for selected orders merged on the fly into one PDF (none kept); cancel through `cancel()`, then `state` and the parcel pruned through the write path; return labels (`is_return`).
 4. Status polling job in the dispatcher, write-back through the single path (S).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
-6. Further aggregators as their references open: Basit Kargo, Kargonomi; MNG ApiZone a candidate (M each).
-7. International: a global aggregator or carrier with a public API for US and Europe shipments, chosen by the same rule (M).
+6. Further aggregators as their references open: Basit Kargo (SVG labels, no test mode, 600 requests a minute; #3123), Kargonomi; MNG ApiZone a candidate (M each).
+7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
 
 ## Open questions?
 - Answered (#3073): Geliver first, the only aggregator with a public reference and test mode on 2026-10-29; the owner confirms its prices and contract. The driver interface must not leak aggregator-specific fields into the shipment row.
-- Thermal printer output: PDF A6 always, ZPL only where the carrier supplies it.
+- Formats (#3123): PDF, ZPL and SVG as the service gives them; SVG into the bulk PDF where dompdf renders it; ZPL never sent to an external converter.
 
 ## Where to start?
 - Step 3b: helpers in `includes/fn/shipment_labels.php`; the bulk action on `edit_orders.php`. Live check of the Geliver driver with the owner's test key.
