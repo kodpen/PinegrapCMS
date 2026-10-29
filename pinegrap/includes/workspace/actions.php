@@ -196,7 +196,14 @@ function ws_action_flow_refused($result)
  */
 function ws_action_flow_run_fields($request)
 {
-    return array_key_exists('start_token', $request) ? array('token' => $request['start_token']) : array();
+    $fields = array_key_exists('start_token', $request) ? array('token' => $request['start_token']) : array();
+
+    // The composer's Start a flow names the channel the run opens its tasks in.
+    if ((int) ($request['channel_id'] ?? 0) > 0) {
+        $fields['channel_id'] = (int) $request['channel_id'];
+    }
+
+    return $fields;
 }
 
 /**
@@ -586,7 +593,9 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('The database has to be updated first.'));
             }
 
-            $rows = ws_flows_list($viewer);
+            // With a channel: only the flows the person may start there
+            // (the composer's Add › Start a flow).
+            $rows = ((int) ($request['runnable_in'] ?? 0) > 0) ? ws_flows_runnable_in($viewer, (int) $request['runnable_in']) : ws_flows_list($viewer);
             $numbers = ws_flow_version_numbers($rows);
             $starts = empty($rows) ? array() : ws_flows_start_kinds($rows);
             // Each flow's last run, for its flag in the list and on the canvas.
@@ -741,6 +750,12 @@ function ws_handle_action($action, $request)
 
             if (!$result['ok']) {
                 return ws_action_error($result['error'], (string) $result['field']);
+            }
+
+            // Started from a channel's composer: the run's card goes there,
+            // once (a retried token answers the run it started, no card).
+            if ($result['started'] && ((int) ($request['channel_id'] ?? 0) > 0)) {
+                ws_flow_run_card_post($viewer, $flow, $result['run_id'], (int) $request['channel_id']);
             }
 
             return ws_action_ok(array('run' => ws_action_flow_run_answer($viewer, $result['run_id']), 'started' => (bool) $result['started']));

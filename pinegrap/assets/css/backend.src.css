@@ -12200,6 +12200,22 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 .ws-msg-system .ws-chip {
   font-size: .78rem;
 }
+.ws-flow-run-card {
+  display: flex;
+  justify-content: center;
+  margin-top: .25rem;
+  text-align: start;
+}
+.ws-flow-run-card .wsf-flag {
+  width: min(32rem, 100%);
+}
+.ws-flow-start-item {
+  display: flex;
+  flex-direction: column;
+  gap: .35rem;
+  padding: .6rem 0;
+  border-bottom: 1px solid var(--pg-border-color);
+}
 .ws-msg-flag {
   display: inline-flex;
   align-items: center;
