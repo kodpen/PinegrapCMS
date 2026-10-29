@@ -15,6 +15,9 @@ description: The e-mail campaign create and edit screens share includes/forms/em
 - `pg_email_campaign_schedule_card($start_time, $readonly, $enabled)`: `''` unless `email_campaign_job_enabled()` (or `$enabled`); a zero date is blank; read-only and blank prints "Immediately" (before #2925 that branch never ran). Prints `get_date_time_picker_format() . pg_fields_script()`, no timepicker call (`bs6_timepicker_addon_test.php`).
 - `pg_email_campaign_purpose_card($purpose, $readonly)`: CAN-SPAM commercial/transactional; anything but `commercial` checks transactional.
 
+## How are its headings named?
+- Format choices and Purpose radios sit in `<fieldset><legend class="form-label fs-md">`; a fixed format and a read-only purpose print a `<div class="form-label">` heading, never a `<label>` without a field. Pinned by `tests/email_campaign_screens_names_test.php` with the screens' names (contact group radios, extra address, Status, BCC, body, `{var:1}%` progress).
+
 ## When is the form read-only?
 - Edit sets `$readonly = ($status == 'complete')` and passes it to every helper: values print as `<p>`, no form, no Save.
 

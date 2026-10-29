@@ -107,9 +107,9 @@ if (!$_POST) {
     // if e-mail campaign job is off and e-mail campaign status is ready, then prepare to output button bar with send campaign button
     if ((email_campaign_job_enabled() == false) && ($status == 'ready')) {
         $output_button_bar =
-            '<nav id="button_bar" class="navigation " aria-label="Button Bar">
+            '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                 <div class=" btn-group btn-group-sm flex-wrap">
-                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1">send</span>' . lang('Send Campaign') . '</a>
+                    <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '" onclick="window.open(\'send_email_campaign.php?id=' . h($_GET['id']) . get_token_query_string_field() . '\', \'\', \'width=450, height=350, resizable=1, scrollbars=0\'); return false;"><span class="material-icons me-1" aria-hidden="true">send</span>' . lang('Send Campaign') . '</a>
                 </div>
             </nav>';
     }
@@ -158,15 +158,15 @@ if (!$_POST) {
         
         $output_status_options .= '<option value="cancelled"' . $cancelled_status . '>' . lang('Cancelled') . '</option>';
         
-        $output_status = '<select id="status" name="status" class="form-control">' .  $output_status_options . '</select>';
+        $output_status = '<select id="status" name="status" class="form-control" aria-label="' . h(lang('Status')) . '">' .  $output_status_options . '</select>';
         
-        $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
+        $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" aria-label="' . h(lang('BCC E-mail Address')) . '" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
 
         $output_buttons =
-            '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+            '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class=" btn-group flex-wrap justify-content-center">
-                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
+                        <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>
                     </div>
                 </div>
             </nav>';
@@ -253,6 +253,7 @@ if (!$_POST) {
     // if the format is plain text, then output that
     if ($format == 'plain_text') {
         $output_format = lang('Plain Text');
+        $output_body_heading = '<label for="email_body" class="form-label">' . lang('Body') . '</label>';
 
         $output_readonly_attribute = '';
 
@@ -261,12 +262,14 @@ if (!$_POST) {
             $output_readonly_attribute = ' readonly="readonly"';
         }
 
-        $output_body = '<textarea name="body" placeholder="' . lang('Type E-mail body here') . '..."' . $output_readonly_attribute . ' class="form-control" style="width: 99%; height: 300px">' . h($body) . '</textarea>';
+        $output_body = '<textarea name="body" id="email_body" placeholder="' . lang('Type E-mail body here') . '..."' . $output_readonly_attribute . ' class="form-control" style="width: 99%; height: 300px">' . h($body) . '</textarea>';
 
     // else the format is HTML, so output that
     } else {
         $output_format = lang('HTML');
-        $output_body = '<iframe id="body_preview_iframe" src="view_email_campaign.php?id=' . h($_GET['id']) .'" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>';
+        // The preview is a frame with its own title, not a field.
+        $output_body_heading = '<div class="form-label">' . lang('Body') . '</div>';
+        $output_body = '<iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="view_email_campaign.php?id=' . h($_GET['id']) .'" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>';
     }
 
     // Prepare to area differently based on the type of campaign.
@@ -383,7 +386,7 @@ if (!$_POST) {
                                     </div>
                                     <div class="alert theme-secondary ">
                                         <p>' . lang('BCC E-mail Address') . '</p>
-                                        <p>' . $output_bcc_email_address . '</p>
+                                        <div>' . $output_bcc_email_address . '</div>
                                     </div>
                                 </div>
                                 
@@ -430,7 +433,7 @@ if (!$_POST) {
                     <div class="col-12 sm:col-6 xl:col my-3">
                         <div class="alert border-4 theme-secondary" role="alert">
                             <h4 class="alert-heading">' . lang('Progress') . '</h4>
-                            <p>' . $output_progress_percentage . '% (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
+                            <p>' . lang(array('string' => '{var:1}%', 'vars' => array($output_progress_percentage))) . ' (' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ' ' . lang('subscribers') . ')</p>
                             ' . $output_failed_email_recipients . '
                         </div>
                     </div> 
@@ -439,7 +442,7 @@ if (!$_POST) {
                         pg_email_campaign_subject_row($subject, $readonly),
                         pg_email_campaign_format_row($output_format, true),
                         '<div class="col-12 my-3">
-                            <p class="form-label">' . lang('Body') . '</p>
+                            ' . $output_body_heading . '
                             ' . $output_body . '
                         </div>'
                     ) . '
