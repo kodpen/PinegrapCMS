@@ -19,9 +19,10 @@ if (!defined('INSTALL_OR_UPDATE')) {
 // number (docs/memory/release/version-numbering.md).
 //
 // One entry point, one step per subsystem, called in the order the work was
-// done. The numbers in the comments are labels only (general work from 11.0.1,
-// ERP 11.0.58-11.0.69 and from 11.0.90, API 11.0.70-11.0.79, the workspace
-// 11.0.80-11.0.89 and 11.0.110-11.0.119); the order of the calls is what runs.
+// done. The numbers in the comments are labels only (general work 11.0.1-11.0.57,
+// then from 11.0.120, above every area range; ERP 11.0.58-11.0.69 and from
+// 11.0.90, API 11.0.70-11.0.79, the workspace 11.0.80-11.0.89 and
+// 11.0.110-11.0.119); the order of the calls is what runs.
 function upgrade_to_2026_11_0() {
 
 	upgrade_2026_11_0_legal_documents();        // 11.0.1
@@ -99,6 +100,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_review_photos();          // 11.0.57
 	upgrade_2026_11_0_record_share_image_field(); // 11.0.18
 	upgrade_2026_11_0_workspace_thread_follow(); // 11.0.113
+	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
 
 }
 
@@ -3204,5 +3206,17 @@ function upgrade_2026_11_0_workspace_thread_follow() {
 	install_add_column('ws_threads', 'follow_agent', "VARCHAR(64) NOT NULL DEFAULT ''");
 
 	install_note('Workspace: an assistant asked in a discussion, or whose answer a discussion was started from, now answers the later messages there without being named again. Discussions started before this update follow nobody until an assistant is asked in them.');
+
+}
+
+// The checkout page an order was placed from (2026.11.0, 11.0.120;
+// includes/fn/order_completion.php). orders.checkout_page_id is written when
+// the visitor is sent to the payment service and when the order completes, so
+// a payment service's message that completes the order later sends the receipt
+// and applies the auto-registration switch of that page. Orders started before
+// this step keep 0: a plain-text receipt and no account link.
+function upgrade_2026_11_0_order_checkout_page() {
+
+	install_add_column('orders', 'checkout_page_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 }
