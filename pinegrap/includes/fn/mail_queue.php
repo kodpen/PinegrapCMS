@@ -68,6 +68,26 @@ function pg_mail_last_error($set = null)
     return $error;
 }
 
+// The sentence a screen shows after email() returned false: the mail server's
+// reason from pg_mail_last_error() when email() left one, else $fallback.
+// Read it right after the failed call, before any other email() resets the
+// reason. $test words it for a test message. Returned raw: escape it with
+// h() where it is printed.
+function pg_mail_failure_sentence($fallback, $test = false)
+{
+    $reason = trim(pg_mail_last_error());
+
+    if ($reason === '') {
+        return (string) $fallback;
+    }
+
+    if ($test) {
+        return lang(array('string' => 'The test e-mail could not be sent: {var:1}', 'vars' => array($reason)));
+    }
+
+    return lang(array('string' => 'The e-mail could not be sent: {var:1}', 'vars' => array($reason)));
+}
+
 // Whether the last email() call in this request failed in a way that no
 // later attempt can change: the message as stored has no content, no
 // recipient, or an address PHPMailer refuses. Set next to

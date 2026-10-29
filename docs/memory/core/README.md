@@ -81,6 +81,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - lang-compiled-cache.md: The compiled language cache data/temp/lang_<code>.php that pg_lang_map() reads through opcache: speed, the signature that rebuilds it, atomic write, no writable data/temp, the gate (PR #1933)
 - lang-files.md: Turkish wording as sorted shards in includes/local/tr/: why, layout, pg_lang_map() the one reader, old tr.json on updated sites, tr_add.php, tr_resolve.php, check_lang.php, speed
 - lang-function-syntax.md: lang() call forms: plain, variables {var:N}, case modifiers |c |u |l, plural suffix, no text concatenated outside lang(), and the lang(['info' => true]) active-language query.
+- mail-failure-reason.md: Screens that send an e-mail at once show the mail server's reason on failure through pg_mail_failure_sentence(), not a pointer at the log
 - mail-queue-permanent-errors.md: Mail queue gives a message up on its first attempt when the failure is permanent (no recipient, empty body, refused address), and tells the panel bell once per given-up message (action mail_failed)
 - message-carried-values.md: Values a liveform message carries (records, panel input, service and database texts) go in through h(); the connect flash, upload values, logs and PHP-escaped warnings; what is still left
 - multibyte-trim.md: trim()/rtrim()/ltrim() read their character list byte by byte, so "–", "—", "·" or "“" in it breaks other characters; trim those with a /u regex (pg_ai_write_cut(), #744)

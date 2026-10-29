@@ -98,8 +98,16 @@ if (!$_POST) {
     
         $delete_logs_button = '';
         if (MASS_DELETION == true && $all_logs > 0) {
+            $delete_site_logs_confirm = array(
+                'title'       => lang('Delete All Site Logs'),
+                'message'     => lang('All site logs will be permanently deleted. View All shows which logs will be deleted before you delete them.'),
+                'confirmText' => lang('Delete'),
+                'cancelText'  => lang('Cancel'),
+                'variant'     => 'danger',
+            );
+            $delete_site_logs_onclick = 'event.preventDefault(); var b=this; pgConfirm(' . json_encode($delete_site_logs_confirm) . ').then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_site_logs\',value:\'Delete Site Logs\'}));b.form.submit();}}); return false;';
             $delete_logs_button = '
-                <button type="submit" name="delete_all_site_logs" value="Delete Site Logs" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Site Logs') . '\', message:\'' . lang('WARNING: All site logs will be permanently deleted. View All button will allow you to see which logs will be deleted before you actually delete them. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_site_logs\',value:\'Delete Site Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Site Logs') . '</button>';
+                <button type="submit" name="delete_all_site_logs" value="Delete Site Logs" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="' . h($delete_site_logs_onclick) . '">' . lang('Delete All Site Logs') . '</button>';
         }
     
         $delete_error_logs_button = '';
@@ -118,7 +126,15 @@ if (!$_POST) {
                 !empty($_SESSION['software']['settings']['view_log']['error_log'])
                 && $deletable_error_log_exists
             ) {
-                $delete_error_logs_button = '<button type="submit" name="delete_all_error_logs" value="Delete Error Logs"  value="1" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="event.preventDefault(); var b=this; pgConfirm({title:\'' . lang('Delete All Error Logs') . '\', message:\'' . lang('WARNING: error_log files will be permanently deleted around Software. If you would like to continue with the deletion, please click OK. Otherwise, please click Cancel.') . '\', confirmText:\'' . lang('Delete') . '\', cancelText:\'' . lang('Cancel') . '\', variant:\'danger\'}).then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_error_logs\',value:\'Delete Error Logs\'}));b.form.submit();}}); return false;">' . lang('Delete All Error Logs') . '</button>';
+                $delete_error_logs_confirm = array(
+                    'title'       => lang('Delete All Error Logs'),
+                    'message'     => lang('The error_log files of the software will be permanently deleted.'),
+                    'confirmText' => lang('Delete'),
+                    'cancelText'  => lang('Cancel'),
+                    'variant'     => 'danger',
+                );
+                $delete_error_logs_onclick = 'event.preventDefault(); var b=this; pgConfirm(' . json_encode($delete_error_logs_confirm) . ').then(function(ok){if(ok){b.disabled=true;b.form.appendChild(Object.assign(document.createElement(\'input\'),{type:\'hidden\',name:\'delete_all_error_logs\',value:\'Delete Error Logs\'}));b.form.submit();}}); return false;';
+                $delete_error_logs_button = '<button type="submit" name="delete_all_error_logs" value="Delete Error Logs" class="btn btn-link pg-link-danger py-0 mb-3 bi bi-trash bi-me-2" onclick="' . h($delete_error_logs_onclick) . '">' . lang('Delete All Error Logs') . '</button>';
             }
             
         

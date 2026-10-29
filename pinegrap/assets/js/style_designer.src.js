@@ -42118,7 +42118,12 @@ const StyleDesigner = (function () {
                     ]),
                     detail(_sdT('Tracking number'), '__return_tracking_number', ''),
                     detail(_sdT('Refund due by'), '__return_refund_deadline', ''),
-                    _sdPartEl('div', '', _sdT('The customer\'s moves'), {}, _sdPartOrderReturnMoves())
+                    _sdPartEl('div', '', _sdT('The customer\'s moves'), {}, _sdPartOrderReturnMoves()),
+                    _sdPartEl('div', 'mt-2', _sdT('Return label'), _sdPartWhen('__return_has_label', 'not_empty'), [
+                        _sdPartEl('a', 'btn btn-sm btn-outline-primary', _sdT('Download return label'), {
+                            text: _sdT('Download return label'), href: '#', _bindings: { href: '__return_label_url' }
+                        })
+                    ])
                 ])
             ])
         ])];
@@ -57779,7 +57784,9 @@ const StyleDesigner = (function () {
                 ['__return_refund_deadline',    _sdT('Refund due by')],
                 ['__return_actions_html',       _sdT('The customer\'s moves: sent, withdraw (HTML)')],
                 ['__return_can_mark_sent',      _sdT('The customer may say the parcel is sent (1 or empty)')],
-                ['__return_can_withdraw',       _sdT('The customer may withdraw the request (1 or empty)')]
+                ['__return_can_withdraw',       _sdT('The customer may withdraw the request (1 or empty)')],
+                ['__return_label_url',          _sdT('Return label download URL')],
+                ['__return_has_label',          _sdT('Has a return label to download (1 or empty)')]
             ]
         },
         'order.return_lines': {

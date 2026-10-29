@@ -30,6 +30,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - back-in-stock-sms.md: Back-in-stock notice by SMS (PR #1864): kind stock (transactional, owner decision), the stock_back event, the optional number field, text instead of mail, the one-message promise
 - card-data-manual-processing.md: Card data with no payment gateway (manual processing): the security code never stored, the number encrypted only, masked once the order is processed; refusal without openssl; hourly sweep
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
+- carrier-label-aras.md: Aras Kargo label driver (2026.11.0, #3259), the first direct Turkish carrier: SOAP from its WSDL, integration code as reference, Aras's own ZPL/PDF label, cancel, waybill status, unverified points
 - carrier-label-basitkargo.md: Basit Kargo label driver and SVG labels (2026.11.0, #3163): create, SVG only, no test mode, 600 a minute and Retry-After, idempotency key; SVG checks, print page, sandboxed download, bulk PDF
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, TRACK_UPDATED webhook (#3245), what is unverified
@@ -174,7 +175,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipment-api-fields.md: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
 - shipment-label-bulk.md: Bulk carrier labels from the orders list (create, one merged PDF), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #3137)
-- shipment-label-returns.md: Customer return labels (#3178): Create Return Label on an approved request, one per request, code into carrier_code, a short mail (#3194); the customer's download (#3239, widget 8c)
+- shipment-label-returns.md: Customer return labels (#3178): Create Return Label on an approved request, one per request, code into carrier_code, a short mail (#3194); the customer's download (#3239, widget #3268)
 - shipment-labels.md: Carrier label storage and order actions (2026.11.0, PR #3117): shipment_labels table, data/shipping_labels/ files and retention sweep, Create Label and reprint on the order, erasure and order delete
 - shipment-mail-fields.md: Tracking mail-merge fields of the order_shipped and order_delivered e-mails, which addresses they cover, and step 11.0.42 widening email_campaigns.action
 - shipment-row-schema.md: The shipment row since 2026.11.0 (11.0.20): carrier, status, date, source and warning columns on shipping_tracking_numbers, the unique parcel key, shipping_methods.carrier, the order_delivered action

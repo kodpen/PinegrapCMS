@@ -717,6 +717,7 @@ $explorer_lang = array(
     // Narrowing the listing by what things are rather than by their name.
     'filters' => lang('Filters'),
     'clear_filters' => lang('Clear filters'),
+    'remove_filter' => lang('Remove filter: {var:1}'),
     'filters_on' => lang('{var:1} filter(s) on'),
     'filters_showing' => lang('{var:1} of {var:2} shown'),
     'filter_images' => lang('Pictures'),
@@ -1486,29 +1487,29 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         <div class="pg-menu-wrap d-none" id="file_scope_wrap">
             <button type="button" id="file_scope_button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret text-nowrap" data-bs-toggle="menu" data-bs-display="static" aria-expanded="false"><span class="bi bi-funnel me-1"></span><span id="file_scope_label"></span></button>
             <ul class="menu shadow" id="file_scope_menu" style="border-radius:.75rem;">
-                <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('All files'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope=""><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('All files'); ?></button></li>
                 <li><h6 class="menu-header"><?php echo lang('By type'); ?></h6></li>
-                <li><button type="button" class="menu-item" data-scope="documents"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Documents'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="media"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Media'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="attachments"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Attachments'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="archived"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Archived files'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="documents"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Documents'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="media"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Media'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="attachments"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Attachments'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="archived"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Archived files'); ?></button></li>
                 <li><h6 class="menu-header"><?php echo lang('By access'); ?></h6></li>
-                <li><button type="button" class="menu-item" data-scope="public"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Public'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="guest"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Guest'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="registration"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Registration'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="membership"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Membership'); ?></button></li>
-                <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check"></span><?php echo lang('Private'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="public"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Public'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="guest"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Guest'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="registration"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Registration'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="membership"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Membership'); ?></button></li>
+                <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Private'); ?></button></li>
             </ul>
         </div>
         <div class="btn-group btn-group-sm" id="explorer_view_group" role="group">
-            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
-            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
+            <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
+            <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
         </div>
         <button type="button" id="recycle_bin_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
         <div class="pg-menu-wrap" id="explorer_more_wrap">
             <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
-                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button"><span class="bi bi-check2 me-3 opacity-0" data-role="check"></span><?php echo lang('Preview panel'); ?></button></li>
+                <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button" aria-pressed="false"><span class="bi bi-check2 me-3 opacity-0" data-role="check" aria-hidden="true"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
                 <!-- The same shortcuts the tree carries. The tree is the main
                      menu's panel (the drawer on a phone); this menu repeats the
@@ -4515,8 +4516,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             if (group[1] !== '') { menu += '<li><h6 class="menu-header">' + esc(group[1]) + '</h6></li>'; }
 
             defs.forEach(function (def) {
-                menu += '<li><button type="button" class="menu-item" data-filter="' + esc(def.key) + '">' +
-                    '<i class="bi bi-check2 me-3' + (state.filters[def.key] ? '' : ' opacity-0') + '"></i>' + esc(def.label()) + '</button></li>';
+                menu += '<li><button type="button" class="menu-item" data-filter="' + esc(def.key) + '" aria-pressed="' + (state.filters[def.key] ? 'true' : 'false') + '">' +
+                    '<i class="bi bi-check2 me-3' + (state.filters[def.key] ? '' : ' opacity-0') + '" aria-hidden="true"></i>' + esc(def.label()) + '</button></li>';
             });
         });
 
@@ -4540,8 +4541,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             esc(fmt(L.filters_on, [active.length])) + ' · ' + esc(fmt(L.filters_showing, [state.ordered.length, total])) + '</span>';
 
         active.forEach(function (def) {
-            chips += '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3 no-popover" data-filter="' + esc(def.key) + '">' +
-                esc(def.label()) + '<i class="bi bi-x ms-1"></i></button>';
+            chips += '<button type="button" class="btn btn-sm btn-outline theme-primary rounded-pill py-0 px-3 no-popover" data-filter="' + esc(def.key) + '" aria-label="' + esc(fmt(L.remove_filter, [def.label()])) + '">' +
+                esc(def.label()) + '<i class="bi bi-x ms-1" aria-hidden="true"></i></button>';
         });
 
         chips += '<button type="button" class="btn btn-sm btn-text theme-secondary no-popover ms-auto" data-filter-clear="1">' + esc(L.clear_filters) + '</button>';
@@ -5974,6 +5975,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function syncViewButtons() {
         document.getElementById('view_grid_button').classList.toggle('active', state.viewType === 'grid');
         document.getElementById('view_list_button').classList.toggle('active', state.viewType === 'list');
+        document.getElementById('view_grid_button').setAttribute('aria-pressed', (state.viewType === 'grid') ? 'true' : 'false');
+        document.getElementById('view_list_button').setAttribute('aria-pressed', (state.viewType === 'list') ? 'true' : 'false');
 
         // Every mode's loader comes through here, which makes it the one
         // place that can hide the narrowing button on the views it does not
@@ -7160,8 +7163,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function menuDivider() { return '<li><hr class="menu-divider" /></li>'; }
 
     function menuCheckItem(label, action, checked, disabled) {
-        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '">' +
-            '<span class="menu-check bi ' + (checked ? 'bi-check2' : '') + '"></span>' + esc(label) + '</button></li>';
+        return '<li><button type="button" class="menu-item' + (disabled ? ' disabled' : '') + '" data-menu-action="' + action + '" aria-pressed="' + (checked ? 'true' : 'false') + '">' +
+            '<span class="menu-check bi ' + (checked ? 'bi-check2' : '') + '" aria-hidden="true"></span>' + esc(label) + '</button></li>';
     }
 
     function menuSubmenu(icon, label, innerHtml, disabled) {
@@ -8664,6 +8667,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         return blocked;
     }
 
+    // A pick redraws the whole list, which takes the focused row away with
+    // it; focus goes back to the row drawn for the same target so the next
+    // Tab or arrow starts from the pick, not from the top of the dialog.
+    function focusPickerRow(containerId, attribute, id) {
+        var row = document.getElementById(containerId).querySelector('[' + attribute + '="' + Number(id) + '"]');
+        if (row && !row.disabled) { row.focus(); }
+    }
+
+    // The empty text of a picker replaces its rows silently; it is said once
+    // through the status region when it appears, not again on every key.
+    var pickerEmptySaid = {};
+
+    function announcePickerEmpty(picker, text) {
+        if (pickerEmptySaid[picker] === text) { return; }
+        pickerEmptySaid[picker] = text;
+        if (text === '') { return; }
+        var region = document.getElementById('explorer_search_status');
+        if (region) { region.textContent = text; }
+    }
+
     function renderTransferTargets() {
 
         if (!transferState) { return; }
@@ -8685,7 +8708,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
                 (blocked ? ' disabled' : '') +
-                ((String(target.id) === String(transferState.picked)) ? ' active' : '') +
+                ((String(target.id) === String(transferState.picked)) ? ' active" aria-pressed="true' : '" aria-pressed="false') +
                 '" style="' + indent + '" data-target-id="' + target.id + '"' + (blocked ? ' disabled' : '') + '>' +
                 '<i class="bi ' + (insideCatalog() ? 'bi-boxes' : 'bi-folder-fill') + '"></i>' +
                 '<span class="text-truncate">' + esc(target.name) + '</span>' +
@@ -8698,6 +8721,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             ? html
             : ('<div class="text-center fg-secondary small py-5">' + esc(L.no_target_match) + '</div>');
 
+        announcePickerEmpty('transfer', (shown > 0) ? '' : L.no_target_match);
         syncTransferButtons();
     }
 
@@ -8788,6 +8812,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             transferState.targets = targets;
             transferState.blocked = transferBlockedIds(targets, items, !!copy);
+            pickerEmptySaid.transfer = '';
             renderTransferTargets();
         });
     }
@@ -8857,18 +8882,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : '<i class="bi ' + iconName + '"' + tint + ' aria-hidden="true"></i>';
 
             html += '<button type="button" class="list-group-item list-group-item-action d-flex align-items-center gap-3' +
-                ((String(channel.id) === String(wsSendState.picked)) ? ' active' : '') +
+                ((String(channel.id) === String(wsSendState.picked)) ? ' active" aria-pressed="true' : '" aria-pressed="false') +
                 '" data-channel-id="' + Number(channel.id) + '">' +
                 sign +
                 '<span class="text-truncate">' + esc(channel.name) + '</span></button>';
         });
 
+        var empty = '';
+
         if (html === '') {
-            html = '<div class="text-center fg-secondary small py-5">' +
-                esc(wsSendState.channels.length ? L.no_target_match : L.ws_send_none) + '</div>';
+            empty = wsSendState.channels.length ? L.no_target_match : L.ws_send_none;
+            html = '<div class="text-center fg-secondary small py-5">' + esc(empty) + '</div>';
         }
 
         container.innerHTML = html;
+        announcePickerEmpty('ws_send', empty);
         document.getElementById('ws_send_confirm_button').disabled = (wsSendState.picked === null) || wsSendState.busy;
     }
 
@@ -8889,6 +8917,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 wsSendState.picked = Number(row.getAttribute('data-channel-id'));
                 renderWsSendChannels();
+                focusPickerRow('ws_send_channels', 'data-channel-id', wsSendState.picked);
             });
 
             document.getElementById('ws_send_confirm_button').addEventListener('click', runWsSend);
@@ -8925,6 +8954,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 wsSendState.picked = Number(wsSendState.channels[0].id);
             }
 
+            pickerEmptySaid.ws_send = '';
             renderWsSendChannels();
         });
     }
@@ -12382,7 +12412,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('file_scope_label').textContent = fileScopeLabel(state.fileScope);
 
         wrap.querySelectorAll('[data-scope]').forEach(function (button) {
-            button.classList.toggle('active', button.getAttribute('data-scope') === (state.fileScope || ''));
+            var current = (button.getAttribute('data-scope') === (state.fileScope || ''));
+            button.classList.toggle('active', current);
+            if (current) { button.setAttribute('aria-current', 'true'); } else { button.removeAttribute('aria-current'); }
         });
     }
 
@@ -15028,6 +15060,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         transferState.picked = parseInt(row.getAttribute('data-target-id'), 10);
         renderTransferTargets();
+        focusPickerRow('transfer_targets', 'data-target-id', transferState.picked);
     });
 
     document.getElementById('transfer_confirm_button').addEventListener('click', function () {
@@ -15056,6 +15089,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     function syncPaneButtons() {
         var previewOpen = !document.getElementById('explorer_preview_pane').classList.contains('pane-hidden');
         document.querySelector('#preview_toggle_button [data-role="check"]').classList.toggle('opacity-0', !previewOpen);
+        document.getElementById('preview_toggle_button').setAttribute('aria-pressed', previewOpen ? 'true' : 'false');
     }
 
     document.getElementById('preview_toggle_button').addEventListener('click', function () { togglePane('explorer_preview_pane', 'pg_explorer_preview_open'); });

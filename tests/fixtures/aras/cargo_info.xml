@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="utf-8"?>
+<soap:Envelope xmlns:soap="http://schemas.xmlsoap.org/soap/envelope/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <soap:Body>
+    <GetCargoInfoResponse xmlns="http://tempuri.org/">
+      <GetCargoInfoResult>
+        <xs:schema id="IrsaliyeData" targetNamespace="http://tempuri.org/IrsaliyeData.xsd" xmlns:mstns="http://tempuri.org/IrsaliyeData.xsd" xmlns="http://tempuri.org/IrsaliyeData.xsd" xmlns:xs="http://www.w3.org/2001/XMLSchema" xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" attributeFormDefault="qualified" elementFormDefault="qualified">
+          <xs:element name="IrsaliyeData" msdata:IsDataSet="true" msdata:MainDataTable="IrsData" msdata:UseCurrentLocale="true">
+            <xs:complexType>
+              <xs:choice minOccurs="0" maxOccurs="unbounded">
+                <xs:element name="IrsData">
+                  <xs:complexType>
+                    <xs:sequence>
+                      <xs:element name="ADET" type="xs:decimal" minOccurs="0" />
+                      <xs:element name="ALICI" type="xs:string" minOccurs="0" />
+                      <xs:element name="CIKIS_SUBE" type="xs:string" minOccurs="0" />
+                      <xs:element name="DESI" type="xs:decimal" minOccurs="0" />
+                      <xs:element name="GONDERICI" type="xs:string" minOccurs="0" />
+                      <xs:element name="IRSALIYE_SERI" type="xs:string" minOccurs="0" />
+                      <xs:element name="IRSALIYE_NUMARA" type="xs:string" minOccurs="0" />
+                      <xs:element name="IRSALIYE_TARIH" type="xs:dateTime" minOccurs="0" />
+                      <xs:element name="MUSTERI_OZEL_KODU" type="xs:string" minOccurs="0" />
+                      <xs:element name="ODEME_TIPI" type="xs:string" minOccurs="0" />
+                      <xs:element name="REFERANS" type="xs:string" minOccurs="0" />
+                      <xs:element name="TESLIM_ALAN" type="xs:string" minOccurs="0" />
+                      <xs:element name="TESLIM_SAATI" type="xs:string" minOccurs="0" />
+                      <xs:element name="TESLIM_TARIHI" type="xs:string" minOccurs="0" />
+                      <xs:element name="TUTAR" type="xs:decimal" minOccurs="0" />
+                      <xs:element name="VARIS_KODU" type="xs:string" minOccurs="0" />
+                      <xs:element name="VARIS_SUBE" type="xs:string" minOccurs="0" />
+                      <xs:element name="TIP_KODU" type="xs:string" minOccurs="0" />
+                      <xs:element name="DURUM_KODU" type="xs:string" minOccurs="0" />
+                      <xs:element name="DURUMU" type="xs:string" minOccurs="0" />
+                      <xs:element name="IADE_SEBEBI" type="xs:string" minOccurs="0" />
+                      <xs:element name="KARGO_TAKIP_NO" type="xs:decimal" minOccurs="0" />
+                    </xs:sequence>
+                  </xs:complexType>
+                </xs:element>
+              </xs:choice>
+            </xs:complexType>
+          </xs:element>
+        </xs:schema>
+        <diffgr:diffgram xmlns:msdata="urn:schemas-microsoft-com:xml-msdata" xmlns:diffgr="urn:schemas-microsoft-com:xml-diffgram-v1">
+          <IrsaliyeData xmlns="http://tempuri.org/IrsaliyeData.xsd">
+            <IrsData diffgr:id="IrsData1" msdata:rowOrder="0">
+              <ADET>1</ADET>
+              <ALICI>AYŞE YILMAZ</ALICI>
+              <CIKIS_SUBE>KADIKÖY</CIKIS_SUBE>
+              <DESI>2</DESI>
+              <GONDERICI>ÖRNEK MAĞAZA</GONDERICI>
+              <IRSALIYE_SERI>E</IRSALIYE_SERI>
+              <IRSALIYE_NUMARA>2026102700</IRSALIYE_NUMARA>
+              <IRSALIYE_TARIH>2026-10-27T00:00:00+03:00</IRSALIYE_TARIH>
+              <MUSTERI_OZEL_KODU>10042483920</MUSTERI_OZEL_KODU>
+              <ODEME_TIPI>GÖNDERİCİ ÖDEMELİ</ODEME_TIPI>
+              <REFERANS>10042</REFERANS>
+              <TESLIM_ALAN>AYŞE YILMAZ</TESLIM_ALAN>
+              <TESLIM_SAATI>14:35</TESLIM_SAATI>
+              <TESLIM_TARIHI>28.10.2026</TESLIM_TARIHI>
+              <TUTAR>89.90</TUTAR>
+              <VARIS_KODU>612</VARIS_KODU>
+              <VARIS_SUBE>ÇANKAYA</VARIS_SUBE>
+              <TIP_KODU>1</TIP_KODU>
+              <DURUM_KODU>6</DURUM_KODU>
+              <DURUMU>TESLİM EDİLDİ</DURUMU>
+              <KARGO_TAKIP_NO>3401234567890</KARGO_TAKIP_NO>
+            </IrsData>
+          </IrsaliyeData>
+        </diffgr:diffgram>
+      </GetCargoInfoResult>
+    </GetCargoInfoResponse>
+  </soap:Body>
+</soap:Envelope>

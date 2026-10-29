@@ -16,6 +16,7 @@
     "SEO score under 50": "SEO puanı 50'nin altında",
     "SEO scores": "SEO skorları",
     "SEO scores were updated for {var:1} page{suffix:1}.": "{var:1} sayfanın SEO skoru güncellendi.",
+    "SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click Refresh SEO Scores again to continue.": "{var:1} sayfanın SEO skoru güncellendi. {var:2} sayfanın hesaplanması gerekiyor - devam etmek için SEO Skorlarını Yenile düğmesine tekrar tıklayın.",
     "SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click the button again to continue.": "{var:1} sayfanın SEO skoru güncellendi. {var:2} sayfanın hesaplanması gerekiyor - devam etmek için düğmeye tekrar tıklayın.",
     "SEO scoring is not available on this installation.": "Bu kurulumda SEO puanlama kullanılamıyor.",
     "SEO scrapers and AI training crawlers (AhrefsBot, SemrushBot, GPTBot, ClaudeBot, Bytespider and similar) are already on the built-in reject list.": "SEO kazıyıcıları ve yapay zekâ eğitim botları (AhrefsBot, SemrushBot, GPTBot, ClaudeBot, Bytespider ve benzerleri) zaten yerleşik ret listesinde.",

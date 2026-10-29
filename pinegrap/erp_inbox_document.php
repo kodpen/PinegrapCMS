@@ -233,7 +233,7 @@ if (empty($proposal['success'])) {
     } else {
         $output_account = '<div class="form-label fg-secondary">' . lang('Account') . '</div>
                 <div class="fg-emphasis-warning"><i class="bi bi-plus-circle me-1" aria-hidden="true"></i>' . lang('No account has this tax number yet.') . '</div>
-                <div class="small fg-secondary">' . lang('Taking the invoice in opens a supplier account with the details on the left.') . '</div>';
+                <div class="small fg-secondary">' . lang('Taking the invoice in opens a supplier account with the supplier details in this card.') . '</div>';
     }
 
     $output_supplier = '
