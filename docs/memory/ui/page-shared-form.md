@@ -15,6 +15,9 @@ description: The page create and edit screens share includes/forms/page_form.php
 - `pg_page_form_index_flags($sitemap, $_POST)`: noindex drops the page from the site map, nofollow only with noindex. `pg_page_form_noindex_sql($flags, pg_page_noindex_ready())` gives the INSERT `columns`/`values` and the UPDATE `set`, ints inline (`visitors/page-noindex-switch.md`).
 - `pg_page_form_designer_redirect($type, $_POST, $current)`: `false`, or the `form_type` query for `view_fields.php`. Create passes no `$current` and goes on for every form that is on (a custom form page, the shipping/billing form, an express order form, shipping first). Edit passes the stored type and form flags and goes on only for a form this save switched on.
 
+## What does a refused save bring back?
+- What was typed, through the stored post (`page-form-refused-save.md`).
+
 ## What stays in the screens?
 - Create: the folder access check, the blank-name and name-taken errors, the layout type, the INSERT, the per-type access trims and new form list view defaults, the regions, the redirect URL with `?from=control_panel`.
 - Edit: the row load, the folder move check, the unknown-type fallback, the submitted-forms block on a type change, the site map type list, the UPDATE, the rename redirects, `send_to`.

@@ -12,7 +12,7 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 6 Basit Kargo #3163): ca
 - Panel: "Create label" on the order and on selected orders (bulk, one PDF), label reprint, status refresh; the chosen carrier comes from the shipping method's `carrier` or the order's method code.
 - Status write-back: the daily/hourly job polls open shipments and calls `pg_shipment_delivered()` so `order.delivered`, the campaign e-mail and SMS (`sms-and-iys.md`) fire exactly once. Carrier webhooks are used when the driver offers them.
 - Return labels: the same driver creates a return shipment for customer returns (`commerce/order-returns-panel.md`) with the named return carrier.
-- UPS/FedEx/USPS rate code and box packing stay untouched; label creation for them is a later driver on the same interface.
+- UPS/FedEx/USPS rate code and box packing stay untouched; their labels are a later driver on the same interface.
 - Marketplace orders: Trendyol common label (`createCommonLabel`, ZPL for TEX/Aras) is handled inside the marketplace connector, not here.
 
 ## What remains?
@@ -27,7 +27,7 @@ description: Plan (approved 2026-10-19; steps 1-3 done, 6 Basit Kargo #3163): ca
 7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
 
 ## Open questions?
-- Answered (#3073): Geliver first, the only aggregator with a public reference and test mode on 2026-10-29; the owner confirms its prices and contract. The driver interface must not leak aggregator-specific fields into the shipment row.
+- Answered (#3073): Geliver first, the only aggregator with a public reference and test mode then; the owner confirms its prices and contract. The driver interface must not leak aggregator-specific fields into the shipment row.
 - Formats (#3123): PDF, ZPL and SVG as the service gives them; SVG into the bulk PDF where dompdf renders it; ZPL never sent to an external converter.
 
 ## Where to start?

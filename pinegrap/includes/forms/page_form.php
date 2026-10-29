@@ -3084,15 +3084,22 @@ function pg_page_form_new_page_properties()
  * check those against different things (nothing, or the stored value) and
  * fill them in themselves.
  *
- * @param string $page_type
- * @param int    $page_id
+ * @param string     $page_type
+ * @param int        $page_id
+ * @param array|null $source  The submitted fields, $_POST when null; the
+ *                            screens pass the copy a refused save stored
+ *                            (pg_page_form_posted()) to draw the form again
  * @return array  Empty for a type that has no properties table
  */
-function pg_page_form_type_properties_from_post($page_type, $page_id)
+function pg_page_form_type_properties_from_post($page_type, $page_id, $source = null)
 {
+    if ($source === null) {
+        $source = $_POST;
+    }
+
     // An unticked check box is not posted at all; it is stored as 0.
-    $field = function ($name, $default = '') {
-        return $_POST[$name] ?? $default;
+    $field = function ($name, $default = '') use ($source) {
+        return $source[$name] ?? $default;
     };
 
     $hooks = (defined('PHP_REGIONS') and PHP_REGIONS === true) && (USER_ROLE < 2);
@@ -3663,12 +3670,135 @@ function pg_page_form_refuse($liveform, $errors, $url)
         return;
     }
 
+    // The form comes back with what was typed (pg_page_form_posted()).
+    $liveform->add_fields_to_session();
+
     foreach ($errors as $field => $error) {
         $liveform->mark_error($field, $error);
     }
 
     header('Location: ' . $url);
     exit();
+}
+
+/**
+ * What a refused save stored with liveform::add_fields_to_session(), as
+ * field => value, for the screen to draw in place of the defaults of a new
+ * page or the stored page. Empty until a save is refused, and for the edit
+ * screen when the stored copy belongs to another page.
+ *
+ * @param liveform $liveform
+ * @param int|null $page_id  The page the edit screen draws, null on create
+ * @return array
+ */
+function pg_page_form_posted($liveform, $page_id = null)
+{
+    if ($liveform->prefill()) {
+        return array();
+    }
+
+    $posted = array();
+
+    foreach (($_SESSION['software']['liveforms'][$liveform->form][$liveform->index] ?? array()) as $field => $entry) {
+        if (is_array($entry) && array_key_exists('value', $entry)) {
+            $posted[$field] = $entry['value'];
+        }
+    }
+
+    if (($page_id !== null) && ((string) ($posted['id'] ?? '') !== (string) $page_id)) {
+        return array();
+    }
+
+    return $posted;
+}
+
+/**
+ * The values a screen draws its own fields with: the typed value of each
+ * field a refused save stored, else the current one. A check box posted
+ * unticked is missing from the stored copy and comes back as '0'; list only
+ * the boxes the form printed.
+ *
+ * @param array $current      Field name => the value the screen would draw
+ * @param array $posted       pg_page_form_posted()
+ * @param array $check_boxes  The check box fields among $current
+ * @return array  $current with the typed values
+ */
+function pg_page_form_redraw_fields($current, $posted, $check_boxes = array())
+{
+    if (!$posted) {
+        return $current;
+    }
+
+    foreach ($current as $field => $value) {
+        if (in_array($field, $check_boxes, true)) {
+            $current[$field] = (array_key_exists($field, $posted) && !is_array($posted[$field])) ? (string) $posted[$field] : '0';
+        } elseif (array_key_exists($field, $posted) && !is_array($posted[$field])) {
+            $current[$field] = $posted[$field];
+        }
+    }
+
+    return $current;
+}
+
+/**
+ * The type a refused save comes back on: the one chosen, when the software
+ * knows it and the user may set it, else $current.
+ *
+ * @param array  $posted   pg_page_form_posted()
+ * @param string $current  The type the screen opens on otherwise
+ * @param array  $user     The signed-in user (validate_user())
+ * @return string
+ */
+function pg_page_form_redraw_type($posted, $current, $user)
+{
+    $type = $posted['type'] ?? '';
+
+    if (!is_string($type) || ($type === '') || (get_page_type_name($type) === null) || !pg_page_type_user_may_set($user, $type)) {
+        return $current;
+    }
+
+    return $type;
+}
+
+/**
+ * The properties pg_page_form_type_fields() draws with, the chosen type's
+ * settings replaced by what a refused save stored. The custom form's offer,
+ * which the save reads apart, comes back when its rows were printed; the
+ * share image field comes back as chosen, without the query the save makes.
+ *
+ * @param array  $properties  Page type name => properties, as drawn otherwise
+ * @param string $page_type   pg_page_form_redraw_type()
+ * @param array  $posted      pg_page_form_posted()
+ * @return array
+ */
+function pg_page_form_redraw_type_properties($properties, $page_type, $posted)
+{
+    if (!$posted) {
+        return $properties;
+    }
+
+    $redrawn = pg_page_form_type_properties_from_post($page_type, 0, $posted);
+
+    if (!$redrawn) {
+        return $properties;
+    }
+
+    unset($redrawn['page_id']);
+
+    if (array_key_exists('share_image_field_id', $redrawn)) {
+        $redrawn['share_image_field_id'] = (int) ($posted['custom_form_share_image_field_id'] ?? 0);
+    }
+
+    if (($page_type == 'custom form') && array_key_exists('custom_form_offer_id', $posted)) {
+        $redrawn['offer'] = $posted['custom_form_offer'] ?? 0;
+        $redrawn['offer_id'] = $posted['custom_form_offer_id'];
+        $redrawn['offer_days'] = $posted['custom_form_offer_days'] ?? '';
+        $redrawn['offer_eligibility'] = $posted['custom_form_offer_eligibility'] ?? '';
+    }
+
+    $properties[$page_type] = array_merge($properties[$page_type] ?? array(), $redrawn);
+
+    return $properties;
 }
 
 /**
