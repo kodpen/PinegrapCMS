@@ -2058,3 +2058,69 @@ JS
 	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
 	pg_assert_true((bool) preg_match('/\n\.ws-flow-icon \{[^}]*width: 16px;[^}]*stroke: currentColor;[^}]*stroke-width: 1\.5;/', $css), 'drawn 16 px with a 1.5 px stroke in the colour around it');
 }
+
+// Saved templates in the gallery: a saved or changed one comes first (the
+// latest changed first), a deleted one goes; a saved card carries the mark
+// of its own group, and edit and delete only for whoever may change it; a
+// built-in card stays a card with Use alone. The editor's ⋯ offers "Save as
+// template" behind the config's template_save.
+function test_workspace_flows_canvas_saved_templates()
+{
+	$result = ws_flows_canvas_test_node(array('templatesKept', 'templateCard', 'savedMark'), <<<'JS'
+var KINDS = { manual: { name: 'fl_kind_manual' } };
+var FL = { template_categories: { team: 'Team', site: 'Site', sales: 'Sales', saved: 'Saved on this site' } };
+K.flowIcon = function (kind) { return new FakeNode('svg', 'ws-flow-icon ' + kind); };
+var edited = [], binned = [];
+function templateDialog(template) { edited.push(template.key); }
+function binTemplate(template) { binned.push(template.key); }
+function useTemplate() { return Promise.resolve(); }
+function card(key, saved) {
+    return { key: key, category: saved ? 'saved' : 'team', title: 'T ' + key, help: 'line', start: 'manual', boxes: 1, threads: 0,
+        graph: { nodes: [{ id: 'a', kind: 'manual' }] }, saved: saved || undefined };
+}
+var list = [card('site_2', { category: 'sales', edit: true }), card('morning')];
+var out = {};
+function keys(items) { return items.map(function (item) { return item.key; }); }
+out.saved = keys(templatesKept(list, card('site_3', { category: 'team', edit: true }), null));
+out.changed = keys(templatesKept([card('morning'), card('site_2', { category: 'sales', edit: true })], card('site_2', { category: 'site', edit: true }), card('site_2')));
+out.deleted = keys(templatesKept(list, null, card('site_2')));
+out.unchanged = keys(list);
+var mine = templateCard(card('site_2', { category: 'sales', edit: true }), null);
+var theirs = templateCard(card('site_4', { category: 'team', edit: false }), null);
+var builtin = templateCard(card('morning'), null);
+out.mine = [mine.children[1].className, textOf(mine.children[1]), buttonsOf(mine).length];
+out.theirs = [textOf(theirs.children[1]), buttonsOf(theirs).length];
+out.builtin = [builtin.children[1].tag, buttonsOf(builtin).length];
+buttonsOf(mine)[1].click();
+buttonsOf(mine)[2].click();
+out.edited = edited;
+out.binned = binned;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if (!is_array($result)) {
+		return;
+	}
+
+	pg_assert_same(array('site_3', 'site_2', 'morning'), $result['saved'], 'a saved template comes first');
+	pg_assert_same(array('site_2', 'morning'), $result['changed'], 'a changed template moves first, once');
+	pg_assert_same(array('morning'), $result['deleted'], 'a deleted template goes');
+	pg_assert_same(array('site_2', 'morning'), $result['unchanged'], 'the list handed in is not changed');
+	pg_assert_contains('badge', $result['mine'][0], 'a saved card is marked');
+	pg_assert_same('Sales', $result['mine'][1], 'with its own group');
+	pg_assert_same(3, $result['mine'][2], 'Use, edit and delete for whoever may change it');
+	pg_assert_same(array('Team', 1), $result['theirs'], 'Use alone for the others');
+	pg_assert_same(array('h4', 1), $result['builtin'], 'a built-in card has no mark and Use alone');
+	pg_assert_same(array('site_2'), $result['edited'], 'edit opens the dialog for that template');
+	pg_assert_same(array('site_2'), $result['binned'], 'delete asks for that template');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	$more = ws_flows_canvas_test_script_function($script, 'moreMenu');
+
+	pg_assert_contains('FL.template_save', $more, 'Save as template only where the config allows it');
+	pg_assert_contains("'ws_flow_template_save'", $script, 'the save goes through the panel action');
+	pg_assert_contains("'ws_flow_template_update'", $script, 'the change goes through the panel action');
+	pg_assert_contains("'ws_flow_template_bin'", $script, 'the delete goes through the panel action');
+	pg_assert_contains("'template_save'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'), 'the config says whether templates may be saved');
+}

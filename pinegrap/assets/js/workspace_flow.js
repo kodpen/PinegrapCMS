@@ -263,6 +263,7 @@
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
         section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
+        galleryInto: null,  // the flow the gallery was opened to fill, null for a new one
         scheduled: null,    // the scheduled actions the list ends with: converted (items), refused (count)
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
@@ -1346,11 +1347,18 @@
                 return;
             }
 
+            // The focus asked for is the gallery's: showNone() would spend
+            // it on the flow list it draws on the way.
+            var focus = state.refocus;
+
             window.clearTimeout(state.saveTimer);
+            state.refocus = '';
             showNone();
             listing(false);
             flowsButton();
+            state.refocus = focus;
             state.section = 'templates';
+            state.galleryInto = into;
             K.clear(ui.gallery);
             ui.empty.classList.add('d-none');
             ui.stage.classList.add('d-none');
@@ -1415,6 +1423,11 @@
         });
 
         card.appendChild(icons);
+
+        if (template.saved) {
+            card.appendChild(savedMark(template));
+        }
+
         card.appendChild(el('h4', 'wsf-tpl-name', template.title));
         card.appendChild(el('p', 'wsf-tpl-help', template.help));
         meta.appendChild(el('span', 'wsf-tpl-start', start ? t(start.name) : ''));
@@ -1433,9 +1446,266 @@
                 use.disabled = false;
             });
         });
-        card.appendChild(use);
+
+        if (!template.saved) {
+            card.appendChild(use);
+
+            return card;
+        }
+
+        // A template saved on the site: edit and delete for its saver or a
+        // Manager and above (saved.edit).
+        var foot = el('div', 'd-flex flex-wrap align-items-center gap-2 mt-auto');
+
+        foot.appendChild(use);
+
+        if (template.saved.edit) {
+            var edit = K.button('btn btn-sm btn-ghost', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
+            var bin = K.button('btn btn-sm btn-ghost', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
+
+            edit.setAttribute('data-refocus', 'tpl-edit-' + template.key);
+            edit.addEventListener('click', function () { templateDialog(template); });
+            bin.setAttribute('data-refocus', 'tpl-bin-' + template.key);
+            bin.addEventListener('click', function () { binTemplate(template, bin); });
+            foot.appendChild(edit);
+            foot.appendChild(bin);
+        }
+
+        card.appendChild(foot);
 
         return card;
+    }
+
+    // The mark of a template saved on the site: its own group (team, site,
+    // sales), as the gallery files all of them under "Saved on this site".
+    function savedMark(template) {
+        var badge = el('span', 'badge rounded-pill badge-subtle theme-secondary border align-self-start');
+
+        badge.title = t('fl_tpl_site_mark');
+        badge.appendChild(K.icon('bi-bookmark-star', 'me-1'));
+        badge.appendChild(el('span', '', (FL.template_categories || {})[template.saved.category] || ''));
+
+        return badge;
+    }
+
+    // ── Saving a flow as a template, changing a saved one ──────────────
+
+    // The dialog of a template's title, line and group: for the flow open
+    // in the editor (no template) or for a saved template of the gallery.
+    // Built once; each opening fills it.
+    function templateModal() {
+        if (ui.templateModal) {
+            return ui.templateModal;
+        }
+
+        var modal = el('dialog', 'dialog wsf-tpl-modal');
+        var form = el('form');
+        var head = el('div', 'dialog-header');
+        var title = el('h2', 'dialog-title fs-md');
+        var cross = el('button', 'btn-close');
+        var body = el('div', 'dialog-body');
+        var foot = el('div', 'dialog-footer');
+        var cancel = K.button('btn btn-sm btn-ghost', t('fl_tpl_cancel'));
+        var submit = K.button('btn btn-sm btn-solid theme-primary', '');
+        var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
+        var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
+        var name = el('input', 'form-control form-control-sm');
+        var line = el('input', 'form-control form-control-sm');
+        var group = K.select(categories.map(function (key) { return [key, FL.template_categories[key]]; }), categories[0] || '');
+
+        modal.id = 'wsf-tpl-dialog';
+        modal.tabIndex = -1;
+        modal.setAttribute('aria-labelledby', 'wsf-tpl-dialog-title');
+        title.id = 'wsf-tpl-dialog-title';
+        cross.type = 'button';
+        cross.setAttribute('aria-label', t('fl_tpl_cancel'));
+        cross.setAttribute('data-bs-dismiss', 'dialog');
+        cancel.setAttribute('data-bs-dismiss', 'dialog');
+        submit.type = 'submit';
+        error.setAttribute('role', 'alert');
+        name.type = line.type = 'text';
+        name.maxLength = 160;
+        name.required = true;
+        line.maxLength = 255;
+        name.setAttribute('data-field', 'title');
+        line.setAttribute('data-field', 'help');
+        group.setAttribute('data-field', 'category');
+        head.appendChild(title);
+        head.appendChild(cross);
+        body.appendChild(el('p', 'small fg-secondary wsf-tpl-modal-help'));
+        body.appendChild(field(t('fl_tpl_name'), name));
+        body.appendChild(field(t('fl_tpl_line'), line));
+        body.appendChild(field(t('fl_tpl_group'), group));
+        body.appendChild(error);
+        foot.appendChild(cancel);
+        foot.appendChild(submit);
+        form.appendChild(head);
+        form.appendChild(body);
+        form.appendChild(foot);
+        modal.appendChild(form);
+        document.body.appendChild(modal);
+
+        // The fields are the person's to fill whether or not a flow is open
+        // for editing (field() follows state.edit).
+        [name, line, group].forEach(function (control) { control.disabled = false; });
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            if (ui.templateSend) {
+                ui.templateSend();
+            }
+        });
+
+        // What follows a change (the gallery drawn again) waits for the
+        // dialog to be closed: while it is open the page behind it takes no
+        // focus.
+        pgUI.dialog.on(modal, 'hidden', function () {
+            var after = ui.templateAfter;
+
+            ui.templateSend = ui.templateAfter = null;
+
+            if (after) {
+                whenDialogsClosed(after);
+            } else {
+                refocus();
+            }
+        });
+
+        ui.templateModal = modal;
+        ui.templateParts = { title: title, help: body.querySelector('.wsf-tpl-modal-help'), name: name, line: line, group: group, submit: submit, error: error };
+
+        return modal;
+    }
+
+    // Opens the dialog: with a template, to change that saved template;
+    // without, to keep the open flow's draft as a template of the site
+    // (its unsaved changes are saved first, as the server reads the draft).
+    function templateDialog(template) {
+        var flow = template ? null : state.flow;
+        var modal = templateModal();
+        var parts = ui.templateParts;
+        var busy = false;
+
+        if (!template && !flow) {
+            return;
+        }
+
+        parts.title.textContent = template ? t('fl_tpl_edit') : t('fl_tpl_save');
+        parts.help.textContent = t('fl_tpl_save_help');
+        parts.help.classList.toggle('d-none', !!template);
+        parts.submit.textContent = template ? t('fl_tpl_change_do') : t('fl_tpl_save_do');
+        parts.name.value = template ? template.title : flow.name;
+        parts.line.value = template ? template.help : '';
+        parts.group.value = template ? template.saved.category : (parts.group.options[0] ? parts.group.options[0].value : '');
+        parts.error.classList.add('d-none');
+        parts.submit.disabled = false;
+        [parts.name, parts.line, parts.group].forEach(function (control) { control.classList.remove('is-invalid'); });
+        state.refocus = template ? 'tpl-edit-' + template.key : 'more';
+
+        ui.templateSend = function () {
+            if (busy) {
+                return;
+            }
+
+            var data = { title: parts.name.value, help: parts.line.value, category: parts.group.value };
+            var request = template
+                ? K.api('ws_flow_template_update', Object.assign({ key: template.key }, data))
+                : flush().then(function () {
+                    if ((state.flow !== flow) || state.dirty || state.saveError || state.conflict) {
+                        throw new Error(state.saveError || state.conflict || t('fl_unsaved'));
+                    }
+
+                    return K.api('ws_flow_template_save', Object.assign({ flow_id: flow.id }, data));
+                });
+
+            busy = true;
+            parts.submit.disabled = true;
+            parts.error.classList.add('d-none');
+            [parts.name, parts.line, parts.group].forEach(function (control) { control.classList.remove('is-invalid'); });
+
+            request.then(function (answer) {
+                busy = false;
+                parts.submit.disabled = false;
+                FL.templates = templatesKept(FL.templates, answer.template, template);
+
+                if (template && (state.section === 'templates')) {
+                    ui.templateAfter = function () {
+                        state.refocus = 'tpl-edit-' + answer.template.key;
+                        showGallery(state.galleryInto);
+                    };
+                }
+
+                pgUI.dialog.hide(modal);
+                K.toast(template ? t('fl_tpl_changed') : t('fl_tpl_saved'), 'success');
+            }).catch(function (failure) {
+                busy = false;
+                parts.submit.disabled = false;
+
+                var bad = failure.field ? modal.querySelector('[data-field="' + failure.field + '"]') : null;
+
+                parts.error.textContent = failure.message || t('fl_unsaved');
+                parts.error.classList.remove('d-none');
+
+                if (bad) {
+                    bad.classList.add('is-invalid');
+                }
+
+                (bad || parts.submit).focus();
+            });
+        };
+
+        pgUI.dialog.show(modal);
+        parts.name.focus();
+        parts.name.select();
+    }
+
+    // fn once no dialog is open: the question asked or the template dialog
+    // fades out before it closes, and until then the page behind it takes
+    // no focus.
+    function whenDialogsClosed(fn) {
+        var open = document.querySelector('dialog[open]');
+
+        if (!open) {
+            fn();
+            return;
+        }
+
+        open.addEventListener('close', function () { whenDialogsClosed(fn); }, { once: true });
+    }
+
+    // The gallery's list as the server now has it: a saved or changed
+    // template first (the latest changed come first), a deleted one (old
+    // without entry) gone. A new list; the one given stays as it was.
+    function templatesKept(list, entry, old) {
+        var kept = (list || []).filter(function (item) {
+            return !(old && (item.key === old.key)) && !(entry && (item.key === entry.key));
+        });
+
+        return entry ? [entry].concat(kept) : kept;
+    }
+
+    function binTemplate(template, control) {
+        K.ask(t('fl_tpl_delete_ask', template.title), t('fl_tpl_delete'), true).then(function (yes) {
+            if (!yes) {
+                control.focus();
+                return null;
+            }
+
+            control.disabled = true;
+
+            return K.api('ws_flow_template_bin', { key: template.key }).then(function () {
+                FL.templates = templatesKept(FL.templates, null, template);
+                K.toast(t('fl_tpl_deleted'), 'success');
+                whenDialogsClosed(function () {
+                    state.refocus = 'tpl-' + ((FL.templates || []).filter(function (item) { return item.saved; })[0] || { key: '' }).key + ' tpl-empty tpl-back';
+                    showGallery(state.galleryInto);
+                });
+            });
+        }).catch(function (error) {
+            control.disabled = false;
+            K.fail(error);
+        });
     }
 
     // The template's boxes and arrows on the canvas: on the flow it was
@@ -2249,6 +2519,16 @@
         share.setAttribute('data-wsf-share', '');
         share.addEventListener('click', openShares);
         menu.appendChild(el('li')).appendChild(share);
+
+        // Keeping the draft as a template of the site: for those who build
+        // flows, on a flow they edit (ws_flow_template_save() refuses one
+        // without boxes, said in the dialog).
+        if (FL.template_save && state.edit) {
+            var keep = K.button('menu-item pg-link-body-emphasis', t('fl_tpl_save'), 'bi-bookmark-plus');
+
+            keep.addEventListener('click', function () { templateDialog(null); });
+            menu.appendChild(el('li')).appendChild(keep);
+        }
 
         if (flow.manage && state.edit) {
             var bin = K.button('menu-item pg-link-body-emphasis', t('fl_bin'), 'bi-trash');
