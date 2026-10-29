@@ -41,6 +41,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ai-write-panel.md: The "Write with AI" button and draft panel (pg_ai_write_button(), pg_ai_write.js): where it is, adding it to a field, what the panel does, what the server adds
 - ai-write-tinymce.md: "Write with AI" and the AI marks with the "previous" rich text editor (TinyMCE 3): where the draft goes, how the mark follows the text, the lost-draft symptom it fixed
 - ai-write.md: "Write with AI" drafts for product, page and form record fields (ai_write panel action, includes/fn/ai_write.php): targets, context, model, quota guards, who may ask, reading the answer
+- api-console-try-fields.md: API documentation Try it fields (fieldsFor() in includes/api/console_view.php): each field gets an id from a page-wide counter and its caption is a <label for>
 - arrival-date-shared-form.md: The arrival date create and edit screens share includes/forms/arrival_date_form.php: what it holds, what stays in the screens
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address

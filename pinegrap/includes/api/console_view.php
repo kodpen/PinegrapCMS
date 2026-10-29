@@ -492,18 +492,26 @@ window.pgApiConsole = (function () {
 			.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/\'/g, "&#39;");
 	}
 
+	// Field ids come from one counter for the whole page: several panels can be
+	// open at once, parameter names repeat across endpoints and a panel builds
+	// its fields again each time it opens, so the ids never collide.
+	var fieldSeq = 0;
+
 	// One input per parameter row of the endpoint\'s tables. The declared type
 	// travels with the field so send() knows which values need parsing: a list
 	// gets a textarea whose placeholder shows the JSON form it expects, an
-	// enumeration and a switch get a select so a typo is not possible.
+	// enumeration and a switch get a select so a typo is not possible. The
+	// caption is the field\'s label, so it is the name screen readers and
+	// voice control use.
 	function fieldsFor(endpoint) {
 		var html = "<div class=\'row g-3 mb-3\'>";
 		endpoint.querySelectorAll(".doc-params table tr").forEach(function (row) {
 			var name = row.dataset.name;
 			var type = row.dataset.type || "string";
 			var where = row.dataset.where || "query";
-			var attributes = " data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
-			html += "<div class=\'col-6 lg:col-4\'><label class=\'form-label small mb-1\'>" + esc(name) +
+			var id = "doc_field_" + (++fieldSeq);
+			var attributes = " id=\'" + id + "\' data-name=\'" + esc(name) + "\' data-type=\'" + esc(type) + "\' data-where=\'" + esc(where) + "\'";
+			html += "<div class=\'col-6 lg:col-4\'><label for=\'" + id + "\' class=\'form-label small mb-1\'>" + esc(name) +
 				" <span class=\'fg-2\'>" + esc(where) + "</span></label>";
 			if (type === "list") {
 				html += "<textarea rows=\'2\' class=\'form-control form-control-sm doc-field\'" + attributes +

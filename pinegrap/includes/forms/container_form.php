@@ -47,8 +47,8 @@ function pg_container_form_card($liveform)
                                                     <label for="enabled" class="">' . lang('Enabled') . '</label>
                                                 </div>
                                             </div>
-                                            <div class="col-12 my-3">
-                                                <label class="form-label">' . lang('Dimensions') . '</label>
+                                            <fieldset class="col-12 my-3">
+                                                <legend class="form-label fs-md">' . lang('Dimensions') . '</legend>
                                                 <div class="mb-3">
                                                     <div class="form-field d-inline-grid me-5">
                                                         <input type="radio" class="radio" id="length_type_inches" name="length_type" value="inches" checked />
@@ -59,25 +59,53 @@ function pg_container_form_card($liveform)
                                                         <label class="" for="length_type_cm">' . lang('Cm') . '</label>
                                                     </div>
                                                 </div>
-                                                <div id="length_inches" class="input-group" style="max-width:400px;">
-                                                    <span class="input-group-text">L</span>
-                                                    <input type="number" step="any" id="length" name="length" value="' . h($liveform->get_field_value('length')) . '" class="form-control' . ($liveform->check_field_error('length') ? ' is-invalid' : '') . '" placeholder="' . lang('Length') . '" />
-                                                    <span class="input-group-text">W</span>
-                                                    <input type="number" step="any" id="width" name="width" value="' . h($liveform->get_field_value('width')) . '" class="form-control' . ($liveform->check_field_error('width') ? ' is-invalid' : '') . '" placeholder="' . lang('Width') . '" />
-                                                    <span class="input-group-text">H</span>
-                                                    <input type="number" step="any" id="height" name="height" value="' . h($liveform->get_field_value('height')) . '" class="form-control' . ($liveform->check_field_error('height') ? ' is-invalid' : '') . '" placeholder="' . lang('Height') . '" />
-                                                    <span class="input-group-text">' . lang('in') . '</span>
+                                                <div id="length_inches" class="row g-3" style="max-width:600px;">
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="length" class="form-label">' . lang('Length') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
+                                                            <input type="number" step="any" id="length" name="length" value="' . h($liveform->get_field_value('length')) . '" class="form-ghost' . ($liveform->check_field_error('length') ? ' is-invalid' : '') . '" />
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="width" class="form-label">' . lang('Width') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
+                                                            <input type="number" step="any" id="width" name="width" value="' . h($liveform->get_field_value('width')) . '" class="form-ghost' . ($liveform->check_field_error('width') ? ' is-invalid' : '') . '" />
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="height" class="form-label">' . lang('Height') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('in') . '</span>
+                                                            <input type="number" step="any" id="height" name="height" value="' . h($liveform->get_field_value('height')) . '" class="form-ghost' . ($liveform->check_field_error('height') ? ' is-invalid' : '') . '" />
+                                                        </label>
+                                                    </div>
                                                 </div>
-                                                <div id="length_cm" class="input-group d-none" style="max-width:400px;">
-                                                    <span class="input-group-text">L</span>
-                                                    <input type="number" step="any" id="lengthcm" name="lengthcm" class="form-control" placeholder="' . lang('Length') . '" />
-                                                    <span class="input-group-text">W</span>
-                                                    <input type="number" step="any" id="widthcm" name="widthcm" class="form-control" placeholder="' . lang('Width') . '" />
-                                                    <span class="input-group-text">H</span>
-                                                    <input type="number" step="any" id="heightcm" name="heightcm" class="form-control" placeholder="' . lang('Height') . '" />
-                                                    <span class="input-group-text">' . lang('cm') . '</span>
+                                                <div id="length_cm" class="row g-3 d-none" style="max-width:600px;">
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="lengthcm" class="form-label">' . lang('Length') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
+                                                            <input type="number" step="any" id="lengthcm" name="lengthcm" class="form-ghost" />
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="widthcm" class="form-label">' . lang('Width') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
+                                                            <input type="number" step="any" id="widthcm" name="widthcm" class="form-ghost" />
+                                                        </label>
+                                                    </div>
+                                                    <div class="col-12 sm:col-4">
+                                                        <label for="heightcm" class="form-label">' . lang('Height') . '</label>
+                                                        <label class="form-control form-adorn form-adorn-end">
+                                                            <span class="form-adorn-text" aria-hidden="true">' . lang('cm') . '</span>
+                                                            <input type="number" step="any" id="heightcm" name="heightcm" class="form-ghost" />
+                                                        </label>
+                                                    </div>
                                                 </div>
-                                            </div>
+                                            </fieldset>
                                             <div class="col-12 md:col-6 my-3">
                                                 <label for="weight" id="weight_label" class="form-label">' . lang('Weight') . '</label>
                                                 <div class="mb-3">
