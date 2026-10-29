@@ -2,7 +2,7 @@
   "name": "pinegrap-code-editor-bundle",
   "version": "1.0.0",
   "private": true,
-  "description": "Builds pinegrap/assets/lib/code_editor/cm6.bundle.js (CodeMirror 6, the minimap and the js-beautify formatter) through tools/build_code_editor.php",
+  "description": "Builds pinegrap/assets/lib/code_editor/cm6.bundle.js (CodeMirror 6, the minimap, the js-beautify formatter and Emmet's core) through tools/build_code_editor.php",
   "license": "MIT",
   "dependencies": {
     "@codemirror/autocomplete": "6.20.3",
@@ -20,6 +20,7 @@
     "@lezer/highlight": "1.2.5",
     "@replit/codemirror-minimap": "0.5.2",
     "@replit/codemirror-vscode-keymap": "6.0.2",
+    "emmet": "2.4.11",
     "js-beautify": "2.0.3"
   },
   "devDependencies": {

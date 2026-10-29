@@ -12,7 +12,7 @@
  * registered here once and reaches every editor.
  *
  *   PgCodeEditor.configure({ bundle: url, phrases: {...},     once per page
- *                            minimap: bool })
+ *                            minimap: bool, emmet: bool })
  *   PgCodeEditor.open(host, opts).then(function (ed) { ... })  load + create
  *   PgCodeEditor.attach(textarea, opts)                        like fromTextArea
  *   PgCodeEditor.addCompletionSource(language, source)         registry
@@ -24,8 +24,9 @@
  * setLanguage, setReadOnly, setTheme, goTo and scrollTo, the search panel,
  * format (CSS, JavaScript and JSON; Shift+Alt+F in both keymaps), an
  * optional minimap beside the scroll bar (`minimap`, setMinimap /
- * hasMinimap), tracked ranges that follow the text as it is edited (track /
- * tracked / trackedAt)
+ * hasMinimap), Emmet's expand abbreviation on Mod+E in HTML and CSS
+ * (`emmet`, expandAbbreviation / setEmmet / hasEmmet), tracked ranges that
+ * follow the text as it is edited (track / tracked / trackedAt)
  * and locks: ranges no edit may touch, each with optional "islands" inside
  * it that stay editable. A lock without islands is read-only as a whole; a
  * lock with islands lets only the islands change (an attribute's value, an
@@ -53,7 +54,8 @@
     var _cfg = {
         bundle: '',          // URL of cm6.bundle.js; derived from this script's URL when empty
         phrases: null,       // engine texts: { 'Find': '…', 'Replace': '…', … }
-        minimap: false       // page default of opts.minimap
+        minimap: false,      // page default of opts.minimap
+        emmet: true          // page default of opts.emmet
     };
     var _loading = null;     // Promise while the bundle is on its way
     var _completions = {};   // language → [source]
@@ -77,6 +79,7 @@
         if (typeof opts.bundle === 'string' && opts.bundle) _cfg.bundle = opts.bundle;
         if (opts.phrases && typeof opts.phrases === 'object') _cfg.phrases = opts.phrases;
         if (typeof opts.minimap === 'boolean') _cfg.minimap = opts.minimap;
+        if (typeof opts.emmet === 'boolean') _cfg.emmet = opts.emmet;
     }
 
     function isLoaded() {
@@ -761,6 +764,82 @@
         });
     }
 
+    // ── Emmet ────────────────────────────────────────────────────────────
+    // Expand abbreviation on the bundle's Emmet core: the key is Mod+E, never
+    // Tab, since Tab indents and accepts a completion, and in HTML text any
+    // word before the cursor is a valid abbreviation (`hello` would become
+    // <hello></hello>). On unless the editor's `emmet` option or the page
+    // default turns it off; only HTML and CSS editors expand.
+    function _emmetOn(opts) {
+        return (typeof opts.emmet === 'boolean') ? opts.emmet : _cfg.emmet;
+    }
+
+    var EMMET_MARKUP_AT = { Text: 1, Element: 1, Document: 1 };
+
+    // What Emmet would expand at `pos`, read from the syntax tree: markup in
+    // HTML text (between tags, never inside a tag, a comment or a <script>),
+    // with the enclosing element's name as context (`.item` inside <ul>
+    // gives an <li>); stylesheet inside a CSS rule's block or a style=""
+    // attribute, in a CSS editor or inside an HTML one. null elsewhere.
+    function _emmetContext(cm, state, pos) {
+        var tree = cm.language.syntaxTree(state);
+        tree.resolveInner(0, 0);
+        var node = tree.resolveInner(pos, -1);
+        var lang = _regionLanguage(cm, node);
+        if (lang === 'html') {
+            if (!EMMET_MARKUP_AT[node.name]) return null;
+            for (var el = node; el; el = el.parent) {
+                if (el.name !== 'Element') continue;
+                var open = el.getChild('OpenTag'), name = open ? open.getChild('TagName') : null;
+                return { type: 'markup', parent: name ? state.sliceDoc(name.from, name.to).toLowerCase() : null };
+            }
+            return { type: 'markup', parent: null };
+        }
+        if (lang !== 'css') return null;
+        for (var n = node; n; n = n.parent) {
+            if (n.name === 'Block' || n.name === 'Styles') return { type: 'stylesheet', parent: null };
+            if (n.type.isTop) break;
+        }
+        return null;
+    }
+
+    // The abbreviation that ends at `pos` (an auto-closed `]`, `}` or `)`
+    // right after it included) expanded into a CodeMirror snippet template:
+    // { from, to, template }, or null when there is none or Emmet refused
+    // it. Emmet's fields become ${n:placeholder} tab-stops; text that would
+    // read as a field (`${`, `#{`) is escaped, so only Emmet's fields are.
+    function _emmetSnippet(cm, state, pos) {
+        if (!cm.emmet) return null;
+        var ctx = _emmetContext(cm, state, pos);
+        if (!ctx) return null;
+        var line = state.doc.lineAt(pos);
+        // Looking ahead for an auto-closed bracket is for markup only: in a
+        // style="" value it would stop at the closing quote and find nothing.
+        var found = cm.emmet.extract(line.text, pos - line.from, { type: ctx.type, lookAhead: ctx.type === 'markup' });
+        if (!found || !found.abbreviation) return null;
+        var from = line.from + found.start, to = line.from + found.end;
+        if (from > pos || to < pos) return null;
+        var config = {
+            type: ctx.type,
+            syntax: (ctx.type === 'stylesheet') ? 'css' : 'html',
+            options: {
+                'output.indent': '\t',
+                'output.baseIndent': '',
+                'output.field': function (index, placeholder) {
+                    return '\u0001' + index + '\u0002' + String(placeholder || '').replace(/[{}\u0001-\u0003]/g, '') + '\u0003';
+                }
+            }
+        };
+        if (ctx.parent) config.context = { name: ctx.parent };
+        var out;
+        try { out = cm.emmet.expand(found.abbreviation, config); } catch (e) { return null; }
+        if (typeof out !== 'string' || !out) return null;
+        var template = out.replace(/([#$])\{/g, '$1\\{').replace(/\u0001(\d+)\u0002([^\u0003]*)\u0003/g, function (m, index, placeholder) {
+            return '${' + index + (placeholder ? ':' + placeholder : '') + '}';
+        });
+        return { from: from, to: to, template: template, type: ctx.type };
+    }
+
     // ── Instance ─────────────────────────────────────────────────────────
     function pgCeCreate(host, opts) {
         if (!isLoaded()) throw new Error('PgCodeEditor.create() before the bundle loaded; use PgCodeEditor.open().');
@@ -803,7 +882,9 @@
         };
 
         function keymapExtensions() {
-            var list = [V.keymap.of([{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }])];
+            var own = [{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }];
+            if (_emmetOn(opts)) own.push({ key: 'Mod-e', run: function () { return inst.expandAbbreviation(); } });
+            var list = [V.keymap.of(own)];
             if (useVscode) {
                 list.push(V.keymap.of(cm.vscodeKeymap));
             } else {
@@ -956,6 +1037,25 @@
             });
             return inst._refused === refused;
         };
+        // Expands the Emmet abbreviation before the cursor (_emmetSnippet) as
+        // a snippet: Tab and Shift+Tab walk its fields, Escape leaves them.
+        // False, nothing changed, when Emmet is off, the language is not
+        // HTML or CSS, the editor is read-only, text is selected, there is
+        // no abbreviation, or a lock covers it. Markup is refused inside a
+        // lock's island too: an island of a half-locked element takes text,
+        // not new elements; CSS in a style="" island is only text.
+        inst.expandAbbreviation = function () {
+            if (!_emmetOn(opts) || (lang !== 'html' && lang !== 'css')) return false;
+            if (view.state.readOnly || view.state.selection.ranges.length !== 1) return false;
+            var sel = view.state.selection.main;
+            if (!sel.empty) return false;
+            var snip = _emmetSnippet(cm, view.state, sel.head);
+            if (!snip || !inst.canEdit(snip.from, snip.to)) return false;
+            if (snip.type === 'markup' && _insideLock(snip.from, snip.to)) return false;
+            var refused = inst._refused;
+            cm.autocomplete.snippet(snip.template)(view, null, snip.from, snip.to);
+            return inst._refused === refused;
+        };
         // The engine's syntax tree of the whole document (parsed to the end
         // when it is not yet), for callers that read the structure back.
         inst.syntaxTree = function () {
@@ -998,6 +1098,13 @@
         };
         // Whether the minimap is on: the editor's option, else the page default.
         inst.hasMinimap = function () { return _minimapOn(opts); };
+        // Mod+E on or off for this editor; hasEmmet() reads the editor's
+        // option, else the page default.
+        inst.setEmmet = function (on) {
+            opts.emmet = !!on;
+            view.dispatch({ effects: keymapComp.reconfigure(keymapExtensions()) });
+        };
+        inst.hasEmmet = function () { return _emmetOn(opts); };
         // 'dark' | 'light', while the editor is open: the panel's colour
         // scheme switch pushes it to every editor on the page.
         inst.setTheme = function (name) {
@@ -1122,6 +1229,14 @@
             var set = view.state.field(fields.lockField);
             return _lockVerdict(set, pos, pos);
         };
+        // Whether a lock (its islands included) holds the whole of from..to.
+        function _insideLock(from, to) {
+            var inside = false;
+            view.state.field(fields.lockField).between(from, to, function (f, t, value) {
+                if (value.kind === 'lock' && f <= from && t >= to) { inside = true; return false; }
+            });
+            return inside;
+        }
         inst.canEdit = function (from, to) {
             var set = view.state.field(fields.lockField);
             return _lockVerdict(set, from, (typeof to === 'number') ? to : from) === null;
