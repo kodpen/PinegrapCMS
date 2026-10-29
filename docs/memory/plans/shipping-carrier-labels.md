@@ -17,7 +17,7 @@ description: Plan (approved 2026-10-19; step 1 done, step 2 Geliver #3073): carr
 
 ## What remains?
 1. Driver interface, settings card (credentials encrypted), connection test (S). Done in PR #2378 (`commerce/carrier-label-drivers.md`).
-2. Geliver driver (#3073, `includes/shipping/geliver.php`): create shipment, accept the chosen offer, PDF label download, cancel, track; the `TRACK_UPDATED` webhook later; built on `tests/fixtures` from the public docs, live check with the owner's test key (M).
+2. Geliver driver (#3073, `includes/shipping/geliver.php`; in progress): create shipment, accept the chosen offer, PDF label download, cancel, track; the `TRACK_UPDATED` webhook later; built on `tests/fixtures` from the public docs, live check with the owner's test key (M).
 3. Panel actions single + bulk, label storage under `data/shipping_labels/` with retention (M).
 4. Status polling job in the dispatcher, write-back through the single path (S).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
