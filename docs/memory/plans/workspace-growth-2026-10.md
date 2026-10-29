@@ -12,7 +12,7 @@ description: Umbrella of the Workspace growth plans of 2026-10-23 (CRM seams, MC
 - plans/workspace-mcp-capabilities.md: the site's MCP server: dead tools, one proposal route, resources, prompts, API gaps.
 - plans/workspace-quotes.md: sales quote (`erp_quote`) and cart quote (`cart_quote`).
 - Catalogue creates and bulk drafts: done, workspace/workspace-bulk-create.md.
-- plans/workspace-canvas-workflow-tables.md: workflow tables, board view, scheduled-actions API.
+- Workflow tables, board view, scheduled-actions API: done (workspace/workflow-tables*.md, workflow-table-*.md).
 - plans/workspace-flows.md, plans/workspace-flows-engine.md: Flows (Workspace canvas, rules, process templates), the main use (2026-10-24).
 - workspace/workspace-flows-scheduled-merge.md: scheduled actions into Flows, no feature lost; plans/graph-canvas-core.md: one canvas core for Flows and the designer.
 - plans/workspace-composer-tools.md, plans/workspace-slash-commands.md, plans/workspace-channel-icons.md, plans/workspace-mcp-connectors.md, plans/workspace-assistant-key-setup.md.

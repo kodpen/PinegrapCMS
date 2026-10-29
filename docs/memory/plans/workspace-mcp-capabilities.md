@@ -23,7 +23,7 @@ description: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on 
 4. PR #1598: resources my-day, channel context, refs by their GET routes; prompts channel_summary, weekly_report with `pg_ai_prompt_rules()` (api/mcp-resources-prompts.md). `…/channels/{id}/customer`: #1970.
 5. PR #1716: consent presets (Workspace, Store, Accounting, All) on the consent screen (api/api-oauth-consent-presets.md); what each ticks follows answer 3.
 6. No schema, a PR each: tasks `due_time`, `remind_minutes` (PR #1742, workspace/workspace-api-task-reminder.md); channel customer on create/update (PR #1766, workspace/workspace-api-channel-customer.md); forward (PR #1816, workspace/workspace-api-forward.md); small-file path (PR #1830, api/workspace-mcp-small-file.md).
-7. Scheduled actions as tools: plans/workspace-canvas-workflow-tables.md S1, S2.
+7. Scheduled actions as tools: workspace/workspace-scheduled-actions-api.md.
 8. No schema, a PR per area: `dry_run` on the ERP writes lacking it (accounts: PR #1850; receipts: PR #1870; expenses: PR #1891; erp/erp-api-dry-run.md) and the 7 translations writes (PR #1911, api/translations-api-dry-run.md).
 - Each new change kind (`erp_quote`: done #1705; `variant_set`, bulk create) also reaches `ws_api_changes_param()` (the `changes` text of requests.answer and both propose routes, so their MCP tools) and `ws_ai_tools()`.
 

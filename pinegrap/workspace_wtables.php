@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level', 'value'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level', 'value', 'note', 'starter', 'samples'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -61,6 +61,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     switch ($action) {
 
         case 'table_create':
+            // An empty table, or one from a starter with its columns made.
+            $starter = $field('starter');
+
+            if (($starter !== '') && isset(ws_wtable_starters()[$starter])) {
+                $result = ws_wtable_starter_create($viewer, $starter, $field('name'), $field('description'), $field('samples') === '1');
+
+                if ($result['ok']) {
+                    $liveform->add_notice(h(lang('The table was made from the starter.')));
+                    $back = $self_url . '?id=' . (int) $result['table_id'];
+                } else {
+                    $refused($result);
+                    $back = $self_url;
+                }
+
+                break;
+            }
+
             $result = ws_wtable_create($viewer, array('name' => $field('name'), 'description' => $field('description')));
 
             if ($result['ok']) {
@@ -215,6 +232,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $liveform->add_error(h(lang('The file could not be read.')));
                     $back = $append ? $table_url : $self_url;
                 }
+            }
+
+            break;
+
+        case 'import_note':
+            // One table of a note the person may read, kept like a file.
+            $append = ($table !== null);
+            $fallback = $append ? $table_url : $self_url;
+            $back = $append ? $table_url . '&import=1#ws-wt-import' : $self_url . '?import=1#ws-wt-import';
+            $chosen = preg_match('/^([0-9]+):([0-9]+)$/', $field('note'), $match) ? $match : null;
+
+            if ($append && !ws_wtable_may(ws_wtable_access($viewer, $table), 'write')) {
+                $refused(ws_wtable_refusal('not_found', '', 404));
+                $back = $self_url;
+                break;
+            }
+
+            $read = $chosen ? ws_wtable_import_note_read($viewer, (int) $chosen[1], (int) $chosen[2], ws_wtable_limits()['rows'] + 1) : null;
+
+            if (!$read) {
+                $liveform->add_error(h(lang('Choose a note table to import.')));
+                $back = $fallback;
+            } elseif (!$read['ok']) {
+                $liveform->add_error(h($read['error']));
+                $back = $fallback;
+            } elseif (count($read['table']) < 2) {
+                $liveform->add_error(h(lang('The table has a header row but no rows under it.')));
+                $back = $fallback;
+            } elseif (!ws_wtable_import_keep($read, $read['name'], $append ? (int) $table['id'] : 0, true)) {
+                $liveform->add_error(h(lang('The table could not be read.')));
+                $back = $fallback;
             }
 
             break;
@@ -390,6 +438,37 @@ $import_upload = function ($table_id, $intro) use ($self_url) {
                     </form>';
 };
 
+// A note's table brought in the same way: one choice per table.
+$note_choices = null;
+$import_note = function ($table_id, $intro) use ($self_url, $viewer, &$note_choices) {
+    if ($note_choices === null) {
+        $note_choices = ws_wtable_import_note_choices($viewer);
+    }
+
+    if (empty($note_choices)) {
+        return '<p class="small fg-secondary mb-0">' . h(lang('None of your notes holds a table yet.')) . '</p>';
+    }
+
+    $options = '';
+
+    foreach ($note_choices as $choice) {
+        $options .= '<option value="' . (int) $choice['note'] . ':' . (int) $choice['block'] . '">' . h($choice['label']) . '</option>';
+    }
+
+    return '
+                    <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="wt_action" value="import_note">
+                        <input type="hidden" name="wt_table" value="' . (int) $table_id . '">
+                        <p class="small fg-secondary">' . h($intro) . '</p>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="ws_wt_import_note">' . h(lang('Note table')) . '</label>
+                            <select class="form-control form-control-sm" name="note" id="ws_wt_import_note" required>' . $options . '</select>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Read the table')) . '</button>
+                    </form>';
+};
+
 $import_card = '';
 
 if ($kept) {
@@ -438,7 +517,7 @@ if ($kept) {
     }
 
     $head = $table
-        ? '<th scope="col">' . h(lang('In the file')) . '</th><th scope="col">' . h(lang('Into the column')) . '</th><th scope="col">' . h(lang('First values')) . '</th>'
+        ? '<th scope="col">' . h($kept['note'] ? lang('In the note') : lang('In the file')) . '</th><th scope="col">' . h(lang('Into the column')) . '</th><th scope="col">' . h(lang('First values')) . '</th>'
         : '<th scope="col"><span class="visually-hidden">' . h(lang('Import')) . '</span></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
 
     $import_card = '
@@ -447,15 +526,17 @@ if ($kept) {
             . h(lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
         <div class="card-body">
             ' . ($kept['more'] ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'The file has more rows than a table holds: only the first {var:1} are read.', 'vars' => ws_wtable_limits()['rows']))) . '</div>' : '') . '
-            <p class="small fg-secondary">' . h($table
+            <p class="small fg-secondary">' . h($kept['note'] ? ($table
+                ? lang('Each column of the note\'s table fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.')
+                : lang('Each column of the note\'s table becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.')) : ($table
                 ? lang('Each file column fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.')
-                : lang('Each column of the file becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.')) . '</p>
+                : lang('Each column of the file becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.'))) . '</p>
             <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
                 ' . get_token_field() . '
                 <input type="hidden" name="wt_action" value="import_write">
                 <input type="hidden" name="wt_table" value="' . ($table ? (int) $table['id'] : 0) . '">
                 ' . ($table ? '' : '<div class="mb-3" style="max-width: 32rem;"><label class="form-label small mb-1" for="ws_wt_import_name">' . h(lang('Table name')) . '</label>
-                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_import_name" value="' . h(mb_substr(pg_file_name_stem($kept['file']), 0, ws_wtable_limits()['name'])) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>') . '
+                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_import_name" value="' . h(mb_substr($kept['note'] ? $kept['file'] : pg_file_name_stem($kept['file']), 0, ws_wtable_limits()['name'])) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>') . '
                 <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $lines . '</tbody></table></div>
                 <div class="d-flex gap-3 mt-5">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Import')) . '</button>
@@ -529,6 +610,12 @@ if (!$table) {
             <tbody>' . $lines . '</tbody>
         </table></div>';
 
+    $starter_options = '<option value="">' . h(lang('An empty table')) . '</option>';
+
+    foreach (ws_wtable_starters() as $key => $starter) {
+        $starter_options .= '<option value="' . h($key) . '">' . h($starter['name']) . '</option>';
+    }
+
     $body = $import_card . '
     <div class="row g-5">
         <div class="col-12 xl:col-8">
@@ -546,11 +633,20 @@ if (!$table) {
                         <input type="hidden" name="wt_action" value="table_create">
                         <div class="mb-3">
                             <label class="form-label small mb-1" for="ws_wt_new_name">' . h(lang('Name')) . '</label>
-                            <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '" required>
+                            <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_new_name" maxlength="' . (int) ws_wtable_limits()['name'] . '">
                         </div>
-                        <div class="mb-5">
+                        <div class="mb-3">
                             <label class="form-label small mb-1" for="ws_wt_new_description">' . h(lang('Description')) . '</label>
                             <textarea class="form-control form-control-sm" name="description" id="ws_wt_new_description" rows="2" maxlength="' . (int) ws_wtable_limits()['description'] . '"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="ws_wt_new_starter">' . h(lang('Start from')) . '</label>
+                            <select class="form-control form-control-sm" name="starter" id="ws_wt_new_starter">' . $starter_options . '</select>
+                            <div class="form-text">' . h(lang('A starter makes its columns; the name and description are its own when left empty.')) . '</div>
+                        </div>
+                        <div class="form-field mb-5">
+                            <input class="check" type="checkbox" name="samples" value="1" id="ws_wt_new_samples" checked>
+                            <label class="small" for="ws_wt_new_samples">' . h(lang('Add sample rows to a starter')) . '</label>
                         </div>
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Create')) . '</button>
                     </form>
@@ -559,6 +655,10 @@ if (!$table) {
             <div class="card mb-5" id="ws-wt-import-new">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Table from a file')) . '</h2></div>
                 <div class="card-body">' . $import_upload(0, lang('A CSV, Excel or OpenDocument file: its first row names the columns.')) . '</div>
+            </div>
+            <div class="card mb-5" id="ws-wt-import-note">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('Table from a note')) . '</h2></div>
+                <div class="card-body">' . $import_note(0, lang('A table in one of your notes: its first row names the columns. The note stays as it is.')) . '</div>
             </div>
         </div>
     </div>';
@@ -908,6 +1008,10 @@ if (!$table) {
             <div class="card mb-5" id="ws-wt-import-rows">
                 <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Rows from a file')) . '</h2></div>
                 <div class="card-body">' . $import_upload($id, lang('A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.')) . '</div>
+            </div>
+            <div class="card mb-5" id="ws-wt-import-note-rows">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-journal-text me-1" aria-hidden="true"></i>' . h(lang('Rows from a note')) . '</h2></div>
+                <div class="card-body">' . $import_note($id, lang('A table in one of your notes whose first row names the columns: each fills the column of its name. The note stays as it is.')) . '</div>
             </div>' : '';
 
     // The name and description.

@@ -6,7 +6,7 @@
  * (includes/workspace/wtable_import.php): header names, numbers, amounts,
  * dates and ticks as written in a file, the type guessed per column, the
  * columns matched by name, each value as the store's cell check takes it,
- * and the CSV reader with its row ceiling.
+ * the CSV reader with its row ceiling, and a note's tables read as a file.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -20,6 +20,9 @@ if (!defined('PG_TEST_RUNNER')) {
 
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/blocks.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_import.php');
 
 function test_workspace_wtable_import_names()
@@ -168,4 +171,43 @@ function test_workspace_wtable_import_file_table()
 	pg_assert_true(!ws_wtable_import_file_table($path, 'list.csv', 10)['ok'], 'an empty file');
 
 	unlink($path);
+}
+
+function test_workspace_wtable_import_note_tables()
+{
+	$body = "Intro line\n::: Leads\n| Name | Stage |\n|---|:-:|\n| Ada | Lead |\n| Can | Won | extra |\n\n```\n| In | Code |\n|---|---|\n| x | y |\n```\n| A |\n|---|---|\n| 1 |\nnot a row\n| 2 |";
+	$tables = ws_wtable_import_note_tables($body);
+
+	pg_assert_same(2, count($tables), 'a table inside a code fence is code');
+	pg_assert_same('Leads', $tables[0]['title'], 'the ::: line above names it');
+	pg_assert_same(2, $tables[0]['line']);
+	pg_assert_same(array(array('Name', 'Stage'), array('Ada', 'Lead'), array('Can', 'Won')), $tables[0]['table'], 'cut to the drawn column count');
+	pg_assert_same('', $tables[1]['title']);
+	pg_assert_same(array(array('A', ''), array('1', '')), $tables[1]['table'], 'padded to the row of dashes; ends at a line that is no row');
+
+	$cut = ws_wtable_import_note_tables("| N |\n|---|\n| 1 |\n| 2 |\n| 3 |", 3);
+	pg_assert_same(3, count($cut[0]['table']));
+	pg_assert_true($cut[0]['more'], 'a longer table is told');
+	pg_assert_same(array(), ws_wtable_import_note_tables("| only | a row |\nno dashes"), 'no row of dashes, no table');
+}
+
+function test_workspace_wtable_import_note_cell()
+{
+	pg_assert_same('Ada Yılmaz', ws_wtable_import_note_cell('<@user:12>', array(12 => 'Ada Yılmaz')), 'a person by name');
+	pg_assert_same('13', ws_wtable_import_note_cell('<@user:13>', array()), 'an unknown person by id');
+	pg_assert_same('', ws_wtable_import_note_cell('<@dept:4>'), 'a department is no person');
+	pg_assert_same('order:1045', ws_wtable_import_note_cell('<#order:1045>'), 'a record as kind:id');
+	pg_assert_same('Site', ws_wtable_import_note_cell('[Site](https://example.com)'));
+	pg_assert_same('Done', ws_wtable_import_note_cell(' **_Done_** '), 'marks around the whole cell');
+	pg_assert_same('a **b** c', ws_wtable_import_note_cell('a **b** c'), 'marks inside stay');
+	pg_assert_same('12,50', ws_wtable_import_note_cell('`12,50`'));
+}
+
+function test_workspace_wtable_import_note_rows()
+{
+	$rows = ws_wtable_import_note_rows(array(array('**Item**', 'Price'), array('Cup', '=2*3'), array('<@user:5>', '=1/0')), array(5 => 'Can'));
+
+	pg_assert_same(array('Item', 'Price'), $rows[0]);
+	pg_assert_same(array('Cup', '6'), $rows[1], 'a formula as its value');
+	pg_assert_same(array('Can', ''), $rows[2], 'a formula error is empty');
 }
