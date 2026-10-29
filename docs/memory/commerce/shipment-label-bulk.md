@@ -6,7 +6,7 @@ module: pdf_merge
 
 ## What does the orders list offer?
 - With a label driver on (`pg_shipment_label_drivers()`), "Create Labels" and "Print Labels" in the selected-orders bar of `view_orders.php`; both post the list form to `shipment_label.php` (`formaction`, `label_request` bulk_create / bulk_print, `orders[]`, the form's token).
-- Create: `pg_shipment_label_bulk_create()`, every address with active lines and no active outbound label, 20 per run (each is a service call; Geliver waits for offers), through `pg_shipment_label_create()`; notices on the list (created, left, each distinct failure).
+- Create: `pg_shipment_label_bulk_create()`, every address with active lines and no active outbound label, 20 per run (each is a service call; Geliver waits for offers), through `pg_shipment_label_create()`; a package whose marketplace makes its label takes that one, one box, read once (`trendyol-common-label.md`); notices on the list (created, left, each distinct failure). The buttons show only while a carrier label service is on.
 - Print (new tab): `pg_shipment_label_bulk_pdf()`. The labels are `pg_shipment_label_print_selection()`: active, not a return, of the selected orders, in the order the orders were selected, then by address and id. Each document is `pg_shipment_label_document()` (kept file, else the service by reference). PDFs are merged by `pg_pdf_merge()` and sent, never stored. A ZPL label or a PDF the merger cannot read is listed on a last page ("Labels not in this PDF", rendered with dompdf through `pg_privacy_export_pdf()`), to be printed from its order. An SVG label is drawn into a page of its own (`carrier-label-basitkargo.md`); one `.zpl` per bulk run (#3123) is still open.
 
 ## How is a label cancelled?

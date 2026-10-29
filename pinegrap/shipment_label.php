@@ -5,8 +5,10 @@
  * Shipping labels of an order (includes/fn/shipment_labels.php).
  *
  * POST from the order screen: open a label or a return label for an
- * address with the carrier label service its carrier takes, or cancel one;
- * back to the order with the outcome. POST from the orders list: open the
+ * address with the carrier label service its carrier takes, or cancel one,
+ * or ask the marketplace for the label it makes for its own carrier (a
+ * package imported from it, includes/api/outbound/labels.php); back to the
+ * order with the outcome. POST from the orders list: open the
  * missing labels of the selected orders, or print their labels as one PDF
  * merged now and never kept. GET id: hands out one label's document, the
  * kept file or the service's copy; an SVG on a print page that holds it as
@@ -39,9 +41,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     include_once('liveform.class.php');
 
-    // label_request: create-<ship_to_id>, return-<ship_to_id> and
-    // cancel-<label id> from the order screen; bulk_create and bulk_print
-    // with orders[] from the orders list.
+    // label_request: create-<ship_to_id>, return-<ship_to_id>,
+    // cancel-<label id> and marketplace-<ship_to_id> (with
+    // label_boxes_<ship_to_id>) from the order screen; bulk_create and
+    // bulk_print with orders[] from the orders list.
     $request = is_scalar($_POST['label_request'] ?? null) ? (string) $_POST['label_request'] : '';
     $orders = (isset($_POST['orders']) && is_array($_POST['orders'])) ? array_slice(array_map('intval', $_POST['orders']), 0, 500) : array();
 
@@ -79,7 +82,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php');
     }
 
-    if (!preg_match('/^(create|return|cancel)-([1-9][0-9]*)$/', $request, $match)) {
+    if (!preg_match('/^(create|return|cancel|marketplace)-([1-9][0-9]*)$/', $request, $match)) {
         output_error(lang('Record not found.'), 404);
     }
 
@@ -96,6 +99,14 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     if ($match[1] === 'cancel') {
         $result = pg_shipment_label_cancel((int) $match[2]);
         $notice = lang('The shipping label was cancelled.');
+    } elseif ($match[1] === 'marketplace') {
+        $boxes = $_POST['label_boxes_' . $match[2]] ?? '';
+        $result = pg_shipment_label_marketplace_ready()
+            ? mp_label_create_for_ship_to((int) $match[2], mp_label_boxes($boxes), USER_ID)
+            : array('ok' => false, 'existing' => false, 'pending' => false, 'error' => lang('This address belongs to no package a marketplace makes labels for.'), 'number' => '');
+        $notice = $result['existing']
+            ? lang('This address has its shipping label already.')
+            : lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number']))));
     } else {
         $result = pg_shipment_label_create((int) $match[2], USER_ID, $match[1] === 'return');
         $notice = lang(array('string' => 'The shipping label was created. Tracking number: {var:1}', 'vars' => array(h($result['number']))));
@@ -103,6 +114,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     if ($result['ok']) {
         $liveform->add_notice($notice);
+    } elseif (!empty($result['pending'])) {
+        $liveform->add_notice(h($result['error']));
     } else {
         $liveform->mark_error('_error', h($result['error']));
     }

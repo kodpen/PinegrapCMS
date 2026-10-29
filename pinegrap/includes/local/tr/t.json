@@ -4246,6 +4246,7 @@
     "This address cannot be shown again on this site. Make a new address to see it.": "Bu adres bu sitede yeniden gösterilemiyor. Görmek için yeni bir adres oluşturun.",
     "This address cannot be shown again. Revoke the link and make a new one.": "Bu adres yeniden gösterilemiyor. Bağlantıyı iptal edip yeni bir tane oluşturun.",
     "This address does not accept {var:1} requests.": "Bu adres {var:1} isteklerini kabul etmiyor.",
+    "This address has its shipping label already.": "Bu adresin kargo etiketi zaten var.",
     "This address is already added as @{var:1}.": "Bu adres zaten @{var:1} olarak eklenmiş.",
     "This address is not on the allow list for this application.": "Bu adres, bu uygulamanın izin listesinde değil.",
     "This address is shown only now. Copy it and send it; the first visit spends it.": "Bu adres yalnızca şimdi gösterilir. Kopyalayıp gönderin; ilk ziyaretle kullanılmış olur.",
