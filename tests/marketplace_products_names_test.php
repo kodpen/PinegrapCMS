@@ -5,8 +5,10 @@
  * Tests for the marketplace products screen (marketplace_products.php and
  * assets/js/marketplace_products.js): every row tick box is named after its
  * row, a redrawn row takes the focus back, a disabled pager arrow is not a
- * link, status text uses the emphasis inks and the step messages print
- * their counts in the panel's number format.
+ * link, status text uses the emphasis inks, the step messages print
+ * their counts in the panel's number format, and the read's meter and
+ * progress line say how far a read is. Also the Modify Files image
+ * optimizing notice (edit_files.php), a named status with no fixed value.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -112,4 +114,52 @@ function test_marketplace_products_redrawn_row_keeps_the_focus()
 	pg_assert_true((bool) preg_match("/cell\\.innerHTML = before;\\s*focusRow\\(row, 'code'\\);/", $script), 'Cancel in the code box gives the focus to the code button');
 	pg_assert_true(strpos($script, "replaceRow(row, answer.rows[id], 'code')") !== false, 'so does Save');
 	pg_assert_true((bool) preg_match('/Promise\.resolve\(pgUI\.dialog\.hide\(picker\.root\)\)\.then\(function \(\) \{\s*focusRow\(/', $script), 'the picker hands the focus to the fresh row once it has closed');
+}
+
+function test_marketplace_products_meter_says_what_it_measures()
+{
+	$source = marketplace_products_names_test_source();
+	$script = marketplace_products_names_test_script();
+
+	$start = strpos($script, 'function setMeter(');
+	pg_assert_true($start !== false, 'one helper draws the meter');
+	$helper = substr($script, $start, (int) strpos($script, "\n    }\n", $start) - $start);
+
+	pg_assert_true(strpos($helper, "style.width = value + '%'") !== false, 'it sets the width');
+	pg_assert_true(strpos($helper, "setAttribute('aria-valuenow', value)") !== false, 'the value it reads');
+	pg_assert_true(strpos($helper, "setAttribute('aria-label', name)") !== false, 'and the name, together');
+	pg_assert_same(1, substr_count($script, 'style.width'), 'nothing else widens the meter');
+
+	pg_assert_true(strpos($script, "setMeter(Math.min(100, Math.round(100 * read / total)), label('reading_meter'))") !== false, 'a read draws the read share as Reading products');
+	pg_assert_true(strpos($script, "setMeter(Math.round(100 * counts.matched / counts.all), label('matched'))") !== false, 'an accept puts the matched share and name back');
+	pg_assert_true(strpos($source, "'reading_meter' => lang('Reading products')") !== false, 'the read name is translated');
+	pg_assert_true(strpos($source, "'matched'      => lang('Matched')") !== false, 'so is the matched name');
+}
+
+function test_marketplace_products_read_progress_is_announced_at_steps()
+{
+	$source = marketplace_products_names_test_source();
+	$script = marketplace_products_names_test_script();
+
+	pg_assert_true(strpos($source, '<div class="small mt-3" id="mpp-progress-text" role="status">') !== false, 'the progress line is a status region');
+
+	$start = strpos($script, 'function readFrom(');
+	$read = substr($script, $start, (int) strpos($script, "\n    }\n", $start) - $start);
+
+	pg_assert_true(strpos($read, 'announceProgress(read, total)') !== false, 'each page goes through the step check');
+	pg_assert_true(strpos($read, "label('read_progress'") === false, 'not straight into the line');
+	pg_assert_true(strpos($script, 'share - announced.share >= 10') !== false, 'a step is 10% of the read');
+	pg_assert_true(strpos($script, 'now - announced.time >= 10000') !== false, 'or 10 seconds');
+}
+
+function test_edit_files_optimizing_notice_is_a_named_status()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_files.php');
+	$start = strpos($source, 'opener.scrollTo(0, 0);');
+	$notice = substr($source, $start, (int) strpos($source, 'opener.document.form.submit();', $start) - $start);
+
+	pg_assert_true(strpos($notice, 'role="status"') !== false, 'the notice is a status region');
+	pg_assert_true(strpos($notice, 'aria-valuenow') === false, 'the busy bar claims no value');
+	pg_assert_true(strpos($notice, 'role="progressbar" aria-label="\' . h(lang(\'Optimizing images\')) . \'"') !== false, 'the bar is named');
+	pg_assert_true(strpos($notice, "<p>' . lang('Please stay on this page until this process is complete.') . '</p>") !== false, 'the paragraph is closed');
 }
