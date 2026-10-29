@@ -342,6 +342,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-lists-product.md: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together and bundle contents; where rows are read, group cards, the cross-sell block, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
+- widget-parts-anywhere.md: W17 parts anywhere (#3074): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.
