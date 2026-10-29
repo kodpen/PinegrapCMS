@@ -19,15 +19,15 @@ module: order_completion
 
 ## Which stage functions follow it?
 - After the SMS, in this order: before-lock writes moved behind it (`order-completion-before-lock.md`), receipt, ship dates, `order_completed` campaigns, `pg_order_complete_lines()` (the product loop: each line's functions, returns the summed reward points and the contact groups), then the after-line functions (`order-completion-after-lines.md`).
-- `pg_order_complete_receipt($order_id, $number, $receipt, $customer_email, $new_account)`: `$receipt` is the checkout page's receipt settings (email, subject, format, header, footer, page_id). BCC from the order's lines (`pg_order_receipt_bcc_list()`, pure: store address first, each valid product address once). The renderers still read the session for a new account's link; a request without a visitor has none.
+- `pg_order_complete_receipt($order_id, $number, $receipt, $customer_email, $new_account)`: `$receipt` is the checkout page's receipt settings (email, subject, format, header, footer, page_id). BCC from the order's lines (`pg_order_receipt_bcc_list()`, pure: store address first, each valid product address once). `$new_account` is the account the context hands over (`order-completion-account.md`).
 - `pg_order_complete_ship_dates($order_id, $order_date, $auto_registration, $user_id)`: address book entries (`new`/`existing`), ship and delivery dates (`pg_order_transit_date()`, `pg_order_ship_date_adjusted()`, pure).
 - Per line: `order-completion-lines.md`, `order-completion-line-comments.md`.
 
 ## What stays in submit_order()?
-- Auto-registration before the call; after it the legacy recurring profiles, the receipt page's session values, the post-save hook, the ERP invoice (`order-completion-context.md`).
+- The sign-in around auto-registration before the call; after it the legacy recurring profiles, the receipt page's session values, the post-save hook, the ERP invoice (`order-completion-context.md`).
 
 ## How is it tested?
 - `tests/order_completion_test.php`: the tail of `submit_order()` with each function's body spliced in at its call, as one ordered list of writes; one number, `order.created`, SMS; each stage called once by the completion and never by `submit_order()`; the query; the pure helpers.
 - Not run against a database or a real checkout here.
 
-Related: commerce/order-completion-context.md, commerce/order-completion-lines.md, commerce/payment-callback.md, commerce/order-status-moves.md, plans/order-completion-function.md
+Related: commerce/order-completion-context.md, commerce/order-completion-lines.md, commerce/payment-callback.md, commerce/order-status-moves.md

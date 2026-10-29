@@ -314,13 +314,120 @@ function pg_order_payment_completion_values(array $order, $status, $now, $user_i
 }
 
 /**
+ * What auto-registration did for an order: nothing.
+ *
+ * @return array see pg_order_auto_register()
+ */
+function pg_order_auto_register_none()
+{
+    return array('type' => '', 'user_id' => 0, 'username' => '', 'account' => array());
+}
+
+/**
+ * What auto-registration does for a billing e-mail: 'existing' (an account
+ * has it: the order is linked to it), 'blocked' (none has it and the address
+ * is blocked: the order goes through, no account is opened), 'new' (an
+ * account is opened) or '' (no address). Pure.
+ *
+ * @param string $email_address
+ * @param int    $found_user_id the account whose e-mail it is, 0 for none
+ * @param bool   $blocked       pg_email_blocked()
+ * @return string
+ */
+function pg_order_auto_register_action($email_address, $found_user_id, $blocked)
+{
+    if ((string) $email_address === '') {
+        return '';
+    }
+
+    if ((int) $found_user_id > 0) {
+        return 'existing';
+    }
+
+    return $blocked ? 'blocked' : 'new';
+}
+
+/**
+ * An order's auto-registration: the account whose e-mail is the billing
+ * e-mail, or a new one without a password (algo 3) with a set password link
+ * issued, its contact added to the registration contact group. A blocked
+ * address gets none; the order still goes through. Signs nobody in and sets
+ * no cookie: the checkout does that around this call for its visitor; a
+ * payment service's message has none.
+ *
+ * @param string $email_address the billing e-mail
+ * @param int    $contact_id    the order's contact
+ * @return array type ('new', 'existing' or ''), user_id (0 for none),
+ *               username (a new account's), account (a new account's
+ *               email_address and user_id for the receipt; array() for none)
+ */
+function pg_order_auto_register($email_address, $contact_id)
+{
+    $email_address = (string) $email_address;
+    $contact_id = (int) $contact_id;
+    $found_user_id = 0;
+
+    if ($email_address !== '') {
+        $result = db_q("SELECT user_id FROM user WHERE user_email = ?", array($email_address)) or output_error('Query failed.');
+        $row = mysqli_fetch_assoc($result);
+        $found_user_id = is_array($row) ? (int) $row['user_id'] : 0;
+    }
+
+    $action = pg_order_auto_register_action($email_address, $found_user_id, ($found_user_id <= 0) && ($email_address !== '') && pg_email_blocked($email_address));
+
+    if ($action === 'existing') {
+        return array('type' => 'existing', 'user_id' => $found_user_id) + pg_order_auto_register_none();
+    }
+
+    if ($action === 'blocked') {
+        log_activity(lang(array(
+            'string' => 'no account created for a blocked email address ({var:1})',
+            'vars'   => array($email_address))), '');
+    }
+
+    if ($action !== 'new') {
+        return pg_order_auto_register_none();
+    }
+
+    // The username is everything before "@", numbered when taken.
+    $username = get_unique_username(strtok($email_address, '@'));
+
+    // Created without a password: the customer sets one through the set
+    // password link issued here, which the customer's receipt carries.
+    $user_id = (int) create_member_user(array(
+        'username'   => $username,
+        'email'      => $email_address,
+        'contact_id' => $contact_id ? $contact_id : '',
+    ));
+
+    pg_set_password_link_issue($user_id);
+
+    if (
+        ($contact_id > 0)
+        && (REGISTRATION_CONTACT_GROUP_ID)
+        && (db_value("SELECT id FROM contact_groups WHERE id = '" . (int) REGISTRATION_CONTACT_GROUP_ID . "'"))
+    ) {
+        db_q(
+            "INSERT INTO contacts_contact_groups_xref (contact_id, contact_group_id)
+            VALUES (?, ?)", array((string) $contact_id, (string) (int) REGISTRATION_CONTACT_GROUP_ID)) or output_error('Query failed.');
+    }
+
+    return array(
+        'type' => 'new',
+        'user_id' => $user_id,
+        'username' => $username,
+        'account' => array('email_address' => $email_address, 'user_id' => $user_id),
+    );
+}
+
+/**
  * Completes an incomplete order from a payment service's message, after the
  * visitor left: the values the checkout kept on the order before sending the
  * visitor away, the lines, the receipt and auto-registration switch of the
  * checkout page the order names (none: a plain-text receipt, no account),
- * an existing account with the billing e-mail linked when that switch is on
- * (no account is opened), the legal documents with the acceptance the
- * visitor gave; then pg_order_complete() and the ERP invoice of a paid order.
+ * the account with the billing e-mail linked, or one opened, when that
+ * switch is on (nobody is signed in), the legal documents with the
+ * acceptance the visitor gave; then pg_order_complete() and the ERP invoice of a paid order.
  *
  * The caller has checked that the message's payment is the order's own, for
  * its total, in the store's currency. Refused (nothing written) when the
@@ -380,18 +487,17 @@ function pg_order_complete_from_payment($order_id, $status)
     $settings = pg_order_payment_page_settings(pg_order_checkout_page_row($page_column ? $order['checkout_page_id'] : 0));
 
     // The checkout page's auto-registration switch holds whichever request
-    // completes the order: the account with the billing e-mail gets a guest's
-    // order. None is opened here.
+    // completes the order: a guest's order goes to the account with the
+    // billing e-mail, or to one opened for it. Nobody is signed in; the
+    // customer's receipt carries the set password link.
     $user_id = (int) $order['user_id'];
-    $auto_registration = '';
+    $registration = pg_order_auto_register_none();
 
-    if (($user_id <= 0) && $settings['auto_registration'] && ((string) $order['billing_email_address'] !== '')) {
-        $result = db_q("SELECT user_id FROM user WHERE user_email = ?", array((string) $order['billing_email_address'])) or output_error('Query failed.');
-        $user = mysqli_fetch_assoc($result);
+    if (($user_id <= 0) && $settings['auto_registration']) {
+        $registration = pg_order_auto_register($order['billing_email_address'], (int) $order['contact_id']);
 
-        if (is_array($user) && ((int) $user['user_id'] > 0)) {
-            $user_id = (int) $user['user_id'];
-            $auto_registration = 'existing';
+        if ($registration['user_id'] > 0) {
+            $user_id = $registration['user_id'];
         }
     }
 
@@ -438,8 +544,8 @@ function pg_order_complete_from_payment($order_id, $status)
             'contact_id' => (int) $order['contact_id'],
             'reference_code' => (string) $order['reference_code'],
             'receipt' => $settings['receipt'],
-            'new_account' => false,
-            'auto_registration' => $auto_registration,
+            'new_account' => $registration['account'],
+            'auto_registration' => $registration['type'],
             'key_code' => $key_code,
             'affiliate_rate' => $affiliate_rate,
             'recurring_products' => $charged['recurring'],
@@ -664,7 +770,8 @@ function pg_order_complete_query($order_id, array $values)
  * - order: billing_* columns, custom_field_1, custom_field_2, po_number
  * - contact_id, reference_code: the order's
  * - receipt: the checkout page's receipt settings (none: no receipt)
- * - new_account: the order opened an account (its link goes in the receipt)
+ * - new_account: the account the order opened (email_address, user_id,
+ *   ghost; its link goes in the customer's receipt), array() for none
  * - auto_registration: new, existing or '' (address book)
  * - key_code: pg_order_key_code(); affiliate_rate: pg_order_affiliate_rate()
  * - recurring_products: the lines whose recurring payments start later
@@ -766,7 +873,7 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
         'contact_id' => 0,
         'reference_code' => '',
         'receipt' => array(),
-        'new_account' => false,
+        'new_account' => array(),
         'auto_registration' => '',
         'key_code' => null,
         'affiliate_rate' => null,
@@ -807,7 +914,7 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
     pg_order_complete_commission($order_id, $values['affiliate_code'], $context['affiliate_rate'], $values['commission'], $context['recurring_products'], $user_id);
 
     // The receipt, when the checkout page sends one.
-    pg_order_complete_receipt($order_id, $order_number, $context['receipt'], $billing_email_address, (bool) $context['new_account']);
+    pg_order_complete_receipt($order_id, $order_number, $context['receipt'], $billing_email_address, is_array($context['new_account']) ? $context['new_account'] : array());
 
     // Each recipient's ship and delivery dates, and the address book of an
     // account auto-registration created or found.
@@ -1075,13 +1182,16 @@ function pg_order_receipt_bcc_list($store_address, array $product_addresses)
  *                                   email (1 = send), subject, format
  *                                   (plain_text or html), header, footer, page_id
  * @param string     $customer_email the billing e-mail address
- * @param bool       $new_account    the order opened an account whose link
- *                                   the customer's copy carries
+ * @param array      $new_account    the account the order opened
+ *                                   (email_address, user_id, ghost), whose
+ *                                   link the customer's copy carries;
+ *                                   array() for none
  * @return void
  */
-function pg_order_complete_receipt($order_id, $order_number, array $receipt, $customer_email, $new_account)
+function pg_order_complete_receipt($order_id, $order_number, array $receipt, $customer_email, array $new_account = array())
 {
     $order_id = (int) $order_id;
+    $has_account = ((string) ($new_account['email_address'] ?? '') !== '');
 
     if (($order_id <= 0) || (($receipt['email'] ?? '') != 1)) {
         return;
@@ -1106,8 +1216,12 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
 
     $bcc_email_addresses = pg_order_receipt_bcc_list(ECOMMERCE_EMAIL_ADDRESS, $product_addresses);
 
-    foreach (pg_order_receipt_copies($customer_email, $bcc_email_addresses, (bool) $new_account) as $receipt_copy) {
+    foreach (pg_order_receipt_copies($customer_email, $bcc_email_addresses, $has_account) as $receipt_copy) {
         pg_order_receipt_audience($receipt_copy['audience']);
+
+        // The renderers name the account this completion opened, never one
+        // a session holds.
+        pg_order_receipt_new_account($has_account ? $new_account : array());
 
         if ($format == 'plain_text') {
             $body = '';
@@ -1142,6 +1256,7 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
         }
 
         pg_order_receipt_audience('screen');
+        pg_order_receipt_new_account(false);
 
         email(array(
             'to' => $receipt_copy['to'],
@@ -1153,7 +1268,7 @@ function pg_order_complete_receipt($order_id, $order_number, array $receipt, $cu
             'body' => $body,
             // The customer's copy may carry the set password link, which
             // must stay out of the failure log and the delivery-failed notice.
-            'secret' => (($receipt_copy['audience'] === 'customer') && $new_account),
+            'secret' => (($receipt_copy['audience'] === 'customer') && $has_account),
             // The checkout documents the customer accepted go with the
             // receipt as they were kept with the order.
             'attachments' => pg_legal_documents_attachments($order_id, $order_number),

@@ -1,6 +1,6 @@
 ---
 name: order-completion-before-lock
-description: Order completion A2d2 (#2937): key code use, gift card redemption and its error mail, affiliate commission rows moved behind the order lock; auto-registration stays with the visitor's request, and why
+description: Order completion A2d2 (#2937): key code use, gift card redemption and its error mail, affiliate commission rows moved behind the order lock; auto-registration stays before it, and why
 module: order_completion
 ---
 
@@ -16,11 +16,10 @@ module: order_completion
 - Before, a second submit of the same checkout used the key code, redeemed the gift cards (twice the money off the card) and wrote a second commission, though the lock then stopped it. Now only the request that completes the order writes them.
 - The redemption needs nothing posted: the codes and refreshed balances are in `applied_gift_cards`, so a payment service's message can redeem too. Its figure (`gift_card_discount`) was settled before and the order is accepted even on a shortfall, so the UPDATE does not wait on it.
 
-## Why does auto-registration stay?
-- It signs the visitor in (session, device cookie) and keeps the new account in the session for the receipt; its user id is a value of the completing UPDATE and of the commission rows. A repeat finds the account by e-mail (`existing`) and creates nothing twice.
-- A payment service's message (A3) has no visitor: a guest's order completed that way opens no account.
+## Why does auto-registration stay before it?
+- Its user id is a value of the completing UPDATE and of the commission rows. A repeat finds the account by e-mail (`existing`) and creates nothing twice. Both paths run it through `pg_order_auto_register()`; only the checkout signs its visitor in (`order-completion-account.md`).
 
 ## What changed for a visitor?
 - The same writes and messages; they now come after the order number and SMS instead of before the UPDATE. Queries are `db_q()` with placeholders; a failed one ends the request (`output_error`).
 
-Related: commerce/order-completion.md, commerce/givex-gift-card.md, plans/order-completion-function.md
+Related: commerce/order-completion.md, commerce/givex-gift-card.md, commerce/order-completion-account.md

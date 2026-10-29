@@ -20,4 +20,4 @@ module: order_completion
 ## What changed?
 - The folder access read and the queries are `db_q()` with placeholders; a failed query ends the request (`output_error`), as the other completion queries do. Before, a failed access read counted as no row.
 
-Related: commerce/order-completion.md, commerce/order-completion-lines.md, plans/order-completion-function.md
+Related: commerce/order-completion.md, commerce/order-completion-lines.md
