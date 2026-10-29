@@ -410,6 +410,15 @@ function pg_sw_entity_post_image($data_row)
     return '';
 }
 
+// The form field types pg_sw_entity_field_values() reads (a plain text area
+// only). The designer's twin is SD_PAGE_RECORD_FIELD_TYPES in
+// style_designer.js; tests/page_record_fields_designer_test.php keeps them
+// equal.
+function pg_sw_entity_field_types()
+{
+    return array('text box', 'text area', 'pick list', 'radio button', 'check box', 'date', 'date and time', 'time');
+}
+
 // A form record's fields by name, for the page's record (page_facts.php):
 // '__field_<name>' => plain text, the name lowercased and stripped to
 // [a-z0-9_] as pg_sw_index_form_data() strips it. The prefix keeps them
@@ -422,7 +431,7 @@ function pg_sw_entity_post_image($data_row)
 // names stripped alike: the first field counts.
 function pg_sw_entity_field_values($data_rows, $custom, $date_format = 'pg_sw_default_date_format')
 {
-    static $types = array('text box', 'text area', 'pick list', 'radio button', 'check box', 'date', 'date and time', 'time');
+    $types = pg_sw_entity_field_types();
     $out = array();
     foreach (is_array($data_rows) ? $data_rows : array() as $data_row) {
         $type = isset($data_row['field_type']) ? (string)$data_row['field_type'] : '';

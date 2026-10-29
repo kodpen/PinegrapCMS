@@ -38926,8 +38926,44 @@ const StyleDesigner = (function () {
         calendar_event_view: function () { return SW_EVENT_ENTITY_TOKENS; },
         form_item_view:      function () { return SW_FORM_RECORD_ENTITY_TOKENS; }
     };
+    // The form field types whose answers a form record's page-record tokens
+    // read by field name (pg_sw_entity_field_types();
+    // tests/page_record_fields_designer_test.php keeps the two equal).
+    var SD_PAGE_RECORD_FIELD_TYPES = ['text box', 'text area', 'pick list', 'radio button', 'check box', 'date', 'date and time', 'time'];
+
+    // The page-record tokens of a form's fields (`fields`, list_form_fields
+    // rows), as pg_sw_entity_field_values() publishes them: __record__field_
+    // and the name lowercased and stripped to [a-z0-9_], the first field when
+    // two strip alike. A plain text area only; office-use fields stay out.
+    // Each is labelled with the field's label; a choice field carries its
+    // options as `choices` [{label, value}] for the compared value.
+    function _sdPageRecordFieldOptions(fields, seen) {
+        var out = [];
+        seen = seen || {};
+        (Array.isArray(fields) ? fields : []).forEach(function (f) {
+            if (!f || SD_PAGE_RECORD_FIELD_TYPES.indexOf(String(f.type)) === -1) return;
+            if (parseInt(f.office_use_only, 10) > 0) return;
+            if (f.type === 'text area' && parseInt(f.wysiwyg, 10) > 0) return;
+            var name = String(f.name || '').toLowerCase().replace(/[^a-z0-9_]/g, '');
+            var token = '__record__field_' + name;
+            if (!name || seen[token]) return;
+            seen[token] = true;
+            var label = String(f.label || '').replace(/\s*:\s*$/, '') || String(f.name);
+            var o = { token: token, label: _sdT('Record field: {var:1}', [label]) };
+            if (Array.isArray(f.options)) {
+                o.choices = f.options.filter(function (c) { return c && String(c.value) !== ''; })
+                    .map(function (c) { return { label: String(c.label || c.value), value: String(c.value) }; });
+            }
+            out.push(o);
+        });
+        return out;
+    }
+
+    // Forms whose fields the page's record options asked for once.
+    var _sdPageRecordFieldsAsked = {};
+
     function _sdPageRecordOptions() {
-        var kinds = {}, seen = {};
+        var kinds = {}, seen = {}, forms = [];
         var walk = function (n) {
             if (!n) return;
             if (n.type === 'shared_ref') {
@@ -38938,7 +38974,11 @@ const StyleDesigner = (function () {
                 var cfg = null;
                 try { cfg = (cached && cached.system_region_config) ? JSON.parse(cached.system_region_config) : null; } catch (e) { cfg = null; }
                 var kind = _swKindOf(cfg);
-                if (SD_PAGE_RECORD_KINDS[kind]) kinds[kind] = true;
+                if (SD_PAGE_RECORD_KINDS[kind]) {
+                    kinds[kind] = true;
+                    var fid = (kind === 'form_item_view') ? (parseInt(cfg.custom_form_page_id || cfg.form_page_id || 0, 10) || 0) : 0;
+                    if (fid > 0 && forms.indexOf(fid) === -1) forms.push(fid);
+                }
                 else if (cached && cached.tree) walk(cached.tree);
                 return;
             }
@@ -38951,6 +38991,21 @@ const StyleDesigner = (function () {
         names.forEach(function (kind) {
             SD_PAGE_RECORD_KINDS[kind]().forEach(function (t) {
                 out.push({ token: '__record' + t[0], label: _sdT('Record: {var:1}', [t[1]]) });
+            });
+        });
+        // The opened form's own fields by name; a form not loaded yet is
+        // asked for once and the panel and canvas redraw when it comes.
+        var fieldSeen = {};
+        forms.forEach(function (fid) {
+            if (_formFieldsCache[fid]) {
+                out = out.concat(_sdPageRecordFieldOptions(_formFieldsCache[fid], fieldSeen));
+                return;
+            }
+            if (_sdPageRecordFieldsAsked[fid]) return;
+            _sdPageRecordFieldsAsked[fid] = true;
+            _fetchFormFields(fid, function () {
+                if (typeof renderCanvas === 'function') renderCanvas();
+                _sdSchedulePropsRefresh();
             });
         });
         return out;
@@ -39314,9 +39369,23 @@ const StyleDesigner = (function () {
                 SW_COND_OPS.forEach(function (o) {
                     opOpts += '<option value="' + o[0] + '"' + (entry && entry[0] === o[0] ? ' selected' : '') + '>' + esc(o[1]) + '</option>';
                 });
-                html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>' +
-                    '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" data-cond-row="' + i + '" value="' + esc(r.value) + '"' +
-                        ' aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"') + '>';
+                // A choice field of the page's record compares with one of
+                // its options; a value typed before stays listed.
+                var curOpt = options.filter(function (o) { return o.token === cur; })[0];
+                var choices = (curOpt && Array.isArray(curOpt.choices) && curOpt.choices.length) ? curOpt.choices : null;
+                var valAttrs = ' data-cond-row="' + i + '" aria-label="' + esc(_sdT('Compared with')) + '"' + ((entry && entry[2]) ? '' : ' style="display:none"');
+                html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-op" data-cond-row="' + i + '" aria-label="' + esc(_sdT('Condition')) + '">' + opOpts + '</select>';
+                if (choices) {
+                    var valOpts = '<option value="">' + esc(_sdT('Choose a value')) + '</option>', hasVal = !r.value;
+                    choices.forEach(function (c) {
+                        if (c.value === r.value) hasVal = true;
+                        valOpts += '<option value="' + esc(c.value) + '"' + (c.value === r.value ? ' selected' : '') + '>' + esc(c.label) + '</option>';
+                    });
+                    if (!hasVal) valOpts += '<option value="' + esc(r.value) + '" selected>' + esc(r.value) + '</option>';
+                    html += '<select class="form-control form-control-sm mt-1 sd-sw-cond-value"' + valAttrs + '>' + valOpts + '</select>';
+                } else {
+                    html += '<input type="text" class="form-control form-control-sm mt-1 sd-sw-cond-value" value="' + esc(r.value) + '"' + valAttrs + '>';
+                }
             }
             html += '</div>';
         });
