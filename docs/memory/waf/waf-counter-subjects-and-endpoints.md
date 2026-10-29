@@ -16,4 +16,4 @@ description: A private visitor address is not counted, the web root's index.php 
 ## Whom does the api.php allowance exempt?
 - Staff (`waf_user_is_staff()`), like the sensitive limit and the in-flight cap; before, any session (`waf_user_is_authenticated()`), which a form's auto-registration hands to anyone who types an address, so a member had an unlimited, offence-free `api.php`. A member with the chat open is now a visitor with the chat open, inside the 180/min default; behind a shared address a crossing is one offence per minute (`waf-offence-fold-and-staff-address.md`).
 
-Related: docs/memory/waf/waf-bot-policy-credential-endpoints.md, docs/memory/waf/waf-ip-subject-ipv6-64.md, docs/memory/plans/waf-legit-traffic-auto-ban.md
+Related: docs/memory/waf/waf-bot-policy-credential-endpoints.md, docs/memory/waf/waf-ip-subject-ipv6-64.md

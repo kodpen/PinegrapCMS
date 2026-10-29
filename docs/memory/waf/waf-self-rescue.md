@@ -5,7 +5,7 @@ module: waf_rescue
 ---
 
 ## Why does it exist?
-- #1989: a banned operator could not reach Release, Allow or the settings save (panel screens behind the ban shield and the IP list), and no script touched `banned_ip_addresses` or the mirror. The owner decided no script is ever served to a banned address, token or not (plan questions, Q3), so the rescue runs on the server.
+- #1989: a banned operator could not reach Release, Allow or the settings save (panel screens behind the ban shield and the IP list), and no script touched `banned_ip_addresses` or the mirror. The owner decided no script is ever served to a banned address, token or not (owner, 2026-10-27, `workflow/decisions-made-waf.md`), so the rescue runs on the server.
 
 ## How is a ban lifted from the server?
 - `php waf_unban.php <address>` in the software directory removes every block row covering the address, automatic or manual (a manual range covering one's own address is a way to get shut out); `<range>` removes the row naming that range (compared as packed base and prefix, `pg_waf_unban_entry_key()`); `--all` removes every automatic ban. Wrong arguments print the usage and exit 2.

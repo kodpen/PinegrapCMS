@@ -130,6 +130,9 @@ function test_waf_shield_rate_callers_carry_status()
 		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/' . $file);
 		pg_assert_contains("array('status' => 429, 'rule' => '" . $rule . "')", $source, $file);
 	}
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/custom_form.php');
+	pg_assert_contains('array(\'status\' => 429, \'rule\' => $rule)', $form, 'custom_form.php');
 }
 
 // The general job refreshes the mirror, so an ended ban leaves it on a

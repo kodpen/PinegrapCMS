@@ -4523,6 +4523,6 @@ function pg_cf_throttle_log($row)
     }
 
     if (function_exists('waf_text_log') && function_exists('waf_client_ip')) {
-        waf_text_log('DENY', waf_client_ip(), array('rule' => $rule));
+        waf_text_log('DENY', waf_client_ip(), array('status' => 429, 'rule' => $rule));
     }
 }
