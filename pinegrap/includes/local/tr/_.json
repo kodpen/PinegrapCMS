@@ -614,6 +614,7 @@
     "{var:1} entries were written to the site log today.": "Bugün site günlüğüne {var:1} kayıt yazıldı.",
     "{var:1} error_log file(s) deleted.": "{var:1} error_log dosyası silindi.",
     "{var:1} event address(es) stopped answering and are no longer sent to: {var:2}": "{var:1} olay adresi yanıt vermeyi bıraktı ve artık gönderim yapılmıyor: {var:2}",
+    "{var:1} events": "{var:1} etkinlik",
     "{var:1} expense(s)": "{var:1} gider",
     "{var:1} expense(s), any date": "{var:1} gider, tüm tarihler",
     "{var:1} expiring within 7 days": "7 gün içinde süresi dolacak: {var:1}",

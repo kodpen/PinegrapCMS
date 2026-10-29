@@ -9,7 +9,7 @@ description: Remaining outside-account connections (calendar, notes, cloud picke
 
 | Item | What | Effort |
 |---|---|---|
-| Calendar sync | Step 0: personal secret iCal address as a read-only layer (`ws_holiday_feeds` mechanism). OAuth step: write tasks to the person's calendar and read changes back (Google `syncToken`, Graph delta). Files: `includes/workspace/calendar_feed.php`, `workdays.php`, `workspace_calendar.php` | S / M–L |
+| Calendar sync | Step 0: personal secret iCal address as a read-only layer: done (#3254, `workspace/workspace-personal-ical.md`). OAuth step: write tasks to the person's calendar and read changes back (Google `syncToken`, Graph delta). Files: `includes/workspace/calendar_feed.php`, `workdays.php`, `workspace_calendar.php` | S / M–L |
 | Notion, OneNote | Notion via its MCP alias: done (#3212). OneNote via Graph `Notes.ReadWrite`. An imported note is an ordinary `ws_notes` row. Keep, Evernote, Apple Notes: no usable API | M (S via MCP) |
 | Cloud file picker | Drive, Dropbox: done (#3238). Next: OneDrive v8 picker (`platform/cloud-file-picker.md`) | S |
 | Meta | Product feed (step 0, shared with Merchant), Meta Business Extension for Pixel + catalog, Instagram Login feed, WhatsApp Cloud API. Model B only | L |

@@ -112,6 +112,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_label_returns(); // 11.0.126
 	upgrade_2026_11_0_speculation_prefetch();   // 11.0.127
 	upgrade_2026_11_0_subscriptions();          // 11.0.128
+	upgrade_2026_11_0_workspace_personal_ical(); // 11.0.117
 
 }
 
@@ -3607,5 +3608,23 @@ function upgrade_2026_11_0_subscriptions() {
 	}
 
 	install_note('Subscriptions: the tables for subscriptions charged by the store are in place, and automatic e-mails gain the subscription renewed, failed and cancelled actions. Nothing changes on the site until a payment service offers subscriptions.');
+
+}
+
+// A person's own calendar address as a read-only layer on their Work Calendar
+// (2026.11.0, 11.0.117; includes/workspace/personal_ical.php).
+//
+// ws_holiday_feeds.user_id is the person a calendar address belongs to; 0 for
+// every address added on Workspace Settings, which stay the site's public
+// holiday calendars exactly as before. A person's row keeps its address and
+// the events read from it sealed with the site's key in url, never in
+// ws_events, so they reach no other reader, no holiday count and no export.
+// KEY idx_user serves the person's own list and the site-wide list (user_id 0).
+function upgrade_2026_11_0_workspace_personal_ical() {
+
+	install_add_column('ws_holiday_feeds', 'user_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_holiday_feeds', 'idx_user', "INDEX idx_user (user_id)");
+
+	install_note('Workspace: a person can add the secret address of their own Google, Outlook or Apple calendar under My calendar subscription and see it on their Work Calendar, read-only and only for themselves. The public holiday calendars of the site stay as they were.');
 
 }

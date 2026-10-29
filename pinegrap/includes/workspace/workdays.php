@@ -374,7 +374,24 @@ function ws_holiday_feed_add($viewer, $data)
  */
 function ws_holiday_feeds()
 {
-    return (array) db_items("SELECT * FROM ws_holiday_feeds ORDER BY id");
+    // A person's own calendar addresses (includes/workspace/personal_ical.php)
+    // are theirs alone.
+    $where = ws_personal_ical_ready() ? ' WHERE ' . ws_holiday_feed_owner_where(0) : '';
+
+    return (array) db_items("SELECT * FROM ws_holiday_feeds" . $where . " ORDER BY id");
+}
+
+/**
+ * Whether a calendar address is one of the site's, not a person's own.
+ *
+ * @param int $feed_id
+ * @return bool
+ */
+function ws_holiday_feed_site_wide($feed_id)
+{
+    $where = ws_personal_ical_ready() ? ' AND ' . ws_holiday_feed_owner_where(0) : '';
+
+    return (bool) db_value("SELECT id FROM ws_holiday_feeds WHERE id = '" . (int) $feed_id . "'" . $where);
 }
 
 /**
@@ -391,6 +408,11 @@ function ws_holiday_feed_sync($feed_id)
 
     if (!is_array($feed)) {
         return array('ok' => false, 'error' => lang('That calendar could not be found.'), 'events' => 0);
+    }
+
+    // A person's own calendar is read into their layer, never into ws_events.
+    if ((int) ($feed['user_id'] ?? 0) > 0) {
+        return ws_personal_ical_sync($feed);
     }
 
     $fail = function ($message) use ($feed) {
@@ -566,44 +588,22 @@ function ws_holiday_feeds_tick()
 }
 
 /**
- * The all-day events of an iCalendar text: uid, name, start, end (Y-m-d, the
- * last day itself), yearly. Only what a holiday calendar needs is read: a
- * DTEND on a date is the day after the last one (RFC 5545), a yearly RRULE
- * marks the day as coming back every year, and timed events are left out.
- *
- * Google's public holiday calendars list observances (Mother's Day and the
- * like) beside the days off. An observance's DESCRIPTION says, in the
- * calendar's language, how to hide observances in Google Calendar, and the
- * English ones start with "Observance"; a day off's never names Google. Half
- * days off (the eve of a feast: "half day", "yarım gün", "afternoon",
- * "öğleden sonra", "arife") are working mornings. With $public_only both are
- * left out. Calendars that mark neither (Apple's list Mother's Day beside the
- * feasts) come in whole; a day can then be left out one by one.
+ * The VEVENT blocks of an iCalendar text, each as property name => value,
+ * params (the later one when a name repeats); every EXDATE is also listed
+ * under 'EXDATE*'. Folded lines are unfolded first.
  *
  * @param string $text
- * @param bool   $public_only
  * @return array[]
  */
-function ws_ical_events($text, $public_only = true)
+function ws_ical_vevents($text)
 {
     // Long lines are folded: a line that starts with a space or a tab goes on
     // the one before it.
     $text = preg_replace("/\r\n[ \t]|\n[ \t]|\r[ \t]/", '', str_replace("\r\n", "\n", (string) $text));
-    $lines = preg_split("/\r\n|\n|\r/", $text);
     $events = array();
     $current = null;
 
-    $unescape = function ($value) {
-        return trim(strtr((string) $value, array('\\n' => ' ', '\\N' => ' ', '\\,' => ',', '\\;' => ';', '\\\\' => '\\')));
-    };
-
-    $day = function ($value) {
-        return preg_match('/^([0-9]{4})([0-9]{2})([0-9]{2})/', (string) $value, $match) && checkdate((int) $match[2], (int) $match[3], (int) $match[1])
-            ? $match[1] . '-' . $match[2] . '-' . $match[3]
-            : null;
-    };
-
-    foreach ($lines as $line) {
+    foreach (preg_split("/\r\n|\n|\r/", $text) as $line) {
         if ($line === 'BEGIN:VEVENT') {
             $current = array();
             continue;
@@ -625,9 +625,56 @@ function ws_ical_events($text, $public_only = true)
         list($head, $value) = explode(':', $line, 2);
         $parts = explode(';', $head);
         $name = strtoupper($parts[0]);
-        $current[$name] = array('value' => $value, 'params' => strtoupper(implode(';', array_slice($parts, 1))));
+        $current[$name] = array('value' => $value, 'params' => implode(';', array_slice($parts, 1)));
+
+        if ($name === 'EXDATE') {
+            $current['EXDATE*'][] = $current[$name];
+        }
     }
 
+    return $events;
+}
+
+/**
+ * A TEXT value of an iCalendar property read back: its escapes undone, a
+ * line break as a space.
+ *
+ * @param string $value
+ * @return string
+ */
+function ws_ical_text($value)
+{
+    return trim(strtr((string) $value, array('\\n' => ' ', '\\N' => ' ', '\\,' => ',', '\\;' => ';', '\\\\' => '\\')));
+}
+
+/**
+ * The all-day events of an iCalendar text: uid, name, start, end (Y-m-d, the
+ * last day itself), yearly. Only what a holiday calendar needs is read: a
+ * DTEND on a date is the day after the last one (RFC 5545), a yearly RRULE
+ * marks the day as coming back every year, and timed events are left out.
+ *
+ * Google's public holiday calendars list observances (Mother's Day and the
+ * like) beside the days off. An observance's DESCRIPTION says, in the
+ * calendar's language, how to hide observances in Google Calendar, and the
+ * English ones start with "Observance"; a day off's never names Google. Half
+ * days off (the eve of a feast: "half day", "yarım gün", "afternoon",
+ * "öğleden sonra", "arife") are working mornings. With $public_only both are
+ * left out. Calendars that mark neither (Apple's list Mother's Day beside the
+ * feasts) come in whole; a day can then be left out one by one.
+ *
+ * @param string $text
+ * @param bool   $public_only
+ * @return array[]
+ */
+function ws_ical_events($text, $public_only = true)
+{
+    $day = function ($value) {
+        return preg_match('/^([0-9]{4})([0-9]{2})([0-9]{2})/', (string) $value, $match) && checkdate((int) $match[2], (int) $match[3], (int) $match[1])
+            ? $match[1] . '-' . $match[2] . '-' . $match[3]
+            : null;
+    };
+
+    $events = ws_ical_vevents($text);
     $out = array();
 
     foreach ($events as $event) {
@@ -638,8 +685,8 @@ function ws_ical_events($text, $public_only = true)
             continue;
         }
 
-        $description = $unescape($event['DESCRIPTION']['value'] ?? '');
-        $name = $unescape($event['SUMMARY']['value'] ?? '');
+        $description = ws_ical_text($event['DESCRIPTION']['value'] ?? '');
+        $name = ws_ical_text($event['SUMMARY']['value'] ?? '');
 
         if ($public_only && (preg_match('/^\s*observance/i', $description) || (strpos($description, 'Google') !== false))) {
             continue;
@@ -746,6 +793,10 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             return;
 
         case 'feed_sync':
+            if (!ws_holiday_feed_site_wide((int) ($_POST['feed_id'] ?? 0))) {
+                return;
+            }
+
             $read = ws_holiday_feed_sync((int) ($_POST['feed_id'] ?? 0));
 
             if ($read['ok']) {
@@ -757,6 +808,10 @@ function ws_holidays_settings_post($viewer, $action, $liveform)
             return;
 
         case 'feed_remove':
+            if (!ws_holiday_feed_site_wide((int) ($_POST['feed_id'] ?? 0))) {
+                return;
+            }
+
             ws_holiday_feed_remove((int) ($_POST['feed_id'] ?? 0));
             log_activity(lang('a public holiday calendar was removed from the workspace'), $username);
             $liveform->add_notice(lang('The calendar was removed with its days.'));

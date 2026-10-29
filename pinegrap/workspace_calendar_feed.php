@@ -63,6 +63,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     };
 
+    // The person's own calendars on their Work Calendar.
+    if (ws_personal_ical_post($user_id, $action, $liveform)) {
+
+        header('Location: ' . $screen_url . '#ws-own-calendars');
+
+        exit();
+
+    }
+
     if (($action === 'create') || (($action === 'save') && $feed)) {
 
         if (empty($kinds)) {
@@ -292,6 +301,7 @@ echo pg_page_shell(array(
         <div class="col-12 xl:col-7">
             ' . $address_card . '
             ' . $manage_card . '
+            ' . ws_personal_ical_card($user_id) . '
         </div>
         <div class="col-12 xl:col-5">
             ' . $help . '

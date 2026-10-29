@@ -1257,6 +1257,7 @@
     "removed from": " den kaldırıldı",
     "removed from a product group": "ürün grubundan çıkarıldı",
     "removed the firewall ban on {var:1} from the command line": "{var:1} üzerindeki güvenlik duvarı yasağını komut satırından kaldırdı",
+    "removed their own calendar from their Work Calendar": "kendi takvimini İş Takviminden kaldırdı",
     "repair, recycling": "onarım, geri dönüşüm",
     "repeating workspace task ({var:1}) was stopped, its next copy could not be made": "tekrarlayan çalışma alanı görevi ({var:1}) durduruldu, sonraki kopyası açılamadı",
     "replace": "değiştir",
