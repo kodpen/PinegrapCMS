@@ -178,6 +178,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-notes-import-enex.md: Evernote exports (.enex) as notes (notes_enex.php, PR #644): laid out in the stage as Markdown and attachment files, ENML to Markdown, limits and refusals
 - workspace-notes-import-html.md: One web page (.html/.htm) as a note (notes_html.php, PR #1776): laid out in the stage like the Evernote reader, HTML parser only, what is dropped, embedded data: pictures as attachments
 - workspace-notes-import-keep.md: Google Keep notes from a Takeout zip (notes_keep.php, PR #1656): found in any zip, laid out in the stage as Markdown and attachments, untitled notes named by their first line
+- workspace-notes-import-notion.md: Notion pages as notes (notes_notion.php, #3212, decided in #3180): the notion MCP alias's search and fetch tools with the person's own account, a page staged as a Markdown file, then the file import
 - workspace-notes-import-upload.md: The notes import's upload: picked list, checks, unreadable files, XHR progress, cancel, reading step, focus, request_max cap, per-file sentences, session closed before staging
 - workspace-notes-import-zip-names.md: How the notes import reads zip entry names (UTF-8 flag, CP857 from Windows/7-Zip on a Turkish system, libzip's CP437 guess) and why "Toplantì notlarì" happened
 - workspace-notes-import.md: Notes brought in from other apps (workspace_notes_import.php, notes_import.php): Markdown/text or a zip staged, previewed, written in batches; how an export of ours updates its own note
