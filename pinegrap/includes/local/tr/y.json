@@ -460,6 +460,7 @@
     "Your requests, their status and our messages.": "Talepleriniz, durumları ve mesajlarımız.",
     "Your results and next steps wait for you in your account.": "Sonuçlarınız ve sonraki adımlar hesabınızda sizi bekler.",
     "Your return code": "İade kodunuz",
+    "Your return label cannot be downloaded right now. Please contact us and we will send you a new one.": "İade etiketiniz şu anda indirilemiyor. Lütfen bizimle iletişime geçin, size yenisini gönderelim.",
     "Your return request for order #{var:1} was approved": "#{var:1} numaralı siparişinizin iade talebi onaylandı",
     "Your return request was received. We will let you know what happens next.": "İade talebiniz alındı. Sonrasını size bildireceğiz.",
     "Your return request was withdrawn.": "İade talebiniz geri çekildi.",

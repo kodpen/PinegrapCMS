@@ -13,6 +13,8 @@
  *
  * Only for the signed-in owner of the order, and only while
  * ECOMMERCE_ORDER_RETURNS_ALLOWED is on; staff manage returns from the panel.
+ * GET action=label (order_id, return_id) hands the owner the carrier return
+ * label of a request, whatever the setting.
  * The outcome is told through the order view's messages (liveform
  * 'order_receipt', the name the widget's messages node carries and the
  * liveform the classic order view prints), and the browser goes back to the
@@ -25,6 +27,64 @@
  */
 
 include('init.php');
+
+// GET action=label, order_id, return_id: the owner downloads the carrier
+// return label of a request (pg_returns_list_html() links it). The returns
+// are listed whatever the setting, and so is the label staff made for the
+// customer to print; it counts on the same hourly allowance as the moves.
+if ((($_SERVER['REQUEST_METHOD'] ?? '') === 'GET') && (($_GET['action'] ?? '') === 'label')) {
+
+    if (!defined('ECOMMERCE') || ECOMMERCE !== true) {
+        output_error(lang('E-commerce is not enabled on this site.'));
+    }
+
+    $order_id = is_scalar($_GET['order_id'] ?? null) ? (int) $_GET['order_id'] : 0;
+    $return_id = is_scalar($_GET['return_id'] ?? null) ? (int) $_GET['return_id'] : 0;
+    $user_id = defined('USER_ID') ? (int) USER_ID : 0;
+    $order = ($order_id > 0) ? db_item("SELECT id, order_number, user_id FROM orders WHERE id = '" . $order_id . "'") : null;
+    $owner = ($user_id > 0) && $order && ((int) $order['user_id'] === $user_id);
+    $rate_hit = $owner && function_exists('waf_rate_exceeded') && waf_rate_exceeded('return|' . $user_id, 'order_return', 10, 3600);
+    $return = null;
+    $label = null;
+
+    if ($owner && !$rate_hit && ($return_id > 0) && pg_returns_ready()) {
+        $return = db_item("SELECT id, order_id, status FROM order_returns WHERE id = '" . $return_id . "'");
+        $label = $return ? pg_shipment_label_customer_pick(pg_shipment_label_return_rows($return_id)) : null;
+    }
+
+    $refusal = pg_shipment_label_customer_refusal($user_id, $order, $return, $label, $rate_hit);
+
+    if ($refusal) {
+        if (!$owner) {
+            log_activity(lang(array('string' => 'A return label download was refused for order {var:1}: the visitor does not own it.', 'vars' => array($order_id))));
+        }
+
+        output_error(h($refusal['message']), $refusal['status']);
+    }
+
+    // The kept file, else the service's copy when the sweep removed it.
+    $document = pg_shipment_label_document($label);
+
+    // The service's answer is written for staff: the log keeps it, the
+    // customer is told what to do.
+    if (!$document['ok']) {
+        log_activity(lang(array('string' => 'Return label {var:1} could not be handed to the customer: {var:2}', 'vars' => array((int) $label['id'], $document['error']))));
+        output_error(h(lang('Your return label cannot be downloaded right now. Please contact us and we will send you a new one.')), 502);
+    }
+
+    $file_name = 'return-label-' . preg_replace('/[^A-Za-z0-9-]+/', '', (string) ($label['number'] !== '' ? $label['number'] : $label['id']));
+
+    foreach (pg_shipment_label_customer_headers((string) $document['format'], $file_name) as $header) {
+        header($header);
+    }
+
+    header('Content-Length: ' . strlen($document['document']));
+
+    log_activity(lang(array('string' => 'Return label {var:1} of order {var:2} was downloaded by the customer.', 'vars' => array((int) $label['id'], ((string) $order['order_number'] !== '') ? (string) $order['order_number'] : (string) $order_id))));
+
+    echo $document['document'];
+    exit;
+}
 
 if (pg_post_body_discarded()) {
     output_error(lang('The request was too large for this server and arrived empty.'), 413);

@@ -958,3 +958,23 @@ function test_returns_label_mail_body()
 	$bare = pg_return_label_mail_body(array('order_number' => '9', 'carrier_code' => 'RC-2'));
 	pg_assert_contains('Give the carrier this return code:', $bare, 'no carrier named');
 }
+
+// A request with a carrier return label offers its download; one without
+// offers none.
+function test_returns_list_html_return_label()
+{
+	$return = array(
+		'id' => 6, 'status' => 'approved', 'status_label' => 'Return approved',
+		'requested' => '', 'lines' => array(), 'reason_label' => '', 'customer_note' => '', 'decision_note' => '',
+		'carrier' => 'UPS', 'carrier_code' => '1Z999', 'tracking_number' => '', 'refund_deadline' => '',
+		'can_withdraw' => false, 'can_mark_sent' => true,
+		'label_url' => '/software/order_return.php?action=label&order_id=9&return_id=6',
+	);
+
+	$html = pg_returns_list_html(array($return), returns_test_form());
+	pg_assert_contains('href="/software/order_return.php?action=label&amp;order_id=9&amp;return_id=6"', $html, 'the link, escaped');
+	pg_assert_contains(h(lang('Download return label')), $html, 'its words');
+
+	$html = pg_returns_list_html(array(array_merge($return, array('label_url' => ''))), returns_test_form());
+	pg_assert_false(strpos($html, 'action=label') !== false, 'no label: no link');
+}
