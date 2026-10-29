@@ -430,6 +430,7 @@
     "PayPal has not settled this payment yet and may still deny it. Check it on PayPal before shipping, and record it with Payment Received once PayPal completes it.": "PayPal bu ödemeyi henüz tamamlamadı ve hâlâ reddedebilir. Kargoya vermeden önce PayPal üzerinden kontrol edin; PayPal ödemeyi tamamladığında Ödeme Alındı ile kaydedin.",
     "PayPal is offered": "PayPal sunuluyor",
     "PayPal logo address": "PayPal logosunun adresi",
+    "PayTR does not take payments in this currency.": "PayTR bu para biriminde ödeme almıyor.",
     "Payable": "Ödenebilir",
     "Payable Total": "Ödenecek Toplam",
     "Payables": "Borçlar",
