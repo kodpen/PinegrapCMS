@@ -814,6 +814,16 @@ function ws_mail_ingest($raw, $box)
         ));
     }
 
+    // Subscribers hear ids only: the mail's words stay on the site.
+    pg_announce('workspace.mail.received', array(
+        'conversation_id' => $conversation_id,
+        'channel_id'      => (int) $channel['id'],
+        'message_id'      => (int) $message_id,
+        'box_id'          => $box_id,
+        'new'             => $opened,
+        'verified'        => ($auth === 'pass'),
+    ));
+
     // A new conversation may get the box's automatic answer (mail_status.php).
     if ($opened && function_exists('ws_mail_auto_reply')) {
         ws_mail_auto_reply($box, $item_id);
