@@ -14,7 +14,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 
 - P4 (M) Licence. `output.php`: pure `pg_license_map_v1()`, the v1 call in `license_check()` (4720-5163), card. Settings (`includes/settings/general*.php`): key field (`h()`, `backend.src.js` masks, `build_js.php`), save, local-name warning. Tests: `license_v1_test.php` (`licence_mapping.json`), `output_test.php`. Memory: `license-check.md`. After P3.
 
-- P5a (M) Release check. `update.php`: pure `pg_vendor_release_offer()` (installed build an argument, '' until P6), `pg_update_server_version()`; `software_update_check.php`; `software_update.php` 125-188; `check` in `includes/panel/software.php` 345-485: pin, flag, screen texts, Repair. Tests: `vendor_release_test.php` (cases stopping at `check`), `update_test.php`. Memory: new `vendor-api-update.md`. After P3.
+- P5a done (#3282): `platform/vendor-api-update.md` (read, offer, pin in `software.update` with `package_file`, flag, texts; the installed build is still '').
 
 - P5b (M) Download checks. `download`, `backup`, `replace` (`software.php` 486-713); pure `pg_vendor_update_steps()` (`update.php`); empty `pg_vendor_release_keys()`. Tests: `vendor_update_steps_test.php` (`update_steps.json`, a test-time pair from `pg_openssl_key_new()`, a built ZIP, a file swapped before replace). Memory: `vendor-api-update.md`, `update-package-extraction.md`. After P5a.
 
