@@ -24,4 +24,4 @@ description: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): 
 
 ## Which screens use them?
 - Slices 1-8 (#1733-#1820) moved every panel call site. `get_form_info()` hooks date fields for both interfaces; only `'backend'` prints `$form_info['picker_scripts']` (`preview_form.php`). The designer keyword box is redrawn by `pgChips.set()` after `_pgLoadPageIntoFields()` filled every field: its change reads all fields into the page. A field without its hook and `pg_fields_script()` stays plain. Form screens print the picker options once after the fields (date-time variant if any): hooked fields are drawn after load and share `datetimepicker_options`.
-- Site pages: a date hook brings the control itself (`site-datetime-loader.md`); the order form widget and the designer widgets follow (S3b, S4 of `plans/datetime-picker.md`).
+- Site pages: a date hook brings the control itself (`site-datetime-loader.md`); the designer widgets follow (S4 of `plans/datetime-picker.md`).
