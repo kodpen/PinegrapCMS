@@ -81,7 +81,8 @@ function test_contact_holders_cover_every_contact_column_of_the_schema()
 	$listed = array();
 
 	foreach (pg_contact_holders() as $key => $holder) {
-		if (!isset($holder['type'])) {
+		// the JSON cells name contacts inside their values, not by a column
+		if (!isset($holder['type']) && ($holder['merge'] !== 'cells')) {
 			$listed[] = (isset($holder['table']) ? $holder['table'] : $key) . '.' . $holder['column'];
 		}
 	}
@@ -106,7 +107,7 @@ function test_contact_holders_name_columns_the_schema_has()
 			pg_assert_same('contact', $value, $key . ': the type names a contact');
 		}
 
-		pg_assert_true(in_array($holder['merge'], array('move', 'one', 'groups', 'keep', 'survivor'), true), $key . ': known merge answer');
+		pg_assert_true(in_array($holder['merge'], array('move', 'one', 'cells', 'groups', 'keep', 'survivor'), true), $key . ': known merge answer');
 		pg_assert_true(in_array($holder['erase'], array('find', 'scope', 'none'), true), $key . ': known erase answer');
 		pg_assert_same(1, preg_match('/^[a-z0-9_]+$/', $table . $holder['column']), $key . ': names are safe to put in SQL');
 	}
@@ -178,4 +179,73 @@ function test_contact_holders_one_row_per_contact_keeps_its_mirror()
 			pg_assert_true(isset($schema['contacts'][$holder['mirror']]), $key . ': contacts.' . $holder['mirror'] . ' exists');
 		}
 	}
+}
+
+function test_contact_holders_cells_holder_is_the_erasure_cells_entry()
+{
+	$holders = pg_contact_holders();
+
+	pg_assert_true(isset($holders['ws_wtable_cells']), 'workflow table cells are a holder');
+	pg_assert_same('cells', $holders['ws_wtable_cells']['merge'], 'their contact links are re-pointed in the JSON');
+	pg_assert_same('ws_wtable_rows', $holders['ws_wtable_cells']['table'], 'the cells live in the rows');
+	pg_assert_same('cells', $holders['ws_wtable_cells']['column'], 'as one JSON column');
+}
+
+function test_contact_holders_wtable_cells_moved_repoints_contact_links()
+{
+	$types = array('1' => 'link', '2' => 'person', '3' => 'text');
+	$cells = array('1' => array('kind' => 'contact', 'id' => 7), '2' => 7, '3' => 'seven');
+
+	pg_assert_same(
+		array('1' => array('kind' => 'contact', 'id' => 3), '2' => 7, '3' => 'seven'),
+		pg_contact_wtable_cells_moved($types, $cells, array(7), 3),
+		'a contact link moves to the contact that stays; a person cell keeps its account');
+}
+
+function test_contact_holders_wtable_cells_moved_leaves_other_kinds()
+{
+	$types = array('1' => 'link', '2' => 'link');
+	$cells = array('1' => array('kind' => 'user_account', 'id' => 7), '2' => array('kind' => 'erp_account', 'id' => '7'));
+
+	pg_assert_same(null, pg_contact_wtable_cells_moved($types, $cells, array(7), 3), 'account links do not change in a contact merge');
+}
+
+function test_contact_holders_wtable_cells_moved_reads_a_deleted_column_as_either()
+{
+	$cells = array('9' => array('kind' => 'contact', 'id' => '7'), '10' => 7);
+
+	pg_assert_same(
+		array('9' => array('kind' => 'contact', 'id' => 3), '10' => 7),
+		pg_contact_wtable_cells_moved(array(), $cells, array(7), 3),
+		'a leftover link cell is re-pointed, a leftover number is not');
+}
+
+function test_contact_holders_wtable_cells_moved_takes_several_merged_ids()
+{
+	$types = array('1' => 'link', '2' => 'link', '3' => 'link', '4' => 'link');
+	$cells = array(
+		'1' => array('kind' => 'contact', 'id' => 7),
+		'2' => array('kind' => 'contact', 'id' => 8),
+		'3' => array('kind' => 'contact', 'id' => 9),
+		'4' => array('kind' => 'contact', 'id' => 3),
+	);
+
+	pg_assert_same(
+		array(
+			'1' => array('kind' => 'contact', 'id' => 3),
+			'2' => array('kind' => 'contact', 'id' => 3),
+			'3' => array('kind' => 'contact', 'id' => 9),
+			'4' => array('kind' => 'contact', 'id' => 3),
+		),
+		pg_contact_wtable_cells_moved($types, $cells, array(7, '8'), 3),
+		'every merged id moves, others stay');
+}
+
+function test_contact_holders_wtable_cells_moved_gives_null_without_a_change()
+{
+	$types = array('1' => 'link', '2' => 'text');
+	$cells = array('1' => array('kind' => 'contact', 'id' => 4), '2' => array('kind' => 'contact', 'id' => 7));
+
+	pg_assert_same(null, pg_contact_wtable_cells_moved($types, $cells, array(7), 3), 'a text column holding the shape is not a link');
+	pg_assert_same(null, pg_contact_wtable_cells_moved(array(), array(), array(7), 3), 'an empty row');
 }

@@ -6,11 +6,12 @@ module: contacts
 
 ## What is it?
 - `pg_contact_holders()` (`includes/fn/contacts.php`): one entry per place a contact's id is kept: `column`, optional `table` (when the key is not the table) and `type` (column => `'contact'` for a column that also names other records), `merge`, `erase`. Decided in #2421 (a).
-- Holders: `orders`, `forms`, `email_recipients`, `erp_accounts`, `opt_in`, `contacts_contact_groups_xref`, `consent_log`, `user.user_contact`, `ws_channels.contact_id`, `ws_channels.customer_id` (type contact), `ws_refs`, `ws_approvals`, `ws_ai_changes` (typed record columns).
+- Holders: `orders`, `forms`, `email_recipients`, `erp_accounts`, `opt_in`, `contacts_contact_groups_xref`, `consent_log`, `user.user_contact`, `ws_channels.contact_id`, `ws_channels.customer_id` (type contact), `ws_refs`, `ws_approvals`, `ws_ai_changes` (typed record columns), `ws_wtable_cells` (contact links inside `ws_wtable_rows.cells` JSON).
 
 ## What does the merge do with each?
 - `move`: `pg_contact_holders_move()` re-points the merged contacts' rows to the contact that stays, before they are deleted. Before this, only groups and opt-in moved; orders, forms, ERP accounts, Workspace channels kept a deleted contact's id.
 - `one` (`erp_accounts`): a group of duplicates where more than one contact has an ERP account is not merged at all (`pg_contact_merge_conflicts()`); `merge_contacts($contacts, &$refused)` counts it and both contact screens add a notice. One account only: re-pointed.
+- `cells` (`ws_wtable_cells`): `pg_contact_holders_move_wtable_cells()` narrows rows with `LIKE '%:id,%'`/`'%:id}%'`, the pure `pg_contact_wtable_cells_moved()` re-points only `{kind:'contact', id}` links (a deleted column's leftover cell read as a link; person cells, `user_account` and `erp_account` links stay), each row written on its revision (+1, `updated_at`), re-read up to 3 times, no flow row event. Before #PRNUM a merge left links to the merged-away contact.
 - `groups`: the merge's own contact group and opt-in step. `keep` (`consent_log`): left as it is, proof of what that record answered. `survivor` (`user`): a contact a user holds always stays.
 - Tables a site may not have yet are skipped through `pg_schema_has()`.
 
