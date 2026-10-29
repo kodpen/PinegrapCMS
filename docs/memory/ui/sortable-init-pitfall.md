@@ -14,7 +14,8 @@ description: Drag-to-reorder in the panel: SortableJS set up per screen (welcome
 - Dashboard (role < 2): `.pg-widget-move` at the start of the card header, outside the action buttons; Left/Up earlier, Right/Down later; saved by `pg_merge_widget_order()` then `pg_save_widget_order()`.
 - Photos: `.pg-pb-move` added by `refreshCoverBadge()` (it sees tiles the picker appends) and only relabelled after that, so the focused grip survives a move; the first tile is the cover. Labels `move_photo`, `reorder_position`, `reorder_hint` sit in both label lists of `product_builder.php`.
 - Menu tree: Up/Down among siblings, Right to the end of the sub-items of the item above only when it has a `.sort-group`, Left out after the parent; `updateIndentation()` re-indents. Save Order reads the tree.
-- Pinned by `tests/keyboard_reorder_test.php`.
+- Workspace templates (`workspace_templates.js` `draggable()`): Up/Down on a task or note grip; `collect()` keeps typed values, the list is drawn anew and the same row's grip is focused again; `aria-describedby` points to one hidden `tpl_reorder_hint` span. Moving a task down lets go of its "waits for" links to tasks now below it (`drawTasks()`), as a drag does (#3297).
+- Pinned by `tests/keyboard_reorder_test.php` and `tests/workspace_template_reorder_test.php`.
 
 ## Is any jQuery UI sortable left?
 - No. The panel header stopped loading jQuery UI in #2762, which also removed the last `.pg-sortable` set-up from `backend.src.js` (no screen used the class). `$().sortable()` is undefined on panel screens; a list that drags creates its own `Sortable` as above.

@@ -100,7 +100,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
 - workspace-editor-autoformat.md: Autoformat while typing in a Workspace writing box: ==x== to a highlight, "- " "* " "1. " "> " at a line's start to a list or quote; one undo, IME and paste guards, the per-viewer off switch
-- workspace-editor-link-keys.md: The link tip's Text field (linkText()) and the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes, since #2101
+- workspace-editor-link-keys.md: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (openKeys(), shortcutRows(), keyLabel()) of the Workspace writing boxes since #2101, and the selection bar acting on click
 - workspace-editor-lists.md: Lists and quotes in the Workspace writing box (#1897): twins of the server's rules, lines written back as stored, keys, the three tools, a pick inside a mark, select all and delete
 - workspace-editor-smart-paste.md: Pasting into a Workspace writing box (#2018): HTML mapped to the box's markup and why it is safe, sheet ranges to the table window, a URL over words, a note's picture
 - workspace-editor-toolbar.md: One row of tools for every Workspace writing box (PGWsEditor.toolbar()); marks made on the nodes by format(), never execCommand; waiting marks, IME, pressed state, undo, labels
