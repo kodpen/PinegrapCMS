@@ -56,13 +56,8 @@ if (!defined('PG_MERCHANT_FETCH_HOUR')) {
    Pure parts
    --------------------------------------------------------------------------- */
 
-/**
- * The Merchant Center state as stored under config.product_feeds "merchant",
- * typed; anything unknown or malformed falls back to its default.
- *
- * @param mixed $stored
- * @return array
- */
+// The Merchant Center state as stored under config.product_feeds "merchant",
+// typed; anything unknown or malformed falls back to its default.
 function pg_merchant_state_parse($stored)
 {
     $state = array(
@@ -114,13 +109,8 @@ function pg_merchant_state_parse($stored)
     return $state;
 }
 
-/**
- * A stored issue summary, typed again (it was written by
- * pg_merchant_issue_summary(), but the column is plain JSON).
- *
- * @param array $stored
- * @return array
- */
+// A stored issue summary, typed again (it was written by
+// pg_merchant_issue_summary(), but the column is plain JSON).
 function pg_merchant_summary_parse($stored)
 {
     $summary = pg_merchant_issue_summary(array());
@@ -155,14 +145,8 @@ function pg_merchant_summary_parse($stored)
     return $summary;
 }
 
-/**
- * One line of outside text: control characters become spaces, then the
- * line is cut to a length (characters, not bytes).
- *
- * @param string $text
- * @param int    $max
- * @return string
- */
+// One line of outside text: control characters become spaces, then the
+// line is cut to a length (characters, not bytes).
 function pg_merchant_clip($text, $max)
 {
     $text = trim(preg_replace('/[\x00-\x1F\x7F]+/', ' ', (string) $text));
@@ -174,25 +158,15 @@ function pg_merchant_clip($text, $max)
     return substr($text, 0, $max);
 }
 
-/**
- * A Merchant API severity as one of the three this module knows; anything
- * else (SEVERITY_UNSPECIFIED, a future value) counts as not impacting.
- *
- * @param string $severity
- * @return string DISAPPROVED, DEMOTED or NOT_IMPACTED
- */
+// A Merchant API severity as one of the three this module knows; anything
+// else (SEVERITY_UNSPECIFIED, a future value) counts as not impacting.
 function pg_merchant_severity($severity)
 {
     return in_array($severity, array('DISAPPROVED', 'DEMOTED'), true) ? $severity : 'NOT_IMPACTED';
 }
 
-/**
- * A help address from Google, kept only when it is a plain https address on
- * a Google host, so a value from outside never becomes a script link.
- *
- * @param mixed $url
- * @return string
- */
+// A help address from Google, kept only when it is a plain https address on
+// a Google host, so a value from outside never becomes a script link.
 function pg_merchant_help_url($url)
 {
     $url = is_string($url) ? trim($url) : '';
@@ -206,29 +180,15 @@ function pg_merchant_help_url($url)
     return (($host === 'google.com') || (substr($host, -11) === '.google.com')) ? $url : '';
 }
 
-/**
- * The feed label a data source is created with: Google wants up to 20
- * upper-case letters, digits and dashes; the target country is used.
- *
- * @param string $country two letters
- * @return string
- */
+// The feed label a data source is created with: Google wants up to 20
+// upper-case letters, digits and dashes; the target country is used.
 function pg_merchant_feed_label($country)
 {
     return substr(preg_replace('/[^A-Z0-9-]/', '', strtoupper((string) $country)), 0, 20);
 }
 
-/**
- * The body of accounts.dataSources.create for the feed: a primary product
- * data source whose file Google fetches once a day.
- *
- * @param string $feed_url  feed.php address of the Google TSV feed
- * @param string $language  content language (ISO 639-1; a longer tag is cut)
- * @param string $country   target country (CLDR, two letters)
- * @param string $time_zone the site's time zone
- * @param string $name      display name
- * @return array
- */
+// The body of accounts.dataSources.create for the feed: a primary product
+// data source whose file Google fetches once a day.
 function pg_merchant_data_source_body($feed_url, $language, $country, $time_zone, $name)
 {
     $language = strtolower(substr(preg_replace('/[^A-Za-z]/', '', (string) $language), 0, 2));
@@ -258,17 +218,10 @@ function pg_merchant_data_source_body($feed_url, $language, $country, $time_zone
     );
 }
 
-/**
- * The data source of a list that fetches the feed: the one whose fetch
- * address is the feed address, else the one the site registered before
- * (its address is from an older token and is moved to the new one), else
- * none.
- *
- * @param array  $sources  dataSources of accounts.dataSources.list
- * @param string $feed_url
- * @param string $known    the data source name stored before, or ''
- * @return array name, same_url (whether its address is already the feed's)
- */
+// The data source of a list that fetches the feed: the one whose fetch
+// address is the feed address, else the one the site registered before
+// (its address is from an older token and is moved to the new one), else
+// none.
 function pg_merchant_find_source($sources, $feed_url, $known = '')
 {
     $found = array('name' => '', 'same_url' => false);
@@ -292,16 +245,10 @@ function pg_merchant_find_source($sources, $feed_url, $known = '')
     return $found;
 }
 
-/**
- * The summary of the aggregate product statuses: issue kinds per severity,
- * products per state (the largest figure among the reporting contexts and
- * countries, so a product listed for two programmes is not counted twice)
- * and the worst issues with Merchant Center's own description.
- *
- * @param array $statuses aggregateProductStatuses, every page joined
- * @param int   $limit    issues kept
- * @return array counts, products, top
- */
+// The summary of the aggregate product statuses: issue kinds per severity,
+// products per state (the largest figure among the reporting contexts and
+// countries, so a product listed for two programmes is not counted twice)
+// and the worst issues with Merchant Center's own description.
 function pg_merchant_issue_summary($statuses, $limit = PG_MERCHANT_TOP_ISSUES)
 {
     $summary = array(
@@ -379,14 +326,7 @@ function pg_merchant_issue_summary($statuses, $limit = PG_MERCHANT_TOP_ISSUES)
     return $summary;
 }
 
-/**
- * Whether the reading of the issues is old enough to read again.
- *
- * @param int $checked_at when it was read, 0 never
- * @param int $now
- * @param int $ttl
- * @return bool
- */
+// Whether the reading of the issues is old enough to read again.
 function pg_merchant_issues_due($checked_at, $now, $ttl = PG_MERCHANT_ISSUES_TTL)
 {
     $checked_at = (int) $checked_at;
@@ -395,26 +335,16 @@ function pg_merchant_issues_due($checked_at, $now, $ttl = PG_MERCHANT_ISSUES_TTL
     return ($checked_at <= 0) || ($checked_at > (int) $now) || (((int) $now - $checked_at) >= (int) $ttl);
 }
 
-/**
- * The account's product diagnostics in Merchant Center.
- *
- * @param string $account account id
- * @return string
- */
+// The account's product diagnostics in Merchant Center.
 function pg_merchant_center_url($account)
 {
     return 'https://merchants.google.com/mc/products/diagnostics?a=' . rawurlencode(preg_replace('/\D/', '', (string) $account));
 }
 
-/**
- * The tile's state from the stored reading: 'none' (no tile: no account
- * chosen), 'fail' (a product is disapproved, or the data source could not
- * be registered), 'warn' (demoted products, or the last reading failed),
- * 'ok' otherwise.
- *
- * @param array $state pg_merchant_state_parse()
- * @return string
- */
+// The tile's state from the stored reading: 'none' (no tile: no account
+// chosen), 'fail' (a product is disapproved, or the data source could not
+// be registered), 'warn' (demoted products, or the last reading failed),
+// 'ok' otherwise.
 function pg_merchant_health($state)
 {
     if ($state['account'] === '') {
@@ -432,14 +362,9 @@ function pg_merchant_health($state)
     return 'ok';
 }
 
-/**
- * The rows the System Status tile expands to: one per top issue, with
- * Merchant Center's description and the number of products it touches.
- * The text is left raw; the widget escapes every row it prints.
- *
- * @param array $summary pg_merchant_issue_summary()
- * @return array label, state, when
- */
+// The rows the System Status tile expands to: one per top issue, with
+// Merchant Center's description and the number of products it touches.
+// The text is left raw; the widget escapes every row it prints.
 function pg_merchant_issue_detail($summary)
 {
     $tones = array('DISAPPROVED' => 'fail', 'DEMOTED' => 'warn', 'NOT_IMPACTED' => 'info');
@@ -457,12 +382,7 @@ function pg_merchant_issue_detail($summary)
     return $rows;
 }
 
-/**
- * Merchant Center accounts from accounts.list, id => name.
- *
- * @param array $data the decoded answer
- * @return array
- */
+// Merchant Center accounts from accounts.list, id => name.
 function pg_merchant_accounts_from_api($data)
 {
     $accounts = array();
@@ -493,15 +413,9 @@ function pg_merchant_accounts_from_api($data)
     return $accounts;
 }
 
-/**
- * The target country to offer first: the organization country when it is
- * already a two-letter code, else the one the shop's currency belongs to
- * when that is unambiguous, else none.
- *
- * @param string $organization_country
- * @param string $currency
- * @return string
- */
+// The target country to offer first: the organization country when it is
+// already a two-letter code, else the one the shop's currency belongs to
+// when that is unambiguous, else none.
 function pg_merchant_default_country($organization_country, $currency)
 {
     $organization_country = strtoupper(trim((string) $organization_country));
@@ -520,20 +434,13 @@ function pg_merchant_default_country($organization_country, $currency)
    Storage
    --------------------------------------------------------------------------- */
 
-/**
- * Whether the feed setup and connected accounts are there.
- *
- * @return bool
- */
+// Whether the feed setup and connected accounts are there.
 function pg_merchant_ready()
 {
     return function_exists('pg_product_feed_schema_ready') && pg_product_feed_schema_ready()
         && function_exists('pg_connect_schema_ready') && pg_connect_schema_ready();
 }
 
-/**
- * @return array pg_merchant_state_parse()
- */
 function pg_merchant_state()
 {
     if (!function_exists('pg_product_feed_schema_ready') || !pg_product_feed_schema_ready()) {
@@ -545,13 +452,8 @@ function pg_merchant_state()
     return pg_merchant_state_parse(isset($settings['merchant']) ? $settings['merchant'] : null);
 }
 
-/**
- * Writes changes into a fresh read of the setup, so a feed build running
- * meanwhile keeps its statuses.
- *
- * @param array $changes keys of pg_merchant_state_parse()
- * @return array the new state
- */
+// Writes changes into a fresh read of the setup, so a feed build running
+// meanwhile keeps its statuses.
 function pg_merchant_state_save($changes)
 {
     $settings = pg_product_feed_settings();
@@ -570,14 +472,9 @@ function pg_merchant_state_save($changes)
     return $state;
 }
 
-/**
- * The Google account Merchant Center is reached through: the one chosen,
- * while it still serves the purpose, else the newest site account connected
- * for it.
- *
- * @param array|null $state
- * @return array|null pg_connect_account()
- */
+// The Google account Merchant Center is reached through: the one chosen,
+// while it still serves the purpose, else the newest site account connected
+// for it.
 function pg_merchant_connection($state = null)
 {
     if (!pg_merchant_ready()) {
@@ -600,12 +497,8 @@ function pg_merchant_connection($state = null)
     return $accounts ? $accounts[0] : null;
 }
 
-/**
- * The Google TSV feed's address, or '' while that feed is off or its address
- * cannot be shown (no site key).
- *
- * @return string
- */
+// The Google TSV feed's address, or '' while that feed is off or its address
+// cannot be shown (no site key).
 function pg_merchant_feed_url()
 {
     $settings = pg_product_feed_settings();
@@ -624,15 +517,7 @@ function pg_merchant_feed_url()
    Calls
    --------------------------------------------------------------------------- */
 
-/**
- * One Merchant API call.
- *
- * @param int        $connection_id
- * @param string     $method
- * @param string     $path  after the host, starting with "/"
- * @param array|null $body  sent as JSON
- * @return array ok, status, data, error
- */
+// One Merchant API call.
 function pg_merchant_call($connection_id, $method, $path, $body = null)
 {
     $options = array(
@@ -659,15 +544,7 @@ function pg_merchant_call($connection_id, $method, $path, $body = null)
     return array('ok' => $result['ok'], 'status' => (int) $result['status'], 'data' => $data, 'error' => $error);
 }
 
-/**
- * Every page of a list call, joined.
- *
- * @param int    $connection_id
- * @param string $path  with its query, without pageToken
- * @param string $field the list's field in the answer
- * @param int    $pages at most this many pages
- * @return array ok, items, error
- */
+// Every page of a list call, joined.
 function pg_merchant_list($connection_id, $path, $field, $pages = 10)
 {
     $items = array();
@@ -694,12 +571,7 @@ function pg_merchant_list($connection_id, $path, $field, $pages = 10)
     return array('ok' => true, 'items' => $items, 'error' => '');
 }
 
-/**
- * The Merchant Center accounts the connected Google account can reach.
- *
- * @param int $connection_id
- * @return array ok, accounts (id => name), error
- */
+// The Merchant Center accounts the connected Google account can reach.
 function pg_merchant_accounts($connection_id)
 {
     $list = pg_merchant_list($connection_id, '/accounts/v1/accounts?pageSize=250', 'accounts', 4);
@@ -707,13 +579,9 @@ function pg_merchant_accounts($connection_id)
     return array('ok' => $list['ok'], 'accounts' => pg_merchant_accounts_from_api(array('accounts' => $list['items'])), 'error' => $list['error']);
 }
 
-/**
- * Registers the feed as the account's fetched data source, once: a source
- * already fetching the feed address is kept, the one registered before with
- * an older address is moved to the new one, otherwise one is created.
- *
- * @return array ok, action (kept, moved, created), error
- */
+// Registers the feed as the account's fetched data source, once: a source
+// already fetching the feed address is kept, the one registered before with
+// an older address is moved to the new one, otherwise one is created.
 function pg_merchant_register()
 {
     $state = pg_merchant_state();
@@ -779,13 +647,8 @@ function pg_merchant_register()
     return array('ok' => true, 'action' => $action, 'error' => '');
 }
 
-/**
- * Reads the account's product issues into the stored state, when the last
- * reading is older than the cache window or when forced.
- *
- * @param bool $force
- * @return array ok, ran, error
- */
+// Reads the account's product issues into the stored state, when the last
+// reading is older than the cache window or when forced.
 function pg_merchant_refresh_issues($force = false)
 {
     if (!pg_merchant_ready()) {
@@ -824,14 +687,9 @@ function pg_merchant_refresh_issues($force = false)
     return array('ok' => true, 'ran' => true, 'error' => '');
 }
 
-/**
- * What the Product Feeds card asked for: choose an account (and country),
- * register the feed again, read the issues now, or forget the account.
- * Choosing an account registers the feed and reads the issues at once.
- *
- * @param array $input account, country, register, check, unlink
- * @return array notices and errors: list of array(kind, text)
- */
+// What the Product Feeds card asked for: choose an account (and country),
+// register the feed again, read the issues now, or forget the account.
+// Choosing an account registers the feed and reads the issues at once.
 function pg_merchant_save_from_screen($input)
 {
     $messages = array();

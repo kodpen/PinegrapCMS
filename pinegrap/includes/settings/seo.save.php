@@ -412,3 +412,25 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Google Merchant Center (includes/fn/merchant_center.php), after the
+    // feeds so a Google feed switched on in the same save already has the
+    // address that is registered. The messages carry Google's own words, so
+    // they are escaped whole.
+    if ($product_feeds_save_ready && array_key_exists('merchant_card', $_POST) && function_exists('pg_merchant_save_from_screen')) {
+        $merchant_messages = pg_merchant_save_from_screen(array(
+            'account'  => (string) post_value('merchant_account'),
+            'country'  => (string) post_value('merchant_country'),
+            'register' => (bool) post_value('merchant_register'),
+            'check'    => (bool) post_value('merchant_check'),
+            'unlink'   => (bool) post_value('merchant_unlink'),
+        ));
+
+        foreach ($merchant_messages as $merchant_message) {
+            if ($merchant_message[0] === 'error') {
+                $liveform->add_error(h($merchant_message[1]));
+            } else {
+                $liveform->add_notice(h($merchant_message[1]));
+            }
+        }
+    }
+

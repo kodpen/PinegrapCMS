@@ -629,6 +629,7 @@
     "Issued": "Kesildi",
     "Issued by Logo support for your account.": "Hesabınız için Logo desteği tarafından verilir.",
     "Issued straight away": "Hemen kesilerek",
+    "Issues: {var:1} disapproving, {var:2} demoting, {var:3} warnings (read {var:4}).": "Sorunlar: {var:1} onaylanmayan, {var:2} geri plana düşüren, {var:3} uyarı (okunma: {var:4}).",
     "Istanbul": "İstanbul",
     "Istanbul (UTC+3)": "İstanbul (UTC+3)",
     "Istanbul This Week": "İstanbul'da Bu Hafta",

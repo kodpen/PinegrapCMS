@@ -1753,6 +1753,7 @@ function get_system_status_checks()
         'Operations Alerts'        => 'Alerts',
         'Maintenance Mode'         => 'Maintenance',
         'Product Feeds'            => 'Feeds',
+        'Google Merchant Center'   => 'Merchant',
         'Incoming E-mail'          => 'Mailboxes',
         'e-Fatura Threshold'       => 'e-Fatura',
     );
@@ -1788,6 +1789,7 @@ function get_system_status_checks()
         'Operations Alerts',
         'Maintenance Mode',
         'Product Feeds',
+        'Google Merchant Center',
         'Incoming E-mail',
         'e-Fatura Threshold',
     );
@@ -3413,6 +3415,49 @@ function get_system_status_checks()
                 );
 
             }
+        }
+    }
+
+    // 🛍 Google Merchant Center (includes/fn/merchant_center.php)
+    //
+    // A tile only once a Merchant Center account is chosen. It reads the
+    // issues the daily feed job stored (pg_merchant_refresh_issues()), never
+    // Google itself, so the panel does not wait on the Merchant API. Red
+    // while products are disapproved or the feed could not be registered,
+    // yellow for demoted products, a failed reading or a feed not registered
+    // yet. The row opens the account's diagnostics in Merchant Center; the
+    // detail rows are Merchant Center's own descriptions of the worst issues.
+    if (function_exists('pg_merchant_health') && pg_merchant_ready()) {
+
+        $merchant_state = pg_merchant_state();
+        $merchant_health = pg_merchant_health($merchant_state);
+
+        if ($merchant_health !== 'none') {
+
+            $merchant_counts = $merchant_state['issues']['counts'];
+            $merchant_tiles = array(
+                'fail' => array('bi-bag-x', 'fg-danger', ($merchant_state['register_error'] !== '')
+                    ? 'The product feed could not be registered in Merchant Center. Register it again from the Product Feeds card.'
+                    : 'Merchant Center disapproves some products, so they are not shown on Google. Its own description of each issue is in the list.',
+                    'DISAPPROVED', '{var:1} disapproving'),
+                'warn' => array('bi-bag-dash', 'fg-warning', 'Merchant Center demotes some products, the issues could not be read, or the feed is not registered yet. The Product Feeds card has the details.',
+                    'DEMOTED', '{var:1} demoting'),
+                'ok'   => array('bi-bag-check', 'fg-success', 'Merchant Center fetches the product feed and reports no issue that disapproves or demotes a product.',
+                    'NOT_IMPACTED', '{var:1} warnings'),
+            );
+            $merchant_tile = $merchant_tiles[$merchant_health];
+
+            $output .= $makeIcon(
+                $merchant_tile[0],
+                $merchant_tile[1],
+                'Google Merchant Center',
+                $merchant_tile[2],
+                ($merchant_counts[$merchant_tile[3]] > 0)
+                    ? lang(array('string' => $merchant_tile[4], 'vars' => pg_format_number($merchant_counts[$merchant_tile[3]], 0)))
+                    : '',
+                pg_merchant_center_url($merchant_state['account']),
+                pg_merchant_issue_detail($merchant_state['issues'])
+            );
         }
     }
 
