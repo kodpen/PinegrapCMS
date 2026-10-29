@@ -600,6 +600,7 @@ function pg_designer_screen_render($ctx)
                 </div>
 
                 ' . pg_designer_settings_modal($ctx) . '
+                ' . pg_designer_ai_alt_template($ctx) . '
                 ' . pg_designer_pick_page_modal() . '
                 ' . pg_designer_import_modal() . '
                 ' . pg_designer_make_template_modal() . '
@@ -2456,6 +2457,32 @@ function pg_designer_settings_modal($ctx)
                     </div>
 
         </dialog>';
+}
+
+/**
+ * "Write with AI" for the alt text of the image selected on the canvas,
+ * written by the browser's model from the image itself (target image_alt).
+ * The properties panel is drawn by style_designer.js, which takes a copy of
+ * this button for the image's Alt row (_sdAiAltButton()); '' when the person
+ * or the site cannot ask.
+ *
+ * @param array $ctx the designer's context (user, active_page_id)
+ * @return string a template element, or ''
+ */
+function pg_designer_ai_alt_template($ctx)
+{
+    $button = pg_ai_write_button($ctx['user'], array(
+        'record'      => 'page',
+        'record_id'   => (int) ($ctx['active_page_id'] ?? 0),
+        'record_from' => 'designer',
+        'theme'       => 'dark',
+        'target'      => 'image_alt',
+        'field'       => 'sd-prop-img-alt',
+        'image'       => 'sd-prop-img-src',
+        'context'     => array('page_title' => 'pg_page_title', 'page_name' => 'sd-page-name', 'image' => 'sd-prop-img-src', 'image_alt' => 'sd-prop-img-alt'),
+    ));
+
+    return ($button !== '') ? '<template id="sd-ai-alt-button">' . $button . '</template>' : '';
 }
 
 /**
