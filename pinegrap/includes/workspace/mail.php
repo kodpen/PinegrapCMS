@@ -722,6 +722,7 @@ function ws_mail_ingest($raw, $box)
     }
 
     $body = ws_mail_message_body($text);
+    $opened = !$conversation;
 
     if ($conversation) {
         $conversation_id = (int) $conversation['id'];
@@ -790,6 +791,11 @@ function ws_mail_ingest($raw, $box)
     db("UPDATE ws_mail_items SET conversation_id = '" . $conversation_id . "', message_id = '" . (int) $message_id . "',
             raw_path = '" . e($raw_path) . "', refused_files = '" . e(implode("\n", array_slice($refused, 0, 100))) . "'
         WHERE id = '" . $item_id . "'");
+
+    // A new conversation may get the box's automatic answer (mail_status.php).
+    if ($opened && function_exists('ws_mail_auto_reply')) {
+        ws_mail_auto_reply($box, $item_id);
+    }
 
     return array_merge($result, array(
         'status'          => 'stored',
@@ -922,7 +928,9 @@ function ws_mail_card_html($row, $item)
     $card = is_array($conversation) && ((int) $conversation['message_id'] === (int) $row['id']);
     $out = ((string) ($item['direction'] ?? 'in') === 'out');
     $badge = $out
-        ? '<span class="badge theme-success"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Sent by e-mail')) . '</span>'
+        ? (function_exists('ws_mail_item_is_auto_reply') && ws_mail_item_is_auto_reply($item)
+            ? '<span class="badge theme-secondary"><i class="bi bi-robot me-1" aria-hidden="true"></i>' . h(lang('Automatic answer')) . '</span>'
+            : '<span class="badge theme-success"><i class="bi bi-send me-1" aria-hidden="true"></i>' . h(lang('Sent by e-mail')) . '</span>')
         : (((string) $item['auth'] === 'pass')
         ? '<span class="badge theme-info"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . h(lang('E-mail')) . '</span>'
         : '<span class="badge theme-warning"><i class="bi bi-envelope-exclamation me-1" aria-hidden="true"></i>' . h(lang('Sender not verified')) . '</span>');
@@ -930,7 +938,11 @@ function ws_mail_card_html($row, $item)
     // An answer names whom it went to; a mail, who sent it.
     $html = '<div class="ws-mail-card">'
         . '<div class="small fg-secondary mb-1">' . $badge . ' <span class="ms-1">'
-        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span></div>';
+        . h($out ? lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list'])) : (string) $item['from_email']) . '</span>'
+        . (($card && function_exists('ws_mail_status_html'))
+            ? ws_mail_status_html($conversation, ((int) ($conversation['assignee_id'] ?? 0) > 0) ? ws_person_name((int) $conversation['assignee_id']) : '')
+            : '')
+        . '</div>';
 
     if ($card && ((string) $item['subject'] !== '')) {
         $html .= '<div class="fw-semibold mb-1">' . h((string) $item['subject']) . '</div>';

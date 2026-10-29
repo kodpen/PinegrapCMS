@@ -117,5 +117,6 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_settings.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_reply.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_route.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mail_status.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/nav.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php');
