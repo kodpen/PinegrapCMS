@@ -135,6 +135,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
 - notifications-menu.md: The header notifications panel (#notifications, bell #notification_toggle): one Bootstrap 6 Menu on the bell, Ctrl+Q clicks the bell, menu events and open state read on the toggle (#2578)
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
+- order-filter-names.md: Orders list Advanced Filters (view_orders.php): filter_ ids named by their labels, the Date Type select name, no address autofill, phone and e-mail keyboards
 - order-view-picker-links.md: Order view product name and image are real links to edit_product.php; the editor's Browse Server link picker rows hold a button; its type icons are aria-hidden
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
