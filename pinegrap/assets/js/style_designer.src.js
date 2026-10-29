@@ -64448,8 +64448,10 @@ const StyleDesigner = (function () {
         var entry = _sdLgStart[sid] = { kind: kind, loading: true, items: [] };
         _sdLgApi({ action: 'shared_component', sub_action: 'starter_layouts', kind: kind }, function (resp) {
             ((resp && resp.layouts) || []).forEach(function (l) {
-                if (!l || !Array.isArray(l.loop) || !l.loop.length) return;
-                entry.items.push({ key: String(l.key), label: String(l.label || l.key), loop: l.loop,
+                if (!l) return;
+                var body = (Array.isArray(l.body) && l.body.length) ? l.body : null;
+                if (!body && (!Array.isArray(l.loop) || !l.loop.length)) return;
+                entry.items.push({ key: String(l.key), label: String(l.label || l.key), loop: body ? [] : l.loop, body: body,
                                    wrap: (l.wrap && typeof l.wrap === 'object' && !Array.isArray(l.wrap)) ? l.wrap : {} });
             });
             entry.loading = false;
@@ -64467,6 +64469,7 @@ const StyleDesigner = (function () {
     function _sdLgStarterTree(kind, it, fields) {
         var base = _buildStarterTree(kind, fields ? { formFields: fields } : undefined);
         if (!base) return null;
+        if (it.body) return _sdLgStarterBody(kind, it, base);
         var loop = null, holder = null;
         (function walk(n, parent) {
             if (loop || !n) return;
@@ -64491,6 +64494,54 @@ const StyleDesigner = (function () {
             Object.keys(it.wrap || {}).forEach(function (k) { holder.props[k] = it.wrap[k]; });
         }
         return base;
+    }
+
+    // Whether node n is the default layout's part a starter marker names
+    // (pg_sw_starters()): 'loop' (the widget's repeated part, never a list
+    // of a part), 'content:<type>', 'region:<type>' or '<binding>:<value>'.
+    function _sdLgKeepMatch(n, key) {
+        var p = (n && n.props) || {};
+        if (key === 'loop') return n.type === 'loop_area' && !p.source;
+        var at = key.indexOf(':');
+        if (at < 1) return false;
+        var what = key.slice(0, at), val = key.slice(at + 1);
+        if (what === 'content') return n.type === 'content' && p.contentType === val;
+        if (what === 'region') return n.type === 'region' && p.regionType === val;
+        return !!(p._bindings && p._bindings[what] === val);
+    }
+
+    // A whole-layout starter (a detail widget's): its nodes under a new
+    // root, each marker (props.starterKeep) replaced by a copy of the first
+    // node of the default layout `base` it names, so the forms, pickers and
+    // payment parts are the default's own. Null when a marker finds nothing.
+    /* @pg-site-output */
+    function _sdLgStarterBody(kind, it, base) {
+        var find = function (n, key) {
+            if (!n || typeof n !== 'object') return null;
+            if (_sdLgKeepMatch(n, key)) return n;
+            var kids = n.children || [];
+            for (var i = 0; i < kids.length; i++) {
+                var hit = find(kids[i], key);
+                if (hit) return hit;
+            }
+            return null;
+        };
+        var missing = false;
+        var fill = function (list) {
+            return list.map(function (n) {
+                if (!n || typeof n !== 'object') return n;
+                if (n.props && n.props.starterKeep) {
+                    var part = find(base, String(n.props.starterKeep));
+                    if (!part) { missing = true; return n; }
+                    return JSON.parse(JSON.stringify(part));
+                }
+                if (Array.isArray(n.children)) n.children = fill(n.children);
+                return n;
+            });
+        };
+        var t = createNode('root', {}, fill(JSON.parse(JSON.stringify(it.body))));
+        if (missing) return null;
+        return _SW_NO_MESSAGES[kind] ? t : _ensureMessagesNode(t);
     }
 
     // A tree without its node ids, for comparing two layouts.

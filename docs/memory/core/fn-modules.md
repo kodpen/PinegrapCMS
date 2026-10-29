@@ -109,7 +109,7 @@ description: Generated from the module field of the memory files: each includes/
 - `widgets_placement`: [[widget-placement-settings]]
 - `widgets_shipping_address`: [[shipping-address-verified-box]], [[shipping-address-widget]]
 - `widgets_shipping_method`: [[shipping-method-widget]]
-- `widgets_starters`: [[widget-starters]]
+- `widgets_starters`: [[widget-starters]], [[widget-starters-detail]]
 - `widgets_wishlist`: [[wishlist-widget]]
 - `wishlist`: [[wishlist]]
 
