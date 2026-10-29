@@ -1,6 +1,6 @@
 ---
 name: shipment-tracking
-description: Carrier status polling (2026.11.0, PR #3147): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
+description: Carrier status polling (2026.11.0, PR #3157): shipment_tracking_job hourly in the light lane, which parcels are open, track() answers written back through the shipment write path, budgets, places
 module: shipment_tracking
 ---
 
@@ -13,7 +13,7 @@ module: shipment_tracking
 - Return labels are left out: their arrival is the goods coming back, never `order.delivered`.
 
 ## What is written back?
-- Only through `shipment-write-path.md`: `pg_shipment_tracking_decide()` (pure) takes a status other than delivered, and the carrier and tracking page the row lacks; `pg_shipment_tracking_apply()` writes them by `pg_shipment_record()` with `existing_only` (a parcel removed meanwhile is not added back and gets no arrival), then for delivered calls `pg_shipment_delivered($ship_to_id, <the carrier's time>)`: `order.delivered`, the `order_delivered` e-mail and the SMS, once per address. Each arrival is logged ("Shipment Tracking: Order N (number) was delivered", existing texts).
+- Only through `shipment-write-path.md`: `pg_shipment_tracking_decide()` (pure) takes a status other than delivered, and the carrier and tracking page the row lacks; `pg_shipment_tracking_apply()` writes them by `pg_shipment_record()` with `existing_only` (a parcel removed meanwhile is not added back and gets no arrival), then for delivered calls `pg_shipment_delivered($ship_to_id, <the carrier's time>)`: `order.delivered`, the `order_delivered` e-mail and the SMS, once per address. Each arrival is logged ("Shipment Tracking: Order N (number) was delivered", existing texts); the run's counts take only parcels written.
 - The parcel keeps the label's number: a carrier number given later (Geliver's `trackingNumber` beside the barcode) is not swapped in, which would cut the row from its label; its tracking page is written.
 - A failed answer writes nothing; a driver's failures are logged once a day.
 
@@ -22,4 +22,4 @@ module: shipment_tracking
 - Each driver keeps its place (the last label id asked) in `data/temp/shipment_tracking.json` with the time its failures were last logged, saved after every parcel, so a run the server stops still moves on. The next run reads after the place, so every open parcel takes its turn and a stopped driver's parcels wait after it; a run that reached the last open parcel starts the round again (`pg_shipment_tracking_next_place()`).
 
 ## How is it tested?
-- `tests/shipment_tracking_test.php`: the entry and its pick, Geliver fixtures through `pg_label_call()` into the decision (delivered, statuses, unreachable, refused with the token masked), queue, budgets, a failing driver, places, state, write-path pins. Not run against a live service or a sandbox.
+- `tests/shipment_tracking_test.php`: the entry and its pick, Geliver fixtures through `pg_label_call()` into the decision (delivered, statuses, unreachable, refused with the token masked), queue, budgets, a failing driver, places, state, write-path pins. Not run against a live service or a database.
