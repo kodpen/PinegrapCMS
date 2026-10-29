@@ -460,8 +460,8 @@ if (!$_POST) {
                                                 <div class="h6">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
-                                                <label class="form-text">' . lang('Form Editor') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                                <label for="form_editor_username" class="form-text">' . lang('Form Editor') . '</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'form_editor_username', 'id'=>'form_editor_username', 'value'=>$form_editor_username, 'class'=>'form-control', 'maxlength'=>'100')) . '
                                                 <div class="form-text text-end">' . lang('enter username') . '</div>
                                             </div>
                                         </div>

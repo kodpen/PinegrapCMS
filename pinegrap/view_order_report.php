@@ -471,7 +471,7 @@ if (!$_POST) {
     
     // if user is editing an existing order report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('order report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     // The date changer is left out when the report filters on the order date.
@@ -1268,7 +1268,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 sm:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Order Report Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 my-3">
                                             <h4 class="fw-bold fg-secondary">' . lang('Order Report Layout') . '</h4>
