@@ -570,12 +570,12 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
 
         $output_locations = '
             <div class="col-12 my-3">
-                <h3 class="h5">' . lang('Available Event Location(s)') . '</h3>
+                <h3 class="h5" id="multiselect-checkbox-checker-0_title">' . lang('Available Event Location(s)') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
-                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-0_label multiselect-checkbox-checker-0_title"></div>
+                            <label for="multiselect-checkbox-checker-0" class="" id="multiselect-checkbox-checker-0_label">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -825,12 +825,12 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <h3 class="h5">' . lang('Post to any of my Calendars') . '</h3>
+                                            <h3 class="h5" id="multiselect-checkbox-checker-1_title">' . lang('Post to any of my Calendars') . '</h3>
                                             <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                 <div class="card-header border-0 bg-reset">
                                                     <div class="form-field">
-                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
-                                                        <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
+                                                        <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-1_label multiselect-checkbox-checker-1_title"></div>
+                                                        <label for="multiselect-checkbox-checker-1" class="" id="multiselect-checkbox-checker-1_label">' . lang('Select All') . '</label>
                                                     </div>
                                                 </div>
                                                 <div class="card-body overflow-auto" style="max-height:300px">

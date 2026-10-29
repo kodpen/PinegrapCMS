@@ -3524,8 +3524,8 @@ function pg_pb_variant_sets_screen()
                 <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . lang('Action') . '">
                     <div class="container">
                         <div class="btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
-                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable This') . '</button>
-                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable This') . '</button>
+                            <button type="button" value="Enable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="enabled"><i class="bi bi-toggle-on me-3"></i>' . lang('Enable Selected') . '</button>
+                            <button type="button" value="Disable Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled pg-vs-status" data-pg-vs-status="disabled"><i class="bi bi-toggle-off me-3"></i>' . lang('Disable Selected') . '</button>
                             <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . h(pg_catalog_bin_ready() ? lang('Move the selected variant sets and all of their products to the Recycle Bin? They can be restored from the Recycle Bin in the Catalog Manager.') : lang('Delete the selected variant sets and all of their products? This cannot be undone.')) . '"><i class="bi bi-trash me-3"></i>' . lang('Delete') . '</button>
                         </div>
                     </div>

@@ -92,7 +92,7 @@ if (!defined('PG_INIT_LOADED')) {
 
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid">
-		<span class="navbar-text me-auto" title="<?=lang(array('string'=>'You may update the selected Products via the form below.' ))?>">
+		<span class="navbar-text me-auto">
 			<?=lang(array('string'=>'Modify Products' ))?>
 		</span>
         <ul class="navbar-nav ms-auto">
@@ -113,6 +113,7 @@ if (!defined('PG_INIT_LOADED')) {
     </div>
 </nav>
 <main id="content" class="container-fluid">
+    <p class="mt-1 mb-3"><?=lang(array('string'=>'You may update the selected Products via the form below.' ))?></p>
 	<form name="form">
 		<div class="row">
 			<div class="col-xs-12 sm:col-6 md:col-4 lg:col-3">

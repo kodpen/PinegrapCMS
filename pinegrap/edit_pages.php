@@ -69,7 +69,7 @@ if (!$_POST) {
     output_header_secure(array('title'=>lang('Modify Pages'),'icon'=>'page')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
-            <span class="navbar-text me-auto" data-bs-content="' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '" title="' . lang('Modify Pages') . '">' . lang('Modify Pages') . '</span>
+            <span class="navbar-text me-auto">' . lang('Modify Pages') . '</span>
             
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
@@ -121,6 +121,7 @@ if (!$_POST) {
         }
     </script>
     <main id="content" class="container-fluid">
+        <p class="mt-1 mb-3">' . lang('You may update various properties below for the selected pages. You may leave a pick list unselected if you do not want to modify a property.') . '</p>
         <div class="row">
             <div class="col-12 sm:col-6">
                 <div class="form-floating mt-1 mb-3">

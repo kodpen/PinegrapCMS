@@ -64,7 +64,7 @@ if (!$_POST) {
     output_header_secure(array('title'=>lang('Modify Files'),'icon'=>'file')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
-            <span class="navbar-text me-auto" data-bs-content="' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '" title="' . lang('Modify Files') . '">' . lang('Modify Files') . '</span>
+            <span class="navbar-text me-auto">' . lang('Modify Files') . '</span>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                     <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
@@ -139,6 +139,7 @@ if (!$_POST) {
         }
     </script>
     <main id="content" class="container-fluid">
+        <p class="mt-1 mb-3">' . lang('You may update the selected Files via the form below. You may leave an option unselected if you do not want to modify a property.') . '</p>
         <div class="row">
             <div class="col-12 col-xs-8 sm:col-8 md:col-auto">
                 <div class="form-floating mt-1 mb-3">
