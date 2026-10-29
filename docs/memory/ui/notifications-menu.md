@@ -1,6 +1,6 @@
 ---
 name: notifications-menu
-description: The header notifications panel (#notifications, bell #notification_toggle): one Bootstrap 6 Menu on the bell, Ctrl+Q clicks the bell, menu events and open state read on the toggle (#2578)
+description: Header notifications panel (#notifications, bell #notification_toggle): one Menu on the bell, Ctrl+Q, events on the toggle (#2578), poll redraws the open list only on a rise
 ---
 
 ## How is the panel opened?
@@ -13,3 +13,8 @@ description: The header notifications panel (#notifications, bell #notification_
 ## Where are the menu events heard?
 - v6 fires `shown/hidden.bs.menu` on the toggle, not on the box: the shown/hidden listeners (`get_notifications(true)`, `pg_push_refresh()`, the bell's `show` class) sit on `#notification_toggle`, and the refresh checks in the unread poll read `pgUI.menu.isOpen('#notification_toggle')` (`aria-expanded`).
 - One list refresh per open (the shown handler); the bell's click handler refreshes when it closes the panel. `tests/bs6_inline_feedback_test.php` pins both.
+
+## When does the 20 s unread poll redraw the open list?
+- Only when the unread count rises above `$unreadsCallback`, a top-level count that survives across polls and drops to 0 when `get_notifications(true)` marks everything read.
+- It used to be reset to 0 at the start of every poll, so with anything unread (one 'Mark as unread' is enough, read state is per person) the open list was emptied, showed a spinner, scrolled to the top and lost the focused row every 20 s.
+- The poll calls `get_notifications(false, true)`: the old list stays until the new one arrives, then the scroll position and the focus on the same `li[notification-id]` row come back. `tests/panel_timers_test.php` pins it.

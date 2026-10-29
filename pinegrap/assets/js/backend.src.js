@@ -3442,11 +3442,15 @@ function pg_push_message($text) {
 }
 
 //::::::::::::::::::NOTIFICATION::::::::::::::::::
+// The unread count the open list was last drawn for. It survives across
+// polls and drops to 0 when the list marks everything read, so a poll
+// redraws the open list only when the count really rises.
+var $unreadsCallback = 0;
+
 function check_unread_notifications(refresh_type) {
 
     if ($('#notifications').length > 0) {
         $unreads = 0;
-        $unreadsCallback = 0;
         // we check unread notifications from api.php with ajax.
         $.ajax({
             contentType: 'application/json',
@@ -3482,7 +3486,7 @@ function check_unread_notifications(refresh_type) {
                         // if notification view menu is active than we also get notifications and update all but we dont set notifications readed, because maybe sceen is forgetten and user close and go we be sure to readed.
                         if (pgUI.menu.isOpen('#notification_toggle')) {
                             if ($unreads > $unreadsCallback && refresh_type != 'editcallback_check') {
-                                get_notifications();
+                                get_notifications(false, true);
                             }
                         }
                         $output_unreads = 0;
@@ -3544,20 +3548,59 @@ function remove_all_notifications() {
 };
 
 
-function get_notifications($read_mark) {
+// keep_place: a redraw the reader did not ask for (the unread poll) keeps the
+// old list until the new one arrives, then puts back its scroll position and
+// the focus on the same notification row.
+function get_notifications($read_mark, keep_place) {
     const notifications = $('#notifications');
     const notifications_body = $('#notifications .menu-scroll-area');
     const notifications_content = $('#notifications .menu-scroll-area *');
     var notifications_empty = $('#notifications .notifications_empty');
-    notifications.scrollTop(0);
+    var scroll_area = notifications_body;
+    var kept_scroll = 0;
+    var kept_scroll_outer = 0;
+    var kept_row = '';
+    var kept_index = -1;
 
-    notifications_empty.addClass('d-none');
+    if ($read_mark) {
+        $unreadsCallback = 0;
+    }
 
-    var spinner_content = '<div class="spinner text-center p-5"><div class="spinner-border fg-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
-    notifications_content.remove();
+    if (keep_place) {
+        kept_scroll = scroll_area.scrollTop();
+        kept_scroll_outer = notifications.scrollTop();
+        var focused_row = $(document.activeElement).closest('li[notification-id]');
+        if (focused_row.length && notifications.has(focused_row[0]).length) {
+            kept_row = String(focused_row.attr('notification-id'));
+            kept_index = focused_row.find('button, a, [tabindex]').index(document.activeElement);
+        }
+    } else {
+        notifications.scrollTop(0);
 
-    //first of all we put a loading spinner while processing.
-    notifications_body.prepend(spinner_content);
+        notifications_empty.addClass('d-none');
+
+        var spinner_content = '<div class="spinner text-center p-5"><div class="spinner-border fg-success" role="status"><span class="visually-hidden">' + lang('Loading...') + '</span></div></div>';
+        notifications_content.remove();
+
+        //first of all we put a loading spinner while processing.
+        notifications_body.prepend(spinner_content);
+    }
+
+    // Puts the scroll position and the focused row back after a keep_place
+    // redraw; a row that is gone leaves the focus where it was.
+    var restore_place = function () {
+        scroll_area.scrollTop(kept_scroll);
+        notifications.scrollTop(kept_scroll_outer);
+        if (kept_row === '') {
+            return;
+        }
+        var row = notifications.find('li[notification-id="' + kept_row + '"]');
+        var focusables = row.find('button, a, [tabindex]');
+        var target = kept_index >= 0 && kept_index < focusables.length ? focusables.eq(kept_index) : focusables.first();
+        if (target.length) {
+            target.trigger('focus');
+        }
+    };
 
     var spinner = $('#notifications .spinner');
     // we will get new notifications that user can access and this notifications will set readed so we remove badges from notification button.
@@ -3585,6 +3628,10 @@ function get_notifications($read_mark) {
                 var data_length = response.data.length;
 
                 var output_notifications = '';
+                if (keep_place) {
+                    notifications_body.children().remove();
+                    notifications_empty.addClass('d-none');
+                }
                 if (data_length > 0) {
                     // notification loading spinner remove
                     spinner.remove();
@@ -3669,7 +3716,11 @@ function get_notifications($read_mark) {
                     }
 
                     notifications_body.append(output_notifications);
-                    notifications.scrollTop(0);
+                    if (keep_place) {
+                        restore_place();
+                    } else {
+                        notifications.scrollTop(0);
+                    }
                 } else {
                     // notification loading spinner remove
                     spinner.remove();
@@ -8821,7 +8872,9 @@ function pg_background_calls_allowed() {
     /**
      * pgToast({message, variant, delay})
      * variant: success | danger | warning | info (default: info)
-     * delay: ms (default: 4000)
+     * delay: ms (default: 4000), success and info only: a danger or warning
+     * toast stays until its Close button is used, so a keyboard or
+     * magnifier user can still reach it, and the same one is not stacked.
      */
     window.pgToast = function (opts) {
         opts = opts || {};
@@ -8829,6 +8882,7 @@ function pg_background_calls_allowed() {
         var variantWhitelist = { success: 1, danger: 1, warning: 1, info: 1 };
         var variant = variantWhitelist[opts.variant] ? opts.variant : 'info';
         var delay = typeof opts.delay === 'number' ? opts.delay : 4000;
+        var sticky = variant === 'danger' || variant === 'warning';
 
         var iconMap = {
             success: 'bi-check-circle-fill',
@@ -8843,7 +8897,16 @@ function pg_background_calls_allowed() {
         if (window.pgUI && pgUI.hostLayer) {
             pgUI.hostLayer(container);
         }
+        var key = variant + '\n' + message;
+        if (sticky) {
+            for (var i = 0; i < container.children.length; i++) {
+                if (container.children[i].getAttribute('data-pg-toast-key') === key) {
+                    return window.pgUI ? pgUI.toast.find(container.children[i]) : null;
+                }
+            }
+        }
         var el = document.createElement('div');
+        el.setAttribute('data-pg-toast-key', key);
         // Bootstrap 6 has no text-bg-*: the fill and its ink are two classes.
         el.className = 'toast align-items-center bg-' + variant + ' fg-contrast-' + variant + ' border-0';
         el.setAttribute('role', variant === 'danger' ? 'alert' : 'status');
@@ -8859,7 +8922,7 @@ function pg_background_calls_allowed() {
             '</div>';
         container.appendChild(el);
 
-        var t = window.pgUI ? pgUI.toast.get(el, { delay: delay }) : null;
+        var t = window.pgUI ? pgUI.toast.get(el, { delay: delay, autohide: !sticky }) : null;
 
         if (t) {
             pgUI.toast.on(el, 'hidden', function () { el.remove(); });
@@ -8868,7 +8931,11 @@ function pg_background_calls_allowed() {
         } else {
             // graceful degradation
             el.classList.add('show');
-            setTimeout(function () { el.remove(); }, delay);
+            if (!sticky) {
+                setTimeout(function () { el.remove(); }, delay);
+            } else {
+                el.querySelector('.btn-close').addEventListener('click', function () { el.remove(); });
+            }
             return null;
         }
     };
