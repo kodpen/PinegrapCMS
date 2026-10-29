@@ -10,7 +10,7 @@ description: The #button_bar strip under a screen's heading is the .pg-toolbar c
 ## What may sit in it?
 - Buttons, as direct children of the bar. The only wrapper is the `<form>` an action needs (export, filter, search) or an inline `span`: CSS opens it onto the bar's own line (`inline-flex`). A wrapper of buttons wraps; a form with fields stays on one line.
 - The right-hand cluster comes after `.pg-toolbar-grow`.
-- A form with several `form-control`s: no `flex-wrap` on the form and `w-auto` on each field; otherwise every 100%-wide field takes a line of its own (`erp/erp-cashflow-report.md`).
+- A form with several `form-control`s: `w-auto` on each field, or every 100%-wide field takes a line of its own. CSS keeps such a form on one line, so one wider than a 390 px phone gets `flex-wrap row-gap-2` with each label + field, or a date range, in one `d-inline-flex` span (`erp_cashflow.php`, `erp_inbox.php` fetch form); otherwise the whole page scrolls sideways.
 - A list filter is a select, not a button group: `pg_filter_select($name, $options, $current, $opts)` (`includes/fn/output.php`) draws a GET form (`pg-toolbar-filter disable_shortcut`) that submits on change, carries along only the `$_GET` values named in `keep`, takes an optional icon label and has a `<noscript>` Apply button.
 
 Related: docs/memory/ui/admin-screen-toolbar.md, docs/memory/ui/admin-screen-toolbar-rules.md
