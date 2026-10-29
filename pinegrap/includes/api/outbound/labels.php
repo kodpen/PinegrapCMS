@@ -15,7 +15,12 @@
 // carries on its account (its "common label"): ZPL for a thermal printer,
 // asked for by the package's cargo tracking number (connector entries
 // request_label, read_label and label_carrier). The operator asks for it on
-// the Imported orders card (marketplace_settings.php, action common_label).
+// the Imported orders card (marketplace_settings.php, action common_label),
+// on the order screen in place of Create Label (shipment_label.php), or with
+// the orders list's bulk Create Labels; includes/fn/shipment_labels.php
+// loads this file for an order a marketplace brought in, and its create
+// check refuses a carrier label service's label for such a package, which
+// would be a second shipment of the parcel.
 //
 // It is kept the way a carrier label service's label is kept
 // (includes/fn/shipment_labels.php): a shipment_labels row whose driver is the
@@ -29,11 +34,12 @@
 // sweep reads.
 //
 // No label driver answers to a marketplace's key, so what the drivers do by
-// reference is not offered for such a label: no Cancel Label (there is no call
-// for it; the label goes with the package, which is cancelled on the
-// marketplace), no tracking job (the order feed reports where the package
-// is), and no reprint once the sweep has removed the file. An order with a
-// label kept is not asked about again.
+// reference is done here or not at all: a reprint once the sweep has removed
+// the file reads the label from the marketplace again (mp_label_document());
+// there is no Cancel Label (no call for it: the label goes with the package,
+// which is cancelled on the marketplace) and no tracking job (the order feed
+// reports where the package is). An order with a label kept is not asked
+// about again.
 
 if (!defined('PG_INIT_LOADED')) {
 
