@@ -262,7 +262,8 @@
         pinch: null,
         tap: null,
         panel: '',          // 'runs' while the side panel lists the runs
-        section: '',        // 'scheduled' while staff's scheduled actions are shown
+        section: '',        // 'action' while a scheduled action is drawn read-only, 'templates' in the gallery
+        scheduled: null,    // the scheduled actions the list ends with: converted (items), refused (count)
         runs: { flow: 0, items: [], next: null, loading: false, error: '' }, // error: why the last load failed
         run: null,          // the run shown on the canvas (ws_flow_run_get)
         stash: null,        // what the run view put aside: the draft, selection, view, edit
@@ -725,18 +726,17 @@
         var askedBox = (/[?&]box=([a-z0-9_]+)(&|$)/.exec(window.location.search) || [])[1] || '';
         // A run to open with the flow (a run's card in a channel).
         var askedRun = parseInt((/[?&]run=([0-9]+)/.exec(window.location.search) || [])[1], 10) || 0;
-        var section = FL.scheduled && /[?&]view=scheduled(&|$)/.test(window.location.search);
 
         K.api('ws_flow_list').then(function (data) {
             state.flows = data.flows || [];
+            state.scheduled = data.scheduled || null;
             drawList();
 
-            // The flow the address names opens, else the flow list; when
-            // the one asked for cannot be opened (deleted, out of reach),
-            // the list shows instead.
-            if (section) {
-                showScheduled();
-            } else if (asked) {
+            // The flow the address names opens, else the flow list (an old
+            // ?view=scheduled address too: the list ends with the scheduled
+            // actions); when the one asked for cannot be opened (deleted,
+            // out of reach), the list shows instead.
+            if (asked) {
                 open(asked).then(function () {
                     if (askedBox && state.flow && (state.flow.id === asked) && nodeById(askedBox)) {
                         select({ type: 'node', id: askedBox }, { reveal: true, focus: true });
@@ -833,7 +833,8 @@
         ui.outlineBox = el('div', 'wsf-outline d-none');
         ui.outlineBox.setAttribute('role', 'region');
         ui.outlineBox.setAttribute('aria-label', t('fl_outline'));
-        // Staff's scheduled actions, in place of the canvas.
+        // A scheduled action drawn read-only (showAction()), in place of
+        // the canvas.
         ui.scheduled = el('div', 'ws-pane ws-sa-view h-100 d-none');
         ui.scheduled.setAttribute('role', 'region');
         ui.scheduled.setAttribute('aria-label', t('sa_title'));
@@ -950,19 +951,169 @@
         ui.flowsNone = el('p', 'small fg-secondary wsf-flows-none d-none');
         ui.flows.appendChild(ui.flowsNone);
 
-        // Staff's scheduled actions: one entry, the section it opens.
-        if (FL.scheduled) {
-            var scheduled = K.button('btn btn-sm btn-ghost', t('sa_title'), 'bi-alarm');
+        // Staff's scheduled actions: the converted ones, then the ones
+        // the conversion refused.
+        ui.scheduledGroups = el('div', 'wsf-sched-groups');
+        ui.flows.appendChild(ui.scheduledGroups);
+        drawRows();
+        drawScheduled();
+    }
 
-            scheduled.setAttribute('data-refocus', 'scheduled');
-            scheduled.addEventListener('click', function () {
-                state.refocus = 'scheduled';
-                showScheduled();
-            });
-            ui.flows.appendChild(scheduled);
+    // The groups the flow list ends with (ws_flows_scheduled_rows()):
+    // "Converted from scheduled actions", each row with its when and step,
+    // the converted mark, Open flow, Run now and History; then "Not
+    // converted", the cards of the scheduled actions (scheduledList() in
+    // workspace.js, which lists only those rows here). A group with no
+    // rows is not shown.
+    function drawScheduled() {
+        var groups = state.scheduled;
+
+        K.clear(ui.scheduledGroups);
+
+        if (!groups) {
+            return;
         }
 
-        drawRows();
+        if ((groups.converted || []).length) {
+            var converted = el('section', 'wsf-sched-group');
+            var list = el('ul', 'list-unstyled wsf-sched-list');
+
+            converted.setAttribute('aria-labelledby', 'wsf-sched-converted');
+            converted.appendChild(el('h2', 'h6 wsf-sched-title', t('fl_conv_title', groups.converted.length))).id = 'wsf-sched-converted';
+            groups.converted.forEach(function (item) {
+                list.appendChild(convertedRow(item));
+            });
+            converted.appendChild(list);
+            ui.scheduledGroups.appendChild(converted);
+        }
+
+        if (groups.refused > 0) {
+            var refused = el('section', 'wsf-sched-group wsf-sched-refused');
+            var cards = el('div');
+
+            refused.setAttribute('aria-labelledby', 'wsf-sched-refused');
+            var title = el('h2', 'h6 wsf-sched-title', t('fl_refused_title', groups.refused));
+
+            // Back from an action drawn on the canvas, the group's heading
+            // takes the focus.
+            title.id = 'wsf-sched-refused';
+            title.tabIndex = -1;
+            title.setAttribute('data-refocus', 'sched-refused');
+            refused.appendChild(title);
+            refused.appendChild(el('p', 'small fg-secondary', t('fl_refused_help')));
+            refused.appendChild(cards);
+            ui.scheduledGroups.appendChild(refused);
+            K.scheduledList(cards);
+        }
+    }
+
+    // One converted scheduled action: its name, state and converted mark;
+    // its when (and next time) and its step; Open flow, Run now (the only
+    // hand start of a flow started by time or event) and History, the
+    // action's runs from before and after the conversion.
+    function convertedRow(item) {
+        var row = el('li', 'wsf-sched-row');
+        var head = el('div', 'wsf-sched-head');
+        var tools = el('div', 'wsf-sched-tools');
+        var historyBox = el('div', 'ws-sa-history');
+        var open = K.button('btn btn-sm btn-outline theme-secondary', t('fl_open_flow'), 'bi-diagram-3');
+        var history = K.button('btn btn-sm btn-text theme-secondary', t('sa_history'), 'bi-clock-history');
+
+        head.appendChild(el('b', 'wsf-sched-name', item.name));
+        head.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
+
+        var mark = el('span', 'badge rounded-pill badge-subtle theme-secondary border wsf-sched-mark');
+
+        mark.appendChild(K.icon('bi-arrow-left-right', 'me-1'));
+        mark.appendChild(document.createTextNode(t('fl_conv_mark')));
+        head.appendChild(mark);
+        row.appendChild(head);
+        row.appendChild(el('div', 'ws-sa-line', item.when + (item.next ? ' · ' + t('sa_next') + ': ' + item.next : '')));
+        row.appendChild(el('div', 'ws-sa-line ws-sa-do', item.action_text || ''));
+
+        if (item.last) {
+            row.appendChild(el('div', 'ws-sa-line ws-sa-last ws-sa-last-' + item.last.status, t('sa_last') + ': ' + item.last.label + ' · ' + item.last.time + (item.last.text ? ' · ' + item.last.text : '')));
+        }
+
+        // Without the flow store's read, the row has no flow to open.
+        if (item.flow) {
+            open.setAttribute('data-refocus', 'sched-open-' + item.id);
+            open.setAttribute('aria-label', t('fl_open_flow') + ': ' + item.name);
+            open.addEventListener('click', function () {
+                openFromList({ id: item.flow.id });
+            });
+            tools.appendChild(open);
+        }
+
+        if (item.can_edit) {
+            var run = K.button('btn btn-sm btn-text theme-secondary', t('sa_run_now'), 'bi-lightning');
+
+            run.setAttribute('data-refocus', 'sched-run-' + item.id);
+            run.addEventListener('click', function () {
+                K.ask(t('sa_run_now_confirm'), t('sa_run_now')).then(function (yes) {
+                    if (!yes) {
+                        return;
+                    }
+
+                    run.disabled = true;
+                    K.api('ws_scheduled_run_now', { id: item.id }).then(function (data) {
+                        convertedChanged(data.item, 'sched-run-' + item.id);
+                    }).catch(function (error) {
+                        run.disabled = false;
+                        K.fail(error);
+                    });
+                });
+            });
+            tools.appendChild(run);
+        }
+
+        history.setAttribute('aria-expanded', 'false');
+        history.addEventListener('click', function () {
+            if (!historyBox.hidden) {
+                historyBox.hidden = true;
+                history.setAttribute('aria-expanded', 'false');
+                return;
+            }
+
+            K.api('ws_scheduled_get', { id: item.id }).then(function (data) {
+                K.clear(historyBox);
+                historyBox.hidden = false;
+                history.setAttribute('aria-expanded', 'true');
+
+                if (!(data.item.history || []).length) {
+                    historyBox.appendChild(el('div', 'small fg-secondary', t('sa_no_history')));
+                }
+
+                (data.item.history || []).forEach(function (run) {
+                    var line = el('div', 'ws-sa-history-row ws-sa-last-' + run.status);
+
+                    line.appendChild(el('b', '', run.label));
+                    line.appendChild(el('span', 'fg-secondary', run.time + (run.by_hand ? ' · ' + t('sa_by_hand') : '') + (run.source ? ' · ' + t('sa_started_by') + ' ' + run.source : '')));
+                    line.appendChild(el('span', '', run.text));
+                    historyBox.appendChild(line);
+                });
+            }).catch(K.fail);
+        });
+        tools.appendChild(history);
+        historyBox.hidden = true;
+        row.appendChild(tools);
+        row.appendChild(historyBox);
+
+        return row;
+    }
+
+    // A converted row after Run now: drawn again with what it says now.
+    function convertedChanged(item, focus) {
+        if (!item || !state.scheduled) {
+            return;
+        }
+
+        state.scheduled.converted = state.scheduled.converted.map(function (other) {
+            return (other.id === item.id) ? item : other;
+        });
+        state.refocus = focus;
+        drawScheduled();
+        refocus();
     }
 
     // The chips and the rows, drawn again as the search or a chip changes;
@@ -1178,42 +1329,6 @@
 
             return K.ask(t('fl_leave_ask'), t('fl_leave'), true);
         });
-    }
-
-    // The Scheduled actions section: the scheduled screen's list and cards
-    // (scheduledList() in workspace.js). A new rule is made on the canvas:
-    // New flow takes the toolbar's first slot, and the list offers no New
-    // of its own; its cards still edit (on the canvas), duplicate and run.
-    function showScheduled() {
-        leaveFlow().then(function (go) {
-            if (!go) {
-                refocus();
-                return;
-            }
-
-            window.clearTimeout(state.saveTimer);
-            showNone();
-            listing(false);
-            state.section = 'scheduled';
-
-            try {
-                window.history.replaceState(null, '', window.location.pathname + '?view=scheduled');
-            } catch (error) {
-                // An address that cannot be changed leaves the section open all the same.
-            }
-
-            K.clear(ui.bar);
-            K.clear(ui.scheduled);
-            ui.empty.classList.add('d-none');
-            ui.stage.classList.add('d-none');
-            ui.scheduled.classList.remove('d-none');
-            ui.scheduled.appendChild(el('h2', 'h5 mb-5', t('sa_title')));
-            newFlowButton();
-            flowsButton();
-            K.scheduledList(ui.scheduled);
-            drawList();
-            refocus();
-        }).catch(K.fail);
     }
 
     // ── Starting a flow, the template gallery ──────────────────────────
@@ -1628,16 +1743,18 @@
         follow: 'wsf-group-system'
     };
 
-    // A staff member's scheduled action drawn read-only in the Scheduled
-    // actions section, in place of its list: its "when", conditions, step
+    // A staff member's scheduled action drawn read-only in place of the
+    // flow list (Show on canvas on a card of its "Not converted" group): its "when", conditions, step
     // and follow-ups as boxes with the arrows between them, on a canvas
     // that scrolls; the actions that start it, those it starts and its
     // retry as chips above. Nothing is changed here: Edit (options.edit)
-    // opens it as a flow on the canvas, Back shows the list again. The boxes
+    // opens it as a flow on the canvas, Back shows the flow list again,
+    // its "Not converted" group in view. The boxes
     // are a list in the order of the arrows for the keyboard and screen
     // readers, each with all of its text.
     function showAction(item, graph, options) {
-        if (state.section !== 'scheduled') {
+        // An answer that comes once the person has left the list is not shown.
+        if (!state.listing) {
             return;
         }
 
@@ -1649,14 +1766,19 @@
         var byId = {};
 
         options = options || {};
+        listing(false);
+        state.section = 'action';
         K.clear(ui.bar);
         K.clear(ui.scheduled);
+        ui.empty.classList.add('d-none');
+        ui.stage.classList.add('d-none');
+        ui.scheduled.classList.remove('d-none');
 
         var back = K.button('btn btn-sm btn-ghost', t('sa_canvas_back'), 'bi-arrow-left');
         back.setAttribute('data-refocus', 'sa-back');
         back.addEventListener('click', function () {
-            state.refocus = 'scheduled';
-            showScheduled();
+            state.refocus = 'sched-refused flows-search';
+            showNone();
         });
         ui.bar.appendChild(back);
         ui.bar.appendChild(el('span', 'fw-semibold wsf-name-text', item.name));

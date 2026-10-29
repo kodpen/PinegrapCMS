@@ -19094,6 +19094,42 @@ button.ws-ack-count:hover {
 .wsf-flow-last .wsf-flag {
   max-width: 22rem;
 }
+/* The scheduled actions the flow list ends with (drawScheduled()): the
+   converted rows, then the cards of the rows not converted, whose state
+   chips have nothing to filter there. */
+.wsf-sched-group {
+  margin-top: 1.5rem;
+}
+.wsf-sched-title {
+  margin-bottom: var(--ws-space-3);
+}
+.wsf-sched-title:focus {
+  outline: none;
+}
+.wsf-sched-row {
+  padding: var(--ws-space-2) 0 var(--ws-space-3);
+  border-bottom: 1px solid var(--pg-border-color-translucent);
+  font-size: .85rem;
+}
+.wsf-sched-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--ws-space-2);
+  margin-bottom: .2rem;
+}
+.wsf-sched-mark {
+  font-weight: 400;
+}
+.wsf-sched-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--ws-space-2);
+  margin-top: var(--ws-space-2);
+}
+.wsf-sched-refused .ws-sa-filters {
+  display: none;
+}
 /* The Share dialog: one row per person or channel, the owner first. */
 .wsf-share-row {
   display: flex;
