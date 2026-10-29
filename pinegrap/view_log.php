@@ -579,7 +579,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             ' . $output_control_buttons . '
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_log.php', $sort_columns, $sort_levels, $sort_default, array(

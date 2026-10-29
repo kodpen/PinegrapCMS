@@ -140,7 +140,7 @@ if($item_type === 'submitted_form'){
 // prepare button bar
 if($output_reference_button != ''){
     $output_reference_buttons = '
-    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
         <div class=" btn-group btn-group-sm flex-wrap">
             ' . $output_reference_button . '
         </div>
@@ -411,7 +411,7 @@ if (!$_POST) {
                             </div>
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

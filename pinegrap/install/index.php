@@ -3671,7 +3671,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						</div>
 
 					</div>
-    	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="data edit buttons ">
+    	  	  	  	<div class="buttons navigation text-center" id="install_submit_nav" aria-label="' . h(lang('data edit buttons')) . '">
     	  	  	        	<div class=" btn-group flex-wrap justify-content-center">
     	  	  	            	<button type="submit" id="submit" name="submit" value="' . $output_submit_button_value . '" class="btn my-1  btn-solid theme-success "><i class="bi ' . $output_submit_button_icon . ' me-3"></i><span class="pg-btn-label" >' . $output_submit_button_label . '</span></button>
     	  	  	        	</div>

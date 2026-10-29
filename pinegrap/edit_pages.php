@@ -159,7 +159,7 @@ if (!$_POST) {
                     ' . $liveform->output_field(array('type'=>'select', 'id'=>'sitemap','class'=>'form-control', 'options'=>$sitemap_options)) . '
                 </div>
             </div>
-            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                 <div class="container">
                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
                         <button type="button" name="submit_save" value="Modify Pages" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_pages()"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Modify Pages') ) . '</button>

@@ -229,7 +229,7 @@ pg_page_shell(
                 <div class="col-12 text-center md:text-start">
                     
                     <p>' . lang('Disk Usage') . ': ' . h(convert_bytes_to_string(db("SELECT SUM(size) FROM files"), 2)) . '</p>
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_design_file.php?send_to=' . h(urlencode(REQUEST_URL)) . '"><span class="material-icons me-3">file_upload</span>' . lang(array('string'=>'Upload File') ) . '</a>
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_design_files.php', $sort_columns, $sort_levels, $sort_default) . '
@@ -267,7 +267,7 @@ pg_page_shell(
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
                         </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                     <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_files.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>

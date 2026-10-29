@@ -153,7 +153,7 @@ print
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="view_visitor_report.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         ' . $output_web_statistics_link . '
                         <div class="pg-toolbar-grow"></div>

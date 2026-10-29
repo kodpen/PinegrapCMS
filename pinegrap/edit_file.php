@@ -553,7 +553,7 @@ if (!isset($_POST['name'])) {
                                     <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
                                 </div>
                             </div>
-                            <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
                                     <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
@@ -617,7 +617,7 @@ if (!isset($_POST['name'])) {
                         </div>
                         ' . $output_file_content_row . '
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save_and_return" name="submit_save_and_return" value="Save & Return" class="btn my-1  btn-solid theme-primary "><span class="material-icons me-3">arrow_backsave</span><span class="pg-btn-label" >' . lang(array('string'=>'Save & Return') ) . '</span></button>

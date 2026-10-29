@@ -131,7 +131,7 @@ echo
                 <div class="row mb-3 flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation" aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="add_ship_date_adjustment.php"><span class="bi bi-plus-circle me-3"></span>' . lang('Create') . '</a>
                             <div class="pg-toolbar-grow"></div>
                             ' . pg_list_sort_menu('view_ship_date_adjustments.php', $sort_columns, $sort_levels, $sort_default) . '

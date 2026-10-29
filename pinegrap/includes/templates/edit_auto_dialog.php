@@ -36,7 +36,7 @@ if (!defined('PG_INIT_LOADED')) {
 						[<?php if ($screen == 'create'): ?><?=lang('Auto Dialog Name')?><?php else: ?><?=h($auto_dialog['name'])?><?php endif ?>]
 					</h2>
 					<?php if ($screen == 'edit'): ?>
-						<nav id="button_bar" class="navigation " aria-label="Button Bar">
+						<nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
                 			<div class=" btn-group btn-group-sm flex-wrap">
 								<a class="btn btn-link pg-link-secondary py-0 mb-3 bi bi-link bi-me-2" href="<?=h($preview_url)?>" target="_blank"><?=lang('Preview')?></a>
 							</div>
@@ -163,7 +163,7 @@ if (!defined('PG_INIT_LOADED')) {
 						</div>
 					</div>
 				</div>
-				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+				<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="<?= h(lang('data edit buttons')) ?>">
                     <div class="container">
                         <div class=" btn-group flex-wrap justify-content-center">
                             <button type="submit" id="save_button" name="submit_button" value="<?php if ($screen == 'create'): ?>Create<?php else: ?>Save<?php endif ?>" class="btn my-1 btn-solid theme-success "><span class="material-icons me-3"><?php if ($screen == 'create'): ?>add<?php else: ?>save<?php endif ?></span><span class="pg-btn-label" ><?php if ($screen == 'create'): ?><?=lang(array('string'=>'Create') )?><?php else: ?><?=lang(array('string'=>'Save') )?><?php endif ?></span></button>

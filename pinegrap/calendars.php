@@ -109,7 +109,7 @@ pg_page_shell(
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
 
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_calendar_event.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create Calendar Event') ) . '</a>
                         ' . $output_edit_calendar_button . '
                     </nav>

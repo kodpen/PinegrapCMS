@@ -185,7 +185,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
                                     <button type="submit" id="continue_button" name="continue_button" value="Continue" class="btn my-1  btn-solid theme-success " ><span class="material-icons me-3">arrow_forward</span><span class="pg-btn-label" >' . lang(array('string'=>'Continue') ) . '</span></button>
@@ -277,7 +277,7 @@ if (!$_POST) {
                                     </div>
                                 </div>
                             </div>
-                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group flex-wrap justify-content-center">
                                         <button type="submit" name="save_for_later_button" value="Save for Later" class="btn my-1  btn-solid theme-secondary "><span class="material-icons me-3">save_as</span><span class="pg-btn-label" >' . lang(array('string'=>'Save for Later') ) . '</span></button>

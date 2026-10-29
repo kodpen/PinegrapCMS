@@ -224,7 +224,7 @@ if (!$_POST) {
         //ends of page editing
 
         $outputs .= '
-                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                             <button type="submit" value="Save Changes" class=" btn mb-1 mt-1 btn-solid theme-success" data-confirm-content="' . lang('WARNING: The changes you make will be applied permanently.') . '"><span class="material-icons me-3">send</span>' . lang(array('string'=>'Apply Changes') ) . '</button>
