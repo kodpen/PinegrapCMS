@@ -948,11 +948,12 @@ function pg_purge_caches()
 
     // Touch backend CSS / JS. The backend header includes these as
     // "?v=filemtime(...)" query strings, so a new timestamp does reach the
-    // browser. Two files, bounded cost.
+    // browser. Three files, bounded cost.
     $backend_dir   = PG_FUNCTIONS_DIR . '/assets/';
     $backend_files = array(
         $backend_dir . 'css/backend.src.css',
         $backend_dir . 'js/backend.src.js',
+        $backend_dir . 'js/backend.min.js',
     );
     $backend_touched = 0;
     foreach ($backend_files as $f) {
