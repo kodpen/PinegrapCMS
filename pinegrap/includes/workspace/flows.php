@@ -327,6 +327,7 @@ function ws_flow_config_normalize($kind, $config)
         case 'schedule':
         case 'event':
         case 'join':
+        case 'row':
             return function_exists('ws_flow_anchor_normalize') ? ws_flow_anchor_normalize($kind, $config) : array();
     }
 
@@ -738,7 +739,7 @@ function ws_flow_graph_check($graph)
             }
         }
 
-        if (in_array($node['kind'], array('schedule', 'event', 'join'), true)) {
+        if (in_array($node['kind'], array('schedule', 'event', 'join', 'row'), true)) {
             foreach (ws_flow_anchor_problems($node['kind'], $node['config'], $name) as $text) {
                 $problems[] = ws_flow_problem('bad_config', $id, null, $text);
             }
@@ -1265,14 +1266,15 @@ function ws_flows_list_where($filters)
 }
 
 /**
- * How a flow starts, by the kind of its start box: at a time, on an event,
- * when somebody joins a channel, or by hand.
+ * How a flow starts, by the kind of its start box: at a time, on an event
+ * (a row of a workflow table written is one too), when somebody joins a
+ * channel, or by hand.
  *
  * @return array box kind => start
  */
 function ws_flow_start_names()
 {
-    return array('schedule' => 'time', 'event' => 'event', 'join' => 'join', 'manual' => 'manual');
+    return array('schedule' => 'time', 'event' => 'event', 'row' => 'event', 'join' => 'join', 'manual' => 'manual');
 }
 
 /**
@@ -1353,6 +1355,8 @@ function ws_flow_start_text($viewer, $graph, $readable = null)
 {
     $start = ws_flow_start_rule($graph, ($readable !== null) ? $readable : function ($channel_id) use ($viewer) {
         return ws_flow_channel_readable($viewer, $channel_id);
+    }, function ($config) use ($viewer) {
+        return ws_flow_row_start_text($viewer, $config);
     });
 
     if ($start === null) {
@@ -1370,13 +1374,15 @@ function ws_flow_start_text($viewer, $graph, $readable = null)
  * that starts the flow on its own). A channel the person does not read is
  * not named: a join box then says only that somebody joins a channel, an
  * event box leaves the channel out of its rule. A time box not filled in
- * yet has no rule to read. Null when the graph has no start box.
+ * yet has no rule to read. A row box says its words itself ($table_text),
+ * with no rule. Null when the graph has no start box.
  *
- * @param array    $graph
- * @param callable $readable channel id => bool
+ * @param array         $graph
+ * @param callable      $readable   channel id => bool
+ * @param callable|null $table_text a row box's settings => its words; its label when null
  * @return array|null text, rule (array or null)
  */
-function ws_flow_start_rule($graph, $readable)
+function ws_flow_start_rule($graph, $readable, $table_text = null)
 {
     $trigger = ws_flow_trigger_node($graph);
 
@@ -1393,6 +1399,11 @@ function ws_flow_start_rule($graph, $readable)
 
     $label = (string) $anchors[$kind]['label'];
     $config = ws_flow_anchor_normalize($kind, $trigger['config'] ?? array());
+
+    // A row box names its table and column only to whoever reads the table.
+    if ($kind === 'row') {
+        return array('text' => ($table_text !== null) ? (string) call_user_func($table_text, $config) : $label, 'rule' => null);
+    }
 
     if (((int) ($config['channel_id'] ?? 0) > 0) && !call_user_func($readable, (int) $config['channel_id'])) {
         if ($kind === 'join') {
@@ -2332,6 +2343,18 @@ function ws_flow_js_strings()
         'fl_event_any_channel' => lang('Any channel'),
         'fl_join_channel'     => lang('Channel joined'),
         'fl_join_any'         => lang('Any public channel'),
+        'fl_kind_row'         => lang('When a table row changes'),
+        'fl_row_table'        => lang('Table'),
+        'fl_row_table_pick'   => lang('Choose a table'),
+        'fl_row_table_help'   => lang('Each row written starts a run, as the flow\'s owner, while the flow is live and they may read the table. Rows a file import adds start nothing.'),
+        'fl_row_what'         => lang('What happens'),
+        'fl_row_created'      => lang('A row is added'),
+        'fl_row_updated'      => lang('A row is changed'),
+        'fl_row_deleted'      => lang('A row is deleted'),
+        'fl_row_column'       => lang('Column'),
+        'fl_row_any_column'   => lang('Any column'),
+        'fl_row_column_help'  => lang('A change starts the flow only when it writes this column.'),
+        'fl_row_none'         => lang('No table chosen'),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),
@@ -2661,7 +2684,7 @@ function ws_flow_js_config($viewer, $mode)
     // scheduled actions a box may start.
     $build = ws_flows_ready() && ws_can_schedule($viewer);
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
-        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'mcp' => array());
+        'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'mcp' => array());
 
     // The boxes that may try again on their own after a failure, and how
     // many times at most (flow_runs.php).
@@ -2692,6 +2715,9 @@ function ws_flow_js_config($viewer, $mode)
         // time repeats, and the events the person may wait for.
         $steps['repeats'] = (object) (is_array($scheduled) ? $scheduled['repeats'] : array());
         $steps['events'] = is_array($scheduled) ? $scheduled['events'] : null;
+
+        // The workflow tables a row box may start on, with their columns.
+        $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
 
         // The MCP servers an MCP box may call with the person's account and
         // the tools that read there; none, and the palette has no MCP box.

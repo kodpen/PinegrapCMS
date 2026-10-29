@@ -17,7 +17,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 
 - C2 Add › Start a flow in the composer; the run's card in the channel follows the run — done, #3048 (workspace/workspace-flows-channel-run-card.md).
 
-- C3 Add › Scheduled flow (mini window) replaces Add › Scheduled action for new work.
+- C3 Add › Scheduled flow (mini window) replaces Add › Scheduled action for new work — done, #3066 (workspace/workspace-flows-scheduled-ways-in.md).
 
 - C4 the flow list: a start-kind filter (time, by hand, event, join) — done, #2391.
 
