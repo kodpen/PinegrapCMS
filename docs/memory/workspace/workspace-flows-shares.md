@@ -30,4 +30,4 @@ description: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/
 ## How does the Share dialog work?
 - "⋯" menu: the owner gets Share and Delete, others "Who it is shared with", read-only. Rows with a level select and remove, then `K.peoplePicker` with a level (default run) and a channel select. Each change sent at once, the list drawn from its answer; focus back to "⋯".
 - An editor's home select is disabled; one they do not read reads "A channel you do not read".
-- Step not run on MySQL/MariaDB; headless harness not in the repo.
+- Step not run on MySQL/MariaDB.

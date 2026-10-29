@@ -29,4 +29,4 @@ description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run,
 - A JSON refusal (flow binned with its runs, channel no longer read, workspace off, session ended or token changed) is final: the bar shows the server's reason and that the run is no longer followed (the side panel says so in place of "Still going"), Cancel goes, and neither the tick nor a tab shown again looks (`schedulePoll()`). It used to stop without a word, still "Still going" with Cancel.
 
 ## How is it tested?
-- `tests/workspace_flows_canvas_test.php` runs `pollRun()`, `loadRuns()` and their drawing from the script under Node, with stand-ins for the page (skipped without Node). No headless browser harness is in the repo.
+- `tests/workspace_flows_canvas_test.php` runs `pollRun()`, `loadRuns()` and their drawing from the script under Node, with stand-ins for the page (skipped without Node). The browser harness (`workspace-flows-canvas-harness.md`) runs Run, the runs list and a run read again until it ends.

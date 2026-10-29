@@ -117,6 +117,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
 - workspace-flows-box-look.md: How a flow box looks (V1 of plans/workspace-flows-look.md, PR #3118): its group and colour per theme, the 1.5 px border, the selection ring, control arrows, scheduled-action boxes
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
+- workspace-flows-canvas-harness.md: Browser harness of the Flows canvas (tests/js/flows_canvas.js, #3162, run by hand, not in CI): what is real and what stands in, how to run it, the scenarios, the result of 2026-10-29
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-catalogue.md: The box catalogue GET /workspace/flow-kinds (settings read from the normalizers) and GET /workspace/flows/{id}/validate (the publish check without publishing), flow_catalogue.php
 - workspace-flows-chain-box.md: The start a flow box (PR #2235, flow_runs.php): another live flow started by hand, started by a box with the owner's rights, depth 8, start key per box, {{source}}, what non-editors read
