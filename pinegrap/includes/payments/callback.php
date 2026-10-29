@@ -294,6 +294,31 @@ function pg_payment_callback_answer_text($reply)
 }
 
 /**
+ * Answers a paid renewal a service reports (pg_subscription_renewal_confirmed())
+ * and ends the request. Busy (a cron run holds the row) is answered 503, so
+ * the service sends it again.
+ *
+ * @param string $key
+ * @param array  $answer notify()'s answer with raw.subscription_id
+ * @return void
+ */
+function pg_payment_callback_renewal($key, $answer)
+{
+    $result = pg_subscription_renewal_confirmed($key, (int) $answer['raw']['subscription_id'], $answer, time());
+    $line = ($answer['log'] ? $answer['log'][0] : 'A subscription renewal was reported') . '.';
+
+    if ($result === 'paid') {
+        log_activity($line . ' The renewal order was written.', 'SYSTEM');
+    } elseif ($result === 'refused') {
+        $line .= ' The amount or the subscription\'s first order does not match: nothing was written. Check the payment on ' . pg_payment_log_name($key) . '\'s own screen.';
+        log_activity($line, 'SYSTEM');
+        pg_ops_alert('payment_notice', $line);
+    }
+
+    pg_payment_callback_answer(($result === 'busy') ? 503 : 200, array('status' => $result));
+}
+
+/**
  * Answers one message: payment_callback.php?driver=<key>.
  *
  * @return void
@@ -322,6 +347,11 @@ function pg_payment_callback_receive()
     }
 
     $answer = pg_payment_call($key, 'notify', array(pg_payment_request_headers($_SERVER), (string) $body));
+
+    // A subscription's renewal names no order: the renewal writer takes it.
+    if ($answer['success'] && isset($answer['raw']['subscription_id'])) {
+        pg_payment_callback_renewal($key, $answer);
+    }
     $order = $answer['success'] ? pg_payment_notify_order($answer) : null;
     $outcome = pg_payment_notify_outcome($key, $answer, $order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '');
 

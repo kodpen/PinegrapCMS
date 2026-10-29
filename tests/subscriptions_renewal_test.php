@@ -34,7 +34,7 @@ function subscriptions_renewal_test_row(array $over = array())
 function subscriptions_renewal_test_io(array &$store, array &$calls, $answer, $lock = true)
 {
 	return array(
-		'lock' => function ($id) use (&$calls, $lock) {
+		'lock' => function ($id, $wait = 0) use (&$calls, $lock) {
 			$calls[] = 'lock';
 			return $lock;
 		},
@@ -76,8 +76,8 @@ function subscriptions_renewal_test_io(array &$store, array &$calls, $answer, $l
 		'log' => function ($message) use (&$calls) {
 			$calls[] = array('log', $message);
 		},
-		'event' => function ($id, $kind, $order_id, $amount, $detail) use (&$calls) {
-			$calls[] = array('event', $kind, $order_id, $amount, $detail);
+		'event' => function ($id, $kind, $order_id, $amount, $detail, $remote_event_id = '') use (&$calls) {
+			$calls[] = array('event', $kind, $order_id, $amount, $detail, $remote_event_id);
 		},
 	);
 }
@@ -237,7 +237,7 @@ function test_subscription_renewal_paid_writes_order_after_the_row_moved()
 	}, $calls);
 
 	pg_assert_same(array('lock', 'first_order', 'charge', 'save', 'write_order', 'event', 'unlock'), $names);
-	pg_assert_same(array('event', 'renewed', 880, 17688, ''), $calls[5], 'the order is marked through the event');
+	pg_assert_same(array('event', 'renewed', 880, 17688, '', ''), $calls[5], 'the order is marked through the event');
 	pg_assert_same('stripe', $calls[2][1]);
 	pg_assert_same('501', $calls[2][2]['order']['id'], 'the first order goes to charge_renewal');
 	pg_assert_same('2027-04-30', date('Y-m-d', (int) $store['next_charge_at']), 'a run a day late keeps the series');
@@ -305,6 +305,42 @@ function test_subscription_renewal_missing_first_order_is_not_charged()
 	pg_assert_same(0, subscriptions_renewal_test_charges($calls));
 	pg_assert_same('past_due', $store['status']);
 	pg_assert_same('1', (string) $store['retry_count']);
+}
+
+function test_subscription_renewal_confirmed_takes_only_a_held_row()
+{
+	$now = mktime(12, 0, 0, 4, 2, 2027);
+	$paid = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_3', 'amount' => 17688);
+
+	// Held by a confirmation link: the customer's confirmation is the renewal.
+	$store = subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0', 'retry_count' => '0'));
+	$calls = array();
+	$io = subscriptions_renewal_test_io($store, $calls, $paid);
+
+	pg_assert_same('paid', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, $io));
+	pg_assert_same('active', $store['status']);
+	pg_assert_same('2027-04-30', date('Y-m-d', (int) $store['next_charge_at']));
+	pg_assert_same(array('event', 'renewed', 880, 17688, '', 'pi_3'), $calls[count($calls) - 2], 'the payment id de-duplicates a second delivery');
+	pg_assert_same(0, subscriptions_renewal_test_charges($calls), 'nothing is charged');
+
+	// The second delivery finds the row moved on.
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, $io));
+
+	// The cron's own off-session renewal reports back too: the row is not held.
+	$active = subscriptions_renewal_test_row();
+	$calls = array();
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, subscriptions_renewal_test_io($active, $calls, $paid)));
+	pg_assert_false(in_array('write_order', $calls, true));
+
+	$held = subscriptions_renewal_test_row(array('next_charge_at' => '0'));
+	$calls = array();
+	pg_assert_same('refused', pg_subscription_renewal_confirmed('stripe', 7, array('amount' => 100) + $paid, $now, subscriptions_renewal_test_io($held, $calls, $paid)), 'another amount');
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('iyzico', 7, $paid, $now, subscriptions_renewal_test_io($held, $calls, $paid)), 'another driver');
+	pg_assert_same('busy', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, subscriptions_renewal_test_io($held, $calls, $paid, false)), 'a run holds the row');
+	pg_assert_false(in_array('write_order', $calls, true));
+
+	$ended = subscriptions_renewal_test_row(array('status' => 'ended', 'next_charge_at' => '0'));
+	pg_assert_same('nothing', pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, subscriptions_renewal_test_io($ended, $calls, $paid)));
 }
 
 function test_subscription_renewal_job_keeps_the_legacy_branch()

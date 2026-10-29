@@ -1458,7 +1458,10 @@ function pg_payment_stripe_log_amount($amount, $currency)
  *
  *   payment_intent.succeeded  paid: the payment of an order (metadata
  *                             order_id) went through, perhaps after the
- *                             visitor left the 3-D Secure page
+ *                             visitor left the 3-D Secure page; or a
+ *                             subscription's renewal (metadata
+ *                             subscription_id, order_reference
+ *                             'subscription-<id>', raw.subscription_id)
  *   charge.refunded           refunded: money was given back on Stripe's
  *                             screen (amount: everything refunded so far)
  *   charge.dispute.created    pending: the card holder disputes the payment
@@ -1511,12 +1514,27 @@ function pg_payment_stripe_notify_with($headers, $body, $settings, $now)
     switch ($type) {
         case 'payment_intent.succeeded':
             $order_id = (isset($object['metadata']['order_id']) && is_scalar($object['metadata']['order_id'])) ? trim((string) $object['metadata']['order_id']) : '';
+            $subscription_id = (isset($object['metadata']['subscription_id']) && is_scalar($object['metadata']['subscription_id'])) ? trim((string) $object['metadata']['subscription_id']) : '';
+            $amount = isset($object['amount_received']) ? $object['amount_received'] : null;
+
+            // A renewal's payment names its subscription, never an order:
+            // the callback hands it to the renewal writer, which takes it only
+            // when the cron left the row waiting (a confirmation link).
+            if (($order_id === '') && (preg_match('/^[1-9][0-9]{0,9}$/', $subscription_id) === 1) && (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) === 1)) {
+                return array(
+                    'success'         => true,
+                    'status'          => 'paid',
+                    'transaction_id'  => $text('id'),
+                    'order_reference' => 'subscription-' . $subscription_id,
+                    'amount'          => pg_payment_stripe_hundredths($amount, $currency),
+                    'log'             => array('Stripe reports that payment ' . $text('id') . ' of ' . pg_payment_stripe_log_amount($amount, $currency) . ' for subscription ' . $subscription_id . ' succeeded'),
+                    'raw'             => $raw + array('subscription_id' => $subscription_id),
+                );
+            }
 
             if ((preg_match('/^[1-9][0-9]{0,18}$/', $order_id) !== 1) || (preg_match('/^pi_[A-Za-z0-9]{1,250}$/', $text('id')) !== 1)) {
                 return $ignored;
             }
-
-            $amount = isset($object['amount_received']) ? $object['amount_received'] : null;
 
             return array(
                 'success'         => true,

@@ -367,8 +367,8 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
 function pg_subscription_renewal_io()
 {
     return array(
-        'lock' => function ($id) {
-            return (int) db_value("SELECT GET_LOCK('" . e('pg_subscription_renewal_' . (int) $id) . "', 0)") === 1;
+        'lock' => function ($id, $wait = 0) {
+            return (int) db_value("SELECT GET_LOCK('" . e('pg_subscription_renewal_' . (int) $id) . "', " . (int) $wait . ")") === 1;
         },
         'unlock' => function ($id) {
             db_value("SELECT RELEASE_LOCK('" . e('pg_subscription_renewal_' . (int) $id) . "')");
@@ -386,8 +386,8 @@ function pg_subscription_renewal_io()
         'log' => function ($message) {
             log_activity($message, 'UNKNOWN');
         },
-        'event' => function ($id, $kind, $order_id, $amount, $detail) {
-            return pg_subscription_event_write($id, $kind, $order_id, $amount, '', $detail);
+        'event' => function ($id, $kind, $order_id, $amount, $detail, $remote_event_id = '') {
+            return pg_subscription_event_write($id, $kind, $order_id, $amount, $remote_event_id, $detail);
         },
     );
 }
@@ -573,6 +573,78 @@ function pg_subscription_renewal_order_write($row, $first, $answer, $now)
     pg_erp_auto_invoice($order_id, 'order_paid');
 
     return $order_id;
+}
+
+/**
+ * Whether a row waits for an outcome the service reports later: held
+ * (next_charge_at 0) by a confirmation link, a pending or an unclear answer,
+ * and still running, through this driver.
+ *
+ * @param array|null $row
+ * @param string     $driver
+ * @return bool
+ */
+function pg_subscription_renewal_is_held($row, $driver)
+{
+    return is_array($row)
+        && in_array((string) ($row['status'] ?? ''), array('active', 'past_due'), true)
+        && ((int) ($row['next_charge_at'] ?? -1) === 0)
+        && ((string) ($row['driver'] ?? '') === (string) $driver);
+}
+
+/**
+ * A renewal the payment service reports as paid after the cron left the row
+ * held: the customer confirmed the charge on the service's page (Stripe's
+ * authentication_required), or a pending or unclear charge went through.
+ * Written as the cron writes a paid renewal: the row moves on, the order,
+ * the event, with the service's payment id as the event's remote id so a
+ * second delivery is refused by the unique key. A row that is not held (the
+ * cron already took the payment off-session) is left alone.
+ *
+ * @param string $driver
+ * @param int    $id     the subscription
+ * @param array  $answer notify()'s paid answer (transaction_id, amount)
+ * @param int    $now
+ * @param array  $io     pg_subscription_renewal_io(); null for the real one
+ * @return string paid, nothing, refused (the amount or the first order
+ *                does not match), busy (a run holds the row: try again)
+ */
+function pg_subscription_renewal_confirmed($driver, $id, $answer, $now, $io = null)
+{
+    $io = is_array($io) ? $io : pg_subscription_renewal_io();
+    $id = (int) $id;
+
+    if (($id <= 0) || !call_user_func($io['lock'], $id, 10)) {
+        return ($id <= 0) ? 'nothing' : 'busy';
+    }
+
+    $row = call_user_func($io['read'], $id);
+
+    if (!pg_subscription_renewal_is_held($row, $driver)) {
+        call_user_func($io['unlock'], $id);
+
+        return 'nothing';
+    }
+
+    $first = call_user_func($io['first_order'], $row);
+
+    if (((int) ($answer['amount'] ?? -1) !== (int) $row['amount']) || !is_array($first) || !isset($first['order'], $first['item'])
+        || (pg_subscription_renewal_figures($row, $first['item']) === null)) {
+        call_user_func($io['unlock'], $id);
+
+        return 'refused';
+    }
+
+    $plan = pg_subscription_renewal_plan($row, 'paid', $answer, $now);
+
+    call_user_func($io['save'], $row, $plan);
+
+    $order_id = (int) call_user_func($io['write_order'], $row, $first, $answer, $now);
+
+    call_user_func($io['event'], $id, 'renewed', $order_id, (int) $row['amount'], '', (string) ($answer['transaction_id'] ?? ''));
+    call_user_func($io['unlock'], $id);
+
+    return 'paid';
 }
 
 /* ---------------------------------------------------------------------------
