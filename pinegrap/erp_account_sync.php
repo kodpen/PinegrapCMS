@@ -218,7 +218,7 @@ $check = function ($name, $id, $label) {
 $card_cell = function ($row) {
     $sub = array_filter(array((string) $row['tax_number'], ((string) $row['code'] !== '') ? lang(array('string' => 'code {var:1}', 'vars' => (string) $row['code'])) : ''), 'strlen');
 
-    return '<div class="text-truncate">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
+    return '<div class="text-wrap text-break">' . h(((string) $row['title'] !== '') ? $row['title'] : ('#' . $row['external_id'])) . '</div>'
         . '<div class="small fg-secondary">' . h(implode(' · ', $sub)) . '</div>';
 };
 
@@ -252,7 +252,7 @@ switch ($tab) {
                         <tr>
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?id=' . (int) $row['id']) . '</td>
                             <td style="max-width:320px" class="align-middle">' . $card_cell($row) . $gone($row) . '</td>
-                            <td style="max-width:320px" class="align-middle"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
+                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $row['a_id'] . '">' . h($row['a_title']) . '</a>'
                                 . '<div class="small fg-secondary">' . h($row['a_tax_number']) . '</div></td>
                             <td class="align-middle">' . $output_info . '</td>
                         </tr>';
@@ -310,7 +310,7 @@ switch ($tab) {
                         <tr>
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-truncate"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
+                            <td style="max-width:320px" class="align-middle text-wrap text-break"><a class="pg-link-body-emphasis" href="edit_erp_account.php?id=' . (int) $account['id'] . '">' . h($account['title']) . '</a></td>
                             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
                             <td class="align-middle">' . h($account['city']) . '</td>
                             <td class="align-middle">' . h(erp_edoc_account_value_text('kind', $account['kind'])) . '</td>
@@ -347,7 +347,7 @@ switch ($tab) {
                         <tr class="fg-secondary">
                             ' . $check('account_ids', $account['id'], (string) $account['title']) . '
                             <td class="align-middle text-start">' . $view('erp_account_sync_item.php?account_id=' . (int) $account['id']) . '</td>
-                            <td style="max-width:320px" class="align-middle text-truncate">' . h($account['title']) . '</td>
+                            <td style="max-width:320px" class="align-middle text-wrap text-break">' . h($account['title']) . '</td>
                             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
                             <td class="align-middle">' . lang('ERP account') . '</td>
                         </tr>';

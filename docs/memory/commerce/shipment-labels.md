@@ -6,10 +6,10 @@ module: shipment_labels
 
 ## Where is a label kept?
 - `shipment_labels` (step `upgrade_2026_11_0_shipment_labels()`, 11.0.125, in `get_tables()`), decided in #3108 (`workflow/decisions-made-schema-3.md`): `driver`, `reference` (the service's shipment id, unique per driver), `barcode`, the parcel by (`ship_to_id`, `number`), `label_format`, `label_file`, `state` (`pg_shipment_label_states()`: active, cancelled), `is_return`, `user_id`, `created_at`, `cancelled_at`, `label_removed_at`. The parcel row in `shipping_tracking_numbers` stays provider-neutral (`carrier-label-drivers.md`); a label row outlives a parcel row pruned or renumbered.
-- The document is a file in `data/shipping_labels/` (closed to the web by the server rules; not in `files`, so not in the file manager). Name `<order>_<ship_to>_<driver>_<16 hex of sha1(driver, reference)>.<pdf|zpl>` (`pg_shipment_label_file_name()`); `pg_shipment_label_path()` gives a path only to a name of that shape, so nothing from a service or the row reaches a path.
+- The document is a file in `data/shipping_labels/` (closed to the web by the server rules; not in `files`, so not in the file manager). Name `<order>_<ship_to>_<driver>_<16 hex of sha1(driver, reference)>.<pdf|zpl|svg>` (`pg_shipment_label_file_name()`); `pg_shipment_label_path()` gives a path only to a name of that shape, so nothing from a service or the row reaches a path.
 
 ## Who hands a document out?
-- Only `shipment_label.php?id=N`, behind the order screen's gate (`validate_user()` + `validate_ecommerce_access()`): the kept file, else the service's copy by reference (`pg_shipment_label_document()`), not written back so the retention clock is not restarted. PDF inline, ZPL as a download; `no-store`, `nosniff`. Never `get_file.php`.
+- Only `shipment_label.php?id=N`, behind the order screen's gate (`validate_user()` + `validate_ecommerce_access()`): the kept file, else the service's copy by reference (`pg_shipment_label_document()`), not written back so the retention clock is not restarted. PDF inline, ZPL a download, SVG a print page; `no-store`, `nosniff`. Never `get_file.php`.
 
 ## How is a label created?
 - The order screen's shipping card lists the address's labels (Print Label) and draws "Create Label" while a driver is on (`pg_shipment_label_drivers()`: `create` + `pg_label_ready()`), the order is not incomplete or cancelled and the address has no active non-return label. The button posts the hidden `shipment-label-form` (outside the order form) to `shipment_label.php` with the token.

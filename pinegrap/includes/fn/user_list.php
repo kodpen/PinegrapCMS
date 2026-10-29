@@ -570,9 +570,13 @@ function pg_user_list_row($row, $view, $providers)
 
     if ($sign_in_lock['locked']) {
         $minutes = max(1, (int) ceil(($sign_in_lock['until'] - time()) / 60));
-        $username_cell .= ' <span class="badge theme-danger fw-light" title="' . h(lang(array(
-            'string' => 'Signing in is locked after repeated failed attempts. Clears in {var:1} minutes.',
-            'vars'   => $minutes))) . '">' . lang('Locked') . '</span>';
+        // Printed beside the badge, not in a title: these rows are injected
+        // by the server pager, where a hover hint reaches neither keyboard,
+        // touch nor screen-reader users.
+        $username_cell .= ' <span class="badge theme-danger fw-light">' . lang('Locked') . '</span>'
+            . ' <span class="small fg-secondary">' . h(lang(array(
+            'string' => 'Clears in {var:1} minutes.',
+            'vars'   => $minutes))) . '</span>';
     }
 
     // Google, Microsoft and Apple badges beside the name, next to the
