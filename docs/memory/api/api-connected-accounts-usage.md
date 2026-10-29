@@ -8,6 +8,7 @@ description: Connected accounts at work: mail through Gmail or Microsoft 365, cl
 
 ## How do cloud backups use one?
 - `includes/connect/purposes/backup.php`, code in `includes/fn/backup_cloud.php`.
+- `includes/connect/purposes/mail_read.php`: a Workspace mailbox read over IMAP with XOAUTH2 and answered through Graph (`workspace/mail-microsoft.md`).
 - The Connect button sits inside the settings form but must not submit it: it carries `form="..."` and submits a hidden form placed outside (`$pg_settings_modals[]`). The return address is `pg_settings_url('general')` + `?backup_connect=<type>#pgset-backup`, and the screen takes the message with `pg_connect_flash_take()` only when that parameter is there.
 - A large file goes in 10 MiB parts, each through `pg_connect_api()`, so a token that runs out half-way is renewed between parts. A Graph upload session's `uploadUrl` gets no token: it is called with `api_http_request()` directly.
 
