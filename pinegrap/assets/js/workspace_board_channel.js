@@ -21,6 +21,12 @@
  * (ws_sync) brings back while the tab is open; when the stamp moves, the
  * board is read again. Every text comes from the #ws-config block.
  *
+ * The workflow tables screen (workspace_wtables.php) mounts the same board
+ * over a table's rows by a status column (window.PGWsChannelBoard.mountSource()):
+ * that screen does not load workspace.js, so the board brings its own small
+ * kit, reads and writes through the source it is handed, and draws no
+ * toolbar of its own.
+ *
  * Served minified as assets/js/workspace_board_channel.min.js (pg_js_bundles(),
  * includes/fn/output.php); after editing run `php tools/build_js.php`.
  *
@@ -43,7 +49,87 @@
     var board = null;
 
     function kit() {
-        return window.PGWsKit || null;
+        return (board && board.kit) || window.PGWsKit || null;
+    }
+
+    // What a board over a source needs of the kit when workspace.js is not
+    // on the page: elements, a select, toasts through the panel's pgToast,
+    // and the source's own words.
+    function smallKit(texts) {
+        function el(tag, className, text) {
+            var node = document.createElement(tag);
+
+            if (className) {
+                node.className = className;
+            }
+
+            if ((text !== undefined) && (text !== null) && (text !== '')) {
+                node.textContent = String(text);
+            }
+
+            return node;
+        }
+
+        function icon(name, extra) {
+            var node = el('i', 'bi ' + name + (extra ? ' ' + extra : ''));
+            node.setAttribute('aria-hidden', 'true');
+            return node;
+        }
+
+        function toast(message, kind) {
+            if (typeof window.pgToast === 'function') {
+                window.pgToast({ message: message, variant: kind || 'secondary' });
+            }
+        }
+
+        return {
+            t: function (key) {
+                var text = Object.prototype.hasOwnProperty.call(texts, key) ? texts[key] : key;
+
+                Array.prototype.slice.call(arguments, 1).forEach(function (value, index) {
+                    text = text.split('{' + (index + 1) + '}').join(String(value));
+                });
+
+                return text;
+            },
+            el: el,
+            icon: icon,
+            button: function (className, label, iconName, title) {
+                var node = el('button', className);
+                node.type = 'button';
+
+                if (iconName) {
+                    node.appendChild(icon(iconName, label ? 'me-1' : ''));
+                }
+
+                if (label) {
+                    node.appendChild(document.createTextNode(label));
+                }
+
+                if (title) {
+                    node.title = title;
+                    node.setAttribute('aria-label', title);
+                }
+
+                return node;
+            },
+            select: function (options, value) {
+                var node = el('select', 'form-control form-control-sm');
+
+                options.forEach(function (option) {
+                    var item = el('option', '', option[1]);
+                    item.value = option[0];
+                    item.selected = (String(option[0]) === String(value));
+                    node.appendChild(item);
+                });
+
+                return node;
+            },
+            toast: toast,
+            fail: function (error) {
+                toast((error && error.message) ? error.message : (texts.error_generic || ''), 'danger');
+            }
+        };
     }
 
     function t() {
@@ -71,8 +157,7 @@
         }
 
         var mine = ++self.serial;
-
-        k.api('ws_channel_board', {
+        var reading = self.source ? self.source.load({ all: self.doneAll }) : k.api('ws_channel_board', {
             channel_id: self.channel.id,
             group_by: prefs.group,
             priority: prefs.priority,
@@ -81,7 +166,9 @@
             q: self.q,
             cancelled: prefs.cancelled ? 1 : 0,
             done_all: self.doneAll ? 1 : 0
-        }).then(function (data) {
+        });
+
+        reading.then(function (data) {
             if ((mine !== self.serial) || (self !== board)) {
                 return;
             }
@@ -209,7 +296,11 @@
         var hadFocus = self.focusKey;
 
         clear(pane);
-        pane.appendChild(toolbar(self));
+
+        // A source board's controls are its screen's.
+        if (!self.source) {
+            pane.appendChild(toolbar(self));
+        }
 
         if (!self.data) {
             pane.appendChild(k.el('div', 'small fg-secondary', t('loading')));
@@ -272,7 +363,14 @@
             face.classList.add('ws-cb-face');
             head.appendChild(face);
         } else {
-            head.appendChild(k.icon(column.icon || 'bi-columns', 'ws-cb-col-icon'));
+            var mark = k.icon(column.icon || 'bi-columns', 'ws-cb-col-icon');
+
+            // A table's status choice keeps its own colour.
+            if (column.color) {
+                mark.style.color = column.color;
+            }
+
+            head.appendChild(mark);
         }
 
         head.appendChild(k.el('span', 'ws-cb-col-title', column.title));
@@ -351,11 +449,13 @@
 
         if (item.kind === 'task') {
             taskCard(card, item);
+        } else if (item.kind === 'row') {
+            rowCard(card, item);
         } else {
             otherCard(card, item);
         }
 
-        var movable = (item.kind === 'task') && item.can_edit && (self.data.group_by !== 'type');
+        var movable = ((item.kind === 'task') || (item.kind === 'row')) && item.can_edit && (self.data.group_by !== 'type');
 
         if (movable) {
             card.draggable = true;
@@ -466,6 +566,24 @@
         }
     }
 
+    // A table row: its title and a few of its other cells.
+    function rowCard(card, item) {
+        var k = kit();
+        var top = k.el('div', 'ws-cb-card-top');
+
+        top.appendChild(k.el('span', 'ws-cb-number', item.number));
+        card.appendChild(top);
+        card.appendChild(k.el('div', 'ws-cb-title', item.title));
+
+        (item.lines || []).forEach(function (line) {
+            var sub = k.el('div', 'ws-cb-sub');
+
+            sub.appendChild(k.el('span', 'fg-secondary', line.label + ': '));
+            sub.appendChild(document.createTextNode(line.text));
+            card.appendChild(sub);
+        });
+    }
+
     function otherCard(card, item) {
         var k = kit();
         var icons = { decision: 'bi-patch-check', file: 'bi-file-earmark', pin: 'bi-pin-angle', summary: 'bi-journal-text' };
@@ -500,7 +618,9 @@
     function openCard(self, item) {
         var k = kit();
 
-        if (item.kind === 'task') {
+        if (self.source) {
+            self.source.open(item);
+        } else if (item.kind === 'task') {
             k.openTask(item.id, null, reload);
         } else if (item.kind === 'file') {
             window.open(item.url, '_blank', 'noopener');
@@ -548,6 +668,22 @@
 
         if ((to.drop === null) || (to.drop === undefined)) {
             k.toast(t('cb_no_drop'), 'warning');
+            return;
+        }
+
+        // A source writes the move itself; the board is read again either
+        // way, so a refused move shows where the card really is.
+        if (self.source) {
+            self.source.move(item, to.drop).then(function (message) {
+                if (message) {
+                    k.toast(message, 'success');
+                }
+
+                reload();
+            }).catch(function (error) {
+                k.fail(error);
+                reload();
+            });
             return;
         }
 
@@ -705,9 +841,8 @@
 
     // ── What the channel screen calls ──
 
-    // hooks: openMessage(id), openSummary(), taskDefaults(), refresh()
-    function mount(pane, channel, hooks) {
-        board = {
+    function state(pane, channel, hooks) {
+        return {
             pane: pane,
             channel: channel,
             hooks: hooks || {},
@@ -723,7 +858,22 @@
             focusKey: '',
             columnNodes: []
         };
+    }
 
+    // hooks: openMessage(id), openSummary(), taskDefaults(), refresh()
+    function mount(pane, channel, hooks) {
+        board = state(pane, channel, hooks);
+        draw(board);
+        load(board);
+    }
+
+    // A board over another source of cards (a workflow table's rows).
+    // source: texts, load({all}) -> Promise of the board's data,
+    // move(item, drop) -> Promise of the sentence to show, open(item).
+    function mountSource(pane, source) {
+        board = state(pane, { id: 0 }, {});
+        board.source = source;
+        board.kit = window.PGWsKit || smallKit(source.texts || {});
         draw(board);
         load(board);
     }
@@ -742,6 +892,7 @@
 
     window.PGWsChannelBoard = {
         mount: mount,
+        mountSource: mountSource,
         stamp: stamp,
         isOpen: function () { return !!(board && document.body.contains(board.pane)); }
     };

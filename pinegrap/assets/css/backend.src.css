@@ -18076,7 +18076,8 @@ button.ws-home-row:hover,
 .ws-cb-bar > .btn-group {
     flex-wrap: wrap;
 }
-.ws-pane .ws-cb-picker {
+.ws-pane .ws-cb-picker,
+.ws-wt-board .ws-cb-picker {
     display: none;
 }
 .ws-cb-cols {
@@ -18267,7 +18268,8 @@ button.ws-home-row:hover,
 }
 /* A phone shows one column, picked above the board. */
 @media (max-width: 767.98px) {
-    .ws-pane .ws-cb-picker {
+    .ws-pane .ws-cb-picker,
+    .ws-wt-board .ws-cb-picker {
         display: block;
     }
     .ws-cb-cols {
