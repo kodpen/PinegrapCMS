@@ -389,13 +389,18 @@ function pg_page_type_properties_for_save($page_type, $page_id, $user)
 
 /**
  * Why a custom form page's posted settings cannot be saved, by field: its
- * form name taken by another page, or a setting edit_page.php refuses
- * (pg_cf_legacy_settings_errors()). Empty when they can.
+ * form name taken by another page, or an e-mail switched on with nothing to
+ * send or a "Next Page" confirmation without a live page
+ * (pg_cf_legacy_settings_errors()). Empty when they can. add_page.php,
+ * edit_page.php and the designer pane ask the same question.
  *
- * @param int $page_id
+ * @param int  $page_id         The page being saved, 0 for a new page
+ * @param bool $check_settings  false checks the form name only: edit_page.php
+ *                              checks the settings only when the save writes
+ *                              them (the user may set the page type)
  * @return array  Field name => message
  */
-function pg_page_type_custom_form_errors($page_id)
+function pg_page_type_custom_form_errors($page_id, $check_settings = true)
 {
     $page_id = (int) $page_id;
     $errors = array();
@@ -403,6 +408,10 @@ function pg_page_type_custom_form_errors($page_id)
 
     if (db_value("SELECT COUNT(*) FROM custom_form_pages WHERE (form_name = '" . e($form_name) . "') AND (page_id != '" . $page_id . "')") > 0) {
         $errors['custom_form_form_name'] = lang('The form name that you entered is already in use. Please enter a different form name.');
+    }
+
+    if (!$check_settings) {
+        return $errors;
     }
 
     $setting_errors = pg_cf_legacy_settings_errors(
