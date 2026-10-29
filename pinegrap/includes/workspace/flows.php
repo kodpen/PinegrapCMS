@@ -2086,10 +2086,10 @@ function ws_flow_graph_present($graph, $edit = false)
 }
 
 /**
- * Are this person's scheduled actions listed in Flows (a section of the
- * flows screen) rather than on the scheduled screen? Staff's are, once the
- * flow tables are there; their scheduled messages stay on the scheduled
- * screen, and so does everything without the flow tables.
+ * Are this person's scheduled actions listed in Flows (the groups at the
+ * end of the flow list) rather than on the scheduled screen? Staff's are,
+ * once the flow tables are there; their scheduled messages stay on the
+ * scheduled screen, and so does everything without the flow tables.
  *
  * @param array $viewer
  * @return bool
@@ -2097,6 +2097,39 @@ function ws_flow_graph_present($graph, $edit = false)
 function ws_flows_scheduled($viewer)
 {
     return function_exists('ws_can_schedule') && ws_can_schedule($viewer) && ws_flows_nav_visible($viewer);
+}
+
+/**
+ * The two groups of scheduled actions the flow list ends with: the rows
+ * converted into a flow (any state: their history stays readable) and the
+ * rows the conversion refused, still run by ws_scheduled_execute() (no
+ * flow, no anchor, not cancelled). A cancelled row never converted is in
+ * neither (its channel or note card stays), nor is a flow's hidden anchor
+ * or a scheduled message. A row from before the kind and anchor columns
+ * reads as an action with no anchor. Pure.
+ *
+ * @param array[] $rows ws_scheduled_actions rows (kind, flow_id, anchor, status)
+ * @return array converted (rows), refused (rows), each in the order given
+ */
+function ws_flows_scheduled_groups($rows)
+{
+    $groups = array('converted' => array(), 'refused' => array());
+
+    foreach ((array) $rows as $row) {
+        if ((string) ($row['kind'] ?? 'action') !== 'action') {
+            continue;
+        }
+
+        $anchor = (string) ($row['anchor'] ?? '');
+
+        if (((int) ($row['flow_id'] ?? 0) > 0) && ($anchor === 'converted')) {
+            $groups['converted'][] = $row;
+        } elseif (((int) ($row['flow_id'] ?? 0) === 0) && ($anchor === '') && ((string) ($row['status'] ?? '') !== 'cancelled')) {
+            $groups['refused'][] = $row;
+        }
+    }
+
+    return $groups;
 }
 
 /**
