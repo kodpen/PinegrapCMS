@@ -1008,7 +1008,7 @@ if ($ship_to_exists == true) {
             $output_image = '';
             // if a product was found, include link to product
             if ($product_id) {
-                $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' .  h($product_name) . '</span>';
+                $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="pg-link-body-emphasis text-decoration-none">' .  h($product_name) . '</a>';
             
             // else a product was not found, so do not include a link to product   
             } else {
@@ -1392,10 +1392,10 @@ if ($ship_to_exists == true) {
         $output_image = '';
         // if a product was found, include link to product
         if ($product_id) {
-            $output_product_name = '<span class="cursor-pointer" onclick="document.location.href = \'edit_product.php?id=' . $product_id . '\'">' .  h($product_name) . '</span>';
+            $output_product_name = '<a href="edit_product.php?id=' . (int) $product_id . '" class="pg-link-body-emphasis text-decoration-none">' .  h($product_name) . '</a>';
             // if a product image_name found, output
             if ($image_name) {
-                $output_image = '<img  class="rounded-9 card-img cursor-pointer pg-print-none" style="top:52px;position:sticky;" src="' .  PATH . h($image_name) . '" onclick="document.location.href = \'edit_product.php?id=' . (int) $product_id . '\'"/>';
+                $output_image = '<a href="edit_product.php?id=' . (int) $product_id . '" class="d-block pg-print-none" style="top:52px;position:sticky;" tabindex="-1" aria-hidden="true"><img class="rounded-9 card-img" src="' .  PATH . h($image_name) . '" alt=""/></a>';
             } 
         
         // else a product was not found, so do not include a link to product   
