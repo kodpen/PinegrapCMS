@@ -24,12 +24,69 @@ function test_gateway_secret_seal_and_open_round_trip()
 {
 	$sealed = pg_gateway_secret_seal('Tk-12345', 'key-a');
 
-	pg_assert_same(0, strpos($sealed, 'pgenc1:'));
+	pg_assert_same(0, strpos($sealed, 'pgenc2:'));
 	pg_assert_false(strpos($sealed, 'Tk-12345') !== false);
 	pg_assert_same('Tk-12345', pg_gateway_secret_open($sealed, 'key-a'));
 	pg_assert_same(null, pg_gateway_secret_open($sealed, 'key-b'));
 	pg_assert_same(null, pg_gateway_secret_open($sealed, ''));
+	pg_assert_same(null, pg_gateway_secret_open('pgenc2:not-base64', 'key-a'));
+	pg_assert_same(null, pg_gateway_secret_open('pgenc2:' . base64_encode('short'), 'key-a'));
+}
+
+// A wrong key never opens a sealed value. Unauthenticated CBC let about one
+// try in 256 through its padding check with garbage; 2,000 seals make such a
+// pass all but certain to show.
+function test_gateway_secret_wrong_key_never_opens()
+{
+	for ($i = 0; $i < 2000; $i++) {
+		pg_assert_same(null, pg_gateway_secret_open(pg_gateway_secret_seal('Tk-' . $i, 'key-a'), 'key-b'));
+	}
+}
+
+// A sealed value whose tag, ciphertext or IV was changed does not open.
+function test_gateway_secret_tampered_does_not_open()
+{
+	$sealed = pg_gateway_secret_seal('Tk-12345', 'key-a');
+	$raw = base64_decode(substr($sealed, 7), true);
+
+	foreach (array(0, 12, strlen($raw) - 1) as $offset) {
+		$tampered = $raw;
+		$tampered[$offset] = chr(ord($tampered[$offset]) ^ 1);
+		pg_assert_same(null, pg_gateway_secret_open('pgenc2:' . base64_encode($tampered), 'key-a'));
+	}
+
+	pg_assert_same(null, pg_gateway_secret_open('pgenc2:' . base64_encode(substr($raw, 0, -1)), 'key-a'));
+}
+
+// A value sealed in the first form (AES-256-CBC, "pgenc1:<cipher>:<iv>")
+// still opens with its key.
+function test_gateway_secret_first_form_still_opens()
+{
+	pg_assert_same('Tk-12345', pg_gateway_secret_open(gateway_secret_test_first_form('Tk-12345', 'key-a'), 'key-a'));
 	pg_assert_same(null, pg_gateway_secret_open('pgenc1:not-base64', 'key-a'));
+}
+
+// A save that keeps a first-form secret seals it again in the authenticated
+// form, unless that form would not fit its column.
+function test_gateway_secret_for_save_upgrades_first_form()
+{
+	$first = gateway_secret_test_first_form('Tk-12345', 'key-a');
+	$saved = pg_gateway_secret_for_save('', $first, 'key-a', 'key-a', 100);
+
+	pg_assert_same(0, strpos($saved, 'pgenc2:'));
+	pg_assert_same('Tk-12345', pg_gateway_secret_open($saved, 'key-a'));
+
+	$long = gateway_secret_test_first_form(str_repeat('c', 45), 'key-a');
+	pg_assert_same($long, pg_gateway_secret_for_save('', $long, 'key-a', 'key-a', 100));
+}
+
+// A value in the first sealed form, built the way it was written.
+function gateway_secret_test_first_form($plain, $key)
+{
+	$iv = random_bytes(16);
+	$cipher = openssl_encrypt($plain, 'aes-256-cbc', hash('sha256', $key, true), OPENSSL_RAW_DATA, $iv);
+
+	return 'pgenc1:' . base64_encode($cipher) . ':' . base64_encode($iv);
 }
 
 // A plain value saved before the change reads back as it is, so a running
@@ -67,7 +124,7 @@ function test_gateway_secret_for_save_blank_or_mask_keeps()
 	pg_assert_same($sealed, pg_gateway_secret_for_save('  ' . pg_gateway_secret_mask() . ' ', $sealed, 'key-a', 'key-a', 100));
 
 	$upgraded = pg_gateway_secret_for_save('', 'Tk-12345', 'key-a', 'key-a', 100);
-	pg_assert_same(0, strpos($upgraded, 'pgenc1:'));
+	pg_assert_same(0, strpos($upgraded, 'pgenc2:'));
 	pg_assert_same('Tk-12345', pg_gateway_secret_open($upgraded, 'key-a'));
 
 	pg_assert_same('', pg_gateway_secret_for_save('', '', 'key-a', 'key-a', 100));
@@ -101,16 +158,23 @@ function test_gateway_secret_for_save_unreadable_is_left_alone()
 	pg_assert_same($sealed, pg_gateway_secret_for_save('', $sealed, 'key-a', 'key-a', 100));
 }
 
-// The sealed form must fit the column: up to 47 characters fit a 100-wide
-// column, 48 do not; a kept plain value too long to seal stays plain.
+// The sealed form must fit the column: up to 41 characters fit a 100-wide
+// column, 42 do not; a kept plain value too long to seal stays plain. The
+// longest value that is allowed seals into exactly the width or less.
 function test_gateway_secret_fits_column_width()
 {
-	pg_assert_true(pg_gateway_secret_fits(str_repeat('a', 47), 100));
-	pg_assert_false(pg_gateway_secret_fits(str_repeat('a', 48), 100));
+	pg_assert_true(pg_gateway_secret_fits(str_repeat('a', 41), 100));
+	pg_assert_false(pg_gateway_secret_fits(str_repeat('a', 42), 100));
 	pg_assert_true(pg_gateway_secret_fits(str_repeat('a', 100), 255));
 	pg_assert_true(pg_gateway_secret_fits('', 100));
-	pg_assert_same(47, pg_gateway_secret_max_length(100));
-	pg_assert_same(159, pg_gateway_secret_max_length(255));
+	pg_assert_same(41, pg_gateway_secret_max_length(100));
+	pg_assert_same(158, pg_gateway_secret_max_length(255));
+
+	foreach (array(100, 255) as $width) {
+		$max = pg_gateway_secret_max_length($width);
+		pg_assert_true(strlen(pg_gateway_secret_seal(str_repeat('a', $max), 'key-a')) <= $width);
+		pg_assert_true(strlen(pg_gateway_secret_seal(str_repeat('a', $max + 1), 'key-a')) > $width);
+	}
 
 	$long = str_repeat('b', 60);
 	pg_assert_same($long, pg_gateway_secret_for_save('', $long, 'key-a', 'key-a', 100));
