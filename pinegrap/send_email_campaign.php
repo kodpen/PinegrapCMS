@@ -462,16 +462,16 @@ if (mysqli_num_rows($result) > 0) {
                 <p>' . lang('Sending the e-mail message to each specific subscriber now.') . '</p>
                 
                 <div class="progress">
-                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%">' . $percent_complete . '%</div>
+                    <div class="progress-bar bg-success progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="' . $percent_complete . '" aria-valuemin="0" aria-valuemax="100" style="width: ' . $percent_complete . '%">' . lang(array('string' => '{var:1}%', 'vars' => array($percent_complete))) . '</div>
                 </div>
                 <h3>(' . pg_format_number($number_of_completed_email_recipients, 0) . lang(' of ') . pg_format_number($number_of_email_recipients, 0) . ')</h3>
                 <div class="alert theme-danger"><p>' . lang('Closing this browser window before completion will pause this Campaign, but it can be resumed at any time.') . '</p></div>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
+                    <button type="button" name="submit_save" onclick="window.close();" value="Stop &amp; Close" class="btn mb-1 mt-1  btn-solid theme-danger submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Stop & Close') ) . '</button>
                 </div>
             </div>
         </nav>
@@ -553,10 +553,10 @@ if (mysqli_num_rows($result) > 0) {
                 <div class="alert theme-success"><p>' . lang('The e-mail campaign has been sent to all recipients.') . '</p></div>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
-                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3">close</span>' . lang(array('string'=>'Close') ) . '</button>
+                    <button type="button" name="submit_save" value="Close" onclick="window.opener.location.reload(true); window.close();" class="btn mb-1 mt-1  btn-solid theme-secondary submit-primary" ><span class="material-icons me-3" aria-hidden="true">close</span>' . lang(array('string'=>'Close') ) . '</button>
                 </div>
             </div>
         </nav>
