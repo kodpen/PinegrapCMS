@@ -360,7 +360,9 @@
         bytes = parseInt(bytes, 10) || 0;
         if (bytes < 1024) return bytes + ' B';
         if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(0) + ' KB';
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+        // The panel language's decimal mark (window.pgImageEditorNumber).
+        var num = window.pgImageEditorNumber || { decimal: '.' };
+        return (bytes / (1024 * 1024)).toFixed(1).replace('.', num.decimal) + ' MB';
     }
 
     function _busyState(on) {

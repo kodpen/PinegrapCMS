@@ -247,7 +247,10 @@
             unit++;
         }
 
-        return ((unit === 0) ? bytes : bytes.toFixed(1)) + ' ' + units[unit];
+        // The panel language's decimal mark, like the prices on this screen.
+        var seps = cfg.moneySeparators || { decimal: '.', thousands: ',' };
+
+        return ((unit === 0) ? bytes : bytes.toFixed(1).replace('.', seps.decimal)) + ' ' + units[unit];
     }
 
     /* What the upload did, in the box under the drop area rather than in a

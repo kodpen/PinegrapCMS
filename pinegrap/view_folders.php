@@ -2077,6 +2077,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     var L = <?php echo encode_json($explorer_lang); ?>;
 
+    // The panel language's decimal and thousands separators, so prices and
+    // sizes drawn here read like the figures the server writes beside them.
+    var NUM = <?php echo encode_json(pg_number_separators()); ?>;
+
+    // A number with the panel separators; grouping off for a value put back
+    // into an input box.
+    function numberLabel(value, decimals, grouping) {
+        var parts = Math.abs(value).toFixed(decimals).split('.');
+        if (grouping !== false) { parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, NUM.thousands); }
+        return ((value < 0) ? '-' : '') + parts[0] + ((parts.length > 1) ? NUM.decimal + parts[1] : '');
+    }
+
     // Visual pages are added by designers, into a design they choose
     // (pg_designer_target_modal()); the store has none.
     var canVisualPages = <?php echo (($user['role'] < 2) && ($explorer_area != 'catalog')) ? 'true' : 'false'; ?>;
@@ -3393,7 +3405,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function moneyLabel(cents) {
         if ((cents === null) || (cents === undefined)) { return ''; }
-        return (cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        return numberLabel(cents / 100, 2);
     }
 
     function priceRangeLabel(item) {
@@ -10245,7 +10257,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // Grouping off: the operator is editing the number, and a thousands
         // separator in the box is a character the parser would choke on.
         if (field === 'price') {
-            return (item.price / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2, useGrouping: false });
+            return numberLabel(item.price / 100, 2, false);
         }
 
         if (field === 'quantity') { return String(item.quantity || 0); }
@@ -11619,8 +11631,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // server, and this list is built before anything is sent.
     function uploadSizeLabel(bytes) {
 
-        if (bytes >= (1024 * 1024 * 1024)) { return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB'; }
-        if (bytes >= (1024 * 1024)) { return (bytes / (1024 * 1024)).toFixed(1) + ' MB'; }
+        if (bytes >= (1024 * 1024 * 1024)) { return numberLabel(bytes / (1024 * 1024 * 1024), 1) + ' GB'; }
+        if (bytes >= (1024 * 1024)) { return numberLabel(bytes / (1024 * 1024), 1) + ' MB'; }
         if (bytes >= 1024) { return Math.round(bytes / 1024) + ' KB'; }
 
         return bytes + ' B';

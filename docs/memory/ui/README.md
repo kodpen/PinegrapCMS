@@ -101,6 +101,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
+- focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API applications sheet and delete confirm, Modify Selected price method)
 - folder-shared-form.md: The folder create and edit screens share includes/forms/folder_form.php: what it holds, the inputs that differ, what stays in the screens
 - form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
@@ -159,6 +160,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
+- panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks and the product screen (variant matrix, advanced row, image chip remove, attribute dialog), and the tests that pin them
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-toast-timing.md: pgToast() timing: danger and warning toasts stay until closed and are not stacked twice; success and info keep their timer

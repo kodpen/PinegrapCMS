@@ -458,7 +458,15 @@
                 code.value = '';
             }
         } else {
+            // Focus goes to the next line's product name, else the previous
+            // line's, so it does not fall to the page top with the row.
+            var list = rows();
+            var neighbour = list[list.indexOf(row) + 1] || list[list.indexOf(row) - 1];
+            var target = neighbour ? field(neighbour, 'product_name') : null;
             row.parentNode.removeChild(row);
+            if (target) {
+                target.focus();
+            }
         }
         renumber();
         recalc();
