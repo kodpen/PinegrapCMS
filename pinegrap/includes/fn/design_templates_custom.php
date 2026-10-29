@@ -286,7 +286,8 @@ function _pg_dtc_id_value($value)
 // folders (a form field's upload folder, props._cf.upload_folder_id) as
 // {{folder:<key>}}. A link to another page (props._bindParams) keeps its
 // values as they are; the page it opens becomes {{tab:<key>}} when it is a
-// page of the design, and any other page keeps its id.
+// page of the design, and any other page keeps its id. A reference field's
+// form (props._cf.ref) becomes {{tab:<key>}} the same way.
 function _pg_dtc_tokenize_props($props, $ctx, $depth = 0)
 {
     if (!is_array($props) || $depth > 20) return $props;
@@ -301,6 +302,12 @@ function _pg_dtc_tokenize_props($props, $ctx, $depth = 0)
             }
             $props[$k] = $v;
             continue;
+        }
+        // The form a reference field points into, when it is a page of the
+        // design (props._cf.ref), as the tab Publish turns back into its id.
+        if ($k === '_cf' && is_array($v) && isset($v['ref']) && ($id = _pg_dtc_id_value($v['ref'])) > 0
+            && isset($ctx['page_ids'][$id])) {
+            $v['ref'] = '{{tab:' . $ctx['page_ids'][$id] . '}}';
         }
         if (is_array($v)) {
             $props[$k] = _pg_dtc_tokenize_props($v, $ctx, $depth + 1);
