@@ -39,5 +39,5 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
 
 ## What is left?
-- Notes on the canvas, auto-layout, multi-select; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`.
+- Canvas notes, auto-layout, multi-select. Tests `tests/workspace_flows_canvas_test.php`, `workspace-flows-canvas-harness.md`.
 - Templates and the gallery: `workspace-flows-template-format.md`.
