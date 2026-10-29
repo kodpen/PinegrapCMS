@@ -80,17 +80,17 @@ function pg_email_campaign_format_row($content, $fixed = false)
     if ($fixed) {
         return
             '<div class="col-12 my-3">
-                <label class="form-label">' . lang('Format') . '</label>
+                <div class="form-label">' . lang('Format') . '</div>
                 <p>' . $content . '</p>
             </div>';
     }
 
     return
         '<div class="col-12 my-1">
-            <div class="col-12">
-                <label class="form-label">' . lang('Format') . '</label>
-            </div>
-            ' . $content . '
+            <fieldset>
+                <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                ' . $content . '
+            </fieldset>
         </div>';
 }
 
@@ -210,26 +210,29 @@ function pg_email_campaign_schedule_card($start_time, $readonly = false, $enable
 function pg_email_campaign_purpose_card($purpose, $readonly = false)
 {
     if ($readonly) {
-        $field = '<p>' . lang(h(ucwords($purpose))) . '</p>';
+        $field = '<div class="form-label">' . lang('Purpose') . '</div>
+            <p>' . lang(h(ucwords($purpose))) . '</p>';
     } else {
         $commercial = ($purpose == 'commercial') ? ' checked="checked"' : '';
         $transactional = ($purpose == 'commercial') ? '' : ' checked="checked"';
 
         $field =
-            '<div class="form-field">
+            '<fieldset>
+            <legend class="form-label fs-md">' . lang('Purpose') . '</legend>
+            <div class="form-field">
                 <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $commercial . '>
                 <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
             </div>
             <div class="form-field">
                 <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $transactional . '>
                 <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
-            </div>';
+            </div>
+            </fieldset>';
     }
 
     return pg_email_campaign_card(
         lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')',
         '<div class="col-12 my-5">
-            <label class="form-label">' . lang('Purpose') . '</label>
             ' . $field . '
         </div>');
 }

@@ -134,10 +134,10 @@ if (!$_POST) {
             if ($number_of_contacts > 0) {
                 $output_contact_group_rows .=
                     '<tr>
-                        <td>' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" class="radio" checked="checked" /></div></td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" class="radio" /></div></td>
-                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" class="radio" /></div></td>
+                        <td id="contact_group_name_' . $id . '">' . h($name) . ' (' . pg_format_number($number_of_contacts, 0) . ')</td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="ignored" aria-labelledby="contact_group_name_' . $id . ' contact_group_ignore" checked="checked" /></div></td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="included" aria-labelledby="contact_group_name_' . $id . ' contact_group_include" /></div></td>
+                        <td style="text-align: center"><div class="form-field  d-inline-grid me-5"><input class="radio" type="radio" name="contact_group_' . $id . '" value="excluded" aria-labelledby="contact_group_name_' . $id . ' contact_group_exclude" /></div></td>
                     </tr>';
             }
         }
@@ -151,9 +151,9 @@ if (!$_POST) {
                 <table class="table">
                     <tr>
                         <th>&nbsp;</th>
-                        <th style="text-align: center">' . lang('Ignore') . '</th>
-                        <th style="text-align: center">' . lang('Include') . '</th>
-                        <th style="text-align: center">' . lang('Exclude') . '</th>
+                        <th id="contact_group_ignore" style="text-align: center">' . lang('Ignore') . '</th>
+                        <th id="contact_group_include" style="text-align: center">' . lang('Include') . '</th>
+                        <th id="contact_group_exclude" style="text-align: center">' . lang('Exclude') . '</th>
                     </tr>
                     ' . $output_contact_group_rows . '
                 </table>
@@ -221,7 +221,7 @@ if (!$_POST) {
                                                     <div class="row">
                                                         <div class="col-12 my-1">
                                                             <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                            <iframe id="body_preview_iframe" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
+                                                            <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                         </div>
                                                     </div>
                                                 </div>
@@ -238,7 +238,7 @@ if (!$_POST) {
                             <div class="col-12 my-3">
                                 <div class="alert theme-secondary row justify-content-between">
                                     <div class="col-auto">
-                                    <p>' . lang('Also send message to the following e-mail address') . ': </p>
+                                    <label class="form-label" for="entered_email_address">' . lang('Also send message to the following e-mail address') . ':</label>
                                     </div>
                                     <div class="col-12 col-6 lg:col-4">
                                         <input type="text" class="form-control text-end" id="entered_email_address" name="entered_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email">
@@ -251,7 +251,7 @@ if (!$_POST) {
                             'reply_email_address' => $user['email_address'],
                         )) . pg_email_campaign_schedule_card('') . pg_email_campaign_purpose_card('commercial') . '
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="create_button" name="submit_create" value="Create" class="btn my-1  btn-solid theme-success "><span class="bi bi-plus-circle me-3"></span><span class="pg-btn-label">' . lang(array('string'=>'Create') ) . '</span></button>
