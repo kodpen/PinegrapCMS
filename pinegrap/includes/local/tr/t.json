@@ -1513,6 +1513,7 @@
     "The design is open in the Visual Page Editor ({var:1}). Change its pages there, or try again once it is closed.": "Tasarım şu anda Görsel Sayfa Editörü'nde açık ({var:1}). Sayfalarını oradan değiştirin ya da editör kapanınca yeniden deneyin.",
     "The design opens with a copy of this page as a new draft tab. The page itself stays where it is.": "Seçtiğiniz tasarım, bu sayfanın bir kopyası yeni bir taslak sekme olarak eklenmiş hâlde açılır. Sayfanın kendisi yerinde kalır.",
     "The design opens with this page as a tab. The page moves there when you publish, and from then on uses that design's stylesheets, scripts and fonts.": "Seçtiğiniz tasarım, bu sayfa bir sekme olarak eklenmiş hâlde açılır. Yayınladığınızda sayfa oraya taşınır ve o tasarımın stil, betik ve yazı tipi dosyalarını kullanmaya başlar.",
+    "The design starts from the markup you paste.": "Tasarım, yapıştırdığınız kodla başlar.",
     "The design template \"{var:1}\" was installed": "\"{var:1}\" tasarım şablonu kuruldu",
     "The design template could not be installed.": "Tasarım şablonu kurulamadı.",
     "The design template could not be prepared in this browser. Choose the standard installation, or try again in another browser.": "Tasarım şablonu bu tarayıcıda hazırlanamadı. Standart kurulumu seçin ya da başka bir tarayıcıda yeniden deneyin.",

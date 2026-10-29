@@ -60,7 +60,7 @@
   color: var(--pg-fg-emphasis);
 }
 
-.sdh-head h2 .sdh-count {
+.sdh-count {
   margin-left: .35rem;
   font-weight: 500;
   color: var(--pg-fg-2);
@@ -108,12 +108,16 @@
 
 .sdh-start:hover {
   color: inherit;
-  border-color: var(--sdh-accent);
+  border-color: var(--sdh-hover-line);
+}
+
+.sdh-start:hover .sdh-start-title > .bi {
+  color: var(--sdh-accent-ink);
 }
 
 .sdh-start:focus-visible {
   outline: 0;
-  border-color: var(--sdh-accent);
+  border-color: var(--sdh-hover-line);
   box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
@@ -130,7 +134,7 @@
   display: flex;
   flex-direction: column;
   gap: .25rem;
-  padding: .875rem 1rem 1rem;
+  padding: .75rem 1rem .875rem;
 }
 
 .sdh-start-title {
@@ -140,6 +144,10 @@
   font-size: 1rem;
   font-weight: 600;
   color: var(--pg-fg-emphasis);
+}
+
+.sdh-start-title > .bi {
+  color: var(--pg-fg-2);
 }
 
 .sdh-start-title .badge {
@@ -285,7 +293,7 @@
   width: 3rem;
   height: 3rem;
   font-size: 1.35rem;
-  color: var(--sdh-accent);
+  color: var(--pg-fg-2);
   background: var(--sdh-paper);
   border: 1px solid var(--pg-border-color);
   border-radius: 50%;
@@ -305,10 +313,14 @@
   box-shadow: 0 0 0 .2rem var(--pg-focus-ring-color);
 }
 
+.sdh-tile:hover {
+  border-color: var(--sdh-hover-line);
+}
+
 /* The card or the page the open menu speaks for. */
 .sdh-card.sdh-menu-for,
 .sdh-pages .sdh-page.sdh-menu-for {
-  border-color: var(--sdh-accent);
+  border-color: var(--pg-fg-2);
 }
 
 .sdh-site {
@@ -317,13 +329,12 @@
 }
 
 .sdh-flag {
-  display: inline-flex;
+  display: flex;
   align-items: center;
   gap: .375rem;
-  margin-bottom: .375rem;
+  margin: .25rem 0 0;
   font-size: .8125rem;
-  font-weight: 500;
-  color: var(--sdh-accent);
+  color: var(--pg-fg-2);
 }
 
 .sdh-title-row {
@@ -369,37 +380,55 @@
   font-size: 1.125rem;
 }
 
+/* The state in words with a mark of its own shape; only "live" wears the
+   accent. */
 .sdh-status {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: .25rem .5rem;
+  gap: .25rem .75rem;
   margin-top: .375rem;
   font-size: .8125rem;
   color: var(--pg-fg-2);
 }
 
-.sdh-facts {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
-  gap: .75rem 1.5rem;
-  margin: 1.125rem 0 0;
+.sdh-state {
+  display: inline-flex;
+  align-items: center;
+  gap: .375rem;
+  font-weight: 500;
+  color: var(--pg-fg-body);
 }
 
-.sdh-facts > div {
-  min-width: 0;
+.sdh-state > .bi {
+  font-size: .75em;
+  color: var(--pg-fg-2);
+}
+
+.sdh-status[data-state="live"] .sdh-state:first-child > .bi {
+  color: var(--sdh-accent-ink);
+}
+
+/* What the design is built on, label beside value. */
+.sdh-facts {
+  display: grid;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: .375rem 1.25rem;
+  margin: 1rem 0 0;
+  padding-top: 1rem;
+  font-size: .875rem;
+  border-top: 1px solid var(--pg-border-color);
 }
 
 .sdh-facts dt {
-  margin: 0 0 .125rem;
-  font-size: .75rem;
+  margin: 0;
   font-weight: 500;
   color: var(--pg-fg-2);
 }
 
 .sdh-facts dd {
+  min-width: 0;
   margin: 0;
-  font-size: .875rem;
   color: var(--pg-fg-body);
   overflow-wrap: anywhere;
 }
@@ -479,9 +508,6 @@ button.sdh-page:hover {
   color: var(--pg-fg-2);
 }
 
-.sdh-page.is-home > .bi {
-  color: var(--sdh-accent);
-}
 
 .sdh-page.is-draft {
   color: var(--pg-fg-2);
@@ -494,7 +520,7 @@ button.sdh-page:hover {
 }
 
 .sdh-pages-toggle {
-  color: var(--pg-link-color);
+  color: var(--pg-fg-2);
   cursor: pointer;
   border-style: dashed;
 }
@@ -509,6 +535,8 @@ button.sdh-page:hover {
   align-items: center;
   gap: .375rem;
   margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--pg-border-color);
 }
 
 .sdh-tile {
@@ -603,9 +631,9 @@ button.sdh-page:hover {
   height: 1.75rem;
   font-size: .8125rem;
   font-weight: 600;
-  color: var(--sdh-accent);
+  color: var(--pg-fg-2);
   content: counter(sdh-step);
-  border: 1px solid var(--sdh-accent);
+  border: 1px solid var(--pg-border-color);
   border-radius: 50%;
 }
 
@@ -757,8 +785,13 @@ button.sdh-page:hover {
   -webkit-touch-callout: none;
 }
 
+.sdh-tile {
+  transition: border-color .15s ease-in-out;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .sdh-start {
+  .sdh-start,
+  .sdh-tile {
     transition: none;
   }
 }
