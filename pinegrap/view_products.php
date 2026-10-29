@@ -153,7 +153,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                
-                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_product.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <a class="btn btn-sm btn-outline theme-secondary m-1" href="view_products.php?mode=variant_sets"><span class="bi bi-grid me-3"></span>' . lang('Variant Sets') . '</a>
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
@@ -193,7 +193,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Products') {
                                 <tbody></tbody>
                             </table>
 
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_products.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>

@@ -310,7 +310,7 @@ $output_button_bar = '';
 // if the user is at least a manager or has create pages turned on, then output the create page button and button bar
 if (($user['role'] < '3') || ($user['create_pages'] == TRUE)) {
     $output_button_bar .=
-        '<nav id="button_bar" class="navigation " aria-label="Button Bar">
+        '<nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
         ' . ($user['role'] < 2
             // A designer adds a visual page to a design of their choosing
             // (pg_designer_target_modal()); the classic page screen stays
@@ -1487,7 +1487,7 @@ pg_page_shell(
                             </tbody>
                         </table>
 
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">                                   
                                     <button type="button" value="Modify Selected" class=" btn mb-1 mt-1 btn-solid theme-primary disabled" onclick="window.open(\'edit_pages.php\', \'popup\', \'toolbar=no,location=no,directories=no,status=yes,menubar=no,resizable=yes,copyhistory=no,scrollbars=yes,width=500,height=500\'); edit_chart_content(\'edit\',\'product\')"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Modify Selected') ) . '</button>

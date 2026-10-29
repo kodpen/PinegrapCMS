@@ -154,7 +154,7 @@ pg_page_shell([
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_custom_style.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                         <a class="btn btn-sm btn-outline theme-secondary m-1 " href="view_system_styles.php"><span class="bi bi-magic me-3"></span>' . lang('Visual Page Editor') . '</a>
                         <div class="pg-toolbar-grow"></div>
@@ -186,7 +186,7 @@ pg_page_shell([
                             </thead>
                             <tbody>' . $output_rows . '</tbody>
                         </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                     <button type="button" value="Delete Selected" class=" btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . $delete_confirmation . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>

@@ -182,7 +182,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . ($short_link_is_pattern ? '' : '<a class="btn btn-link pg-link-secondary py-0 mb-3 "  href="' . OUTPUT_PATH . h(encode_url_path($short_link['name'])) . '" target="_blank"><span class="material-icons me-1">link</span>' . lang('Visit') . '</a>') . '
                             </div>
@@ -200,7 +200,7 @@ if (!$_POST) {
                             'product_group_id' => $liveform->get_field_value('product_group_id'),
                             'product_id' => $liveform->get_field_value('product_id'),
                             'file_id' => $short_link['file_id']))) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

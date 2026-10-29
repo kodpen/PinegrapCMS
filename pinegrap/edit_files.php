@@ -154,7 +154,7 @@ if (!$_POST) {
                 </div>
             </div>
         </div>
-        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
             <div class="container">
                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
                     <button type="button" name="submit_save" value="Modify Files" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="edit_files()"><span class="material-icons me-3">save</span>' . lang(array('string'=>'Modify Files') ) . '</button>

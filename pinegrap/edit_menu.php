@@ -90,7 +90,7 @@ if (!$_POST) {
 
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<menu>' . $menu_name . '</menu>') . '</strong></p>
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_menu.php?id=' . h(urlencode($_GET['id'])) . '&from=' . h(urlencode(($_GET['from'] ?? ''))) . '&send_to=' . h(urlencode(($_GET['send_to'] ?? ''))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
@@ -103,7 +103,7 @@ if (!$_POST) {
                     <input type="hidden" name="send_to" value="' . h(($_GET['send_to'] ?? '')) . '" />
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                     ' . pg_menu_form_card($liveform) . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="save_button" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

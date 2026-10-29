@@ -138,7 +138,7 @@ pg_page_shell(
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 text-center md:text-start">
                     
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         ' . $output_add_calendar_button . '
                         <div class="pg-toolbar-grow"></div>
                         ' . pg_list_sort_menu('view_calendars.php', $sort_columns, $sort_levels, $sort_default) . '

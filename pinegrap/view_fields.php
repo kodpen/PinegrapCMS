@@ -483,7 +483,7 @@ pg_page_shell(array(
                 <div class="col-12 text-center md:text-start">
 <h2 class="d-inline-block text-break" data-bs-content="' . $output_form_designer_content_subheading . '" title="' . $output_form_designer_content_heading . '">[' . $output_form_designer_subnav_heading . ']</h2>
                     ' . $output_form_designer_subnav_subheading . '
-                    <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                    <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                         ' . $output_create_button . '
                         ' . $output_layout_buttons . '
                         ' . $output_preview_button . '
@@ -513,7 +513,7 @@ pg_page_shell(array(
                                 </tr>
                             <tbody>' . $output_rows . '</tbody>
                         </table>
-                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                        <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                     ' . $output_form_designer_footer . '

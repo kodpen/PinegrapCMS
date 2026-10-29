@@ -220,7 +220,7 @@ if (empty($_POST['name'])) {
                                 <p class="p-0 m-0 ' . h(get_access_control_type($file_folder)) . '">' . lang('Access') . ': ' . h(get_access_control_type_name(get_access_control_type($file_folder))) . '</p>
                             </div>
                         </div>
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
@@ -254,7 +254,7 @@ if (empty($_POST['name'])) {
                         <div class="col-12 md:col-6">' . pg_design_file_form_description_card($file_description) . '
                         </div>
                     </div>
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1  btn-solid theme-success "><span class="material-icons me-3">save</span><span class="pg-btn-label" >' . lang(array('string'=>'Save') ) . '</span></button>

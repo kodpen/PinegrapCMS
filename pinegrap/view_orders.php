@@ -3155,7 +3155,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                     <a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="add_order.php"><i class="bi bi-cart-plus me-1" aria-hidden="true"></i>' . lang(array('string' => 'Add {var:1}', 'vars' => array(lang('Order')))) . '</a>
                     <form id="search" action="view_orders.php" class="disable_shortcut" method="get">
                         ' . get_token_field() . '
@@ -3209,7 +3209,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                     ' . $output_rows . '
                                 </tbody>
                             </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_generate_xlsl_button . '

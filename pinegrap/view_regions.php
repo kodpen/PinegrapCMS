@@ -651,7 +651,7 @@ echo
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 text-center md:text-start">
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             ' . $button_bar_button . '
                             <div class="pg-toolbar-grow"></div>
                             ' . $output_sort_menu . '

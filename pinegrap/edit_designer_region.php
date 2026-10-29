@@ -66,7 +66,7 @@ if (!isset($_POST['name'])) {
                         
                         <p>' . lang('Page Style Body Tag') . ': <strong>' . h('<cregion>' . $cregion_name . '</cregion>') . '</strong></p>
                         
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/duplicate_designer_region.php?id=' . h(escape_javascript(urlencode($_REQUEST['id']))) . get_token_query_string_field() . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                             </div>
@@ -83,7 +83,7 @@ if (!isset($_POST['name'])) {
                                             <select name="type" id="type" class="form-control"><option value="common">' . lang('Common Region') . '</option><option value="designer" selected="selected">' . lang('Designer Region') . '</option></select>
                                             <div class="form-text text-end">' . lang('You can change Region Type') . '</div>
                                         </div>') . '
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_save" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang(array('string'=>'Save') ) . '</span></button>

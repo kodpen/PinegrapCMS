@@ -1505,7 +1505,7 @@ if (!$_POST) {
                     ' . $liveform->output_notices() . '
                     <div class="row mb-3 flex-wrap">
                         <div class="col-12 text-center md:text-start">
-                            <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                            <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                                 <div class="pg-toolbar-grow"></div>
                                 ' . pg_list_sort_menu('duplicate_products.php', $sort_columns, $sort_levels, $sort_default) . '
                             </nav>

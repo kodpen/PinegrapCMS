@@ -754,7 +754,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <a class="btn btn-sm btn-solid theme-primary m-1" href="' . $output_add_submitted_form_url . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
                             <form action="view_submitted_forms.php" method="get" class="disable_shortcut d-inline-block">
                                 ' . get_token_field() . '
@@ -804,7 +804,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Forms') {
                                 </thead>
                                 <tbody></tbody>
                             </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('submitted form(s)')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
