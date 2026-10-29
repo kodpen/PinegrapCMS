@@ -23,4 +23,4 @@ module: order_completion
 ## What still reads the request?
 - The functions read no session or form (`tests/order_completion_test.php`), but `get_page_content()` and the comment mailers they call are shared renderers not checked for the session; A3 checks them before a webhook calls them.
 
-Related: commerce/order-completion.md, commerce/order-completion-lines.md, plans/order-completion-function.md
+Related: commerce/order-completion.md, commerce/order-completion-lines.md

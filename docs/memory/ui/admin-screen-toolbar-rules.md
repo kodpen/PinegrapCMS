@@ -22,10 +22,10 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 - Elsewhere there is no such limit: buttons (`btn-outline-warning`), badges, alerts keep colour as importance/status. Do not carry the rule out of menus (an in-page `alert-warning` has nothing to do with folders). The clash exists only in menus because menu rows share the visual language of folder lists.
 
 ## Where do toolbar classes live?
-- In the shared file, not in the page: `assets/css/backend.src.css`, block *Admin screen toolbar*: `.pg-toolbar`, `.pg-toolbar-grow`, `.pg-toolbar-search`, `.btn-ghost` (+ `.btn-ghost.active`) and narrow-screen rules. `#button_bar` shares them (`page-button-bar.md`).
+- In the shared file, not in the page: `assets/css/backend.src.css`, block *Admin screen toolbar*: `.pg-toolbar`, `.pg-toolbar-grow`, `.pg-toolbar-search`, `.btn-text.theme-secondary` (+ `.active`) and narrow-screen rules. Toolbar buttons are `btn btn-sm btn-text theme-secondary`; `.btn-ghost` is the old class, kept only for `workspace_flow.js`, never written in new code. `#button_bar` shares them (`page-button-bar.md`).
 - New screens use these classes; do not write new bar CSS on your own `#id`.
 - `view_folders.php` wears them too (`#explorer_toolbar.pg-toolbar`); it keeps only the order its own controls take when the bar wraps.
-- `btn-ghost` is defined only with Bootstrap's own button variables, so light/dark theme needs no second rule.
+- `.btn-text.theme-secondary` sets only Bootstrap's own button variables, so light/dark theme needs no second rule.
 
 ## What is the card header pattern?
 - `card-header` = `d-flex justify-content-between align-items-center`; left: `text-uppercase h5 text-primary fw-bold mb-0` title; right: the card's single link button.

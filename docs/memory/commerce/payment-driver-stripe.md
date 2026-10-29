@@ -27,7 +27,7 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 - `notify()` (PR #2143): `Stripe-Signature` checked (HMAC-SHA256 of `t.body`, any `v1`, 300 s; no secret = refused). `payment_intent.succeeded` (metadata `order_id`) → `paid`; `charge.refunded` → `refunded`; `charge.dispute.created` → `pending`; else `raw.ignored`. Outcome: `payment-callback.md`.
 
 ## What is not done?
-- Completing an incomplete order from the webhook: `plans/order-completion-function.md` (intent and amount on the order: #2199). Apple Pay: domain in the Dashboard; Link is set there.
+- Completing an incomplete order from the webhook: `order-completion-from-payment.md` (intent and amount on the order: #2199). Apple Pay: domain in the Dashboard; Link is set there.
 
 ## How was it verified?
 - `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom, fake Stripe.js; no real account.

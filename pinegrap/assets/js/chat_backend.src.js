@@ -288,11 +288,26 @@
             return (value < 10 ? '0' : '') + value;
         }
 
-        if (sameDay) {
-            return pad(date.getHours()) + ':' + pad(date.getMinutes());
+        // The site's clock: 12-hour "2:05 PM" or 24-hour "14:05".
+        var clock = config.clock || {};
+        var time;
+        if (clock.twelve_hours) {
+            var hours = date.getHours() % 12 || 12;
+            time = hours + ':' + pad(date.getMinutes()) + ' ' + (date.getHours() < 12 ? 'AM' : 'PM');
+        } else {
+            time = pad(date.getHours()) + ':' + pad(date.getMinutes());
         }
 
-        return pad(date.getDate()) + '.' + pad(date.getMonth() + 1) + ' ' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+        if (sameDay) {
+            return time;
+        }
+
+        // The site's date order: month/day or day.month.
+        var day = clock.date_order === 'month_day'
+            ? pad(date.getMonth() + 1) + '/' + pad(date.getDate())
+            : pad(date.getDate()) + '.' + pad(date.getMonth() + 1);
+
+        return day + ' ' + time;
     }
 
     function presenceLabel(presence) {

@@ -5,11 +5,11 @@ module: order_completion
 ---
 
 ## What is the context?
-- What the caller knows besides the columns; a missing key means a request without a visitor: `lines` (the order lines joined to their products, read by `submit_order()` before payment), `order` (billing columns, custom fields, PO number), `contact_id`, `reference_code`, `receipt` (the checkout page's settings; none: no receipt), `new_account`, `auto_registration`, `key_code`, `affiliate_rate`, `recurring_products`, `created_user_id`, `actor`, `visitor_id`. Total, date, user id, commission, gift card figure and affiliate code come from `$values`.
+- What the caller knows besides the columns; a missing key means a request without a visitor: `lines` (the order lines joined to their products, read by `submit_order()` before payment), `order` (billing columns, custom fields, PO number), `contact_id`, `reference_code`, `receipt` (the checkout page's settings; none: no receipt), `new_account` (the account the order opened, `array()` for none; since #3035 an array, before a bool), `auto_registration`, `key_code`, `affiliate_rate`, `recurring_products`, `created_user_id`, `actor`, `visitor_id`. Total, date, user id, commission, gift card figure and affiliate code come from `$values`.
 - `pg_order_complete_from_payment()` builds it from the order row and the same line query (`pg_order_lines_sql()`), the receipt from the recorded page (`order-completion-from-payment.md`). `legal_acceptance` (ip, user_agent, at) goes to `pg_legal_documents_store()`; absent on the visitor's path.
 
 ## What stays in submit_order()?
-- Auto-registration (`order-completion-before-lock.md`), then the call; after it the frozen legacy gateways' recurring profiles (the typed card), the session values the receipt page reads, the post-save hook, `pg_erp_auto_invoice()`, the redirect.
+- The sign-in and device cookie around `pg_order_auto_register()` (`order-completion-account.md`), then the call; after it the frozen legacy gateways' recurring profiles (the typed card), the session values the receipt page reads, the post-save hook, `pg_erp_auto_invoice()`, the redirect.
 - Since #2972 the recurring profiles are created after the receipt and line writes instead of before them; the hook still runs after the new_order notification and before the invoice, but no longer sees the loop's locals (`$reward_points`, `$contact_groups`, `$forms`): only the request's own variables.
 
-Related: commerce/order-completion.md, plans/order-completion-function.md
+Related: commerce/order-completion.md, commerce/order-completion-account.md

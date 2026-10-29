@@ -20,7 +20,7 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 - An `alerted` line goes to `log_activity(…, 'SYSTEM')` and to `pg_ops_alert('payment_notice', …)`; the alert keeps its once-a-day rule, the log line is written every time.
 
 ## Why complete here? (A3, #3021)
-- Decided (#2382): a payment the service confirms after the visitor left completes the order (`plans/order-completion-function.md`). Before #3021 the message only alerted.
+- Decided (#2382): a payment the service confirms after the visitor left completes the order (`order-completion-from-payment.md`). Before #3021 the message only alerted.
 - The match: the order keeps the payment id in `transaction_id` (since #2199, written when the visitor is sent away), the answer's `amount` (integer hundredths) equals `orders.total`, its `raw['currency']` (Stripe and PayPal answers carry it since #3021) equals `BASE_CURRENCY_CODE`, any case. iyzico's 3-D Secure page names no payment: its orders still only alert.
 
 ## What does the order keep for a later completion? (A3a, #2998; #3021)

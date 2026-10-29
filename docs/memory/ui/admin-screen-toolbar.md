@@ -20,11 +20,11 @@ description: Panel screen basics (frame, notices, fields, width, icons, help) an
 | Slot | What | Class |
 |---|---|---|
 | 1 | Primary action (often opens a menu: "Yeni", "Kaydet") | `btn btn-sm btn-solid theme-primary rounded-pill px-5` |
-| 2 | Secondary tools, grouped into one menu if needed | `btn btn-sm btn-ghost` (own class) |
+| 2 | Secondary tools, grouped into one menu if needed | `btn btn-sm btn-text theme-secondary` |
 | 3 | Location / breadcrumb, flexes (`flex: 1 1 220px`, `.pg-toolbar-grow`) | - |
 | 4 | Search / filter | `input-group input-group-sm rounded-pill` (`.pg-toolbar-search`) |
-| 5 | View switcher (if any) | `btn-group btn-group-sm` + `btn-ghost.active` |
-| 6 | Overflow menu `⋮`: rare, screen-specific things | `btn btn-sm btn-ghost` with `data-bs-placement="bottom-end"` + `ul.menu.pg-menu-end` |
+| 5 | View switcher (if any) | `btn-group btn-group-sm` + `btn-text theme-secondary active` |
+| 6 | Overflow menu `⋮`: rare, screen-specific things | `btn btn-sm btn-text theme-secondary` with `data-bs-placement="bottom-end"` + `ul.menu.pg-menu-end` |
 - A menu slot is `div.pg-menu-wrap` > toggle (`data-bs-toggle="menu"`, `data-bs-display="static"`) + `ul.menu` of `.menu-item`s.
 - The strip under the heading of older screens (`#button_bar`) is the same component: `page-button-bar.md`.
 
