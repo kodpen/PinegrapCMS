@@ -1132,6 +1132,7 @@
     "The campaign profile has been created.": "Kampanya profili oluşturuldu.",
     "The campaign profile has been deleted.": "Kampanya profili silindi.",
     "The campaign profile has been saved.": "Kampanya profili kaydedildi.",
+    "The campaign stopped because the server did not answer. Close this window and send the campaign again to resume it.": "Sunucu yanıt vermediği için kampanya durdu. Bu pencereyi kapatın ve kampanyayı kaldığı yerden sürdürmek için yeniden gönderin.",
     "The canonical address of {var:1} cannot contain spaces, quotation marks or angle brackets.": "{var:1} sayfasının canonical adresinde boşluk, tırnak işareti ya da açılı ayraç olamaz.",
     "The canonical address of {var:1} is too long; it can be at most 2000 characters.": "{var:1} sayfasının canonical adresi çok uzun; en çok 2000 karakter olabilir.",
     "The canonical address of {var:1} must be a full address starting with http:// or https://, or a path on this site starting with /.": "{var:1} sayfasının canonical adresi http:// ya da https:// ile başlayan tam bir adres ya da bu sitede / ile başlayan bir yol olmalı.",
