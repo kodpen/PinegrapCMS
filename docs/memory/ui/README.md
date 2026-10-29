@@ -177,6 +177,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks and the product screen (variant matrix, advanced row, image chip remove, attribute dialog), and the tests that pin them
+- panel-tab-rows.md: Panel tab rows say which tab is open (role=tab + aria-selected, named tabpanel) and move with the arrow keys; a hidden Bootstrap tab is also disabled
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-toast-timing.md: pgToast() timing: danger and warning toasts stay until closed and are not stacked twice; success and info keep their timer
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it

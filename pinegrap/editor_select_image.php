@@ -109,7 +109,7 @@ $output_sort_items = '';
 foreach ($sort_options as $sort_key => $sort_option) {
 
     $output_sort_items .=
-        '<li><a class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-3"></i>' . $sort_option['label'] . '</a></li>';
+        '<li><a class="menu-item pg-menu-item-sm rounded-4 p-0 my-1 d-flex align-items-center' . (($sort_key == $current_sort) ? ' active" aria-current="page' : '') . '" href="editor_select_image.php?sort=' . h($sort_key) . '&' . $url_parameters . '"><i class="bi ' . $sort_option['icon'] . ' m-3"></i>' . $sort_option['label'] . '</a></li>';
 }
 
 $output_sort_link =
@@ -832,12 +832,14 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     <ul class="nav nav-tabs mt-5 mb-0" id="esi_tabs" role="tablist">
         <li class="nav-item" role="presentation">
             <button class="nav-link active" id="esi_tab_files_btn" type="button" role="tab"
+                aria-selected="true" aria-controls="esi_tab_files"
                 onclick="esiSwitchTab(\'files\', this)">
                 <i class="bi bi-folder2-open me-1"></i>' . lang('My Files') . '
             </button>
         </li>
         <li class="nav-item" role="presentation">
             <button class="nav-link" id="esi_tab_unsplash_btn" type="button" role="tab"
+                aria-selected="false" aria-controls="esi_tab_unsplash" tabindex="-1"
                 onclick="esiSwitchTab(\'unsplash\', this)">
                 <i class="bi bi-image me-1"></i>Unsplash
             </button>
@@ -846,7 +848,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     ' : '') . '
 
     <!-- My Files tab panel -->
-    <div id="esi_tab_files">
+    <div id="esi_tab_files"' . ($show_unsplash ? ' role="tabpanel" aria-labelledby="esi_tab_files_btn"' : '') . '>
 
         ' . $output_filter_chips . '
         ' . $output_warning . '
@@ -863,7 +865,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
     ' . ($show_unsplash ? '
     <!-- Unsplash tab panel -->
-    <div id="esi_tab_unsplash" style="display:none">
+    <div id="esi_tab_unsplash" role="tabpanel" aria-labelledby="esi_tab_unsplash_btn" style="display:none">
         <div class="my-5">
             <div class="input-group">
                 <input type="text" id="unsplash_query" class="form-control"
@@ -931,9 +933,15 @@ var _unsplashPage     = 1;
 var _unsplashQuery    = \'\';
 var _unsplashPopularLoaded = false;
 
+// The two source tabs keep aria-selected and a roving tabindex in step with
+// the fill, so only the open tab sits in the Tab order.
 function esiSwitchTab(tab, btn) {
-    document.querySelectorAll(\'#esi_tabs .nav-link\').forEach(function(b){ b.classList.remove(\'active\'); });
-    btn.classList.add(\'active\');
+    document.querySelectorAll(\'#esi_tabs .nav-link\').forEach(function(b){
+        var on = (b === btn);
+        b.classList.toggle(\'active\', on);
+        b.setAttribute(\'aria-selected\', on ? \'true\' : \'false\');
+        b.setAttribute(\'tabindex\', on ? \'0\' : \'-1\');
+    });
     document.getElementById(\'esi_tab_files\').style.display    = (tab === \'files\')    ? \'\' : \'none\';
     document.getElementById(\'esi_tab_unsplash\').style.display = (tab === \'unsplash\') ? \'\' : \'none\';
     var nav = document.getElementById(\'files_nav_controls\');
@@ -943,6 +951,23 @@ function esiSwitchTab(tab, btn) {
         esiUnsplashPopular();
     }
 }
+
+// Arrow keys, Home and End move between the source tabs and open the one
+// they land on.
+document.addEventListener(\'keydown\', function (e) {
+    var btn = e.target.closest ? e.target.closest(\'#esi_tabs [role="tab"]\') : null;
+    if (!btn || e.altKey || e.ctrlKey || e.metaKey) return;
+    var tabs = Array.prototype.slice.call(document.querySelectorAll(\'#esi_tabs [role="tab"]\'));
+    var i = tabs.indexOf(btn), next = null;
+    if (e.key === \'ArrowRight\' || e.key === \'ArrowDown\') next = tabs[(i + 1) % tabs.length];
+    else if (e.key === \'ArrowLeft\' || e.key === \'ArrowUp\') next = tabs[(i - 1 + tabs.length) % tabs.length];
+    else if (e.key === \'Home\') next = tabs[0];
+    else if (e.key === \'End\') next = tabs[tabs.length - 1];
+    if (!next) return;
+    e.preventDefault();
+    next.focus();
+    next.click();
+});
 
 function esiUnsplashPopular(loadMore) {
     _unsplashPopularLoaded = true;

@@ -1808,6 +1808,8 @@ function pg_office_view_strings()
 {
     return array(
         'hidden'            => lang('Hidden sheet'),
+        'sheets'            => lang('Sheets'),
+        'changed_mark'      => lang('Changed'),
         'truncated'         => lang('Only the beginning is shown. Download the file to see all of it.'),
         'images_lost'       => lang('{1} picture(s) could not be shown.'),
         'empty'             => lang('The sheet is empty.'),

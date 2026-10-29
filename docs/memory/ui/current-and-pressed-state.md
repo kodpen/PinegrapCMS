@@ -12,7 +12,7 @@ description: The current link or menu item carries aria-current beside .active; 
 - A button that toggles a choice without leaving the page: `aria-pressed`, `"true"` on the chosen one and `"false"` on the others, kept in step wherever script moves the fill.
 
 ## Where is it done?
-- `aria-current`: Translations (language menu, chips, page and group lists, pager), ERP Cash flow view pills, ERP Settings document pills, ERP invoices e-Document filter menu, Cloudflare Tools period tabs, Paraşüt inbox tabs, the Site Settings category switcher.
+- `aria-current`: Translations (language menu, chips, page and group lists, pager), ERP Cash flow view pills, ERP Settings document pills, ERP invoices e-Document filter menu, Cloudflare Tools period tabs, Paraşüt inbox tabs, the Site Settings category switcher, the image picker sort menu (`editor_select_image.php`).
 - `aria-pressed`: the offer editor's Validity and Scope buttons (`edit_offer.php` prints `"false"`, `pressed()` in `offer_editor.js` sets class and attribute in `renderOptions()`); the per-result unit, target and tier-mode buttons through `choiceButton(on)`; the Site Log Type filter (`view_log.php` prints it and the click handler moves it).
 
 ## What changed in the offer editor's target choice?
