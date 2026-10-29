@@ -1774,7 +1774,7 @@ function pg_chat_render_backend_launcher()
             @keyframes pgChatPop { from { opacity: 0; transform: translateY(10px) scale(.98); } to { opacity: 1; transform: none; } }
             #pg-chat-root .pg-chat-tabs { gap: 4px; }
             #pg-chat-root .pg-chat-tabs .nav-link { border: 0; border-radius: 9px; color: var(--pg-fg-2); font-size: 12.5px; font-weight: 600; padding: 4px 10px; }
-            #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--pg-primary); background: color-mix(in srgb, var(--pg-primary) 15%, transparent); }
+            #pg-chat-root .pg-chat-tabs .nav-link.active { color: var(--pg-primary-fg-emphasis); background: color-mix(in srgb, var(--pg-primary) 15%, transparent); }
             #pg-chat-root .pg-chat-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
             #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--pg-bg-body); transition: background .12s ease; }
             #pg-chat-root .pg-chat-row:hover { background: var(--pg-bg-2); }
@@ -1797,8 +1797,8 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-dot-offline { background: #a1a1a1; }
             #pg-chat-root .pg-chat-dot { border-color: var(--pg-bg-body); }
             #pg-chat-root .pg-chat-bubble { max-width: 80%; white-space: pre-wrap; overflow-wrap: break-word; border-radius: 16px; padding: 7px 11px; font-size: 13px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
-            #pg-chat-root .pg-chat-bubble-me { background: linear-gradient(135deg, var(--pg-primary), #6f42c1); color: #fff; border-bottom-right-radius: 5px; }
-            #pg-chat-root .pg-chat-tick { display: inline-block; margin-left: 7px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.65); letter-spacing: -2px; white-space: nowrap; vertical-align: baseline; }
+            #pg-chat-root .pg-chat-bubble-me { background: linear-gradient(135deg, #1565c0, #6f42c1); color: #fff; border-bottom-right-radius: 5px; }
+            #pg-chat-root .pg-chat-tick { display: inline-block; margin-left: 7px; font-size: 11px; line-height: 1; color: rgba(255,255,255,.85); letter-spacing: -2px; white-space: nowrap; vertical-align: baseline; }
             #pg-chat-root .pg-chat-tick-seen { color: #9ff3ff; }
             #pg-chat-root .pg-chat-bubble-peer { background: var(--pg-bg-2); color: var(--pg-fg-body); border-bottom-left-radius: 5px; }
             #pg-chat-root .pg-chat-bubble-system { background: transparent; color: var(--pg-fg-2); font-size: 12px; text-align: center; max-width: 100%; box-shadow: none; }
@@ -1819,9 +1819,9 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-tools { display: flex; align-items: center; gap: 1px; }
             #pg-chat-root .pg-chat-tool { flex-shrink: 0; width: 30px; height: 30px; border: 0; background: transparent; color: var(--pg-fg-2); border-radius: 8px; display: flex; align-items: center; justify-content: center; }
             #pg-chat-root .pg-chat-tool:hover { background: var(--pg-bg-2); color: var(--pg-fg-body); }
-            #pg-chat-root .pg-chat-tool.pg-chat-tool-on { color: var(--pg-primary); background: var(--pg-bg-2); }
+            #pg-chat-root .pg-chat-tool.pg-chat-tool-on { color: var(--pg-primary-fg-emphasis); background: var(--pg-bg-2); }
             #pg-chat-root .pg-chat-tools-grow { flex: 1 1 auto; }
-            #pg-chat-root .pg-chat-send { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--pg-primary); color: #fff; display: flex; align-items: center; justify-content: center; }
+            #pg-chat-root .pg-chat-send { flex-shrink: 0; width: 32px; height: 32px; border: 0; border-radius: 50%; background: var(--pg-primary); color: var(--pg-on-accent); display: flex; align-items: center; justify-content: center; }
             #pg-chat-root .pg-chat-send:disabled { background: var(--pg-bg-2); color: var(--pg-fg-2); }
             /* Recording replaces the tool row, so the microphone cannot be
                armed twice and the only two things on offer are stop and
