@@ -1,0 +1,21 @@
+---
+name: workspace-flows-look
+description: Plan (owner, 2026-10-29): bring the Flows editor and list to the owner's drawing; box colours, icons, arrows, a palette column, a flow list table, no Scheduled actions section
+---
+
+## What is asked?
+- The screens do not look like the owner's drawing of 2026-10-27 (owner, 2026-10-29). Threads (plans/workspace-flows-data-threads.md) and run flags (C1) match; the rest below never became a step. The numbers: workspace-flows-visual-spec.md (dark theme; the light theme takes darker tones of the same hues that keep 4.5:1 on its ground).
+
+## Which steps? (one PR each, in this order)
+- V1 boxes and arrows: `KINDS` (assets/js/workspace_flow.js) gains a group; `--wsf-kind` per group in backend.src.css, not per kind: start (manual, schedule, event, join, row), logic (condition, delay, end), people and tasks (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp), values (constants, value: dashed border). The kind label and icon take the colour; a 1.5 px border all round in place of the 4 px left stripe; selection ring `#a78bfa`; control arrows 2 px `#7d8696` with a filled head (`.wsf-edge-line`, `#wsf-arrow`); the run view keeps its taken and not-taken arrows.
+
+- V2 icons: the spec's 16 px, 1.5 px stroke line icons as inline SVG in place of the Bootstrap icons of `KINDS` and `PALETTE`, on boxes, palette, outline and the mini window; kinds the spec does not name get one in the same style.
+
+- V3 flow list: `workspace_flows.php` without `?flow=` shows the list full width as a table: Flow, How it starts (kind icon and its sentence, "Every day 09:00", "Stock below 5"), State (Live · vN, Draft, Paused), Last run (its flag), Home channel; search; filter chips with counts (All, Time, By hand, Event, Join, Draft) in place of the start select (#2391); New flow. `ws_flow_list` (includes/workspace/actions.php) adds the start sentence and the channel's name; a row opens the flow; "Flows ›" in the editor's toolbar leads back.
+
+- V4 palette column (after V3): in the editor the left column holds the palette, not the flow list, and nothing floats over the canvas: Start from a template (while the flow is empty), a search field, groups with V1's coloured headings in the order start, values, logic, people and tasks, message, system; the start group says "This flow: <kind>" once it has a start. Click and drag as today (`drawPalette()`, `paletteButtons()`); a phone keeps the outline's add buttons.
+
+- V5 no Scheduled actions section (after V3; channels plan: scheduled work has no menu of its own): the entry under the list and `showScheduled()` go, `?view=scheduled` opens the list; converted rows (`ws_flow_converted()`) form a last group, "Converted from scheduled actions · N", each with its when and step, a converted mark and Open flow. Before it starts, its session asks the architect where a row left unconverted (cancelled, or a graph `ws_flow_problems()` refused) and a converted row's Run now and History go.
+
+## Where to start?
+- V1. Each step updates workspace/workspace-flows-canvas.md. The drawing's other boards (run view, channel, templates, AI draft, the parts map) were not compared with the screens: compare them before this plan closes.

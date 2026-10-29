@@ -516,7 +516,10 @@ function pg_dashboard_widget_5($request, $user)
 
         <script>(function(){
           var tc = getPreferredThemeColor();
-          var fmtN = function(n){ return Number(n).toLocaleString(); };
+          // Counts with the panel language thousands separator, like the
+          // figures the server drew before a period click.
+          var NUM = ' . json_encode(pg_number_separators()) . ';
+          var fmtN = function(n){ return String(Math.round(Number(n) || 0)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, NUM.thousands); };
           var VIEWS_LABEL = ' . json_encode($vs5_views_label) . ';
           var L = {
             visitors: ' . json_encode(lang('New Visitors')) . ',

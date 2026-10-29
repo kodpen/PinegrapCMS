@@ -1011,26 +1011,43 @@ function pg_innodb_convert_table($table, $options = array())
 }
 
 /**
- * A size for a person to read: KB, MB or GB.
+ * A size for a person to read: KB, MB or GB, with the panel language's
+ * separators (2,5 GB in Turkish). The upgrade step that converts tables can
+ * run before ecommerce.php is loaded, so it falls back to the software's own
+ * separators then.
  *
  * No database access.
  *
- * @param float|int $bytes
+ * @param float|int  $bytes
+ * @param array|null $separators ['decimal' => string, 'thousands' => string];
+ *                               null for pg_number_separators()
  * @return string
  */
-function pg_innodb_size_label($bytes)
+function pg_innodb_size_label($bytes, $separators = null)
 {
     $bytes = (float) $bytes;
 
+    if (!is_array($separators)) {
+        $separators = function_exists('pg_number_separators')
+            ? pg_number_separators()
+            : array('decimal' => '.', 'thousands' => ',');
+    }
+
     if ($bytes >= 1073741824) {
-        return number_format($bytes / 1073741824, 1) . ' GB';
+        $value = $bytes / 1073741824;
+        $decimals = 1;
+        $unit = 'GB';
+    } elseif ($bytes >= 1048576) {
+        $value = $bytes / 1048576;
+        $decimals = 0;
+        $unit = 'MB';
+    } else {
+        $value = $bytes / 1024;
+        $decimals = 0;
+        $unit = 'KB';
     }
 
-    if ($bytes >= 1048576) {
-        return number_format($bytes / 1048576, 0) . ' MB';
-    }
-
-    return number_format($bytes / 1024, 0) . ' KB';
+    return number_format($value, $decimals, $separators['decimal'], $separators['thousands']) . ' ' . $unit;
 }
 
 /**

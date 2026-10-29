@@ -681,7 +681,7 @@ function get_image_editor_includes()
 
     return '<link rel="stylesheet" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/doka/doka.css">
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/image_editor/packages/jquery_doka/doka.js"></script>
-        <script>window.pgImageEditorLocale = ' . encode_json($locale) . '; window.pgImageEditorLabels = ' . encode_json($labels) . ';</script>
+        <script>window.pgImageEditorLocale = ' . encode_json($locale) . '; window.pgImageEditorLabels = ' . encode_json($labels) . '; window.pgImageEditorNumber = ' . encode_json(pg_number_separators()) . ';</script>
         <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/image_editor_modal.js?v=' . $modal_version . '"></script>';
 }
 
