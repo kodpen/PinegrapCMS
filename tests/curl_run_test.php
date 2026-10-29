@@ -4,7 +4,8 @@
  *
  * Tests for pg_curl_run_options() in includes/fn/update.php: the cURL options
  * pg_curl_run() sets for a call to a fixed vendor host, by name, before
- * pg_curl_tls() is applied on top of them.
+ * pg_curl_tls() is applied on top of them; and for pg_curl_run_take(), the
+ * write callback of a call with a body cap or a file sink.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -265,4 +266,82 @@ function test_curl_run_split_cuts_at_the_header_size()
 	pg_assert_same(array($head, '{"a":1}'), pg_curl_run_split($head . '{"a":1}', strlen($head)));
 	pg_assert_same(array($head, ''), pg_curl_run_split($head, strlen($head)));
 	pg_assert_same(array('', 'body'), pg_curl_run_split('body', 0));
+}
+
+// A cap or a sink reads the body through a write callback, which would take
+// the header block with it: the block is not asked for then, and the cap
+// itself is no cURL option (libcurl's own size limit trusts Content-Length).
+function test_curl_run_cap_or_sink_reads_only_the_body()
+{
+	$sink = fopen('php://memory', 'w+b');
+
+	foreach (array(array('cap' => 100), array('sink' => $sink), array('cap' => 100, 'sink' => $sink)) as $take) {
+		$options = pg_curl_run_options('GET', 'https://example.com/a', array_merge(array('response_headers' => true), $take), curl_run_test_env());
+
+		pg_assert_false(isset($options['CURLOPT_HEADER']), 'no header block with ' . implode(', ', array_keys($take)));
+	}
+
+	pg_assert_same(pg_curl_run_options('GET', 'https://example.com/a', array(), curl_run_test_env()), pg_curl_run_options('GET', 'https://example.com/a', array('cap' => 100), curl_run_test_env()), 'the cap adds no cURL option');
+
+	fclose($sink);
+}
+
+function curl_run_test_taken($cap, $sink = null)
+{
+	return array('cap' => $cap, 'sink' => $sink, 'body' => '', 'received' => 0, 'capped' => false, 'write_failed' => false);
+}
+
+// The cap counts what arrives, whatever the server announced: the piece that
+// would go past it ends the transfer (cURL error 23) and is not kept.
+function test_curl_run_take_keeps_the_body_up_to_the_cap()
+{
+	$taken = curl_run_test_taken(10);
+
+	pg_assert_same(4, pg_curl_run_take($taken, 'abcd'));
+	pg_assert_same(4, pg_curl_run_take($taken, 'efgh'));
+	pg_assert_same(0, pg_curl_run_take($taken, 'ijk'), 'past the cap');
+	pg_assert_same('abcdefgh', $taken['body']);
+	pg_assert_same(8, $taken['received']);
+	pg_assert_true($taken['capped']);
+
+	$taken = curl_run_test_taken(8);
+
+	pg_assert_same(8, pg_curl_run_take($taken, 'abcdefgh'), 'up to the cap is taken');
+	pg_assert_false($taken['capped']);
+
+	$taken = curl_run_test_taken(0);
+
+	pg_assert_same(100000, pg_curl_run_take($taken, str_repeat('x', 100000)), 'no cap');
+	pg_assert_same(100000, $taken['received']);
+}
+
+function test_curl_run_take_writes_to_the_sink()
+{
+	$sink = fopen('php://memory', 'w+b');
+	$taken = curl_run_test_taken(8, $sink);
+
+	pg_assert_same(3, pg_curl_run_take($taken, 'abc'));
+	pg_assert_same(3, pg_curl_run_take($taken, 'def'));
+	pg_assert_same(0, pg_curl_run_take($taken, 'ghi'), 'past the cap');
+	pg_assert_same('', $taken['body'], 'nothing kept in memory');
+	pg_assert_same(6, $taken['received']);
+	pg_assert_true($taken['capped']);
+	pg_assert_false($taken['write_failed']);
+
+	rewind($sink);
+	pg_assert_same('abcdef', stream_get_contents($sink), 'the file holds what was taken');
+	fclose($sink);
+}
+
+// A full disk is a failed write, told apart from the cap.
+function test_curl_run_take_reports_a_failed_write()
+{
+	$sink = fopen('php://memory', 'rb');
+	$taken = curl_run_test_taken(0, $sink);
+
+	pg_assert_same(0, pg_curl_run_take($taken, 'abc'));
+	pg_assert_true($taken['write_failed']);
+	pg_assert_false($taken['capped']);
+	pg_assert_same(0, $taken['received']);
+	fclose($sink);
 }

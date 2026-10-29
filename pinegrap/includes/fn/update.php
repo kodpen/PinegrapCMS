@@ -102,12 +102,20 @@ function pg_curl_tls($ch)
  *   http_version     '1.0' or '1.1' to hold the request to that HTTP
  *                    version (default: libcurl's choice)
  *   response_headers true to keep the answer's header block: pg_curl_run()
- *                    then answers it as 'headers', apart from 'body'
+ *                    then answers it as 'headers', apart from 'body' (not
+ *                    with cap or sink, whose write callback takes the body
+ *                    alone)
  *   allow_http       true to accept http as well as https for this request
  *                    (never for a redirect): only for an address the
  *                    operator types and the site reaches itself, such as a
  *                    migration source on the same host or LAN; leave
  *                    check_address off with it
+ *   cap              bytes the body may have, counted by pg_curl_run()'s
+ *                    write callback whatever Content-Length or libcurl says:
+ *                    the piece that goes over ends the transfer
+ *   sink             an open file the body is written to instead of the
+ *                    answer's 'body' (a package download); the caller opens,
+ *                    closes and deletes it
  *
  * $env: 'user_agent', 'proxy' (PROXY_ADDRESS or ''), 'resolve' (the
  * "host:port:ip" pin of a checked address, or '').
@@ -170,7 +178,9 @@ function pg_curl_run_options($method, $url, $options, $env)
         $out['CURLOPT_FORBID_REUSE'] = true;
     }
 
-    if (!empty($options['response_headers'])) {
+    // The write callback of a cap or a sink would take the header block
+    // together with the body.
+    if (!empty($options['response_headers']) && empty($options['cap']) && !isset($options['sink'])) {
         $out['CURLOPT_HEADER'] = true;
     }
 
@@ -230,6 +240,40 @@ function pg_curl_run_split($raw, $header_size)
 }
 
 /**
+ * One piece of the body as cURL hands it to the write callback of a call
+ * with a cap or a sink: refused when it would take the body past the cap,
+ * else written to the sink, or kept without one. Answers the bytes taken;
+ * anything less than the piece (0 here) makes cURL end the transfer with
+ * error 23.
+ *
+ * @param array  $taken cap (0: none), sink (an open file or null), body,
+ *                      received, capped, write_failed; updated
+ * @param string $chunk
+ * @return int
+ */
+function pg_curl_run_take(&$taken, $chunk)
+{
+    $chunk = (string) $chunk;
+    $length = strlen($chunk);
+
+    if (($taken['cap'] > 0) && (($taken['received'] + $length) > $taken['cap'])) {
+        $taken['capped'] = true;
+        return 0;
+    }
+
+    if ($taken['sink'] === null) {
+        $taken['body'] .= $chunk;
+    } elseif (($length > 0) && (@fwrite($taken['sink'], $chunk) !== $length)) {
+        $taken['write_failed'] = true;
+        return 0;
+    }
+
+    $taken['received'] += $length;
+
+    return $length;
+}
+
+/**
  * One request to a fixed vendor host (update server, CA bundle source,
  * Cloudflare, GitHub): this installation's User-Agent, pg_curl_tls(), the
  * proxy when PROXY_ADDRESS is set, no redirect unless 'follow' asks for one.
@@ -240,28 +284,47 @@ function pg_curl_run_split($raw, $header_size)
  *
  * Answers like api_http_request(): array('ok' => bool (2xx), 'status' => int,
  * 'body' => string, 'errno' => int, 'error' => string, 'connect' => int,
- * 'request_size' => int, 'content_length' => int). errno is cURL's error number when the request
- * failed in cURL, 0 otherwise - also for an address refused before cURL ran,
- * whose reason is in error alone. error is cURL's own text;
+ * 'request_size' => int, 'content_length' => int, 'content_type' => string).
+ * errno is cURL's error number when the request failed in cURL, 0
+ * otherwise - also for an address refused before cURL ran, whose reason is
+ * in error alone. error is cURL's own text;
  * pg_curl_tls_hint($errno) is for the caller to append. connect is the status
  * a proxy answered the tunnel request with (0 without a proxy) and
  * request_size the bytes of request headers written (0 when nothing went
  * out); together they tell whether a failed request can have reached the
  * other side. content_length is the Content-Length the server announced (-1
- * when it sent none), against which a caller can tell a body cut short. With
- * 'response_headers' the answer also has 'headers', the raw header block
- * ('' when no answer came), and 'body' holds only the body.
+ * when it sent none), against which a caller can tell a body cut short.
+ * content_type is the answer's Content-Type as sent ('' when it had none).
+ * With 'response_headers' the answer also has 'headers', the raw header block
+ * ('' when no answer came), and 'body' holds only the body. With 'cap' or
+ * 'sink' the body is read through a write callback (pg_curl_run_take()) and
+ * the answer also has 'received' (body bytes taken), 'capped' (the cap ended
+ * the transfer) and 'write_failed' (the sink took less than it was given);
+ * either stop is cURL error 23.
  */
 function pg_curl_run($method, $url, $options = array())
 {
-    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0, 'content_length' => -1);
+    $result = array('ok' => false, 'status' => 0, 'body' => '', 'errno' => 0, 'error' => '', 'connect' => 0, 'request_size' => 0, 'content_length' => -1, 'content_type' => '');
 
     if (!empty($options['response_headers'])) {
         $result['headers'] = '';
     }
 
+    $take = (!empty($options['cap']) || isset($options['sink']));
+
+    if ($take) {
+        $result['received'] = 0;
+        $result['capped'] = false;
+        $result['write_failed'] = false;
+    }
+
     if (!function_exists('curl_init')) {
         $result['error'] = 'cURL is not available on this server.';
+        return $result;
+    }
+
+    if (isset($options['sink']) && !is_resource($options['sink'])) {
+        $result['error'] = 'The file to write the answer to is not open.';
         return $result;
     }
 
@@ -305,9 +368,36 @@ function pg_curl_run($method, $url, $options = array())
 
     pg_curl_tls($ch);
 
+    $taken = array(
+        'cap'          => !empty($options['cap']) ? (int) $options['cap'] : 0,
+        'sink'         => isset($options['sink']) ? $options['sink'] : null,
+        'body'         => '',
+        'received'     => 0,
+        'capped'       => false,
+        'write_failed' => false,
+    );
+
+    // Set after CURLOPT_RETURNTRANSFER, the write callback takes the body
+    // over: curl_exec() then answers true instead of the body.
+    if ($take) {
+        curl_setopt($ch, CURLOPT_WRITEFUNCTION, function ($handle, $chunk) use (&$taken) {
+            return pg_curl_run_take($taken, $chunk);
+        });
+    }
+
     $body = curl_exec($ch);
     $result['connect'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CONNECTCODE);
     $result['request_size'] = (int) curl_getinfo($ch, CURLINFO_REQUEST_SIZE);
+
+    if ($take) {
+        $result['received'] = $taken['received'];
+        $result['capped'] = $taken['capped'];
+        $result['write_failed'] = $taken['write_failed'];
+
+        if ($body !== false) {
+            $body = $taken['body'];
+        }
+    }
 
     if ($body === false) {
         $result['errno'] = (int) curl_errno($ch);
@@ -316,11 +406,12 @@ function pg_curl_run($method, $url, $options = array())
         $result['status'] = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $result['body'] = (string) $body;
 
-        if (!empty($options['response_headers'])) {
+        if (!empty($options['response_headers']) && !$take) {
             list($result['headers'], $result['body']) = pg_curl_run_split($body, curl_getinfo($ch, CURLINFO_HEADER_SIZE));
         }
 
         $result['content_length'] = (int) curl_getinfo($ch, CURLINFO_CONTENT_LENGTH_DOWNLOAD);
+        $result['content_type'] = (string) curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         $result['ok'] = ($result['status'] >= 200 && $result['status'] < 300);
     }
 
