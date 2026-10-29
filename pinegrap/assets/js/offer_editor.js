@@ -362,8 +362,12 @@
         if (a.type === 'discount shipping' && !a.shipping_method_ids.length) { return L.selectMethod; }
         return serverErrors[key + '.value'] || serverErrors[key + '.product_id'] || serverErrors[key + '.group_id'] || serverErrors[key + '.shipping_method_ids'] || serverErrors[key] || '';
     }
+    // A percentage in the panel language's order: L.percent is '{n}%' or '%{n}'.
+    function percentText(value) {
+        return L.percent.replace('{n}', String(parseInt(value, 10) || 0));
+    }
     function valueText(a) {
-        return a.unit === 'amount' ? money(a.value) : ('%' + (parseInt(a.value, 10) || 0));
+        return a.unit === 'amount' ? money(a.value) : percentText(a.value);
     }
     function actionText(a) {
         var q = Math.max(1, parseInt(a.quantity, 10) || 1);
@@ -371,7 +375,7 @@
             case 'discount order':
                 if (hasTiers(a)) {
                     return fmt(L.tiersText, ['<b>' + a.tiers.map(function (t) {
-                        return esc(money(t.min)) + '+ → %' + esc(t.percent);
+                        return esc(money(t.min)) + '+ → ' + esc(percentText(t.percent));
                     }).join('</b> · <b>') + '</b>']);
                 }
                 return fmt(L.orderText, ['<b>' + esc(valueText(a)) + '</b>']);
@@ -390,7 +394,7 @@
                 return fmt(L.giftDiscount, ['<b>' + q + '</b>', '<b>' + esc(productLabel(a.product_id) || '?') + '</b>', '<b>' + esc(valueText(a)) + '</b>']);
             case 'discount shipping':
                 var names = a.shipping_method_ids.map(methodName).filter(Boolean);
-                return fmt(L.shippingText, ['<b>' + (parseInt(a.value, 10) || 0) + '</b>', esc(names.length ? names.join(', ') : '?')]);
+                return fmt(L.shippingText, ['<b>' + esc(percentText(a.value)) + '</b>', esc(names.length ? names.join(', ') : '?')]);
         }
         return '';
     }

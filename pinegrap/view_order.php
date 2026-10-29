@@ -421,7 +421,7 @@ if (!$_POST) {
     if ($billing_fax_number) {
         $fax =
             '<div class="row" >
-                <span class="translateable col fg-secondary">Fax:</span>
+                <span class="translateable col fg-secondary">' . h(lang('Fax')) . ':</span>
                 <span class="col text-end">' . h($billing_fax_number) . '</span>
             </div>';
     }
@@ -930,7 +930,7 @@ if (!$_POST) {
                 
                 // if the address has been verified, then prepare to output check mark
                 if ($ship_tos[$key]['address_verified'] == 1) {
-                    $output_address_verified_check_mark = '<img src="images/check_mark.gif" width="7" height="7" alt="check mark" title="" />';
+                    $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
                 }
 
                 $output_arrival_date = '';

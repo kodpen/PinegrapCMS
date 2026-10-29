@@ -16,4 +16,7 @@ description: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON s
 ## How is the currency symbol handled?
 - `BASE_CURRENCY_SYMBOL` holds HTML as an entity (`&#8378;`). Output to screen and JSON goes through `_pg_offer_currency()` (i.e. `html_entity_decode`); printing the raw constant prints the literal `&#8378;`.
 
+## How is a percentage written?
+- Through the `'{var:1}%'` key (Turkish `%{var:1}`): `_pg_offer_percent_text()` on the server, `percentText()` with the `L.percent` template (`{n}`) in `offer_editor.js`. The tier and shipping texts take the formatted figure as a var. A `'%'` glued in code read "%10 off the order" on an English panel (#3030).
+
 Related: docs/memory/ui/step-rail.md
