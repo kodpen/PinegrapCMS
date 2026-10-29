@@ -27,6 +27,7 @@
     "Quantity to refund: {var:1}": "İade edilecek adet: {var:1}",
     "Quantity to return (order.return_delivery_lines)": "İade edilecek adet (order.return_delivery_lines)",
     "Quantity within of required quantity.": "Gerekli miktar.",
+    "Quantity {var:1}": "Adet {var:1}",
     "Quantity — default": "Miktar — varsayılan",
     "Quantity — maximum": "Miktar — maksimum",
     "Quantity — minimum": "Miktar — minimum",
