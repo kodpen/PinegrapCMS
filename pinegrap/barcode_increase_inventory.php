@@ -148,20 +148,13 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                     if( $(".remove_this_first_scan").length > 0){
                                         $(".remove_this_first_scan").remove();
                                     }
-                                    var currentdate = new Date(); 
-                                    var datetime = currentdate.getDate() + "/"
-                                                + (currentdate.getMonth()+1)  + "/" 
-                                                + currentdate.getFullYear() + " "  
-                                                + currentdate.getHours() + ":"  
-                                                + currentdate.getMinutes() + ":" 
-                                                + currentdate.getSeconds();
                                     $("#action_logs tbody").prepend("<tr>\
                                         <td class=\'align-middle\'>" + response.data.name + "</td>\
                                         <td class=\'align-middle\'>" + response.data.short_description + "</td>\
                                         <td class=\'align-middle text-center\'>" + response.data.inventory_quantity + "</td>\
                                         <td class=\'align-middle text-center fg-success fw-bolder\'>" + response.data.quantity + "</td>\
                                         <td class=\'align-middle text-center h5 fw-bolder \'>" + response.data.new_inventory_quantity + "</td>\
-                                        <td class=\'align-middle \'>" + datetime + "</td>\
+                                        <td class=\'align-middle \'>" + response.data.scanned_at + "</td>\
                                     </tr>");
 
                                 }
@@ -348,6 +341,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 'inventory_quantity' => $inventory_quantity,
                 'new_inventory_quantity'=> $new_inventory_quantity,
                 'quantity'=> '+' . $quantity,
+                // The scan time in the site's date order and clock.
+                'scanned_at' => get_absolute_time(array('timestamp' => time())),
             );
             //return success json output
             $response = array(
