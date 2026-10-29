@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -645,7 +645,9 @@ function test_workspace_flow_steps_scheduled_texts()
 	pg_assert_false((bool) preg_match('~ws_scheduled_fill\([^;]*\$action\[\'question\'\]~', $source));
 
 	foreach ($kinds as $kind => $info) {
-		if (($info['texts'] !== array()) && ($kind !== 'checkin')) {
+		// An MCP box's arguments go to the tool as filled, in no scheduled
+		// action's step.
+		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp'), true)) {
 			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
 		}
 	}
@@ -685,4 +687,129 @@ function test_workspace_flow_steps_try_scheduled()
 	pg_assert_contains('ws_step_action_row($run, $context, ws_step_run_anchor($context))', $try);
 	pg_assert_contains("'viewer' => \$owner", $try);
 	pg_assert_contains('ws_step_run_anchor($context)', ws_flow_steps_test_source('ws_step_run'));
+}
+
+// A server as ws_mcp_servers() keeps it, with a tool that reads (the server
+// says so), one the administrator declared, one that asks before each call
+// and one that is off.
+function ws_flow_steps_test_mcp_server($auth_kind = 'oauth')
+{
+	return array(
+		'id'         => 7,
+		'alias'      => 'docs',
+		'auth_kind'  => $auth_kind,
+		'status'     => 'active',
+		'tools'      => json_encode(array(
+			array('name' => 'search', 'hints' => array('readOnlyHint' => true)),
+			array('name' => 'fetch', 'hints' => array()),
+			array('name' => 'create_page', 'hints' => array('readOnlyHint' => false)),
+			array('name' => 'delete_page', 'hints' => array('destructiveHint' => true)),
+		)),
+		'tool_rules' => json_encode(array('search' => 'auto', 'fetch' => 'auto_declared', 'create_page' => 'approve')),
+	);
+}
+
+// The MCP box is a step kind of its own type, answering with the tool's
+// text and how long it took; the answer is held back like a webhook's.
+function test_workspace_flow_steps_mcp_kind()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+
+	$kinds = ws_step_kinds();
+
+	pg_assert_same('mcp', $kinds['mcp']['type']);
+	pg_assert_same(array('arguments'), $kinds['mcp']['texts']);
+	pg_assert_same(array('result', 'duration_ms'), array_column(ws_step_outputs('mcp', ws_step_config_normalize('mcp', array())), 'key'));
+	pg_assert_same(array('text', 'number'), array_column($kinds['mcp']['outputs'], 'type'));
+	pg_assert_true(ws_flow_kinds()['mcp']['step'], 'a step box');
+	pg_assert_same(array('done', 'failed'), ws_flow_kinds()['mcp']['outcomes']);
+	pg_assert_same(array('duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), false));
+	pg_assert_same(array('result' => 'secret', 'duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), true));
+
+	pg_assert_same(array('result' => 'Found 3', 'duration_ms' => 40), ws_step_result_data('mcp', array(), array('ok' => true, 'data' => array('result' => 'Found 3', 'duration_ms' => 40))));
+	pg_assert_same(array('result' => null, 'duration_ms' => null), ws_step_result_data('mcp', array(), array('ok' => false, 'data' => array())));
+
+	$catalogue = array_column(ws_flow_kind_catalogue_for_test(), null, 'kind');
+	pg_assert_same(array('server_id', 'tool', 'arguments'), array_slice(array_column($catalogue['mcp']['settings'], 'key'), 0, 3), 'its settings, then the tries');
+	pg_assert_same('text', $catalogue['mcp']['settings'][2]['type'], 'the arguments are a JSON text');
+}
+
+// The catalogue, when its file is loaded.
+function ws_flow_kind_catalogue_for_test()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');
+
+	return ws_flow_kind_catalogue();
+}
+
+// Its settings: the arguments kept as JSON text, an object given as one
+// written as its JSON; a box without server, tool or an object is named.
+function test_workspace_flow_steps_mcp_config()
+{
+	pg_assert_same(array('server_id' => 7, 'tool' => 'search', 'arguments' => '{"q":"x"}'), ws_step_config_normalize('mcp', array('server_id' => '7', 'tool' => " search\n", 'arguments' => '{"q":"x"}', 'other' => 1)));
+	pg_assert_same('{"q":"a/b","n":2}', ws_step_config_normalize('mcp', array('arguments' => array('q' => 'a/b', 'n' => 2)))['arguments']);
+	pg_assert_same('{}', ws_step_config_normalize('mcp', array('arguments' => array()))['arguments']);
+	pg_assert_same(array('server_id' => 0, 'tool' => '', 'arguments' => ''), ws_step_config_normalize('mcp', array('arguments' => null)));
+
+	pg_assert_same(array(), ws_step_mcp_arguments(''));
+	pg_assert_same(array('q' => ''), ws_step_mcp_arguments('{"q": "{{node.a.text}}"}'), 'a value inside quotes');
+	pg_assert_same(array('q' => ''), ws_step_mcp_arguments('{"q": "{{trigger.name}}"}'));
+	pg_assert_same(null, ws_step_mcp_arguments('{"n": {{node.a.text}}}'), 'a value outside quotes leaves no object');
+	pg_assert_same(null, ws_step_mcp_arguments('[1, 2]'), 'a list is no object');
+	pg_assert_same(null, ws_step_mcp_arguments('"x"'));
+	pg_assert_same(null, ws_step_mcp_arguments('{oops'));
+
+	pg_assert_same(array(), ws_step_config_problems('mcp', ws_step_config_normalize('mcp', array('server_id' => 7, 'tool' => 'search')), 'B'));
+	pg_assert_same(1, count(ws_step_config_problems('mcp', ws_step_config_normalize('mcp', array('server_id' => 7)), 'B')));
+	pg_assert_same(2, count(ws_step_config_problems('mcp', ws_step_config_normalize('mcp', array('tool' => 'search', 'arguments' => '[1]')), 'B')));
+}
+
+// Only a tool that runs without an approval: one the server says reads, or
+// the administrator declared; one that asks first, or is off, is refused.
+function test_workspace_flow_steps_mcp_refuses_write_tools()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+
+	$server = ws_flow_steps_test_mcp_server();
+
+	pg_assert_same('', ws_step_mcp_tool_problem($server, 'search'));
+	pg_assert_same('', ws_step_mcp_tool_problem($server, 'fetch'));
+	pg_assert_contains('asks before each call', ws_step_mcp_tool_problem($server, 'create_page'));
+	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'delete_page'));
+	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'missing'));
+
+	// Without OAuth no tool asks first: one that writes is simply off.
+	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem(ws_flow_steps_test_mcp_server('bearer'), 'create_page'));
+
+	// The check reads the same rule, and the run goes through the form's
+	// one call, never a client of its own.
+	pg_assert_contains('ws_step_mcp_tool_problem($server, $tool)', ws_flow_steps_test_source('ws_step_mcp_check'));
+	pg_assert_contains('ws_step_mcp_check($viewer', ws_flow_steps_test_source('ws_step_check'));
+	pg_assert_contains('ws_mcp_tool_call((int) $owner[\'id\']', ws_flow_steps_test_source('ws_step_mcp_do'));
+	pg_assert_contains('ws_mcp_tool_call((int) $viewer[\'id\']', ws_flow_steps_test_source('ws_mcp_form_run'));
+	pg_assert_false(strpos(ws_flow_steps_test_source('ws_step_mcp_do'), 'pg_mcp_client_call_tool') !== false, 'no second client');
+	pg_assert_contains('$done = ws_step_mcp_do($owner, $action);', ws_flow_steps_test_source('ws_step_run'));
+}
+
+// A value goes into the arguments as the inside of a JSON string; the
+// answer kept is the tool's text, cut like a webhook's answer.
+function test_workspace_flow_steps_mcp_values_and_answer()
+{
+	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
+
+	$values = array('a' => array('text' => "He said \"hi\"\n{{x}} <@user:1>"));
+	$filled = ws_step_fill_action('mcp', array('type' => 'mcp', 'arguments' => '{"q": "{{node.a.text}}"}'), $values);
+
+	pg_assert_same('json', ws_step_fill_target('mcp', array()));
+	pg_assert_same(array('q' => "He said \"hi\"\n{{x}} <@user:1>"), json_decode($filled['arguments'], true), 'the value arrives as written');
+
+	pg_assert_same('Found 3', ws_step_mcp_result(array('content' => array(array('type' => 'text', 'text' => 'Found 3')))));
+	pg_assert_same('{"n":1}', str_replace(array("\n", ' '), '', (string) ws_step_mcp_result(array('content' => array(), 'structuredContent' => array('n' => 1)))));
+	pg_assert_same(null, ws_step_mcp_result(array('content' => array())));
+	pg_assert_same(null, ws_step_mcp_result(null));
+
+	$long = ws_step_mcp_result(array('content' => array(array('type' => 'text', 'text' => str_repeat('ğ', 20000)))));
+
+	pg_assert_true(strlen($long) <= WS_SCHEDULED_WEBHOOK_BODY_BYTES, 'cut to the webhook answer size');
+	pg_assert_true(mb_check_encoding($long, 'UTF-8'), 'cut at a character');
 }
