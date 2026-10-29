@@ -1076,13 +1076,20 @@ function ws_api_wtable_shares_seen($viewer, $table)
  */
 function ws_api_wtable_share_answer($viewer, $table, $share_id)
 {
+    $found = null;
+
     foreach (ws_api_wtable_shares_seen($viewer, $table) as $share) {
         if ((int) $share['id'] === (int) $share_id) {
-            return ws_api_wtable_share_present($share);
+            $found = $share;
+            break;
         }
     }
 
-    api_fail_not_found(lang('Table share'));
+    if ($found === null) {
+        api_fail_not_found(lang('Table share'));
+    }
+
+    return ws_api_wtable_share_present($found);
 }
 
 function ws_api_wtable_shares_list($params)
