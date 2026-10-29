@@ -514,6 +514,7 @@
     "For example, this search lists the open tasks of one notebook that are due this week:": "Örneğin bu arama, bir defterin son tarihi bu hafta olan açık görevlerini listeler:",
     "For example: Brand colours": "Örneğin: Marka renklerimiz",
     "For example: Our look": "Örneğin: Bizim görünümümüz",
+    "For example: every Monday at 09:00, send the team the orders still open": "Örneğin: her pazartesi 09:00'da açık siparişleri ekibe gönder",
     "For example: marketplace sync": "Örneğin: pazaryeri senkronu",
     "For invoice {var:1}. The goods are its lines; the address is the account's. Say how they went and correct what differs.": "{var:1} faturası için. Mallar faturanın kalemleri, adres carinin adresi. Nasıl gittiğini yazın, farklı olanı düzeltin.",
     "For negotiated rates. Leave empty for published rates.": "Anlaşmalı fiyatlar için. Liste fiyatları için boş bırakın.",

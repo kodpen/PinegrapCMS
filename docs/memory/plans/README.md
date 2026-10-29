@@ -75,7 +75,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-look.md: Plan (owner, 2026-10-29): bring the Flows editor and list to the owner's drawing; box colours, icons, arrows, a palette column, a flow list table, no Scheduled actions section
 - workspace-flows-scheduled-parity.md: Parity rows of workspace/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
-- workspace-flows-templates.md: Plan (owner request 2026-10-27, draft): a flow template gallery that takes over the scheduled-action templates; cards with a box preview, animated placement on the canvas, a short setup
 - workspace-flows-visual-spec.md: Plan (owner request 2026-10-27, draft): the Flows canvas look in numbers; line widths, type colours and tones, thread sag and gaps, icons, run flags, the mini window, template motion
 - workspace-flows.md: Plan (2026-10-24): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine
 - workspace-friendly-ui.md: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions

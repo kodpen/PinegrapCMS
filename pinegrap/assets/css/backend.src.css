@@ -19564,6 +19564,13 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
 .wsf-start-card > .bi {
   font-size: 1.25rem;
 }
+.wsf-start-ai:focus-within {
+  border-color: var(--pg-primary, #a78bfa);
+}
+.wsf-ai-sketch-notes {
+  flex-basis: 100%;
+  padding-left: 1.25rem;
+}
 .wsf-start-title,
 .wsf-tpl-name {
   margin: 0;
