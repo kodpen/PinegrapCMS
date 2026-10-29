@@ -141,15 +141,16 @@ function ws_step_kinds()
  * its sentence is (ws_step_result_shown()): a change box's record and the
  * run a start-a-flow box started (all its values), a webhook's or an MCP
  * tool's answer, which may carry what the service tells only the flow's
- * owner, and the row a table box wrote, in a table the reader may not
- * reach.
+ * owner, the row a table box wrote, in a table the reader may not
+ * reach, and what a loop read from such an answer: a For each box's items
+ * and an End for each box's list.
  *
  * @return array kind => keys, ['*'] for all
  */
 function ws_step_outputs_held()
 {
     return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'), 'mcp' => array('result'),
-        'row_add' => array('*'), 'row_set' => array('*'));
+        'row_add' => array('*'), 'row_set' => array('*'), 'for_each' => array('items'), 'for_each_end' => array('list'));
 }
 
 /**
@@ -1359,18 +1360,37 @@ function ws_step_run_anchor($context)
 /**
  * The values a box of a run fills into its texts: those of the boxes the run
  * has settled so far, of what started it with the owner's rights now
- * (ws_step_trigger_values_for()), and of the value boxes.
+ * (ws_step_trigger_values_for()), and of the value boxes. A box inside a
+ * loop (pass > 0) reads the boxes of its own item and those outside the
+ * loops, and its For each box gives the current item (flow_loops.php).
  *
- * @param array $run     ws_flow_runs row
- * @param array $graph   the run's graph
- * @param array $owner   the flow's owner, as the workspace sees their rights
- * @param array $context ws_flow_run_context()
+ * @param array      $run     ws_flow_runs row
+ * @param array      $graph   the run's graph
+ * @param array      $owner   the flow's owner, as the workspace sees their rights
+ * @param array      $context ws_flow_run_context()
+ * @param array|null $step    the ws_flow_run_steps row of the box reading them
  * @return array ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
  */
-function ws_step_run_values($run, $graph, $owner, $context)
+function ws_step_run_values($run, $graph, $owner, $context, $step = null)
 {
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
+    $pass = (int) ($step['pass'] ?? 0);
+    $rows = (array) db_items("SELECT node_id, pass, status, outcome, result FROM ws_flow_run_steps
+        WHERE run_id = '" . (int) $run['id'] . "' AND pass IN (0, " . $pass . ") AND status IN ('done', 'failed', 'skipped')
+        ORDER BY pass, id");
+    $values = ws_step_node_values($rows);
+
+    if (($pass > 0) && function_exists('ws_flow_loops')) {
+        $loop = ws_flow_loop_of(ws_flow_loops($graph), (string) $step['node_id']);
+        $start = ($loop !== '') ? ws_flow_graph_node($graph, $loop) : null;
+
+        foreach ($rows as $row) {
+            if ($start && ((string) $row['node_id'] === $loop) && ((int) $row['pass'] === 0)) {
+                $kept = json_decode((string) $row['result'], true)['data']['items'] ?? '';
+                $values[$loop] = ws_flow_loop_item_values($start['config'], is_string($kept) ? $kept : '', $pass) + (array) ($values[$loop] ?? array());
+            }
+        }
+    }
+
     $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $context);
 
     return ws_flow_pure_values($graph, $values) + $values;
@@ -1434,7 +1454,7 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     }
 
     $context = ws_flow_run_context($run);
-    $values = ws_step_run_values($run, $graph, $owner, $context);
+    $values = ws_step_run_values($run, $graph, $owner, $context, $step);
 
     $anchor = ws_step_run_anchor($context);
     $row = ws_step_action_row($run, $context, $anchor);

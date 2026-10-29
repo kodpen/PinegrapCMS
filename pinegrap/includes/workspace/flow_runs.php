@@ -2130,26 +2130,27 @@ function ws_flow_run_refresh($run_id)
     // is how ws_flow_runs_heal() knows a waiting state written from boxes
     // read too early.
     $now = time();
-    $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
-    $walk = ws_flow_walk($graph, $steps);
+    $steps = ws_flow_run_steps($run['id']);
+    $walk = ws_flow_loop_walk($graph, $steps);
 
     // Two requests that settle the boxes before a join at the same moment
-    // may both find it ready: the unique (run, box, pass) keeps one row.
-    foreach ($walk['ready'] as $node_id) {
+    // may both find it ready: the unique (run, box, pass) keeps one row. A
+    // box inside a loop runs at its item's pass (flow_loops.php).
+    foreach ($walk['ready'] as $box) {
         db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, ready_at)
-            VALUES ('" . (int) $run['id'] . "', '" . e($node_id) . "', 0, 'ready', '" . $now . "')");
+            VALUES ('" . (int) $run['id'] . "', '" . e($box[0]) . "', '" . (int) $box[1] . "', 'ready', '" . $now . "')");
     }
 
-    foreach ($walk['skipped'] as $node_id) {
+    foreach ($walk['skipped'] as $box) {
         db("INSERT IGNORE INTO ws_flow_run_steps (run_id, node_id, pass, status, finished_at, result)
-            VALUES ('" . (int) $run['id'] . "', '" . e($node_id) . "', 0, 'skipped', '" . $now . "', '" . e(ws_flow_result_pack(lang('Not reached in this run.'))) . "')");
+            VALUES ('" . (int) $run['id'] . "', '" . e($box[0]) . "', '" . (int) $box[1] . "', 'skipped', '" . $now . "', '" . e(ws_flow_result_pack(lang('Not reached in this run.'))) . "')");
     }
 
     if (!empty($walk['ready']) || !empty($walk['skipped'])) {
-        $steps = ws_flow_step_states(ws_flow_run_steps($run['id']));
+        $steps = ws_flow_run_steps($run['id']);
     }
 
-    $state = ws_flow_run_state($graph, $steps);
+    $state = ws_flow_loop_run_state($graph, $steps);
 
     if (ws_flow_run_open($state)) {
         if ($state !== (string) $run['status']) {
@@ -2588,9 +2589,34 @@ function ws_flow_step_run($step)
         return;
     }
 
+    // A loop's boxes open tasks, approvals and e-mails under a cap per run.
+    $refusal = ws_flow_loop_effects_check($run, $step, $node);
+
+    if ($refusal !== '') {
+        ws_flow_step_settle($step, 'running', 'failed', '', $refusal);
+        return;
+    }
+
     switch ($node['kind']) {
         case 'end':
             ws_flow_step_settle($step, 'running', 'done', '', lang('The flow reached its end.'));
+            return;
+
+        // A loop's end only counts what its items gave.
+        case 'for_each_end':
+            ws_flow_loop_end_run($run, $step, $node);
+            return;
+
+        // A loop's list, read with the owner's rights now.
+        case 'for_each':
+            $owner = ws_change_viewer_for_id($run['actor_id']);
+
+            if (!is_array($owner) || !ws_can_schedule($owner)) {
+                ws_flow_step_settle($step, 'running', 'failed', '', lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+                return;
+            }
+
+            ws_flow_loop_start_run($run, $step, $node, $owner);
             return;
 
         // A wait acts on nothing, so it needs nobody's rights.
@@ -2762,7 +2788,7 @@ function ws_flow_step_task($run, $flow, $step, $node, $owner)
     // The title and description filled as a step box's texts are: the
     // values of the boxes before it and of what started the run with the
     // owner's rights now, then the run's {{date}}, {{record}} and the rest.
-    $values = ws_step_run_values($run, $graph, $owner, $context);
+    $values = ws_step_run_values($run, $graph, $owner, $context, $step);
     $fill = array('viewer' => $owner, 'row' => ws_step_action_row($run, $context, ws_step_run_anchor($context))) + ws_step_trigger_context($context);
     $texts = ws_flow_task_texts($config, $values, function ($text) use ($fill) {
         return ws_scheduled_fill($text, $fill);
@@ -3456,8 +3482,10 @@ function ws_flow_step_mend_check($viewer, $run, $node_id)
     $rows = ws_flow_run_steps($run['id']);
     $step = null;
 
+    // A box inside a loop has a row per item: its latest failed one, else
+    // its latest.
     foreach ($rows as $row) {
-        if ((string) $row['node_id'] === (string) $node_id) {
+        if (((string) $row['node_id'] === (string) $node_id) && (!$step || ((string) $step['status'] !== 'failed') || ((string) $row['status'] === 'failed'))) {
             $step = $row;
         }
     }
@@ -3480,7 +3508,9 @@ function ws_flow_step_mend_check($viewer, $run, $node_id)
         'status' => 200,
         'field'  => '',
         'step'   => $step,
-        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states($rows), $step['node_id']),
+        'behind' => ws_flow_skipped_behind(ws_flow_run_graph($run), ws_flow_step_states(array_filter($rows, function ($row) use ($step) {
+            return (int) $row['pass'] === (int) $step['pass'];
+        })), $step['node_id']),
     );
 }
 
@@ -3537,7 +3567,7 @@ function ws_flow_step_mend($viewer, $run, $node_id, $how)
     if (!empty($check['behind'])) {
         db("DELETE FROM ws_flow_run_steps WHERE run_id = '" . (int) $run['id'] . "'
             AND node_id IN ('" . implode("', '", array_map('e', $check['behind'])) . "')
-            AND status = 'skipped' AND attempt = 0");
+            AND pass = '" . (int) $step['pass'] . "' AND status = 'skipped' AND attempt = 0");
     }
 
     db("UPDATE ws_flow_runs SET status = 'running', finished_at = 0, updated_at = '" . $now . "'
@@ -3894,10 +3924,7 @@ function ws_flow_chain_start($run, $step, $node, $owner)
     }
 
     $source_context = ws_flow_run_context($run);
-    $values = ws_step_node_values(db_items("SELECT node_id, status, outcome, result FROM ws_flow_run_steps
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('done', 'failed', 'skipped')"));
-    $values[WS_STEP_TRIGGER] = ws_step_trigger_values_for($owner, $source_context);
-    $values = ws_flow_pure_values($graph, $values) + $values;
+    $values = ws_step_run_values($run, $graph, $owner, $source_context, $step);
     $context = json_encode(ws_flow_chain_context($flow, $trigger, $source_context, (string) ($source_context['flow_name'] ?? ''),
         ws_flow_chain_source_result($graph, $node['id'], $values)), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     $now = time();

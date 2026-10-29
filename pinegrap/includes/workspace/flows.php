@@ -127,6 +127,22 @@ function ws_flow_kinds()
             'outputs' => array(array('key' => 'run_id', 'type' => 'number', 'label' => lang('Run'))));
     }
 
+    // A loop: a For each box repeats the boxes its each arrow leads into
+    // for every item of a list, up to its End for each box, from which the
+    // flow goes on once (flow_loops.php). No arrow leaves a For each box on
+    // always: one on each enters the loop, one on failed leaves it.
+    if (function_exists('ws_flow_loop_normalize')) {
+        $kinds['for_each'] = array('label' => lang('For each'), 'trigger' => false, 'outcomes' => array('each', 'failed'), 'step' => false,
+            'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list'));
+        $kinds['for_each_end'] = array('label' => lang('End for each'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
+            'outputs' => array(
+                array('key' => 'count', 'type' => 'number', 'label' => lang('Items')),
+                array('key' => 'done', 'type' => 'number', 'label' => lang('Items done')),
+                array('key' => 'failed', 'type' => 'number', 'label' => lang('Items failed')),
+                array('key' => 'list', 'type' => 'text', 'label' => lang('List')),
+            ), 'loop' => 'end', 'texts' => array('collect'));
+    }
+
     // Values written by hand, given to the boxes that read them (flow_values.php).
     if (function_exists('ws_flow_constants_normalize')) {
         $kinds['constants'] = array('label' => lang('Constants'), 'trigger' => false, 'outcomes' => array(), 'step' => false, 'outputs' => array(), 'pure' => true);
@@ -153,7 +169,7 @@ function ws_flow_arrow_outcomes($kind)
 {
     $outcomes = (array) ($kind['outcomes'] ?? array());
 
-    return (empty($kind['trigger']) && !empty($outcomes)) ? array_merge($outcomes, array('always')) : $outcomes;
+    return (empty($kind['trigger']) && (($kind['loop'] ?? '') !== 'start') && !empty($outcomes)) ? array_merge($outcomes, array('always')) : $outcomes;
 }
 
 /**
@@ -269,6 +285,7 @@ function ws_flow_lines($value, $length)
  * condition: ws_flow_condition_normalize()
  * delay: ws_flow_delay_normalize()
  * start_flow: ws_flow_chain_normalize()
+ * for_each, for_each_end: ws_flow_loop_normalize()
  * schedule, event, join: ws_flow_anchor_normalize()
  * a step: ws_step_config_normalize()
  *
@@ -323,6 +340,10 @@ function ws_flow_config_normalize($kind, $config)
 
         case 'value':
             return function_exists('ws_flow_derived_normalize') ? ws_flow_derived_normalize($config) : array();
+
+        case 'for_each':
+        case 'for_each_end':
+            return function_exists('ws_flow_loop_normalize') ? ws_flow_loop_normalize($kind, $config) : array();
 
         case 'schedule':
         case 'event':
@@ -454,7 +475,8 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 /**
  * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
  * texts (ws_step_kinds()), a task box's title and description, the value a
- * condition box compares. Pure.
+ * condition box compares, a For each box's list and the value its End box
+ * gathers. Pure.
  *
  * @param array $node ws_flow_graph_normalize() box
  * @return string[]
@@ -475,7 +497,15 @@ function ws_flow_node_texts($node)
         return array_values(array_filter(array($node['config']['a'] ?? null, $node['config']['b'] ?? null), 'is_string'));
     }
 
-    $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
+    // A loop's boxes read their list or the value they gather.
+    if ($kind === 'for_each') {
+        $keys = array('list');
+    } elseif ($kind === 'for_each_end') {
+        $keys = array('collect');
+    } else {
+        $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
+    }
+
     $out = array();
 
     foreach ($keys as $key) {
@@ -510,7 +540,12 @@ function ws_flow_node_fields($node, $kinds)
         return array('value');
     }
 
-    $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
+    if (($kind === 'for_each') && function_exists('ws_flow_loop_outputs')) {
+        $outputs = ws_flow_loop_outputs($node['config']);
+    } else {
+        $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
+    }
+
 
     return array_merge(array('text', 'outcome', 'status'), array_column($outputs, 'key'));
 }
@@ -658,8 +693,9 @@ function ws_flow_starts_on_join($graph)
  * What stops a graph from being published, in the order a reader fixes it:
  * too_many, bad_id, duplicate_id, unknown_kind, bad_config, no_trigger,
  * two_triggers, bad_edge, arrow_into_trigger, bad_outcome, duplicate_edge,
- * cycle, unreachable, bad_reference (a {{node.<id>.<field>}} of a box that
- * is not there, not before the reader, or a field the box does not give).
+ * cycle, unreachable, bad_loop (ws_flow_loop_problems()), bad_reference (a
+ * {{node.<id>.<field>}} of a box that is not there, not before the reader,
+ * or a field the box does not give).
  * A reference to a box that may not have run when the reader runs (a branch
  * of a condition, a step's done) is a warning, skippable_reference with
  * warning true, which does not stop publishing: the value is then empty.
@@ -900,6 +936,11 @@ function ws_flow_graph_check($graph)
                 $problems[] = ws_flow_problem('unreachable', (string) $id, null, lang(array('string' => 'No arrow from the start leads to the box {var:1}.', 'vars' => ws_flow_box_name($node))));
             }
         }
+    }
+
+    // The loops: their End boxes, bodies and the arrows in and out of them.
+    if (function_exists('ws_flow_loop_problems')) {
+        $problems = array_merge($problems, ws_flow_loop_problems($graph, $nodes));
     }
 
     return array_merge($problems, ws_flow_reference_problems($nodes, $kinds, $next, $always));

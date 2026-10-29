@@ -130,6 +130,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-delay-box.md: The delay box of a flow (F5b, PR #2135): amount and unit up to a week, waits as a waiting box with wake_at, settles done with waited_until, problems, try, canvas form
 - workspace-flows-derived-box.md: The derived value box of a flow (kind value, T3, PR #2701): its allowlisted rules, inputs and value, how a run works it out, the transitive "comes before" check, the canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
+- workspace-flows-for-each.md: Flows For each loop (D9 server, #3312): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs and 16 KB list, 20 side effects a run
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a #3145, F6c-b, decision #3122): rows compiled into a draft flow (ws_flow_from_wtable()), rights; Run's optional customer, one open run per flow and contact

@@ -224,6 +224,5 @@ function test_workspace_flow_condition_value_holds()
 
 	$run = ws_flow_conditions_test_source('ws_flow_condition_run');
 
-	pg_assert_contains('ws_step_node_values(', $run, 'the run\'s settled boxes');
-	pg_assert_contains('ws_step_trigger_values_for($owner', $run, 'the trigger\'s values with the owner\'s rights');
+	pg_assert_contains('ws_step_run_values($run, ws_flow_run_graph($run), $owner, ws_flow_run_context($run), $step)', $run, 'the run\'s settled boxes and the trigger\'s values with the owner\'s rights, its own item inside a loop');
 }
