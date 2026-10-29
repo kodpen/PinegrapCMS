@@ -21,6 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 }
 
 require_once(__DIR__ . '/helpers/source_reader.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php');
 
 function shipment_tracking_test_account()
 {
@@ -125,11 +126,14 @@ function test_shipment_tracking_job_in_the_light_lane()
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipment_tracking_job.php');
 	pg_assert_contains("pg_cron_ran('shipment_tracking_job')", $script, 'records its run under its catalogue name');
 	pg_assert_contains('validate_ecommerce_access($user)', $script, 'a web run needs the order rights');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php')", $script, 'loads its module, which functions.php does not');
 }
 
 function test_shipment_tracking_switched_on_with_a_service()
 {
-	pg_assert_contains('pg_shipment_tracking_job_switch_on()', pg_test_function_source('pg_label_settings_save'), 'saving a service that is on puts the job in the dispatch list');
+	$save = pg_test_function_source('pg_label_settings_save');
+	pg_assert_contains("require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php')", $save);
+	pg_assert_contains('pg_shipment_tracking_job_switch_on()', $save, 'saving a service that is on puts the job in the dispatch list');
 	pg_assert_contains("'shipment_tracking_job'", pg_test_function_source('pg_shipment_tracking_job_switch_on'));
 }
 
