@@ -16662,6 +16662,26 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   fill: var(--pg-fg-2);
   font-size: 22px;
 }
+.ws-fd-icon {
+  fill: none;
+  stroke: var(--pg-fg-2);
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+/* A flow box kind's line icon (flowIcon() in workspace.js), in the colour
+   of the text around it, 16 px so its stroke stays 1.5 px. */
+.ws-flow-icon {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  vertical-align: -.125em;
+}
 .ws-fd-out {
   fill: none;
   stroke: var(--pg-warning);
