@@ -1020,7 +1020,9 @@ function pg_label_settings_store($key, $values, $secrets, $enabled, $user_id)
 
 /**
  * Writes what pg_label_settings_check() decided, then runs the connection
- * test that was asked for, with the settings as now stored. A service that
+ * test that was asked for, with the settings as now stored, and registers or
+ * removes the service's status webhook (includes/fn/carrier_webhook.php).
+ * A service that
  * is on and can say where its parcels are puts the hourly shipment tracking
  * job in the general job's list (includes/fn/shipment_tracking.php).
  *
@@ -1044,6 +1046,10 @@ function pg_label_settings_save($decisions, $user_id, $liveform)
         if ($decision['test']) {
             pg_label_settings_test($key, $liveform);
         }
+
+        // The service's status webhook, for a driver that has one.
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+        pg_carrier_webhook_sync($key, $decision, $liveform);
 
         $tracking = $tracking || ($decision['enabled'] && pg_label_can($key, 'track'));
     }
@@ -1167,6 +1173,9 @@ function pg_label_settings_rows()
                                                                                             ' . $input . $help . '
                                                                                         </div>';
         }
+
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/carrier_webhook.php');
+        $html .= pg_carrier_webhook_card_row($key, $settings);
 
         if (pg_label_can($key, 'test')) {
             $html .= '
