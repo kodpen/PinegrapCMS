@@ -1,0 +1,12 @@
+---
+name: decisions-made-product-5
+description: Decisions list, product part 5 (2026-10-29 evening on): the outside-account leftovers all start, subscriptions start with store-run renewals
+---
+
+## Which outside-account leftovers start in 2026.11.0? (#3180)
+- Owner (2026-10-29, in the architect's window, all three offered groups chosen): all seven: Merchant Center, Notion pages as notes, the cloud file picker, Google reviews, the GA4 card, OneNote import and the personal iCal layer, each its own plan step and PR, in that order (architect). Technical shape (architect): Merchant's first slice registers `feed.php` as a fetched data source and reads item issues into the System Status tile (no schema; per-item push would be a schema question of its own); Notion goes only through the bundled MCP alias, no provider code; the picker downloads the file on the server and runs it through the normal upload rules; the iCal layer takes `ws_holiday_feeds.user_id INT UNSIGNED NOT NULL DEFAULT 0` with a KEY (0 = site-wide feed) on the next free Workspace label, the address stored sealed. Model B, Meta verification and OAuth phase E stay separate decisions (`plans/reverse-oauth-leftovers.md`).
+
+## Do subscriptions start, and who runs the renewals? (#3183)
+- Owner (2026-10-29): start now ("Şimdi başlasın"). Architect: store-run first on both drivers: `recurring` carries a `mode` (`store` | `psp`) and slice 1 implements `store`: the first payment registers the card (iyzico `setRegisterCard`, Stripe `setup_future_usage: off_session`), the token kept as the PSP's token only, `charge_renewal()` from the cron with the 1/3/7-day ladder, `update_card()` through the PSP's hosted page, `subscription_cancel()` store-side (the plan's `cancel(subscription)` clashed with the order `cancel()`). Stripe's `authentication_required` moves the row to `past_due` and mails a confirmation link. iyzico's stored-card charges without 3DS need the merchant's permission: a driver setting, subscriptions through iyzico off until it is on; iyzico's Subscription API (`psp` mode) is a later slice only if that permission is not granted to ordinary merchants, so the SDK's subscription mappers stay unloaded (no PHP 7.1 patch). One checkout payment for a mixed cart, no catalogue sync; the tables are in `decisions-made-schema-5.md`.
+
+Related: docs/memory/workflow/decisions-made-product-4.md, docs/memory/workflow/decisions-made.md

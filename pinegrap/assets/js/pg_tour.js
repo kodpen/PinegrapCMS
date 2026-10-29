@@ -254,6 +254,12 @@ window.PgTour = (function () {
         if (!running) { return; }
 
         if (event.key === 'Escape') { event.preventDefault(); finish(false); return; }
+
+        // Enter on a focused Skip or Back button is that button's own click;
+        // reading it as Next would skip where the keyboard user asked to go.
+        if ((event.key === 'Enter') && (event.target !== parts.next) &&
+            (event.target.tagName === 'BUTTON') && bubble.contains(event.target)) { return; }
+
         if ((event.key === 'ArrowRight') || (event.key === 'Enter')) { event.preventDefault(); move(1); return; }
         if (event.key === 'ArrowLeft') { event.preventDefault(); move(-1); return; }
 
