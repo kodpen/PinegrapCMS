@@ -449,10 +449,10 @@ if (!$_POST) {
     if ($include_error_logs) {
         $output_type_filters = '
                         <div class="btn-group btn-group-sm my-1 sm:ms-3" role="group" aria-label="' . h(lang('Type')) . '">
-                            <button type="button" class="btn btn-outline theme-secondary active pg-log-type-filter" data-token="">' . lang('All') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogsite">' . lang('Site Log') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogerror">' . lang('Error Log') . '</button>
-                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" data-token="pglogwarn">' . lang('Warning') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary active pg-log-type-filter" aria-pressed="true" data-token="">' . lang('All') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogsite">' . lang('Site Log') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogerror">' . lang('Error Log') . '</button>
+                            <button type="button" class="btn btn-outline theme-secondary pg-log-type-filter" aria-pressed="false" data-token="pglogwarn">' . lang('Warning') . '</button>
                         </div>';
     }
 
@@ -706,8 +706,10 @@ if (!$_POST) {
                 var buttons = document.querySelectorAll(".pg-log-type-filter");
                 for (var i = 0; i < buttons.length; i++) {
                     buttons[i].classList.remove("active");
+                    buttons[i].setAttribute("aria-pressed", "false");
                 }
                 type_filter.classList.add("active");
+                type_filter.setAttribute("aria-pressed", "true");
 
                 if (!window.jQuery || !window.jQuery.fn.dataTable) {
                     return;

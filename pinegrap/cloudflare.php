@@ -705,11 +705,11 @@ foreach ($records as $r) {
 }
 
 // -------------------- TABS ACTIVE --------------------
-$active_24h = ($period === '24h') ? 'active' : '';
-$active_7d  = ($period === '7d')  ? 'active' : '';
-$active_30d = ($period === '30d') ? 'active' : '';
-$active_all = ($period === 'all') ? 'active' : '';
-$active_cus = ($period === 'custom') ? 'active' : '';
+$active_24h = ($period === '24h') ? 'active" aria-current="page' : '';
+$active_7d  = ($period === '7d')  ? 'active" aria-current="page' : '';
+$active_30d = ($period === '30d') ? 'active" aria-current="page' : '';
+$active_all = ($period === 'all') ? 'active" aria-current="page' : '';
+$active_cus = ($period === 'custom') ? 'active" aria-current="page' : '';
 
 
 // -------------------- PRINT --------------------
