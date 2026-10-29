@@ -51,7 +51,7 @@ function test_workspace_flow_anchor_kinds()
 		pg_assert_same(array('next'), ws_flow_kinds()[$kind]['outcomes']);
 	}
 
-	pg_assert_same(array('schedule' => 'at', 'event' => 'event', 'join' => 'join'), $rules);
+	pg_assert_same(array('schedule' => 'at', 'event' => 'event', 'join' => 'join', 'row' => 'row'), $rules);
 
 	$graph = ws_flow_graph_normalize(array(
 		'nodes' => array(

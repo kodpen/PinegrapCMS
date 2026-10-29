@@ -27,6 +27,6 @@ description: Workflow tables in the external API and MCP (api_wtables.php, T1d1 
 
 ## When do row webhooks go out?
 - `workspace.wtable.row.created`, `.updated` (with `changed`, the column ids written), `.deleted` (row only id and position), from `ws_wtable_row_create/_update/_delete()` through `ws_wtable_row_announce()` (wtable_shares.php, #2931). A move announces nothing.
-- Only when the table has a share in a public, not archived channel (`ws_wtable_event_channels()`, oldest share first); a person or private-channel share announces nothing, since every team member reads a public channel.
+- Only when the table has a share in a public, unarchived channel (`ws_wtable_event_channels()`, oldest first); a person or private-channel share announces nothing (every member reads a public channel).
 - One event per change: `channel_id` the oldest public share (what a channel-group subscription matches), `channel_ids` all, `table` id and name, `row` as `ws_wtable_row_present()`, `by` the writer. Each `pg_announce()` call names the event and `channel_id` literally: `tests/webhook_channel_group_test.php` reads the calls.
-- A file import announces no row (`workflow-table-import.md`).
+- An import announces no row; flows need no share (`workspace-flows-row-box.md`).
