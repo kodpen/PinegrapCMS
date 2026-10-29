@@ -90,10 +90,13 @@ while ($row = mysqli_fetch_array($result)) {
         && ($row['end_date'] >= $current_date)
     ) {
         $output_status_class = 'status_enabled';
-    
-    // Otherwise this arrival date is not active, so use class that shows red color.
+        $output_state = '';
+
+    // Otherwise this arrival date is not active, so use class that shows red
+    // color and say so: the Status badge still reads Enabled outside the dates.
     } else {
         $output_status_class = 'status_disabled';
+        $output_state = pg_list_status_word(lang('Inactive'));
     }
      
     $number_of_results++;
@@ -114,7 +117,7 @@ while ($row = mysqli_fetch_array($result)) {
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
-            <td class="chart_label ' . $output_status_class . '" nowrap>' . h($name) . '</td>
+            <td class="chart_label ' . $output_status_class . '" nowrap>' . h($name) . $output_state . '</td>
             <td class="align-center" nowrap>' . $arrival_date . '</td>
             <td class="align-center"><span class="badge fg-white fw-light ' . $status_class . '">' . lang(ucwords($status)) . '</span></td>
             <td class="align-center" nowrap>' . $start_date . '</td>

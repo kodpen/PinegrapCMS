@@ -168,6 +168,7 @@ foreach ($expenses as $expense) {
         $output_status = '<span class="badge theme-secondary">' . h($statuses['cancelled']) . '</span>';
     } else {
         $output_status = '<span class="badge ' . ($overdue ? 'theme-danger' : 'theme-warning') . '">' . h($statuses['unpaid']) . '</span>'
+            . ($overdue ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '')
             . (((string) $expense['due_date'] > '0000-00-00')
                 ? '<div class="small ' . ($overdue ? 'fg-danger' : 'fg-secondary') . '">' . h(lang(array('string' => 'due {var:1}', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) . '</div>'
                 : '');

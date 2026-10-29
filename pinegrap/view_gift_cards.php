@@ -250,10 +250,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                 )
             ) {
                 $output_status_class = 'status_enabled fg-success';
-            
-            // Otherwise this gift card has expired, so use class that shows red color.
+                $output_state = '';
+
+            // Otherwise this gift card has expired or is used up, so use class
+            // that shows red color and say which.
             } else {
                 $output_status_class = 'status_disabled fg-danger';
+                $output_state = (($gift_card['expiration_date'] != '0000-00-00') && ($gift_card['expiration_date'] < $current_date))
+                    ? pg_list_status_word(lang('Expired'))
+                    : pg_list_status_word(lang('No balance'));
             }
 
             $output_expiration_date = '';
@@ -299,7 +304,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Gift Cards') {
                         <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Edit') . '" onclick="window.location.href=\'edit_gift_card.php?id=' . $gift_card['id'] . '\'"><i class="bi bi-pencil"></i></button>
                         <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                     </td>
-                    <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span></td>
+                    <td class="chart_label align-middle"><span class=" badge fw-lighter ' . $output_status_class . '">' . output_gift_card_code($gift_card['code']) . '</span>' . $output_state . '</td>
                     <td class="align-middle text-end"><span class=" badge theme-secondary  fw-lighter">' . pg_format_money($gift_card['balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle text-end"><span class=" badge theme-primary  fw-lighter">' . pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span></td>
                     <td class="align-middle">' . $output_expiration_date . '</td>

@@ -50,7 +50,7 @@ function pg_product_group_form_unselected_rows($products, $show_image)
             '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($urow['name'])))) . '"/></td>' .
             '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
-            '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
+            '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . (($urow['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
             '<td class="align-middle text-end">' . prepare_amount($urow['price']) . '</td>' .
             '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
