@@ -1618,9 +1618,10 @@ JS
 }
 
 // The MCP box: the palette offers it only while a server is listed for the
-// person; its form tells a tool that asks first, one no longer on, a server
-// out of reach and arguments that are no JSON object (each value read as
-// empty, a value outside quotes leaves none), as the server's check does.
+// person; its form takes a tool that asks first once it has the channel its
+// owner is asked in, and tells one no longer on, a server out of reach and
+// arguments that are no JSON object (each value read as empty, a value
+// outside quotes leaves none), as the server's check does.
 function test_workspace_flows_canvas_mcp_box()
 {
 	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
@@ -1632,7 +1633,7 @@ function test_workspace_flows_canvas_mcp_box()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('stepLists', 'paletteItems', 'mcpServer', 'mcpToolProblem', 'mcpArgumentsProblem'),
+		array('stepLists', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
 		$constants . <<<'JS'
 var FL = { steps: {} };
 var none = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
@@ -1644,10 +1645,17 @@ console.log(JSON.stringify({
     tools: [
         mcpToolProblem({ server_id: 7, tool: 'search' }),
         mcpToolProblem({ server_id: 7, tool: 'create_page' }),
+        mcpToolProblem({ server_id: 7, tool: 'create_page', channel_id: 5, closes_in: 24 }),
         mcpToolProblem({ server_id: 7, tool: 'gone' }),
         mcpToolProblem({ server_id: 9, tool: 'search' }),
         mcpToolProblem({ server_id: 0, tool: '' }),
         mcpToolProblem({ server_id: 7, tool: '' })
+    ],
+    asks: [
+        mcpToolAsks({ server_id: 7, tool: 'create_page' }),
+        mcpToolAsks({ server_id: 7, tool: 'search' }),
+        mcpToolAsks({ server_id: 9, tool: 'create_page' }),
+        mcpToolAsks({ server_id: 7, tool: '' })
     ],
     args: [
         mcpArgumentsProblem(''),
@@ -1668,7 +1676,8 @@ JS
 
 	pg_assert_same(-1, $result['none'], 'no server, no MCP box in the palette');
 	pg_assert_true($result['offered'], 'a server listed: the palette offers it');
-	pg_assert_same(array('', 'fl_mcp_tool_asks create_page docs', 'fl_mcp_tool_off gone docs', 'fl_mcp_server_out', '', ''), $result['tools']);
+	pg_assert_same(array('', 'fl_approval_no_channel', '', 'fl_mcp_tool_off gone docs', 'fl_mcp_server_out', '', ''), $result['tools'], 'a tool that asks first runs once it has its channel');
+	pg_assert_same(array(true, false, false, false), $result['asks'], 'only a tool the server lists as asking first asks');
 	pg_assert_same(array('', '', '', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad', 'fl_mcp_arguments_bad'), $result['args']);
 
 	// The lists come with the flows config, built by the steps' helper with

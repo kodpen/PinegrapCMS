@@ -687,7 +687,20 @@
                 return t('fl_mcp_none');
             }
 
-            return (called ? '@' + called.alias : '#' + config.server_id) + (config.tool ? ' · ' + config.tool : '');
+            var where = called ? '@' + called.alias : '#' + config.server_id;
+
+            if (!config.tool) {
+                return where;
+            }
+
+            if (!mcpToolAsks(config)) {
+                return where + ' · ' + config.tool;
+            }
+
+            // A tool that asks first names the channel its owner is asked in.
+            var room = (BOOT.channels || []).filter(function (item) { return item.id === config.channel_id; })[0];
+
+            return where + ' · ' + config.tool + ' · ' + (room ? t('fl_post_meta', room.name) : t('fl_approval_no_channel'));
         }
 
         if ((node.kind === 'webhook') || (node.kind === 'web_check')) {
@@ -5380,8 +5393,17 @@
         return stepLists().mcp.filter(function (item) { return item.id === id; })[0] || null;
     }
 
+    // Whether the box's tool asks its owner before each call (rule approve,
+    // ws_step_mcp_tool_asks()): the run waits for the owner's approval.
+    function mcpToolAsks(config) {
+        var server = mcpServer(config.server_id);
+
+        return !!(server && config.tool && (server.asks.indexOf(config.tool) !== -1));
+    }
+
     // Why the box's tool may not run, '' when it may or none is chosen yet:
-    // the refusals of ws_step_mcp_tool_problem() and ws_step_mcp_check().
+    // the refusals of ws_step_mcp_tool_problem() and ws_step_mcp_check(); a
+    // tool that asks first needs the channel its owner is asked in.
     function mcpToolProblem(config) {
         if (!config.server_id) {
             return '';
@@ -5398,7 +5420,7 @@
         }
 
         if (server.asks.indexOf(config.tool) !== -1) {
-            return t('fl_mcp_tool_asks', config.tool, server.alias);
+            return (parseInt(config.channel_id, 10) > 0) ? '' : t('fl_approval_no_channel');
         }
 
         return server.tools.some(function (tool) { return tool.name === config.tool; }) ? '' : t('fl_mcp_tool_off', config.tool, server.alias);
@@ -5424,8 +5446,11 @@
         return (parsed && (typeof parsed === 'object') && !Array.isArray(parsed)) ? '' : t('fl_mcp_arguments_bad');
     }
 
-    // A tool of a connected MCP server that reads: the server, the tool and
-    // its arguments as a JSON object, values of the run put inside quotes.
+    // A tool of a connected MCP server: the server, the tool and its
+    // arguments as a JSON object, values of the run put inside quotes. A
+    // tool that asks first also takes the channel its owner approves each
+    // call in and the hours they have (channel_id, closes_in, as an
+    // approval box's); a box without them keeps its config as it came.
     function mcpFields(box, node) {
         var config = node.config;
         var servers = stepLists().mcp;
@@ -5439,6 +5464,7 @@
 
         var pick = K.select(options, config.server_id || 0);
         var toolWrap = el('div');
+        var askWrap = el('div');
         var about = el('div', 'form-text');
         var note = el('div', 'small fg-danger mb-5');
         var argNote = el('div', 'small fg-danger mb-5');
@@ -5450,12 +5476,34 @@
             note.textContent = mcpToolProblem(config);
             argNote.textContent = mcpArgumentsProblem(config.arguments);
         };
+        var drawAsk = function () {
+            K.clear(askWrap);
+
+            if (!mcpToolAsks(config)) {
+                return;
+            }
+
+            var room = channelPick(config, t('fl_post_pick'));
+
+            room.setAttribute('data-refocus', 'mcp-channel-' + node.id);
+            room.addEventListener('change', function () {
+                config.channel_id = parseInt(room.value, 10) || 0;
+                tell();
+                refreshNode(node);
+            });
+            askWrap.appendChild(field(t('fl_approval_channel'), room));
+            closesField(askWrap, node);
+        };
         var drawTools = function () {
             var server = mcpServer(config.server_id);
             var list = server ? server.tools : [];
-            var choices = [['', t('fl_mcp_tool_pick')]].concat(list.map(function (item) { return [item.name, item.name]; }));
+            var asks = server ? server.asks : [];
+            var known = list.map(function (item) { return item.name; }).concat(asks);
+            var choices = [['', t('fl_mcp_tool_pick')]].concat(list.map(function (item) { return [item.name, item.name]; }), asks.map(function (name) {
+                return [name, name + ' · ' + t('fl_kind_approval')];
+            }));
 
-            if (config.tool && !list.some(function (item) { return item.name === config.tool; })) {
+            if (config.tool && (known.indexOf(config.tool) === -1)) {
                 choices.push([config.tool, config.tool]);
             }
 
@@ -5464,11 +5512,14 @@
             tools.setAttribute('data-refocus', 'mcp-tool-' + node.id);
             tools.addEventListener('change', function () {
                 config.tool = tools.value;
+                drawAsk();
                 tell();
                 refreshNode(node);
             });
             K.clear(toolWrap);
-            toolWrap.appendChild(field(t('fl_mcp_tool'), tools, t('fl_mcp_tool_help')));
+            // The help says only tools that read are offered: true while the
+            // server has none that asks first.
+            toolWrap.appendChild(field(t('fl_mcp_tool'), tools, asks.length ? '' : t('fl_mcp_tool_help')));
             toolWrap.appendChild(about);
         };
 
@@ -5479,11 +5530,12 @@
             config.server_id = parseInt(pick.value, 10) || 0;
 
             // A tool of the server before stays only where this one has it.
-            if (!server || !server.tools.some(function (item) { return item.name === config.tool; })) {
+            if (!server || (!server.tools.some(function (item) { return item.name === config.tool; }) && (server.asks.indexOf(config.tool) === -1))) {
                 config.tool = '';
             }
 
             drawTools();
+            drawAsk();
             tell();
             refreshNode(node);
         });
@@ -5491,6 +5543,7 @@
         argNote.setAttribute('role', 'status');
         box.appendChild(field(t('fl_mcp_server'), pick, servers.length ? '' : t('fl_mcp_no_server')));
         box.appendChild(toolWrap);
+        box.appendChild(askWrap);
         box.appendChild(note);
         box.appendChild(valueField(node, t('fl_mcp_arguments'), config.arguments, 20000, function (value) {
             config.arguments = value;
@@ -5499,6 +5552,7 @@
         }, true, t('fl_mcp_arguments_help')));
         box.appendChild(argNote);
         drawTools();
+        drawAsk();
         tell();
     }
 
@@ -5794,7 +5848,6 @@
     function approvalFields(box, node) {
         var config = node.config;
         var rule = K.select([['any', t('fl_approval_any')], ['all', t('fl_approval_all')]], config.rule || 'any');
-        var closes = el('input', 'form-control form-control-sm wsf-number');
 
         channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
         box.appendChild(field(t('fl_approval_who'), peopleList(node, el('div', 'wsf-people'), 'approvers', 50), t('fl_approval_who_help')));
@@ -5807,6 +5860,15 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_approval_rule'), rule));
+        closesField(box, node);
+    }
+
+    // The hours an approval request stays open (closes_in, '' for no
+    // deadline, else 1 to WS_STEP_APPROVAL_CLOSES_MAX): the approval box's
+    // and that of an MCP box whose tool asks first.
+    function closesField(box, node) {
+        var config = node.config;
+        var closes = el('input', 'form-control form-control-sm wsf-number');
 
         closes.type = 'number';
         closes.min = '1';
@@ -7027,7 +7089,7 @@
             // The one server there is is taken; of several, none yet.
             var servers = stepLists().mcp;
 
-            config = { server_id: (servers.length === 1) ? servers[0].id : 0, tool: '', arguments: '' };
+            config = { server_id: (servers.length === 1) ? servers[0].id : 0, tool: '', arguments: '', channel_id: 0, closes_in: '' };
         } else if (kind === 'condition') {
             config = { rule: { type: 'workday' } };
         } else if (kind === 'delay') {
