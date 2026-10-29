@@ -338,12 +338,11 @@ if (!$_POST) {
 
                         <div class="col-12">
                             <div class="card mb-7">
-                                <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center"
-                                    style="cursor:pointer"
-                                    data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-expanded="true">
+                                <button type="button" class="card-header bg-reset fg-reset border-0 w-100 text-start d-flex justify-content-between align-items-center"
+                                    data-bs-toggle="collapse" data-bs-target="#scope_panel" aria-controls="scope_panel" aria-expanded="true">
                                     <span class="text-uppercase h6 fg-primary fw-bold mb-0">' . lang('Scope') . '</span>
-                                    <span class="material-icons">expand_more</span>
-                                </div>
+                                    <span class="material-icons" aria-hidden="true">expand_more</span>
+                                </button>
                                 <div class="collapse show" id="scope_panel">
                                     <div class="card-body">
                                         <div class="mb-5">
@@ -369,12 +368,12 @@ if (!$_POST) {
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" name="submit_button" value="Find"
                                     class="btn my-1 btn-outline theme-primary">
-                                    <span class="material-icons me-3">search</span>
+                                    <span class="material-icons me-3" aria-hidden="true">search</span>
                                     <span class="pg-btn-label">' . lang('Find') . '</span>
                                 </button>
                                 <button type="submit" name="submit_button" value="Find &amp; Replace"
                                     class="btn my-1 btn-solid theme-success">
-                                    <span class="material-icons me-3">find_replace</span>
+                                    <span class="material-icons me-3" aria-hidden="true">find_replace</span>
                                     <span class="pg-btn-label">' . lang(array('string'=>'Find & Replace')) . '</span>
                                 </button>
                             </div>
@@ -505,16 +504,16 @@ if (!$_POST) {
                 $name_cell = $r['url']
                     ? '<a href="' . h($r['url']) . '" target="_blank" rel="noopener" class="fw-semibold text-decoration-none">'
                         . h($r['name'])
-                        . ' <span class="material-icons align-middle" style="font-size:.85rem">open_in_new</span></a>'
+                        . ' <span class="material-icons align-middle" style="font-size:.85rem" aria-hidden="true">open_in_new</span></a>'
                     : '<span class="fw-semibold">' . h($r['name']) . '</span>';
 
                 foreach ($r['matches'] as $m) {
                     $rows .= '
                     <tr>
-                        <td class="align-top">' . $name_cell . '</td>
+                        <td class="align-top text-break">' . $name_cell . '</td>
                         <td class="align-top fg-secondary small font-monospace">' . h($m['col']) . '</td>
                         <td class="align-top text-center"><span class="badge theme-secondary">' . $m['count'] . '</span></td>
-                        <td class="align-top small font-monospace lh-lg">' . $m['snippet'] . '</td>
+                        <td class="align-top small font-monospace lh-lg text-break">' . $m['snippet'] . '</td>
                     </tr>';
                 }
             }
@@ -523,9 +522,12 @@ if (!$_POST) {
             <div class="card mb-7">
                 <div class="card-header bg-reset border-0 text-uppercase h6 fg-primary fw-bold d-flex align-items-center gap-3">
                     ' . h($group['label']) . '
-                    <span class="badge theme-primary fw-normal">' . count($group['results']) . ' ' . lang('record') . '</span>
+                    <span class="badge theme-primary fw-normal">' . h(lang(array(
+                        'string' => count($group['results']) === 1 ? '{var:1} record' : '{var:1} records',
+                        'vars'   => pg_format_number(count($group['results']), 0),
+                    ))) . '</span>
                 </div>
-                <div class="card-body p-0">
+                <div class="card-body p-0 table-responsive">
                     <table class="table table-hover table-sm mb-0">
                         <thead class="pg-table-light">
                             <tr>
@@ -542,10 +544,10 @@ if (!$_POST) {
         }
 
         // Summary
-        $summary = pg_format_number($total_matches, 0) . ' '
-            . lang('matches found in')
-            . ' ' . pg_format_number($total_records, 0) . ' '
-            . lang('records');
+        $summary = lang(array(
+            'string' => '{var:1} matches found in {var:2} records',
+            'vars'   => array(pg_format_number($total_matches, 0), pg_format_number($total_records, 0)),
+        ));
 
         echo
         output_header([
@@ -562,7 +564,7 @@ if (!$_POST) {
                             <h2>' . lang('Find Results') . '</h2>
                             <p class="fg-secondary">' . h($summary) . '</p>
                             <a href="find_and_replace.php" class="btn btn-outline theme-secondary btn-sm mb-7">
-                                <span class="material-icons me-1" style="font-size:1rem">arrow_back</span>
+                                <span class="material-icons me-1" style="font-size:1rem" aria-hidden="true">arrow_back</span>
                                 ' . lang('Back to Find & Replace') . '
                             </a>
                         </div>
