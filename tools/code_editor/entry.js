@@ -36,3 +36,10 @@ export * as minimap from '@replit/codemirror-minimap';
 import formatCss from 'js-beautify/js/src/css/index.js';
 import formatJs from 'js-beautify/js/src/javascript/index.js';
 export const format = { css: formatCss, js: formatJs };
+
+// Emmet's core (the `emmet` package, MIT): expand() turns an abbreviation
+// into markup or CSS, extract() finds the abbreviation before the cursor on
+// a line. The facade's expand-abbreviation command is built on these two;
+// @emmetio/codemirror6-plugin is not used (it carries no license).
+import emmetExpand, { extract as emmetExtract } from 'emmet';
+export const emmet = { expand: emmetExpand, extract: emmetExtract };

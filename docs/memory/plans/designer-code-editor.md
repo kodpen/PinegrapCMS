@@ -1,6 +1,6 @@
 ---
 name: designer-code-editor
-description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (Emmet license)
+description: Plan (2026-10-19) for the visual designer's code editor: owner rules, decisions, what was built (PRs), what is left (bottom-view Format button)
 ---
 
 ## What is being built?
@@ -20,7 +20,7 @@ description: Plan (2026-10-19) for the visual designer's code editor: owner rule
 
 ## What is left, and where to start?
 - Done (PR #669): bindings in the code view — a bound value prints as `{{token}}`, typing one binds, `{{` completes the widget's tokens (`docs/memory/designer/designer-code-view-bindings.md`).
-- Emmet: `@emmetio/codemirror6-plugin` carries no license (repo and package, 2026-10-19), so it is not bundled; the `emmet` core package is MIT and an expand-abbreviation command of our own on it is the way, if wanted.
+- Done (PR #2909): Emmet's expand abbreviation on Mod+E, our own command on the MIT `emmet` core (`@emmetio/codemirror6-plugin` carries no license and is not bundled) (docs/memory/core/code-editor-emmet.md).
 - Done (PR #1909): format for CSS/JS/JSON, `ed.format()` and Shift+Alt+F (docs/memory/core/code-editor-format.md). Done (PR #2072): a "Format code" button in the code editor dialog and under panel code fields; the designer's bottom code view (`style_designer.js`) has none yet.
 - Done (PR #1955): a minimap in the lazy bundle, opt-in per editor or page, on in the designer (docs/memory/core/code-editor-minimap.md); a show/hide toggle in the code dialog and the panel code fields (PR #2125).
 - Done (PR #1871): search across the open tabs (docs/memory/designer/code-view-tab-search.md).
