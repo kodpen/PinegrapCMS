@@ -7491,18 +7491,33 @@ function initSeoCounters(rules) {
                 .attr("id", counterId)
                 .insertAfter($input);
         }
-        var len = $input.val().length, cls, icon;
-        if (len === 0) { cls = "secondary"; icon = ""; }
-        else if (len < min) { cls = "warning"; icon = " \u2191"; }
-        else if (len <= max) { cls = "success"; icon = " \u2713"; }
-        else if (len <= max + 10) { cls = "warning"; icon = " \u2193"; }
-        else { cls = "danger"; icon = " \u2717"; }
+        // A screen reader hears the counter as the field's description, so
+        // the count, the target range and the state are said in words; the
+        // visible "45/60 \u2191" is hidden from it.
+        var describedBy = ($input.attr("aria-describedby") || "").split(/\s+/).filter(Boolean);
+        if (describedBy.indexOf(counterId) === -1) {
+            describedBy.push(counterId);
+            $input.attr("aria-describedby", describedBy.join(" "));
+        }
+        var len = $input.val().length, cls, icon, said;
+        var range = function (text) {
+            return text.replace("{var:1}", len).replace("{var:2}", min).replace("{var:3}", max);
+        };
+        if (len === 0) {
+            cls = "secondary"; icon = "";
+            said = pgLang('No text yet. Aim for {var:1} to {var:2} characters.').replace("{var:1}", min).replace("{var:2}", max);
+        }
+        else if (len < min) { cls = "warning"; icon = " \u2191"; said = range(pgLang('{var:1} characters, too short. Aim for {var:2} to {var:3}.')); }
+        else if (len <= max) { cls = "success"; icon = " \u2713"; said = range(pgLang('{var:1} characters, good length. Aim for {var:2} to {var:3}.')); }
+        else if (len <= max + 10) { cls = "warning"; icon = " \u2193"; said = range(pgLang('{var:1} characters, too long. Aim for {var:2} to {var:3}.')); }
+        else { cls = "danger"; icon = " \u2717"; said = range(pgLang('{var:1} characters, too long. Aim for {var:2} to {var:3}.')); }
         var pct = Math.min(100, Math.round(len / (max * 1.25) * 100));
         $counter.html(
-            "<small class='fg-" + cls + " fw-semibold' style='min-width:60px'>" +
+            "<small class='fg-" + cls + " fw-semibold' style='min-width:60px' aria-hidden='true'>" +
             len + "/" + max + icon +
             "</small>" +
-            "<div class='progress flex-grow-1' style='height:3px'>" +
+            "<span class='visually-hidden'>" + h(said) + "</span>" +
+            "<div class='progress flex-grow-1' style='height:3px' aria-hidden='true'>" +
             "<div class='progress-bar bg-" + cls + "' style='width:" + pct + "%;transition:width .15s'></div>" +
             "</div>"
         );

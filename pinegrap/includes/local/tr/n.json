@@ -966,6 +966,7 @@
     "No text has been scanned yet. Press \"Update translations\": the pages are read and their texts are listed here.": "Henüz hiçbir metin taranmadı. \"Çevirileri güncelle\"ye basın: sayfalar okunur ve metinleri burada listelenir.",
     "No text matches the filter.": "Filtreye uyan metin yok.",
     "No text message is sent from a demonstration site.": "Tanıtım sitesinden kısa mesaj gönderilmez.",
+    "No text yet. Aim for {var:1} to {var:2} characters.": "Henüz metin yok. {var:1}–{var:2} karakter önerilir.",
     "No theme": "Tema seçilmedi",
     "No till or bank account is set up, so the money is not recorded; the invoice stays open.": "Tanımlı kasa ya da banka hesabı yok; para kaydedilmez, fatura açık kalır.",
     "No till or bank account yet. Add one to start recording money.": "Henüz kasa veya banka hesabı yok. Para hareketi girmek için bir tane ekleyin.",
