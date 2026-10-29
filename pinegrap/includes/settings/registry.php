@@ -203,6 +203,7 @@ function pg_settings_categories()
                 'pgset-sms'       => lang('SMS'),
                 'pgset-sms-messages' => lang('SMS Messages'),
                 'pgset-iys'       => lang('İYS'),
+                'pgset-google-reviews' => lang('Google Reviews'),
             ),
             'keywords' => array(
                 'pgset-campaigns' => pg_settings_keywords(lang('campaign, newsletter, subscribe, organization, address')),
@@ -211,6 +212,7 @@ function pg_settings_categories()
                 'pgset-sms'       => pg_settings_keywords(lang('sms, text message, netgsm, sender name, header, msgheader, mobile, phone, iys, test message')),
                 'pgset-sms-messages' => pg_settings_keywords(lang('sms, text message, order received, order shipped, order delivered, tracking number, template')),
                 'pgset-iys'       => pg_settings_keywords(lang('iys, ileti yönetim sistemi, consent, permission, brand, marketing, opt-in, refusal')),
+                'pgset-google-reviews' => pg_settings_keywords(lang('google reviews, reviews, rating, google maps, places api, place id, business profile')),
             ),
         ),
 

@@ -215,6 +215,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.
+- google-reviews-widget.md: Google Reviews widget (kind google_reviews): Place Details with a Places API key, the settings card, the sealed state and short cache, tokens, attribution, nothing drawn when not set up
 - html-import-and-paste.md: Designer HTML import: three entry points, one converter, inline SVG and Bootstrap icons, framework files, repeated blocks made shared, and why a canvas paste is not an import.
 - image-editor-tool.md: Bindable image editor (Pintura): save endpoint contract, write rules, openImageEditor modal, designer-side contract, images save independently of the design.
 - image-loading.md: How designer images load: page body order (first image first, the rest lazy), a node's own loading attribute, the Image element's Loading row and why it writes the attribute

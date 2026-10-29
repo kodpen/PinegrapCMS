@@ -818,6 +818,15 @@ if (
 // fetched while a setting reads the visitor's location. The look is a file
 // read; the fetch happens about once a month, and a failed one is tried again
 // twelve hours later, not on every tick.
+// Google reviews (includes/fn/google_reviews.php): the kept answers past
+// their fresh hour are read again; nothing happens without a key and a
+// Place ID.
+if (function_exists('pg_grev_job_run')) {
+
+    pg_grev_job_run();
+
+}
+
 if (function_exists('pg_geo_db_due') && pg_geo_db_due()) {
 
     pg_geo_db_refresh();

@@ -620,6 +620,7 @@
     "Enter the IP addresses separated by commas. Wildcards and CIDR ranges are supported. For example: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32": "IP adreslerini virgülle ayırarak girin. Joker karakterler ve CIDR aralıkları desteklenir. Örneğin: 192.168.0.1, 192.168.1.*, 10.0.0.0/8, 2001:db8::/32",
     "Enter the IP addresses separated by commas. Wildcards are supported. For example:192.168.0.1, 192.168.1.*,10.0.*.*": "IP adreslerini virgülle ayırarak girin. Joker karakterler desteklenir. Örneğin:192.168.0.1, 192.168.1.*,10.0.*.*",
     "Enter the Pinegrap AI licence key issued for this site and save. It is checked against the site's address: a key that does not match or has expired does not work.": "Bu site için verilen Pinegrap AI lisans anahtarını girip kaydedin. Anahtar sitenin adresiyle eşleştirilir: eşleşmeyen ya da süresi dolmuş anahtar çalışmaz.",
+    "Enter the Places API key and the Place ID to test them.": "Denemek için Places API anahtarını ve Yer Kimliğini girin.",
     "Enter the Test or Live Secret Key": "Test veya Canlı Gizli Anahtarı girin",
     "Enter the access token.": "Erişim jetonunu girin.",
     "Enter the amount of at least one part.": "En az bir parçanın tutarını girin.",

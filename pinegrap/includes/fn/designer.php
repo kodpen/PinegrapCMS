@@ -1205,6 +1205,12 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
                 return _render_system_widget_tag_cloud_region($tree_json, $sid, $cfg, $mode);
             }
 
+            // 'google_reviews' — the business's Google rating and reviews (widgets_google_reviews.php).
+            if ($region_type === 'google_reviews') {
+                if (!$tree_json) return '<!-- pg-system-widget:' . $sid . ' has no tree_json (designer never saved) -->';
+                return _render_system_widget_google_reviews($tree_json, $sid, $cfg, $mode);
+            }
+
             // 'billing_information' — the third step of the classic checkout,
             // posting to billing_information.php (widgets_billing_information.php).
             if ($region_type === 'billing_information') {
