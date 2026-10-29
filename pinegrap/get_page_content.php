@@ -600,6 +600,15 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         $content = pg_fx_inject($content);
     }
 
+    // ── Date and time fields ────────────────────────────────────────────────────
+    // A field with a date hook (data-pg-date, data-pg-datetime, data-pg-time,
+    // data-pg-date-selects) carries no script; the page brings the calendar,
+    // its stylesheet and the field hooks (pg_site_datetime_inject()),
+    // checked once everything is drawn in. Not in an e-mail.
+    if (!$email && stripos($content, 'data-pg-') !== false && function_exists('pg_site_datetime_inject')) {
+        $content = pg_site_datetime_inject($content);
+    }
+
     // ── Tooltips and popovers ───────────────────────────────────────────────────
     // Bootstrap starts neither by itself: a visual editor page holding a
     // tooltip (the panel's Tooltip option) or a popover gets the small script

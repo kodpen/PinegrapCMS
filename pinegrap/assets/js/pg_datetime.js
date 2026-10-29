@@ -16,6 +16,7 @@
  *   pgDateTime.order()                    'day_month' or 'month_day'
  *   pgDateTime.clockTime(hhmm)            '17:05' on the site's clock ('5:05 PM' with 12 hours)
  *   pgDateTime.timeMode()                 12 or 24, from the data-pg-calendar of its tag
+ *   pgDateTime.site()                     true on a site page (pg_site_datetime_inject())
  *   pgDateTime.ready() / whenReady(fn)    the calendar library is loaded
  *   pgDateTime.attach(box, options)       a calendar for the typed box `box`: a date, a
  *                                         date and time (the time row under the dates)
@@ -24,6 +25,11 @@
  * The library is loaded once, by this file, from the data-pg-calendar-src
  * of its own tag: a settings card that brings the tags again runs this file
  * a second time, and the library itself has no such guard.
+ *
+ * On a site page (Bootstrap 5.3.8, no pgUI) the tags come from
+ * pg_site_datetime_inject() with `site: true` in data-pg-calendar: the
+ * calendar is styled by the library's own stylesheet and the Done button
+ * takes the Bootstrap 5 classes of its `button`.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -252,6 +258,8 @@
         }
         read = read || {};
         settingsCache = {
+            site: read.site === true,
+            button: read.button || 'btn btn-sm btn-solid theme-primary',
             timeMode: read.timeMode === 24 ? 24 : 12,
             done: read.done || 'Done',
             labels: read.labels || null
@@ -285,9 +293,12 @@
     }
 
     // The library's own month layout with the time row under the dates, as
-    // its default layout has it; the Done button after them in a popup.
+    // its default layout has it; the Done button after them in a popup, in
+    // the classes the tag gives (a site page's Bootstrap 5.3.8 ones), else
+    // the panel's.
     function layout(mode, inline) {
-        var s = settings(), done = inline ? '' : '<div class="pg-vc-actions"><button type="button" class="btn btn-sm btn-solid theme-primary" data-pg-vc-done>' + escapeText(s.done) + '</button></div>';
+        var s = settings();
+        var done = inline ? '' : '<div class="pg-vc-actions"><button type="button" class="' + escapeText(s.button) + '" data-pg-vc-done>' + escapeText(s.done) + '</button></div>';
         if (mode === 'time') {
             return '<#ControlTime />' + done;
         }
@@ -469,6 +480,7 @@
         formatDateTime: formatDateTime,
         clockTime: clockTime,
         timeMode: function () { return settings().timeMode; },
+        site: function () { return settings().site; },
         ready: ready,
         whenReady: whenReady,
         attach: attach

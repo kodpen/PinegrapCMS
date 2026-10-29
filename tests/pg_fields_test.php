@@ -690,6 +690,29 @@ function main() {
     lib.doc.head.children[0].dispatchEvent({ type: 'load' });
     out.dp_late = { tags: tags, before: drawnBefore, after: ld.pgFieldKind, calls: lib.calls.map(function (c) { return c[0] + ':' + c[1]; }) };
 
+    // A site page (Bootstrap 5.3.8, no pgUI) whose tags the site loader
+    // printed (site: true): the fields are drawn once the library has
+    // loaded, the Done button in Bootstrap 5 classes. Without the site tags
+    // such a page keeps plain fields.
+    var st = load({ noBootstrap: true, noCalendar: true, calendarSrc: '/lib/vcp.js', calendar: { site: true, button: 'btn btn-sm btn-primary', timeMode: 12, done: 'Done' }, format: 'd/m/yy', fields: [
+        ['input', { id: 'sd', 'data-pg-date': '', value: '1/2/2026' }],
+        ['input', { id: 'sdt', 'data-pg-datetime': '', value: '26/10/2026 5:00 PM' }]
+    ] });
+    st.win.pgFields.init();
+    var siteBefore = !!st.doc.querySelector('#sd').pgFieldKind;
+    st.win.VanillaCalendarPro = st.win.makeCalendarLibrary();
+    st.doc.head.children[0].dispatchEvent({ type: 'load' });
+    var siteDt = st.calls.filter(function (c) { return c[0] === 'calendar' && c[2].selectionTimeMode; })[0];
+    var plainSite = load({ noBootstrap: true, format: 'd/m/yy', fields: [['input', { id: 'pd', 'data-pg-date': '' }]] });
+    plainSite.win.pgFields.init();
+    out.dp_site = {
+        site: [st.win.pgDateTime.site(), dp.win.pgDateTime.site()],
+        before: siteBefore,
+        kinds: [st.doc.querySelector('#sd').pgFieldKind, st.doc.querySelector('#sdt').pgFieldKind],
+        done: siteDt ? [siteDt[2].layouts.default.indexOf('class="btn btn-sm btn-primary"') >= 0, siteDt[2].layouts.default.indexOf('theme-primary') >= 0] : null,
+        plain: [plainSite.doc.querySelector('#pd').pgFieldKind || '', plainSite.calls.length]
+    };
+
     // Each field keeps its own store: native inputs ISO, a 24-hour text
     // time, a wrapper of month, day and year selects.
     var md = load({ format: 'd/m/yy', labels: [{ 'for': 'nd', text: 'Due' }], fields: [
@@ -1251,6 +1274,11 @@ function test_pg_fields_dates_on_the_calendar_control()
 		array('tags' => array('/lib/vcp.js'), 'before' => false, 'after' => 'date', 'calls' => array('calendar:ld')),
 		$r['dp_late'],
 		'the library tag is added once, however often the files run, and the field is drawn when it has loaded'
+	);
+	pg_assert_same(
+		array('site' => array(true, false), 'before' => false, 'kinds' => array('date', 'datetime'), 'done' => array(true, false), 'plain' => array('', 0)),
+		$r['dp_site'],
+		'a site page with the site tags draws its date fields without Bootstrap 6 once the library loaded, Done in Bootstrap 5 classes; without them it keeps plain fields'
 	);
 }
 

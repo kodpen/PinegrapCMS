@@ -1,0 +1,75 @@
+/**
+ * Pinegrap - Enterprise Website Platform
+ *
+ * The one date-and-time control (assets/js/pg_datetime.js) on a site page,
+ * which keeps Bootstrap 5.3.8: the library's own stylesheet
+ * (assets/lib/vanilla-calendar-pro/index.css) draws the calendar and its
+ * time row, light and dark; these rules hide the posted field behind its
+ * typed box and size the box. Printed by pg_site_datetime_inject(), not in
+ * a layer, so Bootstrap's .form-control width does not win over them.
+ *
+ * @author      Erdal Güral (Kodpen)
+ * @link        https://kodpen.com
+ * @copyright   2017–2026 Kodpen
+ * @license     https://opensource.org/licenses/mit-license.html MIT License
+ */
+
+/* The posted field behind a typed box: out of sight, still posted. */
+.pg-field-native {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* The one box of a date and time or of a time: as wide as its text. */
+.pg-datetime-box,
+.pg-time-box {
+  width: auto;
+  max-width: 100%;
+}
+
+.pg-datetime-box {
+  min-width: 13rem;
+}
+
+.pg-time-box {
+  min-width: 7rem;
+}
+
+.input-group > .pg-datetime-box,
+.input-group > .pg-time-box {
+  flex: 1 1 auto;
+  width: 1%;
+}
+
+/* Over a Bootstrap 5 dialog (z-index 1055) when a field sits in one. */
+[data-vc=calendar][data-vc-input] {
+  z-index: 1070;
+}
+
+/* A time-only popup has no calendar above the row. */
+[data-vc=calendar].pg-vc-time-only [data-vc=time] {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+[data-vc=calendar] .pg-vc-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: .75rem;
+}
+
+.pg-date-inline {
+  margin-top: .5rem;
+}
+
+.pg-date-inline > [data-vc=calendar] {
+  display: inline-flex;
+}
