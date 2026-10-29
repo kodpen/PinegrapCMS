@@ -978,6 +978,7 @@
     "Revision now: {var:1}.": "Şu anki sürüm: {var:1}.",
     "Revisions Kept for": "Sürümlerin Saklanma Süresi",
     "Revisions Kept per Page": "Sayfa Başına Saklanan Sürüm",
+    "Revisions Kept per Page or Item": "Sayfa veya Kayıt Başına Tutulan Sürüm",
     "Revisions start with the next update of the database.": "Sürümler veritabanının bir sonraki güncellemesiyle başlar.",
     "Revoke": "İptal et",
     "Revoke Private Access": "Özel Erişimi Geri Çek",
