@@ -10,7 +10,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 
 - P2 (S, `.github/`, owner's machine) Release packages: `release-packages.yml` (`-design-update.md`); `docker-publish.yml` skips pre-releases. Test: actionlint; a local `v2026.4.10` build equal to the vendor's. Memory: `release/` new `release-packages.md` (tool sha256), `release-status.md`, `version-numbering.md`; `docker-image-publishing.md`; `workflow/ci-workflows.md`.
 
-- P3 (S) Client base. New `includes/fn/vendor_api.php` (+ `functions.php`): switch off, base, headers, timeouts, problem reader, canonical name. `pg_curl_run()`: `content_type`, a write-callback cap, a file sink. Tests: `vendor_api_test.php` (`site_host.json`, switch pin), `curl_run_test.php`. Memory: new `vendor-api-client.md` (`module: vendor_api`, vector sha256), `curl-run-wrapper.md`.
+- P3 done (#3255): `platform/vendor-api-client.md` (the request, options, problem reader, canonical name and `pg_vendor_api_site_local()` for P4's warning); `curl-run-wrapper.md` (`content_type`, `cap`, `sink`).
 
 - P4 (M) Licence. `output.php`: pure `pg_license_map_v1()`, the v1 call in `license_check()` (4720-5163), card. Settings (`includes/settings/general*.php`): key field (`h()`, `backend.src.js` masks, `build_js.php`), save, local-name warning. Tests: `license_v1_test.php` (`licence_mapping.json`), `output_test.php`. Memory: `license-check.md`. After P3.
 
