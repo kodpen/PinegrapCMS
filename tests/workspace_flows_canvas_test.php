@@ -1809,6 +1809,42 @@ JS
 	pg_assert_same(array(), array_values(array_diff($result['palette'], array_keys($expected))), 'every kind the palette adds has a group');
 }
 
+// Each kind of box leaves on the outcomes the server lets an arrow leave
+// it on (ws_flow_kinds()), in its order: the first is a new arrow's. An MCP
+// box with a tool that asks first also leaves on how its request ended.
+function test_workspace_flows_canvas_kinds_leave_on_the_servers_outcomes()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+
+	$result = ws_flows_canvas_test_node(
+		array(),
+		$kinds[0] . <<<'JS'
+var out = {};
+Object.keys(KINDS).forEach(function (kind) { out[kind] = KINDS[kind].out; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$server = ws_flow_kinds();
+
+	pg_assert_true(isset($server['mcp']), 'the server has the MCP box');
+
+	// A kind the canvas does not build yet (the table boxes) is left out.
+	foreach (array_intersect_key($server, $result) as $kind => $info) {
+		pg_assert_same(array_values((array) $info['outcomes']), $result[$kind], $kind . "'s outcomes");
+	}
+
+	pg_assert_same(array(), array_values(array_diff(array_keys($result), array_keys($server))), 'the canvas has no kind the server lacks');
+
+	pg_assert_same(array('done', 'failed', 'rejected', 'expired', 'withdrawn'), $result['mcp'] ?? null, 'the MCP box leaves on how its request ended');
+}
+
 // Each group's colour is set once per theme: dark the spec's, light a
 // deeper tone readable on white (4.5:1); a box has a 1.5 px border all
 // round, not the 4 px left stripe, a value box a dashed one; control

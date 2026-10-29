@@ -136,7 +136,7 @@
         start_flow: { name: 'fl_kind_start_flow', group: 'system', into: true, out: ['done', 'failed'] },
         change: { name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
         lead: { name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
-        mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed'] },
+        mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed', 'rejected', 'expired', 'withdrawn'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
