@@ -2101,6 +2101,7 @@
     "Custom style": "Özel stil",
     "Custom: {var:1}": "Özel: {var:1}",
     "Customer": "Müşteri",
+    "Customer (optional)": "Müşteri (isteğe bağlı)",
     "Customer ({var:1}) was changed through the API by the application {var:2} (key {var:3}).": "({var:1}) numaralı müşteri API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından değiştirildi.",
     "Customer ({var:1}) was created through the API by the application {var:2} (key {var:3}).": "({var:1}) numaralı müşteri API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından oluşturuldu.",
     "Customer ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "({var:1}) numaralı müşteri API üzerinden {var:2} uygulaması (anahtar {var:3}) tarafından silindi.",
