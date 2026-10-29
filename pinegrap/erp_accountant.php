@@ -256,7 +256,7 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                                 <input type="text" class="form-control font-monospace" id="erp_accountant_link" value="' . h($link_url) . '" readonly aria-label="' . h(lang('Link')) . '" />
                                 <button type="button" class="btn btn-outline theme-primary" id="erp_accountant_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
                             </div>
-                            <span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="' . h(lang('Copied')) . '"></span>
+                            <span class="visually-hidden" role="status" aria-live="polite" id="erp_accountant_link_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
                             <div class="form-text">' . h(lang('It is shown only now. Anyone who has it can download the pack, so send it to the accountant only.')) . '</div>
                             ' . (($output_link_download !== '') ? '<div class="mt-3">' . $output_link_download . '</div>' : '') . '
                         </div>
@@ -284,13 +284,25 @@ if (is_array($new_link) && !empty($new_link['url'])) {
                             status.textContent = "";
                         }, 1500);
                     };
+                    // Plain http has no clipboard API and a write can be
+                    // refused: select the text and copy it the old way, and
+                    // when that fails too, leave it selected and say so.
+                    var fallback = function () {
+                        var copied = false;
+                        input.focus();
+                        input.select();
+                        try { copied = document.execCommand("copy"); } catch (e) {}
+                        if (copied) {
+                            done();
+                        } else {
+                            status.textContent = status.getAttribute("data-refused");
+                        }
+                    };
                     if (navigator.clipboard && window.isSecureContext) {
-                        navigator.clipboard.writeText(input.value).then(done);
+                        navigator.clipboard.writeText(input.value).then(done, fallback);
                         return;
                     }
-                    // Plain http has no clipboard API; select the text and copy it the old way.
-                    input.select();
-                    try { document.execCommand("copy"); done(); } catch (e) {}
+                    fallback();
                 });
                 // The link exists only in this page; once the window is closed
                 // it is taken out of the page as well.

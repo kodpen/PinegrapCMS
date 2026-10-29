@@ -205,7 +205,8 @@ if (!$feed) {
                 <label class="form-label small fw-semibold" for="ws_ical_url">' . h(lang('Your calendar address')) . '</label>
                 <div class="input-group mb-3">
                     <input type="text" class="form-control font-monospace" id="ws_ical_url" value="' . h(ws_calendar_feed_url($token)) . '" readonly>
-                    <button type="button" class="btn btn-outline theme-secondary" id="ws_ical_copy" data-done="' . h(lang('Copied')) . '"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                    <button type="button" class="btn btn-outline theme-secondary" id="ws_ical_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+                    <span class="visually-hidden" role="status" aria-live="polite" id="ws_ical_copy_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
                 </div>
                 <p class="small fg-secondary mb-5"><i class="bi bi-shield-lock me-1" aria-hidden="true"></i>' . h(lang('Keep it like a password: anyone who has it can read what it carries. If it got out, make a new address below.')) . '</p>
                 <div class="d-flex flex-wrap gap-3 mb-5">
@@ -321,20 +322,37 @@ echo pg_page_shell(array(
 
     if (copy) {
         copy.addEventListener("click", function () {
+            // The button keeps its label; only the icon changes and the
+            // status beside it says whether the copy happened.
             var field = document.getElementById("ws_ical_url");
+            var status = document.getElementById("ws_ical_copy_status");
+            var icon = copy.querySelector("i");
             var done = function () {
-                copy.innerHTML = "<i class=\"bi bi-check2 me-1\" aria-hidden=\"true\"></i>";
-                copy.appendChild(document.createTextNode(copy.dataset.done));
+                icon.className = "bi bi-check2 me-1";
+                status.textContent = status.getAttribute("data-copied");
+                setTimeout(function () {
+                    icon.className = "bi bi-clipboard me-1";
+                    status.textContent = "";
+                }, 1500);
             };
-            field.select();
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(field.value).then(done, function () {
-                    document.execCommand("copy");
+            // Plain http has no clipboard API and a write can be refused:
+            // copy the selected text the old way; when that fails too, leave
+            // it selected and say so.
+            var fallback = function () {
+                var copied = false;
+                field.focus();
+                field.select();
+                try { copied = document.execCommand("copy"); } catch (error) {}
+                if (copied) {
                     done();
-                });
+                } else {
+                    status.textContent = status.getAttribute("data-refused");
+                }
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(field.value).then(done, fallback);
             } else {
-                document.execCommand("copy");
-                done();
+                fallback();
             }
         });
     }

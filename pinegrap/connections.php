@@ -285,6 +285,7 @@ foreach ($providers as $provider_key => $provider) {
 				<input type="text" class="form-control font-monospace" id="redirect_' . h($provider_key) . '" value="' . h($redirect_uri) . '" readonly>
 				<button type="button" class="btn btn-outline theme-secondary connections-copy" data-target="redirect_' . h($provider_key) . '">
 					<i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
+				<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
 			</div>
 			<div class="row g-3">
 				<div class="col-12 md:col-6">
@@ -405,9 +406,38 @@ echo pg_page_shell(array(
 		var copy = e.target.closest(".connections-copy");
 
 		if (copy) {
+			// The button keeps its label; only the icon changes and the
+			// status beside it says whether the copy happened.
 			var field = document.getElementById(copy.dataset.target);
-			field.select();
-			if (navigator.clipboard) { navigator.clipboard.writeText(field.value); } else { document.execCommand("copy"); }
+			var status = copy.parentNode.querySelector("[role=status]");
+			var icon = copy.querySelector("i");
+			var done = function () {
+				icon.className = "bi bi-check2 me-1";
+				status.textContent = status.getAttribute("data-copied");
+				setTimeout(function () {
+					icon.className = "bi bi-clipboard me-1";
+					status.textContent = "";
+				}, 1500);
+			};
+			// Plain http has no clipboard API and a write can be refused:
+			// copy the selected text the old way; when that fails too, leave
+			// it selected and say so.
+			var fallback = function () {
+				var copied = false;
+				field.focus();
+				field.select();
+				try { copied = document.execCommand("copy"); } catch (error) {}
+				if (copied) {
+					done();
+				} else {
+					status.textContent = status.getAttribute("data-refused");
+				}
+			};
+			if (navigator.clipboard && window.isSecureContext) {
+				navigator.clipboard.writeText(field.value).then(done, fallback);
+			} else {
+				fallback();
+			}
 		}
 
 	});

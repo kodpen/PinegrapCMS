@@ -111,15 +111,15 @@ function pg_site_log_list_description($text, $is_error, $key)
             . ' data-target="' . $message_id . '"'
             . ' data-more="' . h(lang('Show More')) . '"'
             . ' data-less="' . h(lang('Show Less')) . '">'
-            . '<i class="bi bi-chevron-down me-1"></i><span class="pg-log-toggle-label">' . lang('Show More') . '</span></button>';
+            . '<i class="bi bi-chevron-down me-1" aria-hidden="true"></i><span class="pg-log-toggle-label">' . lang('Show More') . '</span></button>';
     }
 
     if ($is_error) {
         $tools .= '<button type="button" class="btn btn-link btn-sm p-0 ms-5 text-decoration-none pg-log-copy"'
             . ' data-target="' . $message_id . '"'
-            . ' data-copy="' . h(lang('Copy')) . '"'
-            . ' data-copied="' . h(lang('Copied')) . '">'
-            . '<i class="bi bi-clipboard me-1"></i><span class="pg-log-copy-label">' . lang('Copy') . '</span></button>';
+            . '>'
+            . '<i class="bi bi-clipboard me-1" aria-hidden="true"></i><span class="pg-log-copy-label">' . lang('Copy') . '</span></button>'
+            . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>';
     }
 
     $classes = 'pg-log-msg text-break' . ($is_error ? ' pg-log-msg-code' : '') . ($is_long ? ' pg-log-clip' : '');

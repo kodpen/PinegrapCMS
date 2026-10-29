@@ -21,4 +21,4 @@ module: pdf_merge
 
 ## How does the merger work?
 - `includes/fn/pdf_merge.php`: dompdf cannot import PDFs and the free FPDI parser cannot read compressed xref streams, so it scans objects ("N G obj … endobj", stream data skipped by "endstream", later copies win), unpacks FlateDecode object streams (none with DecodeParms), drops xref streams, walks the page tree from the last `/Root`, renumbers each document after the previous one, gives every page the new tree as parent and copies inherited Resources, MediaBox, CropBox and Rotate onto it, and writes a classic xref table. Encrypted or page-less documents are skipped and reported by position.
-- Checked by `tests/pdf_merge_test.php` (hand-written files, object stream, nested tree, dompdf render) and once by `pdfinfo` and strict pypdf.
+- Checked by `tests/pdf_merge_test.php` (hand-written files, object stream, nested tree, dompdf render) and by `pdfinfo` and strict pypdf.
