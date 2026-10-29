@@ -188,12 +188,60 @@ function pg_tr_browser_pages_html()
         $rows .= '<div class="d-flex align-items-center gap-3 mt-1 flex-wrap">'
             . '<span class="badge badge-subtle theme-secondary fw-normal">' . h($page[0]) . '</span>'
             . '<code class="user-select-all">' . h($page[1]) . '</code>'
-            . '<button type="button" class="btn btn-sm btn-text theme-secondary btn-icon py-0 pg-tr-copy" data-copy="' . h($page[1]) . '" onclick="if (navigator.clipboard) { navigator.clipboard.writeText(this.getAttribute(\'data-copy\')); this.querySelector(\'i\').className = \'bi bi-clipboard-check\'; }" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
+            . '<button type="button" class="btn btn-sm btn-text theme-secondary btn-icon py-0 pg-tr-copy" data-copy="' . h($page[1]) . '" title="' . h(lang('Copy')) . '" aria-label="' . h(lang('Copy')) . '"><i class="bi bi-clipboard" aria-hidden="true"></i></button>'
             . '<span class="fg-secondary">' . h($page[2]) . '</span>'
             . '</div>';
     }
 
-    return '<div class="small mt-3">' . h(lang('Copy the address into the browser\'s address bar; browsers do not open these pages from a link.')) . $rows . '</div>';
+    // The status sits in the list itself, so it is heard inside the
+    // settings window too. The listener is bound once per page, also when
+    // the list arrives over Ajax.
+    return '<div class="small mt-3">' . h(lang('Copy the address into the browser\'s address bar; browsers do not open these pages from a link.')) . $rows
+        . '<span class="visually-hidden" role="status" aria-live="polite" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>'
+        . '<script>
+        (function () {
+            if (window.pgTrCopyBound) {
+                return;
+            }
+            window.pgTrCopyBound = true;
+            document.addEventListener("click", function (event) {
+                var button = event.target.closest ? event.target.closest(".pg-tr-copy") : null;
+                if (!button) {
+                    return;
+                }
+                var list = button.parentNode.parentNode;
+                var code = button.parentNode.querySelector("code");
+                var status = list.querySelector("[role=\'status\']");
+                var icon = button.querySelector("i");
+                var done = function () {
+                    icon.className = "bi bi-clipboard-check";
+                    status.textContent = status.getAttribute("data-copied");
+                    setTimeout(function () {
+                        icon.className = "bi bi-clipboard";
+                        status.textContent = "";
+                    }, 1500);
+                };
+                // Without the clipboard API, or when the write is refused,
+                // select the address and copy it the old way; when that fails
+                // too, leave it selected and say so.
+                var fallback = function () {
+                    var copied = false;
+                    window.getSelection().selectAllChildren(code);
+                    try { copied = document.execCommand("copy"); } catch (e) {}
+                    if (copied) {
+                        done();
+                    } else {
+                        status.textContent = status.getAttribute("data-refused");
+                    }
+                };
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(button.getAttribute("data-copy")).then(done, fallback);
+                    return;
+                }
+                fallback();
+            });
+        })();
+        </script></div>';
 }
 
 /* ---------------------------------------------------------------------------
