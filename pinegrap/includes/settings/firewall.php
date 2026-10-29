@@ -378,8 +378,8 @@ if (!empty($waf_country_ready)) {
                             <div class="form-text">' . lang('Off: a request no source can place is let in, so a missing location database never shuts the site.') . '</div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('Always let in') . '</label>' . $output_waf_country_exemptions . '
+                    <div class="col-12" role="group" aria-labelledby="waf_country_exempt_title">
+                        <div class="form-label" id="waf_country_exempt_title">' . lang('Always let in') . '</div>' . $output_waf_country_exemptions . '
                         <div class="form-text">' . lang('Allowed IP addresses, robots.txt, certificate renewal (.well-known) and the uptime check address (health.php) are always let in.') . '</div>
                     </div>' . $output_waf_country_check . '
                     <div class="col-12">' . pg_geo_settings_note() . '
