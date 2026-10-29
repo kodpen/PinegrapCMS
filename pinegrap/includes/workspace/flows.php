@@ -1304,13 +1304,14 @@ function ws_flow_start_graph($flow, $version)
 }
 
 /**
- * How each flow listed starts, its live version read for a published flow
- * and the draft for one never published, in two reads.
+ * The graph each flow listed starts from (ws_flow_start_graph()): its live
+ * version for a published flow, the draft for one never published, in two
+ * reads.
  *
  * @param array[] $rows ws_flows rows without draft
- * @return array flow id => ws_flow_start_kind()
+ * @return array flow id => graph
  */
-function ws_flows_start_kinds($rows)
+function ws_flows_start_graphs($rows)
 {
     $versions = array();
     $drafts = array();
@@ -1327,13 +1328,73 @@ function ws_flows_start_kinds($rows)
 
     if (!empty($versions)) {
         foreach ((array) db_items("SELECT id, graph FROM ws_flow_versions WHERE id IN (" . implode(',', array_keys($versions)) . ")") as $version) {
-            $out[$versions[(int) $version['id']]] = ws_flow_start_kind(ws_flow_graph_of(array('graph' => $version['graph'])));
+            $out[$versions[(int) $version['id']]] = ws_flow_graph_of(array('graph' => $version['graph']));
         }
     }
 
     if (!empty($drafts)) {
         foreach ((array) db_items("SELECT id, draft FROM ws_flows WHERE id IN (" . implode(',', $drafts) . ")") as $flow) {
-            $out[(int) $flow['id']] = ws_flow_start_kind(ws_flow_graph_of(array('draft' => $flow['draft'])));
+            $out[(int) $flow['id']] = ws_flow_graph_of(array('draft' => $flow['draft']));
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * How each flow listed starts.
+ *
+ * @param array[] $rows ws_flows rows without draft
+ * @return array flow id => ws_flow_start_kind()
+ */
+function ws_flows_start_kinds($rows)
+{
+    return array_map('ws_flow_start_kind', ws_flows_start_graphs($rows));
+}
+
+/**
+ * How each flow listed starts, as its kind and as the flow list's sentence.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_flows rows without draft
+ * @return array flow id => kind (ws_flow_start_kind()), text (ws_flow_start_sentence())
+ */
+function ws_flows_starts($viewer, $rows)
+{
+    $out = array();
+
+    foreach (ws_flows_start_graphs($rows) as $id => $graph) {
+        $out[$id] = array('kind' => ws_flow_start_kind($graph), 'text' => ws_flow_start_sentence($viewer, $graph));
+    }
+
+    return $out;
+}
+
+/**
+ * The names of the home channels of the flows listed that the person reads,
+ * in one read; a channel they do not read is not named.
+ *
+ * @param array   $viewer
+ * @param array[] $rows ws_flows rows
+ * @return array channel id => name
+ */
+function ws_flows_channel_names($viewer, $rows)
+{
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $id = (int) ($row['channel_id'] ?? 0);
+
+        if (($id > 0) && !isset($ids[$id]) && ws_flow_channel_readable($viewer, $id)) {
+            $ids[$id] = $id;
+        }
+    }
+
+    $out = array();
+
+    if (!empty($ids)) {
+        foreach ((array) db_items("SELECT id, name FROM ws_channels WHERE id IN (" . implode(',', $ids) . ")") as $channel) {
+            $out[(int) $channel['id']] = (string) $channel['name'];
         }
     }
 
@@ -1366,6 +1427,94 @@ function ws_flow_start_text($viewer, $graph, $readable = null)
     $text = (($start['rule'] !== null) && function_exists('ws_scheduled_rule_text')) ? ws_scheduled_rule_text($viewer, $start['rule']) : '';
 
     return ($text !== '') ? $text : $start['text'];
+}
+
+/**
+ * How a graph starts in the flow list's short words: a time box by its time
+ * alone ("Every day 09:00"), any other start as ws_flow_start_text() says
+ * it; '' when it has no start box.
+ *
+ * @param array         $viewer
+ * @param array         $graph
+ * @param callable|null $readable channel id => bool; ws_flow_channel_readable() when null
+ * @return string
+ */
+function ws_flow_start_sentence($viewer, $graph, $readable = null)
+{
+    $readable = ($readable !== null) ? $readable : function ($channel_id) use ($viewer) {
+        return ws_flow_channel_readable($viewer, $channel_id);
+    };
+    $start = ws_flow_start_rule($graph, $readable, function ($config) use ($viewer) {
+        return ws_flow_row_start_text($viewer, $config);
+    });
+
+    if ($start === null) {
+        return '';
+    }
+
+    $short = ($start['rule'] !== null) ? ws_flow_start_short($start['rule']) : '';
+
+    return ($short !== '') ? $short : (string) ws_flow_start_text($viewer, $graph, $readable);
+}
+
+/**
+ * A time rule in short words, without the day it runs from: "Every day
+ * 09:00", "Every Monday, Thursday 09:00"; a rule that runs once keeps its
+ * day. '' for a rule that is not a time. Pure.
+ *
+ * @param array $rule ws_flow_anchor_rule()
+ * @return string
+ */
+function ws_flow_start_short($rule)
+{
+    if ((($rule['type'] ?? '') !== 'at') || !isset($rule['date'], $rule['time'])) {
+        return '';
+    }
+
+    $at = strtotime($rule['date'] . ' ' . $rule['time'] . ':00');
+
+    if ($at === false) {
+        return '';
+    }
+
+    $time = (string) $rule['time'];
+    $every = max(1, (int) ($rule['every'] ?? 1));
+
+    switch ((string) ($rule['repeat'] ?? 'none')) {
+        case 'none':
+            return lang(array('string' => 'On {var:1} at {var:2}', 'vars' => array(date('d.m.Y', $at), $time)));
+
+        case 'minutes':
+            return lang(array('string' => 'Every {var:1} minutes', 'vars' => $every));
+
+        case 'hourly':
+            return ($every > 1) ? lang(array('string' => 'Every {var:1} hours', 'vars' => $every)) : lang('Every hour');
+
+        case 'daily':
+            return ($every > 1)
+                ? lang(array('string' => 'Every {var:1} days {var:2}', 'vars' => array($every, $time)))
+                : lang(array('string' => 'Every day {var:1}', 'vars' => $time));
+
+        case 'workdays':
+            return lang(array('string' => 'Every working day {var:1}', 'vars' => $time));
+
+        case 'weekly':
+            $days = ws_scheduled_days_text(!empty($rule['days']) ? $rule['days'] : array((int) date('N', $at)));
+
+            return ($every > 1)
+                ? lang(array('string' => 'Every {var:1} weeks on {var:2} {var:3}', 'vars' => array($every, $days, $time)))
+                : lang(array('string' => 'Every {var:1} {var:2}', 'vars' => array($days, $time)));
+
+        case 'monthly':
+            return ($every > 1)
+                ? lang(array('string' => 'Every {var:1} months on day {var:2} {var:3}', 'vars' => array($every, (int) date('j', $at), $time)))
+                : lang(array('string' => 'Every month on day {var:1} {var:2}', 'vars' => array((int) date('j', $at), $time)));
+
+        case 'yearly':
+            return lang(array('string' => 'Every year on {var:1} {var:2}', 'vars' => array(date('d.m', $at), $time)));
+    }
+
+    return '';
 }
 
 /**
@@ -2173,9 +2322,22 @@ function ws_flow_js_strings()
         'fl_list_mine'        => lang('My flows'),
         'fl_list_shared'      => lang('Shared with me and my channels'),
         'fl_none'             => lang('No flows yet.'),
-        'fl_none_start'       => lang('No flow starts this way.'),
-        'fl_start_filter'     => lang('How the flow starts'),
-        'fl_start_all'        => lang('Every start'),
+        'fl_list_search'      => lang('Search flows'),
+        'fl_list_filter'      => lang('Filter flows'),
+        'fl_list_back'        => lang('Back to the flow list'),
+        'fl_list_none_match'  => lang('No flow matches.'),
+        'fl_list_never'       => lang('Not run yet'),
+        'fl_list_no_start'    => lang('No start box yet'),
+        'fl_col_flow'         => lang('Flow'),
+        'fl_col_start'        => lang('How it starts'),
+        'fl_col_state'        => lang('State'),
+        'fl_col_channel'      => lang('Home channel'),
+        'fl_chip_all'         => lang('All'),
+        'fl_chip_time'        => lang('Time'),
+        'fl_chip_manual'      => lang('By hand'),
+        'fl_chip_event'       => lang('Event'),
+        'fl_chip_join'        => lang('Join'),
+        'fl_chip_draft'       => lang('Draft'),
         'fl_none_build'       => lang('No flows yet. "New flow" starts one: the box that starts it, the tasks that follow one another, the end.'),
         'fl_none_run'         => lang('No flows yet. A published flow of a channel you read, or a flow shared with you, appears here.'),
         'fl_not_ready'        => lang('The database has to be updated first.'),
