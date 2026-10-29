@@ -453,6 +453,7 @@ function get_custom_form_screen_content($properties) {
                     $wysiwyg_fields = array();
                     $date_fields = array();
                     $date_and_time_fields = array();
+                    $time_fields = array();
 
                     foreach ($fields as $field) {
                         $attributes = $form->get_field($field['id']);
@@ -541,6 +542,11 @@ function get_custom_form_screen_content($properties) {
 
                             case 'date and time':
                                 $date_and_time_fields[] = $field['id'];
+
+                                break;
+
+                            case 'time':
+                                $time_fields[] = $field['id'];
 
                                 break;
 
@@ -714,37 +720,16 @@ function get_custom_form_screen_content($properties) {
                         $system .= get_wysiwyg_editor_code($wysiwyg_fields);
                     }
 
-                    // If there is a date or date and time field, then prepare system content,
-                    // for the date/time picker.
-                    if ($date_fields || $date_and_time_fields) {
-                        if ($date_and_time_fields) {
-                            $system .= get_date_time_picker_format();
-                        }else{
-                            $system .= get_date_picker_format();
-                        }
-                        
-
-                        foreach ($date_fields as $date_field) {
-                            $system .=
-                                '<script>
-                                    software_$("#' . escape_javascript($date_field) . '").datepicker(datetimepicker_options);
-                                </script>';
-                        }
-
-                        // If there is a date and time field, then prepare JS for those.
-                        if ($date_and_time_fields) {
-                            // Include JS file for timepicker.
-                            $system .=
-                                '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                            foreach ($date_and_time_fields as $date_and_time_field) {
-                                $system .=
-                                    '<script>
-                                        software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker(datetimepicker_options);
-                                    </script>';
-                            }
-                        }
-                    }
+                    // Date, date and time, and time fields are drawn by the
+                    // date-and-time control, found by their ids: a custom
+                    // layout's markup is kept in the site's database and
+                    // carries no hook. The marker brings the control's
+                    // scripts (pg_site_datetime_inject()).
+                    $system .= pg_site_datetime_bind(array(
+                        'date' => $date_fields,
+                        'datetime' => $date_and_time_fields,
+                        'time' => $time_fields,
+                    ));
                     
                     // If a watcher page was selected and the visitor is logged in,
                     // and the watcher page still exists and is valid for watching,

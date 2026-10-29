@@ -4715,7 +4715,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                             'name' => 'publish_date_and_time',
                                             'maxlength' => '19',
                                             'size' => '21',
-                                            'class' => $cm_text . ($cm_bs ? ' form-control-sm d-inline-block w-auto' : ''))) . ' &nbsp; ' .
+                                            'class' => $cm_text . ($cm_bs ? ' form-control-sm d-inline-block w-auto' : ''),
+                                            'data-pg-datetime' => '')) . ' &nbsp; ' .
 
                                         $liveform->output_field(array(
                                             'type' => 'checkbox',
@@ -4726,8 +4727,6 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                                         '<label for="publish_cancel"> '.$publish_cancel_label.'</label>
                                     </span>
 
-                                    <script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                                    ' . get_date_picker_format() . '
                                     <script>software.init_add_comment_publish()</script>
                                 </div>';
                         }

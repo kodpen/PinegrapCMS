@@ -44,10 +44,9 @@ function test_panel_date_fields_form_preview_time_row()
 	pg_assert_true($start !== false, 'the time row is there');
 	$row = substr($source, $start, strpos($source, 'break;', $start) - $start);
 
-	pg_assert_contains("\$time_hook = array('data-pg-time' => '');", $row, 'the panel preview hooks the time row');
-	pg_assert_contains("\$picker_kinds['time'] = true;", $row, 'and asks for the picker scripts');
-	pg_assert_contains("if (\$interface == 'backend')", $row, 'only in the panel');
-	pg_assert_contains("+ \$time_hook", $row, 'the hook is printed on the field');
+	pg_assert_contains("'data-pg-time' => ''", $row, 'the time row is hooked, in the panel preview and on the site alike');
+	pg_assert_contains("\$picker_kinds['time'] = true;", $row, 'the panel preview asks for the picker scripts');
+	pg_assert_contains("if (\$interface == 'backend')", $row, 'only the panel prints them; a site page brings its own');
 	pg_assert_contains("'id' => \$html_field_name", $row, 'the box is named by an id like the other date rows');
 	pg_assert_contains('pg_form_info_picker_format($picker_kinds)', $source, 'the options follow the rows');
 }

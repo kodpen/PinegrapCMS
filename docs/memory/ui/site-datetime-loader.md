@@ -5,7 +5,7 @@ module: site_datetime
 ---
 
 ## When does a site page get the control?
-- When its HTML, after every shared component and system widget is drawn in, holds a date hook on an element: `data-pg-date`, `data-pg-datetime`, `data-pg-time` or `data-pg-date-selects` (`pg_site_datetime_pattern()`). `get_page_content.php` calls `pg_site_datetime_inject()` next to `pg_fx_inject()`; never in an e-mail. A page without a hook gets nothing (S1 of `plans/datetime-picker.md`).
+- When its HTML, after every shared component and system widget is drawn in, holds a date hook on an element: `data-pg-date`, `data-pg-datetime`, `data-pg-time`, `data-pg-date-selects`, or a bind marker `data-pg-date-bind` (`pg_site_datetime_pattern()`). `get_page_content.php` calls `pg_site_datetime_inject()` next to `pg_fx_inject()`; never in an e-mail. A page without a hook gets nothing (S1 of `plans/datetime-picker.md`).
 - Once a page: the stylesheet's id `pg-datetime-site-css` stops a second injection; a page that already printed the panel tags (`pg_fields_script()`, its `pg_datetime.js`) is left alone.
 
 ## What does it print?
@@ -17,8 +17,11 @@ module: site_datetime
 - `pg_fields.js` draws date kinds without `pgUI` or Bootstrap 6, as soon as the library has loaded; the popup stays under `<body>` (no overlay host). Chips and comboboxes are unchanged. A site page without the site tags keeps plain fields.
 - The theme follows the nearest `data-bs-theme` (`themeAttrDetect`), else the system: Bootstrap 5.3.8 sites set it on `<html>` (theme switcher).
 
-## What is left to the next steps?
-- S1 hooks no renderer: S2 (custom forms, form views, comments) and S3 (checkout) put the hooks on their fields and drop the jQuery UI calls; jQuery UI stays loaded on sites. Every field keeps posting what it posts today (`pg-date-stores.md`).
-- Tests: `tests/site_datetime_test.php` (pattern, inject on/off, options kept, the stylesheet's sha256), `tests/pg_fields_test.php` (`dp_site`).
+## Which site renderers are hooked?
+- S2 (#S2PR): `get_form_info()` date, date-and-time and time rows (site and panel alike; only the panel prints `picker_scripts`), form item view and form list view boxes, the comment publish time (classic `#publish_date_and_time`, widget `#comment_publish_date_and_time`). All keep site text (`26/10/2026 5:00 PM`, `5:00 PM`); time rows get the time row alone.
+- The custom form screen's inputs come from custom layouts kept in site databases, so it binds by id: `pg_site_datetime_bind(array('date' => ids, 'datetime' => ids, 'time' => ids))` prints `<span hidden data-pg-date-bind="{json}">`; `pg_fields.js` gives each `<input>` with such an id the hook of its kind before drawing (once; a hooked field keeps its own).
+- Comment publish focus goes through `software.focus_date_field()` (`frontend.src.js` and the hand-patched `frontend.min.js`, which terser cannot rebuild byte for byte): `pgFields.focus()` on the box.
+- Left: S3 (checkout) still loads jQuery UI and the timepicker add-on (`tests/bs6_timepicker_addon_test.php` lists those files); jQuery UI stays loaded on sites.
+- Tests: `tests/site_datetime_test.php` (pattern, inject on/off, bind marker, renderer hooks, the stylesheet's sha256), `tests/pg_fields_test.php` (`dp_site`, `dp_bind`).
 
 Related: docs/memory/ui/pg-field-wrappers.md, docs/memory/ui/pg-datepicker.md, docs/memory/core/vanilla-calendar-library.md

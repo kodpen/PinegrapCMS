@@ -1682,7 +1682,9 @@ function get_form_list_view($properties) {
                         // Use a text box for the field for various types of fields (e.g. text box, text area, email address)
                         default:
                             $maxlength = '';
-                            $output_date_time_picker = '';
+                            // Date, date and time, and time boxes are drawn by
+                            // the date-and-time control (pg_site_datetime_inject()).
+                            $date_hook = array();
 
                             // Prepare maxlength and date/time picker code based on the field type.
                             switch ($field['type']) {
@@ -1697,29 +1699,17 @@ function get_form_list_view($properties) {
 
                                 case 'date':
                                     $maxlength = '10';
-
-                                    $output_date_time_picker =
-                                        get_date_picker_format() . '
-                                        <script>
-                                            software_$("#' . $field['html_field_name'] . '").datepicker(datetimepicker_options);
-                                        </script>';
-
+                                    $date_hook = array('data-pg-date' => '');
                                     break;
 
                                 case 'date and time':
                                     $maxlength = '22';
-
-                                    $output_date_time_picker =
-                                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>
-                                        ' . get_date_time_picker_format() . '
-                                        <script>
-                                            software_$("#' . $field['html_field_name'] . '").datetimepicker(datetimepicker_options);
-                                        </script>';
-
+                                    $date_hook = array('data-pg-datetime' => '');
                                     break;
 
                                 case 'time':
                                     $maxlength = '11';
+                                    $date_hook = array('data-pg-time' => '');
                                     break;
                             }
 
@@ -1743,9 +1733,8 @@ function get_form_list_view($properties) {
                                 'name' => $field['html_field_name'],
                                 'size' => $field['size'],
                                 'maxlength' => $maxlength,
-                                'class' => $class)) .
-                                $output_help .
-                                $output_date_time_picker;
+                                'class' => $class) + $date_hook) .
+                                $output_help;
 
                             break;
                             
