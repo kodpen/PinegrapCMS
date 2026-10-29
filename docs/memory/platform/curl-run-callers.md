@@ -19,6 +19,6 @@ description: Which outgoing calls use pg_curl_run(), what moving each changed (V
 
 ## Which do not use it?
 - Not moved: the CA store probe in `pg_ca_bundle_config_state()` (the flag would hide the host's store); `url_exists()` (`core.php`, no caller); the location database and S3 backups (stream to or from a file); time-stamp authorities (often plain http).
-- Payments stay raw: `submit_order.php`'s 17 calls, 16 of them the six gateways frozen by `plans/payment-driver-layer.md` (2026-10-19), 1 classic PayPal Express DoExpressCheckoutPayment (kept, not frozen); `recurring_payment_job.php`'s 1 (Payments Pro).
+- Payments stay raw: `submit_order.php`'s 17 calls, 16 of them the six gateways frozen by `commerce/payment-driver-layer-decisions.md` (2026-10-19), 1 classic PayPal Express DoExpressCheckoutPayment (kept, not frozen); `recurring_payment_job.php`'s 1 (Payments Pro).
 
 Related: docs/memory/platform/curl-run-wrapper.md, docs/memory/platform/update-tls-verification.md

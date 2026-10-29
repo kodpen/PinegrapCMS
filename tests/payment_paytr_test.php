@@ -312,6 +312,40 @@ function test_payment_paytr_notify_completes_the_incomplete_order()
 	pg_assert_same('nothing', $outcome['status']);
 }
 
+// PayTR's notification of a payment in installments: total_amount carries
+// the difference the customer paid; the order completes for it only with
+// two or more installments.
+function test_payment_paytr_notify_installments()
+{
+	$order = array('id' => '42', 'status' => 'incomplete', 'transaction_id' => 'PG42T1761730000', 'payment_method' => 'PayTR', 'total' => '12350', 'paid_at' => 0);
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105', 'installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same(array(13105, 6), array($answer['amount'], $answer['installments']));
+	pg_assert_contains('of 131.05 TRY in 6 installments was taken', $answer['log'][0]);
+	$outcome = pg_payment_notify_outcome('paytr', $answer, $order, 'TRY');
+	pg_assert_same('complete', $outcome['status'], 'the customer paid the difference');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same('complete', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'the store paid the difference');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105', 'installment_count' => '1')), payment_paytr_test_settings()));
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'more in a single payment');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105')), payment_paytr_test_settings()));
+	pg_assert_same(0, $answer['installments']);
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'more, no installment count');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '12000', 'installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'less than the total');
+
+	foreach (array('' => 0, '0' => 0, '1' => 1, '12' => 12, '06' => 0, 'x' => 0) as $value => $count) {
+		pg_assert_same($count, pg_payment_paytr_installment_count(array('installment_count' => (string) $value)), 'installment_count "' . $value . '"');
+	}
+
+	$receive = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	pg_assert_contains("array('amount' => \$answer['amount'], 'installments' => \$answer['installments'])", $receive, 'the completion gets what was paid');
+}
+
 function test_payment_paytr_notify_failed_payment_is_ignored()
 {
 	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('status' => 'failed', 'total_amount' => '12350', 'failed_reason_msg' => 'Yetersiz bakiye')), payment_paytr_test_settings()));

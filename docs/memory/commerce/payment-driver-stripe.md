@@ -32,4 +32,4 @@ description: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24,
 ## How was it verified?
 - `tests/payment_stripe_test.php` (stand-in HTTP caller), `payment_stripe_webhook_test.php`, `payment_hosted_classic_test.php`; jsdom, fake Stripe.js; no real account.
 
-Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md
+Related: commerce/payment-drivers.md, commerce/payment-refunds.md, commerce/payment-driver-layer-decisions.md

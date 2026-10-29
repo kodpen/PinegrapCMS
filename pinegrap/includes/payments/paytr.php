@@ -554,16 +554,36 @@ function pg_payment_paytr_notify_with($body, $settings)
         return array('success' => false, 'error' => lang('This message is not used.'), 'reply' => 'OK', 'raw' => array('ignored' => true) + $raw);
     }
 
+    // total_amount is what the card was charged: the order's total, plus
+    // the installment difference when the PayTR Merchant Panel bills it to
+    // the customer.
+    $installments = pg_payment_paytr_installment_count($post);
+
     return array(
         'success'         => true,
         'status'          => 'paid',
         'transaction_id'  => $oid,
         'order_reference' => $oid,
         'amount'          => (int) $post['total_amount'],
+        'installments'    => $installments,
         'reply'           => 'OK',
-        'log'             => array('PayTR reports that payment ' . $oid . ' of ' . pg_payment_decimal((int) $post['total_amount']) . ' ' . $currency . ' was taken' . $test),
+        'log'             => array('PayTR reports that payment ' . $oid . ' of ' . pg_payment_decimal((int) $post['total_amount']) . ' ' . $currency . (($installments > 1) ? ' in ' . $installments . ' installments' : '') . ' was taken' . $test),
         'raw'             => $raw,
     );
+}
+
+/**
+ * The number of installments a PayTR notification reports
+ * (installment_count): 1 to 99, 0 when it carries none or another value.
+ *
+ * @param array $post the notification's fields
+ * @return int
+ */
+function pg_payment_paytr_installment_count($post)
+{
+    $count = (isset($post['installment_count']) && is_string($post['installment_count'])) ? $post['installment_count'] : '';
+
+    return (preg_match('/^[1-9][0-9]?$/', $count) === 1) ? (int) $count : 0;
 }
 
 /**

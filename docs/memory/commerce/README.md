@@ -123,8 +123,10 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - orders-table-columns.md: Real column names of orders and order_items (tax, shipping, user_id, order_date, no SKU column), optional columns, status enum, and the shape the external API returns for an order.
 - payment-callback.md: payment_callback.php?driver=<key> (PR #2143): what reaches notify(), how the order is found, what each answer does (alerts; records a pending payment), status codes, firewall entry
 - payment-driver-iyzico.md: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their submit_order.php branch, the 3-D Secure return in the card's complete() (PR #1710), no card refund under a protected currency, tests
+- payment-driver-layer-decisions.md: Decisions of the finished payment driver layer plan (2026-10-19 to #3070): drivers vs the frozen legacy six, ENUM appends, completion from a message, PayTR installments, next
 - payment-driver-paypal-webhook.md: PayPal Checkout's notify(): webhook_id, PayPal's verify-webhook-signature check, CAPTURE.COMPLETED records an order awaiting payment, DENIED alerts
 - payment-driver-paypal.md: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): redirect, capture in complete(), a PENDING capture placed awaiting payment, refund and cancel by capture id
+- payment-driver-paytr-installments.md: PayTR installments (decision #3057, PR #3070): the Most Installments setting, get-token fields, installment_count, the match rule and what the completion writes for a customer-paid difference
 - payment-driver-paytr-refund.md: PayTR refund API (PR #3055): the order screen's refund through /odeme/iade, the hash, decimal return_amount, our reference_no, refusal vs unclear answers
 - payment-driver-paytr.md: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed page, the server callback with OK completes the incomplete order; CSP; limits
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
