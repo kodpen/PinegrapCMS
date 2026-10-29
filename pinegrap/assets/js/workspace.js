@@ -17789,7 +17789,12 @@
                             }
 
                             var item = el('div', 'ws-cal-event ws-kind-' + event.kind, (event.time ? event.time + ' ' : '') + event.title);
-                            item.title = event.title + (event.people && event.people.length ? ' · ' + peopleNames(event.people) : '');
+                            item.title = event.title + (event.people && event.people.length ? ' · ' + peopleNames(event.people) : '') + (event.layer ? ' · ' + event.layer : '');
+
+                            // An event from the reader's own calendar: read-only, theirs alone.
+                            if (event.readonly) {
+                                item.insertBefore(icon('bi-calendar2-heart', 'me-1'), item.firstChild);
+                            }
 
                             if (event.meeting_url) {
                                 item.insertBefore(icon('bi-camera-video', 'me-1'), item.firstChild);
@@ -17945,7 +17950,7 @@
 
                     var main = el('div', 'ws-grow');
                     main.appendChild(el('div', 'ws-row-title', (event.time ? event.time + ' · ' : '') + event.title));
-                    main.appendChild(el('div', 'ws-row-sub', (CFG.event_kinds[event.kind] || '') + (event.people.length ? ' · ' + peopleNames(event.people) : '')));
+                    main.appendChild(el('div', 'ws-row-sub', event.readonly ? event.layer : (CFG.event_kinds[event.kind] || '') + (event.people.length ? ' · ' + peopleNames(event.people) : '')));
                     row.appendChild(main);
 
                     if (event.meeting_url) {
@@ -17965,8 +17970,12 @@
                         }).catch(fail);
                     }
 
-                    row.addEventListener('click', openPlanItem);
-                    pressKeys(row, openPlanItem);
+                    // The reader's own calendar has no plan item behind it to open.
+                    if (!event.readonly) {
+                        row.addEventListener('click', openPlanItem);
+                        pressKeys(row, openPlanItem);
+                    }
+
                     events.appendChild(row);
                 });
             }
