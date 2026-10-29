@@ -154,7 +154,7 @@ foreach ($accounts as $account) {
     // orders come from.
     $contact_id = (int) ($account['contact_id'] ?? 0);
     $output_contact = ($contact_id > 0)
-        ? '<a href="edit_contact.php?id=' . $contact_id . '" class="pg-link-body-emphasis" title="' . h(lang('Contact')) . '"><i class="bi bi-person-check"></i></a>'
+        ? '<a href="edit_contact.php?id=' . $contact_id . '" class="pg-link-body-emphasis d-inline-flex align-items-center justify-content-center p-1" style="min-width:1.5rem;min-height:1.5rem" title="' . h(lang('Contact')) . '" aria-label="' . h(lang('Contact')) . '"><i class="bi bi-person-check" aria-hidden="true"></i></a>'
         : '<span class="fg-secondary" title="' . h(lang('No contact is linked to this account.')) . '">—</span>';
 
     $output_rows .=
