@@ -88,6 +88,13 @@ function test_content_edit_names_menu_effect_group()
 	pg_assert_contains('role="radiogroup" aria-labelledby="effect_label"', $source, 'Submenu Effect group');
 	pg_assert_contains('id="effect_label"', $source, 'Submenu Effect heading');
 	pg_assert_false(strpos($source, 'alt="img"') !== false, 'menu effect pictures read as img');
+	// The opaque light pictures are inverted in the dark theme and drawn at
+	// their own width.
+	pg_assert_contains('html[data-bs-theme="dark"] .pg-menu-effect-picture { filter: invert(1); }', $source, 'menu effect pictures in the dark theme');
+	pg_assert_same(3, substr_count($source, 'class="pg-menu-effect-picture"'), 'every menu effect picture carries the class');
+	pg_assert_contains('menu_effect_popup.png" width="71" height="75" alt=""', $source, 'popup picture size');
+	pg_assert_contains('menu_effect_accordion.png" width="56" height="75" alt=""', $source, 'accordion picture size');
+	pg_assert_contains('menu_effect_none.png" width="56" height="75" alt=""', $source, 'none picture size');
 }
 
 function test_content_edit_names_code_fields_named()
