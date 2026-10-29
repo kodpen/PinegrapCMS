@@ -26,4 +26,4 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - No new kinds now; `/görev` stays its own command (`workflow/decisions-made-workspace-2.md`).
 
 ## Where to start?
-- S4. Read `workspace/README.md` key rules, workspace-bulk-sources.md, workspace-create-commands.md.
+- S4 (in progress). Read `workspace/README.md` key rules, workspace-bulk-sources.md, workspace-create-commands.md.
