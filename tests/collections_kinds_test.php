@@ -47,7 +47,8 @@ function test_collections_field_kind()
 	pg_assert_same('page', pg_coll_field_kind('page', 'pick list'));
 	pg_assert_same('', pg_coll_field_kind('product', 'text box'), 'a product is picked from a list');
 	pg_assert_same('', pg_coll_field_kind('page', 'radio button'));
-	pg_assert_same('', pg_coll_field_kind('slug', 'text box'), 'not a kind (yet)');
+	pg_assert_same('slug', pg_coll_field_kind('slug', 'text box'));
+	pg_assert_same('', pg_coll_field_kind('slug', 'text area'), 'a slug is one line');
 	pg_assert_same('', pg_coll_field_kind(array('number'), 'text box'), 'not a string');
 	pg_assert_same('', pg_coll_field_kind('', 'text box'));
 }
