@@ -839,12 +839,22 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                                         </div>';
         }
 
+        // Forms whose record pages have neither a media field nor a share
+        // image field share this picture on every record page.
+        $og_default_forms_notice = '';
+        $og_default_forms = pg_record_forms_sharing_default_image();
+
+        if ($og_default_forms) {
+            $og_default_forms_notice = '
+                                            <div class="form-text fg-warning"><span class="bi bi-exclamation-triangle-fill me-1"></span>' . lang(array('string' => 'The record pages of these forms have no media field and share this picture: {var:1}. Choose a Share Image Field in their form settings.', 'vars' => array(h(implode(', ', $og_default_forms))))) . '</div>';
+        }
+
         $output_share_image_pickers = '
                                         <div id="pgsub-social" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Social Sharing') . '</h6></div>
                                         <div class="pg-f-md">
                                             <label for="og_default_image" class="form-label">' . lang('Default Share Image') . '</label>
                                             <select name="og_default_image" id="og_default_image" class="form-control">' . $og_image_options . '</select>
-                                            <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>
+                                            <div class="form-text">' . lang('Used as the social share picture for pages that do not have one of their own.') . '</div>' . $og_default_forms_notice . '
                                         </div>
                                         <div class="pg-f-md">
                                             <label for="organization_logo" class="form-label">' . lang('Organization Logo') . '</label>

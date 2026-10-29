@@ -19,6 +19,8 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+
 function pg_test_share_image_fields()
 {
 	return array(
@@ -114,4 +116,28 @@ function test_record_share_image_resolver_reads_the_sources()
 	$rich   = strpos($body, 'pg_first_image_url_from_html($data)');
 	pg_assert_true($upload !== false && $stop !== false && $rich !== false, 'the three steps are there');
 	pg_assert_true($upload < $stop && $stop < $rich, 'the upload, then the file-only stop, then the media value');
+}
+
+// A designed record page names its form by custom_form_page_id, then
+// form_page_id, as the widget renderer reads it; nothing named is 0.
+function test_record_share_image_widget_form_page_id()
+{
+	pg_assert_same(290, pg_record_widget_form_page_id(array('regionType' => 'form_item_view', 'custom_form_page_id' => '290', 'form_page_id' => 12)));
+	pg_assert_same(12, pg_record_widget_form_page_id(array('custom_form_page_id' => 0, 'form_page_id' => 12)));
+	pg_assert_same(0, pg_record_widget_form_page_id(array('regionType' => 'form_item_view')));
+	pg_assert_same(0, pg_record_widget_form_page_id(array('source_page' => array('x'))));
+	pg_assert_same(0, pg_record_widget_form_page_id(null));
+}
+
+// The panel stores only a file field of the form being edited, read back
+// from the database: a posted id is never written as it came.
+function test_record_share_image_panel_value_checks_the_field()
+{
+	pg_assert_same(0, pg_page_form_share_image_value('0', 290));
+	pg_assert_same(0, pg_page_form_share_image_value('-4', 290));
+	pg_assert_same(0, pg_page_form_share_image_value('268', 0));
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/page_form.php');
+	pg_assert_contains("\$properties['share_image_field_id'] = pg_page_form_share_image_value(\$field('custom_form_share_image_field_id'), \$page_id);", $form);
+	pg_assert_contains("AND (type = 'file upload')", $form);
 }
