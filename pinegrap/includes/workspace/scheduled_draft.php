@@ -24,13 +24,14 @@
  * In a channel Pinegrap AI (ai.php) hands the sentence to
  * propose_scheduled_action, the draft is made in a model call of its own
  * before the conversation goes on (ws_scheduled_draft_ai_step()),
- * and it waits under the answer as a proposal - a ws_ai_changes row of
- * record_type 'scheduled', action 'draft', the draft in its snapshot - on the
- * same card as the record changes (changes.php). Like 'mcp_call' it is not
- * one of ws_change_types(): it is not applied, the person who asked opens
- * it as a new flow on the Flows canvas (ws_scheduled_draft_flow_open()) and
- * publishes it there, and the card says so. Only they see its steps on the
- * card: a draft may name a channel the others there do not read.
+ * and it waits under the answer as the flow it becomes - a ws_ai_changes row
+ * of record_type 'flow', action 'draft', as an application's proposed flow
+ * (flow_draft.php) - on the same card as the record changes (changes.php).
+ * It is not applied: the person who asked opens it as a new flow on the
+ * Flows canvas (ws_flow_draft_open()) and publishes it there. Only they see
+ * its steps on the card: a draft may name a channel the others there do not
+ * read. Rows of record_type 'scheduled' made before still open as a new
+ * flow (ws_scheduled_draft_flow_open()).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -841,23 +842,24 @@ function ws_scheduled_draft_ai_propose($row, &$state, $args)
 
     // The draft takes a model call of its own, and the answer one more.
     if ((int) ($row['ai_steps'] ?? 0) > WS_AI_MAX_STEPS - 3) {
-        return array('error' => 'There is no time left to draft it. Answer that it can be set up in the scheduled action form, with + in the channel.');
+        return array('error' => 'There is no time left to draft it. Answer that it can be built by hand as a flow on the Flows canvas.');
     }
 
     $state['scheduled_todo'][] = $sentence;
 
     return array(
         'ok'   => true,
-        'note' => 'Not drafted yet: the form is filled in from this sentence before your next turn, and you are told how it came out. Call answer only after that.',
+        'note' => 'Not drafted yet: the flow is drafted from this sentence before your next turn, and you are told how it came out. Call answer only after that.',
     );
 }
 
 /**
  * One step of a request that drafts the scheduled action it asked for: the
  * model call of ws_scheduled_draft(), with the rights of the person who
- * asked and the request's channel as the form's, in place of the
- * conversation's own call. The draft joins the proposals the answer
- * carries, and the conversation is told how it came out.
+ * asked and the request's channel as the draft's, in place of the
+ * conversation's own call. The draft, as the flow draft card it becomes
+ * (ws_scheduled_draft_flow_row()), joins the proposals the answer carries,
+ * and the conversation is told how it came out.
  *
  * @param array $row   the request
  * @param array $state the conversation
@@ -873,7 +875,15 @@ function ws_scheduled_draft_ai_step($row, $state, $steps)
         : array('ok' => false, 'error' => lang('The person who asked is no longer a member of the workspace.'), 'data' => null, 'notes' => array());
 
     if ($result['ok']) {
-        $state['proposals']['scheduled'][] = array('sentence' => $sentence, 'data' => $result['data'], 'notes' => $result['notes']);
+        $made = ws_scheduled_draft_flow_row($asker, $result['data'], (int) $row['channel_id'], $result['notes']);
+
+        if (!$made['ok']) {
+            $result = array('ok' => false, 'error' => $made['error']);
+        }
+    }
+
+    if ($result['ok']) {
+        $state['proposals']['scheduled'][] = $made['row'];
 
         $outline = ws_scheduled_draft_outline($asker, $result['data'], (int) $row['channel_id']);
         $steps_said = array();
@@ -882,7 +892,7 @@ function ws_scheduled_draft_ai_step($row, $state, $steps)
             $steps_said[] = $line['label'] . ': ' . $line['text'];
         }
 
-        $open = $result['notes'];
+        $open = $made['row']['snapshot']['notes'];
 
         if ($outline['problem'] !== '') {
             $open[] = $outline['problem'];
@@ -890,11 +900,11 @@ function ws_scheduled_draft_ai_step($row, $state, $steps)
 
         $told = 'The scheduled action was drafted from "' . $sentence . '" and waits under your answer: '
             . json_encode(array('name' => (string) $result['data']['name'], 'steps' => $steps_said, 'left_open' => $open), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
-            . ' Nothing is scheduled until ' . ws_person_name($asker['id']) . ' opens it in its form, completes what is left open and saves it.'
+            . ' Nothing runs until ' . ws_person_name($asker['id']) . ' opens it as a flow on the Flows canvas, completes what is left open and publishes it.'
             . ' In your answer say that in a sentence or two, with what is left open; the steps are shown on the draft, so do not list them all.';
     } else {
         $told = 'The scheduled action "' . $sentence . '" could not be drafted: ' . $result['error']
-            . ' Say so in your answer: it can still be set up by hand in the scheduled action form, with + in the channel.';
+            . ' Say so in your answer: it can still be built by hand as a flow on the Flows canvas.';
     }
 
     $state['messages'][] = array('role' => 'user', 'content' => $told);
@@ -954,35 +964,43 @@ function ws_scheduled_draft_outline($viewer, $data, $channel_id)
 }
 
 /**
- * Puts the scheduled actions an answer drafted under it, as proposals on the
- * card (changes.php): one ws_ai_changes row each, the draft in its snapshot.
+ * Puts the scheduled actions an answer drafted under it, as flow draft cards
+ * (changes.php): one ws_ai_changes row each, as ws_scheduled_draft_flow_row()
+ * made it.
  *
  * @param array   $row        the request
  * @param int     $message_id the answer
- * @param array[] $drafts     sentence, data, notes
+ * @param array[] $drafts     the rows of ws_scheduled_draft_flow_row()
  */
 function ws_scheduled_draft_ai_store($row, $message_id, $drafts)
 {
-    $rows = array();
-
-    foreach (array_slice(array_values((array) $drafts), 0, WS_SCHEDULED_DRAFT_PER_ANSWER) as $draft) {
-        if (!is_array($draft) || !is_array($draft['data'] ?? null)) {
-            continue;
-        }
-
-        $rows[] = array(
-            'type'      => 'scheduled',
-            'action'    => 'draft',
-            'record_id' => 0,
-            'fields'    => array(),
-            'reason'    => '',
-            'snapshot'  => array('sentence' => (string) ($draft['sentence'] ?? ''), 'data' => $draft['data'], 'notes' => array_values((array) ($draft['notes'] ?? array()))),
-        );
-    }
+    $rows = ws_scheduled_draft_ai_rows($drafts);
 
     if (!empty($rows) && function_exists('ws_changes_store')) {
         ws_changes_store($row, (int) $message_id, $rows);
     }
+}
+
+/**
+ * The rows an answer keeps of the scheduled actions it drafted (pure): flow
+ * draft cards only, at most WS_SCHEDULED_DRAFT_PER_ANSWER. A draft held in
+ * the older shape (sentence, data, notes) by a request asked before an
+ * upgrade is left out: nothing opens it in a form any more.
+ *
+ * @param mixed $drafts
+ * @return array[]
+ */
+function ws_scheduled_draft_ai_rows($drafts)
+{
+    $rows = array();
+
+    foreach (array_values((array) $drafts) as $draft) {
+        if (is_array($draft) && (($draft['type'] ?? '') === 'flow') && is_array($draft['snapshot'] ?? null)) {
+            $rows[] = $draft;
+        }
+    }
+
+    return array_slice($rows, 0, WS_SCHEDULED_DRAFT_PER_ANSWER);
 }
 
 // ─── Proposed by an application ─────────────────────────────────────────
@@ -1094,15 +1112,32 @@ function ws_scheduled_draft_proposal_row($asker_id, $change, $channel_id)
     // The flow is made from what the check read, in the shape the form opens
     // a saved action in (ws_scheduled_form_data()): a record named by its own
     // name, money in minor units, the addresses as a list. Nothing else the
-    // application sent reaches the flow. A flow lives only in a public or
-    // private channel the person reads, else it has no home.
-    $here = ws_channel($input['channel_id']);
+    // application sent reaches the flow.
+    return ws_scheduled_draft_flow_row($viewer, ws_scheduled_form_data($viewer, $checked['row']), $input['channel_id'], $input['notes']);
+}
+
+/**
+ * A scheduled action as the row of a flow draft card: the flow it becomes
+ * (ws_scheduled_draft_flow_snapshot()), rehearsed as POST /workspace/flows
+ * rehearses one (ws_flow_save_check(): flow limit, name, home), its name and
+ * graph as the check kept them. A flow lives only in a public or private
+ * channel the person reads, else it has no home.
+ *
+ * @param array    $viewer     the person it is drafted for
+ * @param array    $data       the action as the form reads it
+ * @param int      $channel_id the channel it is drafted for
+ * @param string[] $notes
+ * @return array ok, error, row
+ */
+function ws_scheduled_draft_flow_row($viewer, $data, $channel_id, $notes)
+{
+    $here = ws_channel((int) $channel_id);
     $home = ($here && in_array((string) $here['kind'], array('public', 'private'), true) && ws_can_read_channel($viewer, $here)) ? (int) $here['id'] : 0;
-    $snapshot = ws_scheduled_draft_flow_snapshot(ws_scheduled_form_data($viewer, $checked['row']), $home, $input['notes'], ws_scheduled_money_metrics());
+    $snapshot = ws_scheduled_draft_flow_snapshot($data, $home, $notes, ws_scheduled_money_metrics());
     $flow = ws_flow_save_check($viewer, $snapshot['data']);
 
     if (!$flow['ok']) {
-        return $fail(($flow['field'] !== '') ? $flow['field'] . ': ' . $flow['error'] : $flow['error']);
+        return array('ok' => false, 'error' => ($flow['field'] !== '') ? $flow['field'] . ': ' . $flow['error'] : $flow['error'], 'row' => null);
     }
 
     $snapshot['data']['name'] = $flow['sets']['name'];
@@ -1143,8 +1178,8 @@ function ws_scheduled_draft_flow_snapshot($data, $home, $notes, $money)
 }
 
 /**
- * The channel a draft opens its form in: the one an application's proposal
- * named (its snapshot), else the channel of its card.
+ * The home of the flow an older scheduled draft opens as: the channel an
+ * application's proposal named (its snapshot), else the channel of its card.
  *
  * @param array $row   ws_ai_changes
  * @param array $draft its snapshot, decoded
@@ -1156,9 +1191,9 @@ function ws_scheduled_draft_home($row, $draft)
 }
 
 /**
- * A drafted scheduled action on the card under the answer, as
- * ws_changes_map() draws a change. Only the person who asked sees its name,
- * its steps and what it leaves open, and only they open it in the form.
+ * A scheduled draft kept before drafts became flow cards, on the card under
+ * the answer, as ws_changes_map() draws a change. Only the person who asked sees its name,
+ * its steps and what it leaves open, and only they open it as a new flow.
  *
  * @param array $viewer
  * @param array $row      ws_ai_changes

@@ -23,7 +23,7 @@ description: Plan (owner request 2026-10-27, draft): flows started from a channe
 
 - C5a remove the scheduled-actions routes, their MCP tools, tests and the parity table's `api_routes` lines; rewrite workspace/workspace-scheduled-actions-api.md — done, #2107. The draft card's texts no longer name the removed route.
 
-- C5b the `scheduled` proposal type becomes a flow draft card — done, #2852. `?start=` on `GET /workspace/flows` was already there (A1, #2122). Left for a PR that may touch ai.php: Pinegrap AI's `propose_scheduled_action` still keeps scheduled cards, and its prompt line and tool text still say the person "opens it in its form and saves it".
+- C5b the `scheduled` proposal type becomes a flow draft card — done, #2852. `?start=` on `GET /workspace/flows` was already there (A1, #2122). Leftover done, #3004: Pinegrap AI's `propose_scheduled_action` keeps its drafts as flow draft cards and its texts name the Flows canvas (`workspace/workspace-scheduled-draft-proposals.md`).
 
 - C6 every scheduled action becomes a flow in the 2026.11.0 upgrade, none left read-only; then the scheduled-action form goes. The work is merge plan slice 5: the mark on converted rows approved (#2396), 5a done (#2558).
 

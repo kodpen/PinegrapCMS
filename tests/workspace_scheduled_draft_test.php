@@ -276,8 +276,8 @@ function test_workspace_scheduled_draft_ai_offered_only_in_a_channel()
 	pg_assert_false(ws_scheduled_draft_ai_offered(array('channel_id' => 3), null), 'nobody asked');
 }
 
-// An answer that only drafts a scheduled action says it waits in the form,
-// not that something is applied.
+// An answer that only drafts a scheduled action says it waits as a flow to
+// open and publish, not that something is applied.
 function test_workspace_scheduled_draft_ai_words()
 {
 	$drafts = array('proposals' => array('scheduled' => array(array('data' => array()))));
@@ -286,9 +286,10 @@ function test_workspace_scheduled_draft_ai_words()
 	pg_assert_true(ws_ai_only_drafts($drafts), 'only a draft');
 	pg_assert_false(ws_ai_only_drafts($mixed), 'a task beside it');
 	pg_assert_false(ws_ai_only_drafts(array('proposals' => array())), 'nothing proposed');
-	pg_assert_same(lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.'), ws_ai_proposed_line($drafts), 'the words for a draft');
+	pg_assert_same(lang('I drafted the flow below. Nothing runs until you open it and publish it.'), ws_ai_proposed_line($drafts), 'the words for a draft');
 	pg_assert_same(lang('I propose it below. Nothing is changed until you press Apply under it.'), ws_ai_proposed_line($mixed), 'the words for the rest');
-	pg_assert_same(lang('I drafted it below. Nothing is scheduled until you open it in the form and save it.'), ws_ai_proposed_words('Ayarladım.', $drafts), 'a short "I set it up" replaced');
+	pg_assert_same(lang('I drafted the flow below. Nothing runs until you open it and publish it.'), ws_ai_proposed_words('Ayarladım.', $drafts), 'a short "I set it up" replaced');
+	pg_assert_same(rtrim(str_repeat('Ayarladım. ', 30)) . "\n\n" . lang('Nothing runs until you open the flow and publish it.'), ws_ai_proposed_words(str_repeat('Ayarladım. ', 30), $drafts), 'a long one gets the flow line');
 }
 
 // A morning summary: what each person missed rides on the task e-mail, and
@@ -363,9 +364,33 @@ function test_workspace_scheduled_draft_proposal_row_rehearses_the_save()
 	pg_assert_contains('ws_scheduled_draft_proposal_input(', $code, 'the body read first');
 	pg_assert_contains('ws_scheduled_save_check(', $code, 'the save rehearsed');
 	pg_assert_false(strpos($code, 'ws_scheduled_save(') !== false, 'nothing saved');
-	pg_assert_contains('ws_flow_save_check(', $code, 'the flow it becomes rehearsed');
-	pg_assert_contains("'type' => 'flow'", preg_replace('/\s+/', ' ', $code), 'kept as a flow draft');
+	pg_assert_contains('ws_scheduled_draft_flow_row(', $code, 'kept as the flow it becomes');
 	pg_assert_false(strpos($code, "'scheduled'") !== false, 'not as a scheduled draft');
+
+	$row = workspace_scheduled_draft_test_code('ws_scheduled_draft_flow_row');
+
+	pg_assert_contains('ws_flow_save_check(', $row, 'the flow it becomes rehearsed');
+	pg_assert_contains("'type' => 'flow'", $row, 'kept as a flow draft');
+	pg_assert_false(strpos($row, "'scheduled'") !== false, 'not as a scheduled draft');
+}
+
+// Pinegrap AI's draft becomes a flow draft card in its step, so the model is
+// told of a refused flow; the answer keeps flow cards only.
+function test_workspace_scheduled_draft_ai_keeps_flow_cards()
+{
+	$step = workspace_scheduled_draft_test_code('ws_scheduled_draft_ai_step');
+
+	pg_assert_contains("ws_scheduled_draft_flow_row(\$asker, \$result['data']", $step, 'the draft made a flow card');
+	pg_assert_contains("\$state['proposals']['scheduled'][] = \$made['row']", $step, 'the card kept for the answer');
+	pg_assert_false(strpos($step, 'form') !== false, 'the model is not sent to the retired form');
+	pg_assert_false(strpos(workspace_scheduled_draft_test_code('ws_scheduled_draft_ai_store'), "'scheduled'") !== false, 'no scheduled card written');
+
+	$card = array('type' => 'flow', 'action' => 'draft', 'record_id' => 0, 'fields' => array(), 'reason' => '', 'snapshot' => array('data' => array('name' => 'A')));
+	$old = array('sentence' => 'every Monday', 'data' => array('name' => 'B'), 'notes' => array());
+
+	pg_assert_same(array($card), ws_scheduled_draft_ai_rows(array($old, $card)), 'an older draft left out');
+	pg_assert_same(array($card, $card), ws_scheduled_draft_ai_rows(array($card, $card, $card)), 'at most two');
+	pg_assert_same(array(), ws_scheduled_draft_ai_rows(null), 'none');
 }
 
 // The code of a loaded function without its comments and with its runs of
@@ -498,7 +523,7 @@ function test_workspace_scheduled_draft_proposal_keeps_the_checked_form_data()
 {
 	$code = workspace_scheduled_draft_test_code('ws_scheduled_draft_proposal_row');
 
-	pg_assert_contains("ws_scheduled_draft_flow_snapshot(ws_scheduled_form_data(\$viewer, \$checked['row'])", $code, 'the flow is made from the checked action as the form opens a saved one');
+	pg_assert_contains("ws_scheduled_draft_flow_row(\$viewer, ws_scheduled_form_data(\$viewer, \$checked['row'])", $code, 'the flow is made from the checked action as the form opens a saved one');
 	pg_assert_false(strpos($code, "'data' => \$input['data']") !== false, 'not the body as it was sent');
 
 	$result = workspace_scheduled_draft_test_kept_alone(array(

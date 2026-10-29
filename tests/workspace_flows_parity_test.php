@@ -2532,8 +2532,7 @@ function workspace_flows_parity_table()
 			array(array('route ws_scheduled_messages', 'panel ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'panel ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'panel ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'panel ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
 		),
 		'ai_drafts' => array(
-			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas; until then Pinegrap AI drafts into the form, opened by @ai draft Open'),
-			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas: Pinegrap AI\'s drafts kept under its answer'),
+			array(array('tool propose_scheduled_action', 'offered propose_scheduled_action', 'handled propose_scheduled_action'), 4, 'AI drafts on the canvas: Pinegrap AI drafts a scheduled action from a sentence and keeps it under its answer as a flow draft card (ws_scheduled_draft_ai_step(), C5b)'),
 			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas: a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
 			array(array('draft kind scheduled in ws_scheduled_draft_flow_open'), 4, 'AI drafts on the canvas (4c2): a draft card opens as a new flow (ws_flow_graph_from_scheduled()) and is marked applied with the flow'),
