@@ -646,6 +646,7 @@
     "Whether backorder is allowed": "Ön sipariş açık mı",
     "Whether it answers": "Yanıt verip vermediği",
     "Whether it has variants (select type)": "Varyantlı mı (select tipi)",
+    "Whether it is a bundle (1/0)": "Paket olup olmadığı (1/0)",
     "Whether it is a donation row (1 / empty) — an amount is entered instead of a quantity": "Bağış satırı mı (1 / boş) — adet yerine tutar girilir",
     "Whether it is a recurring row (1 / empty)": "Yinelenen satır mı (1 / boş)",
     "Whether it is featured": "Öne çıkan mı",

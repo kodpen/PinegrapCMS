@@ -14033,6 +14033,7 @@ const StyleDesigner = (function () {
         // Search results — products only; empty for pages.
         '__result_price': 1,
         '__discount_amount': 1, '__discount_amount_formatted': 1,
+        '__bundle_saving_formatted': 1,
         // Cart totals — shared with express_order, which renders the same
         // cart and so uses the same names.
         '__cart_subtotal': 1, '__cart_tax': 1, '__cart_shipping': 1,
@@ -22839,6 +22840,7 @@ const StyleDesigner = (function () {
                 { label: _sdT('Images of the product'), type: 'loop_area', icon: 'bi-images', extra: { listSource: 'product.images' } },
                 { label: _sdT('Attributes of the product'), type: 'loop_area', icon: 'bi-card-list', extra: { listSource: 'product.attributes' } },
                 { label: _sdT('Products bought together'), type: 'loop_area', icon: 'bi-bag', extra: { listSource: 'product.related' } },
+                { label: _sdT('Contents of the bundle'), type: 'loop_area', icon: 'bi-box-seam', extra: { listSource: 'product.bundle_items' } },
                 { label: _sdT('Crumbs of the catalog path'), type: 'loop_area', icon: 'bi-signpost-split', extra: { listSource: 'catalog.crumbs' } },
                 { label: _sdT('Active attribute filters'), type: 'loop_area', icon: 'bi-funnel', extra: { listSource: 'catalog.active_filters' } },
                 { label: _sdT('Month grid'), type: 'loop_area', icon: 'bi-calendar3', extra: { listSource: 'calendar.weeks' } },
@@ -33152,6 +33154,7 @@ const StyleDesigner = (function () {
             'product.images':     _sdT('One row for every image of the product, its main image first. Bind a picture to "Image address" in Bind Data. A variant picked on the page does not change the list.'),
             'product.attributes': _sdT('One row for every attribute the product has a value for, such as its colour or size. Bind the row\'s elements to "Attribute" and "Attribute value" in Bind Data.'),
             'product.related':    _sdT('One row for every product ordered together with this one, else for the products of its groups, at most 12. With this list on the page the automatic "Frequently bought together" block is not added.'),
+            'product.bundle_items': _sdT('One row for every product the bundle holds, in its order; nothing for a product that is not a bundle. Bind the row\'s elements to "Product name", "Quantity in the bundle" or "Product address" in Bind Data.'),
             'catalog.crumbs':     _sdT('One row for every crumb of the path to what the page shows: the catalog, its groups, then the group or product itself. A condition on "Kind of crumb" draws a link, words, or where the visitor is.'),
             'catalog.active_filters': _sdT('One row for every attribute filter the visitor applied, such as "Colour: Red". Bind a link to "Address without the filter": it opens the listing without that filter. With this list on the page the automatic chip row above the products is not added.'),
             'calendar.weekdays':  _sdT('One row for every day of the week, in the widget\'s week order: the heads of a month grid. Bind the row\'s elements to "Day name" or "Short day name" in Bind Data.'),
@@ -39410,6 +39413,12 @@ const StyleDesigner = (function () {
             ['__rating_avg',    _sdT('Average rating (verified reviews)')],
             ['__rating_count',  _sdT('Number of verified reviews')]
         ]},
+        // The "Show only when" flags is_bundle / has_bundle_saving follow
+        // the same values; the contents are the product.bundle_items list.
+        { label: _sdT('Bundle'), tokens: [
+            ['__is_bundle',               _sdT('Whether it is a bundle (1/0)')],
+            ['__bundle_saving_formatted', _sdT('Saving against the bundle\'s products bought one by one (with symbol)')]
+        ]},
         { label: _sdT('Filter State'), tokens: [
             ['__attribute_filters_html', _sdT('Attribute filter UI HTML (legacy)')],
             ['__has_active_filters',     _sdT('Whether a filter is active (1/0)')],
@@ -39568,6 +39577,12 @@ const StyleDesigner = (function () {
         { label: _sdT('Reviews'), tokens: [
             ['__rating_avg',    _sdT('Average rating (verified reviews)')],
             ['__rating_count',  _sdT('Number of verified reviews')]
+        ]},
+        // The "Show only when" flags is_bundle / has_bundle_saving follow
+        // the same values; the contents are the product.bundle_items list.
+        { label: _sdT('Bundle'), tokens: [
+            ['__is_bundle',               _sdT('Whether it is a bundle (1/0)')],
+            ['__bundle_saving_formatted', _sdT('Saving against the bundle\'s products bought one by one (with symbol)')]
         ]},
         { label: _sdT('Variant Picker (select-type group)'), tokens: [
             ['__variant_picker',    _sdT('Variant pickers (HTML — Color/Size/...)')],
@@ -42114,6 +42129,8 @@ const StyleDesigner = (function () {
         catalog_listing: [
             ['has_rating', _sdT('Row: the product has a rating from verified reviews')],
             ['no_rating',  _sdT('Row: the product has no rating yet')],
+            ['is_bundle',         _sdT('Row: the product is a bundle')],
+            ['has_bundle_saving', _sdT('Row: the bundle costs less than its products bought one by one')],
             // Outside the card only (the listing's surround).
             ['has_prev_page',  _sdT('A previous page exists')],
             ['has_next_page',  _sdT('A next page exists')],
@@ -42122,6 +42139,8 @@ const StyleDesigner = (function () {
         catalog_item_view: [
             ['has_rating', _sdT('The product has a rating from verified reviews')],
             ['no_rating',  _sdT('The product has no rating yet')],
+            ['is_bundle',         _sdT('The product is a bundle')],
+            ['has_bundle_saving', _sdT('The bundle costs less than its products bought one by one')],
             // Out of stock with no back order: the back-in-stock form shows.
             ['can_notify', _sdT('The product is out of stock (visitors can ask to be told)')]
         ],
@@ -56694,6 +56713,18 @@ const StyleDesigner = (function () {
                 ['__related_original_price',    _sdT('Price before the discount')]
             ]
         },
+        'product.bundle_items': {
+            label: _sdT('Contents of the bundle'),
+            arg: '', argRequired: false,
+            kinds: ['catalog_item_view', 'catalog_listing'],
+            rows: [
+                ['__bundle_item_name',              _sdT('Product name')],
+                ['__bundle_item_short_description', _sdT('Short Description')],
+                ['__bundle_item_quantity',          _sdT('Quantity in the bundle')],
+                ['__bundle_item_url',               _sdT('Product address')],
+                ['__bundle_item_image_url',         _sdT('Image address')]
+            ]
+        },
         // The crumbs of the catalog path (pg_sw_list_crumb_sources()): the
         // page's, so a list of them stands anywhere in either widget.
         'catalog.crumbs': {
@@ -57190,6 +57221,11 @@ const StyleDesigner = (function () {
         __related_image_url: '',
         __related_price: '99.90',
         __related_original_price: '',
+        __bundle_item_name: 'SKU-1002',
+        __bundle_item_short_description: _sdT('Example product'),
+        __bundle_item_quantity: '2',
+        __bundle_item_url: '#',
+        __bundle_item_image_url: '',
         __crumb_label:   _sdT('Main Catalog'),
         __crumb_url:     '#',
         __crumb_kind:    'link',
@@ -57783,7 +57819,8 @@ const StyleDesigner = (function () {
     }
 
     // A new product list: the images as pictures in a row, the attributes
-    // as a table of name and value, the products bought together as cards
+    // as a table of name and value, a bundle's contents as a list of
+    // quantity and linked name, the products bought together as cards
     // in a grid (the list inside its row, at most four shown). Pictures
     // carry the product's short description as their text.
     /* @pg-site-output */
@@ -57801,6 +57838,15 @@ const StyleDesigner = (function () {
             return sem('div', 'row g-2', _sdT('Images'), {}, [createNode('loop_area', { source: source }, [
                 sem('div', 'col-4 col-md-3', _sdT('Image'), {}, [
                     img('rounded border', { src: '__gallery_url', alt: '__short_description' })
+                ])
+            ])]);
+        }
+        if (source === 'product.bundle_items') {
+            return sem('ul', 'list-unstyled mb-0', _sdT('Contents of the bundle'), {}, [createNode('loop_area', { source: source }, [
+                sem('li', 'd-flex gap-2 align-items-baseline', _sdT('Bundle product'), {}, [
+                    sem('span', 'badge text-bg-light border', _sdT('Quantity in the bundle'), { text: '1', _bindings: { text: '__bundle_item_quantity' } }),
+                    sem('a', 'link-body-emphasis', _sdT('Product name'), { href: '#', text: _sdT('Short Description'),
+                        _bindings: { href: '__bundle_item_url', text: '__bundle_item_short_description' } })
                 ])
             ])]);
         }

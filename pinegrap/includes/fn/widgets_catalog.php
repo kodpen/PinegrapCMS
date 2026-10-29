@@ -48,6 +48,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 //   Reviews:     ^^__rating_avg^^, ^^__rating_count^^ ('' without a verified,
 //                starred review); "Show only when" has_rating / no_rating
 //                per card (_pg_catalog_card_templates())
+//   Bundle:      ^^__is_bundle^^ (1/0), ^^__bundle_saving_formatted^^ (''
+//                without a saving); "Show only when" is_bundle /
+//                has_bundle_saving; contents: the product.bundle_items list
 //
 // Group-context tokens (featured, is_new, sort_order) are populated from
 // products_groups_xref. When product_group_id = 0 (all products), they are
@@ -660,6 +663,43 @@ function _pg_catalog_rating_values($rating_avg, $rating_count)
 }
 
 /**
+ * The bundle tokens of one product: __is_bundle (1 or 0) and the saving
+ * against its components bought one by one at their own prices, with the
+ * currency sign as the discount amount is written, '' when there is none.
+ * The saving is read from the price the visitor pays (an offer included).
+ *
+ * @param bool   $is_bundle
+ * @param array  $contents        the bundle's components (pg_bundle_contents_of())
+ * @param int    $price_cents     the price the visitor pays, in minor units
+ * @param string $currency_symbol
+ * @return array '__is_bundle', '__bundle_saving_formatted'
+ */
+function _pg_catalog_bundle_values($is_bundle, $contents, $price_cents, $currency_symbol)
+{
+    $saving = $is_bundle ? pg_bundle_saving($contents, $price_cents) : 0;
+
+    return array(
+        '__is_bundle'               => $is_bundle ? '1' : '0',
+        '__bundle_saving_formatted' => ($saving > 0) ? pg_visitor_money($saving / 100, $currency_symbol) : '',
+    );
+}
+
+/**
+ * The bundle flags of one product ("Show only when"): is_bundle, and
+ * has_bundle_saving while its saving token holds a value.
+ *
+ * @param array $bundle_values _pg_catalog_bundle_values()
+ * @return array
+ */
+function _pg_catalog_bundle_flags($bundle_values)
+{
+    return array(
+        'is_bundle'         => $bundle_values['__is_bundle'] === '1',
+        'has_bundle_saving' => $bundle_values['__bundle_saving_formatted'] !== '',
+    );
+}
+
+/**
  * Card HTML without its add-to-cart buttons (the bound catalog_add_to_cart
  * button, data-pg-catalog-atc). A group row is not put in the cart: the
  * visitor opens a product first, so every group row loses the button.
@@ -694,21 +734,23 @@ function _pg_catalog_html_shows($html)
 
 /**
  * The listing's card drawn once for each rating state. has_rating and
- * no_rating describe the product of a card, so only the card is marked: an
- * element outside it, or one carrying a flag no catalog evaluates, is drawn
- * as before. Each product row takes the template of its state. A group row
- * has no rating state of its own, so its card draws neither flag's elements;
- * when that leaves nothing visible (two alternative cards, one per state,
- * side by side or inside one column or link) it takes the card without a
- * rating, so child groups are still drawn and can be clicked.
+ * no_rating describe the product of a card, as is_bundle and
+ * has_bundle_saving do, so only the card is marked: an element outside it,
+ * or one carrying a flag no catalog evaluates, is drawn as before. Each
+ * product row takes the template of its state (_pg_catalog_card_for()). A
+ * group row has no rating or bundle state of its own, so its card draws no
+ * flagged element; when that leaves nothing visible (two alternative cards,
+ * one per state, side by side or inside one column or link) it takes the
+ * card without a rating, so child groups are still drawn and can be clicked.
  *
  * @param array $nodes the loop_area's children, or the whole tree when it has none
- * @return array 'rated', 'unrated' and 'group' card HTML
+ * @return array 'rated', 'unrated' and 'group' card HTML (a plain product's),
+ *               'marked' the card before any state is resolved
  */
 function _pg_catalog_card_templates($nodes)
 {
     $card = array('type' => 'root', 'props' => array(), 'children' => $nodes);
-    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating'));
+    _pg_sw_mark_visibility($card, array('has_rating', 'no_rating', 'is_bundle', 'has_bundle_saving'));
 
     $html = '';
     foreach ($card['children'] as $child) {
@@ -717,7 +759,8 @@ function _pg_catalog_card_templates($nodes)
 
     // Resolved on the card alone, before any product's values go in, so a
     // span never holds a description long enough to exhaust PCRE.
-    $unrated = trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true)));
+    $plain   = array('is_bundle' => false, 'has_bundle_saving' => false);
+    $unrated = trim(_pg_sw_resolve_visibility($html, array('has_rating' => false, 'no_rating' => true) + $plain));
     // No flag is set, so every marked span is cut. What is left can be empty
     // wrappers only (a column or a link around two alternative cards): with
     // nothing visible a group row would be drawn as a blank box, and with no
@@ -728,10 +771,33 @@ function _pg_catalog_card_templates($nodes)
     $group   = trim(_pg_sw_resolve_visibility($html, array()));
     $group_shows = _pg_catalog_html_shows(_pg_catalog_strip_add_to_cart($group));
     return array(
-        'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false))),
+        'rated'   => trim(_pg_sw_resolve_visibility($html, array('has_rating' => true, 'no_rating' => false) + $plain)),
         'unrated' => $unrated,
         'group'   => $group_shows ? $group : $unrated,
+        'marked'  => $html,
     );
+}
+
+/**
+ * The card of a product row's state: a plain product's from the templates,
+ * a bundle's resolved from the marked card once per state and kept in
+ * $cards.
+ *
+ * @param array $cards        _pg_catalog_card_templates(), extended in place
+ * @param bool  $rated        the product has a rating
+ * @param array $bundle_flags _pg_catalog_bundle_flags()
+ * @return string
+ */
+function _pg_catalog_card_for(&$cards, $rated, $bundle_flags)
+{
+    if (empty($bundle_flags['is_bundle'])) {
+        return $rated ? $cards['rated'] : $cards['unrated'];
+    }
+    $key = 'bundle_' . ($rated ? 'rated' : 'unrated') . (empty($bundle_flags['has_bundle_saving']) ? '' : '_saving');
+    if (!isset($cards[$key])) {
+        $cards[$key] = trim(_pg_sw_resolve_visibility($cards['marked'], array('has_rating' => $rated, 'no_rating' => !$rated) + $bundle_flags));
+    }
+    return $cards[$key];
 }
 
 /**
@@ -1287,7 +1353,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     $split = _split_widget_tree($tree_decoded);
 
     // The card comes in two states, with and without a rating (has_rating /
-    // no_rating); $loop_template is the one without. A group row has no
+    // no_rating); $loop_template is the one without. A bundle's card also
+    // resolves is_bundle / has_bundle_saving (_pg_catalog_card_for()). A group row has no
     // rating state and takes $loop_template_group, which draws neither (or
     // the card without a rating when only empty wrappers would be left).
     if ($split['loop_children'] === null) {
@@ -1301,7 +1368,6 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         $static_html   = trim(_render_tree_node($split['static_tree'], 0, 0));
     }
     $loop_template       = $_pg_cards['unrated'];
-    $loop_template_rated = $_pg_cards['rated'];
     $loop_template_group = $_pg_cards['group'];
 
     // ── Resolve order_by → SQL clause (whitelist!) ────────────────────────
@@ -1540,9 +1606,9 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // tokens leaking through bound containers.
     $no_products = false;
 
-    // A card drawn only for a product with a rating is empty without one,
-    // and still a card.
-    if ($loop_template === '' && $loop_template_rated === '') {
+    // A card drawn only for a product with a rating, or only for a bundle,
+    // is empty in the other states, and still a card.
+    if (trim($_pg_cards['marked']) === '') {
         $no_products = true;
     }
 
@@ -1636,8 +1702,12 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
 
     // The rows of the product lists the card template draws, read for the
     // products of this page (widgets_lists_product.php).
+    // The bundles among them and their contents, read once for the bundle
+    // tokens and the bundle contents list.
+    $_pg_bundle_set = $products ? pg_bundle_ids_among($product_ids) : array();
+    $_pg_bundles    = pg_bundle_contents_of(array_keys($_pg_bundle_set));
     $_pg_listed = pg_sw_list_wanted('product');
-    if ($_pg_listed && $products) pg_sw_list_publish('product', pg_sw_list_product_read($products, $_pg_listed));
+    if ($_pg_listed && $products) pg_sw_list_publish('product', pg_sw_list_product_read($products, $_pg_listed, $detail_page_id, $_pg_bundles));
 
     $gallery_counts = array();
     if ($product_ids_str !== '') {
@@ -1809,6 +1879,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             isset($p['rating_avg']) ? $p['rating_avg'] : 0,
             isset($p['rating_count']) ? $p['rating_count'] : 0
         );
+        $bundle = _pg_catalog_bundle_values(isset($_pg_bundle_set[$pid]), isset($_pg_bundles[$pid]) ? $_pg_bundles[$pid] : array(), $price_cents, $currency_symbol);
 
         $values = array(
             // Basic
@@ -1919,6 +1990,10 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
             '__rating_avg'          => $rating['__rating_avg'],
             '__rating_count'        => $rating['__rating_count'],
 
+            // Bundle — 1 for a bundle; the saving empty without one.
+            '__is_bundle'               => $bundle['__is_bundle'],
+            '__bundle_saving_formatted' => $bundle['__bundle_saving_formatted'],
+
             // NOTE: `__add_to_cart_button` (a whole server-built form with the
             // caption, icon and Bootstrap classes baked in) has been removed.
             // The card's add-to-cart button is designer-owned: drop a real
@@ -1949,8 +2024,8 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
         // in pg_sw_raw_token_keys() and pass through untouched.
         $values = pg_sw_escape_token_values($values);
 
-        // The card of this product's rating state (has_rating / no_rating).
-        $rendered = ($rating['__rating_count'] !== '') ? $loop_template_rated : $loop_template;
+        // The card of this product's rating and bundle state.
+        $rendered = _pg_catalog_card_for($_pg_cards, $rating['__rating_count'] !== '', _pg_catalog_bundle_flags($bundle));
         // Longest tokens first so '^^foo_bar^^' isn't truncated by '^^foo^^';
         // a format after a token is read (pg_sw_fill_longest()).
         $rendered = pg_sw_fill_longest($rendered, $values);
@@ -2372,7 +2447,7 @@ function _render_system_widget_catalog_listing($product_group_id, $tree_json, $w
     // (price, inventory, mpn, gallery, …) collapse to empty via the final
     // ^^…^^ strip below — the designer template stays usable for both.
     // Elements shown only with or only without a rating (has_rating /
-    // no_rating) are left out of a group card ($loop_template_group), unless
+    // no_rating), or only for a bundle, are left out of a group card ($loop_template_group), unless
     // that leaves nothing visible: then it is the card without a rating.
     //
     // ^^__row_type^^ ('group' / 'product') lets the designer add type-aware
@@ -4472,7 +4547,7 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
     // before the product is read, so the elements are marked here and kept
     // or cut once the product is known (below). Another widget's flag stays
     // drawn.
-    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating', 'can_notify'));
+    _pg_sw_mark_visibility($tree_decoded, array('has_rating', 'no_rating', 'can_notify', 'is_bundle', 'has_bundle_saving'));
     $split = _split_widget_tree($tree_decoded);
 
     if ($split['loop_children'] === null) {
@@ -4987,9 +5062,23 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         ($p && isset($p['rating_avg'])) ? $p['rating_avg'] : 0,
         ($p && isset($p['rating_count'])) ? $p['rating_count'] : 0
     );
+    // The bundle tokens and is_bundle / has_bundle_saving, from the price
+    // the visitor pays. A variant switch keeps the state of the product
+    // shown first.
+    $_civ_pid    = $p ? (int)$p['id'] : 0;
+    $_civ_bundle_set = $_civ_pid ? pg_bundle_ids_among(array($_civ_pid)) : array();
+    $_civ_bundles    = pg_bundle_contents_of(array_keys($_civ_bundle_set));
+    $_civ_bundle = _pg_catalog_bundle_values(
+        isset($_civ_bundle_set[$_civ_pid]),
+        isset($_civ_bundles[$_civ_pid]) ? $_civ_bundles[$_civ_pid] : array(),
+        $p ? (isset($_civ_disc_prices[$_civ_pid]) ? (int)round($_civ_disc_prices[$_civ_pid]) : (int)$p['price']) : 0,
+        $currency_symbol
+    );
     // can_notify: the product can be asked for when back in stock (it tracks
     // stock, none is left, no back order), the rule of __out_of_stock.
     $_civ_flags = array(
+        'is_bundle'         => $_civ_bundle['__is_bundle'] === '1',
+        'has_bundle_saving' => $_civ_bundle['__bundle_saving_formatted'] !== '',
         'has_rating' => $_civ_rating['__rating_count'] !== '',
         'no_rating'  => $_civ_rating['__rating_count'] === '',
         'can_notify' => ($_civ_notify_form !== '') && $p && pg_stock_notify_product_out(array(
@@ -5081,6 +5170,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             '__seo_score'            => '0',
             '__rating_avg'           => $_civ_rating['__rating_avg'],
             '__rating_count'         => $_civ_rating['__rating_count'],
+            '__is_bundle'               => $_civ_bundle['__is_bundle'],
+            '__bundle_saving_formatted' => $_civ_bundle['__bundle_saving_formatted'],
             '__not_found_message'            => $not_found_message,
             // Select-group tokens — empty/zero in not-found state.
             '__is_select_group'      => '0',
@@ -5392,6 +5483,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
             // Reviews — empty while no verified, starred review is published.
             '__rating_avg'           => $_civ_rating['__rating_avg'],
             '__rating_count'         => $_civ_rating['__rating_count'],
+            '__is_bundle'               => $_civ_bundle['__is_bundle'],
+            '__bundle_saving_formatted' => $_civ_bundle['__bundle_saving_formatted'],
 
             // not_found: empty when product is found so the designer's not-found region
             // renders blank. The token is exposed so conditional visibility can be bound.
@@ -5430,7 +5523,8 @@ function _render_system_widget_catalog_item_view($product_group_id, $tree_json, 
         // itself stays as it is), else 1 with products to suggest, 0
         // without (the part's empty box the variant script fills).
         if ($_civ_listed) {
-            $_civ_list_rows = pg_sw_list_product_read(array($p), $_civ_listed, isset($_civ_listed['product.related']) ? $_civ_detail_pid() : 0);
+            $_civ_list_rows = pg_sw_list_product_read(array($p), $_civ_listed,
+                (isset($_civ_listed['product.related']) || isset($_civ_listed['product.bundle_items'])) ? $_civ_detail_pid() : 0, $_civ_bundles);
             pg_sw_list_publish('product', $_civ_list_rows);
             if (!$_civ_xsell_off) $values['__has_related'] = !empty($_civ_list_rows['product.related'][(int)$p_id]) ? '1' : '0';
         }

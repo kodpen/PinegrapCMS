@@ -820,3 +820,66 @@ function pg_bundle_return_stock($order_item_id, $quantity, $source)
 
     return true;
 }
+
+/**
+ * What a bundle saves its buyer against its components bought one by one,
+ * in minor units: the components' prices times their quantities less the
+ * price the bundle sells at, 0 when the bundle costs as much or more.
+ *
+ * @param array $components rows with price and quantity
+ * @param int   $price      the bundle's price as the visitor pays it
+ * @return int
+ */
+function pg_bundle_saving($components, $price)
+{
+    return max(0, pg_bundle_price('sum', 0, $components, 0) - (int) round($price));
+}
+
+/**
+ * The contents of several bundles in one query, for a catalog page: what a
+ * storefront shows of each component and the price its saving is read from,
+ * in each bundle's order. A component switched off is left out of what is
+ * shown but still counts in the saving (it is still taken from stock).
+ *
+ * @param array $bundle_ids
+ * @return array bundle id => list of rows with product_id, quantity, name,
+ *               short_description, address_name, image_name, price, enabled
+ */
+function pg_bundle_contents_of($bundle_ids)
+{
+    $ids = array();
+
+    foreach ((array) $bundle_ids as $bundle_id) {
+        if ((int) $bundle_id > 0) {
+            $ids[(int) $bundle_id] = (int) $bundle_id;
+        }
+    }
+
+    if (!$ids || !pg_bundles_ready()) {
+        return array();
+    }
+
+    $rows = db_items(
+        "SELECT
+            product_bundle_items.bundle_id,
+            product_bundle_items.product_id,
+            product_bundle_items.quantity,
+            products.name,
+            products.short_description,
+            products.address_name,
+            products.image_name,
+            products.price,
+            products.enabled
+        FROM product_bundle_items
+        INNER JOIN products ON products.id = product_bundle_items.product_id
+        WHERE product_bundle_items.bundle_id IN (" . implode(',', $ids) . ")
+        ORDER BY product_bundle_items.bundle_id, product_bundle_items.sort_order, product_bundle_items.id");
+
+    $contents = array();
+
+    foreach (is_array($rows) ? $rows : array() as $row) {
+        $contents[(int) $row['bundle_id']][] = $row;
+    }
+
+    return $contents;
+}

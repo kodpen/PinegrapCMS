@@ -21,7 +21,7 @@ description: The e-mail asking a buyer for a review (order_review_request; 2026.
 - Filled in at creation; in HTML format escaped, line breaks as `<br>`. For a button link to `^^review_url^^` with the Link dialog or `<a href="^^review_url^^">`: `pg_mail_merge_address_hrefs()` (`includes/fn/mail.php`) takes off the `http://` the dialog adds, and an `href` starting with `^^` gets no site address or tracking code.
 
 ## Where does the link land?
-- The page products open on. A legacy catalog detail page has the form at `#software_add_comment`; a visual-designer product page has none until plan step 2c (`plans/storefront-conversion-pack.md`).
+- The page products open on. A legacy catalog detail page has the form at `#software_add_comment`; a visual-designer product page has it through the comments widget (`designer/comments-widget-product-page.md`).
 
 ## What cancels it?
 - `delete_order()` cancels the order's `ready`/`paused` `order_abandoned` and `order_review_request` campaigns.
