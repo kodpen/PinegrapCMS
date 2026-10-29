@@ -1368,64 +1368,31 @@ if (!$_POST) {
             $_POST['type'] = $current_page_type;
         }
 
-        // if the page type is catalog or catalog detail then check the name for slashes
-        if (($_POST['type'] == 'catalog') || ($_POST['type'] == 'catalog detail')) {
-            // if there is a slash in the page name, then output an error
-            if (mb_strpos($name, '/') !== FALSE) {
-                $liveform->mark_error('name', lang('The page name for catalog and catalog detail pages cannot contain forward slashes. Please type in a new name for the page.'));
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
-                exit();
-            }
-        }
-        
-        $name = str_replace(" ", "_", $name);
-        $name = str_replace("&", "_", $name);
-        
+        $form_url = URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? ''));
+
+        $clean_name = pg_page_form_clean_name($name, $_POST['type']);
+        pg_page_form_refuse($liveform, array_filter(array('name' => $clean_name['error'])), $form_url);
+        $name = $clean_name['name'];
 
         if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $_POST['id'])) == false) {
             $liveform->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
-            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
+            header('Location: ' . $form_url);
             exit();
         }
         
-        // if page is a custom form, check to see if there is another page with this same form name
+        // The save writes the page type and its properties only when the
+        // user may set the current page type, and the type the page is being
+        // changed to as well. The second test is what keeps a basic user from
+        // turning a standard page into a type they were never given.
+        $may_save_page_type = $user_can_set_page_type($current_page_type)
+            && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']));
+
+        // A form name another page holds, or settings the form cannot run
+        // with. The settings are checked only when this save writes them: a
+        // user who may not set the type is not shown these fields, posts none
+        // of them, and keeps the stored ones.
         if ($_POST['type'] == 'custom form') {
-            $query = "SELECT id FROM custom_form_pages WHERE (form_name = ?) AND (page_id != ?)";
-            $result = db_q($query, array((string) ($_POST['custom_form_form_name'] ?? ''), (string) ($_POST['id'] ?? ''))) or output_error('Query failed.');
-
-            // if there is another page with this form name, output error
-            if (mysqli_num_rows($result) > 0) {
-                $liveform->mark_error('custom_form_form_name', lang('The form name that you entered is already in use. Please enter a different form name.'));
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
-                exit();
-            }
-
-            // An e-mail switched on with nothing to send, or a "Next Page"
-            // confirmation without a page (pg_cf_legacy_settings_errors()).
-            // Checked only when this save writes the form's properties: the
-            // condition is the one that guards saving the page type below. A
-            // user who may not set the type is not shown these fields, posts
-            // none of them, and keeps the stored ones.
-            if (
-                $user_can_set_page_type($current_page_type)
-                && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']))
-            ) {
-                $custom_form_setting_errors = pg_cf_legacy_settings_errors(
-                    pg_page_form_type_properties_from_post('custom form', (int) $_POST['id']),
-                    function ($page_id) {
-                        return ($page_id > 0)
-                            && (db_value("SELECT COUNT(*) FROM page WHERE page_id = '" . (int) $page_id . "'") > 0)
-                            && !(function_exists('pg_recycle_page_binned') && pg_recycle_page_binned((int) $page_id));
-                    });
-
-                if ($custom_form_setting_errors) {
-                    foreach ($custom_form_setting_errors as $custom_form_setting_field => $custom_form_setting_error) {
-                        $liveform->mark_error($custom_form_setting_field, $custom_form_setting_error);
-                    }
-                    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . (int) $_POST['id'] . '&send_to=' . urlencode((string) ($_POST['send_to'] ?? '')));
-                    exit();
-                }
-            }
+            pg_page_form_refuse($liveform, pg_page_type_custom_form_errors((int) $_POST['id'], $may_save_page_type), $form_url);
         }
         
         // if user is above a user role, then deal with home page checkbox
@@ -1446,14 +1413,7 @@ if (!$_POST) {
             $pretty_urls_old = check_if_pretty_urls_are_enabled($_POST['id']);
         }
         
-        // If the user may set the current page type, and the type the page is
-        // being changed to as well, then prepare to save page type. The second
-        // test is what keeps a basic user from turning a standard page into a
-        // type they were never given.
-        if (
-            $user_can_set_page_type($current_page_type)
-            && (($_POST['type'] == $current_page_type) || $user_can_set_page_type($_POST['type']))
-        ) {
+        if ($may_save_page_type) {
             // assume that we can update the page type until we find out otherwise
             $update_page_type = true;
             
@@ -1600,31 +1560,10 @@ if (!$_POST) {
             $sitemap = 0;
         }
         
-        $noindex = 0;
-        $nofollow = 0;
-
-        // nofollow qualifies the noindex directive and is never emitted on its
-        // own, so it is only stored while the page is closed to search engines.
-        if (($_POST['noindex'] ?? '') == 1) {
-            $noindex = 1;
-
-            if (($_POST['nofollow'] ?? '') == 1) {
-                $nofollow = 1;
-            }
-        }
-
-        // A page that is closed to search engines has no business in the site map.
-        if ($noindex == 1) {
-            $sitemap = 0;
-        }
-
-        $sql_noindex = "";
-
-        if (pg_page_noindex_ready() == TRUE) {
-            $sql_noindex =
-                "noindex = '" . $noindex . "',
-                nofollow = '" . $nofollow . "',";
-        }
+        $index_flags = pg_page_form_index_flags($sitemap, $_POST);
+        $sitemap = $index_flags['sitemap'];
+        $sql_noindex = pg_page_form_noindex_sql($index_flags, pg_page_noindex_ready());
+        $sql_noindex = $sql_noindex['set'];
 
         $sql_seo_extras = "";
 
@@ -1777,35 +1716,16 @@ if (!$_POST) {
             $send_to = PATH . encode_url_path($name) . $query_string_from;
         }
         
-        // If a custom form was enabled then forward user to form designer.
-        if (
-            (($_POST['type'] == 'custom form') && ($current_page_type != 'custom form'))
-            || (($_POST['type'] == 'shipping address and arrival') && ($_POST['shipping_address_and_arrival_form'] == 1) && ($current_shipping_address_and_arrival_form != 1))
-            || (($_POST['type'] == 'billing information') && ($_POST['billing_information_form'] == 1) && ($current_billing_information_form != 1))
-            || (
-                ($_POST['type'] == 'express order')
-                and (
-                    ($_POST['express_order_shipping_form'] and !($old_properties['shipping_form'] ?? ''))
-                    or ($_POST['express_order_form'] and !($old_properties['form'] ?? ''))
-                )
-            )
-        ) {
+        // A form this save switched on is set up in the form designer next.
+        $form_type = pg_page_form_designer_redirect($_POST['type'], $_POST, array(
+            'type' => $current_page_type,
+            'shipping_address_and_arrival_form' => $current_shipping_address_and_arrival_form ?? '',
+            'billing_information_form' => $current_billing_information_form ?? '',
+            'shipping_form' => $old_properties['shipping_form'] ?? '',
+            'form' => $old_properties['form'] ?? '',
+        ));
 
-            $form_type = '';
-
-            // If this is an express order page, then determine if we should forward to shipping
-            // or billing form.
-            if ($_POST['type'] == 'express order') {
-
-                $form_type = '&form_type=';
-
-                if ($_POST['express_order_shipping_form'] and !($old_properties['shipping_form'] ?? '')) {
-                    $form_type .= 'shipping';
-                } else {
-                    $form_type .= 'billing';
-                }
-            }
-
+        if ($form_type !== false) {
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_fields.php?page_id=' . $_POST['id'] . $form_type . '&send_to=' . urlencode($send_to));
             
         // else we don't need to forward the user to the form designer so forward the user to the page

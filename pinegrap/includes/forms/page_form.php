@@ -3624,3 +3624,142 @@ function pg_page_form_save_type_links($page_type, $page_id, $user)
             break;
     }
 }
+
+/**
+ * The name a page is saved under, as both screens clean it: spaces and
+ * ampersands become underscores. Catalog and catalog detail pages take part
+ * of their address from the item after the page name, so their name may not
+ * hold a forward slash.
+ *
+ * @param string $name       The trimmed posted name
+ * @param string $page_type  The type the page is saved as
+ * @return array  'name' the cleaned name, 'error' a message or ''
+ */
+function pg_page_form_clean_name($name, $page_type)
+{
+    $error = '';
+
+    if ((($page_type == 'catalog') || ($page_type == 'catalog detail')) && (mb_strpos($name, '/') !== false)) {
+        $error = lang('The page name for catalog and catalog detail pages cannot contain forward slashes. Please type in a new name for the page.');
+    }
+
+    return array(
+        'name' => str_replace(array(' ', '&'), '_', $name),
+        'error' => $error,
+    );
+}
+
+/**
+ * Marks the errors on the screen's liveform and sends the user back to the
+ * form. Returns only when there is no error.
+ *
+ * @param liveform $liveform
+ * @param array    $errors  Field name => message
+ * @param string   $url     The form's address
+ */
+function pg_page_form_refuse($liveform, $errors, $url)
+{
+    if (!$errors) {
+        return;
+    }
+
+    foreach ($errors as $field => $error) {
+        $liveform->mark_error($field, $error);
+    }
+
+    header('Location: ' . $url);
+    exit();
+}
+
+/**
+ * The search engine switches a save stores. nofollow qualifies the noindex
+ * directive and is never emitted on its own, so it is only stored while the
+ * page is closed to search engines; such a page has no business in the site
+ * map either. An unchecked box, absent from the POST, is 0.
+ *
+ * @param mixed $sitemap  Whether the page would be in the site map
+ * @param array $posted   The posted form ($_POST)
+ * @return array  'sitemap', 'noindex', 'nofollow' as 0 or 1
+ */
+function pg_page_form_index_flags($sitemap, $posted)
+{
+    $noindex = ((($posted['noindex'] ?? '') == 1) ? 1 : 0);
+
+    return array(
+        'sitemap' => (($sitemap && !$noindex) ? 1 : 0),
+        'noindex' => $noindex,
+        'nofollow' => (($noindex && (($posted['nofollow'] ?? '') == 1)) ? 1 : 0),
+    );
+}
+
+/**
+ * The noindex and nofollow pieces of the page INSERT and UPDATE, empty while
+ * the columns are missing (pg_page_noindex_ready()). The values are the ints
+ * of pg_page_form_index_flags(), written inline.
+ *
+ * @param array $flags  pg_page_form_index_flags()
+ * @param bool  $ready  Whether the columns exist
+ * @return array  'columns' and 'values' for an INSERT, 'set' for an UPDATE,
+ *                each ending in a comma
+ */
+function pg_page_form_noindex_sql($flags, $ready)
+{
+    if (!$ready) {
+        return array('columns' => '', 'values' => '', 'set' => '');
+    }
+
+    $noindex = (int) $flags['noindex'];
+    $nofollow = (int) $flags['nofollow'];
+
+    return array(
+        'columns' => "noindex, nofollow,",
+        'values' => "'" . $noindex . "', '" . $nofollow . "',",
+        'set' => "noindex = '" . $noindex . "', nofollow = '" . $nofollow . "',",
+    );
+}
+
+/**
+ * Whether a save sends the user on to the form designer, and to which form.
+ * A new page ($current null) goes there for every form the page has on: a
+ * custom form page, or a shipping, billing or express order form switched
+ * on. An edited page goes only for a form this save switched on.
+ *
+ * @param string     $page_type  The type the page is saved as
+ * @param array      $posted     The posted form ($_POST)
+ * @param array|null $current    For an edited page what was stored before
+ *                               the save: 'type', 'shipping_address_and_arrival_form',
+ *                               'billing_information_form' and the express
+ *                               order page's 'shipping_form' and 'form'
+ * @return string|false  false for no redirect, else the form_type query
+ *                       ('' or '&form_type=shipping' / '&form_type=billing')
+ */
+function pg_page_form_designer_redirect($page_type, $posted, $current = null)
+{
+    $was_on = function ($key) use ($current) {
+        return ($current !== null) && !empty($current[$key]);
+    };
+
+    switch ($page_type) {
+        case 'custom form':
+            return (($current === null) || (($current['type'] ?? '') != 'custom form')) ? '' : false;
+
+        case 'shipping address and arrival':
+        case 'billing information':
+            $key = ($page_type == 'billing information') ? 'billing_information_form' : 'shipping_address_and_arrival_form';
+
+            return ((($posted[$key] ?? '') == 1) && !(($current !== null) && (($current[$key] ?? '') == 1))) ? '' : false;
+
+        case 'express order':
+            if (!empty($posted['express_order_shipping_form']) && !$was_on('shipping_form')) {
+                return '&form_type=shipping';
+            }
+
+            if (!empty($posted['express_order_form']) && !$was_on('form')) {
+                return '&form_type=billing';
+            }
+
+            break;
+    }
+
+    return false;
+}

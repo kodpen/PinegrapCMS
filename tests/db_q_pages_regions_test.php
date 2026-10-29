@@ -121,7 +121,7 @@ function db_q_pages_regions_test_calls($path)
 function db_q_pages_regions_test_files()
 {
 	return array(
-		'add_page.php' => 4,
+		'add_page.php' => 3,
 		'view_pages.php' => 1,
 		'mass_edit.php' => 0,
 		'preview_theme.php' => 0,
