@@ -29,7 +29,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 
 ## Focus and keys?
 - `state.refocus`: `data-refocus` keys, space-separated fallbacks. `keepFocus()` redraws, then focuses the control redrawn in place, else its box (`box-<id>`), outline heading, the run's title or the run bar's Close.
-- Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc.
+- Tab in arrow order; arrows move 16 (Shift 64); C "Connect to…"; Delete; Enter: first field; + − 0; Esc. Undo: `workspace-flows-undo.md`.
 
 ## What is the outline view?
 - A toggle, default under 768 px: boxes in arrow order with settings and "Connect to…"; the hidden canvas redraws when shown.
@@ -38,5 +38,5 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - `workspace-flows-run-view.md`: Run, the runs list, a run shown box by box, how it is read again and what a failed read shows.
 
 ## What is left?
-- Notes on the canvas, undo/redo, auto-layout, multi-select, Help link; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`; no headless harness.
+- Notes on the canvas, auto-layout, multi-select, Help link; retry or skip a box (F5). Tests `tests/workspace_flows_canvas_test.php`.
 - Templates and the gallery: `workspace-flows-template-format.md`.
