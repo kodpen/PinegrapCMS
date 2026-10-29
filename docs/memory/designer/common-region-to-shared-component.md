@@ -12,7 +12,7 @@ description: A common region made a shared component (R2): one _editable block o
 
 ## How is it drawn?
 - Owner 2026-10-27: the component is the one source. The common pass of `get_page_content.php` asks `pg_common_region_components()` (one query per request for the common regions on the page, cached) and draws the component with `pg_common_region_component_html()` (nested components, widgets, custom PHP: the page's own passes ran before). The row's content is no longer read, so a classic page, a designer `region` node and a placed `shared_ref` all show the same thing.
-- Deleting the component brings the row's content back (as it was at conversion): that is the undo.
+- Deleting the component brings the row's content back (as it was at conversion): that is the undo. The row, its content and its grants stay after the legacy page designer retires (#3156): the tag finds the component through the row, and nothing clears them on update.
 
 ## Which old paths stop?
 - Front-end inline editing (owner: accepted): a converted region gets no editor in edit mode, and `save_region_content.php` refuses a write.
