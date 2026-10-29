@@ -807,9 +807,11 @@ function ws_scheduled_fill($text, $context)
 }
 
 /**
- * What the form needs: the kinds of record with their fields, the kinds of
- * change with their actions, the counts, and the lists it offers. Null for
- * somebody who may not schedule.
+ * What the flow canvas and the flow templates take from scheduled actions:
+ * the kinds of record with their fields, the kinds of change with their
+ * actions, the counts, and the lists a box offers. Null for somebody who
+ * may not schedule; the panel also reads it as the gate of the scheduled
+ * actions screens.
  *
  * @param array $viewer
  * @return array|null
@@ -879,36 +881,23 @@ function ws_scheduled_js_config($viewer)
     }
 
     return array(
-        'ready'        => true,
-        'chains'       => ws_scheduled_chains_ready(),
-        'approvals'    => function_exists('ws_approvals_ready') && ws_approvals_ready(),
-        'join'         => ws_scheduled_join_ready(),
+        'ready'     => true,
+        'join'      => ws_scheduled_join_ready(),
         // What an event rule offers (watch.php): null where it cannot be had.
-        'events'       => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
-        // The box above the form that has Pinegrap AI fill it in from a
-        // sentence (scheduled_draft.php).
-        'draft'        => function_exists('ws_scheduled_draft_ready') && ws_scheduled_draft_ready($viewer),
-        'digest_only'  => ws_scheduled_digest_filters(),
+        'events'    => function_exists('ws_events_js_config') ? ws_events_js_config($viewer) : null,
         // Whether the task e-mail can offer Pinegrap AI's summary of what
         // was missed (briefing.php).
-        'recap_ai'     => function_exists('ws_ai_ready') && ws_ai_ready(),
-        'records'      => $records,
-        'changes'      => $changes,
-        'metrics'      => $metrics,
-        'repeats'      => ws_scheduled_repeats(),
-        'operators'    => ws_scheduled_operators(),
-        'counts'       => ws_scheduled_count_operators(),
-        'outcomes'     => ws_scheduled_outcomes(),
-        'formats'      => ws_scheduled_webhook_formats(),
-        'placeholders' => ws_scheduled_placeholders(),
-        'depth'        => WS_SCHEDULED_CHAIN_DEPTH,
-        'max_follow'   => WS_SCHEDULED_MAX_FOLLOW,
-        'min_minutes'  => WS_SCHEDULED_MIN_MINUTES,
+        'recap_ai'  => function_exists('ws_ai_ready') && ws_ai_ready(),
+        'records'   => $records,
+        'changes'   => $changes,
+        'metrics'   => $metrics,
+        'repeats'   => ws_scheduled_repeats(),
+        'operators' => ws_scheduled_operators(),
+        'counts'    => ws_scheduled_count_operators(),
         // The address a new web check starts from: the job runs it later, so
         // it is the site's own address, not the host this request named.
-        'site'         => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '',
-        'email'        => (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $viewer['id'] . "'"),
-        'now'          => date('Y-m-d H:i'),
+        'site'      => (defined('URL_SCHEME') && defined('HOSTNAME_SETTING')) ? URL_SCHEME . HOSTNAME_SETTING . (defined('PATH') ? PATH : '/') : '',
+        'email'     => (string) db_value("SELECT user_email FROM user WHERE user_id = '" . (int) $viewer['id'] . "'"),
     );
 }
 
@@ -3025,8 +3014,8 @@ function ws_scheduled_list($viewer, $filters = array())
 }
 
 /**
- * The actions another one can start, for the form's list: the ones that
- * are not over.
+ * The actions a flow's step can start (the flow catalogue, flows.php): the
+ * ones that are not over.
  *
  * @param array $viewer
  * @return array[] id, name, status, trigger_only
@@ -3050,12 +3039,12 @@ function ws_scheduled_targets($viewer)
 // ─── Writing ────────────────────────────────────────────────────────────
 
 /**
- * May this scheduled action be created or changed as sent? The panel's save
- * and the API meet the same refusals; nothing is written. A new one is made
+ * May this scheduled action be created or changed as sent? A draft of @ai
+ * meets these refusals; nothing is written. A new one is made
  * in a channel the person may post in, or in a note they may change.
  *
  * @param array $viewer
- * @param array $data as ws_scheduled_save() takes it
+ * @param array $data id (0 for a new one), name, rules, action, follow, channel_id, note_id
  * @return array ok, status (403 | 404 | 422 on a refusal), error, field,
  *               row (columns to write), existing, channel, note_id
  */
@@ -3115,105 +3104,12 @@ function ws_scheduled_save_check($viewer, $data)
 }
 
 /**
- * Creates or changes a scheduled action. A new one written in a channel
- * leaves a card there, the way a poll does; one written in a note belongs to
- * the note.
+ * What a scheduled action would do, in words: checked the way a save checks
+ * it, nothing written. The card of a draft @ai made shows it, with the next
+ * times it would run.
  *
  * @param array $viewer
- * @param array $data id (0 for a new one), name, rules, action, follow, channel_id, note_id
- * @return array ok, error, field, id, message_id
- */
-function ws_scheduled_save($viewer, $data)
-{
-    $fail = function ($error, $field = '') {
-        return array('ok' => false, 'error' => $error, 'field' => $field, 'id' => 0, 'message_id' => 0);
-    };
-
-    $checked = ws_scheduled_save_check($viewer, $data);
-
-    if (!$checked['ok']) {
-        return $fail($checked['error'], $checked['field']);
-    }
-
-    $existing = $checked['existing'];
-    $row = $checked['row'];
-    $now = time();
-    $json = function ($value) {
-        return ($value === null) ? 'NULL' : "'" . e(json_encode($value, JSON_UNESCAPED_UNICODE)) . "'";
-    };
-
-    // With the follow-ups of 5.85 they are kept as they are; before them, the
-    // one that is done when the action went well is the old "then".
-    if (ws_scheduled_chains_ready()) {
-        $follow_sql = "follow = " . $json($row['follow']) . ", then_action = NULL";
-        $follow_columns = array('follow' => $json($row['follow']), 'then_action' => 'NULL');
-    } else {
-        $then = !empty($row['follow']) ? $row['follow'][0]['do'] : null;
-        $follow_sql = "then_action = " . $json($then);
-        $follow_columns = array('then_action' => $json($then));
-    }
-
-    if ($existing) {
-        // A failed one that is changed is scheduled again; a paused one
-        // stays paused.
-        $status = ($existing['status'] === 'paused') ? 'paused' : 'active';
-
-        db("UPDATE ws_scheduled_actions SET
-                name = '" . e($row['name']) . "',
-                rules = " . $json($row['rules']) . ",
-                action = " . $json($row['action']) . ",
-                " . $follow_sql . ",
-                status = '" . $status . "',
-                next_run_at = '" . (int) $row['next_run_at'] . "',
-                updated_by = '" . (int) $viewer['id'] . "',
-                updated_at = '" . $now . "'
-            WHERE id = '" . (int) $existing['id'] . "'");
-
-        if ((int) $existing['message_id'] > 0) {
-            ws_message_touch($existing['message_id']);
-        }
-
-        return array('ok' => true, 'error' => '', 'field' => '', 'id' => (int) $existing['id'], 'message_id' => (int) $existing['message_id']);
-    }
-
-    $channel = $checked['channel'];
-    $note_id = (int) $checked['note_id'];
-
-    db("INSERT INTO ws_scheduled_actions (name, channel_id, note_id, created_by, rules, action, " . implode(', ', array_keys($follow_columns)) . ", status, next_run_at,
-            updated_by, created_at, updated_at)
-        VALUES ('" . e($row['name']) . "', '" . ($channel ? (int) $channel['id'] : 0) . "', '" . $note_id . "', '" . (int) $viewer['id'] . "',
-            " . $json($row['rules']) . ", " . $json($row['action']) . ", " . implode(', ', $follow_columns) . ", 'active',
-            '" . (int) $row['next_run_at'] . "', '" . (int) $viewer['id'] . "', '" . $now . "', '" . $now . "')");
-
-    $id = (int) mysqli_insert_id(db::$con);
-
-    if ($id <= 0) {
-        return $fail(lang('The scheduled action could not be saved.'));
-    }
-
-    $message_id = 0;
-
-    if ($channel) {
-        $sent = ws_message_send($viewer, $channel, $row['name']);
-
-        if ($sent['ok']) {
-            $message_id = (int) $sent['message_id'];
-            db("UPDATE ws_scheduled_actions SET message_id = '" . $message_id . "' WHERE id = '" . $id . "'");
-        }
-    }
-
-    log_activity(lang(array('string' => 'scheduled action “{var:1}” was created in the Workspace', 'vars' => $row['name'])), (string) ($_SESSION['sessionusername'] ?? ''));
-
-    return array('ok' => true, 'error' => '', 'field' => '', 'id' => $id, 'message_id' => $message_id);
-}
-
-/**
- * What a scheduled action would do, in words, while its form is filled in:
- * checked the way a save checks it, nothing written. The form shows it
- * beside the fields, with the next times it would run.
- *
- * @param array $viewer
- * @param array $data as ws_scheduled_save() takes it
+ * @param array $data as ws_scheduled_save_check() takes it
  * @return array ok, error, field, when, conditions, action, follow, next
  */
 function ws_scheduled_preview($viewer, $data)
@@ -5071,115 +4967,7 @@ function ws_scheduled_js_strings()
         'sa_title'          => lang('Scheduled actions'),
         'sa_flow_new'       => lang('Scheduled flow'),
         'sa_new_long'       => lang('New scheduled action'),
-        'sa_edit'           => lang('Change the scheduled action'),
-        'sa_name'           => lang('Name'),
-        'sa_name_help'      => lang('What it is for, in a few words. It is the title of its card.'),
-        'sa_rules'          => lang('Rules'),
-        'sa_rules_help'     => lang('When it runs, and what must hold then. Every rule has to hold; if one does not, the run is skipped.'),
-        'sa_when'           => lang('When'),
-        'sa_when_time'      => lang('At a time'),
-        'sa_when_trigger'   => lang('When another action starts it'),
-        'sa_when_trigger_help' => lang('It has no time of its own: a follow-up of another scheduled action starts it, or you do with “Run now”.'),
-        'sa_date'           => lang('Date'),
-        'sa_time'           => lang('Time'),
-        'sa_repeat'         => lang('Repeat'),
-        'sa_every'          => lang('Every'),
-        'sa_every_minutes'  => lang('minutes'),
-        'sa_every_hours'    => lang('hours'),
-        'sa_every_days'     => lang('days'),
-        'sa_every_weeks'    => lang('weeks'),
-        'sa_every_months'   => lang('months'),
-        'sa_every_years'    => lang('years'),
-        'sa_on_days'        => lang('On these days'),
-        'sa_until'          => lang('Last day'),
-        'sa_until_help'     => lang('Optional: it stops repeating after this day.'),
-        'sa_add_rule'       => lang('Add a condition'),
-        'sa_rule_record'    => lang('A record has a value'),
-        'sa_rule_metric'    => lang('A count'),
-        'sa_rule_workday'   => lang('Only on a working day'),
-        'sa_rule_weekdays'  => lang('Only on some days of the week'),
-        'sa_rule_hours'     => lang('Only between some hours'),
-        'sa_from'           => lang('Start'),
-        'sa_to_time'        => lang('End'),
-        'sa_metric'         => lang('Count'),
-        'sa_metric_channel' => lang('Tasks of'),
-        'sa_metric_all'     => lang('All channels'),
-        'sa_metric_threshold' => lang('At most'),
-        'sa_record_kind'    => lang('Kind of record'),
-        'sa_record'         => lang('Record'),
         'sa_record_search'  => lang('Search by name or number'),
-        'sa_field'          => lang('Field'),
-        'sa_operator'       => lang('Comparison'),
-        'sa_value'          => lang('Value'),
-        'sa_days_value'     => lang('Days'),
-        'sa_action'         => lang('Action'),
-        'sa_action_help'    => lang('One thing it does when the rules hold.'),
-        'sa_follow'         => lang('Afterwards'),
-        'sa_follow_help'    => lang('What is done next, by how the action went: tell somebody when a check failed, start another scheduled action when it went well. They run in their order.'),
-        'sa_add_follow'     => lang('Add a follow-up'),
-        'sa_then'           => lang('Then'),
-        'sa_then_help'      => lang('Done only when the action went well.'),
-        'sa_do_nothing'     => lang('Nothing more'),
-        'sa_do_post'        => lang('Write in a channel'),
-        'sa_do_email'       => lang('Send an e-mail'),
-        'sa_do_notify'      => lang('Let people know'),
-        'sa_do_task'        => lang('Open a task'),
-        'sa_do_change'      => lang('Change a record'),
-        'sa_do_webhook'     => lang('Call a webhook'),
-        'sa_do_web_check'   => lang('Check a web address'),
-        'sa_do_report'      => lang('Post a summary'),
-        'sa_do_trigger'     => lang('Start another scheduled action'),
-        'sa_group_team'     => lang('The team'),
-        'sa_group_records'  => lang('Records'),
-        'sa_group_web'      => lang('Web and other systems'),
-        'sa_group_chain'    => lang('Chain'),
-        'sa_channel'        => lang('Channel'),
-        'sa_no_channel'     => lang('No channel'),
-        'sa_message'        => lang('Message'),
-        'sa_to'             => lang('To'),
-        'sa_to_help'        => lang('One or more addresses, separated by commas.'),
-        'sa_subject'        => lang('Subject'),
-        'sa_email_text'     => lang('Text'),
-        'sa_email_page'     => lang('A page'),
-        'sa_page'           => lang('Page'),
-        'sa_page_help'      => lang('Sent as the e-mail campaigns send a page. Without a subject, the page title is the subject.'),
-        'sa_people'         => lang('People'),
-        'sa_notice'         => lang('What they are told'),
-        'sa_task_title'     => lang('Title of the task'),
-        'sa_task_text'      => lang('Description'),
-        'sa_task_people'    => lang('Given to'),
-        'sa_task_priority'  => lang('Priority'),
-        'sa_task_due'       => lang('Due in days'),
-        'sa_task_due_help'  => lang('Counted from the day it runs; leave it empty for no due date.'),
-        'sa_task_channel'   => lang('In the channel'),
-        'sa_url'            => lang('Address'),
-        'sa_webhook_help'   => lang('An https address: an incoming webhook of Slack, Microsoft Teams, Google Chat or Discord, or a flow of n8n, Zapier or Make. The address is kept with the action; only staff see it.'),
-        'sa_format'         => lang('Shape of the body'),
-        'sa_webhook_text'   => lang('Message'),
-        'sa_check_mode'     => lang('What is checked'),
-        'sa_check_status'   => lang('That it answers'),
-        'sa_check_ssl'      => lang('How long its certificate has left'),
-        'sa_check_redirect' => lang('A redirect counts as an answer'),
-        'sa_check_contains' => lang('Text that must be on the page'),
-        'sa_check_max_ms'   => lang('Slowest answer (ms)'),
-        'sa_check_max_help' => lang('Optional: slower than this is a failure.'),
-        'sa_check_days'     => lang('Days it must have left at least'),
-        'sa_check_help'     => lang('A failed check makes the run a failure: add a follow-up “If it failed” to be told. The channel hears about a repeating check only when its answer changes.'),
-        'sa_report_title'   => lang('Title of the summary'),
-        'sa_report_metrics' => lang('Counts'),
-        'sa_report_to'      => lang('Also e-mail it to'),
-        'sa_target'         => lang('Scheduled action to start'),
-        'sa_target_none'    => lang('No other scheduled action yet. Write the one to start first; “When another action starts it” gives it no time of its own.'),
-        'sa_delay'          => lang('Wait (minutes)'),
-        'sa_delay_help'     => lang('0 starts it at once.'),
-        'sa_chain_help'     => ws_js_template('At most {var:1} actions follow one another in a chain.', 1),
-        'sa_placeholders'   => lang('Words filled in when it runs'),
-        'sa_change_verb'    => lang('What to do'),
-        'sa_verb_update'    => lang('Change fields'),
-        'sa_verb_delete'    => lang('Delete'),
-        'sa_add_field'      => lang('Add a field'),
-        'sa_save'           => lang('Schedule it'),
-        'sa_saved'          => lang('The action is scheduled.'),
         'sa_next'           => lang('Next'),
         'sa_last'           => lang('Last run'),
         'sa_runs'           => lang('Runs'),
@@ -5203,7 +4991,6 @@ function ws_scheduled_js_strings()
         'sa_canvas_starts'  => lang('Starts'),
         'sa_canvas_retry'   => lang('Starts itself again'),
         'sa_canvas_retry_on' => ws_js_template('Starts itself again when: {var:1}', 1),
-        'sa_starts'         => lang('Starts'),
         'sa_all'            => lang('All'),
         'sa_state_active'   => lang('Set to run'),
         'sa_state_paused'   => lang('Paused'),
@@ -5216,62 +5003,6 @@ function ws_scheduled_js_strings()
         'sa_money_help'     => lang('An amount, like 1250.50'),
         'sa_yes'            => lang('Yes'),
         'sa_no'             => lang('No'),
-        'sa_templates'      => lang('Start from a ready one'),
-        'sa_template_none'  => lang('An empty form'),
-        'sa_tpl_digest'     => lang('Summary every working morning'),
-        'sa_tpl_digest_title' => lang('Good morning: where we stand'),
-        'sa_tpl_uptime'     => lang('Is the site up? Every 15 minutes'),
-        'sa_tpl_uptime_down' => lang('The site does not answer: {{result}}'),
-        'sa_tpl_ssl'        => lang('Certificate check every Monday'),
-        'sa_tpl_ssl_warn'   => lang('The site\'s certificate needs renewing: {{result}}'),
-        'sa_tpl_overdue'    => lang('Overdue tasks every working day'),
-        'sa_tpl_overdue_text' => lang('{{count:tasks_overdue}} tasks have gone past their due date. The list is under My Tasks.'),
-        'sa_tpl_forms'      => lang('New form submissions every hour'),
-        'sa_tpl_forms_text' => lang('{{count:forms_new}} new form submissions in the last hour.'),
-        'sa_tpl_stock'      => lang('Stock warning every morning'),
-        'sa_tpl_stock_text' => lang('{{count:stock_low:5}} products have 5 or fewer left in stock.'),
-        'sa_tpl_orders'     => lang('New orders to a chat service'),
-        'sa_tpl_orders_text' => lang('{{count:orders_new}} new orders since the last look. Sales today: {{count:sales_today}}.'),
-        'sa_tpl_invoices'   => lang('Overdue invoices every Monday'),
-        'sa_tpl_invoices_text' => lang('{{count:invoices_overdue}} sales invoices are overdue, {{count:invoices_overdue_amount}} in all.'),
-        'sa_tpl_monthly'    => lang('Monthly report task'),
-        'sa_tpl_monthly_task' => lang('Monthly report for {{date}}'),
-        'sa_tpl_chain'      => lang('A step of a chain'),
-        'sa_tpl_chain_text' => lang('{{source}} finished: {{source_result}}'),
-        'sa_tpl_welcome'    => lang('Welcome message'),
-        'sa_tpl_welcome_help' => lang('Greets the people who join a channel and asks them to say a few words about themselves.'),
-        'sa_tpl_welcome_text' => lang('Welcome to {{channel}}, {{newcomer}}! 👋 Could you tell us a little about yourself: who you are and what you work on?'),
-        'sa_tpl_task_mail'  => lang('Tasks by e-mail every Monday'),
-        'sa_tpl_task_mail_help' => lang('Every Monday morning each person gets the open tasks they are on, by e-mail.'),
-        'sa_tpl_task_mail_subject' => lang('Your open tasks this week'),
-        'sa_template_none_help' => lang('Build it yourself, step by step.'),
-        'sa_step_when'      => lang('When'),
-        'sa_step_when_help' => lang('What starts it: a time, another scheduled action, or somebody joining a channel.'),
-        'sa_step_if'        => lang('Only if'),
-        'sa_step_do'        => lang('Do'),
-        'sa_when_join'      => lang('When somebody joins'),
-        'sa_join_channel'   => lang('Channel'),
-        'sa_join_any'       => lang('Any public channel'),
-        'sa_join_help'      => lang('It runs once for each person who joins or is added; {{newcomer}} in a text tags them.'),
-        'sa_joined_channel' => lang('The channel they joined'),
-        'sa_do_task_digest' => lang('E-mail people their tasks'),
-        'sa_digest_mine'    => lang('Each person their own tasks'),
-        'sa_digest_channel' => lang('The tasks of a channel'),
-        'sa_digest_all_channels' => lang('All channels'),
-        'sa_digest_which'   => lang('Which tasks'),
-        'sa_digest_people_mine' => lang('Left empty, everybody who is on an open task gets their list.'),
-        'sa_digest_people_channel' => lang('Left empty, every member of the channel gets the list.'),
-        'sa_digest_subject_placeholder' => lang('The name of the scheduled action'),
-        'sa_digest_intro'   => lang('A few words above the list'),
-        'sa_digest_intro_help' => lang('Optional. Nobody gets an e-mail with nothing in it.'),
-        'sa_digest_missed'  => lang('Add what each person missed'),
-        'sa_digest_missed_help' => lang('Unread messages by channel, decisions, tasks handed to them, approvals waiting for them. Somebody with no tasks but something missed gets the e-mail too.'),
-        'sa_digest_ai'      => lang('Have Pinegrap AI sum it up in a few sentences'),
-        'sa_digest_ai_help' => lang('Only channels Pinegrap AI may read go to it. Written when the general job runs the action; otherwise the e-mail has the counted list.'),
-        'sa_tpl_morning'    => lang('Morning summary by e-mail'),
-        'sa_tpl_morning_help' => lang('Every working morning: what you missed in the channels and your tasks due this week.'),
-        'sa_tpl_morning_subject' => lang('Good morning: what you missed'),
-        'sa_next_runs'      => lang('Next runs'),
         'sa_duplicate'      => lang('Duplicate'),
     );
 }

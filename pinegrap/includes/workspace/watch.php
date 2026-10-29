@@ -1217,38 +1217,13 @@ function ws_events_js_config($viewer)
 }
 
 /**
- * The texts of the event rule, the ready-made actions that use it and the
- * channel's watch switch.
+ * The texts of the channel's watch switch.
  *
  * @return array key => text
  */
 function ws_events_js_strings()
 {
     return array(
-        'sa_when_event'        => lang('When something happens'),
-        'sa_event'             => lang('What happens'),
-        'sa_event_help'        => lang('It runs once for each time it happens; {{record}} in a text tags the record it is about.'),
-        'sa_event_form'        => lang('Form'),
-        'sa_event_any_form'    => lang('Any form'),
-        'sa_event_status'      => lang('Status it moves to'),
-        'sa_event_any_status'  => lang('Any status'),
-        'sa_event_channel'     => lang('In channel'),
-        'sa_event_any_channel' => lang('Any channel I can read'),
-        'sa_event_channel_help' => lang('It starts only for what you may read: the task, the channel of the request or the guest\'s room.'),
-        'sa_tpl_order_event'   => lang('New order to the channel'),
-        'sa_tpl_order_event_help' => lang('Every new order is written in the channel as it comes in.'),
-        'sa_tpl_order_event_text' => lang('New order {{record}}'),
-        'sa_tpl_form_event'    => lang('Web form to the channel'),
-        'sa_tpl_form_event_help' => lang('Every submitted form is written in the channel with its fields; “Make a task of it” on the message makes it a task.'),
-        'sa_tpl_stock_event'   => lang('Task when stock runs low'),
-        'sa_tpl_stock_event_help' => lang('A product that falls to the site\'s low-stock threshold becomes a task to restock it.'),
-        'sa_tpl_stock_event_task' => lang('Restock {{record_title}}'),
-        'sa_tpl_overdue_event' => lang('Overdue tasks to the channel'),
-        'sa_tpl_overdue_event_help' => lang('A line in the channel for each of its tasks that goes past its due date.'),
-        'sa_tpl_overdue_event_text' => lang('Overdue: {{record}}'),
-        'sa_tpl_approval_event' => lang('Next task when approved'),
-        'sa_tpl_approval_event_help' => lang('When an approval request of the channel is approved, a task for the next step is opened for you.'),
-        'sa_tpl_approval_event_task' => lang('Next step: {{record_title}}'),
         'watch_label'          => lang('Write the events of the records tied to it in the channel'),
         'watch_help'           => lang('The orders of the channel\'s customer and the orders, products and contacts tagged here: a line when one is placed, shipped, cancelled or changed. Only the tag and what happened are written; amounts and addresses are not.'),
     );

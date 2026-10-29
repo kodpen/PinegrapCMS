@@ -38,7 +38,7 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 5. MCP connector tools: reads inline, writes propose and wait, F8.
 6. AI: drafts only (a draft card as scheduled_draft.php), a person publishes.
 7. Process runs: a task per box once ready, due from then, Done per run.
-8. Scheduled actions in Flows, no loss: answered in workspace-flows-scheduled-merge.md (owner, 2026-10-24).
+8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
 - F4 next (plans/workspace-flows-engine.md); values between boxes: plans/workspace-flows-data-passing.md. Read workspace/README.md, plans/workspace-growth-terms.md.

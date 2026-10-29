@@ -91,13 +91,6 @@ function ws_flow_templates_test_flow_only()
 	return array('new_customer', 'quote_approval', 'text_review');
 }
 
-// The scheduled templates a flow words anew: a flow counts the last day, so
-// the hourly one runs once a day.
-function ws_flow_templates_test_reworded()
-{
-	return array('forms');
-}
-
 function ws_flow_templates_test_source()
 {
 	$function = new ReflectionFunction('ws_flow_templates');
@@ -194,30 +187,11 @@ function test_workspace_flow_templates_texts_are_translated()
 	}
 }
 
-// The templates that come from the scheduled ones keep their sentences.
-function test_workspace_flow_templates_keep_the_scheduled_texts()
+// A follow-up's {{result}} of a scheduled action is the box it follows in a
+// flow.
+function test_workspace_flow_templates_read_the_result_from_the_check_box()
 {
-	// The event ones keep the sentences of workspace_events.js.
-	$strings = ws_scheduled_js_strings() + ws_events_js_strings();
-
-	foreach (ws_flow_templates(ws_flow_templates_test_fill()) as $template) {
-		if (in_array($template['key'], ws_flow_templates_test_flow_only(), true)) {
-			pg_assert_false(isset($strings['sa_tpl_' . $template['key']]), $template['key'] . ' is a flow\'s own');
-			continue;
-		}
-
-		if (in_array($template['key'], ws_flow_templates_test_reworded(), true)) {
-			pg_assert_true(isset($strings['sa_tpl_' . $template['key']]), $template['key'] . ' comes from a scheduled one');
-			continue;
-		}
-
-		pg_assert_same($strings['sa_tpl_' . $template['key']] ?? null, $template['title'], $template['key'] . ' title');
-	}
-
-	$source = ws_flow_templates_test_source();
-
-	// A follow-up's {{result}} is the box it follows in a flow.
-	pg_assert_true(strpos($source, '{{node.check.text}}') !== false, 'result read from the check box');
+	pg_assert_true(strpos(ws_flow_templates_test_source(), '{{node.check.text}}') !== false, 'result read from the check box');
 }
 
 // Counts the person cannot read leave out the templates built on them.
@@ -457,10 +431,9 @@ function test_workspace_flow_templates_chain_is_a_manual_start()
 
 	$by_key = array_column(ws_flow_templates(ws_flow_templates_test_fill()), null, 'key');
 	$chain = $by_key['chain'];
-	$strings = ws_scheduled_js_strings();
 
 	pg_assert_same('manual', $chain['start'], 'started by hand');
 	pg_assert_same(2, $chain['boxes']);
-	pg_assert_same($strings['sa_tpl_chain_text'], $chain['graph']['nodes'][1]['config']['text'], 'says which flow finished');
+	pg_assert_same(lang('{{source}} finished: {{source_result}}'), $chain['graph']['nodes'][1]['config']['text'], 'says which flow finished');
 	pg_assert_true(strpos($chain['help'], 'Start a flow') !== false, 'the line names the box that starts it');
 }

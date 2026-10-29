@@ -1008,9 +1008,8 @@ function workspace_flows_parity_rule_cases()
 	return workspace_flows_parity_cases(workspace_flows_parity_source('ws_scheduled_rule_input'));
 }
 
-// What an action is made of: the keys the form sends (data.key, read by
-// ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check()),
-// those of a follow-up
+// What an action is made of: the keys a draft sends (data.key, read by
+// ws_scheduled_input() and ws_scheduled_save_check()), those of a follow-up
 // (follow.key), the row the check gives back to be written (row.key) and
 // the columns ws_scheduled_decode() reads as JSON (column.key).
 function workspace_flows_parity_read_action()
@@ -1018,7 +1017,7 @@ function workspace_flows_parity_read_action()
 	$input = workspace_flows_parity_source('ws_scheduled_input');
 	$out = array();
 
-	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save'), 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save_check'), 'data')) as $key) {
+	foreach (array_merge(workspace_flows_parity_reads($input, 'data'), workspace_flows_parity_reads(workspace_flows_parity_source('ws_scheduled_save_check'), 'data')) as $key) {
 		$out[] = 'data.' . $key;
 	}
 
@@ -2000,7 +1999,7 @@ function workspace_flows_parity_read_routes()
 }
 
 // What the routes of scheduled actions take: the keys each reads from the
-// request (ws_scheduled_save.key); the scheduled messages' routes are left
+// request (ws_scheduled_status.key); the scheduled messages' routes are left
 // out.
 function workspace_flows_parity_read_request()
 {
@@ -2187,7 +2186,7 @@ function workspace_flows_parity_prefixed($prefix, $words)
 function workspace_flows_parity_groups()
 {
 	return array(
-		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input(), ws_scheduled_save() and ws_scheduled_save_check(), the row it gives back, the columns of ws_scheduled_decode()'),
+		'action'              => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_action', 'the $data and follow-up keys of ws_scheduled_input() and ws_scheduled_save_check(), the row it gives back, the columns of ws_scheduled_decode()'),
 		'request'             => array('Action', array(1, 2, 3), 'workspace_flows_parity_read_request', 'the $request keys of the scheduled actions\' routes in includes/workspace/actions.php'),
 		'when'                => array('When', array(3), 'workspace_flows_parity_read_when', 'the "when" kinds of ws_scheduled_input()'),
 		'repeats'             => array('When', array(3), 'workspace_flows_parity_read_repeats', 'ws_scheduled_repeats()'),
@@ -2259,17 +2258,8 @@ function workspace_flows_parity_table()
 			array(array('data.then_action'), 'form', 'the one follow-up an old form sends, which the check takes as a follow-up on done'),
 		),
 		'request' => array(
-			array(array('ws_scheduled_save.id', 'ws_scheduled_preview.id'), 1, 'Edit on the card: the same action saved, its sentence and next runs'),
-			array(array('ws_scheduled_save.name', 'ws_scheduled_preview.name'), 1, 'the form, opened in the Scheduled actions section of Flows: the name'),
-			array(array('ws_scheduled_save.rules', 'ws_scheduled_preview.rules'), 1, 'the form: the "when" and the conditions'),
-			array(array('ws_scheduled_save.main_action', 'ws_scheduled_preview.main_action'), 1, 'the form: the step, sent as main_action ("action" names the request itself)'),
-			array(array('ws_scheduled_save.follow', 'ws_scheduled_preview.follow'), 1, 'the form: the follow-ups by outcome'),
-			array(array('ws_scheduled_save.then_action', 'ws_scheduled_preview.then_action'), 'form', 'the one follow-up the form sends on a site without the 5.85 chains, which the check takes as a follow-up on done'),
-			array(array('ws_scheduled_save.channel_id', 'ws_scheduled_save.note_id', 'ws_scheduled_preview.channel_id', 'ws_scheduled_preview.note_id'), 1, 'where it lives: the channel it was opened in (composer, @ai draft, Duplicate) or the note'),
-			array(array('ws_scheduled_save.draft_change_id'), 1, 'a form opened with a draft\'s change id marks the draft\'s card applied on Save (ws_scheduled_draft_saved()); the card opens a flow since slice 4c2, the form retires in slice 5'),
 			array(array('ws_scheduled_list.status', 'ws_scheduled_list.channel_id'), 1, 'Scheduled actions section in Flows: the list by state chip, or one channel\'s'),
 			array(array('ws_scheduled_get.id'), 1, 'History on the card'),
-			array(array('ws_scheduled_draft.text', 'ws_scheduled_draft.channel_id'), 1, 'the form: the AI sentence, for the channel it is opened in'),
 			array(array('ws_scheduled_status.id', 'ws_scheduled_status.status'), 1, 'Pause/Resume and Cancel on the card'),
 			array(array('ws_scheduled_run_now.id'), 1, 'Run now on the card'),
 		),
@@ -2457,7 +2447,6 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_joined'), 3, 'join trigger box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_CHAIN_HOURLY in ws_scheduled_start'), 3, 'start box: 60 starts an hour'),
 			array(array('WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_input'), 3, 'outcome arrows: no cap of 5 in a flow, whose boxes are bounded by WS_FLOW_MAX_NODES'),
-			array(array('WS_SCHEDULED_CHAIN_DEPTH in ws_scheduled_js_config', 'WS_SCHEDULED_MAX_FOLLOW in ws_scheduled_js_config'), 'form', 'what the form tells about the limits; the canvas has its own (WS_FLOW_*)'),
 			array(array('ws_event_depth in ws_scheduled_execute'), 3, 'depth through flow runs: a run hands its depth to the events it causes'),
 			array(array('ws_event_depth in ws_event'), 3, 'depth through events: a Workspace event carries the depth of the run that caused it'),
 			array(array('ws_event_depth in ws_step_run'), 3, 'depth through step boxes: a flow\'s step says its run\'s depth while it works, so the Workspace and site events it causes carry it'),
@@ -2539,8 +2528,6 @@ function workspace_flows_parity_table()
 		'routes' => array(
 			array(array('route ws_scheduled_list', 'panel ws_scheduled_list', 'api ws_scheduled_list'), 1, 'Scheduled actions section in Flows: the list, by state'),
 			array(array('route ws_scheduled_get', 'panel ws_scheduled_get', 'api ws_scheduled_get', 'route ws_scheduled_status', 'panel ws_scheduled_status', 'api ws_scheduled_status', 'route ws_scheduled_run_now', 'panel ws_scheduled_run_now', 'api ws_scheduled_run_now'), 1, 'card buttons: History, Pause/Resume and Cancel, Run now'),
-			array(array('route ws_scheduled_targets', 'panel ws_scheduled_targets'), 1, 'the retired form\'s step editor asked what it can start: no screen asks it, the route goes with ws_scheduled_save()'),
-			array(array('route ws_scheduled_preview', 'panel ws_scheduled_preview', 'route ws_scheduled_draft', 'panel ws_scheduled_draft', 'route ws_scheduled_save', 'panel ws_scheduled_save'), 1, 'the retired form\'s sentence and next runs, AI sentence and Save: no screen asks them, the routes go with ws_scheduled_save()'),
 			array(array('route ws_scheduled_messages', 'panel ws_scheduled_messages', 'api ws_scheduled_messages', 'route ws_scheduled_message_save', 'panel ws_scheduled_message_save', 'api ws_scheduled_message_save', 'route ws_scheduled_message_delete', 'panel ws_scheduled_message_delete', 'api ws_scheduled_message_delete', 'route ws_scheduled_message_send', 'panel ws_scheduled_message_send', 'api ws_scheduled_message_send'), 'form', 'scheduled messages\' routes: scheduled messages are not moved into Flows'),
 		),
 		'ai_drafts' => array(
@@ -2548,7 +2535,6 @@ function workspace_flows_parity_table()
 			array(array('draft kind scheduled in ws_scheduled_draft_ai_store'), 4, 'AI drafts on the canvas: Pinegrap AI\'s drafts kept under its answer'),
 			array(array('draft kind scheduled in ws_changes_map', 'draft kind scheduled in ws_scheduled_draft_change_entry', 'draft kind scheduled in ws_api_change_fields_present', 'draft kind scheduled in ws_api_change_record_present'), 4, 'AI drafts on the canvas: a draft of the kind scheduled waits on its card and in the API\'s list of drafts'),
 			array(array('draft kind scheduled in ws_change_apply_check'), 4, 'AI drafts on the canvas: a draft is saved where it is opened, never applied as a change'),
-			array(array('draft kind scheduled in ws_scheduled_draft_saved'), 1, 'an action saved from a form opened with a draft marks the draft\'s card applied; the card opens a flow since slice 4c2'),
 			array(array('draft kind scheduled in ws_scheduled_draft_flow_open'), 4, 'AI drafts on the canvas (4c2): a draft card opens as a new flow (ws_flow_graph_from_scheduled()) and is marked applied with the flow'),
 			array(array('draft kind scheduled in ws_changes_input'), 4, 'AI drafts on the canvas: an application\'s proposed scheduled action, rehearsed by the save\'s check, is kept as a flow draft card (ws_scheduled_draft_proposal_row(), C5b)'),
 		),

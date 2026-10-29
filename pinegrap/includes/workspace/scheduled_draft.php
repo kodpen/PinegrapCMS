@@ -4,30 +4,26 @@
  *
  * Workspace - a scheduled action described in a sentence.
  *
- * Somebody writes what they want in their own words ("every Monday at 9,
- * e-mail the team their overdue tasks") above the scheduled action's form;
- * Pinegrap AI turns it into the form's steps and the form opens again filled
- * in. Nothing is saved here: the person reads the steps and the summary
- * beside them (ws_scheduled_preview()), completes what is missing and saves
- * the usual way, where ws_scheduled_save() checks everything again.
+ * Somebody asks @ai for what they want in their own words ("every Monday
+ * at 9, e-mail the team their overdue tasks"); Pinegrap AI turns it into the
+ * steps of a scheduled action, read in words beside them
+ * (ws_scheduled_preview()). Nothing is saved here.
  *
  * What goes to the model: the sentence, today's date and the next days of
- * the week, the kinds of "when", condition and action the form offers on
- * this site, the events and counts the person may see, the team by name and
- * the channels they read. A private channel is named only where Pinegrap AI
- * may be asked in it (ws_ai_channel_allowed()); the channel the form was
- * opened in is always offered, as "this channel" when its name stays home.
+ * the week, the kinds of "when", condition and action offered on this site,
+ * the events and counts the person may see, the team by name and the
+ * channels they read. A private channel is named only where Pinegrap AI may
+ * be asked in it (ws_ai_channel_allowed()); the channel it was asked in is
+ * always offered, as "this channel" when its name stays home.
  *
  * What comes back is read as data and tidied by ws_scheduled_draft_tidy():
  * unknown kinds and keys are dropped, an id that is not in the lists given
- * is left empty, texts are cut to what the form takes, and a part the form
- * cannot show is left out with a note. The person sees the notes above the
- * form.
+ * is left empty, texts are cut to what a step takes, and a part a step
+ * cannot hold is left out with a note the person sees on the card.
  *
- * The same draft can be asked of @ai in a channel ("@ai every Monday at 9,
- * e-mail the team their overdue tasks"). Pinegrap AI (ai.php) hands the
- * sentence to propose_scheduled_action, the draft is made in a model call of
- * its own before the conversation goes on (ws_scheduled_draft_ai_step()),
+ * In a channel Pinegrap AI (ai.php) hands the sentence to
+ * propose_scheduled_action, the draft is made in a model call of its own
+ * before the conversation goes on (ws_scheduled_draft_ai_step()),
  * and it waits under the answer as a proposal - a ws_ai_changes row of
  * record_type 'scheduled', action 'draft', the draft in its snapshot - on the
  * same card as the record changes (changes.php). Like 'mcp_call' it is not
@@ -1298,42 +1294,6 @@ function ws_scheduled_draft_flow_open($viewer, $change_id)
     return ws_flow_draft_opened($viewer, $row, $draft, $input + array('channel_id' => ws_scheduled_draft_home($row, $draft)));
 }
 
-/**
- * A scheduled action saved from a form a draft of @ai opened: its card says
- * it was saved, by whom, and which action it became. Only the person who
- * asked, and only while the draft waits.
- *
- * @param array $viewer
- * @param int   $change_id    the ws_ai_changes row of the draft
- * @param int   $scheduled_id the action saved
- * @param int   $message_id   its card in the channel, 0 for none
- */
-function ws_scheduled_draft_saved($viewer, $change_id, $scheduled_id, $message_id)
-{
-    if (!function_exists('ws_changes_ready') || !ws_changes_ready()) {
-        return;
-    }
-
-    $change = db_item("SELECT * FROM ws_ai_changes WHERE id = '" . (int) $change_id . "' AND record_type = 'scheduled' AND status = 'pending'");
-
-    if (!is_array($change) || ((int) $change['requested_by'] !== (int) $viewer['id'])) {
-        return;
-    }
-
-    $draft = json_decode((string) $change['snapshot'], true);
-    $draft = is_array($draft) ? $draft : array();
-    $draft['message_id'] = (int) $message_id;
-
-    db("UPDATE ws_ai_changes SET status = 'applied', error = '', record_id = '" . (int) $scheduled_id . "',
-            snapshot = '" . e(json_encode($draft, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR)) . "',
-            decided_by = '" . (int) $viewer['id'] . "', decided_at = '" . time() . "'
-        WHERE id = '" . (int) $change['id'] . "' AND status = 'pending'");
-
-    if (mysqli_affected_rows(db::$con) === 1) {
-        ws_message_touch($change['message_id']);
-    }
-}
-
 // ─── Small readers ──────────────────────────────────────────────────────
 
 /**
@@ -1497,20 +1457,13 @@ function ws_scheduled_draft_url($value)
 }
 
 /**
- * The texts of the sentence box above the form.
+ * The texts of the card of a draft @ai made in a channel.
  *
  * @return array key => text
  */
 function ws_scheduled_draft_js_strings()
 {
     return array(
-        'sa_sentence'             => lang('Describe it in a sentence'),
-        'sa_sentence_placeholder' => lang('Every Monday at 9:00, e-mail each person their overdue tasks'),
-        'sa_sentence_help'        => lang('Pinegrap AI fills in the steps below from it. Nothing is saved until you save.'),
-        'sa_sentence_fill'        => lang('Fill in the form'),
-        'sa_sentence_working'     => lang('Pinegrap AI is filling in the form…'),
-        'sa_sentence_done'        => lang('Filled in from your sentence. Check each step and the summary before you save.'),
-        // The card of a draft @ai made in a channel.
         'ai_scheduled'            => lang('Scheduled actions Pinegrap AI drafts'),
         'sa_draft_open'           => lang('Open as a flow'),
         'sa_draft_waiting'        => ws_js_template('Scheduled once {var:1}, who asked for it, opens it as a flow and publishes it', 1),
