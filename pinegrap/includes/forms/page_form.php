@@ -1347,15 +1347,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" name="express_order_quick_add_product_group_id" id="express_order_quick_add_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($express_order_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
             <div class="col-12 my-3" id="express_order_product_description_type_row" style="' . $express_order_product_description_type_row_style . '">
-                <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-field">
-                    <input value="full_description" class="radio" type="radio" id="express_order_product_description_type_full_description" name="express_order_product_description_type"' . $express_order_product_description_type_full_description_checked . '>
-                    <label class="" for="express_order_product_description_type_full_description">'. lang('Full Description') . '</label>
-                </div>
-                <div class="form-field">
-                    <input value="short_description" class="radio" type="radio" id="express_order_product_description_type_short_description" name="express_order_product_description_type"' . $express_order_product_description_type_short_description_checked . '>
-                    <label class="" for="express_order_product_description_type_short_description">'. lang('Short Description') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Product Description Type') . '</legend>
+                    <div class="form-field">
+                        <input value="full_description" class="radio" type="radio" id="express_order_product_description_type_full_description" name="express_order_product_description_type"' . $express_order_product_description_type_full_description_checked . '>
+                        <label class="" for="express_order_product_description_type_full_description">'. lang('Full Description') . '</label>
+                    </div>
+                    <div class="form-field">
+                        <input value="short_description" class="radio" type="radio" id="express_order_product_description_type_short_description" name="express_order_product_description_type"' . $express_order_product_description_type_short_description_checked . '>
+                        <label class="" for="express_order_product_description_type_short_description">'. lang('Short Description') . '</label>
+                    </div>
+                </fieldset>
             </div>
             <div class="col-12 my-3" id="express_order_shipping_form_row" style="' . $express_order_shipping_form_row_style . '">
                 <div class="form-field">
@@ -1498,17 +1500,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <input value="' . h(($express_order_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="express_order_order_receipt_email_subject" name="express_order_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
                             <div class="col-12 my-1">
-                                <div class="col-12">
-                                    <label class="form-label">' . lang('Format') . '</label>
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_plain_text" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#express_order_order_receipt_email_format_plain_text_row" />
-                                    <label for="express_order_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_html" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_html_checked . ' value="html" data-bs-target="#express_order_order_receipt_email_format_html_row"/>
-                                    <label for="express_order_order_receipt_email_format_html">' . lang('HTML') . '</label>
-                                </div>
+                                <fieldset>
+                                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_plain_text" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#express_order_order_receipt_email_format_plain_text_row" />
+                                        <label for="express_order_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
+                                    </div>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="express_order_order_receipt_email_format_html" name="express_order_order_receipt_email_format"' . $express_order_order_receipt_email_format_html_checked . ' value="html" data-bs-target="#express_order_order_receipt_email_format_html_row"/>
+                                        <label for="express_order_order_receipt_email_format_html">' . lang('HTML') . '</label>
+                                    </div>
+                                </fieldset>
                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="express_order_order_receipt_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
@@ -1545,15 +1547,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" id="order_form_product_group_id" name="order_form_product_group_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('product group')) )) . '-</option>' . get_product_group_options(($order_form_properties['product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div>
             <div class="col-12 my-5" id="order_form_product_layout_row_1" style="' . $order_form_product_layout_row_1_style . '">
-                <label class="form-label">' . lang('Format') . '</label>
-                <div class="form-field">
-                    <input class="radio" type="radio" id="order_form_product_layout_list" name="order_form_product_layout"' . $order_form_product_layout_list . ' value="list" />
-                    <label for="order_form_product_layout_list">' . lang('List (full description)') . '</label> 
-                </div>
-                <div class="form-field" id="order_form_product_layout_row_2" style="' . $order_form_product_layout_row_2_style . '">
-                    <input class="radio" type="radio" id="order_form_product_layout_drop_down_selection" name="order_form_product_layout"' . $order_form_product_layout_drop_down_selection . ' value="drop-down selection" />
-                    <label for="order_form_product_layout_drop_down_selection">' . lang('Drop-Down Selection (short description)') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                    <div class="form-field">
+                        <input class="radio" type="radio" id="order_form_product_layout_list" name="order_form_product_layout"' . $order_form_product_layout_list . ' value="list" />
+                        <label for="order_form_product_layout_list">' . lang('List (full description)') . '</label> 
+                    </div>
+                    <div class="form-field" id="order_form_product_layout_row_2" style="' . $order_form_product_layout_row_2_style . '">
+                        <input class="radio" type="radio" id="order_form_product_layout_drop_down_selection" name="order_form_product_layout"' . $order_form_product_layout_drop_down_selection . ' value="drop-down selection" />
+                        <label for="order_form_product_layout_drop_down_selection">' . lang('Drop-Down Selection (short description)') . '</label>
+                    </div>
+                </fieldset>
             </div>
             <div class="col-12 my-3" id="order_form_add_button_row" style="' . $order_form_add_button_row_style . '">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
@@ -1592,15 +1596,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" id="shopping_cart_quick_add_product_group_id" name="shopping_cart_quick_add_product_group_id"><option value="">-' . lang('None') . '-</option>' . get_product_group_options(($shopping_cart_properties['quick_add_product_group_id'] ?? ''), 0, 0, 0, array(), true, 'text', false, true, false) . '</select>
             </div> 
             <div class="col-12 my-5" id="shopping_cart_product_description_type_row" style="' . $shopping_cart_product_description_type_row_style . '">
-                <label class="form-label">' . lang('Product Description Type') . '</label>
-                <div class="form-field">
-                    <input class="radio" type="radio" id="shopping_cart_product_description_type_full_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_full_description_checked . ' value="full_description" />
-                    <label for="shopping_cart_product_description_type_full_description">' . lang('Full Description') . '</label> 
-                </div>
-                <div class="form-field">
-                    <input class="radio" type="radio" id="shopping_cart_product_description_type_short_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_short_description_checked . ' value="short_description" />
-                    <label for="shopping_cart_product_description_type_short_description">' . lang('Short Description') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Product Description Type') . '</legend>
+                    <div class="form-field">
+                        <input class="radio" type="radio" id="shopping_cart_product_description_type_full_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_full_description_checked . ' value="full_description" />
+                        <label for="shopping_cart_product_description_type_full_description">' . lang('Full Description') . '</label> 
+                    </div>
+                    <div class="form-field">
+                        <input class="radio" type="radio" id="shopping_cart_product_description_type_short_description" name="shopping_cart_product_description_type"' . $shopping_cart_product_description_type_short_description_checked . ' value="short_description" />
+                        <label for="shopping_cart_product_description_type_short_description">' . lang('Short Description') . '</label>
+                    </div>
+                </fieldset>
             </div>
             <div class="col-12 md:col-6 lg:col-4 my-3" id="shopping_cart_special_offer_code_label_row" style="' . $shopping_cart_special_offer_code_label_row_style . '">
                 <label class="form-label" for="shopping_cart_special_offer_code_label">' . lang('Special Offer Code Label') . '</label>
@@ -1698,15 +1704,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
             <div class="col-12 my-3" id="shipping_method_product_description_type_row" style="' . $shipping_method_product_description_type_row_style . '">
-                <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-field">
-                    <input value="full_description" class="radio" type="radio" id="shipping_method_product_description_type_full_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_full_description_checked . '>
-                    <label class="" for="shipping_method_product_description_type_full_description">'. lang('Full Description') . '</label>
-                </div>
-                <div class="form-field">
-                    <input value="short_description" class="radio" type="radio" id="shipping_method_product_description_type_short_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_short_description_checked . '>
-                    <label class="" for="shipping_method_product_description_type_short_description">'. lang('Short Description') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Product Description Type') . '</legend>
+                    <div class="form-field">
+                        <input value="full_description" class="radio" type="radio" id="shipping_method_product_description_type_full_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_full_description_checked . '>
+                        <label class="" for="shipping_method_product_description_type_full_description">'. lang('Full Description') . '</label>
+                    </div>
+                    <div class="form-field">
+                        <input value="short_description" class="radio" type="radio" id="shipping_method_product_description_type_short_description" name="shipping_method_product_description_type"' . $shipping_method_product_description_type_short_description_checked . '>
+                        <label class="" for="shipping_method_product_description_type_short_description">'. lang('Short Description') . '</label>
+                    </div>
+                </fieldset>
             </div>
             <div class="col-12 my-3" id="shipping_method_submit_button_row" style="' . $shipping_method_submit_button_row_style . '">
                 <div class="row p-1 border border-1 rounded-4 bg-1">
@@ -1786,15 +1794,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" id="billing_information_next_page_id" name="billing_information_next_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('Order Preview or Express Order Page')) )) . '-</option>' . select_page(($billing_information_properties['next_page_id'] ?? ''), 'order preview') . select_page(($billing_information_properties['next_page_id'] ?? ''), 'express order') . '</select>
             </div> 
             <div class="col-12 my-3" id="order_preview_product_description_type_row" style="' . $order_preview_product_description_type_row_style . '">
-                <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-field">
-                    <input value="full_description" class="radio" type="radio" id="order_preview_product_description_type_full_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_full_description_checked . '>
-                    <label class="" for="order_preview_product_description_type_full_description">'. lang('Full Description') . '</label>
-                </div>
-                <div class="form-field">
-                    <input value="short_description" class="radio" type="radio" id="order_preview_product_description_type_short_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_short_description_checked . '>
-                    <label class="" for="order_preview_product_description_type_short_description">'. lang('Short Description') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Product Description Type') . '</legend>
+                    <div class="form-field">
+                        <input value="full_description" class="radio" type="radio" id="order_preview_product_description_type_full_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_full_description_checked . '>
+                        <label class="" for="order_preview_product_description_type_full_description">'. lang('Full Description') . '</label>
+                    </div>
+                    <div class="form-field">
+                        <input value="short_description" class="radio" type="radio" id="order_preview_product_description_type_short_description" name="order_preview_product_description_type"' . $order_preview_product_description_type_short_description_checked . '>
+                        <label class="" for="order_preview_product_description_type_short_description">'. lang('Short Description') . '</label>
+                    </div>
+                </fieldset>
             </div>
             <div class="col-12 my-3" id="order_preview_auto_registration_row" style="' . $order_preview_auto_registration_row_style . '">
                 <div class="form-field">
@@ -1853,17 +1863,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <input value="' . h(($order_preview_properties['order_receipt_email_subject'] ?? '')) . '" type="text" id="order_preview_order_receipt_email_subject" name="order_preview_order_receipt_email_subject" class="form-control" maxlength="255">
                             </div> 
                             <div class="col-12 my-1">
-                                <div class="col-12">
-                                    <label class="form-label">' . lang('Format') . '</label>
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_plain_text" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#order_preview_order_receipt_email_format_plain_text_row" />
-                                    <label for="order_preview_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_html" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_html_checked . ' value="html"  data-bs-target="#order_preview_order_receipt_email_format_html_row"/>
-                                    <label for="order_preview_order_receipt_email_format_html">' . lang('HTML') . '</label>
-                                </div>
+                                <fieldset>
+                                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_plain_text" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#order_preview_order_receipt_email_format_plain_text_row" />
+                                        <label for="order_preview_order_receipt_email_format_plain_text">' . lang('Plain Text') . '</label> 
+                                    </div>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="order_preview_order_receipt_email_format_html" name="order_preview_order_receipt_email_format"' . $order_preview_order_receipt_email_format_html_checked . ' value="html"  data-bs-target="#order_preview_order_receipt_email_format_html_row"/>
+                                        <label for="order_preview_order_receipt_email_format_html">' . lang('HTML') . '</label>
+                                    </div>
+                                </fieldset>
                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="order_preview_order_receipt_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
@@ -1896,15 +1906,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
             <div class="col-12 my-3" id="order_receipt_product_description_type_row" style="' . $order_receipt_product_description_type_row_style . '">
-                <label class="form-label" for="">'. lang('Product Description Type') . '</label>
-                <div class="form-field">
-                    <input value="full_description" class="radio" type="radio" id="order_receipt_product_description_type_full_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_full_description_checked . '>
-                    <label class="" for="order_receipt_product_description_type_full_description">'. lang('Full Description') . '</label>
-                </div>
-                <div class="form-field">
-                    <input value="short_description" class="radio" type="radio" id="order_receipt_product_description_type_short_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_short_description_checked . '>
-                    <label class="" for="order_receipt_product_description_type_short_description">'. lang('Short Description') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Product Description Type') . '</legend>
+                    <div class="form-field">
+                        <input value="full_description" class="radio" type="radio" id="order_receipt_product_description_type_full_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_full_description_checked . '>
+                        <label class="" for="order_receipt_product_description_type_full_description">'. lang('Full Description') . '</label>
+                    </div>
+                    <div class="form-field">
+                        <input value="short_description" class="radio" type="radio" id="order_receipt_product_description_type_short_description" name="order_receipt_product_description_type"' . $order_receipt_product_description_type_short_description_checked . '>
+                        <label class="" for="order_receipt_product_description_type_short_description">'. lang('Short Description') . '</label>
+                    </div>
+                </fieldset>
             </div>';
     }
     
@@ -2152,9 +2164,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             <div class="col-12 my-3" id="custom_form_submitter_email_row" style="' . $custom_form_submitter_email_row_style . '">
                 <div class="form-field">
                     <div class="switch"><input value="1"' . $custom_form_submitter_email_checked . ' id="custom_form_submitter_email" name="custom_form_submitter_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_submitter_email" /></div>
-                    <label class="" for="custom_form_submitter_email">' . lang('E-mail Submitter') . '</label>
+                    <label class="" for="custom_form_submitter_email" id="custom_form_submitter_email_label">' . lang('E-mail Submitter') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_submitter_email">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_submitter_email" role="group" aria-labelledby="custom_form_submitter_email_label">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -2167,17 +2179,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <input value="' . h(($custom_form_properties['submitter_email_subject'] ?? '')) . '" type="text" id="custom_form_submitter_email_subject" name="custom_form_submitter_email_subject" class="form-control" maxlength="255">
                             </div>
                             <div class="col-12 my-1">
-                                <div class="col-12">
-                                    <label class="form-label">' . lang('Format') . '</label>
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_plain_text" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_submitter_email_format_plain_text_row" />
-                                    <label for="custom_form_submitter_email_format_plain_text">' . lang('Plain Text') . '</label> 
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_html" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_submitter_email_format_html_row"/>
-                                    <label for="custom_form_submitter_email_format_html">' . lang('HTML') . '</label>
-                                </div>
+                                <fieldset>
+                                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_plain_text" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_submitter_email_format_plain_text_row" />
+                                        <label for="custom_form_submitter_email_format_plain_text">' . lang('Plain Text') . '</label> 
+                                    </div>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="custom_form_submitter_email_format_html" name="custom_form_submitter_email_format"' . $custom_form_submitter_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_submitter_email_format_html_row"/>
+                                        <label for="custom_form_submitter_email_format_html">' . lang('HTML') . '</label>
+                                    </div>
+                                </fieldset>
                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_submitter_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
@@ -2208,9 +2220,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             <div class="col-12 my-3" id="custom_form_administrator_email_row" style="' . $custom_form_administrator_email_row_style . '">
                 <div class="form-field">
                     <div class="switch"><input value="1"' . $custom_form_administrator_email_checked . ' id="custom_form_administrator_email" name="custom_form_administrator_email" class="collapse-switcher" type="checkbox" role="switch" data-bs-target="#show_or_hide_custom_form_administrator_email" /></div>
-                    <label class="" for="custom_form_administrator_email">' . lang('E-mail Administrator') . '</label>
+                    <label class="" for="custom_form_administrator_email" id="custom_form_administrator_email_label">' . lang('E-mail Administrator') . '</label>
                 </div>
-                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_administrator_email">
+                <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="show_or_hide_custom_form_administrator_email" role="group" aria-labelledby="custom_form_administrator_email_label">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
@@ -2227,17 +2239,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                 <input value="' . h(($custom_form_properties['administrator_email_subject'] ?? '')) . '" type="text" id="custom_form_administrator_email_subject" name="custom_form_administrator_email_subject" class="form-control" maxlength="255">
                             </div>
                             <div class="col-12 my-1">
-                                <div class="col-12">
-                                    <label class="form-label">' . lang('Format') . '</label>
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_plain_text" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_administrator_email_format_plain_text_row" />
-                                    <label for="custom_form_administrator_email_format_plain_text">' . lang('Plain Text') . '</label> 
-                                </div>
-                                <div class="form-field  d-inline-grid me-5">
-                                    <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_html" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_administrator_email_format_html_row"/>
-                                    <label for="custom_form_administrator_email_format_html">' . lang('HTML') . '</label>
-                                </div>
+                                <fieldset>
+                                    <legend class="form-label fs-md">' . lang('Format') . '</legend>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_plain_text" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_plain_text_checked . ' value="plain_text" data-bs-target="#custom_form_administrator_email_format_plain_text_row" />
+                                        <label for="custom_form_administrator_email_format_plain_text">' . lang('Plain Text') . '</label> 
+                                    </div>
+                                    <div class="form-field  d-inline-grid me-5">
+                                        <input class="radio collapse-switcher" type="radio" id="custom_form_administrator_email_format_html" name="custom_form_administrator_email_format"' . $custom_form_administrator_email_format_html_checked . ' value="html"  data-bs-target="#custom_form_administrator_email_format_html_row"/>
+                                        <label for="custom_form_administrator_email_format_html">' . lang('HTML') . '</label>
+                                    </div>
+                                </fieldset>
                                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_administrator_email_format_plain_text_row">
                                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                     <div class="popover-body">
@@ -2355,17 +2367,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
 
         $output_forms_page_type_properties .=
             '<div class="col-12 my-1" id="custom_form_confirmation_type_row" style="' . $custom_form_confirmation_type_row_style . '">
-                <div class="col-12">
-                    <label class="form-label">' . lang('Confirmation Type') . '</label>
-                </div>
-                <div class="form-field  d-inline-grid me-5">
-                    <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
-                    <label for="custom_form_confirmation_type_message">' . lang('Message') . '</label> 
-                </div>
-                <div class="form-field  d-inline-grid me-5">
-                    <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_page" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_page_row"/>
-                    <label for="custom_form_confirmation_type_page">' . lang('Next Page') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('Confirmation Type') . '</legend>
+                    <div class="form-field  d-inline-grid me-5">
+                        <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
+                        <label for="custom_form_confirmation_type_message">' . lang('Message') . '</label> 
+                    </div>
+                    <div class="form-field  d-inline-grid me-5">
+                        <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_page" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_page_row"/>
+                        <label for="custom_form_confirmation_type_page">' . lang('Next Page') . '</label>
+                    </div>
+                </fieldset>
                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_confirmation_type_message_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                     <div class="popover-body">
@@ -2411,21 +2423,21 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 </div>
             </div>
             <div class="col-12 my-1" id="custom_form_return_type_row" style="' . $custom_form_return_type_row_style . '">
-                <div class="col-12">
-                    <label class="form-label">' . lang('If User has already submitted form in the past, then show') . '</label>
-                </div>
-                <div class="form-field d-inline-grid me-5">
-                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
-                    <label for="custom_form_return_type_custom_form">' . lang('Custom Form') . '</label> 
-                </div>
-                <div class="form-field d-inline-grid me-5">
-                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_message" name="custom_form_return_type"' . $custom_form_return_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_message_row"/>
-                    <label for="custom_form_return_type_message">' . lang('Message') . '</label>
-                </div>
-                <div class="form-field  d-inline-grid me-5">
-                    <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_page" name="custom_form_return_type"' . $custom_form_return_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_page_row"/>
-                    <label for="custom_form_return_type_page">' . lang('Page') . '</label>
-                </div>
+                <fieldset>
+                    <legend class="form-label fs-md">' . lang('If User has already submitted form in the past, then show') . '</legend>
+                    <div class="form-field d-inline-grid me-5">
+                        <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
+                        <label for="custom_form_return_type_custom_form">' . lang('Custom Form') . '</label> 
+                    </div>
+                    <div class="form-field d-inline-grid me-5">
+                        <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_message" name="custom_form_return_type"' . $custom_form_return_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_message_row"/>
+                        <label for="custom_form_return_type_message">' . lang('Message') . '</label>
+                    </div>
+                    <div class="form-field  d-inline-grid me-5">
+                        <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_page" name="custom_form_return_type"' . $custom_form_return_type_page_checked . ' value="page" onclick="show_or_hide_custom_form_return_type()" data-bs-target="#custom_form_return_type_page_row"/>
+                        <label for="custom_form_return_type_page">' . lang('Page') . '</label>
+                    </div>
+                </fieldset>
                 <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="custom_form_return_type_message_row">
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(140px, 0px);"></div>
                     <div class="popover-body">
@@ -2776,15 +2788,17 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3" id="layout_type_row" style="' . $layout_type_row_style . '">
-                            <label class="form-label" for="">'. lang('Layout Type') . '</label>
-                            <div class="form-field">
-                                <input value="system" class="radio" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
-                                <label class="" for="layout_type_system">'. lang('System') . '</label>
-                            </div>
-                            <div class="form-field">
-                                <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
-                                <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
-                            </div>
+                            <fieldset>
+                                <legend class="form-label fs-md">' . lang('Layout Type') . '</legend>
+                                <div class="form-field">
+                                    <input value="system" class="radio" type="radio" id="layout_type_system" name="layout_type"' . $layout_type_system_checked . '>
+                                    <label class="" for="layout_type_system">'. lang('System') . '</label>
+                                </div>
+                                <div class="form-field">
+                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
+                                    <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                                </div>
+                            </fieldset>
                         </div>
                         <div class="col-12 md:col-6 lg:col-4 my-3" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">
                             <label for="email_a_friend_submit_button_label" class="form-label">' . lang('Submit Button Label') . '</label>
