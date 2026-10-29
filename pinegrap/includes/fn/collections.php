@@ -505,6 +505,27 @@ function pg_coll_field_kind($kind, $type)
 }
 
 /**
+ * The text a record's address name is made from: the first non-blank value
+ * of a slug field, else the first non-blank value of the Title field (RSS
+ * title). $rows are the record's values in field order, each with 'data',
+ * 'kind' (form_fields.collection_kind) and 'rss' (form_fields.rss_field).
+ *
+ * @param array $rows
+ * @return string
+ */
+function pg_coll_address_source($rows)
+{
+    $title = '';
+    foreach ((array)$rows as $row) {
+        $data = isset($row['data']) ? trim((string)$row['data']) : '';
+        if ($data === '') continue;
+        if (isset($row['kind']) && $row['kind'] === 'slug') return $data;
+        if ($title === '' && isset($row['rss']) && $row['rss'] === 'title') $title = $data;
+    }
+    return $title;
+}
+
+/**
  * The form a reference field points into, as written: a positive page id
  * for a field of kind 'reference', else 0. Whether that page holds a form
  * is the caller's check (pg_coll_reference_target()).

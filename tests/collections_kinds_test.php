@@ -114,3 +114,21 @@ function test_collections_kinds_migration_step()
 	pg_assert_true(stripos($step, 'ALTER TABLE') === false && strpos($step, 'db(') === false, 'no raw statement');
 	pg_assert_true(preg_match("/install_note\\('(?:[^'\\\\]|\\\\.)+'\\);\\s*\$/", $step) === 1, 'ends with a note for the operator');
 }
+
+function test_collections_address_source()
+{
+	$title = array('data' => 'My First Post', 'kind' => '', 'rss' => 'title');
+	$slug  = array('data' => 'first-post', 'kind' => 'slug', 'rss' => '');
+	$blank = array('data' => '  ', 'kind' => 'slug', 'rss' => '');
+
+	pg_assert_same('My First Post', pg_coll_address_source(array($title)), 'the Title field alone');
+	pg_assert_same('first-post', pg_coll_address_source(array($title, $slug)), 'a slug comes before the Title field, wherever it sits');
+	pg_assert_same('first-post', pg_coll_address_source(array($slug, $title)));
+	pg_assert_same('My First Post', pg_coll_address_source(array($blank, $title)), 'a blank slug falls back to the title');
+	pg_assert_same('first-post', pg_coll_address_source(array($slug)), 'a slug without a Title field');
+	pg_assert_same('', pg_coll_address_source(array()));
+	pg_assert_same('Second', pg_coll_address_source(array(
+		array('data' => '', 'kind' => '', 'rss' => 'title'),
+		array('data' => 'Second', 'kind' => '', 'rss' => 'title'),
+	)), 'the first non-blank title');
+}

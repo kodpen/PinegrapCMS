@@ -45,7 +45,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - classic-style-import.md: A classic style's code read by the HTML importer (L1): placeholders to region nodes, meta_tags/stylesheet dropped, title and body on the root, site paths kept, what stays text
 - classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
-- collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, why the slug kind waits for C5
+- collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type may have, the slug kind (C5b)
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
