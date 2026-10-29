@@ -139,7 +139,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Menu Item'),
         'heading_description' => lang('Define the label to display for this menu item and where it links too.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
             array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),

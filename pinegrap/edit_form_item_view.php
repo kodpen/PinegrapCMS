@@ -207,7 +207,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Edit Form Item View'),
         'heading_description' => lang('Update this page\'s display of a single submitted form, linked to by a reference code.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php')
+        'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('edit_page.php?id=' . (int)$page['id']))
     ,
             'breadcrumb' => array(array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'), array('label' => lang('Edit Form Item View'))),
         ]) . '<main id="content" class="container-fluid">' );
