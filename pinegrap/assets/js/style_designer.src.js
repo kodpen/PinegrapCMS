@@ -45959,6 +45959,85 @@ const StyleDesigner = (function () {
         return n;
     }
 
+    /* =====================================================================
+     * PARTS ANYWHERE
+     * ---------------------------------------------------------------------
+     * A read-only part of the page's detail widget placed outside the
+     * widget's box: a node of the page tree whose props.partOf holds the
+     * widget's shared id. The server draws its subtree with the widget's
+     * renderer, from the same record (pg_sw_away_marker()). The constants
+     * and the three functions below are twins of
+     * includes/fn/widgets_parts_anywhere.php.
+     * ===================================================================== */
+
+    // The widget kinds a part may be tied to (pg_sw_away_kinds()).
+    var SD_PART_KINDS = ['catalog_item_view', 'form_item_view', 'calendar_event_view'];
+    var SD_PART_REFUSED_TAGS = ['form', 'input', 'select', 'textarea', 'button', 'option', 'script'];
+    var SD_PART_REFUSED_CONTENT = ['messages', 'custom_php', 'comments_block', 'applied_offers', 'variant_attr', 'language_switcher'];
+
+    // The widget a part node names, or 0 for a node that is no part
+    // (pg_sw_away_of()).
+    function _sdPartOf(node) {
+        var props = (node && typeof node === 'object') ? node.props : null;
+        var of = (props && typeof props === 'object') ? props.partOf : 0;
+        if (typeof of === 'number') return (of % 1 === 0 && of > 0) ? of : 0;
+        return (typeof of === 'string' && /^[0-9]+$/.test(of)) ? parseInt(of, 10) : 0;
+    }
+
+    // Why the subtree `node` cannot be a part, or '' when it only shows
+    // values (pg_sw_away_read_only() answers true for ''): 'shared' (a
+    // shared component), 'region', 'loop' (a main loop or a recipient list),
+    // 'control' (a form, a control, a button, an element that posts),
+    // 'messages', 'code' or 'action' (an action or section binding).
+    function _sdPartRefusal(node) {
+        if (!node || typeof node !== 'object') return '';
+        var type  = (node.type == null) ? '' : String(node.type);
+        var props = (node.props && typeof node.props === 'object') ? node.props : {};
+        if (type === 'shared_ref') return 'shared';
+        if (type === 'region') return 'region';
+        if (type === 'recipient_loop_area') return 'loop';
+        if (type === 'loop_area' && !(typeof props.source === 'string' && props.source !== '')) return 'loop';
+        if (type === 'semantic') {
+            var tag = (props.tag == null) ? '' : String(props.tag).toLowerCase();
+            if (SD_PART_REFUSED_TAGS.indexOf(tag) !== -1) return 'control';
+        }
+        var content = (props.contentType == null) ? '' : String(props.contentType).toLowerCase();
+        if (SD_PART_REFUSED_CONTENT.indexOf(content) !== -1) {
+            return content === 'messages' ? 'messages' : (content === 'custom_php' ? 'code' : 'control');
+        }
+        var b = (props._bindings && typeof props._bindings === 'object') ? props._bindings : {};
+        // PHP's empty(): '', '0', 0, false, null and an empty list are unset.
+        var filled = function (v) {
+            if (v == null || v === false || v === '' || v === '0' || v === 0) return false;
+            return !(typeof v === 'object' && !Object.keys(v).length);
+        };
+        if (filled(b.action) || filled(b.section)) return 'action';
+        var kids = (node.children && typeof node.children === 'object') ? node.children : [];
+        var keys = Object.keys(kids);
+        for (var i = 0; i < keys.length; i++) {
+            var why = _sdPartRefusal(kids[keys[i]]);
+            if (why) return why;
+        }
+        return '';
+    }
+
+    // The node placed outside its widget for `node`, a node of widget
+    // `sid`: a copy with props.partOf set, the shape pg_sw_away_of() reads.
+    // A partOf below it is dropped (inside a part it means nothing);
+    // `newId`, when given, gives every node of the copy a fresh _id.
+    function _sdPartNode(node, sid, newId) {
+        var copy = JSON.parse(JSON.stringify(node));
+        (function walk(n, top) {
+            if (!n || typeof n !== 'object') return;
+            if (newId) n._id = newId();
+            if (!top && n.props && typeof n.props === 'object') delete n.props.partOf;
+            if (Array.isArray(n.children)) n.children.forEach(function (c) { walk(c, false); });
+        })(copy, true);
+        if (!copy.props || typeof copy.props !== 'object' || Array.isArray(copy.props)) copy.props = {};
+        copy.props.partOf = parseInt(sid, 10) || 0;
+        return copy;
+    }
+
     // The placement of shared component `sid` that the open page shows: a
     // shared_ref on the page tree itself first, else the first one inside a
     // component placed on this page (a widget in the header). Cached trees
