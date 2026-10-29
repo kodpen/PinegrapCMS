@@ -2450,3 +2450,458 @@ function pg_order_complete_announce($order_id, $order_number, $total, array $bil
         'order_total' => prepare_amount($total / 100),
         'user' => ' ' . $customer . ' '));
 }
+
+/**
+ * The key code a checkout's special offer code names, when it is one.
+ *
+ * @param string $code the order's special offer code
+ * @return array|null id, offer_code, single_use, report; null for none
+ */
+function pg_order_key_code($code)
+{
+    if ($code == '') {
+        return null;
+    }
+
+    $result = db_q(
+        "SELECT
+            id,
+            offer_code,
+            single_use,
+            report
+        FROM key_codes
+        WHERE code = ?",
+        array((string) $code)) or output_error('Query failed.');
+
+    return mysqli_fetch_assoc($result) ?: null;
+}
+
+/**
+ * Uses up a single-use key code the completed order was placed with. The
+ * offer code it stands for is a value of the completing UPDATE, settled by
+ * the caller before the lock.
+ *
+ * @param array|null $key_code pg_order_key_code()
+ * @param int        $actor    the signed-in user (0 for a guest or a service)
+ * @return void
+ */
+function pg_order_complete_key_code($key_code, $actor)
+{
+    if (!$key_code || !$key_code['single_use']) {
+        return;
+    }
+
+    db_q(
+        "UPDATE key_codes
+        SET
+            enabled = '0',
+            user = ?,
+            timestamp = UNIX_TIMESTAMP()
+        WHERE id = ?",
+        array((string) $actor, (string) $key_code['id'])) or output_error('Query failed.');
+}
+
+/**
+ * Redeems the order's gift card discount from its applied gift cards, in the
+ * order they were applied, from the balances the checkout refreshed into
+ * applied_gift_cards.old_balance; a card no longer needed is removed. A card
+ * that fails (deleted, its balance changed meanwhile, a Givex error) is
+ * removed too and the order is still accepted (the payment may already be
+ * taken): the shortfall is logged and e-mailed to the store.
+ *
+ * @param int    $order_id
+ * @param string $order_number
+ * @param int    $required_amount the order's gift_card_discount, minor units
+ * @param int    $actor           the signed-in user (0 for a guest or a service)
+ * @param string $log_user        the user name the log line names
+ * @return void
+ */
+function pg_order_complete_gift_cards($order_id, $order_number, $required_amount, $actor, $log_user)
+{
+    $result = db_q(
+        "SELECT
+            id,
+            gift_card_id,
+            code,
+            old_balance,
+            givex
+        FROM applied_gift_cards
+        WHERE order_id = ?
+        ORDER BY id ASC",
+        array((string) $order_id)) or output_error('Query failed.');
+
+    $applied_gift_cards = array();
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $applied_gift_cards[] = $row;
+    }
+
+    $current_redemption_amount = 0;
+
+    // Errors are rare (the balances were checked earlier in the checkout),
+    // but a network failure or a concurrent order is possible.
+    $gift_card_errors = array();
+
+    foreach ($applied_gift_cards as $applied_gift_card) {
+        // Enough was redeemed already: this card is not needed.
+        if ($current_redemption_amount >= $required_amount) {
+            db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
+            continue;
+        }
+
+        $remaining_redemption_amount = $required_amount - $current_redemption_amount;
+
+        // The whole balance, or only what is still to redeem.
+        if ($applied_gift_card['old_balance'] <= $remaining_redemption_amount) {
+            $amount = $applied_gift_card['old_balance'];
+        } else {
+            $amount = $remaining_redemption_amount;
+        }
+
+        // A gift card of this system.
+        if ($applied_gift_card['givex'] == 0) {
+            $result = db_q("SELECT id, balance FROM gift_cards WHERE id = ?", array((string) $applied_gift_card['gift_card_id'])) or output_error('Query failed.');
+
+            // the card was deleted after it was applied
+            $gift_card = mysqli_fetch_assoc($result) ?: array('id' => '');
+
+            // Deleted, or its balance went down meanwhile (another order
+            // submitted at the same moment): the card is removed.
+            if (($gift_card['id'] == '') || ($gift_card['balance'] < $amount)) {
+                $gift_card_errors[] = array(
+                    'gift_card_code' => $applied_gift_card['code'],
+                    'amount' => $amount,
+                    'error_message' => 'Gift card was deleted or balance of card changed right when order was submitted.',
+                    'givex' => false
+                );
+
+                db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
+
+            } else {
+                db_q(
+                    "UPDATE gift_cards
+                    SET
+                        balance = balance - ?,
+                        last_modified_user_id = ?,
+                        last_modified_timestamp = UNIX_TIMESTAMP()
+                    WHERE id = ?",
+                    array((int) round($amount), (string) $actor, (string) $gift_card['id'])) or output_error('Query failed.');
+
+                $result = db_q("SELECT balance FROM gift_cards WHERE id = ?", array((string) $gift_card['id'])) or output_error('Query failed.');
+                $row = mysqli_fetch_assoc($result);
+                $new_balance = isset($row['balance']) ? $row['balance'] : '';
+
+                db_q(
+                    "UPDATE applied_gift_cards
+                    SET
+                        amount = ?,
+                        new_balance = ?
+                    WHERE id = ?",
+                    array((string) $amount, (string) $new_balance, (string) $applied_gift_card['id'])) or output_error('Query failed.');
+
+                $current_redemption_amount = $current_redemption_amount + $amount;
+            }
+
+        // A Givex gift card: the service takes the amount.
+        } else {
+            $result = send_givex_request('redemption', $applied_gift_card['code'], $amount / 100);
+
+            if ((isset($result['curl_errno']) == TRUE) || (isset($result['error_message']) == TRUE)) {
+                if (isset($result['curl_errno']) == TRUE) {
+                    $gift_card_errors[] = array(
+                        'gift_card_code' => $applied_gift_card['code'],
+                        'amount' => $amount,
+                        'curl_errno' => $result['curl_errno'],
+                        'curl_error' => $result['curl_error'],
+                        'givex' => true
+                    );
+
+                } else {
+                    $gift_card_errors[] = array(
+                        'gift_card_code' => $applied_gift_card['code'],
+                        'amount' => $amount,
+                        'error_message' => $result['error_message'],
+                        'givex' => true
+                    );
+                }
+
+                db_q("DELETE FROM applied_gift_cards WHERE id = ?", array((string) $applied_gift_card['id'])) or output_error('Query failed.');
+
+            } else {
+                // Givex took the amount; a new balance its reply did not give is what the card had left.
+                $new_balance = isset($result['balance']) ? $result['balance'] * 100 : $applied_gift_card['old_balance'] - $amount;
+
+                db_q(
+                    "UPDATE applied_gift_cards
+                    SET
+                        amount = ?,
+                        new_balance = ?,
+                        authorization_number = ?
+                    WHERE id = ?",
+                    array((string) $amount, (string) $new_balance, (string) $result['authorization_number'], (string) $applied_gift_card['id'])) or output_error('Query failed.');
+
+                $current_redemption_amount = $current_redemption_amount + $amount;
+            }
+        }
+    }
+
+    if ($current_redemption_amount >= $required_amount) {
+        return;
+    }
+
+    $error_message = pg_order_gift_card_error_message($order_number, $required_amount, $current_redemption_amount, $gift_card_errors);
+
+    log_activity($error_message, $log_user);
+
+    email(array(
+        'to' => ECOMMERCE_EMAIL_ADDRESS,
+        'from_name' => ORGANIZATION_NAME,
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject' => 'Gift card error',
+        'body' => $error_message));
+}
+
+/**
+ * The log line and store e-mail of a gift card shortfall: the order, what
+ * was to be redeemed and what was, then each failed card (its code masked)
+ * with the amount tried and the error. Pure but for the masking helpers.
+ *
+ * @param string $order_number
+ * @param int    $required_amount minor units
+ * @param int    $redeemed_amount minor units
+ * @param array  $errors          gift_card_code, amount, givex, and
+ *                                curl_errno + curl_error or error_message
+ * @return string
+ */
+function pg_order_gift_card_error_message($order_number, $required_amount, $redeemed_amount, array $errors)
+{
+    $detail = '';
+
+    foreach ($errors as $error) {
+        if ($error['givex'] == false) {
+            $protected_gift_card_code = protect_gift_card_code($error['gift_card_code']);
+        } else {
+            $protected_gift_card_code = protect_givex_gift_card_code($error['gift_card_code']);
+        }
+
+        $detail .= ' Gift card: ' . $protected_gift_card_code . '. Attempted redemption amount: ' . pg_money_text($error['amount'] / 100, BASE_CURRENCY_SYMBOL) . '.';
+
+        if (isset($error['curl_errno']) == TRUE) {
+            $detail .= ' cURL Error Number: ' . $error['curl_errno'] . '. cURL Error Message: ' . $error['curl_error'] . '.';
+
+        } else if (isset($error['error_message']) == TRUE) {
+            if ($error['givex'] == true) {
+                $detail .= ' Givex error:';
+            }
+
+            $detail .= ' ' . $error['error_message'] . '.';
+        }
+    }
+
+    return 'Order (' . $order_number . ') was accepted however one or more gift cards could not be redeemed properly because there was an error with at least one gift card. The order should probably not be fulfilled until the payment issue is resolved. Total attempted redemption amount: ' . pg_money_text($required_amount / 100, BASE_CURRENCY_SYMBOL) . '. Total successfull redemption amount: ' . pg_money_text($redeemed_amount / 100, BASE_CURRENCY_SYMBOL) . '.' . $detail;
+}
+
+/**
+ * The commission rate of an approved affiliate: its own rate, or the
+ * program's default when it has none.
+ *
+ * @param string $affiliate_code
+ * @return float|string|null null when no approved affiliate has the code
+ */
+function pg_order_affiliate_rate($affiliate_code)
+{
+    $result = db_q("SELECT affiliate_commission_rate FROM contacts WHERE (affiliate_code = ?) AND (affiliate_approved = 1)", array((string) $affiliate_code)) or output_error('Query failed.');
+
+    if (mysqli_num_rows($result) == 0) {
+        return null;
+    }
+
+    $row = mysqli_fetch_assoc($result);
+
+    if ($row['affiliate_commission_rate'] == 0) {
+        return AFFILIATE_DEFAULT_COMMISSION_RATE;
+    }
+
+    return $row['affiliate_commission_rate'];
+}
+
+/**
+ * The commission rate of an order line: the product's limit when it is set
+ * and lower than the affiliate's rate. Pure.
+ *
+ * @param array $product        commission_rate_limit
+ * @param mixed $affiliate_rate pg_order_affiliate_rate()
+ * @return mixed
+ */
+function pg_order_commission_rate(array $product, $affiliate_rate)
+{
+    if (($product['commission_rate_limit'] != 0) && ($product['commission_rate_limit'] < $affiliate_rate)) {
+        return $product['commission_rate_limit'];
+    }
+
+    return $affiliate_rate;
+}
+
+/**
+ * The commission of the order's non-recurring commissionable lines, less the
+ * order discount's and the gift cards' share, rounded to a minor unit. Pure.
+ *
+ * @param array $products                nonrecurring lines: commissionable,
+ *                                       commission_rate_limit, quantity, price
+ * @param mixed $affiliate_rate
+ * @param int   $discount                the order discount, minor units
+ * @param int   $subtotal                minor units
+ * @param int   $gift_card_discount      minor units
+ * @param int   $total_without_surcharge minor units, after the gift cards
+ * @return float
+ */
+function pg_order_commission(array $products, $affiliate_rate, $discount, $subtotal, $gift_card_discount, $total_without_surcharge)
+{
+    // pg_order_charged_discount() keeps a discount within a subtotal above
+    // zero; the check keeps the division safe on its own.
+    $discount_percentage = 0;
+
+    if ($discount && ($subtotal > 0)) {
+        $discount_percentage = $discount / $subtotal;
+    }
+
+    if ($gift_card_discount != 0) {
+        $gift_card_discount_percentage = $gift_card_discount / ($total_without_surcharge + $gift_card_discount);
+    }
+
+    $commission = 0;
+
+    foreach ($products as $product) {
+        if ($product['commissionable'] != 1) {
+            continue;
+        }
+
+        $product_commission = $product['quantity'] * $product['price'] * (pg_order_commission_rate($product, $affiliate_rate) / 100);
+
+        if ($discount) {
+            $product_commission = $product_commission - ($product_commission * $discount_percentage);
+        }
+
+        if ($gift_card_discount != 0) {
+            $product_commission = $product_commission - ($product_commission * $gift_card_discount_percentage);
+        }
+
+        $commission += $product_commission;
+    }
+
+    return round($commission);
+}
+
+/**
+ * The first day of a recurring commission profile: a line whose recurring
+ * start is today or past was paid with the order, so the next period's day;
+ * else its own start date. Pure.
+ *
+ * @param string $period     Monthly or Yearly
+ * @param string $start_date the line's recurring_start_date, Y-m-d
+ * @param int    $now        unix time
+ * @return string Y-m-d
+ */
+function pg_order_recurring_commission_start($period, $start_date, $now)
+{
+    if ($start_date <= date('Y-m-d', $now)) {
+        return date('Y-m-d', $now + 86400 * (($period == 'Yearly') ? 365 : 30));
+    }
+
+    return date('Y-m-d', strtotime($start_date));
+}
+
+/**
+ * Writes the completed order's affiliate commission (pending) and a
+ * recurring commission profile for each monthly or yearly commissionable
+ * recurring line. The commission figure is a value of the completing UPDATE,
+ * settled by the caller before the lock.
+ *
+ * @param int    $order_id
+ * @param string $affiliate_code
+ * @param mixed  $affiliate_rate     pg_order_affiliate_rate(); null: nothing
+ * @param float  $commission         pg_order_commission()
+ * @param array  $recurring_products recurring lines: commissionable,
+ *                                   commission_rate_limit, quantity, price,
+ *                                   recurring_payment_period,
+ *                                   recurring_start_date, order_item_id,
+ *                                   recurring_number_of_payments,
+ *                                   product_name, short_description
+ * @param int    $user_id            the order's user
+ * @return void
+ */
+function pg_order_complete_commission($order_id, $affiliate_code, $affiliate_rate, $commission, array $recurring_products, $user_id)
+{
+    if ($affiliate_rate === null) {
+        return;
+    }
+
+    if ($commission > 0) {
+        db_q(
+            "INSERT INTO commissions (
+                reference_code,
+                affiliate_code,
+                order_id,
+                amount,
+                status,
+                created_user_id,
+                created_timestamp,
+                last_modified_user_id,
+                last_modified_timestamp)
+            VALUES (
+                ?,
+                ?,
+                ?,
+                ?,
+                'pending',
+                ?,
+                UNIX_TIMESTAMP(),
+                ?,
+                UNIX_TIMESTAMP())",
+            array((string) generate_commission_reference_code(), (string) $affiliate_code, (string) $order_id, (string) $commission, (string) $user_id, (string) $user_id)) or output_error('Query failed.');
+    }
+
+    foreach ($recurring_products as $product) {
+        if (
+            ($product['commissionable'] != 1)
+            || (($product['recurring_payment_period'] != 'Monthly') && ($product['recurring_payment_period'] != 'Yearly'))
+        ) {
+            continue;
+        }
+
+        $product_commission = round($product['quantity'] * $product['price'] * (pg_order_commission_rate($product, $affiliate_rate) / 100));
+
+        db_q(
+            "INSERT INTO recurring_commission_profiles (
+                affiliate_code,
+                order_id,
+                order_item_id,
+                amount,
+                enabled,
+                start_date,
+                period,
+                number_of_commissions,
+                product_name,
+                product_short_description,
+                created_user_id,
+                created_timestamp,
+                last_modified_user_id,
+                last_modified_timestamp)
+            VALUES (
+                ?,
+                ?,
+                ?,
+                ?,
+                '1',
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                ?,
+                UNIX_TIMESTAMP(),
+                ?,
+                UNIX_TIMESTAMP())",
+            array((string) $affiliate_code, (string) $order_id, (string) $product['order_item_id'], (string) $product_commission, (string) pg_order_recurring_commission_start($product['recurring_payment_period'], $product['recurring_start_date'], time()), (string) mb_strtolower($product['recurring_payment_period']), (string) $product['recurring_number_of_payments'], (string) $product['product_name'], (string) $product['short_description'], (string) $user_id, (string) $user_id)) or output_error('Query failed.');
+    }
+}

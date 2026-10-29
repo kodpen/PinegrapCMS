@@ -130,6 +130,10 @@ function test_cart_layout_deleted_gift_card()
 {
 	$submit_order = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	pg_assert_same(2, substr_count($submit_order, "?: array('id' => ''); // the card was deleted after it was applied"), 'both gift card reads');
+	pg_assert_same(1, substr_count($submit_order, "?: array('id' => ''); // the card was deleted after it was applied"), 'the balance check');
+
+	// The redemption runs behind the order lock (pg_order_complete_gift_cards()).
+	$module = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php');
+	pg_assert_contains("\$gift_card = mysqli_fetch_assoc(\$result) ?: array('id' => '');", $module, 'the redemption');
 	pg_assert_contains('Sorry, we could not find a gift card for that code ({var:1}).  Therefore, the gift card has been removed from your order.', $submit_order, 'message kept');
 }

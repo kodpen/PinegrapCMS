@@ -47,7 +47,7 @@ function order_completion_test_tail()
 	$tail = substr($source, (int) strpos($source, 'pg_payment_checkout_driver('));
 	$module = PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php';
 
-	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce') as $name) {
+	foreach (array('pg_order_complete', 'pg_order_complete_receipt', 'pg_order_complete_ship_dates', 'pg_order_complete_line_stock', 'pg_order_complete_line_reservation', 'pg_order_complete_line_membership', 'pg_order_complete_line_folder_access', 'pg_order_complete_line_gift_cards', 'pg_order_line_product_form_fields', 'pg_order_complete_line_form_update', 'pg_order_line_watcher', 'pg_order_complete_line_form_create', 'pg_order_form_insert_query', 'pg_order_complete_line_watcher', 'pg_order_complete_campaigns', 'pg_order_complete_line_comments', 'pg_order_complete_line_email_page', 'pg_order_complete_line_campaigns', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce', 'pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
 		$call = strpos($tail, $name . '(');
 
 		if ($call !== false) {
@@ -71,9 +71,6 @@ function test_order_completion_tail_writes_in_order()
 	// counts. The completing UPDATE is written inline today and built by
 	// pg_order_complete_query() once it moved.
 	$steps = array(
-		'key code use' => array('"UPDATE key_codes'),
-		'gift card redemption' => array('"UPDATE gift_cards'),
-		'affiliate commission' => array('"INSERT INTO commissions ('),
 		'order completed' => array("status = 'complete'", 'pg_order_complete_query('),
 		'saved lines dropped' => array('pg_order_drop_saved_lines('),
 		'order number locked' => array('LOCK TABLES next_order_number WRITE'),
@@ -83,7 +80,11 @@ function test_order_completion_tail_writes_in_order()
 		'legal documents kept' => array('pg_legal_documents_store('),
 		'order.created queued' => array("api_webhook_enqueue('order.created'"),
 		'order SMS queued' => array('pg_sms_order_received('),
+		'key code use' => array('"UPDATE key_codes'),
+		'gift card redemption' => array('"UPDATE gift_cards'),
 		'gift card error mail' => array("'subject' => 'Gift card error'"),
+		'affiliate commission' => array('"INSERT INTO commissions ('),
+		'recurring commission profiles' => array('"INSERT INTO recurring_commission_profiles ('),
 		'receipt order id kept' => array("\$_SESSION['ecommerce']['completed_order_id'] ="),
 		'receipt e-mail' => array('pg_legal_documents_attachments('),
 		'address book' => array('"INSERT INTO address_book ('),
@@ -534,7 +535,7 @@ function test_order_completion_submit_order_finishes_through_the_stage_functions
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
 
-	foreach (array('pg_order_line_reward_points', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce') as $name) {
+	foreach (array('pg_order_line_reward_points', 'pg_order_complete_private_access', 'pg_order_complete_rewards', 'pg_order_complete_contact_groups', 'pg_order_complete_abandoned_campaigns', 'pg_order_complete_visitor', 'pg_order_complete_announce', 'pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
 		pg_assert_same(1, substr_count($source, $name . '('), $name);
 	}
 
@@ -559,4 +560,80 @@ function test_order_completion_line_reward_points()
 	pg_assert_same(15, pg_order_line_reward_points(array('reward_points' => '5', 'quantity' => '3'), true), 'points times quantity');
 	pg_assert_same(0, pg_order_line_reward_points(array('reward_points' => '5', 'quantity' => '3'), false), 'the program is off');
 	pg_assert_same(0, pg_order_line_reward_points(array('reward_points' => '0', 'quantity' => '3'), true), 'a product without points');
+}
+
+function test_order_completion_writes_before_the_lock_moved_behind_it()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$lock = strpos($source, 'pg_order_complete(');
+
+	foreach (array('pg_order_complete_key_code', 'pg_order_complete_gift_cards', 'pg_order_complete_commission') as $name) {
+		pg_assert_same(1, substr_count($source, $name . '('), $name);
+		pg_assert_true(strpos($source, $name . '(') > $lock, $name . ' after the lock');
+	}
+
+	foreach (array('pg_order_key_code', 'pg_order_affiliate_rate', 'pg_order_commission') as $name) {
+		pg_assert_true(strpos($source, $name . '(') < $lock, $name . ' settles a value before the lock');
+	}
+
+	pg_assert_same(0, substr_count($source, 'UPDATE key_codes'), 'no key code write of its own');
+	pg_assert_same(0, substr_count($source, 'UPDATE gift_cards'), 'no redemption of its own');
+	pg_assert_same(0, substr_count($source, "send_givex_request('redemption'"), 'no Givex redemption of its own');
+	pg_assert_same(0, substr_count($source, "'Gift card error'"), 'no gift card error mail of its own');
+	pg_assert_same(0, substr_count($source, 'INSERT INTO commissions'), 'no commission of its own');
+	pg_assert_same(0, substr_count($source, 'INSERT INTO recurring_commission_profiles'), 'no recurring commission of its own');
+
+	// Auto-registration stays with the visitor's request: it signs the
+	// visitor in and its user id is a value of the completing UPDATE.
+	pg_assert_true(strpos($source, 'create_member_user(') < $lock, 'auto-registration before the lock');
+}
+
+function test_order_completion_commission_rate()
+{
+	pg_assert_same(5, pg_order_commission_rate(array('commission_rate_limit' => 5), 10), 'a lower limit');
+	pg_assert_same(10, pg_order_commission_rate(array('commission_rate_limit' => 15), 10), 'a higher limit: the affiliate\'s');
+	pg_assert_same(10, pg_order_commission_rate(array('commission_rate_limit' => 0), 10), 'no limit');
+}
+
+function test_order_completion_commission()
+{
+	$lines = array(
+		array('commissionable' => '1', 'commission_rate_limit' => '0', 'quantity' => '2', 'price' => '1000'),
+		array('commissionable' => '1', 'commission_rate_limit' => '5', 'quantity' => '1', 'price' => '3000'),
+		array('commissionable' => '0', 'commission_rate_limit' => '0', 'quantity' => '1', 'price' => '9999'),
+	);
+
+	// 2 x 1000 x 10% + 3000 x 5% = 200 + 150.
+	pg_assert_same(350.0, pg_order_commission($lines, 10, 0, 14999, 0, 14999), 'per line rate, a line not commissionable left out');
+	// A 10% order discount: 315.
+	pg_assert_same(315.0, pg_order_commission($lines, 10, 1500, 15000, 0, 13500), 'less the discount\'s share');
+	// A gift card paying a quarter: 350 x 0.75 = 262.5, rounded.
+	pg_assert_same(263.0, pg_order_commission($lines, 10, 0, 14999, 3750, 11250), 'less the gift cards\' share, rounded');
+	pg_assert_same(0.0, pg_order_commission(array(), 10, 0, 0, 0, 0), 'no lines');
+}
+
+function test_order_completion_recurring_commission_start()
+{
+	$now = mktime(10, 0, 0, 11, 10, 2026);
+
+	pg_assert_same('2026-12-10', pg_order_recurring_commission_start('Monthly', '2026-11-10', $now), 'paid with the order: in 30 days');
+	pg_assert_same('2027-11-10', pg_order_recurring_commission_start('Yearly', '2026-01-01', $now), 'paid with the order: in 365 days');
+	pg_assert_same('2026-12-01', pg_order_recurring_commission_start('Monthly', '2026-12-01', $now), 'a later start: its own');
+}
+
+function test_order_completion_gift_card_error_message()
+{
+	$message = pg_order_gift_card_error_message('1001', 5000, 2000, array(
+		array('gift_card_code' => 'ABCDEFGHIJKL', 'amount' => 3000, 'error_message' => 'Gift card was deleted or balance of card changed right when order was submitted.', 'givex' => false),
+		array('gift_card_code' => '603628123456789012', 'amount' => 1000, 'curl_errno' => 7, 'curl_error' => 'refused', 'givex' => true),
+		array('gift_card_code' => '603628123456789013', 'amount' => 1000, 'error_message' => 'Card expired', 'givex' => true),
+	));
+
+	pg_assert_contains('Order (1001) was accepted however', $message, 'names the order');
+	pg_assert_contains('Gift card: ' . protect_gift_card_code('ABCDEFGHIJKL') . '. Attempted redemption amount: ', $message, 'a card of the store, masked');
+	pg_assert_contains(' Gift card was deleted or balance of card changed right when order was submitted.', $message, 'its error');
+	pg_assert_contains('Gift card: ' . protect_givex_gift_card_code('603628123456789012') . '.', $message, 'a Givex card, masked');
+	pg_assert_contains(' cURL Error Number: 7. cURL Error Message: refused.', $message, 'a connection error');
+	pg_assert_contains(' Givex error: Card expired.', $message, 'a Givex error');
+	pg_assert_same(false, strpos($message, 'ABCDEFGHIJKL'), 'never the whole code');
 }
