@@ -29,7 +29,7 @@ function test_erp_marks_names_invoice_cancel_reasons()
 
 	pg_assert_true(strpos($source, 'tabindex="0" title="\' . h($cancel_locked)') === false, 'the lock reason is not kept in a hover-only title');
 	pg_assert_true(strpos($source, "title=\"' . h((string) \$provider_cancellable['reason'])") === false, 'the provider reason is not kept in a hover-only title');
-	pg_assert_contains('<p class="small fg-secondary mb-0" id="erp_cancel_note">\' . h($cancel_note) . \'</p>', $source);
+	pg_assert_contains('<p class="small fg-secondary text-center mx-auto mb-7" style="max-width:40rem" id="erp_cancel_note">\' . h($cancel_note) . \'</p>', $source);
 	pg_assert_contains('aria-describedby="erp_cancel_note"', $source);
 }
 

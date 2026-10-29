@@ -49,7 +49,7 @@ foreach ($rows as $row) {
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['valid_until'])) . '">' . h(prepare_form_data_for_output((string) $row['valid_until'], 'date')) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>'
-                . (!empty($row['signed']) ? ' <i class="bi bi-pen fg-success" title="' . h(lang('Signed')) . '" aria-label="' . h(lang('Signed')) . '"></i>' : '')
+                . (!empty($row['signed']) ? ' <i class="bi bi-pen fg-success" title="' . h(lang('Signed')) . '" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Signed')) . '</span>' : '')
                 . (($row_state === 'invoiced')
                     ? ' <a class="small pg-link-body-emphasis" href="' . (((string) $row['invoice_status'] === 'draft') ? 'edit_erp_invoice_draft.php' : 'edit_erp_invoice.php') . '?id=' . (int) $row['invoice_id'] . '">'
                         . h(((string) $row['invoice_number'] !== '') ? (string) $row['invoice_number'] : lang('Draft')) . '</a>'
