@@ -244,6 +244,21 @@ function test_ws_ref_customer_history_lists_notes_and_rows()
 	pg_assert_same(array(), ws_customer_history_build(array('workspace' => false), $data, $money, '/panel/', 20)['entries'], 'none without the Workspace');
 }
 
+// The record drawer draws the notes and rows it is given in groups of their
+// own, and the customer card gives their history entries an icon each.
+function test_ws_ref_screens_draw_notes_and_rows()
+{
+	$drawer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_contains("[['notes', t('notes'), 'bi-journal-text'], ['rows', t('wtables'), 'bi-table']]", $drawer, 'the two groups');
+	pg_assert_contains("'wtables'                => lang('Tables')", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/screen.php'), 'the group\'s name');
+
+	$card = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_customer.js');
+
+	pg_assert_contains("note: 'bi-journal-text'", $card, 'a note\'s icon');
+	pg_assert_contains("wtable_row: 'bi-table'", $card, 'a row\'s icon');
+}
+
 // The cursor of the backfill as kept in config_text: anything that is not
 // one reads as the start, and done stays done.
 function test_ws_ref_backfill_cursor_reads_what_was_kept()

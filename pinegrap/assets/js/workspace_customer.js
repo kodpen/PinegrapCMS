@@ -157,7 +157,9 @@
         sales_quote: 'bi-file-earmark-text',
         form: 'bi-ui-checks',
         message: 'bi-chat-left-text',
-        task: 'bi-check2-square'
+        task: 'bi-check2-square',
+        note: 'bi-journal-text',
+        wtable_row: 'bi-table'
     };
 
     // What happened with the customer, newest first, read only when asked
