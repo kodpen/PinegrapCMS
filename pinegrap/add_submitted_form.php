@@ -250,7 +250,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                     <div class="form-text">' . lang('Custom Form') . '</div>
-                                                    <h5>' . h($form_name) . '</h5>
+                                                    <div class="h5">' . h($form_name) . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                                     <div class="form-text">' . lang('Notifications') . '</div>

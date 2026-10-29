@@ -203,7 +203,7 @@ if (!$_POST) {
         $output_quiz_score_row =
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Quiz Score') . '</div>
-                <h5>' . $quiz_score . '</h5>
+                <div class="h5">' . $quiz_score . '</div>
             </div>';
     }
 
@@ -226,7 +226,7 @@ if (!$_POST) {
         $output_affiliate_code =
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Affiliate Code') . '</div>
-                <h5>' . h($affiliate_code ? $affiliate_code : '-') . '</h5>
+                <div class="h5">' . h($affiliate_code ? $affiliate_code : '-') . '</div>
             </div>';
     }
     
@@ -399,11 +399,11 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Custom Form') . '</div>
-                                                <h5>' . h($form_name) . '</h5>
+                                                <div class="h5">' . h($form_name) . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Reference Code') . '</div>
-                                                <h5>' . $reference_code . '</h5>
+                                                <div class="h5">' . $reference_code . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Status') . '</div>
@@ -412,11 +412,11 @@ if (!$_POST) {
                                             ' . $output_quiz_score_row . '
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Address Name') . '</div>
-                                                <h6>' . ($output_address_name ? $output_address_name : '-') . '</h6>
+                                                <div class="h6">' . ($output_address_name ? $output_address_name : '-') . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Tracking Code') . '</div>
-                                                <h5>' . h($tracking_code ? $tracking_code : '-') . '</h5>
+                                                <div class="h5">' . h($tracking_code ? $tracking_code : '-') . '</div>
                                             </div>
                                             ' . $output_affiliate_code . '
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -425,19 +425,19 @@ if (!$_POST) {
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . h(MEMBER_ID_LABEL) . '</div>
-                                                <h5>' . h($member_id ? $member_id : '-') . '</h5>
+                                                <div class="h5">' . h($member_id ? $member_id : '-') . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('IP Address') . '</div>
-                                                <h5>' . $output_ip_address . '</h5>
+                                                <div class="h5">' . $output_ip_address . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Submitted Date') . '</div>
-                                                <h6>' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</h6>
+                                                <div class="h6">' . get_relative_time(array('timestamp' => $submitted_timestamp)) . ' ' . $submitted_username . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <div class="form-text">' . lang('Last Modified Date') . '</div>
-                                                <h6>' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</h6>
+                                                <div class="h6">' . get_relative_time(array('timestamp' => $last_modified_timestamp)) . ' ' . $last_modified_username . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label class="form-text">' . lang('Form Editor') . '</label>

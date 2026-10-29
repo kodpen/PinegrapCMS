@@ -148,7 +148,8 @@ function ws_mail_reply_body($text, $writer, $box_name, $answered)
  *
  * @param array  $box         ws_mail_boxes row
  * @param string $site_domain the domain the site signs its mail for
- * @return array ok, error (no_smtp | domain | connection), smtp (email()'s 'smtp', null for the site's settings)
+ * @return array ok, error (no_smtp | domain | connection), smtp (email()'s 'smtp', null for the site's settings),
+ *               connection (email()'s 'connection', the account answers leave through; only when sent so)
  */
 function ws_mail_reply_route($box, $site_domain)
 {
@@ -161,6 +162,16 @@ function ws_mail_reply_route($box, $site_domain)
         return (($domain !== '') && ($domain === strtolower(trim((string) $site_domain))))
             ? array('ok' => true, 'error' => '', 'smtp' => null)
             : array('ok' => false, 'error' => 'domain', 'smtp' => null);
+    }
+
+    // The box's connected account (purpose mail_read): email() hands the
+    // finished message to the provider, as for the site's own mail.
+    if ($via === 'connection') {
+        $connection_id = (int) ($settings['connection_id'] ?? 0);
+
+        return ($connection_id > 0)
+            ? array('ok' => true, 'error' => '', 'smtp' => null, 'connection' => $connection_id)
+            : array('ok' => false, 'error' => 'connection', 'smtp' => null);
     }
 
     if ($via !== 'box') {
@@ -211,8 +222,13 @@ function ws_mail_reply_copy_plan($box, $route)
         return $skip('off');
     }
 
+    // The provider files what its API sends in the account's own sent folder.
+    if (!empty($route['connection'])) {
+        return $skip('service');
+    }
+
     if (((string) ($box['transport'] ?? 'imap') !== 'imap') || ((string) ($settings['host'] ?? '') === '')
-        || ((string) ($settings['user'] ?? '') === '') || empty($settings['secret'])) {
+        || ((string) ($settings['user'] ?? '') === '') || (empty($settings['secret']) && ((int) ($settings['connection_id'] ?? 0) <= 0))) {
         return $skip('no_imap');
     }
 
@@ -247,9 +263,9 @@ function ws_mail_reply_copy($box, $folder, $mime)
     }
 
     $settings = ws_mail_box_settings($box);
-    $secret = pg_connect_unseal((string) ($settings['secret'] ?? ''));
+    $credentials = ws_mail_box_credentials($box);
 
-    if (!isset($secret['password'])) {
+    if (!$credentials['ok']) {
         return false;
     }
 
@@ -263,7 +279,7 @@ function ws_mail_reply_copy($box, $folder, $mime)
     $session = $connected['session'];
     $copied = false;
 
-    if (pg_imap_login($session, (string) $settings['user'], (string) $secret['password'])) {
+    if (ws_mail_box_login($session, $box, $credentials)) {
         if ((string) $folder !== '') {
             $copied = pg_imap_append($session, (string) $folder, $mime);
         } else {
@@ -293,7 +309,7 @@ function ws_mail_reply_error_text($error)
         'no_customer'  => lang('This conversation has no address to answer.'),
         'no_smtp'      => lang('Enter the mailbox\'s sending server first.'),
         'domain'       => lang('The site\'s mail settings send only for addresses on the site\'s own mail domain; give the mailbox a sending server.'),
-        'connection'   => lang('Answers through a connected account are not available yet.'),
+        'connection'   => lang('Choose the connected account answers are sent through.'),
         'not_sent'     => lang('The answer could not be sent.'),
     );
 
@@ -457,6 +473,10 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
 
     if ($check['route']['smtp']) {
         $properties['smtp'] = $check['route']['smtp'];
+    }
+
+    if (!empty($check['route']['connection'])) {
+        $properties['connection'] = (int) $check['route']['connection'];
     }
 
     if (!email($properties)) {

@@ -148,7 +148,7 @@ if ((ECOMMERCE == true) && (ECOMMERCE_MULTICURRENCY == true)) {
     $output_currency_row =
         '<div class="col-12 md:col-6 lg:col-4 my-3">
             <div class="form-text">' . lang('Currency') . '</div>
-            <h5>' . h($currency_name_and_code) . '</h5>
+            <div class="h5">' . h($currency_name_and_code) . '</div>
         </div>';
 }
 
@@ -186,7 +186,7 @@ if (AFFILIATE_PROGRAM == true) {
     $output_affiliate_code =
         '<div class="col-12 md:col-6 lg:col-4 my-3">
             <div class="form-text">' . lang('Affiliate Code') . '</div>
-            <h5>' . h($affiliate_code ? $affiliate_code : '-') . '</h5>
+            <div class="h5">' . h($affiliate_code ? $affiliate_code : '-') . '</div>
         </div>';
 }
 
@@ -204,14 +204,14 @@ if ($utm_source) {
                     <div class="row">
                         <div class="col-12 md:col-6 lg:col-4 my-3">
                             <div class="form-text">' . lang('Source') . '</div>
-                            <h5>' . h($utm_source) . '</h5>
+                            <div class="h5">' . h($utm_source) . '</div>
                         </div>';
 
     if ($utm_medium) {
         $utm .=
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Medium') . '</div>
-                <h5>' . h($utm_medium) . '</h5>
+                <div class="h5">' . h($utm_medium) . '</div>
             </div>';
     }
 
@@ -219,7 +219,7 @@ if ($utm_source) {
         $utm .=
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Campaign') . '</div>
-                <h5>' . h($utm_campaign) . '</h5>
+                <div class="h5">' . h($utm_campaign) . '</div>
             </div>';
     }
 
@@ -227,7 +227,7 @@ if ($utm_source) {
         $utm .=
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Term') . '</div>
-                <h5>' . h($utm_term) . '</h5>
+                <div class="h5">' . h($utm_term) . '</div>
             </div>';
     }
 
@@ -235,7 +235,7 @@ if ($utm_source) {
         $utm .=
             '<div class="col-12 md:col-6 lg:col-4 my-3">
                 <div class="form-text">' . lang('Content') . '</div>
-                <h5>' . h($utm_content) . '</h5>
+                <div class="h5">' . h($utm_content) . '</div>
             </div>';
     }
         $utm .= '</div>
@@ -286,23 +286,23 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Visitor Number') . '</div>
-                                    <h5>' . h($id ? $id : '-') . '</h5>
+                                    <div class="h5">' . h($id ? $id : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Start Time') . '</div>
-                                    <h6>' . get_absolute_time(array('timestamp' => $start_timestamp)) . '</h6>
+                                    <div class="h6">' . get_absolute_time(array('timestamp' => $start_timestamp)) . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('End Time') . '</div>
-                                    <h6>' . get_absolute_time(array('timestamp' => $stop_timestamp)) . '</h6>
+                                    <div class="h6">' . get_absolute_time(array('timestamp' => $stop_timestamp)) . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Site Search Terms') . '</div>
-                                    <h6>' . h($site_search_terms ? str_replace('|', ', ', h($site_search_terms)) : '-') . '</h6>
+                                    <div class="h6">' . h($site_search_terms ? str_replace('|', ', ', $site_search_terms) : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('IP Address') . '</div>
-                                    <h5>' . h($ip_address_text) . '</h5>
+                                    <div class="h5">' . h($ip_address_text) . '</div>
                                 </div>
                                 ' . $output_currency_row . '
                             </div>
@@ -318,35 +318,35 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('URL') . '</div>
-                                    ' . ($output_http_referer ? '<a class="pg-link-secondary" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-') . '
+                                    ' . ($output_http_referer ? '<a class="pg-link-secondary text-break" href="' . h(escape_url($http_referer)) . '" target="_blank">' . h($output_http_referer) . '</a>' : '-') . '
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Host Name') . '</div>
-                                    ' . ($output_referring_host_name ? '<a class="pg-link-secondary" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-') . '
+                                    ' . ($output_referring_host_name ? '<a class="pg-link-secondary text-break" href="http://' . h($referring_host_name) . '" target="_blank">' . h($output_referring_host_name) . '</a>' : '-') . '
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Search Engine') . '</div>
-                                    <h5>' . h($referring_search_engine ? $referring_search_engine : '-') . '</h5>
+                                    <div class="h5">' . h($referring_search_engine ? $referring_search_engine : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Search Terms') . '</div>
-                                    <h5>' . h($referring_search_terms ? $referring_search_terms : '-') . '</h5>
+                                    <div class="h5">' . h($referring_search_terms ? $referring_search_terms : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Pay Per Click / Organic') . '</div>
-                                    <h5>' . h($output_pay_per_click_organic ? $output_pay_per_click_organic : '-') . '</h5>
+                                    <div class="h5">' . h($output_pay_per_click_organic ? $output_pay_per_click_organic : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('First Visit') . '</div>
-                                    <h5>' . $output_first_visit . '</h5>
+                                    <div class="h5">' . $output_first_visit . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Landing Page') . '</div>
-                                    <a class="pg-link-secondary" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>
+                                    <a class="pg-link-secondary text-break" href="' . OUTPUT_PATH . h($landing_page_name) . '" target="_blank">' . h($landing_page_name) . '</a>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Tracking Code') . '</div>
-                                    <h5>' . h($tracking_code ? $tracking_code : '-') . '</h5>
+                                    <div class="h5">' . h($tracking_code ? $tracking_code : '-') . '</div>
                                 </div>
                                 ' . $output_affiliate_code . '
                             </div>
@@ -363,35 +363,35 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Page Views') . '</div>
-                                    <h4>' . pg_format_number($page_views, 0) . '</h4>
+                                    <div class="h4">' . pg_format_number($page_views, 0) . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Custom Form Submitted') . '</div>
-                                    <h5>' . $output_custom_form_submitted . '</h5>
+                                    <div class="h5">' . $output_custom_form_submitted . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Custom Form') . '</div>
-                                    <h5>' . h($custom_form_name ? $custom_form_name : '-') . '</h5>
+                                    <div class="h5">' . h($custom_form_name ? $custom_form_name : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Order Created') . '</div>
-                                    <h5>' . $output_order_created . '</h5>
+                                    <div class="h5">' . $output_order_created . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Order Retrieved') . '</div>
-                                    <h5>' . $output_order_retrieved . '</h5>
+                                    <div class="h5">' . $output_order_retrieved . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Order Checked Out') . '</div>
-                                    <h5>' . $output_order_checked_out . '</h5>
+                                    <div class="h5">' . $output_order_checked_out . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Order Completed') . '</div>
-                                    <h5>' . $output_order_completed . '</h5>
+                                    <div class="h5">' . $output_order_completed . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Order Total') . '</div>
-                                    <h4>' . prepare_amount($order_total / 100) . '</h4>
+                                    <div class="h4">' . prepare_amount($order_total / 100) . '</div>
                                 </div>
                             </div>
                         </div>
@@ -406,19 +406,19 @@ pg_page_shell(
                             <div class="row">
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('City') . '</div>
-                                    <h5>' . h($city ? $city : '-') . '</h5>
+                                    <div class="h5">' . h($city ? $city : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('State') . '</div>
-                                    <h5>' . h($state ? $state : '-') . '</h5>
+                                    <div class="h5">' . h($state ? $state : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Zip Code') . '</div>
-                                    <h5>' . h($zip_code ? $zip_code : '-') . '</h5>
+                                    <div class="h5">' . h($zip_code ? $zip_code : '-') . '</div>
                                 </div>
                                 <div class="col-12 md:col-6 lg:col-4 my-3">
                                     <div class="form-text">' . lang('Country') . '</div>
-                                    <h5>' . h($country ? $country : '-') . '</h5>
+                                    <div class="h5">' . h($country ? $country : '-') . '</div>
                                 </div>
                             </div>
                         </div>
