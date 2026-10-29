@@ -34,17 +34,17 @@ function test_layout_retirement_tab_param()
 
 // "Edit Layout" on the form screen: a page whose own style is a visual
 // design opens the designer on that page, on its layout tab where the role
-// and site allow it; a page on a classic style keeps the page designer.
+// and site allow it; a page not on a visual design opens the layout-only
+// editor screen.
 function test_layout_retirement_edit_layout_url()
 {
-	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url(7, '/about', 4, true, 1, false));
-	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url('7', '/about', '4', true, 0, false), 'ids as strings');
-	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 1, true), 'hosted: the canvas');
-	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 2, false), 'a manager: the canvas');
-	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 4, false, 1, false), 'classic style');
-	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 0, true, 1, false), 'no own style');
-	// edit_page.php passes the path with its ?from= query; it travels encoded in url=.
-	pg_assert_same('page_designer.php?url=%2Fcart%3Ffrom%3Dcontrol_panel&type=layout&id=7', pg_layout_edit_url(7, '/cart?from=control_panel', 4, false, 1, false), 'query string in the path');
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url(7, 4, true, 1, false));
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url('7', '4', true, 0, false), 'ids as strings');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, 4, true, 1, true), 'hosted: the canvas');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, 4, true, 2, false), 'a manager: the canvas');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url(7, 4, false, 1, false), 'classic style');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url(7, 0, true, 1, false), 'no own style');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url('7', 4, false, 1, true), 'classic style, hosted: read only there');
 }
 
 // The designer opens the tab only for the page it lands on.
