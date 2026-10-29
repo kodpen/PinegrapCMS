@@ -757,6 +757,183 @@ function pg_post_body_discarded()
 }
 
 /**
+ * Stores one file that arrived for the file library: the rules every file
+ * of the Upload File screen goes through (add_file.php), whether the browser
+ * sent it or the server downloaded it from the person's cloud storage
+ * (includes/fn/cloud_file_picker.php).
+ *
+ * In order: a name the web server would run is refused, a file over the
+ * biggest single upload this server accepts is refused, the name is
+ * prepared and made unique, the bytes are copied in, a product photo is
+ * processed (image_profile 'product'), and only then is the row written and
+ * announced. Nothing is recorded for a file that is not on the disk.
+ *
+ * The caller has checked the token and the person's right to the folder,
+ * and logs a refusal.
+ *
+ * @param string $source_path the file as it arrived (PHP's temporary upload, a download)
+ * @param string $file_name   the name it was given, before prepare_file_name()
+ * @param int    $file_size   its size in bytes
+ * @param array  $options     folder, description, design (null when the
+ *                            person may not set it), image_profile,
+ *                            image_settings (pg_image_settings()), file_max
+ *                            (0: no limit)
+ * @return array ok, message (when refused), file (when stored: id, name,
+ *               type, size, original_size, width, height, resized, too_small)
+ */
+function pg_file_store_upload($source_path, $file_name, $file_size, $options)
+{
+    $file_size = (int) $file_size;
+    $file_max = isset($options['file_max']) ? (int) $options['file_max'] : 0;
+
+    // The caller writes a refusal to the Site Log, so these rules run
+    // without a database too (tests/cloud_file_picker_test.php).
+    $refuse = function ($message) {
+        return array('ok' => false, 'message' => $message);
+    };
+
+    // A name the web server would run or read as its own settings is
+    // refused, not renamed: the operator should know it did not arrive.
+    if (pg_upload_name_blocked($file_name)) {
+        return $refuse(pg_upload_blocked_message($file_name));
+    }
+
+    // PHP enforces this itself for a browser upload; a downloaded file is
+    // held to the same ceiling here.
+    if (($file_max > 0) && ($file_size > $file_max)) {
+        return $refuse(lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars'   => array($file_name, convert_bytes_to_string($file_max, 1)))));
+    }
+
+    $file_name = prepare_file_name($file_name);
+
+    $file_name = get_unique_name(array(
+        'name' => $file_name,
+        'type' => 'file'));
+
+    $array_file_extension = explode('.', $file_name);
+    $file_extension = $array_file_extension[count($array_file_extension) - 1];
+
+    $file_path = FILE_DIRECTORY_PATH . '/' . $file_name;
+
+    // A failed copy used to be followed by an INSERT anyway, which is how a
+    // row can point at a file that was never written.
+    if (!@copy($source_path, $file_path)) {
+        return $refuse(lang(array(
+            'string' => 'The server could not accept {var:1}. Please try again.',
+            'vars'   => array($file_name))));
+    }
+
+    $original_size = $file_size;
+    $image_profile = isset($options['image_profile']) ? (string) $options['image_profile'] : '';
+    $image_settings = isset($options['image_settings']) ? $options['image_settings'] : array();
+
+    // Product photos are compressed on the way in, and scaled down when they
+    // are over the ceiling. Nothing is refused and nothing is enlarged: an
+    // image below the minimum is stored as it is and reported back so the
+    // screen can say so.
+    $image_report = null;
+    $sql_image_1 = "";
+    $sql_image_2 = "";
+
+    if ($image_profile === 'product') {
+
+        // A 24 megapixel photo takes a couple of seconds to resample, and the
+        // picker sends a whole selection in one request. The default 30
+        // seconds is a page that dies half way through the third file.
+        @set_time_limit(120);
+
+        $image_report = pg_process_image_file($file_path, array(
+            'max_dimension' => $image_settings['product_max_dimension'],
+            'min_dimension' => $image_settings['product_min_dimension'],
+            'quality'       => $image_settings['resize_quality']));
+
+        if ($image_report['status'] === 'success') {
+
+            @clearstatcache(true, $file_path);
+            $file_size = filesize($file_path);
+
+            // Flagged optimized so the Files screen does not offer to do it
+            // again: the badge there would promise a saving that has already
+            // been taken, and pressing it would recompress an image that is
+            // already at its target quality.
+            $sql_image_1 = "optimized, image_width, image_height, optimization_percent,";
+            $sql_image_2 =
+                "'1',
+                 '" . (int) $image_report['width'] . "',
+                 '" . (int) $image_report['height'] . "',
+                 '0',";
+
+            if ($image_report['changed']) {
+                log_activity(lang(array(
+                    'string' => 'image ({var:1}) was optimized on upload ({var:2} -> {var:3})',
+                    'vars'   => array(
+                        $file_name,
+                        convert_bytes_to_string($image_report['bytes_before']),
+                        convert_bytes_to_string($image_report['bytes_after'])))));
+            }
+        }
+    }
+
+    $sql_design_1 = "";
+    $sql_design_2 = "";
+
+    // Only a designer or administrator sets the design property.
+    if (isset($options['design']) && ($options['design'] !== null)) {
+        $sql_design_1 = "design,";
+        $sql_design_2 = "'" . escape($options['design']) . "',";
+    }
+
+    db(
+        "INSERT INTO files (
+            name,
+            folder,
+            description,
+            type,
+            size,
+            " . $sql_image_1 . "
+            " . $sql_design_1 . "
+            user,
+            timestamp)
+        VALUES (
+            '" . escape($file_name) . "',
+            '" . escape($options['folder'] ?? '') . "',
+            '" . escape($options['description'] ?? '') . "',
+            '" . escape($file_extension) . "',
+            '" . escape($file_size) . "',
+            " . $sql_image_2 . "
+            " . $sql_design_2 . "
+            '" . USER_ID . "',
+            UNIX_TIMESTAMP())");
+
+    $new_file_id = (int) mysqli_insert_id(db::$con);
+
+    pg_audit_record('create', 'files', $new_file_id);
+
+    log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $file_name)), $_SESSION['sessionusername']);
+
+    // A file uploaded from the panel is as new to an integration as one
+    // posted to the API, so it is announced the same way.
+    pg_announce('file.created', array('id' => $new_file_id, 'name' => $file_name));
+
+    return array('ok' => true, 'file' => array(
+        'id'            => $new_file_id,
+        'name'          => $file_name,
+        'type'          => $file_extension,
+        'size'          => $file_size,
+        // What arrived, so the caller can add up the saving.
+        'original_size' => $original_size,
+        // Zero when the file was not measured, which is every upload that
+        // did not ask for a profile. The caller reads too_small rather than
+        // comparing these itself, so the minimum lives in one place.
+        'width'         => $image_report ? (int) $image_report['width'] : 0,
+        'height'        => $image_report ? (int) $image_report['height'] : 0,
+        'resized'       => (bool) ($image_report && $image_report['resized']),
+        'too_small'     => (bool) ($image_report && $image_report['too_small'])));
+}
+
+/**
  * An address that reads one entry of a zip archive no further than $limit
  * bytes, for XMLReader::open() and fopen() wherever
  * 'zip://' . $archive . '#' . $entry would go.

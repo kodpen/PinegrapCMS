@@ -8419,10 +8419,55 @@ button.no-popover:focus-visible {
 
    The same applies to #pgsub- ids, the jump points inside the longer sections,
    and to the product screen's #pg_pb_sec_ ids -- all three are reached from a
-   rail the same way and land under the header for the same reason. */
+   rail the same way and land under the header for the same reason.
+
+   The product screen's #pg_pb_sec_ ids scroll the window, where the html
+   scroll padding below already clears the top bar; their margin only adds the
+   air, or the two would stack. */
 [id^="pgset-"],
-[id^="pgsub-"],
-[id^="pg_pb_sec_"] { scroll-margin-top: 5rem; }
+[id^="pgsub-"] { scroll-margin-top: 5rem; }
+[id^="pg_pb_sec_"] { scroll-margin-top: 1.5rem; }
+
+/* ── Window scroll padding ────────────────────────────────────────────────
+   The panel scrolls the window under the fixed, opaque top bar, so whatever
+   the browser scrolls into view - the field Shift+Tab reaches, the target of
+   a #fragment, the skip link's #content - was parked at y=0 behind the bar.
+   Scroll padding on the root scroller moves that line below the bar.
+
+   Once a list is scrolled, DataTables FixedHeader floats the heading row
+   just under the bar (.dtfh-floatingparent-head), so the line moves below
+   the heading too. At the bottom, the sticky save bar and the marketplace
+   bulk bar cover the control Tab brings in, so the bottom line clears them;
+   on a phone the save bar wraps two actions per row and, beside the chat
+   bubble, sits --pg-chat-clearance higher (that token lives on the bar, so
+   the root reads its fallback). Each predicate is its own :has(): a :has()
+   inside a :has() is invalid and drops the whole rule. */
+html {
+  scroll-padding-top: calc(var(--pg-navbar-h) + 0.5rem);
+}
+html:has(.dtfh-floatingparent-head) {
+  scroll-padding-top: calc(var(--pg-navbar-h) + 3.25rem);
+}
+html:has(nav.buttons.navigation.position-sticky),
+html:has(.position-sticky > nav.buttons.navigation) {
+  scroll-padding-bottom: 4rem;
+}
+html:has(.mpp-bulk:not(.d-none)) {
+  scroll-padding-bottom: 5rem;
+}
+@media (max-width: 575.98px) {
+  html:has(nav.buttons.navigation.position-sticky),
+  html:has(.position-sticky > nav.buttons.navigation) {
+    scroll-padding-bottom: 7rem;
+  }
+  html:has(#pg-chat-root):has(nav.buttons.navigation.position-sticky),
+  html:has(#pg-chat-root):has(.position-sticky > nav.buttons.navigation) {
+    scroll-padding-bottom: calc(7rem + var(--pg-chat-clearance, 5.125rem));
+  }
+  html:has(.mpp-bulk:not(.d-none)) {
+    scroll-padding-bottom: 7.5rem;
+  }
+}
 
 
 /* ── Admin screen stepper with cards ──────────────────────────────────────

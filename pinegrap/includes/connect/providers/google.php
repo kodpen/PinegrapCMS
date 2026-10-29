@@ -39,7 +39,16 @@ return array(
     'client_auth'      => 'post',
     'token_per_scope'  => false,
     'console_url'      => 'https://console.cloud.google.com/apis/credentials',
-    'options'          => array(),
+    // The Google Picker of the Upload File screen (purpose file_picker)
+    // needs a browser API key besides the client; without one the screen
+    // offers no Google Drive.
+    'options'          => array(
+        'picker_api_key' => array(
+            'label'   => lang('Google Picker API key'),
+            'help'    => lang('Optional. An API key of the same project with the Google Picker API enabled, restricted to this site\'s address. It lets people pick files from their Google Drive when uploading.'),
+            'default' => '',
+        ),
+    ),
     'setup'            => array(
         lang('In Google Cloud Console, open APIs & Services, then Credentials, and create an OAuth client ID of the Web application type.'),
         lang('Add the redirect address below under Authorized redirect URIs.'),

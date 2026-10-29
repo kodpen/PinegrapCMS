@@ -14,6 +14,7 @@ description: Connected accounts at work: mail through Gmail or Microsoft 365, cl
 
 ## How is a response header read?
 - An outgoing call that needs one (a resumable upload's `Location`, an MCP server's session) passes `'response_headers' => true` to `api_http_request()`; the answer then carries `headers` (lower-case name => value, built by `api_http_header_line()`: the last of a repeated name wins, except WWW-Authenticate, whose lines are joined with ", " so a Bearer challenge after a Basic one is still read).
+- A download kept out of memory passes `'write' => callable` (each piece; false ends it as a failure, the body comes back empty): the cloud file picker streams to a temp file that way (`platform/cloud-file-picker.md`).
 - Every answer also carries `errno`: curl's error number when curl failed (28 a timeout), else 0, also for an address refused before curl ran. `error` stays curl's words plus the TLS hint; the MCP client turns 28, 7 and 6 into sentences (`api-mcp-client.md`).
 
 ## What does api_http_request() refuse? (`includes/api/outbound/http.php`)
