@@ -1411,7 +1411,6 @@ function ws_bulk_js_strings()
         'bulk_result'   => ws_js_template('{var:1} changed · {var:2} left as they were · {var:3} could not be changed', 3),
         'bulk_running'  => lang('Being applied…'),
         'bulk_warning'  => ws_js_template('This changes {var:1} records at once. Go on?', 1),
-        'bulk_make_products'  => lang('Make products'),
         'bulk_make_done'      => ws_js_template('A card of {var:1} product drafts is waiting for you to apply it.', 1),
         'bulk_make_ignored'   => ws_js_template('Columns not read: {var:1}.', 1),
         'bulk_create_result'  => ws_js_template('{var:1} made · {var:2} left out · {var:3} could not be made', 3),

@@ -4,7 +4,8 @@
  *
  * Workspace - the sources of bulk product drafts a person makes without an
  * assistant: several lines under /create product (/oluştur ürün), or a CSV
- * or spreadsheet file posted in a channel. Either is laid out as a table,
+ * or spreadsheet file posted in a channel, answered by /create product or
+ * sent with it. Either is laid out as a table,
  * the table as the rows of one bulk create (bulk.php), and the rows wait as
  * a card under a message of the person's own, which they apply like any
  * bulk change: checked again and written a slice at a time.
@@ -125,6 +126,18 @@ function ws_bulk_text_table($text)
     }
 
     return $table;
+}
+
+/**
+ * Is a file, by its name, one products are made from: a CSV or a
+ * spreadsheet the product import reads?
+ *
+ * @param string $file_name
+ * @return bool
+ */
+function ws_bulk_file_is_table($file_name)
+{
+    return (bool) preg_match('/\.(csv|xlsx|xlsm|xls|ods)$/i', (string) $file_name);
 }
 
 /**
@@ -318,8 +331,12 @@ function ws_bulk_message_table($viewer, $message_id)
     $message = ws_message((int) $message_id);
     $channel = $message ? ws_channel($message['channel_id']) : null;
 
-    if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0) || ((int) $message['file_id'] <= 0)) {
+    if (!$message || !$channel || !ws_can_read_channel($viewer, $channel) || ((int) $message['deleted_at'] > 0)) {
         return array('ok' => false, 'error' => lang('That message could not be found.'), 'table' => array(), 'name' => '');
+    }
+
+    if (((int) $message['file_id'] <= 0) || !ws_bulk_file_is_table((string) $message['file_name'])) {
+        return array('ok' => false, 'error' => lang('Products are made from a CSV, Excel or OpenDocument file.'), 'table' => array(), 'name' => '');
     }
 
     $stored = (string) db_value("SELECT name FROM files WHERE id = '" . (int) $message['file_id'] . "'");
@@ -339,7 +356,9 @@ function ws_bulk_message_table($viewer, $message_id)
 
 /**
  * Makes the bulk create card of a file posted in a channel, for the person
- * (ws_bulk_create_card()), under a message of their own naming the file.
+ * (ws_bulk_create_card()), under a message of their own naming the file:
+ * /create product answering the file, or sent with it
+ * (ws_command_product_file()).
  *
  * @param array $viewer
  * @param int   $channel_id
