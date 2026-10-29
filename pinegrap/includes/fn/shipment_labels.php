@@ -370,15 +370,19 @@ function pg_shipment_label_rows($ship_to_id)
  * keep the document and the row, and record the tracking number on the
  * address through the shipment write path.
  *
- * An address that already has an active label gets no second one: a second
- * create() would buy a second shipment. An unclear answer is reported as
- * such, so the operator looks at the service before trying again.
+ * An address that already has an active label of the kind asked for gets no
+ * second one: a second create() would buy a second shipment. An unclear
+ * answer is reported as such, so the operator looks at the service before
+ * trying again. A return label (collected from the recipient, delivered to
+ * the store) is kept as a row only: its number is not one of the address's
+ * parcels, whose delivery would announce the order delivered.
  *
- * @param int $ship_to_id
- * @param int $user_id
+ * @param int  $ship_to_id
+ * @param int  $user_id
+ * @param bool $return
  * @return array ok, error, id (the label row), number
  */
-function pg_shipment_label_create($ship_to_id, $user_id)
+function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
 {
     $out = array('ok' => false, 'error' => '', 'id' => 0, 'number' => '');
 
@@ -412,10 +416,12 @@ function pg_shipment_label_create($ship_to_id, $user_id)
 
     $active = (int) db_value(
         "SELECT COUNT(*) FROM shipment_labels
-        WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '0')");
+        WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '" . ($return ? 1 : 0) . "')");
 
     if ($active > 0) {
-        $out['error'] = lang('This address already has a label. Print it again, or cancel it before creating another.');
+        $out['error'] = $return
+            ? lang('This address already has a return label. Print it again, or cancel it before creating another.')
+            : lang('This address already has a label. Print it again, or cancel it before creating another.');
         return $out;
     }
 
@@ -451,7 +457,7 @@ function pg_shipment_label_create($ship_to_id, $user_id)
     }
 
     $order['currency'] = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
-    $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code);
+    $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return);
     $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
     $answer = pg_label_call($driver, 'create', array($shipment, $account));
     $driver_name = pg_label_driver($driver)['label'];
@@ -492,7 +498,7 @@ function pg_shipment_label_create($ship_to_id, $user_id)
     }
 
     $answer['label_format'] = $format;
-    $row = pg_shipment_label_row($order['id'], $ship_to['id'], $driver, $answer, $file, $user_id, time());
+    $row = pg_shipment_label_row($order['id'], $ship_to['id'], $driver, $answer, $file, $user_id, time(), $return);
     $values = array();
 
     foreach ($row as $column => $value) {
@@ -502,10 +508,13 @@ function pg_shipment_label_create($ship_to_id, $user_id)
     db("INSERT INTO shipment_labels SET " . implode(', ', $values));
     $out['id'] = (int) mysqli_insert_id(db::$con);
 
-    $recorded = pg_shipment_record($order['id'], $ship_to['id'], $answer['tracking_number'], pg_label_shipment_options($answer));
-
     $out['ok'] = true;
-    $out['number'] = $recorded['ok'] ? $recorded['number'] : $row['number'];
+    $out['number'] = $row['number'];
+
+    if (!$return) {
+        $recorded = pg_shipment_record($order['id'], $ship_to['id'], $answer['tracking_number'], pg_label_shipment_options($answer));
+        $out['number'] = $recorded['ok'] ? $recorded['number'] : $row['number'];
+    }
 
     log_activity(lang(array('string' => 'A shipping label was created with {var:1} for order {var:2}: {var:3}', 'vars' => array($driver_name, $order['order_number'], $out['number']))));
 
@@ -677,4 +686,250 @@ function pg_shipment_label_sweep_daily()
     }
 
     return pg_shipment_label_remove_files("id IN ('" . implode("','", $ids) . "')");
+}
+
+/**
+ * What a cancel() answer writes on the label row: only a success cancels;
+ * a refusal or an unclear answer leaves the label as it was. Pure.
+ *
+ * @param array $answer pg_label_answer() of cancel()
+ * @param int   $now
+ * @return array column => value, empty when nothing is written
+ */
+function pg_shipment_label_cancel_update($answer, $now)
+{
+    return empty($answer['success']) ? array() : array('state' => 'cancelled', 'cancelled_at' => (int) $now);
+}
+
+/**
+ * The address's tracking numbers once a cancelled label's number is taken
+ * out, compared the way the parcel's unique key compares them. Pure.
+ *
+ * @param array  $numbers the address's numbers
+ * @param string $number  the cancelled label's
+ * @return array
+ */
+function pg_shipment_label_numbers_after_cancel($numbers, $number)
+{
+    $number = mb_strtolower(trim((string) $number));
+    $kept = array();
+
+    foreach ((array) $numbers as $existing) {
+        if (($number === '') || (mb_strtolower(trim((string) $existing)) !== $number)) {
+            $kept[] = trim((string) $existing);
+        }
+    }
+
+    return $kept;
+}
+
+/**
+ * Cancel a label at its service, then mark the row and take its number off
+ * the address's parcels through the shipment write path. A return label
+ * has no parcel row.
+ *
+ * @param int $id shipment_labels.id
+ * @return array ok, error, order_id
+ */
+function pg_shipment_label_cancel($id)
+{
+    $out = array('ok' => false, 'error' => '', 'order_id' => 0);
+    $row = pg_shipment_labels_ready() ? db_item("SELECT * FROM shipment_labels WHERE id = '" . (int) $id . "'") : null;
+
+    if (!$row) {
+        $out['error'] = lang('Record not found.');
+        return $out;
+    }
+
+    $out['order_id'] = (int) $row['order_id'];
+    $driver = (string) $row['driver'];
+
+    if ($row['state'] !== 'active') {
+        $out['error'] = lang('This label is already cancelled.');
+        return $out;
+    }
+
+    if (!pg_label_can($driver, 'cancel') || !pg_label_ready($driver)) {
+        $out['error'] = lang('Its carrier label service is not switched on or cannot cancel a label. Cancel it at the service.');
+        return $out;
+    }
+
+    $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
+    $answer = pg_label_call($driver, 'cancel', array((string) $row['reference'], $account));
+    $update = pg_shipment_label_cancel_update($answer, time());
+
+    if (!$update) {
+        $out['error'] = $answer['unclear']
+            ? lang('The service did not say whether the label was cancelled. Check the shipment there.')
+            : lang(array('string' => 'The service refused to cancel the label: {var:1}', 'vars' => array($answer['error'])));
+        return $out;
+    }
+
+    db("UPDATE shipment_labels SET state = '" . e($update['state']) . "', cancelled_at = '" . (int) $update['cancelled_at'] . "' WHERE id = '" . (int) $row['id'] . "'");
+
+    if (!(int) $row['is_return'] && ((string) $row['number'] !== '')) {
+        $numbers = array();
+
+        foreach (pg_shipment_rows((int) $row['ship_to_id']) as $parcel) {
+            $numbers[] = $parcel['number'];
+        }
+
+        pg_shipment_prune((int) $row['ship_to_id'], pg_shipment_label_numbers_after_cancel($numbers, $row['number']));
+    }
+
+    log_activity(lang(array('string' => 'A shipping label of order {var:1} was cancelled: {var:2}', 'vars' => array((string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $row['order_id'] . "'"), $row['number']))));
+
+    $out['ok'] = true;
+
+    return $out;
+}
+
+/**
+ * The labels a bulk print takes: the active outbound ones of the selected
+ * orders, in the order the orders were selected, then by address and age.
+ * Pure.
+ *
+ * @param array $rows      shipment_labels rows
+ * @param array $order_ids in the order selected
+ * @return array
+ */
+function pg_shipment_label_print_selection($rows, $order_ids)
+{
+    $position = array_flip(array_map('intval', array_values((array) $order_ids)));
+    $selection = array();
+
+    foreach ((array) $rows as $row) {
+        if (($row['state'] === 'active') && !(int) $row['is_return'] && isset($position[(int) $row['order_id']])) {
+            $selection[] = $row;
+        }
+    }
+
+    usort($selection, function ($a, $b) use ($position) {
+        $order = array(
+            array($position[(int) $a['order_id']], (int) $a['ship_to_id'], (int) $a['id']),
+            array($position[(int) $b['order_id']], (int) $b['ship_to_id'], (int) $b['id']),
+        );
+
+        return ($order[0] < $order[1]) ? -1 : (($order[0] > $order[1]) ? 1 : 0);
+    });
+
+    return $selection;
+}
+
+/**
+ * Open labels for the addresses of the selected orders that have no active
+ * one, at most $limit a run (each is a call to the service).
+ *
+ * @param array $order_ids
+ * @param int   $user_id
+ * @param int   $limit
+ * @return array created, failed (list of sentences), left (addresses not reached)
+ */
+function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
+{
+    $out = array('created' => 0, 'failed' => array(), 'left' => 0);
+    $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+    if (!$order_ids || !pg_shipment_labels_ready()) {
+        return $out;
+    }
+
+    $addresses = db_values(
+        "SELECT DISTINCT order_items.ship_to_id
+        FROM order_items
+        WHERE
+            (order_items.order_id IN ('" . implode("','", $order_ids) . "'))
+            AND (order_items.ship_to_id > 0)" . pg_order_item_active_sql() . "
+            AND NOT EXISTS (
+                SELECT 1 FROM shipment_labels
+                WHERE (shipment_labels.ship_to_id = order_items.ship_to_id) AND (shipment_labels.state = 'active') AND (shipment_labels.is_return = '0'))
+        ORDER BY order_items.ship_to_id");
+
+    if (function_exists('set_time_limit')) {
+        @set_time_limit(300);
+    }
+
+    foreach ($addresses as $index => $ship_to_id) {
+        if ($index >= $limit) {
+            $out['left'] = count($addresses) - $limit;
+            break;
+        }
+
+        $result = pg_shipment_label_create((int) $ship_to_id, $user_id);
+
+        if ($result['ok']) {
+            $out['created']++;
+        } else {
+            $out['failed'][] = $result['error'];
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The labels of the selected orders as one PDF, merged now and never kept.
+ * A label that is not a PDF (ZPL for a thermal printer) or cannot be read
+ * is listed on a last page instead, to be printed from its order.
+ *
+ * @param array $order_ids in the order selected
+ * @return array ok, error, document, count (labels in the PDF)
+ */
+function pg_shipment_label_bulk_pdf($order_ids)
+{
+    $out = array('ok' => false, 'error' => '', 'document' => '', 'count' => 0);
+    $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+    $rows = ($order_ids && pg_shipment_labels_ready())
+        ? db_items(
+            "SELECT shipment_labels.*, orders.order_number
+            FROM shipment_labels
+            LEFT JOIN orders ON orders.id = shipment_labels.order_id
+            WHERE shipment_labels.order_id IN ('" . implode("','", $order_ids) . "')")
+        : array();
+
+    $documents = array();
+    $labels = array();
+    $left_out = array();
+
+    foreach (pg_shipment_label_print_selection($rows, $order_ids) as $row) {
+        $document = pg_shipment_label_document($row);
+
+        if ($document['ok'] && ($document['format'] === 'pdf')) {
+            $documents[] = $document['document'];
+            $labels[] = $row;
+        } else {
+            $left_out[] = $row;
+        }
+    }
+
+    $skipped = array();
+    $merged = pg_pdf_merge($documents, $skipped);
+
+    foreach ($skipped as $position) {
+        $left_out[] = $labels[$position];
+    }
+
+    $out['count'] = count($documents) - count($skipped);
+
+    if ($left_out) {
+        $note = '<meta charset="utf-8"><h3>' . h(lang('Labels not in this PDF')) . '</h3><p>' . h(lang('Print these from their orders.')) . '</p><ul>';
+
+        foreach ($left_out as $row) {
+            $note .= '<li>' . h(lang(array('string' => 'Order {var:1}: {var:2} ({var:3})', 'vars' => array($row['order_number'], $row['number'], strtoupper($row['label_format']))))) . '</li>';
+        }
+
+        $page = pg_privacy_export_pdf($note . '</ul>');
+        $merged = is_string($page) ? pg_pdf_merge(array_merge($merged !== '' ? array($merged) : array(), array($page))) : $merged;
+    }
+
+    if (($merged === '') || (($out['count'] === 0) && !$left_out)) {
+        $out['error'] = lang('The selected orders have no active shipping label.');
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['document'] = $merged;
+
+    return $out;
 }

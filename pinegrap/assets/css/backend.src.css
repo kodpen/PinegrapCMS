@@ -19493,12 +19493,14 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
 .wsf-thread-skipped {
   stroke-dasharray: 4 3;
 }
-/* Placed from the box's outer edges (drawData()), so the box's 1 px border
-   and 4 px kind edge are taken back. */
+/* Placed from the box's outer edge (drawData()), so the box's 1.5 px border
+   is taken back; as wide as dataRowSlots() lets it be (--wsf-w), so the row
+   stays within its box. On hover an item shows its whole name over its
+   neighbours. */
 .wsf-data {
   position: absolute;
   top: calc(100% - 8px);
-  margin-left: -4px;
+  margin-left: -1.5px;
   display: flex;
   align-items: center;
   height: 18px;
@@ -19508,7 +19510,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   pointer-events: none;
 }
 .wsf-data-field {
-  width: 76px;
+  width: var(--wsf-w, 76px);
   padding: 0 6px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -19522,9 +19524,24 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   color: var(--pg-danger);
 }
 .wsf-data-out {
-  width: 84px;
+  width: var(--wsf-w, 84px);
   gap: 3px;
   color: var(--pg-fg-2);
+}
+.wsf-data-field,
+.wsf-data-out {
+  pointer-events: auto;
+}
+.wsf-data-field:hover,
+.wsf-data-out:hover {
+  z-index: 3;
+  width: max-content;
+  min-width: var(--wsf-w);
+}
+.wsf-data-out:hover {
+  padding-right: 6px;
+  border-radius: 999px;
+  background: var(--pg-bg-body);
 }
 .wsf-data-ring {
   flex: none;
@@ -19540,6 +19557,7 @@ html[data-bs-theme="dark"] .wsf-tone-text-2 { --wsf-tone: #f0c060; }
   text-align: center;
 }
 .wsf-data-label {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
 }

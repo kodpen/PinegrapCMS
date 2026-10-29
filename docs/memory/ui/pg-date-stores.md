@@ -26,7 +26,7 @@ description: What each hooked date/time field keeps (site text, ISO on native in
 - A script that writes a drawn field's store calls `pgFields.refresh(el)` (value and disabled state, no change: designer page schedule, #2854) or fires a change on it; a bare `.value =` leaves the box stale. The box takes the field's `aria-label`, `placeholder` and `title`.
 
 ## Which panel fields reach the control outside the shared forms (P4)?
-- The form preview's `time` row (`get_form_info()`, panel only) has `data-pg-time`; `pg_form_info_picker_format()` gives the options its hooked rows need. The site rows stay plain until S2.
+- The form preview's `time` row (`get_form_info()`, panel only) has `data-pg-time`; `pg_form_info_picker_format()` gives the options its hooked rows need. Site rows carry the same hooks (`site-datetime-loader.md`).
 - List filter rows (`update_value_cell()` in `backend.src.js`, drawn where the screen prints `pg_fields_script()`: the form list view; the order and visitor reports wait for P8): the value box of a date, date-and-time or time field gets its hook (site text); the old box's control is destroyed before the cell is redrawn, and a dynamic value empties it through `pg_filter_value_clear()`.
 - A box with `data-pg-add-to-chips="<id>"` adds a picked date to those chips once and empties itself (shipping method excluded dates; it has no name, so it does not post).
 - The commerce settings' hour-of-day select (`settings/prep.php` options, `%02d:00`) still ignores the clock: left for P8.

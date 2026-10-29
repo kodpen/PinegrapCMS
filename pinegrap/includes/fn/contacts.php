@@ -68,6 +68,7 @@ function pg_contact_holders()
         'ws_ai_changes'                => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
         'ws_mail_conversations'        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
         'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
+        'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
 

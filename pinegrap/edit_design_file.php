@@ -98,7 +98,7 @@ if (empty($_POST['name'])) {
         $thumbnail_dimensions = get_thumbnail_dimensions($image_width, $image_height, $max_dimension);
         
         // Output thumnail.
-        $output_thumbnail = '<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
+        $output_thumbnail = '<div class="col-12 md:col-auto"><a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank" tabindex="-1" aria-hidden="true"><img style="width: 100px;height:100px;" class="img-fluid img-thumbnail lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($file_name) . '" /></a></div>';
         $output_image_info = ' | ' . $image_width . 'px - ' .  $image_height . 'px';
 
     }
@@ -224,7 +224,7 @@ if (empty($_POST['name'])) {
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 ' . $image_buttons . '
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                <a class="btn btn-link pg-link-secondary py-0 mb-3" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                             </div>
                         </nav>
                     </div>

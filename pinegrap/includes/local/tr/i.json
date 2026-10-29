@@ -765,6 +765,7 @@
     "Items to Return": "İade Edilecek Ürünler",
     "Item{suffix:1}": "Öğe",
     "Its PHP could not be cut into separate blocks, so the region is one PHP block that prints it as before.": "PHP kodu ayrı bloklara bölünemediği için bölge, içeriği eskisi gibi yazdıran tek bir PHP bloğu oldu.",
+    "Its carrier label service is not switched on or cannot cancel a label. Cancel it at the service.": "Kargo etiketi servisi açık değil ya da etiket iptal edemiyor. Etiketi servisin kendisinde iptal edin.",
     "Its display options are shared with the other pages that show it.": "Görünüm seçenekleri, onu gösteren diğer sayfalarla ortaktır.",
     "Its layout has unsaved changes, and the copy takes them. The other places can keep the widget as it was last saved, or get the changes too when you save.": "Düzeninde kaydedilmemiş değişiklikler var ve kopya bunları alır. Diğer yerler widget'ı son kaydedilen hâliyle koruyabilir ya da kaydettiğinizde bu değişiklikleri onlar da alabilir.",
     "Its legs are joined to the top with wooden pegs, and it can be taken apart and put back together without a single tool.": "Ayakları tablaya ahşap kavelalarla bağlanmış; tek bir alet kullanmadan sökülüp yeniden kurulabiliyor.",

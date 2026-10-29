@@ -36,4 +36,4 @@ module: widgets_comments
 - First in the form (starter, PHP tree): a refused post lands on `#software_add_comment` by its errors. Named `add_comment`; state read before the draw, `remove_form()` after; an undrawn (closed) form's errors are dropped, as classic. No node left for it (a design kept one only in a small form): one goes first in the container ([[comments-widget-watch-staff]]).
 
 ## What does the browser add?
-- `software.init_comment_forms()` (frontend.src.js and its hand-made frontend.min.js twin), on ready, by data attributes: submit lock, leave warning with the label (on `[name="message"]`, textarea or input), publish picker toggling `hidden` (Bootstrap's `[hidden]` beats inline display), date picker once; the classic form keeps its own.
+- `software.init_comment_forms()` (frontend.src.js, hand-made .min twin), on ready, by data attributes: submit lock, leave warning with the label (`[name="message"]`, any tag), publish picker toggling `hidden` (beats inline display), the time box on the date-and-time control (`ui/site-datetime-loader.md`); the classic form keeps its own.

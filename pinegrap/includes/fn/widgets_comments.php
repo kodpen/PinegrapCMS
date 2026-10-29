@@ -1613,16 +1613,16 @@ function pg_comments_name_options_html($choices, $selected, $anonymous_label)
  * comment cancels it, wired by data attributes (software.init_comment_forms()
  * in frontend.js). The schedule part carries the hidden attribute until
  * "At a Scheduled Time" is chosen. Its ids are its own: the classic form's
- * stay as they are. $scripts_html (the date picker) goes last.
+ * stay as they are. The time box carries data-pg-datetime: the page brings
+ * the date-and-time control (pg_site_datetime_inject()).
  *
  * @param mixed  $publish      'now', 'schedule' or 'manual'
  * @param mixed  $when         the scheduled time, as the form takes it
  * @param bool   $cancel
  * @param string $label_lower  the comment label in lower case
- * @param string $scripts_html
  * @return string
  */
-function pg_comments_publish_html($publish, $when, $cancel, $label_lower, $scripts_html)
+function pg_comments_publish_html($publish, $when, $cancel, $label_lower)
 {
     $publish = is_scalar($publish) ? (string) $publish : '';
     $options = array('now' => lang('Now'), 'schedule' => lang('At a Scheduled Time'), 'manual' => lang('Maybe Later'));
@@ -1637,13 +1637,12 @@ function pg_comments_publish_html($publish, $when, $cancel, $label_lower, $scrip
 
     $html .= '</select>'
         . '<span class="ms-2" data-pg-comment-publish-schedule' . (($publish === 'schedule') ? '' : ' hidden') . '>'
-        . '<input type="text" class="form-control form-control-sm d-inline-block w-auto" id="comment_publish_date_and_time" name="publish_date_and_time" maxlength="19" size="21" value="' . pg_sw_filter_value_html(is_scalar($when) ? (string) $when : '') . '">'
+        . '<input type="text" class="form-control form-control-sm d-inline-block w-auto" id="comment_publish_date_and_time" name="publish_date_and_time" maxlength="19" size="21" data-pg-datetime value="' . pg_sw_filter_value_html(is_scalar($when) ? (string) $when : '') . '">'
         . '<span class="form-check form-check-inline ms-2">'
         . '<input type="checkbox" class="form-check-input" id="comment_publish_cancel" name="publish_cancel" value="1"' . ($cancel ? ' checked' : '') . '>'
         . '<label class="form-check-label" for="comment_publish_cancel">' . pg_sw_filter_value_html(lang(array('string' => 'Cancel if a new {var:1} is added first.', 'vars' => $label_lower))) . '</label>'
         . '</span>'
         . '</span>'
-        . (is_scalar($scripts_html) ? (string) $scripts_html : '')
         . '</div>';
 
     return $html;
@@ -4939,9 +4938,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
             $cancel = true;
         }
 
-        $scripts = '<script src="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js') . '"></script>'
-            . get_date_picker_format();
-        $sections['comment_publish'] = pg_comments_publish_html($publish, $when, $cancel, $label_lower, $scripts);
+        $sections['comment_publish'] = pg_comments_publish_html($publish, $when, $cancel, $label_lower);
     }
 
     // The watcher manager: the people told of a new comment, for who may

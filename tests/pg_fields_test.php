@@ -705,6 +705,16 @@ function main() {
     var siteDt = st.calls.filter(function (c) { return c[0] === 'calendar' && c[2].selectionTimeMode; })[0];
     var plainSite = load({ noBootstrap: true, format: 'd/m/yy', fields: [['input', { id: 'pd', 'data-pg-date': '' }]] });
     plainSite.win.pgFields.init();
+    // A bind marker hooks inputs of a stored layout by id: each kind its own,
+    // a missing id or a field already hooked is left alone.
+    var bd = load({ noBootstrap: true, calendar: { site: true }, format: 'd/m/yy', fields: [
+        ['input', { id: '41' }], ['input', { id: '42' }], ['input', { id: '43' }], ['input', { id: '44', 'data-pg-date': '' }],
+        ['span', { 'data-pg-date-bind': JSON.stringify({ date: ['41', '99'], datetime: ['42'], time: ['43', '44'] }) }]
+    ] });
+    bd.win.pgFields.init();
+    bd.win.pgFields.init();
+    out.dp_bind = ['41', '42', '43', '44'].map(function (id) { var el = bd.doc.querySelector('#' + id); return [el.pgFieldKind || '', Object.keys(el.attributes).filter(function (k) { return /^data-pg-/.test(k); }).join(',')]; });
+    out.dp_bind_calls = bd.calls.filter(function (c) { return c[0] === 'calendar'; }).length;
     out.dp_site = {
         site: [st.win.pgDateTime.site(), dp.win.pgDateTime.site()],
         before: siteBefore,
@@ -1275,6 +1285,12 @@ function test_pg_fields_dates_on_the_calendar_control()
 		$r['dp_late'],
 		'the library tag is added once, however often the files run, and the field is drawn when it has loaded'
 	);
+	pg_assert_same(
+		array(array('date', 'data-pg-date'), array('datetime', 'data-pg-datetime'), array('time', 'data-pg-time'), array('date', 'data-pg-date')),
+		$r['dp_bind'],
+		'a bind marker gives each input named by id the hook of its kind, once; a field already hooked keeps its own'
+	);
+	pg_assert_same(4, $r['dp_bind_calls'], 'each bound field drawn once, however often init() runs');
 	pg_assert_same(
 		array('site' => array(true, false), 'before' => false, 'kinds' => array('date', 'datetime'), 'done' => array(true, false), 'plain' => array('', 0)),
 		$r['dp_site'],
