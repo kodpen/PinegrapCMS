@@ -237,6 +237,13 @@ function mp_label_row($order_id, $ship_to_id, $provider, $number, $format, $file
 
 }
 
+// The shape mp_label_create() answers in, a refusal until it says otherwise.
+function mp_label_result() {
+
+	return array('ok' => false, 'existing' => false, 'pending' => false, 'error' => '', 'label_id' => 0, 'number' => '');
+
+}
+
 // Ask the marketplace for the shipping label of an imported package and keep
 // it with the order's labels.
 //
@@ -245,14 +252,16 @@ function mp_label_row($order_id, $ship_to_id, $provider, $number, $format, $file
 // as it is. Otherwise a package nobody accepted yet is accepted first (their
 // advice is to ask once it is being prepared), the label is asked for, and
 // read up to three times two seconds apart, because it is made after the
-// request. One run at a time per package, under a lock.
+// request; once, without waiting, when $wait is false (the orders list's
+// bulk run, where every package waits on the ones before it). One run at a
+// time per package, under a lock.
 //
 // Answers ok, existing (the label was there already), pending (asked for, not
-// made yet: the operator presses again), error (the sentence shown, for a
-// pending label too) and label_id.
-function mp_label_create($account, $map_id, $boxes, $user_id) {
+// made yet: the operator asks again), error (the sentence shown, for a
+// pending label too), label_id and number (the cargo number).
+function mp_label_create($account, $map_id, $boxes, $user_id, $wait = true) {
 
-	$out = array('ok' => false, 'existing' => false, 'pending' => false, 'error' => '', 'label_id' => 0);
+	$out = mp_label_result();
 
 	$provider = isset($account['provider']) ? (string)$account['provider'] : '';
 
@@ -303,7 +312,7 @@ function mp_label_create($account, $map_id, $boxes, $user_id) {
 
 	}
 
-	$out = mp_label_create_locked($account, (int)$map_id, $boxes, $user_id);
+	$out = mp_label_create_locked($account, (int)$map_id, $boxes, $user_id, $wait);
 
 	db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
 
@@ -312,9 +321,9 @@ function mp_label_create($account, $map_id, $boxes, $user_id) {
 }
 
 // mp_label_create() under the package's lock.
-function mp_label_create_locked($account, $map_id, $boxes, $user_id) {
+function mp_label_create_locked($account, $map_id, $boxes, $user_id, $wait) {
 
-	$out = array('ok' => false, 'existing' => false, 'pending' => false, 'error' => '', 'label_id' => 0);
+	$out = mp_label_result();
 
 	$provider = (string)$account['provider'];
 
@@ -337,7 +346,7 @@ function mp_label_create_locked($account, $map_id, $boxes, $user_id) {
 
 	$order_number = (string)$map['remote_order_id'];
 
-	$label = db_item("SELECT id FROM shipment_labels
+	$label = db_item("SELECT id, number FROM shipment_labels
 		WHERE (driver = '" . e($provider) . "') AND (order_id = '" . e($order_id) . "') AND (state = 'active') AND (is_return = '0')
 		ORDER BY id DESC
 		LIMIT 1");
@@ -349,6 +358,8 @@ function mp_label_create_locked($account, $map_id, $boxes, $user_id) {
 		$out['existing'] = true;
 
 		$out['label_id'] = (int)$label['id'];
+
+		$out['number'] = (string)$label['number'];
 
 		return $out;
 
@@ -466,7 +477,7 @@ function mp_label_create_locked($account, $map_id, $boxes, $user_id) {
 	// The label is made after the request, so it is read a few times. A
 	// refused request is read once: the label of an earlier request may be
 	// what it refused for.
-	$tries = $requested['ok'] ? 3 : 1;
+	$tries = ($requested['ok'] && $wait) ? 3 : 1;
 
 	for ($try = 0; $try < $tries; $try++) {
 
@@ -503,7 +514,7 @@ function mp_label_create_locked($account, $map_id, $boxes, $user_id) {
 	$out['pending'] = true;
 
 	$out['error'] = lang(array(
-		'string' => '{var:1} took the label request of order {var:2}, but the label is not ready yet. Press Get label again in a minute.',
+		'string' => '{var:1} took the label request of order {var:2}, but the label is not ready yet. Ask for it again in a minute.',
 		'vars'   => array($name, $order_number)
 	));
 
@@ -524,7 +535,7 @@ function mp_label_read_done($read) {
 // could hand the label out again.
 function mp_label_keep($account, $map, $ship_to_id, $number, $label, $user_id) {
 
-	$out = array('ok' => false, 'existing' => false, 'pending' => false, 'error' => '', 'label_id' => 0);
+	$out = mp_label_result();
 
 	$provider = (string)$account['provider'];
 
@@ -568,11 +579,141 @@ function mp_label_keep($account, $map, $ship_to_id, $number, $label, $user_id) {
 
 	$out['label_id'] = (int)mysqli_insert_id(db::$con);
 
+	$out['number'] = $row['number'];
+
 	log_activity(lang(array(
 		'string' => 'A shipping label was created with {var:1} for order {var:2}: {var:3}',
 		'vars'   => array(mp_provider_name($provider), (string)db_value("SELECT order_number FROM orders WHERE id = '" . e((int)$map['order_id']) . "'"), $number)
 	)));
 
 	return $out;
+
+}
+
+// The marketplace's label of an order's address, for the order screen, the
+// orders list's bulk Create Labels and the create check of a carrier label
+// (includes/fn/shipment_labels.php): the package's map row and account, and
+// what mp_label_offer() says. null when the address is not the first one of
+// an order imported from a marketplace whose connector makes labels; the
+// import records the package's cargo number on that address.
+//
+// Answers offer, label_id, map_id, account_id, provider and name.
+function mp_label_ship_to($ship_to_id) {
+
+	$ship_to = db_item("SELECT id, order_id, shipping_method_code FROM ship_tos WHERE id = '" . e((int)$ship_to_id) . "'");
+
+	if (!$ship_to || ((int)db_value("SELECT id FROM ship_tos
+		WHERE order_id = '" . e((int)$ship_to['order_id']) . "' ORDER BY id ASC LIMIT 1") !== (int)$ship_to['id'])) {
+
+		return null;
+
+	}
+
+	$map = db_item("SELECT * FROM marketplace_order_map
+		WHERE (order_id = '" . e((int)$ship_to['order_id']) . "') AND (status = 'imported')
+		ORDER BY id DESC
+		LIMIT 1");
+
+	$account = $map ? mp_account((int)$map['account_id']) : null;
+
+	if (!$account || !mp_label_can((string)$account['provider'])) {
+
+		return null;
+
+	}
+
+	$provider = (string)$account['provider'];
+
+	$label = db_item("SELECT id, label_file, label_removed_at FROM shipment_labels
+		WHERE (driver = '" . e($provider) . "') AND (order_id = '" . e((int)$map['order_id']) . "') AND (state = 'active') AND (is_return = '0')
+		ORDER BY id DESC
+		LIMIT 1");
+
+	$offer = mp_label_offer($map, mp_order_stage($account, $map), $label ? $label : null,
+		mp_account_ships_itself($account), mp_label_carrier_ok($provider, $ship_to['shipping_method_code']));
+
+	return array(
+		'offer'      => $offer['offer'],
+		'label_id'   => $offer['label_id'],
+		'map_id'     => (int)$map['id'],
+		'account_id' => (int)$account['id'],
+		'provider'   => $provider,
+		'name'       => mp_provider_name($provider)
+	);
+
+}
+
+// The marketplace's label of an order's address asked for from the order
+// screen (shipment_label.php) or the orders list's bulk run: mp_label_create()
+// for the package mp_label_ship_to() finds.
+function mp_label_create_for_ship_to($ship_to_id, $boxes, $user_id, $wait = true) {
+
+	$target = mp_label_ship_to($ship_to_id);
+
+	$account = $target ? mp_account($target['account_id']) : null;
+
+	if (!$account) {
+
+		$out = mp_label_result();
+
+		$out['error'] = lang('This address belongs to no package a marketplace makes labels for.');
+
+		return $out;
+
+	}
+
+	return mp_label_create($account, $target['map_id'], $boxes, $user_id, $wait);
+
+}
+
+// A marketplace's label asked for again by its cargo number, once its file is
+// gone (pg_shipment_label_document()): from the account the order was
+// imported through. The copy is not written back, which would restart the
+// time the address is kept. null when the row is no marketplace's label.
+//
+// Answers ok, error, document and format, the shape of
+// pg_shipment_label_document().
+function mp_label_document($row) {
+
+	$provider = isset($row['driver']) ? (string)$row['driver'] : '';
+
+	if (!mp_provider_is_valid($provider) || !mp_label_can($provider)) {
+
+		return null;
+
+	}
+
+	$out = array('ok' => false, 'error' => '', 'document' => '', 'format' => '');
+
+	$account_id = (int)db_value("SELECT marketplace_order_map.account_id
+		FROM marketplace_order_map
+		INNER JOIN marketplace_accounts ON marketplace_accounts.id = marketplace_order_map.account_id
+		WHERE (marketplace_order_map.order_id = '" . e((int)$row['order_id']) . "') AND (marketplace_accounts.provider = '" . e($provider) . "')
+		ORDER BY marketplace_order_map.id DESC
+		LIMIT 1");
+
+	$account = $account_id ? mp_account($account_id) : null;
+
+	if (!$account) {
+
+		$out['error'] = lang('The label is no longer kept, and the marketplace account it came from is no longer here.');
+
+		return $out;
+
+	}
+
+	$read = mp_call($provider, 'read_label', array($account, (string)$row['reference']));
+
+	if (!mp_label_read_done($read)) {
+
+		$out['error'] = $read['ok']
+			? lang(array('string' => '{var:1} no longer gives the label of this parcel.', 'vars' => array(mp_provider_name($provider))))
+			: (string)$read['error'];
+
+		return $out;
+
+	}
+
+	return array('ok' => true, 'error' => '', 'document' => $read['data']['label'], 'format' => (string)$read['data']['format']);
 
 }

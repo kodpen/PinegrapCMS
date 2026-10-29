@@ -198,6 +198,73 @@ function pg_shipment_label_drivers()
 }
 
 /**
+ * The marketplace layer (includes/api/outbound/labels.php), loaded once for a
+ * request that ran init.php. The label a marketplace makes for its own
+ * carrier (Trendyol's common label) is kept here like a carrier label
+ * service's, and is asked for and read again through that layer.
+ *
+ * @return bool whether it is there
+ */
+function pg_shipment_label_marketplace_ready()
+{
+    if (!function_exists('mp_label_ship_to') && defined('PG_INIT_LOADED')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/api/outbound/labels.php');
+    }
+
+    return function_exists('mp_label_ship_to');
+}
+
+/**
+ * The marketplace's label of an order's address (mp_label_ship_to()): offer
+ * ('create' while the marketplace makes the label of this package now,
+ * 'print' or '' once it has one), label_id, map_id, account_id, provider and
+ * name. null for an address of an order no marketplace brought in; the
+ * marketplace layer is loaded only for one that did.
+ *
+ * @param int $ship_to_id
+ * @return array|null
+ */
+function pg_shipment_label_marketplace($ship_to_id)
+{
+    if (!pg_shipment_labels_ready()) {
+        return null;
+    }
+
+    $order_id = (int) db_value("SELECT order_id FROM ship_tos WHERE id = '" . (int) $ship_to_id . "'");
+
+    if (($order_id <= 0)
+        || ((int) db_value("SELECT COUNT(*) FROM marketplace_order_map WHERE order_id = '" . $order_id . "'") === 0)
+        || !pg_shipment_label_marketplace_ready()) {
+        return null;
+    }
+
+    return mp_label_ship_to((int) $ship_to_id);
+}
+
+/**
+ * The name a label's maker is shown by: the carrier label service's, else
+ * the marketplace's whose label it is, else the key.
+ *
+ * @param string $key shipment_labels.driver
+ * @return string
+ */
+function pg_shipment_label_driver_name($key)
+{
+    $key = (string) $key;
+    $driver = pg_label_driver($key);
+
+    if ($driver !== null) {
+        return $driver['label'];
+    }
+
+    if (pg_label_key_valid($key) && pg_shipment_label_marketplace_ready() && mp_provider_is_valid($key)) {
+        return mp_provider_name($key);
+    }
+
+    return $key;
+}
+
+/**
  * When a label's file is due to go: 30 days after the parcel was delivered
  * or the label cancelled, whichever came first, and 90 days after the label
  * was made at the latest. Pure.
@@ -416,17 +483,21 @@ function pg_shipment_label_rows($ship_to_id)
  * pg_shipment_label_create_check() reads what it weighs.
  *
  * An address that already has an active label of the kind asked for gets no
- * second one: a second create() would buy a second shipment.
+ * second one: a second create() would buy a second shipment. Nor does a
+ * package whose marketplace makes its label for its own carrier now
+ * (pg_shipment_label_marketplace()): its parcel goes with that carrier.
  *
  * @param bool       $ready   pg_shipment_labels_ready()
  * @param array|null $order   status of the address's order, null when none
  * @param int        $active  active labels of the kind on the address
  * @param string     $driver  pg_shipment_label_driver_pick()
  * @param bool       $return
+ * @param string     $marketplace the name of the marketplace that makes the
+ *                                label, '' for none
  * @return array code (not_ready, not_found, not_completed, label_exists,
- *               no_driver; '' when nothing refuses), error
+ *               marketplace_label, no_driver; '' when nothing refuses), error
  */
-function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false)
+function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return = false, $marketplace = '')
 {
     if (!$ready) {
         return array('code' => 'not_ready', 'error' => lang('Run the software update first: the table for shipping labels is missing.'));
@@ -444,6 +515,13 @@ function pg_shipment_label_create_refusal($ready, $order, $active, $driver, $ret
         return array('code' => 'label_exists', 'error' => $return
             ? lang('This address already has a return label. Print it again, or cancel it before creating another.')
             : lang('This address already has a label. Print it again, or cancel it before creating another.'));
+    }
+
+    if ((string) $marketplace !== '') {
+        return array('code' => 'marketplace_label', 'error' => lang(array(
+            'string' => '{var:1} makes the label of this parcel for its own carrier: get it with Get {var:1} label. A carrier label service\'s label would be a second shipment.',
+            'vars'   => array((string) $marketplace),
+        )));
     }
 
     if ((string) $driver === '') {
@@ -472,6 +550,7 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
     $order = null;
     $active = 0;
     $driver = '';
+    $marketplace_name = '';
 
     if ($ready) {
         $ship_to = db_item(
@@ -496,9 +575,12 @@ function pg_shipment_label_create_check($ship_to_id, $return = false)
 
         $carrier = pg_shipment_label_carrier(isset($ship_to['method_carrier']) ? $ship_to['method_carrier'] : '', $ship_to['shipping_method_code']);
         $driver = pg_shipment_label_driver_pick($carrier, pg_shipment_label_drivers());
+
+        $marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to['id']);
+        $marketplace_name = ($marketplace && ($marketplace['offer'] === 'create')) ? $marketplace['name'] : '';
     }
 
-    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return);
+    $refusal = pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name);
 
     $out['code'] = $refusal['code'];
     $out['error'] = $refusal['error'];
@@ -963,8 +1045,8 @@ function pg_shipment_label_customer_headers($format, $file_name)
 /**
  * A label's document for printing: the kept file, else the service's copy
  * asked for by reference (a file the sweep removed, a create() that sent
- * none). The service's copy is not written back: it would restart the time
- * the address is kept.
+ * none), the marketplace's for a label a marketplace made. The copy is not
+ * written back: it would restart the time the address is kept.
  *
  * @param array $row a shipment_labels row
  * @return array ok, error, document, format
@@ -983,6 +1065,16 @@ function pg_shipment_label_document($row)
     }
 
     $driver = (string) $row['driver'];
+
+    // A marketplace's own label has no driver: the marketplace gives it again
+    // by its cargo number (mp_label_document()).
+    if ((pg_label_driver($driver) === null) && pg_label_key_valid($driver) && pg_shipment_label_marketplace_ready()) {
+        $copy = mp_label_document($row);
+
+        if ($copy !== null) {
+            return $copy;
+        }
+    }
 
     if (!pg_label_can($driver, 'label') || !pg_label_ready($driver)) {
         $out['error'] = lang('The label is no longer kept and its carrier label service is not switched on.');
@@ -1418,7 +1510,10 @@ function pg_shipment_label_print_selection($rows, $order_ids)
 
 /**
  * Open labels for the addresses of the selected orders that have no active
- * one, at most $limit a run (each is a call to the service).
+ * one, at most $limit a run (each is a call to the service). A package whose
+ * marketplace makes its label now gets that one, for one box, read once
+ * without waiting (mp_label_create_for_ship_to()); a carrier label
+ * service's would be a second shipment of the parcel.
  *
  * @param array $order_ids
  * @param int   $user_id
@@ -1455,7 +1550,11 @@ function pg_shipment_label_bulk_create($order_ids, $user_id, $limit = 20)
             break;
         }
 
-        $result = pg_shipment_label_create((int) $ship_to_id, $user_id);
+        $marketplace = pg_shipment_label_marketplace((int) $ship_to_id);
+
+        $result = ($marketplace && ($marketplace['offer'] === 'create'))
+            ? mp_label_create_for_ship_to((int) $ship_to_id, 1, $user_id, false)
+            : pg_shipment_label_create((int) $ship_to_id, $user_id);
 
         if ($result['ok']) {
             $out['created']++;
