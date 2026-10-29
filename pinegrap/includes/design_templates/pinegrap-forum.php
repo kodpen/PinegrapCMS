@@ -679,12 +679,14 @@ $agree = function ($id, $name, $text) use ($el, $attr) {
         $el('label', 'form-check-label', lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $id)))),
     ));
 };
-// A file field; what is sent is kept in the template folder named.
+// A file field; what is sent is kept in the template folder named. One
+// that takes only pictures is a collection's image kind.
 $file = function ($id, $name, $folder, $accept = 'image/*', $required = false) use ($el, $attr) {
     $attrs = array($attr('type', 'file'), $attr('name', $name), $attr('accept', $accept));
     if ($required) $attrs[] = $attr('required', '');
     return $el('input', 'form-control', lang('Field'), array(), array('id' => $id, '_attrs' => $attrs,
-        '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+        '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')
+            + ($accept === 'image/*' ? array('kind' => 'image') : array())));
 };
 // A group of fields under its legend.
 $fieldset = function ($legend, $children) use ($el) {
@@ -3568,6 +3570,7 @@ $pages[] = array(
     'noindex' => true,
     'form'    => array(
         'form_name'            => lang('Community Team Directory'),
+        'collection'           => 1,
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ),
@@ -5711,7 +5714,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Community Forum & Docs'),
-    'version'     => '1.2.0',
+    'version'     => '1.2.1',
     'framework'   => 'bootstrap5',
     'order'       => 90,
     'icon'        => 'bi-chat-square-text',

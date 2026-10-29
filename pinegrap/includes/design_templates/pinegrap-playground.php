@@ -379,11 +379,12 @@ $textarea = function ($id, $name, $rows, $required = true, $extra_attrs = array(
     if ($required) $attrs[] = $attr('required', '');
     return $el('textarea', $control_class, lang('Text Area'), array(), array('id' => $id, '_attrs' => array_merge($attrs, $extra_attrs)));
 };
-// A file field; what is sent is kept in the template folder named.
+// A file field; what is sent is kept in the template folder named. It
+// takes pictures only, so it is a collection's image kind.
 $file = function ($id, $name, $folder) use ($el, $attr, $control_class) {
     return $el('input', $control_class, lang('Input'), array(), array('id' => $id, '_attrs' => array(
         $attr('type', 'file'), $attr('name', $name), $attr('accept', 'image/*'),
-    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}', 'kind' => 'image')));
 };
 $submit = function ($text, $icon_name) use ($el, $attr, $icon) {
     return $el('button', 'btn btn-primary btn-lg rounded-pill border border-3 border-dark fw-bold px-4', lang('Send'), array(
@@ -1319,6 +1320,7 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
     lang('Write the post; it appears on the blog as soon as you send it.'), 'bi-pencil', 'blog_form',
     array(
         'form_name'            => lang('Blog Posts'),
+        'collection'           => 1,
         'confirmation_message' => lang('The post is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
         // The template's sample posts are written in when the form is made,
@@ -1332,6 +1334,7 @@ $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang(
     lang('Signed-in members see the directory from their account.'), 'bi-person-plus', 'staff_form',
     array(
         'form_name'            => lang('Staff Directory'),
+        'collection'           => 1,
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ));
@@ -2290,7 +2293,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Playground'),
-    'version'     => '1.0.10',
+    'version'     => '1.0.11',
     'framework'   => 'bootstrap5',
     'order'       => 15,
     'icon'        => 'bi-emoji-smile',

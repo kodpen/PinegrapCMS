@@ -239,7 +239,7 @@ if ($ready && erp_expense_recurring_ready()) {
                     <span class="text-truncate">' . h(($periods[(int) $recurrence['every_months']] ?? '') . ' · ' . (string) $recurrence['category_name']) . '</span>
                     <span class="text-nowrap">' . h(prepare_form_data_for_output((string) $recurrence['next_date'], 'date', false)) . '</span>
                 </div>'
-                . (((string) $recurrence['last_error'] !== '') ? '<div class="small fg-emphasis-warning text-truncate" title="' . h((string) $recurrence['last_error']) . '"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h((string) $recurrence['last_error']) . '</div>' : '') . '
+                . (((string) $recurrence['last_error'] !== '') ? '<div class="small fg-emphasis-warning text-break"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h((string) $recurrence['last_error']) . '</div>' : '') . '
             </li>';
     }
 }

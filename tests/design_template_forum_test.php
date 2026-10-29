@@ -803,7 +803,7 @@ function test_forum_template_loads()
 	// 1.1.0: replies and feedback on the Comments widget, the lists of
 	// recent replies and the comment e-mails drawn by it; 1.2.0: the board
 	// page's latest replies, held to the board by a record filter.
-	pg_assert_same('1.2.0', $tpl['version'], 'version 1.2.0');
+	pg_assert_same('1.2.1', $tpl['version'], 'version 1.2.1');
 	pg_assert_same('bootstrap5', $tpl['framework'], 'framework');
 	pg_assert_same(90, $tpl['order'], 'order');
 	pg_assert_same('bi-chat-square-text', $tpl['icon'], 'icon');

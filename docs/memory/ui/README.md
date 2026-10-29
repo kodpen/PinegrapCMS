@@ -122,6 +122,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry
 - main-menu-settings-row.md: The Site Settings row of the main menu (slot 20): two levels of panels, the page path instead of the modal (data-pg-settings-page), the gates it shares with the modal, the rows it marks active
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
+- marketplace-settings-screen-a11y.md: Marketplaces account screen: question and failure rows wrap on a phone, emphasis inks for status text, named dialogs, the current account marked, formatted notice counts
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
@@ -202,7 +203,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
-- toggle-and-mark-names.md: A state toggle's aria-label follows its state, icon-only badges and list marks carry visually-hidden text, a radio group's heading is a legend (offers and key codes lists)
+- toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope (all, group:catalog / forms / ui, page:ID) is labelled
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.

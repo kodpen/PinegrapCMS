@@ -334,6 +334,8 @@ function test_workspace_quick_create_screen_wiring()
 	pg_assert_contains("api('ws_record_fields', { type: type, id: 0 })", $js, 'and loads the empty form');
 	pg_assert_contains('openCreate: function (type, options) {', $js, 'the palette is lent the new mode');
 	pg_assert_contains("result.command.type === 'create_preview'", $js, 'the /product card is drawn');
+	pg_assert_contains("(preview.kind === 'product_group') ? 'qc_command_title_group' : 'qc_command_title'", workspace_quick_create_test_js($js, 'drawCreatePreview'), 'a group\'s card is headed as a group');
+	pg_assert_contains("if (source === 'kinds') {", workspace_quick_create_test_js($js, 'openArgument'), 'the popup offers what /create makes');
 
 	$palette = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_palette.js');
 

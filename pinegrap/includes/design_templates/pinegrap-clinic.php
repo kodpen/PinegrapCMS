@@ -598,11 +598,13 @@ $newsletter_consent = function ($id) use ($agree) {
     return $agree($id, 'consent', lang('I would like to receive the practice\'s health letter by e-mail. I can unsubscribe at any time.'));
 };
 
-// A file field; what is sent is kept in the template folder named.
+// A file field; what is sent is kept in the template folder named. One
+// that takes only pictures is a collection's image kind.
 $file = function ($id, $name, $folder, $accept = 'image/*') use ($el, $attr) {
     return $el('input', 'form-control', '', array(), array('id' => $id, '_attrs' => array(
         $attr('type', 'file'), $attr('name', $name), $attr('accept', $accept),
-    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')
+            + ($accept === 'image/*' ? array('kind' => 'image') : array())));
 };
 
 // The numbered heading of a part of the appointment form.
@@ -1759,6 +1761,7 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
     lang('Write the post; it appears on the blog as soon as you send it.'), 'blog_form',
     array(
         'form_name'            => lang('Blog Posts'),
+        'collection'           => 1,
         'confirmation_message' => lang('The post is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
         // The template's sample posts are written in when the form is made,
@@ -1772,6 +1775,7 @@ $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang(
     lang('Signed-in patients see the directory from their account.'), 'staff_form',
     array(
         'form_name'            => lang('Staff Directory'),
+        'collection'           => 1,
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ));
@@ -3066,7 +3070,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Clinic'),
-    'version'     => '1.0.5',
+    'version'     => '1.0.6',
     'framework'   => 'bootstrap5',
     'order'       => 50,
     'icon'        => 'bi-heart-pulse',

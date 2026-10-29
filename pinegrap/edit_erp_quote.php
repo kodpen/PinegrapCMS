@@ -372,7 +372,7 @@ if ($signature !== null) {
         return '<div class="small ' . ($ok ? 'fg-success' : 'fg-danger') . '"><i class="bi ' . ($ok ? 'bi-check-circle' : 'bi-exclamation-triangle') . ' me-1" aria-hidden="true"></i>' . ($ok ? $good : $bad) . '</div>';
     };
 
-    $output_signature_icon = ' <i class="bi bi-pen fg-success fs-md align-middle" title="' . h(lang('Signed')) . '" aria-label="' . h(lang('Signed')) . '"></i>';
+    $output_signature_icon = ' <i class="bi bi-pen fg-success fs-md align-middle" title="' . h(lang('Signed')) . '" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Signed')) . '</span>';
     $output_signature = '
             <div class="card my-7" id="erp-signature">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
