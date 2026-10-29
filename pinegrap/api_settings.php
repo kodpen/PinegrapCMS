@@ -1506,7 +1506,7 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 
 	if ($client_blocks === '') {
 
-		$client_blocks = '<p class="small opacity-50 py-5 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
+		$client_blocks = '<p class="small fg-2 py-5 mb-0">' . h(lang('No application has connected yet.')) . '</p>';
 
 	}
 
@@ -1560,7 +1560,7 @@ echo pg_page_shell(array(
 .api-scroll { overflow-x: auto; overflow-y: hidden; }
 .api-head, .api-row { display: grid; grid-template-columns: 1.9fr 1.5fr .85fr 1.15fr .9fr 34px;
 	gap: 14px; align-items: center; min-width: 900px; }
-.api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; opacity: .55; }
+.api-head { padding: 0 16px 8px; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--pg-fg-2); }
 .api-row { padding: 13px 16px; border-top: 1px solid var(--pg-border-color); cursor: pointer; }
 .api-row:hover, .api-row:focus-visible { background: var(--pg-bg-1); outline: 0; }
 .api-name { display: flex; align-items: center; gap: 9px; min-width: 0; }
@@ -1575,13 +1575,13 @@ echo pg_page_shell(array(
 .api-chip.muted { color: var(--pg-fg-2); }
 .api-status { font-size: 10.5px; padding: 3px 9px; border-radius: 20px; font-weight: 600;
 	border: 1px solid var(--pg-border-color); display: inline-block; }
-.api-status.on { color: var(--pg-success); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
-.api-status.off { opacity: .5; }
-.api-status.warn { color: var(--pg-warning); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
-.api-meta { font-size: 11.5px; opacity: .8; }
-.api-meta small { display: block; font-size: 10.5px; opacity: .7; }
-.api-meta small.bad { color: var(--pg-danger); opacity: 1; }
-.api-empty { padding: 26px 16px; text-align: center; opacity: .6; border-top: 1px solid var(--pg-border-color); }
+.api-status.on { color: var(--pg-success-fg-emphasis); border-color: color-mix(in srgb, var(--pg-success) 35%, transparent); }
+.api-status.off { color: var(--pg-fg-2); }
+.api-status.warn { color: var(--pg-warning-fg-emphasis); border-color: color-mix(in srgb, var(--pg-warning) 35%, transparent); }
+.api-meta { font-size: 11.5px; color: var(--pg-fg-2); }
+.api-meta small { display: block; font-size: 10.5px; color: var(--pg-fg-2); }
+.api-meta small.bad { color: var(--pg-danger-fg-emphasis); }
+.api-empty { padding: 26px 16px; text-align: center; color: var(--pg-fg-2); border-top: 1px solid var(--pg-border-color); }
 
 /* One permission per resource, three positions. The row carries the sentence
    that says what it reaches, because "Orders: write" on its own does not. */
@@ -1591,7 +1591,7 @@ echo pg_page_shell(array(
 .api-perm > i { font-size: 15px; width: 18px; text-align: center; opacity: .7; }
 .api-perm-text { flex: 1; min-width: 0; }
 .api-perm-text b { display: block; font-size: 12.5px; }
-.api-perm-text span { display: block; font-size: 10.5px; opacity: .6; margin-top: 1px; }
+.api-perm-text span { display: block; font-size: 10.5px; color: var(--pg-fg-2); margin-top: 1px; }
 /* Below this the sentence under the resource name and the three-way control
    cannot share a line without one of them wrapping into the other. The control
    drops beneath the text and keeps its full width, which is the one part of
@@ -1621,16 +1621,19 @@ echo pg_page_shell(array(
 	background: var(--pg-bg-1); }
 .api-log code { font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .api-log .s { font-size: 10.5px; font-weight: 600; }
-.api-log .s.ok { color: var(--pg-success); }
-.api-log .s.bad { color: var(--pg-danger); }
-.api-log .d, .api-log .t { font-size: 10.5px; opacity: .55; }
+.api-log .s.ok { color: var(--pg-success-fg-emphasis); }
+.api-log .s.bad { color: var(--pg-danger-fg-emphasis); }
+.api-log .d, .api-log .t { font-size: 10.5px; color: var(--pg-fg-2); }
 .api-hook { border-top: 1px solid var(--pg-border-color); padding: 11px 2px; }
 .api-hook:first-child { border-top: 0; }
 .api-hook-top { display: flex; align-items: center; gap: 8px; }
 .api-hook-url { flex: 1; min-width: 0; font-size: 12px; word-break: break-all; }
 .api-hook-events { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 6px; }
 .api-hook-meta { font-size: 10.5px; opacity: .65; margin-top: 6px; }
-.api-hook-error { font-size: 10.5px; color: var(--pg-danger); margin-top: 5px; word-break: break-word; }
+/* A blocked subscription prints its line in the danger ink; faded, it reads
+   3:1 in the light theme. */
+.api-hook-meta.fg-danger { opacity: 1; }
+.api-hook-error { font-size: 10.5px; color: var(--pg-danger-fg-emphasis); margin-top: 5px; word-break: break-word; }
 .api-hook-acts { display: flex; gap: 5px; margin-top: 8px; }
 .api-secret-box { display: flex; align-items: center; gap: 8px; background: var(--pg-bg-1);
 	border: 1px solid var(--pg-border-color); border-radius: 8px; padding: 9px 11px; }
@@ -1695,7 +1698,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 
 	' . $webhook_card . '
 
-	<p class="small opacity-50 mt-5">
+	<p class="small fg-2 mt-5">
 		<i class="bi bi-info-circle me-1"></i>'
 		. lang('The key is not shown in the list, only its prefix. The secret cannot be read back anywhere.') . '
 	</p>
@@ -1748,7 +1751,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				</div>
 				<div class="mb-5" id="d_secret_block">
 					<label class="form-label small">' . lang('Secret') . '</label>
-					<div class="api-secret-box"><code id="d_hint" class="opacity-50"></code>
+					<div class="api-secret-box"><code id="d_hint" class="fg-2"></code>
 						<button type="submit" class="btn btn-sm btn-outline theme-warning" name="api_action" value="rotate" id="d_rotate">
 							<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Issue a new secret') . '</button></div>
 					<div class="form-text">'
@@ -2078,7 +2081,7 @@ echo '
 		var box = document.getElementById("d_log_rows");
 		var shown = rows.filter(function (r) { return !errorsOnly || r.status >= 400; });
 		if (!shown.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
+			box.innerHTML = "<p class=\'small fg-2 py-5 mb-0\'>" +
 				' . json_encode(lang('No request recorded yet.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}
@@ -2103,7 +2106,7 @@ echo '
 	function renderHooks(hooks) {
 		var box = document.getElementById("d_hook_rows");
 		if (!hooks.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
+			box.innerHTML = "<p class=\'small fg-2 py-5 mb-0\'>" +
 				' . json_encode(lang('This application is not subscribed to any event.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}
@@ -2152,7 +2155,7 @@ echo '
 	function renderDevices(devices) {
 		var box = document.getElementById("d_device_rows");
 		if (!devices.length) {
-			box.innerHTML = "<p class=\'small opacity-50 py-5 mb-0\'>" +
+			box.innerHTML = "<p class=\'small fg-2 py-5 mb-0\'>" +
 				' . json_encode(lang('Nobody has signed in through this application yet.'), JSON_UNESCAPED_UNICODE) . ' + "</p>";
 			return;
 		}

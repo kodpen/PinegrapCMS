@@ -97,14 +97,14 @@ function api_console_page($params) {
 <style>@layer custom {
 .con-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 4px; }
 .con-head h1 { font-size: 22px; margin: 0; }
-.con-head .con-sub { font-size: 14px; opacity: .6; }
+.con-head .con-sub { font-size: 14px; color: var(--pg-fg-2); }
 .con-head .con-theme { margin-left: auto; }
 .con-base { font-size: 12.5px; word-break: break-all; }
 .con-meta dl { display: grid; grid-template-columns: max-content 1fr; gap: 4px 14px; margin: 0; font-size: 12.5px; }
 .con-meta dt { font-weight: 600; opacity: .7; }
 .con-meta dd { margin: 0; word-break: break-word; }
 .con-curl { font-size: 12px; white-space: pre-wrap; word-break: break-all; }
-#doc_empty { padding: 40px 20px; text-align: center; opacity: .5; font-size: 13px; }
+#doc_empty { padding: 40px 20px; text-align: center; color: var(--pg-fg-2); font-size: 13px; }
 .doc-nav { max-height: calc(100vh - 32px); }
 ' . api_console_css() . '
 }</style>
@@ -121,11 +121,11 @@ function api_console_page($params) {
 		</div>
 	</div>
 
-	<div class="con-base mb-5"><span class="opacity-50">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
-		<span class="opacity-50 ms-5">' . lang('Authentication') . ':</span> <code>HTTP Basic</code>
-		<span class="opacity-50 ms-1">' . lang('user name: application key, password: secret') . '</span>
-		<span class="opacity-50 ms-5">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
-		<span class="opacity-50 ms-3">' . ($openapi_public
+	<div class="con-base mb-5"><span class="fg-2">' . lang('Base address') . ':</span> <code id="con_base">' . h($base_url) . '</code>
+		<span class="fg-2 ms-5">' . lang('Authentication') . ':</span> <code>HTTP Basic</code>
+		<span class="fg-2 ms-1">' . lang('user name: application key, password: secret') . '</span>
+		<span class="fg-2 ms-5">' . lang('OpenAPI description') . ':</span> <code>' . h($base_url . '/openapi.json') . '</code>
+		<span class="fg-2 ms-3">' . ($openapi_public
 			? lang('open to anyone')
 			: lang('with the key and secret, like every other call')) . '</span></div>
 
@@ -271,7 +271,7 @@ function api_console_page($params) {
 		var fragCount = holder.content.querySelector("#frag_count");
 		if (!fragNav || !fragPanels) { return false; }
 		nav.innerHTML = fragNav.innerHTML;
-		main.innerHTML = "<div class=\'small opacity-50 mb-5\'>" +
+		main.innerHTML = "<div class=\'small fg-2 mb-5\'>" +
 			esc(fill(T.endpoints, [fragCount ? fragCount.dataset.count : "", fragCount ? fragCount.dataset.groups : ""])) + "</div>" + fragPanels.innerHTML;
 		pgApiConsole.init({
 			base: BASE,
@@ -328,7 +328,7 @@ function api_console_page($params) {
 			}
 			var scopes = Array.isArray(body.scopes) && body.scopes.length
 				? body.scopes.map(function (s) { return "<span class=\'badge theme-secondary fw-normal me-1\'>" + esc(s) + "</span>"; }).join("")
-				: "<span class=\'opacity-50\'>" + esc(T.no_scopes) + "</span>";
+				: "<span class=\'fg-2\'>" + esc(T.no_scopes) + "</span>";
 			metaBox.innerHTML =
 				"<div class=\'small fw-semibold mb-3\'><i class=\'bi bi-person-check me-1\'></i>" + esc(T.connected_as) + " <code>" + esc(c.key) + "</code></div>" +
 				"<dl>" +

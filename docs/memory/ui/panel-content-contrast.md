@@ -9,6 +9,7 @@ description: Panel and visual editor text and icon contrast (#2530): secondary s
 
 ## How is an "off" or secondary state drawn?
 - With the secondary text colour `var(--pg-fg-2)`, never with `opacity`. An opacity of .45–.85 took permission rows (`.pg-perm.is-off`), API scope chips and codes (`api_settings.php`) and the visitor unit (`.pg-vs-unit`) under 3:1.
+- API screens (`api_settings.php`, `api_docs.php`, the console's `console.php` / `console_view.php`): status pills, log codes, webhook errors and method labels on `--pg-<tone>-fg-emphasis` (pastel borders stay); headers, hints, empty sentences on `--pg-fg-2` or the `.fg-2` class, never `opacity-50`. A blocked webhook line (`.api-hook-meta.fg-danger`) drops the row's .65 opacity. Pinned by `tests/api_screens_contrast_test.php`.
 - A switched-off permission row keeps the group colour off its icon (`--pg-fg-2` tint) and prints its title in `--pg-fg-2`; its description already was.
 
 ## How is a coloured label on a tinted ground made readable?
