@@ -56366,8 +56366,9 @@ const StyleDesigner = (function () {
         return ff ? String(ff.type || '') : '';
     }
     // `withUrl`: a list's filters may also read their value from the page
-    // address. A record view's may not (the server closes such a page), so
-    // its panel does not offer it.
+    // address, or take the code of the record the page shows (twin of
+    // pg_sw_form_list_filter_sql()'s 'shown record'). A record view's may
+    // not (the server closes such a page), so its panel offers neither.
     function _swFilterDynamicOptions(type, withUrl) {
         var o = [];
         if (type === 'date') o.push(['current date', _sdT('Current Date')]);
@@ -56377,6 +56378,7 @@ const StyleDesigner = (function () {
         if (type === 'username') o.push(['viewer', _sdT('Viewer')]);
         if (type === 'email address') o.push(['viewers email address', _sdT('Viewer\'s E-mail Address')]);
         if (withUrl) o.push(['url parameter', _sdT('URL parameter')]);
+        if (withUrl) o.push(['shown record', _sdT('Shown record')]);
         return o;
     }
     // Query parameter names the software reads itself, so a filter may not
@@ -56503,8 +56505,8 @@ const StyleDesigner = (function () {
             // A value from the address on a panel that does not offer it (a
             // record view, hand-written config): kept and marked, since the
             // server closes the page on it.
-            var dynBad = !withUrl && dyn === 'url parameter' && field !== '';
-            if (dynBad) dynOpts = dynOpts.concat([['url parameter', _sdT('URL parameter') + ' ' + _sdT('(incompatible — choose again)')]]);
+            var dynBad = !withUrl && (dyn === 'url parameter' || dyn === 'shown record') && field !== '';
+            if (dynBad) dynOpts = dynOpts.concat([[dyn, (dyn === 'shown record' ? _sdT('Shown record') : _sdT('URL parameter')) + ' ' + _sdT('(incompatible — choose again)')]]);
             if (!dynOpts.some(function (d) { return d[0] === dyn; })) dyn = '';
             var urlParam = (dyn === 'url parameter') ? String(f.dynamic_value_attribute == null ? '' : f.dynamic_value_attribute) : '';
 
@@ -56588,6 +56590,9 @@ const StyleDesigner = (function () {
                               : _swUrlParamName(urlParam) === ''
                               ? '<div style="font-size:.66rem;color:#b45309;line-height:1.4"><span class="bi bi-exclamation-triangle me-1"></span>' + esc(_sdT('This name cannot be used: the software already reads it from page addresses. Pick another, such as author or tag.')) + '</div>'
                               : '')
+                        : '') +
+                    (dyn === 'shown record' && !dynBad
+                        ? '<div style="font-size:.66rem;color:#888;line-height:1.4">' + esc(_sdT('The list shows the records whose field holds the code of the record this page shows. Without a shown record, this filter is left out.')) + '</div>'
                         : '') +
                 '</div>';
         });

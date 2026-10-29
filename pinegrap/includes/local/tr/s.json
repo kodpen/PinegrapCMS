@@ -1310,6 +1310,7 @@
     "Shown only to a signed-in member: their own comments, published or awaiting approval.": "Yalnızca oturum açmış üyeye gösterilir: yayınlanmış ya da onay bekleyen kendi yorumları.",
     "Shown only to people who may edit the page a comment is on.": "Yalnızca yorumun bulunduğu sayfayı düzenleyebilenlere gösterilir.",
     "Shown read-only. Change it with Edit.": "Salt okunur gösteriliyor. Değiştirmek için Düzenle'yi kullanın.",
+    "Shown record": "Gösterilen kayıt",
     "Shown under the review, with the date it was written.": "Değerlendirmenin altında, yazıldığı tarihle gösterilir.",
     "Shown when ?pid= is invalid or the product is not found.": "?pid= geçersizse veya ürün bulunamazsa gösterilir.",
     "Shown when the record is missing or the visitor may not see it: in an element bound to \"{var}\", or in place of the layout.": "Kayıt yoksa ya da ziyaretçi göremiyorsa gösterilir: \"{var}\" alanına bağlı bir öğede ya da düzenin yerinde.",
