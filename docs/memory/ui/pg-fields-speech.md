@@ -5,7 +5,7 @@ description: Screen readers and panel combobox/chip fields (pg_fields.js v6): to
 
 ## How is a combobox toggle named?
 - `drawCombobox()` gives the toggle `aria-labelledby` = the name ids + the id of its `.combobox-value` (`<id>_combobox_value`), so the chosen value is part of what is read ("Allowed Countries Turkey, Germany"). Name ids: the `label[for]` (given `<id>_label` when it has none), else the select's own `aria-labelledby`, else its `aria-label` copied onto the toggle and referenced by the toggle's own id (`<id>_combobox`). Its `aria-describedby` is copied too.
-- Before this a select named only by `aria-label` (bank statement "Record" line, cart quote "Product N", offer editor pickers) gave a nameless toggle.
+- Before #3251 a select named only by `aria-label` (bank statement "Record" line, cart quote "Product N", offer editor pickers) gave a nameless toggle.
 - Bootstrap 6 alpha's Combobox sets no role on the toggle; we add `aria-haspopup="listbox"` and `aria-controls` = the listbox id. No `role="combobox"`: the value is read through the name instead.
 
 ## What does the toggle show when nothing is chosen?
@@ -27,4 +27,4 @@ description: Screen readers and panel combobox/chip fields (pg_fields.js v6): to
 - Bootstrap's Chips gives every chip `tabindex=0` but deletes only selected chips. `selectFocusedChip()` selects a chip on `focusin` (through the instance's `selectChip()`), unless the focus came from a press (Chips' own click selects, with Ctrl/Shift) or the chip is already `.active`. So Tab to a chip and Delete removes that chip.
 - Each `.chip-dismiss` is named "Remove: <value>" (`data-pg-remove-label` + the chip's `data-bs-chip-value`), relabelled after every change.
 
-Tests: `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`, `test_pg_fields_chips_on_bootstrap_6`, `test_pg_fields_combobox_server_search`).
+Tests (#3251): `tests/pg_fields_test.php` (`test_pg_fields_combobox_on_bootstrap_6`, `test_pg_fields_chips_on_bootstrap_6`, `test_pg_fields_combobox_server_search`).
