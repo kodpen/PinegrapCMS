@@ -1524,3 +1524,119 @@ JS
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text', 'trigger.cell_7=Customer:text', 'trigger.cell_9=Amount:number'), $result['values']);
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text'), $result['goneValues']);
 }
+
+// The groups of the flow boxes and their colours (dark theme as the visual
+// spec gives them; workspace-flows-look.md V1), in their listing order.
+function ws_flows_canvas_test_groups()
+{
+	return array(
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row')),
+		'values' => array('#e58fd0', array('constants', 'value')),
+		'logic' => array('#e9b44c', array('condition', 'delay', 'end')),
+		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
+		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp'))
+	);
+}
+
+// WCAG contrast ratio of two #rrggbb colours.
+function ws_flows_canvas_test_contrast($one, $two)
+{
+	$light = function ($hex) {
+		$sum = 0;
+
+		foreach (array(array(1, .2126), array(3, .7152), array(5, .0722)) as $part) {
+			$value = hexdec(substr($hex, $part[0], 2)) / 255;
+			$sum += $part[1] * (($value <= .03928) ? $value / 12.92 : pow(($value + .055) / 1.055, 2.4));
+		}
+
+		return $sum;
+	};
+	$a = $light($one);
+	$b = $light($two);
+
+	return (max($a, $b) + .05) / (min($a, $b) + .05);
+}
+
+// Every kind of box has exactly one group, the plan's, and a box and its
+// outline entry carry the group's class; the palette offers no kind
+// without one. Before, only four kinds had a colour of their own.
+function test_workspace_flows_canvas_every_kind_has_one_group()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $source, $palette), 'PALETTE is in the script');
+	pg_assert_contains("el('div', 'wsf-node ' + kindClasses(node.kind))", $source, 'a box takes its group class');
+	pg_assert_contains("el('li', 'wsf-outline-item ' + kindClasses(node.kind))", $source, 'an outline entry takes its group class');
+
+	$result = ws_flows_canvas_test_node(
+		array('kindClasses'),
+		$kinds[0] . $palette[0] . <<<'JS'
+var out = { groups: {}, classes: {}, palette: PALETTE.map(function (item) { return item[0]; }) };
+Object.keys(KINDS).forEach(function (kind) {
+    out.groups[kind] = KINDS[kind].group;
+    out.classes[kind] = kindClasses(kind);
+});
+out.unknown = kindClasses('nothing');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$expected = array();
+
+	foreach (ws_flows_canvas_test_groups() as $group => $entry) {
+		foreach ($entry[1] as $kind) {
+			pg_assert_false(isset($expected[$kind]), $kind . ' is in one group only');
+			$expected[$kind] = $group;
+		}
+	}
+
+	ksort($expected);
+	$given = $result['groups'];
+	ksort($given);
+	pg_assert_same($expected, $given, 'each kind in its group, none left out');
+
+	foreach ($result['classes'] as $kind => $classes) {
+		pg_assert_same('wsf-node-' . $kind . ' wsf-group-' . $expected[$kind], $classes, $kind . "'s classes");
+	}
+
+	pg_assert_same('wsf-node-unknown', $result['unknown'], 'an unknown kind has no group');
+	pg_assert_same(array(), array_values(array_diff($result['palette'], array_keys($expected))), 'every kind the palette adds has a group');
+}
+
+// Each group's colour is set once per theme: dark the spec's, light a
+// deeper tone readable on white (4.5:1); a box has a 1.5 px border all
+// round, not the 4 px left stripe, a value box a dashed one; control
+// arrows 2 px #7d8696 with a filled head; the scheduled-action drawing
+// uses the groups too.
+function test_workspace_flows_canvas_group_colours()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	foreach (ws_flows_canvas_test_groups() as $group => $entry) {
+		pg_assert_true((bool) preg_match('/\n\.wsf-group-' . $group . ' \{ --wsf-kind: (#[0-9a-f]{6}); \}/', $css, $light), $group . ' has a light colour');
+		pg_assert_same(1, preg_match_all('/\n\.wsf-group-' . $group . ' \{/', $css), $group . "'s light colour is set once");
+		pg_assert_true(ws_flows_canvas_test_contrast($light[1], '#ffffff') >= 4.5, $group . ' light ' . $light[1] . ' keeps 4.5:1 on white');
+		pg_assert_contains('html[data-bs-theme="dark"] .wsf-group-' . $group . ' { --wsf-kind: ' . $entry[0] . '; }', $css, $group . "'s dark colour is the spec's");
+	}
+
+	pg_assert_false((bool) preg_match('/\.wsf-node-(manual|task|end|constants|value) \{ --wsf-kind/', $css), 'no colour per kind');
+	pg_assert_true((bool) preg_match('/\n\.wsf-node \{[^}]*border: 1\.5px solid var\(--wsf-kind/', $css, $box), 'a box has a 1.5 px border in its colour');
+	pg_assert_false(strpos($box[0], 'border-left') !== false, 'no left stripe');
+	pg_assert_contains(".wsf-node.wsf-group-values {\n  border-style: dashed;\n}", $css, 'a value box is dashed');
+	pg_assert_contains('html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }', $css, 'the selection ring');
+	pg_assert_contains(".wsf-edge-line {\n  fill: none;\n  stroke: #7d8696;\n  stroke-width: 2;\n  marker-end: url(#wsf-arrow);\n}", $css, 'control arrows');
+	pg_assert_contains('.wsf-arrowhead { fill: #7d8696; }', $css, 'a filled head');
+	pg_assert_contains('.wsf-edge.wsf-edge-taken .wsf-edge-line', $css, 'the run view keeps its taken arrows');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	pg_assert_true((bool) preg_match('/var ACTION_KINDS = \{(.*?)\};/s', $source, $actions), 'ACTION_KINDS is in the script');
+	preg_match_all("/'wsf-group-([a-z]+)'/", $actions[1], $used);
+	pg_assert_same(4, count($used[1]), 'every scheduled-action box has a group');
+	pg_assert_same(array(), array_values(array_diff($used[1], array_keys(ws_flows_canvas_test_groups()))), 'only groups the CSS colours');
+}
