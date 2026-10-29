@@ -2187,6 +2187,7 @@
     "The list runs over more than one page": "Liste birden fazla sayfaya yayılıyor",
     "The list setting was updated.": "Liste ayarı güncellendi.",
     "The list shows the first {var:1} of {var:2} movements; the table counts them all.": "Liste {var:2} hareketin ilk {var:1} tanesini gösteriyor; tablo hepsini sayar.",
+    "The list shows the records whose field holds the code of the record this page shows. Without a shown record, this filter is left out.": "Liste, alanında bu sayfanın gösterdiği kaydın kodu bulunan kayıtları gösterir. Gösterilen kayıt yoksa bu filtre atlanır.",
     "The list shows the records whose field matches ?{var}=… in the page address. Without it, this filter is left out and every record is listed.": "Liste, sayfa adresindeki ?{var}=… değeriyle eşleşen kayıtları gösterir. Adreste yoksa bu filtre uygulanmaz, bütün kayıtlar listelenir.",
     "The list starts after this many records, for example beside a box that shows the newest one.": "Liste bu kadar kayıttan sonra başlar; örneğin en yeni kaydı gösteren bir kutunun yanında.",
     "The lists campaigns go to and who is on them; writing makes, renames and removes empty groups, puts contacts in or takes them out and records their e-mail choice": "Kampanyaların gönderildiği listeler ve içlerindeki kişiler; yazma grup oluşturur, adını değiştirir, boş grubu siler, kişileri gruba ekler ya da gruptan çıkarır ve e-posta tercihlerini kaydeder",

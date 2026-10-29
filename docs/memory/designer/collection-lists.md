@@ -18,7 +18,7 @@ description: Collection fields in form lists (C4a, C4b2): numeric sort, referenc
 - Dynamic value `shown record` (lists only, C4b2): the filter's value is the code of the record the page shows, `pg_coll_shown_record_code()` (`?r=`, where a pretty record address also puts it; address-value rules). "Category is equal to" shown record lists the posts of the shown category; `reference_code` "is not equal to" lists the other records.
 - On a reference field the code must name a complete record of the target form by its code (`pg_coll_reference_lookup()`, not an address name), else the list shows nothing. It does not check the page's record view filters: a draft category given with `?r=` lists its posts, held to the list's own filters.
 - Not an address filter of the page: no `params`, no label, no noindex or canonical change. No shown record: left out (like `url parameter`); `$request` null: counted in `address`, a record view closes. `pg_record_file_filter_sql()` treats it as an address value.
-- The editor's dynamic value option is C4b2b (`style_designer.js`); until then only a hand-set or template config uses it.
+- The editor offers it (#2917): `_swFilterDynamicOptions()` in `style_designer.js` lists "Shown record" beside "URL parameter" on a list's panel only and saves `dynamic_value: 'shown record'` with an empty attribute; a record view's panel keeps a stored one marked "(incompatible — choose again)". The test compares the offered values with the server's `$dynamic_values`.
 
 ## Image output?
 - Every system widget's output already passes `pg_img_responsive_html()` (`pg_designer_render_system_widgets` in `designer.php`), so a bound image field gets its `srcset` without a step of its own.
