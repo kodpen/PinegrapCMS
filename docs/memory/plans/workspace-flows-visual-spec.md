@@ -29,3 +29,4 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 
 ## Where are the rules behind it?
 - workspace-flows-data-threads.md, workspace-flows-channels.md, workspace-flows-templates.md, workspace-flows-data-passing.md (D8).
+- The steps that bring the boxes, arrows, icons, palette and flow list to it: workspace-flows-look.md.
