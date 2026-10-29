@@ -385,11 +385,13 @@ function ws_note($note_id)
  * What the person may do with a note: it is theirs, they may change it, they
  * may read it, or nothing at all. Being staff gives nothing here.
  *
- * @param array $viewer
- * @param array $note
+ * @param array      $viewer
+ * @param array      $note
+ * @param array|null $shares the note's ws_note_shares rows when read already
+ *                           (ws_note_shares_map()), else read here
  * @return string owner | edit | view | ''
  */
-function ws_note_access($viewer, $note)
+function ws_note_access($viewer, $note, $shares = null)
 {
     if (!$note) {
         return '';
@@ -401,7 +403,11 @@ function ws_note_access($viewer, $note)
 
     $access = '';
 
-    foreach ((array) db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'") as $share) {
+    if ($shares === null) {
+        $shares = db_items("SELECT user_id, channel_id, can_edit FROM ws_note_shares WHERE note_id = '" . (int) $note['id'] . "'");
+    }
+
+    foreach ((array) $shares as $share) {
         if ((int) $share['user_id'] === (int) $viewer['id']) {
             if (!empty($share['can_edit'])) {
                 return 'edit';
@@ -1152,6 +1158,10 @@ function ws_note_save($viewer, $data)
             ws_blocks_index('note', $note_id, $sets['body'], (int) $viewer['id']);
         }
 
+        if ($note_id > 0) {
+            ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($sets['body'])));
+        }
+
         return ($note_id > 0)
             ? array('ok' => true, 'error' => '', 'note_id' => $note_id, 'conflict' => false)
             : array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'conflict' => false);
@@ -1185,6 +1195,10 @@ function ws_note_save($viewer, $data)
 
     if (isset($sets['body']) && function_exists('ws_blocks_index')) {
         ws_blocks_index('note', $note_id, $sets['body'], (int) $note['user_id']);
+    }
+
+    if (isset($sets['body'])) {
+        ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($sets['body'])));
     }
 
     // The others who keep it are told it changed - once, until they look.
@@ -1395,6 +1409,7 @@ function ws_note_delete($viewer, $note)
 
     db("DELETE FROM ws_note_shares WHERE note_id = '" . $id . "'");
     db("DELETE FROM ws_notes WHERE id = '" . $id . "'");
+    ws_ref_source_write('note', array($id => array()));
 
     // The same file brought in again is a new note.
     if (ws_note_sources_ready()) {
@@ -1480,6 +1495,8 @@ function ws_note_from_message($viewer, $message)
     if ($note_id <= 0) {
         return array('ok' => false, 'error' => lang('The note could not be saved.'), 'note_id' => 0, 'existing' => false);
     }
+
+    ws_ref_source_write('note', array($note_id => ws_note_ref_tokens($body)));
 
     return array('ok' => true, 'error' => '', 'note_id' => $note_id, 'existing' => false);
 }
@@ -2218,6 +2235,8 @@ function ws_note_claude_deliver($viewer, $note, $request_id)
     if (function_exists('ws_blocks_index')) {
         ws_blocks_index('note', (int) $note['id'], $body, (int) $note['user_id']);
     }
+
+    ws_ref_source_write('note', array((int) $note['id'] => ws_note_ref_tokens($body)));
 
     ws_note_notify_change($viewer, $note, (int) $row['requested_by']);
 

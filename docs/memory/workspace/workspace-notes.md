@@ -4,9 +4,9 @@ description: Workspace notes (ws_notes): tables, limits, body format, versions, 
 ---
 
 ## Where do notes live?
-- `ws_notes` (user_id owner, title, body, pinned, source_message/channel/user, channel_id made from it, folder_id for attachments, updated_by, created/updated_at), shares `ws_note_shares` (person with can_edit, or a channel card), versions `ws_note_versions` (30 kept by `ws_note_version_keep()`: first change, 600 s gap, another person, or a save under 60 % of the size), titled blocks `ws_blocks`. Code `includes/workspace/notes.php`, screen `startNotes()` in `assets/js/workspace.js`, actions in `includes/workspace/actions.php` (`ws_note_*`).
+- `ws_notes` (user_id owner, title, body, pinned, source_message/channel/user, channel_id made from it, folder_id (attachments), updated_by, created/updated_at), shares `ws_note_shares` (person with can_edit, or a channel card), versions `ws_note_versions` (30 kept by `ws_note_version_keep()`: first change, 600 s gap, another person, or a save under 60 % of the size), titled blocks `ws_blocks`. Code `includes/workspace/notes.php`, screen `startNotes()` (workspace.js), actions `ws_note_*` (actions.php).
 - Limits: `WS_NOTE_MAX` 60000 characters, `WS_NOTE_LIMIT` 2000 notes a person. Access is owner, edit or view (`ws_note_access()`); administrators get nothing by rank. Deletes are hard.
-- The body is the Workspace's Markdown subset drawn by `ws_render_body()` (bold, `_italic_`, strike, code, links, GFM tables with `=` formulas, checklists, fences, `::: Title` blocks, lists, quotes (`workspace-text-lists.md`), headings (`workspace-text-headings.md`)). Tags are tokens (`<@user:12>`, `<#order:1045>`), normalised on save by `ws_tokens_normalise()`.
+- The body is the Workspace's Markdown subset drawn by `ws_render_body()` (bold, `_italic_`, strike, code, links, GFM tables with `=` formulas, checklists, fences, `::: Title` blocks, lists, quotes (`workspace-text-lists.md`), headings (`workspace-text-headings.md`)). Tags are tokens (`<@user:12>`, `<#order:1045>`), normalised on save (`ws_tokens_normalise()`); record tags also in `ws_refs` (`workspace-ref-sources.md`).
 
 ## How does an assistant answer inside a note?
 - `@Claude` or Pinegrap AI on a line of the note queues a `ws_ai_requests` row with `note_id` and `note_text` (`ws_note_claude_ask()`); the answer lands in `note_reply`. The screen polls `ws_note_claude_state()` and, for answered or failed requests, calls `ws_note_claude_deliver()`, which takes the request once (`note_done`) and writes the answer under the line that asked as a `**Claude:**` / `**Pinegrap AI:**` block.
@@ -19,4 +19,4 @@ description: Workspace notes (ws_notes): tables, limits, body format, versions, 
 - Every note carries a revision that an update can send back (PR #1663): workspace-notes-revision.md.
 - A message sharing a note carries `note_card` {id, name, excerpt} (#2082, PR #2239): one `ws_note_cards_map()` per page, `ws_api_message_note_card()` per row; null with no share, a share taken back (row gone) or a deleted message. Before, a client saw only "Shared a note: …". Test: `tests/workspace_api_note_card_test.php`.
 - A note is deleted over the API too, and remembered 30 days for sync clients (PR #1674), as is a person share taken back (PR #1983): workspace-notes-deletions.md.
-- Still missing (plan N3c): re-import de-duplication. Plan: docs/memory/plans/notes-import-export-sync.md.
+- Still missing: re-import de-duplication (plan N3c, `plans/notes-import-export-sync.md`).

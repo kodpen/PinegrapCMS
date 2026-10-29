@@ -1,6 +1,6 @@
 ---
 name: workspace-crm-seams
-description: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
+description: Plan (2026-10-23; 1-9 done, PRs #1621 to #3135; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -21,7 +21,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 6. PR #2092 (workspace/workspace-crm-lead-intake.md): lead step `ws_scheduled_lead()` and box `lead` on `form.submitted`: contact by `forms.contact_id`, else e-mail; reuses a channel from `ws_customer_channels()` or opens one with `builtin:new_customer`; `WS_SCHEDULED_LEAD_HOURLY`; duplicates left to view_contacts.php, `merge_contacts()`.
 7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.
 8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #2246; storefront, merge #2620; membership and recurring jobs, checkout tax fill #2643; designed forms (`custom_form.php`) #2768. Done.
-9. PR #3135, decided (#3138, `workflow/decisions-made-schema-4.md`): `ws_refs.source_type` to VARCHAR(20) (next free Workspace label), sources `note` and `wtable_row` with `channel_id` 0 behind a readiness probe; `ws_record_refs()` and the history check `ws_note_access()` / `ws_wtable_access()` per source; older notes and rows by a budgeted backfill in the cron dispatcher, cursor in `config_text`.
+9. Done PR #3135 (decided #3138, `workflow/decisions-made-schema-4.md`; workspace/workspace-ref-sources.md): `ws_refs.source_type` to VARCHAR(20) (11.0.116), sources `note` and `wtable_row` with `channel_id` 0 behind `ws_ref_sources_ready()`; drawer, badge, `GET /workspace/refs` and the history check `ws_note_access()` / `ws_wtable_access()` per source; older notes and rows by the general job's budgeted backfill, cursor in `config_text`.
 10. Later, schema: custom fields, pipelines (question 1) [9]. Candidates: calendar visit (`ws_events.kind` visit), "no order in N days", `lead_source` from `referral_sources`.
 
 ## Open questions (recommendation)
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 7, 8 done; 9 decided (#3138), PR #3135; 10 ask first.
+- 7, 8, 9 done; 10 ask first.

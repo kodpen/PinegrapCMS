@@ -1141,8 +1141,9 @@ function ws_wtable_delete_check($viewer, $table)
 }
 
 /**
- * Delete a table with its columns, rows and shares. The table goes first,
- * so that a request stopped halfway leaves nothing anybody reaches.
+ * Delete a table with its columns, rows, the rows' tags in ws_refs and its
+ * shares. The table goes first, so that a request stopped halfway leaves
+ * nothing anybody reaches.
  *
  * @param array      $viewer
  * @param array|null $table
@@ -1159,6 +1160,9 @@ function ws_wtable_delete($viewer, $table)
     $id = (int) $table['id'];
 
     db("DELETE FROM ws_wtables WHERE id = '" . $id . "'");
+
+    // The rows' tags are found through the rows, so they go first.
+    ws_ref_source_write('wtable_row', array_fill_keys(array_map('intval', (array) db_values("SELECT id FROM ws_wtable_rows WHERE table_id = '" . $id . "'")), array()));
 
     foreach (array('ws_wtable_columns', 'ws_wtable_rows', 'ws_wtable_shares') as $child) {
         db("DELETE FROM " . $child . " WHERE table_id = '" . $id . "'");

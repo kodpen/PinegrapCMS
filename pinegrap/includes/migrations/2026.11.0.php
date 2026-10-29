@@ -108,6 +108,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_cart_quotes();            // 11.0.124
 	upgrade_2026_11_0_shipment_labels();        // 11.0.125
 	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
+	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
 
 }
 
@@ -3451,5 +3452,31 @@ function upgrade_2026_11_0_workspace_flow_templates() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Workspace: the table for flow templates saved on the site is added. It stays empty until somebody saves a flow as a template.');
+
+}
+
+// Notes and workflow table rows as tag sources (2026.11.0, 11.0.116;
+// includes/workspace/refs.php). ws_refs.source_type was ENUM('message','task')
+// from 2026.4.4, and a value it does not list is kept as '' under the site's
+// non-strict sql_mode, so the column becomes VARCHAR(20), the width of
+// ref_type: message and task stay as text, idx_source keeps its definition
+// and a later source needs no schema. The table is rebuilt once; it holds one
+// narrow row per tag. The type is read first, so a second run, or a column
+// that is no enum, changes nothing. The writers of the new sources wait for
+// the VARCHAR (ws_ref_sources_ready()); the general job adds the notes and
+// rows saved before (ws_ref_sources_backfill_run()).
+function upgrade_2026_11_0_workspace_ref_sources() {
+
+	$column = install_column_info('ws_refs', 'source_type');
+
+	if (!is_array($column)) {
+		install_skipped(lang(array('string' => '{var:1} does not exist, skipped', 'vars' => 'ws_refs.source_type')));
+	} elseif (stripos(trim((string) $column['Type']), 'enum(') === 0) {
+		install_modify_column('ws_refs', 'source_type', "VARCHAR(20) NOT NULL DEFAULT 'message'");
+	} else {
+		install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => 'ws_refs.source_type varchar')));
+	}
+
+	install_note('Workspace: the records a note tags and those a workflow table row links to are now listed in the record\'s Workspace drawer and the customer\'s history, each only to who may read the note or the table. Notes and rows saved before this update are added by the scheduled general job, a few seconds at a time.');
 
 }

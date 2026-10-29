@@ -47,7 +47,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workflow-table-shares.md: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, person view/edit, channel view; wtable_shared bell line; ws_wtable_flow_gate() pauses a gone owner's table
 - workflow-table-starters.md: Starters on the New table card (T6c, #3044): contact pipeline and checklist live in code (ws_wtable_starters()), made through the store's functions with optional sample rows; no store, no schema
 - workflow-tables-api.md: Workflow tables in the external API and MCP (api_wtables.php, T1d1 #2890, T1d2 #2931): routes, which are tools, dry run, errors, rows paging, Claude's reach, shares, workspace.wtable.row.* webhooks
-- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): API/MCP import route, xlsx export, a "my tables" strip, CRM pipeline, tags in rows, table bin
+- workflow-tables-later.md: What workflow tables leave for later (T1-T6 done): API/MCP import route, xlsx export, a "my tables" strip, CRM pipeline, table bin
 - workflow-tables-screen.md: The workflow tables screen workspace_wtables.php (T1e, #2966): server-drawn forms over the store, list scopes, rows paged, the row form, column options from the form, shares, nav entry
 - workflow-tables.md: Workflow tables (11.0.110, #2746): the four ws_wtable* tables column by column, ws_wtable_access(), column changes; JSON person/link cells and the privacy reader
 - workspace-agent-preamble.md: The site preamble an MCP agent (switch ws_mcp_servers.agent_preamble, 11.0.111, off by default) and an outside app (GET /workspace/messages/{id}/preamble) get, and what stays out
@@ -193,6 +193,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-record-commands.md: The /price (/fiyat) and /stock (/stok) channel commands: how the amount and quantity are read, the preview card, the confirmation through ws_quick_edit_save(), who is offered them
 - workspace-record-kind-registry.md: ws_record_kinds() (refs.php): one entry per Workspace record kind (prefixes, right, read scope, change kind, audit table, drawer, customer), the lists it is held to, the drift test
 - workspace-record-kinds.md: Every list a Workspace record kind (order, product, invoice...) must be in, the kinds each leaves out and why, the scope the assistants read a kind with, and the test that guards it
+- workspace-ref-sources.md: Notes and workflow table rows as ws_refs tag sources (#3135, decision #3138, 11.0.116): VARCHAR source_type, probe, writers with channel 0, per-source access in readers, backfill
 - workspace-sales-quote-change.md: A sales quote added from a change card (kind erp_quote, PR #1705): fields, the erp_lines value kind, what is filled in and checked, the writer erp_quote_save(), how the card and the assistants show it
 - workspace-sales-quote-invoice.md: A sales quote turned into an invoice draft from a change card (erp_quote action invoice, PR #1907): no fields, the shared state rule, the writer erp_quote_to_invoice(), the decision, the proposers
 - workspace-saved-replies-composer.md: Saved replies in the panel (#3114): the composer's ; list (at(), match()), {customer}/{order} filled by the server, insertStored() as one undo step, the Insert menu drawer that manages them
