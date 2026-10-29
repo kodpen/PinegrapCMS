@@ -19,7 +19,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
   - D8b card: the draft card as a mini flow window (boxes and threads drawn small, outbound boxes marked, F4e try per box); a panel action giving the card's graph. Files: assets/js/workspace.js (+ bundle), a panel action.
   - D8c canvas (done, #2725, workspace/workspace-flow-ai-drafts.md): patch boxes marked until publish; `?flow=<id>&box=<id>` for D8b.
 
-- D9a webhook answer as a body output (#2414-2): `body` (16 KB, UTF-8) of the webhook kind, kept on the run row without a schema change, held back from readers who may not change the flow. Files: includes/workspace/scheduled.php, steps.php, flow_runs.php, api_flows.php, flow_run_events.php.
+- D9a webhook answer as a body output (#2414-2, done #2985, workspace/workspace-flows-webhook-body.md): `body` (16 KB, UTF-8) of the webhook kind, kept on the run row without a schema change, held back from readers who may not change the flow. Files: includes/workspace/scheduled.php, steps.php, flow_runs.php, api_flows.php, flow_run_events.php.
 - D9 later: lists and a "For each" box (`pass` > 0).
 
 ## What rules does D8 keep?

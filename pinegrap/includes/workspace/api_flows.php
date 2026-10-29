@@ -1144,9 +1144,10 @@ function ws_api_flow_step_threads_in($graph, $states, $node_id)
 /**
  * The values a box of a run kept for the boxes after it ({{node.ID.FIELD}}),
  * as the result's data holds them: a number, a text or null for one it did
- * not give. A change box's record and the run a start-a-flow box started
- * are kept back from whoever may not change the flow, as its sentence is
- * (ws_step_result_shown()). Pure.
+ * not give. A change box's record, the run a start-a-flow box started and
+ * a webhook's answer are kept back from whoever may not change the flow
+ * (ws_step_outputs_held()), as its sentence is (ws_step_result_shown()).
+ * Pure.
  *
  * @param string $kind   the box's kind
  * @param mixed  $stored the step's result column
@@ -1155,10 +1156,6 @@ function ws_api_flow_step_threads_in($graph, $states, $node_id)
  */
 function ws_api_flow_step_outputs($kind, $stored, $edit)
 {
-    if (!$edit && in_array((string) $kind, array('change', 'start_flow'), true)) {
-        return array();
-    }
-
     $result = is_string($stored) ? json_decode($stored, true) : null;
     $out = array();
 
@@ -1168,7 +1165,7 @@ function ws_api_flow_step_outputs($kind, $stored, $edit)
         }
     }
 
-    return $out;
+    return ws_step_outputs_shown($kind, $out, $edit);
 }
 
 /**

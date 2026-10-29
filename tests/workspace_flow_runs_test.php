@@ -325,7 +325,7 @@ function test_workspace_flow_runs_start_limits()
 	pg_assert_same(500, WS_FLOW_MAX_OPEN_RUNS);
 	pg_assert_same(60, WS_FLOW_STARTS_HOURLY);
 	pg_assert_same(200, WS_FLOW_MAX_BOX_RUNS);
-	pg_assert_same(16384, WS_FLOW_RESULT_BYTES);
+	pg_assert_same(65535, WS_FLOW_RESULT_BYTES);
 	pg_assert_same(30 * 86400, WS_FLOW_RUNS_KEEP);
 	pg_assert_true(WS_FLOW_BUDGET_TICK < WS_FLOW_BUDGET_JOB, 'a job may run longer than a screen');
 	pg_assert_same(3, WS_FLOW_BOXES_PER_RUN);

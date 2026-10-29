@@ -60,8 +60,12 @@ define('WS_FLOW_STARTS_HOURLY', 60);
 /** The most boxes one run carries out, a box tried again counted twice. */
 define('WS_FLOW_MAX_BOX_RUNS', 200);
 
-/** The largest result one box keeps, in bytes of JSON. */
-define('WS_FLOW_RESULT_BYTES', 16384);
+/**
+ * The largest result one box keeps, in bytes of JSON: what the TEXT column
+ * ws_flow_run_steps.result holds, so a webhook's answer of
+ * WS_SCHEDULED_WEBHOOK_BODY_BYTES fits with its escapes.
+ */
+define('WS_FLOW_RESULT_BYTES', 65535);
 
 /** The longest result a run's flag carries, in characters. */
 define('WS_FLOW_RUN_RESULT_CHARS', 1000);
@@ -959,6 +963,25 @@ function ws_flow_result_pack($text, $data = array())
     }
 
     $json = json_encode($out, $flags);
+
+    // The longest text values are left out one by one (null: not given),
+    // so a box's numbers stay when its webhook answer does not fit.
+    while (is_string($json) && (strlen($json) > WS_FLOW_RESULT_BYTES) && !empty($out['data'])) {
+        $longest = null;
+
+        foreach ($out['data'] as $key => $value) {
+            if (is_string($value) && (($longest === null) || (strlen($value) > strlen($out['data'][$longest])))) {
+                $longest = $key;
+            }
+        }
+
+        if ($longest === null) {
+            break;
+        }
+
+        $out['data'][$longest] = null;
+        $json = json_encode($out, $flags);
+    }
 
     if (is_string($json) && (strlen($json) <= WS_FLOW_RESULT_BYTES)) {
         return $json;

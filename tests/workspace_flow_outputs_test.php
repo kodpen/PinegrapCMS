@@ -78,7 +78,8 @@ function test_workspace_flow_outputs_declared()
 	// task, a webhook and a web check their answer, a report its counts.
 	pg_assert_same(array('task_id'), array_column(ws_flow_kinds()['task']['outputs'], 'key'), 'the waiting task box names its task');
 	$configs = ws_flow_outputs_test_configs();
-	pg_assert_same(array('status_code', 'duration_ms'), array_column(ws_step_outputs('webhook', $configs['webhook']), 'key'), 'a webhook gives its answer');
+	pg_assert_same(array('status_code', 'duration_ms', 'body'), array_column(ws_step_outputs('webhook', $configs['webhook']), 'key'), 'a webhook gives its answer');
+	pg_assert_same('text', ws_step_outputs('webhook', $configs['webhook'])[2]['type'], 'the answer body is a text');
 	pg_assert_same(array('status_code', 'duration_ms'), array_column(ws_step_outputs('web_check', $configs['web_check']), 'key'), 'a web check gives its answer');
 	pg_assert_same(array('days_left'), array_column(ws_step_outputs('web_check', $configs['web_check_ssl']), 'key'), 'a certificate check gives its days');
 	pg_assert_same(array('message_id', 'tasks_open_4', 'comments_pending'), array_column(ws_step_outputs('report', $configs['report']), 'key'), 'a report gives each count');
@@ -104,6 +105,8 @@ function test_workspace_flow_outputs_written()
 				$done['data']['counts'][$output['count']] = 10 + $output['count'];
 			} elseif (substr($output['key'], -3) === '_id') {
 				$done[$output['key']] = 7;
+			} elseif ($output['type'] === 'text') {
+				$done['data'][$output['key']] = 'seven';
 			} else {
 				$done['data'][$output['key']] = 7;
 			}
@@ -113,7 +116,7 @@ function test_workspace_flow_outputs_written()
 		pg_assert_same($keys, array_keys($data), $name . ' writes every declared key');
 
 		foreach ($outputs as $output) {
-			pg_assert_true(is_int($data[$output['key']]), $name . ' ' . $output['key'] . ' is a number');
+			pg_assert_true(($output['type'] === 'text') ? is_string($data[$output['key']]) : is_int($data[$output['key']]), $name . ' ' . $output['key'] . ' is its type');
 		}
 
 		$failed = ws_step_result_data($kind, $config, array('ok' => false, 'text' => 'no', 'message_id' => 0));

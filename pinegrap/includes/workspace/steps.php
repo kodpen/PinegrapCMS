@@ -69,6 +69,9 @@ function ws_step_kinds()
     $number = function ($key, $label, $mode = '') {
         return array('key' => $key, 'type' => 'number', 'label' => $label) + (($mode !== '') ? array('mode' => $mode) : array());
     };
+    $text = function ($key, $label) {
+        return array('key' => $key, 'type' => 'text', 'label' => $label);
+    };
     $message = array($number('message_id', lang('Message')));
 
     return array(
@@ -80,7 +83,7 @@ function ws_step_kinds()
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
             'outputs' => array($number('task_id', lang('Task')))),
         'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(),
-            'outputs' => array($number('status_code', lang('Status code')), $number('duration_ms', lang('Time taken (ms)')))),
+            'outputs' => array($number('status_code', lang('Status code')), $number('duration_ms', lang('Time taken (ms)')), $text('body', lang('Answer')))),
         'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array(),
             'outputs' => array($number('status_code', lang('Status code'), 'status'), $number('duration_ms', lang('Time taken (ms)'), 'status'),
                 $number('days_left', lang('Days the certificate has left'), 'ssl'))),
@@ -97,6 +100,38 @@ function ws_step_kinds()
             'outputs' => array($number('approval_id', lang('Approval request')), $number('message_id', lang('Message'))),
             'outcomes' => array('approved', 'rejected', 'expired', 'withdrawn', 'failed')),
     );
+}
+
+/**
+ * The values of a box kept back from whoever may not change the flow, as
+ * its sentence is (ws_step_result_shown()): a change box's record and the
+ * run a start-a-flow box started (all its values), a webhook's answer, which
+ * may carry what the called service tells only the flow's owner.
+ *
+ * @return array kind => keys, ['*'] for all
+ */
+function ws_step_outputs_held()
+{
+    return array('change' => array('*'), 'start_flow' => array('*'), 'webhook' => array('body'));
+}
+
+/**
+ * The values a box kept that a reader sees. Pure.
+ *
+ * @param string $kind
+ * @param array  $data key => value, as the result's data holds them
+ * @param bool   $edit the reader may change the flow
+ * @return array
+ */
+function ws_step_outputs_shown($kind, $data, $edit)
+{
+    $held = $edit ? array() : (ws_step_outputs_held()[(string) $kind] ?? array());
+
+    if (in_array('*', $held, true)) {
+        return array();
+    }
+
+    return array_diff_key($data, array_flip($held));
 }
 
 /**
