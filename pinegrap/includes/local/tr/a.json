@@ -2694,6 +2694,7 @@
     "Asks for a quote to be approved within two days, then opens the next task: send it, or rework it.": "Bir teklifin iki gün içinde onaylanmasını ister, ardından sıradaki görevi açar: göndermek ya da yeniden düzenlemek.",
     "Asks search engines not to keep or show a cached copy of the page. Like the snippet length, it is left out while the page is closed to search engines.": "Arama motorlarından sayfanın önbellek kopyasını tutmamalarını ve göstermemelerini ister. Özet uzunluğu gibi, sayfa arama motorlarına kapalıyken yazılmaz.",
     "Asks the channel to choose; the options go after |. Without options it opens the poll form, where it can also be anonymous, multiple choice or closed at a set time.": "Kanala seçim yaptırır; seçenekler | işaretinden sonra yazılır. Seçenek yazılmazsa oylama formu açılır; orada anonim, çoklu seçimli ya da belirli bir saatte kapanan oylama da kurulabilir.",
+    "Asks you in #{var:3} to approve the call, then runs the tool {var:1} of @{var:2} with your own account and keeps its answer.": "Çağrıyı onaylamanızı #{var:3} kanalında ister, ardından @{var:2} sunucusunun {var:1} aracını kendi hesabınızla çalıştırır ve yanıtını saklar.",
     "Aspect Ratio": "En Boy Oranı",
     "Assessment Section": "Değerlendirme Bölümü",
     "Assign Barcodes": "Barkod Ata",

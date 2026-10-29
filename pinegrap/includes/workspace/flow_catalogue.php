@@ -36,6 +36,7 @@ function ws_flow_setting_overrides()
         'task_open.due_in'  => $blank_integer,
         'delay.amount'      => $blank_integer,
         'approval.closes_in' => $blank_integer,
+        'mcp.closes_in'     => $blank_integer,
         'change.fields'     => array('type' => 'object'),
         'condition.rule'    => array('type' => 'object'),
         'report.metrics'    => array('of' => 'object'),
