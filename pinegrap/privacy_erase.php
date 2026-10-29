@@ -185,7 +185,7 @@ if (is_array($privacy_erase_result) && in_array($privacy_erase_result['status'],
                         <p class="small fg-secondary mt-5 mb-0">' . h(lang('Export the person\'s data first if they asked for a copy. Orders and invoices are kept for the legal retention period without the person\'s name, address and contact details. The erasure is recorded in the audit trail without them.')) . '</p>';
 
     $privacy_erase_side = $privacy_erase_done ? '' : '
-            <div class="position-sticky" style="top:1rem">
+            <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-12">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Who this is about')) . '</span>
