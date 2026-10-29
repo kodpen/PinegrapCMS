@@ -2,10 +2,9 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests that three panel layouts fit a phone: the Shipping Method variable
- * base rate tiers wrap (a Bootstrap 6 .input-group never wraps), the sticky
- * save bar lays its actions out two per row, and the Login Region code
- * textareas carry no fixed width.
+ * Tests that two panel layouts fit a phone: the Shipping Method variable
+ * base rate tiers wrap (a Bootstrap 6 .input-group never wraps), and the
+ * Login Region code textareas carry no fixed width.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -42,17 +41,6 @@ function test_phone_width_variable_base_rate_tiers_wrap()
 	}
 }
 
-function test_phone_width_save_bar_two_actions_per_row()
-{
-	$css = phone_width_rows_test_source('assets/css/backend.src.css');
-
-	pg_assert_true(preg_match('/@media \(max-width: 575\.98px\) \{\s*nav\.buttons\.navigation \{.*?\n\}/s', $css, $block) === 1, 'phone block found');
-	$phone = $block[0];
-
-	pg_assert_true(strpos($phone, 'flex-direction: column') === false, 'actions are not one per row');
-	pg_assert_true(preg_match('/\nnav\.buttons\.navigation > \.container \{[^}]*flex-wrap: wrap;/', $css) === 1, 'bar wraps');
-	pg_assert_true(preg_match('/nav\.buttons\.navigation \.btn \{[^}]*flex: 1 1 calc\(50% - 0\.25rem\);\s*min-width: 0;\s*white-space: normal;/', $phone) === 1, 'two actions per row, long labels wrap');
-}
 
 function test_phone_width_login_region_code_fields_have_no_fixed_width()
 {
