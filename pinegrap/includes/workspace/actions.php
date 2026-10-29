@@ -2085,6 +2085,19 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok() : ws_action_error($result['error']);
 
+        // The assistant a discussion follows: stopped, or brought back, by
+        // anybody in it.
+        case 'ws_thread_follow':
+            $channel = ws_channel((int) ($request['thread_id'] ?? 0));
+
+            if (!ws_channel_is_thread($channel) || !ws_can_read_channel($viewer, ws_thread_parent_channel($channel))) {
+                return ws_action_error(lang('That discussion could not be found.'));
+            }
+
+            $result = ws_thread_follow_change($viewer, $channel, !empty($request['follow']));
+
+            return $result['ok'] ? ws_action_ok(array('follow' => $result['follow'])) : ws_action_error($result['error']);
+
         // A channel of the team shared with a guest (guests.php): shared, a
         // guest given a new link, a share ended.
         case 'ws_channel_share':

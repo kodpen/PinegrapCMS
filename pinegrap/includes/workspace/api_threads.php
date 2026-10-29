@@ -65,12 +65,34 @@ function ws_api_thread_present($viewer, $thread, $channel)
         'can_join'        => !empty($present['can_join']),
         'closed'          => !empty($present['closed']),
         'assistants'      => array_values(array_map('strval', (array) $present['assistants'])),
+    ) + ws_api_thread_follow_fields($present) + array(
         'started_by'      => ws_api_person_ref($thread['created_by']),
         'closed_by'       => ws_api_person_ref($thread['closed_by']),
         'closed_at'       => api_time($thread['closed_at']),
         'kept_until'      => api_time($thread['purge_at']),
         'last_message_at' => api_time($channel['last_message_at']),
         'created_at'      => api_time($thread['created_at']),
+    );
+}
+
+/**
+ * The agent a discussion follows, as the API shows it: its key (claude, ai,
+ * mcp:<server id>) and handle, the one Follow again would bring back, and
+ * whether the person may change it (POST /workspace/threads/{id}/follow).
+ *
+ * @param array $present ws_thread_present()
+ * @return array
+ */
+function ws_api_thread_follow_fields($present)
+{
+    $follow = (string) ($present['follow'] ?? '');
+    $again = (string) ($present['follow_again'] ?? '');
+
+    return array(
+        'follow'        => ($follow !== '') ? $follow : null,
+        'follow_handle' => (($follow !== '') && ((string) ($present['follow_handle'] ?? '') !== '')) ? (string) $present['follow_handle'] : null,
+        'follow_again'  => ($again !== '') ? $again : null,
+        'can_follow'    => !empty($present['can_follow']),
     );
 }
 
@@ -89,6 +111,10 @@ function ws_api_thread_schema()
         'can_join'        => 'boolean',
         'closed'          => 'boolean',
         'assistants'      => array('string'),
+        'follow'          => 'string?',
+        'follow_handle'   => 'string?',
+        'follow_again'    => 'string?',
+        'can_follow'      => 'boolean',
         'started_by'      => 'WorkspacePerson?',
         'closed_by'       => 'WorkspacePerson?',
         'closed_at'       => 'string?',
@@ -339,6 +365,49 @@ function ws_api_threads_leave($params)
 
     // Read again: the last one out concluded it.
     $after = db_item("SELECT * FROM ws_threads WHERE channel_id = '" . (int) $room['id'] . "'");
+
+    api_ok(ws_api_thread_present($viewer, is_array($after) ? $after : $thread, ws_channel($room['id'])));
+}
+
+/**
+ * Stops the assistant a discussion follows, or brings the last one back, the
+ * way Stop and Follow again in its header do. Anybody in the discussion may;
+ * the discussion gets a line saying who did it.
+ */
+function ws_api_threads_follow($params)
+{
+    $viewer = ws_api_viewer();
+
+    ws_api_threads_ready();
+
+    list($room, $thread) = ws_api_thread_room_or_404($viewer, $params['id']);
+
+    ws_api_person_only(lang('Only the person, signed in on a device, can stop or start the following of a discussion; an application cannot do it for them.'));
+
+    $follow = !empty($params['follow']);
+    $refusal = ws_thread_follow_refusal($viewer, $room, $follow);
+
+    if ($refusal === lang('Only the people in a discussion can change it.')) {
+        api_fail(403, 'forbidden', $refusal);
+    }
+
+    if ($refusal === lang('The workspace is not installed yet: the database has to be updated first.')) {
+        api_fail(503, 'service_unavailable', $refusal);
+    }
+
+    if ($refusal !== '') {
+        api_fail_validation($refusal, 'follow');
+    }
+
+    api_dry_run_stop('updated', 'workspace_thread', array('id' => (int) $room['id'], 'follow' => $follow));
+
+    $result = ws_thread_follow_change($viewer, $room, $follow);
+
+    if (!$result['ok']) {
+        api_fail_validation($result['error'], 'follow');
+    }
+
+    $after = ws_thread($room['id']);
 
     api_ok(ws_api_thread_present($viewer, is_array($after) ? $after : $thread, ws_channel($room['id'])));
 }

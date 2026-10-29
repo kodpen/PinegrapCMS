@@ -1,6 +1,6 @@
 ---
 name: workspace-assistant-discussions
-description: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, what is planned
+description: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, following
 ---
 
 ## What does an assistant read in a discussion?
@@ -15,7 +15,7 @@ description: An assistant asked in a discussion: what it reads about it (Claude'
 - Being asked there is kept in `ws_threads.assistants` for the line under the channel message (`ws_thread_assistant_asked()`).
 
 ## Does it answer without its @name?
-- Yes, in a discussion that follows it (PR #2924): workspace-discussion-follow.md. The screen's Stop / Follow again is step 4 of plans/workspace-agent-discussion-follow.md.
+- Yes, in a discussion that follows it (PR #2924): workspace-discussion-follow.md; Stop / Follow again and the API field: workspace-discussion-follow-screen.md (PR #2997).
 
 ## Where are the tests?
 - tests/workspace_discussion_context_test.php (presenter, declaration, the prompt's sentence). Checked in the sandbox: a discussion's context named its channel and message, a channel's had `thread` null, the OpenAPI document declares both objects as nullable references.

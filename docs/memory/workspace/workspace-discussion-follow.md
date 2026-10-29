@@ -1,6 +1,6 @@
 ---
 name: workspace-discussion-follow
-description: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419): who is followed, which message asks it, the no-pile-up rule, scheduled sends
+description: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
 ---
 
 ## What is followed?
@@ -10,7 +10,8 @@ description: The assistant a discussion follows (ws_threads.follow_agent, step 1
 ## When is it set?
 - `ws_thread_start()`: the discussion is about an assistant's answer (its app, or an MCP agent's answer found by `reply_message_id`) or a request to one (`ws_thread_message_agent()`). Answer 5 of #2419.
 - `ws_message_ask_assistants()`: an agent asked by name or by replying to its answer becomes the followed one; of several, the last (`ws_thread_agents_asked()`, order Claude, then MCP agent or Pinegrap AI). Answer 3a.
-- Nobody can stop it yet: Stop / Follow again, the header line and the API `follow` field are step 4 of plans/workspace-agent-discussion-follow.md.
+- Anybody in the discussion may stop it or bring it back (answer 4a, PR #2997): workspace-discussion-follow-screen.md.
+- Channels never follow: there only `@name`, `/name` or a reply to an answer asks an assistant (owner, 2026-10-21, Slack's way).
 
 ## Which message asks the followed agent?
 - `ws_thread_follow_decide()` (pure): a person's message (`sender_kind = 'user'`) that asks nobody and mentions nobody (no `@` token: person, team or app; `ws_thread_body_mentions()`). Answer 1b. A message of an application or bot asks nobody and changes nothing, so agents never answer each other.

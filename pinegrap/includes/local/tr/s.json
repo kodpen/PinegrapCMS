@@ -2351,6 +2351,7 @@
     "Stop the running update?": "Çalışan güncelleme durdurulsun mu?",
     "Stop the timer": "Sayacı durdur",
     "Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.": "Bu istek durdurulsun mu? Ajanın arka planda yaptığı iş hizmette de iptal edilir, yolda olan bir yanıt da yazılmaz.",
+    "Stop {var:1} following the discussion": "{var:1} tartışmayı izlemeyi bıraksın",
     "Stopped": "Durduruldu",
     "Stopped by {var:1}.": "{var:1} durdurdu.",
     "Stopped: {var:1}.": "Duran: {var:1}.",

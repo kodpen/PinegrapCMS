@@ -331,7 +331,7 @@ function pg_panel_actions()
         'ws_guest_start', 'ws_guest_relink',
         'ws_guest_end', 'ws_channel_share', 'ws_thread_start',
         'ws_thread_join', 'ws_thread_close', 'ws_thread_rename',
-        'ws_thread_leave', 'ws_share_relink', 'ws_share_end',
+        'ws_thread_leave', 'ws_thread_follow', 'ws_share_relink', 'ws_share_end',
         'ws_task_time_start', 'ws_task_time_stop', 'ws_task_time_add',
         'ws_task_time_delete', 'ws_task_time_channel',
         'ws_task_time_invoice', 'ws_task_time_unlink', 'ws_task_time_mine',

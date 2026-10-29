@@ -11,7 +11,7 @@ description: DRAFT, not to be started (owner, 2026-10-29): a Workspace channel a
 - A channel setting "Agent channel": applications as members, each with a wake rule (mentioned only, every message, prefixes such as `[ci]`, replies to its own) and a door (polling, webhook, routine trigger, Claude Code plugin). A matching message makes one `ws_ai_requests` row per agent (`app:<id>`), shown on the message. `GET /workspace/agent-requests` and a claim with 409 generalise Claude's routes; the brief is preamble + context + channel memory; an answer is a message with `parent_id`, reactions, tasks, approvals, proposals or memory entries, or "no answer needed". Depth and hourly brakes; the permission relay never.
 - Channel memory: entries (title, text, tags, author, pinned, expiry) with a Memory tab and a digest in every brief. Alternatives: decision/note messages, workflow tables.
 - Owner questions: approvals (a person decides) and polls opened to keys; the outcome as a decision line and in the brief.
-- Discussion following (plans/workspace-agent-discussion-follow.md) is the first wake rule, not Claude-only.
+- Discussion following (workspace/workspace-discussion-follow.md) is the first wake rule, not Claude-only.
 
 ## What was verified? (2026-10-28)
 - Claude Code channels run on the owner's machine with a stdio bridge (dev flag, org channelsEnabled, 4–6 s). Cloud sessions get no channel: their door is a background waiter polling `GET /workspace/sync` (ETag) that exits on a matching message; untested in the cloud.

@@ -7335,6 +7335,14 @@
                 wrap.appendChild(note);
             }
 
+            // The assistant it follows answers there without its name.
+            if (thread.follow_handle) {
+                var follows = el('div', 'ws-thread-ai');
+                follows.appendChild(icon('bi-eye', 'me-1'));
+                follows.appendChild(document.createTextNode(t('th_follows', thread.follow_handle)));
+                wrap.appendChild(follows);
+            }
+
             return wrap;
         },
 
@@ -15021,6 +15029,12 @@
             head.appendChild(actions);
             center.appendChild(head);
 
+            var following = self.followLine();
+
+            if (following) {
+                center.appendChild(following);
+            }
+
             if (thread.closed) {
                 var closed = el('div', 'alert theme-secondary rounded-0 m-0 py-3 small');
                 closed.appendChild(icon('bi-archive', 'me-1'));
@@ -15107,6 +15121,50 @@
             });
 
             return more;
+        };
+
+        // The assistant the discussion follows, with Stop for anybody in it;
+        // once stopped, Follow again brings the last one asked back.
+        view.followLine = function () {
+            var self = this;
+            var thread = self.channel.thread || {};
+            var handle = thread.follow ? thread.follow_handle : thread.follow_again_handle;
+
+            if (!handle || (!thread.follow && !thread.can_follow)) {
+                return null;
+            }
+
+            var line = el('div', 'ws-thread-follow d-flex align-items-center gap-2 px-3 py-1 small fg-secondary');
+
+            if (thread.follow) {
+                var text = el('span', 'flex-grow-1');
+                text.appendChild(icon('bi-eye', 'me-1'));
+                text.appendChild(document.createTextNode(t('th_follows', handle)));
+                text.title = t('th_follows_help');
+                line.appendChild(text);
+            } else {
+                line.appendChild(el('span', 'flex-grow-1'));
+            }
+
+            if (thread.can_follow) {
+                var change = thread.follow
+                    ? button('btn btn-sm btn-text theme-secondary py-0', t('th_follow_stop'), 'bi-eye-slash', t('th_follow_stop_label', handle))
+                    : button('btn btn-sm btn-text theme-secondary py-0', t('th_follow_again'), 'bi-eye', t('th_follow_again_label', handle));
+
+                change.addEventListener('click', function () {
+                    change.disabled = true;
+                    api('ws_thread_follow', { thread_id: self.channel.id, follow: thread.follow ? 0 : 1 }).then(function () {
+                        self.load(self.channel.id, 0);
+                        main.sync();
+                    }).catch(function (error) {
+                        change.disabled = false;
+                        fail(error);
+                    });
+                });
+                line.appendChild(change);
+            }
+
+            return line;
         };
 
         view.rename = function () {
