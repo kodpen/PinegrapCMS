@@ -15,7 +15,7 @@ module: carrier_labels
 - A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`), track() no `pg_shipment_statuses()` value.
 
 ## What reaches the shipment row?
-- Only `pg_label_shipment_options($answer)`: `source` carrier, plus `carrier` and `tracking_url` when given, for `pg_shipment_record()` (`shipment-write-path.md`). The service's `reference`, label and barcode never go into `shipping_tracking_numbers`; they are kept in `shipment_labels` (`shipment-labels.md`). This is how the aggregator choice stays out of the schema.
+- Only `pg_label_shipment_options($answer)`: `source` carrier, plus `carrier` and `tracking_url` when given, for `pg_shipment_record()` (`shipment-write-path.md`). The service's `reference`, label and barcode never go into `shipping_tracking_numbers`; they are kept in `shipment_labels` (`shipment-labels.md`). This is how the aggregator choice stays out of the schema. `track()` answers reach the row through the tracking job (`shipment-tracking.md`).
 
 ## Where are the settings?
 - `connect_apps` row `label_<key>` as payment drivers: `client_id` empty, secrets sealed as one map (`pg_connect_seal()`), other fields in `options`, `enabled` = the driver's switch. No schema; several drivers may be on at once. `pg_label_ready()`: on, readable, every required field stored.
@@ -23,7 +23,7 @@ module: carrier_labels
 
 ## What does the Shipping card do?
 - `pg_label_settings_rows()` after FedEx in `includes/settings/commerce.php`: nothing while no driver exists; per driver a switch, its fields (secrets never drawn back, a `__present` marker) and "Save and test the connection" (`label_test` = key) when it defines `test`.
-- `commerce.save.php`: `pg_label_settings_check()` before the card's UPDATE (marks refuse it), `pg_label_settings_save()` after, which then runs the test with the stored settings and adds "accepted" / "refused the connection" notices.
+- `commerce.save.php`: `pg_label_settings_check()` before the card's UPDATE (marks refuse it), `pg_label_settings_save()` after, which then runs the test with the stored settings and adds "accepted" / "refused the connection" notices, and puts the tracking job in the dispatch list for a service on that can track.
 - `pg_label_settings_decide()` (pure): only posted drivers; empty secret keeps; select outside options keeps; required only while on; no row while off with defaults.
 
 ## How was it verified?
