@@ -14,6 +14,9 @@ description: Chips fields (data-pg-chips) on Bootstrap 6 Chips since B9a (#2208)
 ## Where does the remove button's label come from?
 - Bootstrap hard-codes `aria-label="Remove"` on `.chip-dismiss`. `pg_fields_script()` prints `data-pg-remove-label="<lang('Remove')>"` on its tag; the engine relabels every button after drawing and after each change.
 
+## How big is the remove button on a touch screen?
+- Under `@media (pointer: coarse)` `.chip-dismiss` in a `.pg-chips` box is at least 1.5rem square (Bootstrap: 1rem, no padding); the icon stays 1rem. A missed tap used to select the chip instead of removing it. The designer keyword box (`#styleSettingsModal`) is left out. Same block: System Status `.pg-checks > .pg-check` chips 1.5rem tall, gap 4px. Test: `tests/panel_tap_targets_css_test.php`.
+
 ## When is it drawn?
 - Chips' data API reads only `[data-bs-chips]` on DOMContentLoaded: never put that attribute on a field. `pgFields.init()` draws on DOMContentLoaded (the bridge module has run by then); a field met before `window.bootstrap` is set waits for `pgUI.ready()`. Injected markup: `pgInitInjected()` calls `pgFields.init(scope)`.
 - The ghost input is never disabled for `readOnly`: the settings dialog latches every text field read-only until someone reaches it, the hidden input too.
