@@ -675,11 +675,13 @@ $newsletter_line = function ($id) use ($el, $attr, $submit) {
     ));
 };
 
-// A file field; what is sent is kept in the template folder named.
+// A file field; what is sent is kept in the template folder named. One
+// that takes only pictures is a collection's image kind.
 $file = function ($id, $name, $folder, $accept = 'image/*') use ($el, $attr) {
     return $el('input', 'form-control', lang('Input'), array(), array('id' => $id, '_attrs' => array(
         $attr('type', 'file'), $attr('name', $name), $attr('accept', $accept),
-    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')));
+    ), '_cf' => array('upload_folder_id' => '{{folder:' . $folder . '}}')
+            + ($accept === 'image/*' ? array('kind' => 'image') : array())));
 };
 // A text area that may stay empty.
 $note_area = function ($id, $name, $rows) use ($el, $attr) {
@@ -1589,6 +1591,7 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Journal
     lang('Write the entry; it appears in the journal as soon as you send it.'), 'blog_form',
     array(
         'form_name'            => lang('Journal Entries'),
+        'collection'           => 1,
         'confirmation_message' => lang('The entry is published.'),
         'confirmation_page_id' => '{{tab:blog}}',
         // The template's sample entries are written in when the form is
@@ -1602,6 +1605,7 @@ $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang(
     lang('Signed-in members see the directory from their account.'), 'staff_form',
     array(
         'form_name'            => lang('Staff Directory'),
+        'collection'           => 1,
         'confirmation_message' => lang('The person is in the staff directory.'),
         'confirmation_page_id' => '{{tab:staff_directory}}',
     ));
@@ -2834,7 +2838,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Boutique'),
-    'version'     => '1.1.0',
+    'version'     => '1.1.1',
     'framework'   => 'bootstrap5',
     'order'       => 30,
     'icon'        => 'bi-gem',
