@@ -461,3 +461,179 @@ function pg_cart_quote_order_completed($order_id)
     db_q("UPDATE cart_quotes SET status = 'ordered', updated_at = ? WHERE order_id = ? AND status = 'open'",
         array((string) time(), (string) (int) $order_id));
 }
+
+/* ---------------------------------------------------------------------------
+   The panel
+   --------------------------------------------------------------------------- */
+
+/** The most quotes the panel list shows. */
+define('PG_CART_QUOTE_PANEL_LIMIT', 200);
+
+/** How long a new quote's link works by default, in days. */
+define('PG_CART_QUOTE_DEFAULT_DAYS', 30);
+
+/**
+ * The address a token opens.
+ *
+ * @param string $token
+ * @return string
+ */
+function pg_cart_quote_url($token)
+{
+    return URL_SCHEME . HOSTNAME_SETTING . PATH . SOFTWARE_DIRECTORY . '/cart_quote.php?t=' . $token;
+}
+
+/**
+ * The end of the day a "valid until" date names, in the site's zone: the link
+ * works through that whole day. Pure but for the zone.
+ *
+ * @param string $day Y-m-d, '' for no end
+ * @return int|null unix seconds, 0 for no end, null for a day that is not one
+ */
+function pg_cart_quote_until($day)
+{
+    $day = trim((string) $day);
+
+    if ($day === '') {
+        return 0;
+    }
+
+    if (!preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $day, $parts) || !checkdate((int) $parts[2], (int) $parts[3], (int) $parts[1])) {
+        return null;
+    }
+
+    return (int) mktime(23, 59, 59, (int) $parts[2], (int) $parts[3], (int) $parts[1]);
+}
+
+/**
+ * The name of where a quote stands (pg_cart_quote_state()).
+ *
+ * @param string $state
+ * @return string
+ */
+function pg_cart_quote_state_label($state)
+{
+    $labels = array(
+        'open'      => lang('Open'),
+        'ordered'   => lang('Ordered'),
+        'expired'   => lang('Expired'),
+        'cancelled' => lang('Cancelled'),
+    );
+
+    return isset($labels[$state]) ? $labels[$state] : (string) $state;
+}
+
+/**
+ * The newest quotes for the panel, with whom each is for, who made it and its
+ * lines (product name and quantity).
+ *
+ * @param int $contact_id only this contact's (0 for every quote)
+ * @param int $limit
+ * @return array[] cart_quotes row + contact_name, creator, lines
+ */
+function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_LIMIT)
+{
+    if (!pg_cart_quotes_ready()) {
+        return array();
+    }
+
+    $rows = (array) db_items("SELECT q.*, c.first_name, c.last_name, c.company, u.user_username AS creator
+        FROM cart_quotes AS q
+        LEFT JOIN contacts AS c ON c.id = q.contact_id
+        LEFT JOIN user AS u ON u.user_id = q.created_by
+        " . (((int) $contact_id > 0) ? "WHERE q.contact_id = '" . (int) $contact_id . "'" : "") . "
+        ORDER BY q.id DESC
+        LIMIT " . max(1, (int) $limit));
+
+    if (!$rows) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ($rows as $row) {
+        $ids[] = (int) $row['id'];
+    }
+
+    $lines = array();
+
+    foreach ((array) db_items("SELECT i.cart_quote_id, i.quantity, p.name, p.short_description
+        FROM cart_quote_items AS i
+        LEFT JOIN products AS p ON p.id = i.product_id
+        WHERE i.cart_quote_id IN (" . implode(',', $ids) . ")
+        ORDER BY i.id") as $line) {
+        $name = trim((string) $line['short_description']);
+
+        $lines[(int) $line['cart_quote_id']][] = array(
+            'name'     => ($name !== '') ? $name : (((string) $line['name'] !== '') ? (string) $line['name'] : lang('Deleted product')),
+            'quantity' => (int) $line['quantity'],
+        );
+    }
+
+    foreach ($rows as $index => $row) {
+        $person = trim(trim((string) $row['first_name']) . ' ' . trim((string) $row['last_name']));
+
+        $rows[$index]['contact_name'] = ($person !== '') ? $person : trim((string) $row['company']);
+        $rows[$index]['lines'] = isset($lines[(int) $row['id']]) ? $lines[(int) $row['id']] : array();
+    }
+
+    return $rows;
+}
+
+/**
+ * Cancels an open quote: its link opens nothing more.
+ *
+ * @param int $quote_id
+ * @return bool whether an open quote was cancelled
+ */
+function pg_cart_quote_cancel($quote_id)
+{
+    if (!pg_cart_quotes_ready()) {
+        return false;
+    }
+
+    db_q("UPDATE cart_quotes SET status = 'cancelled', updated_at = ? WHERE id = ? AND status = 'open'",
+        array((string) time(), (string) (int) $quote_id)) or output_error(lang('Query failed.'));
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return false;
+    }
+
+    log_activity(lang(array('string' => 'cart quote {var:1} was cancelled', 'vars' => '#' . (int) $quote_id)));
+
+    return true;
+}
+
+/**
+ * Gives an open quote a new link, which replaces the old one: the token is
+ * kept only as its hash, so a lost link is made again rather than shown.
+ *
+ * @param int $quote_id
+ * @return string the new token, '' when the quote is not open
+ */
+function pg_cart_quote_new_link($quote_id)
+{
+    if (!pg_cart_quotes_ready()) {
+        return '';
+    }
+
+    $quote = db_item("SELECT * FROM cart_quotes WHERE id = '" . (int) $quote_id . "'");
+
+    if (!is_array($quote) || (pg_cart_quote_state($quote, time()) !== 'open')) {
+        return '';
+    }
+
+    $token = pg_short_link_new_token();
+    $parts = pg_cart_quote_token_parts($token);
+
+    db_q("UPDATE cart_quotes SET token_hash = ?, token_hint = ?, updated_at = ? WHERE id = ? AND status = 'open'",
+        array($parts['hash'], $parts['hint'], (string) time(), (string) (int) $quote_id)) or output_error(lang('Query failed.'));
+
+    if (mysqli_affected_rows(db::$con) < 1) {
+        return '';
+    }
+
+    log_activity(lang(array('string' => 'cart quote {var:1} was given a new link', 'vars' => '#' . (int) $quote_id)));
+
+    return $token;
+}

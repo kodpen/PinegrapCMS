@@ -598,6 +598,7 @@
     "Enter a quantity from 1 up.": "1 ya da daha büyük bir adet girin.",
     "Enter a tax rate between 0 and 100.": "0 ile 100 arasında bir vergi oranı girin.",
     "Enter a tax rate, or choose to follow the tax zone.": "Bir vergi oranı girin ya da vergi bölgesini izlemeyi seçin.",
+    "Enter a valid date.": "Geçerli bir tarih girin.",
     "Enter a whole amount without separators, from 0 to 1000000000.": "0 ile 1000000000 arasında, ayraçsız bir tam tutar girin.",
     "Enter a whole number on each line.": "Her satıra bir tam sayı girin.",
     "Enter a whole number.": "Bir tam sayı girin.",

@@ -127,6 +127,14 @@
             shown = true;
         }
 
+        if (sections.cart_quotes) {
+            body.appendChild(sectionTitle(h, h.t('cust_cart_quotes'), 'bi-cart3', sections.cart_quotes.count));
+            sections.cart_quotes.latest.forEach(function (quote) {
+                body.appendChild(line(h, quote.number, quote.url, [quote.lines_text, quote.valid_until_text], ''));
+            });
+            shown = true;
+        }
+
         if (sections.forms) {
             body.appendChild(sectionTitle(h, h.t('cust_forms'), 'bi-ui-checks', 0));
             sections.forms.forEach(function (form) {

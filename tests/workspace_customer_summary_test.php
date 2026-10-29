@@ -368,18 +368,30 @@ function test_ws_customer_summary_build_keeps_the_latest_few()
 	pg_assert_same(2, ws_customer_summary_build(ws_customer_summary_rights(workspace_customer_summary_test_viewer()), $data, 'workspace_customer_summary_test_money', 2)['orders']['count'], 'never fewer than the rows shown');
 }
 
-// Cart quotes have no table yet: their reader reads nothing and the summary
-// shows no such section, never sales quotes in their place.
-function test_ws_customer_summary_cart_quotes_are_a_seam()
+// Cart quotes are a section of their own under the ecommerce right, never
+// among the sales quotes, and carry no amount.
+function test_ws_customer_summary_cart_quotes_section()
 {
-	pg_assert_same(array('count' => 0, 'rows' => array()), ws_customer_cart_quote_rows(array('contact_id' => 5, 'user_ids' => array(3), 'erp_account_ids' => array(9)), 5), 'nothing to read');
+	pg_assert_same(array('count' => 0, 'rows' => array()), ws_customer_cart_quote_rows(array('contact_id' => 0, 'user_ids' => array(3), 'erp_account_ids' => array(9)), 5), 'no contact, nothing to read');
 
 	$data = workspace_customer_summary_test_data();
-	$data['cart_quotes'] = array('count' => 2, 'rows' => array(array('id' => 1)));
+	$data['cart_quotes'] = array('count' => 3, 'rows' => array(array('id' => '12', 'valid_until' => '1792300000', 'line_count' => '4'), array('id' => '9', 'valid_until' => '0', 'line_count' => '1')));
 	$summary = ws_customer_summary_build(ws_customer_summary_rights(workspace_customer_summary_test_viewer()), $data, 'workspace_customer_summary_test_money');
 
-	pg_assert_false(isset($summary['cart_quotes']), 'not laid out before their tables exist');
-	pg_assert_contains("if (\$rights['cart_quotes'])", workspace_customer_summary_test_source('ws_customer_summary'), 'the seam asks the ecommerce right');
+	pg_assert_same(array('count' => 3, 'latest' => array(
+		array('id' => 12, 'valid_until' => 1792300000, 'lines' => 4),
+		array('id' => 9, 'valid_until' => 0, 'lines' => 1),
+	)), $summary['cart_quotes']);
+
+	$no_shop = ws_customer_summary_rights(workspace_customer_summary_test_viewer());
+	$no_shop['cart_quotes'] = false;
+
+	pg_assert_false(isset(ws_customer_summary_build($no_shop, $data, 'workspace_customer_summary_test_money')['cart_quotes']), 'not without the ecommerce right');
+
+	$data['cart_quotes'] = array('count' => 0, 'rows' => array());
+
+	pg_assert_false(isset(ws_customer_summary_build(ws_customer_summary_rights(workspace_customer_summary_test_viewer()), $data, 'workspace_customer_summary_test_money')['cart_quotes']), 'left out when there is none');
+	pg_assert_contains("if (\$rights['cart_quotes'])", workspace_customer_summary_test_source('ws_customer_summary'), 'read under the ecommerce right');
 }
 
 // Amounts from the database come as strings; they are whole minor units,
