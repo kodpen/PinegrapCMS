@@ -11,6 +11,7 @@ module: waf_notice
 - `waf_register_offence()` calls `waf_ban_notice_queue()` after a ban that was written (`waf_auto_ban()` > 0). waf.php has no mail and no `functions.php`, so it appends `when \t ip \t subject \t rule \t minutes` (`waf_ban_notice_line()`, read by `waf_ban_notice_parse()`) to `data/temp/waf_ban_notice.log`, capped at 64 KB.
 - `pg_waf_ban_notice_send()` (`includes/fn/waf_notice.php`) runs in `init.php` right after `waf_run('init')`, so on the next request and on every tick of the general job (which loads `init.php`). One `is_file()` when nothing is queued. It claims the file by renaming it, so a line is sent once.
 - Mail goes through `email()` with `queue => true`, to the operations alert recipients (`pg_ops_alert_recipients()`: `ops_alert_recipients` or the site address), only while `OPS_ALERTS` and `OPS_ALERT_EMAIL` are on (`pg_waf_ban_notice_enabled()`); otherwise the queued lines are dropped. No new setting.
+- The e-mail is the only report: a ban writes no activity log entry and raises no status warning.
 - The ban e-mail names the banned subject, the refused address when it differs (an IPv6 /64), the rule, the minutes, the last five `waf_log` events of the address in the 15 minutes before the ban (`pg_waf_ban_notice_samples()`), a link on `HOSTNAME_SETTING` to the log filtered by the address, and the server command that lifts the ban (`php waf_unban.php <subject>`, `waf-self-rescue.md`). Every value through `h()`, `lang()` vars included.
 
 ## When is it one notice instead of many?

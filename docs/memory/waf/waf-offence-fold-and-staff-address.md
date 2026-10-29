@@ -18,4 +18,4 @@ description: A rate refusal registers one offence per subject and minute (the bu
 ## What do Release and Allow forget?
 - `waf_offence_clear($stored)` deletes the `o`, `of` and `ob` buckets of the stored string and, for an address, of its subject (`waf_ip_subject()`). Before, the bucket kept its count until the slot rolled over and the next refusal placed the ban again: the Release button looked broken.
 
-Related: docs/memory/waf/waf-ban-ladder.md, docs/memory/waf/waf-inflight-request-cap.md, docs/memory/plans/waf-legit-traffic-auto-ban.md
+Related: docs/memory/waf/waf-ban-ladder.md, docs/memory/waf/waf-inflight-request-cap.md
