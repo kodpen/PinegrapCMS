@@ -471,8 +471,8 @@ function ws_wtable_import_row_cells($row, $map, $columns, $people = array())
  * the separator its first line uses most. Reads one line more than $max so
  * that a longer file is told (more).
  *
- * The bulk product reader (ws_bulk_file_table()) reads the same way but
- * stops at a product card's 200 rows; a table takes up to 5000.
+ * The one reader of a table file: the bulk product drafts read through it
+ * too (ws_bulk_file_table()), capped at a product card's rows.
  *
  * @param string $path
  * @param string $file_name the name the person's machine gave it
@@ -549,6 +549,240 @@ function ws_wtable_import_file_table($path, $file_name, $max)
     }
 
     return array('ok' => true, 'error' => '', 'table' => $table, 'more' => $more);
+}
+
+/* ---------------------------------------------------------------------------
+   A note's tables
+   --------------------------------------------------------------------------- */
+
+/**
+ * The tables a note's text holds, read the way ws_render_body() draws them:
+ * a row of cells, the row of dashes under it, then every row that follows;
+ * a table inside a code fence is code. Each row has the drawn table's
+ * column count (at most 12), cells padded or cut to it. A "::: Title" line
+ * right above a table names it.
+ *
+ * @param string $body the note's text
+ * @param int    $max  rows to keep per table, header included
+ * @return array list of title, line (0-based, of the header), table, more
+ */
+function ws_wtable_import_note_tables($body, $max = 5001)
+{
+    $lines = preg_split('/\r\n|\r|\n/', (string) $body);
+    $count = count($lines);
+    $row_pattern = '/^\s*\|.*\|\s*$/';
+    $tables = array();
+
+    for ($i = 0; $i < $count; $i++) {
+        if (ws_code_fence_open($lines[$i]) !== null) {
+            $i++;
+
+            while (($i < $count) && !ws_code_fence_close($lines[$i])) {
+                $i++;
+            }
+
+            continue;
+        }
+
+        $alignments = (($i + 1) < $count) ? ws_table_alignments($lines[$i + 1]) : null;
+
+        if (!preg_match($row_pattern, $lines[$i]) || ($alignments === null)) {
+            continue;
+        }
+
+        $header = ws_table_cells($lines[$i]);
+        $columns = min(12, max(count($header), count($alignments)));
+        $fit = function ($cells) use ($columns) {
+            return array_slice(array_pad($cells, $columns, ''), 0, $columns);
+        };
+        $table = array($fit($header));
+        $more = false;
+        $j = $i + 2;
+
+        while (($j < $count) && preg_match($row_pattern, $lines[$j])) {
+            if (count($table) >= $max) {
+                $more = true;
+            } else {
+                $table[] = $fit(ws_table_cells($lines[$j]));
+            }
+
+            $j++;
+        }
+
+        $title = ($i > 0) ? ws_block_title_line($lines[$i - 1]) : null;
+        $tables[] = array('title' => (string) $title, 'line' => $i, 'table' => $table, 'more' => $more);
+        $i = $j - 1;
+    }
+
+    return $tables;
+}
+
+/**
+ * One cell of a note's table as plain text: a person's tag becomes their
+ * name ($names, else the user id, which a person column takes too), a
+ * record's tag its kind:id (what a record link column takes), a link its
+ * words, and the bold, italic, strike, highlight and code marks around the
+ * whole cell go.
+ *
+ * @param string $text
+ * @param array  $names user id => name
+ * @return string
+ */
+function ws_wtable_import_note_cell($text, $names = array())
+{
+    $text = preg_replace_callback('/<([@#])([a-z_]+):([0-9]{1,10})>/', function ($match) use ($names) {
+        if ($match[1] === '@') {
+            return ($match[2] === 'user') ? (string) ($names[(int) $match[3]] ?? $match[3]) : '';
+        }
+
+        return $match[2] . ':' . $match[3];
+    }, (string) $text);
+
+    $text = preg_replace('/\[([^\]]*)\]\([^)\s]*\)/u', '$1', $text);
+    $text = trim($text);
+
+    while (preg_match('/^(\*\*|__|~~|==|`|\*|_)(\S(?:.*\S)?)\1$/us', $text, $match)) {
+        $text = trim($match[2]);
+    }
+
+    return $text;
+}
+
+/**
+ * A note's table as a file import reads it: the header, then the rows with
+ * each cell as plain text (ws_wtable_import_note_cell()) and a formula's
+ * worked-out value in place of its source (empty on an error).
+ *
+ * @param array $table  rows of cells as written, header first
+ * @param array $names  user id => name
+ * @param array $scope  the note's calculation names (ws_calc_body_scope())
+ * @return array[]
+ */
+function ws_wtable_import_note_rows($table, $names = array(), $scope = array())
+{
+    $table = array_values((array) $table);
+    $grid = (function_exists('ws_calc_has_formula') && ws_calc_has_formula($table)) ? ws_calc_grid($table, $scope) : array();
+    $out = array();
+
+    foreach ($table as $r => $row) {
+        foreach (array_values((array) $row) as $c => $cell) {
+            if (!empty($grid[$r][$c]['formula'])) {
+                $value = $grid[$r][$c]['value'];
+                $cell = (($grid[$r][$c]['error'] !== '') || ($value === null)) ? ''
+                    : (is_numeric($value) ? rtrim(rtrim(sprintf('%.10F', (float) $value), '0'), '.') : (string) $value);
+            }
+
+            $out[$r][$c] = ($r === 0) ? ws_wtable_import_note_cell($cell) : ws_wtable_import_note_cell($cell, $names);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The notes a person may read whose text holds a table, each table one
+ * choice: own notes and notes shared with them by name, as the notes list
+ * reads them. A note longer than the list's cut is read whole (up to 50 of
+ * them), so a table further down is offered too.
+ *
+ * @param array $viewer
+ * @return array list of note (id), block (index), label
+ */
+function ws_wtable_import_note_choices($viewer)
+{
+    if (!function_exists('ws_notes_list')) {
+        return array();
+    }
+
+    $list = ws_notes_list($viewer);
+    $notes = array_merge((array) $list['mine'], (array) $list['shared']);
+    $long = array();
+
+    foreach ($notes as $note) {
+        if ((mb_strlen((string) $note['body']) >= WS_NOTE_LIST_BODY) && (strpos((string) $note['body'], '|') !== false) && (count($long) < 50)) {
+            $long[] = (int) $note['id'];
+        }
+    }
+
+    $whole = array();
+
+    if (!empty($long)) {
+        foreach ((array) db_items("SELECT id, body FROM ws_notes WHERE id IN (" . implode(',', $long) . ")") as $row) {
+            $whole[(int) $row['id']] = (string) $row['body'];
+        }
+    }
+
+    $choices = array();
+
+    foreach ($notes as $note) {
+        $body = $whole[(int) $note['id']] ?? (string) $note['body'];
+
+        if (strpos($body, '|') === false) {
+            continue;
+        }
+
+        $tables = ws_wtable_import_note_tables($body, 2);
+        $note_title = trim((string) ($note['title'] ?? ''));
+        $note_title = ($note_title !== '') ? $note_title : lang('Untitled note');
+
+        foreach ($tables as $index => $table) {
+            $label = ($table['title'] !== '') ? $table['title'] : implode(', ', array_filter($table['table'][0], 'strlen'));
+            $choices[] = array(
+                'note'  => (int) $note['id'],
+                'block' => $index,
+                'label' => mb_strimwidth($note_title . ((count($tables) > 1 || $label !== '') ? ' — ' . $label : ''), 0, 120, '…'),
+            );
+        }
+    }
+
+    return $choices;
+}
+
+/**
+ * Read one table of a note the person may read, as a file import's read:
+ * the note through ws_note_access(), never changed.
+ *
+ * @param array $viewer
+ * @param int   $note_id
+ * @param int   $block   the table's index in the note
+ * @param int   $max     rows to keep, header included
+ * @return array ok, error, table, more, name (the note's title, or the table's)
+ */
+function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
+{
+    $fail = function ($error) {
+        return array('ok' => false, 'error' => $error, 'table' => array(), 'more' => false, 'name' => '');
+    };
+
+    $note = function_exists('ws_note') ? ws_note((int) $note_id) : null;
+
+    if (!$note || (ws_note_access($viewer, $note) === '')) {
+        return $fail(lang('That note could not be found.'));
+    }
+
+    $tables = ws_wtable_import_note_tables((string) $note['body'], $max);
+
+    if (!isset($tables[(int) $block])) {
+        return $fail(lang('That table is no longer in the note.'));
+    }
+
+    $chosen = $tables[(int) $block];
+    $names = array();
+
+    foreach ((array) ws_team_members() as $person) {
+        $names[(int) $person['id']] = (string) $person['name'];
+    }
+
+    $scope = function_exists('ws_calc_body_scope') ? ws_calc_body_scope(preg_split('/\r\n|\r|\n/', (string) $note['body']))['all'] : array();
+    $name = ($chosen['title'] !== '') ? $chosen['title'] : trim((string) $note['title']);
+
+    return array(
+        'ok'    => true,
+        'error' => '',
+        'table' => ws_wtable_import_note_rows($chosen['table'], $names, $scope),
+        'more'  => $chosen['more'],
+        'name'  => ($name !== '') ? $name : lang('Untitled note'),
+    );
 }
 
 /* ---------------------------------------------------------------------------
@@ -700,9 +934,10 @@ function ws_wtable_import_create($viewer, $name, $plan, $rows)
  * @param array  $read      ws_wtable_import_file_table()
  * @param string $file_name
  * @param int    $table_id  the table rows are added to, 0 for a new one
+ * @param bool   $note      read from a note: $file_name is the name to offer
  * @return bool
  */
-function ws_wtable_import_keep($read, $file_name, $table_id)
+function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
 {
     ws_wtable_import_drop();
 
@@ -712,14 +947,15 @@ function ws_wtable_import_keep($read, $file_name, $table_id)
         return false;
     }
 
-    $_SESSION['software']['ws_wtable_import'] = array('path' => $path, 'file' => (string) $file_name, 'table' => (int) $table_id, 'more' => !empty($read['more']));
+    $_SESSION['software']['ws_wtable_import'] = array('path' => $path, 'file' => (string) $file_name, 'table' => (int) $table_id, 'more' => !empty($read['more']), 'note' => (bool) $note);
 
     return true;
 }
 
 /**
  * The file kept by ws_wtable_import_keep(), or null: file (name), table
- * (id, 0 for a new one), more, names (the header), rows.
+ * (id, 0 for a new one), more, note (read from a note), names (the
+ * header), rows.
  *
  * @return array|null
  */
@@ -743,6 +979,7 @@ function ws_wtable_import_kept()
         'file'  => (string) $kept['file'],
         'table' => (int) $kept['table'],
         'more'  => !empty($kept['more']),
+        'note'  => !empty($kept['note']),
         'names' => ws_wtable_import_names(array_shift($table)),
         'rows'  => $table,
     );

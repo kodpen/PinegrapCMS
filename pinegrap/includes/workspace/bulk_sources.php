@@ -141,9 +141,9 @@ function ws_bulk_file_is_table($file_name)
 }
 
 /**
- * A CSV or spreadsheet file as a table. A spreadsheet goes through the
- * product import's reader; a CSV is read with the separator its first line
- * uses. At most one card's rows (and the header) are read.
+ * A CSV or spreadsheet file as a table, through the workflow table import's
+ * reader (ws_wtable_import_file_table()): at most one card's rows and the
+ * header, and one row more so that a longer file is refused.
  *
  * @param string $path      on disk
  * @param string $file_name the name it was posted under
@@ -151,63 +151,13 @@ function ws_bulk_file_is_table($file_name)
  */
 function ws_bulk_file_table($path, $file_name)
 {
-    $fail = function ($error) {
-        return array('ok' => false, 'error' => $error, 'table' => array());
-    };
-
-    $extension = strtolower((string) pathinfo((string) $file_name, PATHINFO_EXTENSION));
-    $spreadsheet = function_exists('pg_products_import_is_spreadsheet') && pg_products_import_is_spreadsheet($file_name);
-
-    if (!$spreadsheet && ($extension !== 'csv')) {
-        return $fail(lang('Products are made from a CSV, Excel or OpenDocument file.'));
+    if (!ws_bulk_file_is_table($file_name)) {
+        return array('ok' => false, 'error' => lang('Products are made from a CSV, Excel or OpenDocument file.'), 'table' => array());
     }
 
-    $csv = (string) $path;
+    $read = ws_wtable_import_file_table($path, $file_name, WS_BULK_CREATE_MAX + 2);
 
-    if ($spreadsheet) {
-        $error = '';
-        $csv = pg_products_import_to_csv($path, $file_name, $error);
-
-        if ($csv === '') {
-            return $fail(($error !== '') ? $error : lang('The file could not be read.'));
-        }
-    }
-
-    $handle = @fopen($csv, 'rb');
-
-    if (!$handle) {
-        return $fail(lang('The file could not be read.'));
-    }
-
-    $first = (string) fgets($handle);
-    $first = (strpos($first, "\xEF\xBB\xBF") === 0) ? substr($first, 3) : $first;
-    $counts = array(';' => substr_count($first, ';'), ',' => substr_count($first, ','), "\t" => substr_count($first, "\t"));
-    arsort($counts);
-    $separator = (string) key($counts);
-    rewind($handle);
-
-    $table = array();
-    $line = 0;
-
-    while ((count($table) <= WS_BULK_CREATE_MAX + 1) && (($row = fgetcsv($handle, 0, $separator, '"', '\\')) !== false)) {
-        if (($line++ === 0) && isset($row[0]) && (strpos((string) $row[0], "\xEF\xBB\xBF") === 0)) {
-            $row[0] = substr((string) $row[0], 3);
-        }
-
-        $row = array_map('trim', array_map('strval', (array) $row));
-
-        if (implode('', $row) !== '') {
-            $table[] = $row;
-        }
-    }
-
-    fclose($handle);
-
-    if ($spreadsheet) {
-        @unlink($csv);
-    }
-
-    return array('ok' => true, 'error' => '', 'table' => $table);
+    return array('ok' => $read['ok'], 'error' => $read['error'], 'table' => $read['table']);
 }
 
 /**

@@ -2579,6 +2579,11 @@ function ws_flow_js_strings()
         'fl_flag_min'         => ws_js_template('{var:1} min', 1),
         'fl_flag_hour'        => ws_js_template('{var:1} h {var:2} min', 2),
         'fl_flag_day'         => ws_js_template('{var:1} d {var:2} h', 2),
+        // Add › Start a flow in a channel's composer and the run's card there.
+        'fl_here_start'       => lang('Start a flow'),
+        'fl_here_help'        => ws_js_template('The flows you may start in {var:1}. A run opens its tasks here, and its card here follows it.', 1),
+        'fl_here_none'        => lang('No flow can be started here. A flow is listed once it is published, started by hand, and its owner may write in this channel.'),
+        'fl_run_card'         => ws_js_template('Run of {var:1}', 1),
         'fl_step_ready'       => lang('Ready'),
         'fl_step_running'     => lang('Running'),
         'fl_step_waiting'     => lang('Waiting'),

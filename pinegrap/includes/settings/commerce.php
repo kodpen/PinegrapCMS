@@ -400,7 +400,7 @@ $pg_settings_cards[] = '
                         ' . $output_erp_edoc_options . '
                         <button type="button" class="btn btn-sm btn-outline theme-secondary pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug me-3"></i>' . lang('Test the connection') . '</button>
                         <div class="form-text">' . lang('Tries the provider picked above with what is typed here (or, for a box left empty, what is stored). Save the settings to keep the credentials.') . '</div>
-                        <div class="pg-edoc-test-result mt-3"></div>
+                        <div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
                     </div>
                     <div class="col-12">
                         <div class="form-field">
@@ -448,7 +448,7 @@ $pg_settings_cards[] = '
                                                                                         <button type="button" class="btn btn-solid theme-primary pg-edoc-test" data-pg-fields="parasut_" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/parasut_connect.php"><i class="bi bi-plug me-3"></i>' . lang('Connect') . '</button>
                                                                                     </div>
                                                                                     <div class="form-text">' . lang('A code works once and for a few minutes. Saving the page with a code in the box connects too. No Paraşüt password is stored this way.') . '</div>
-                                                                                    <div class="pg-edoc-test-result mt-3"></div>
+                                                                                    <div class="pg-edoc-test-result mt-3" role="status" aria-live="polite"></div>
                                                                                 </div>
                                                                             </div>
                                                                         </details>

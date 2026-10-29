@@ -147,6 +147,8 @@
     "Each code signs you in once if you lose your passkey. Keep them somewhere safe; they are not shown again.": "Geçiş anahtarınızı kaybederseniz her kod bir kez oturum açmanızı sağlar. Kodları güvenli bir yerde saklayın; yeniden gösterilmezler.",
     "Each code signs you in once if you lose your phone. Keep them somewhere safe; they are not shown again.": "Telefonunuzu kaybederseniz her kod bir kez oturum açtırır. Güvenli bir yerde saklayın; bir daha gösterilmezler.",
     "Each column of the file becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.": "Dosyanın her sütunu, değerlerinin gösterdiği türde yeni tablonun bir sütunu olur. Ad ya da türü değiştirin veya bir sütunu dışarıda bırakın.",
+    "Each column of the note's table becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.": "Not tablosunun her sütunu, değerlerinin gösterdiği türde yeni tablonun bir sütunu olur. Bir adı ya da türü değiştirin veya bir sütunu dışarıda bırakın.",
+    "Each column of the note's table fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.": "Not tablosunun her sütunu, tablodaki aynı adlı sütunu doldurur; başka birini seçin ya da dışarıda bırakın. Tablonun kabul etmediği satırlar sonra listelenir.",
     "Each comment follows the comment settings of its own page.": "Her yorum kendi sayfasının yorum ayarlarına uyar.",
     "Each copy opens on its due day.": "Her kopya bitiş gününde açılır.",
     "Each copy opens on its start day and runs {var:1} days, like this one.": "Her kopya başlangıç gününde açılır ve bu görev gibi {var:1} gün sürer.",

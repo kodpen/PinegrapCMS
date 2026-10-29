@@ -778,6 +778,29 @@ function pg_panel_shared_component($request, $action)
                      WHERE page_id = '$sc_ff_pid'
                      ORDER BY sort_order ASC, id ASC"
             );
+            // A pick list's, radio button's or check box's choices as
+            // options [{label, value}], in their order: the page-record
+            // condition offers them as the compared value. One query.
+            $sc_ff_rows = is_array($sc_ff_rows) ? $sc_ff_rows : array();
+            $sc_ff_ids = array();
+            foreach ($sc_ff_rows as $sc_ff_row) {
+                if (in_array($sc_ff_row['type'], array('pick list', 'radio button', 'check box'), true)) $sc_ff_ids[] = (int)$sc_ff_row['id'];
+            }
+            $sc_ff_opts = $sc_ff_ids ? db_items(
+                "SELECT form_field_id, label, value
+                     FROM form_field_options
+                     WHERE form_field_id IN (" . implode(',', $sc_ff_ids) . ")
+                     ORDER BY sort_order ASC, id ASC"
+            ) : array();
+            $sc_ff_by_field = array();
+            foreach ((array)$sc_ff_opts as $sc_ff_opt) {
+                $sc_ff_by_field[(int)$sc_ff_opt['form_field_id']][] = array('label' => (string)$sc_ff_opt['label'], 'value' => (string)$sc_ff_opt['value']);
+            }
+            foreach ($sc_ff_rows as &$sc_ff_row) {
+                if (!in_array($sc_ff_row['type'], array('pick list', 'radio button', 'check box'), true)) continue;
+                $sc_ff_row['options'] = isset($sc_ff_by_field[(int)$sc_ff_row['id']]) ? $sc_ff_by_field[(int)$sc_ff_row['id']] : array();
+            }
+            unset($sc_ff_row);
             respond(array('status' => 'success', 'fields' => $sc_ff_rows));
             break;
 

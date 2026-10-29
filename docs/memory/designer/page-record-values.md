@@ -21,9 +21,11 @@ description: W17: a value of the page's record printed by an element outside the
 
 ## What does the editor offer?
 - Bind Data outside a widget: section "Show this page's record" (`_sdPageRecordBindRows()`), one select per bindable prop, the record values of the detail widgets the page holds (`_sdPageRecordValueOptions()`); a binding already set stays listed. The canvas shows "[Record: …]".
+- A form item view's own fields by name (#3047): `_sdPageRecordOptions()` adds the opened form's fields from `_formFieldsCache` (asked once, then redrawn) via `_sdPageRecordFieldOptions()`, labelled "Record field: <label>", in both the condition list and Bind Data. Same rules as the server: `SD_PAGE_RECORD_FIELD_TYPES` twins `pg_sw_entity_field_types()`, plain text areas only, office-use out, first of two names stripped alike.
+- A choice field (pick list, radio, check box) carries its options (`list_form_fields` returns `options` [{label, value}] for them); the condition's compared value is then a select of them, an older value kept.
 
 ## Why is caching right?
 - The values depend on the address alone, like the record conditions.
 
 ## Tests?
-- `tests/page_facts_test.php` (`test_page_facts_record_values`), `tests/widget_entity_fields_test.php` (`test_widget_entity_fields_post_values`, `_field_values`); `test_page_facts_record_fields`.
+- `tests/page_facts_test.php` (`test_page_facts_record_values`), `tests/widget_entity_fields_test.php` (`test_widget_entity_fields_post_values`, `_field_values`); `test_page_facts_record_fields`; `tests/page_record_fields_designer_test.php` (twin, builder under Node).

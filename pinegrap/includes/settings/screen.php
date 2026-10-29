@@ -204,6 +204,7 @@ if (!$_POST) {
                     <span class="form-adorn-text" aria-hidden="true"><i class="bi bi-search"></i></span>
                     <input type="search" id="pg_settings_filter" class="form-ghost" placeholder="' . h(lang('Search in this page')) . '" aria-label="' . h(lang('Search in this page')) . '" autocomplete="pg-no-autofill" />
                 </label>
+                <span id="pg_settings_filter_status" class="small fg-secondary visually-hidden" role="status" aria-live="polite" data-pg-count="' . h(lang('{var:1} of {var:2} sections shown')) . '" data-pg-empty="' . h(lang('No section matches.')) . '"></span>
                 <div class="btn-group btn-group-sm">' . $pg_settings_step_links . '</div>
             </div>
 

@@ -9,7 +9,7 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - Between the two posts the read table waits as JSON in `sys_get_temp_dir()` (`pg_wtimport_*`), its path in `$_SESSION['software']['ws_wtable_import']` with the target table id (0 = new); `ws_wtable_import_kept()` reads back only a file of that prefix in that folder. A new upload or the write drops it.
 
 ## How is the file read?
-- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet through `pg_products_import_to_csv()`, a CSV with the separator its first line uses most, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read, the screen says so). It twins `ws_bulk_file_table()` (bulk_sources.php), which stops at a product card's 200 rows; folding them into one reader with a row cap is a later cleanup.
+- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet through `pg_products_import_to_csv()`, a CSV with the separator its first line uses most, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read, the screen says so). The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
 - First row = column names (`ws_wtable_import_names()`: empty → "Column N", a repeat gets " 2"). More than 50 columns is refused before the confirmation.
 
 ## How is a new table's column type guessed?
@@ -23,5 +23,5 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 - Report (`#ws-wt-import-report`, once, by session): rows added, rows refused with their row number (header = row 1) and each cell's code by column name, first 100 listed. At `too_many_rows` or any non-cell refusal the rest counts as refused and the import stops.
 - `ws_wtable_row_announce_quiet(true)` for the run: no `workspace.wtable.row.*` event per row (api/ key rule); the catalogue text says imports are not announced.
 
-## What is left out?
-- API/MCP route for an import; a note's table block (T6b); starters (T6c) — `plans/workspace-canvas-workflow-tables.md`.
+## What else comes in this way?
+- A note's table block (T6b, #3044): `workflow-table-import-notes.md`. Starters on the New table card (T6c): `workflow-table-starters.md`. Still missing: an API/MCP import route (`workflow-tables-later.md`).

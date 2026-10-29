@@ -874,7 +874,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
                 </button>
             </div>
         </div>
-        <div id="unsplash_status" class="fg-secondary small mb-3"></div>
+        <div id="unsplash_status" class="fg-secondary small mb-3" role="status" aria-live="polite"></div>
         <div id="unsplash_results" class="row row-cols-2 sm:row-cols-3 md:row-cols-4 lg:row-cols-5 xl:row-cols-6 g-5"></div>
         <div id="unsplash_load_more" class="text-center mt-5" style="display:none">
             <button class="btn btn-outline theme-secondary btn-sm" type="button" onclick="esiUnsplashSearch(true)">
@@ -918,6 +918,15 @@ var ESI_UNSPLASH_KEY  = ' . json_encode(UNSPLASH_ACCESS_KEY) . ';
 var ESI_CK_FUNC_NUM   = ' . json_encode(h($_GET['CKEditorFuncNum'] ?? '')) . ';
 var ESI_SINGLE_IMAGE  = ' . (($_GET['SingleImage'] ?? '') ? 'true' : 'false') . ';
 var ESI_FILE_INPUT    = ' . json_encode(h($_GET['file_input_name'] ?? '')) . ';
+var ESI_RESULTS       = ' . json_encode(lang('{var:1} result(s)'), JSON_HEX_TAG | JSON_HEX_AMP) . ';
+var ESI_THOUSANDS     = ' . json_encode(pg_number_separators()['thousands'], JSON_HEX_TAG | JSON_HEX_AMP) . ';
+
+// "1.234 sonuç": the count with the thousands separator of the panel, in the
+// translated template.
+function esiResultCount(total) {
+    var digits = String(Math.round(Number(total) || 0)).replace(/\\B(?=(\\d{3})+(?!\\d))/g, ESI_THOUSANDS);
+    return ESI_RESULTS.replace(\'{var:1}\', digits);
+}
 var _unsplashPage     = 1;
 var _unsplashQuery    = \'\';
 var _unsplashPopularLoaded = false;
@@ -960,7 +969,7 @@ function esiUnsplashPopular(loadMore) {
                 document.getElementById(\'unsplash_load_more\').style.display = \'none\';
                 return;
             }
-            status.textContent = res.total ? res.total + \' ' . lang('result(s)') . '\' : \'\';
+            status.textContent = res.total ? esiResultCount(res.total) : \'\';
             esiRenderUnsplash(res.data);
             // Show "Load More" as long as a full page was returned
             document.getElementById(\'unsplash_load_more\').style.display =
@@ -993,7 +1002,7 @@ function esiUnsplashSearch(loadMore) {
                 document.getElementById(\'unsplash_load_more\').style.display = \'none\';
                 return;
             }
-            status.textContent = data.total + \' ' . lang('result(s)') . '\';
+            status.textContent = esiResultCount(data.total);
             esiRenderUnsplash(data.results);
             document.getElementById(\'unsplash_load_more\').style.display =
                 (_unsplashPage < data.total_pages) ? \'\' : \'none\';

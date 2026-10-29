@@ -138,7 +138,7 @@ $fact = function ($label, $value) {
 
 echo
 pg_page_shell([
-    'title' => ($name !== '') ? $name : lang('Cheques and notes'),
+    'title' => ($name !== '') ? h($name) : lang('Cheques and notes'),
     'extra classes' => 'erp erp_cash',
     'icon' => 'erp',
     'heading' => h($name) . ' <span class="badge theme-' . h($state[1]) . ' ms-1 align-middle fs-md">' . h($state[0]) . '</span>',

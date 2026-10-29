@@ -279,7 +279,7 @@ function pg_dashboard_widget_4($request, $user)
                 && pg_chat_can_pair($user['role'], $eg_person['user_role'])
             ) {
                 $eg_chat_icon = '
-                    <button type="button" class="btn btn-sm p-0 border-0 ms-1 flex-shrink-0 position-relative z-2 fg-body"
+                    <button type="button" class="btn btn-sm px-2 py-1 border-0 ms-1 flex-shrink-0 position-relative z-2 fg-body"
                        aria-label="' . h(lang('Start Chat')) . '" title="' . h(lang('Start Chat')) . '"
                        data-pg-focus-key="chat-with-' . (int) $eg_person['id'] . '"
                        onclick="if (window.pgChatOpenWith) { window.pgChatOpenWith(' . (int) $eg_person['id'] . '); }"><i class="bi bi-chat-text" aria-hidden="true"></i></button>';

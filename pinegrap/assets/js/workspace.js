@@ -8321,6 +8321,12 @@
                 setHtml(line, message.html);
                 line.appendChild(el('span', 'ms-3', message.time));
 
+                // A flow run started from the composer: its flag, following
+                // the run.
+                if (message.flow_run && window.PGWsFlowFlag) {
+                    line.appendChild(self.flowRunCard(message.flow_run));
+                }
+
                 return line;
             }
 
@@ -10600,6 +10606,192 @@
 
         // ── Polls ──
 
+        // Add › Start a flow: the flows the person may start in this
+        // channel (ws_flows_runnable_in()), each with its last run's flag.
+        flowStarter: function () {
+            var self = this;
+            var channel = self.channel;
+            var node = offcanvas('ws-flow-start', t('fl_here_start'));
+            var body = clear(node.querySelector('.drawer-body'));
+            var list = el('div', 'ws-flow-start-list');
+
+            node.querySelector('.drawer-footer').classList.add('d-none');
+            body.appendChild(el('p', 'small fg-secondary', t('fl_here_help', channel.name)));
+            body.appendChild(list);
+            list.appendChild(el('div', 'ws-empty', t('loading')));
+            showOffcanvas(node);
+
+            api('ws_flow_list', { runnable_in: channel.id }).then(function (data) {
+                clear(list);
+
+                if (!data.flows.length) {
+                    list.appendChild(el('div', 'ws-empty', t('fl_here_none')));
+                    return;
+                }
+
+                data.flows.forEach(function (flow) {
+                    var item = el('div', 'ws-flow-start-item');
+                    var row = el('div', 'd-flex align-items-center gap-3');
+                    var go = button('btn btn-sm btn-solid theme-primary', t('fl_run_do'), 'bi-play-fill');
+
+                    row.appendChild(el('b', 'ws-grow', flow.name));
+                    row.appendChild(go);
+                    item.appendChild(row);
+
+                    if (flow.last_run) {
+                        item.appendChild(window.PGWsFlowFlag.runFlag(flow.last_run, { key: 'ws-start-' + flow.id, label: t('fl_flag_last') }));
+                    }
+
+                    go.addEventListener('click', function () {
+                        self.startFlowHere(flow, go, node);
+                    });
+                    list.appendChild(item);
+                });
+            }).catch(function (error) {
+                clear(list);
+                fail(error);
+            });
+        },
+
+        // Starts a flow from the drawer, asked first as the canvas asks. The
+        // token stays with the flow until the server answers, so a start sent
+        // again after a lost answer gets the run the first one started.
+        startFlowHere: function (flow, control, node) {
+            var self = this;
+            var channelId = self.channel.id;
+
+            if (control.disabled) {
+                return;
+            }
+
+            control.disabled = true;
+
+            ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
+                if (!yes) {
+                    control.disabled = false;
+                    return null;
+                }
+
+                flow.startToken = flow.startToken || flowStartToken();
+
+                // start_token, not token: api() sends the CSRF token as token.
+                return api('ws_flow_run_start', { flow_id: flow.id, channel_id: channelId, start_token: flow.startToken }).then(function (data) {
+                    flow.startToken = null;
+                    hideOffcanvas(node);
+                    toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');
+
+                    if (self.channel && (self.channel.id === channelId)) {
+                        self.sync();
+                    }
+                });
+            }).catch(function (error) {
+                if (error && (error.field !== undefined)) {
+                    flow.startToken = null;
+                }
+
+                control.disabled = false;
+                fail(error);
+            });
+        },
+
+        // The card under a run's line: the run's flag (workspace_flow_flag.js),
+        // read again while the run is open, with Stop for whoever may cancel
+        // it and Open the run for whoever reaches its flow.
+        flowRunCard: function (card) {
+            var box = el('div', 'ws-flow-run-card');
+            var key = 'ws-run-' + card.run.id;
+            var waited = 0;
+
+            function draw() {
+                var focused = (document.activeElement && box.contains(document.activeElement)) ? document.activeElement.getAttribute('data-refocus') : null;
+                var unfolded = !!box.querySelector('.wsf-flag-fold[aria-expanded="true"]');
+
+                clear(box);
+                box.appendChild(window.PGWsFlowFlag.runFlag(card.run, {
+                    key: key,
+                    label: t('fl_run_card', card.flow_name),
+                    open: card.can_open ? function (run) {
+                        window.location.href = CFG.urls.flows + '?flow=' + run.flow_id + '&run=' + run.id;
+                    } : null,
+                    stop: stop
+                }));
+
+                var fold = box.querySelector('.wsf-flag-fold');
+
+                if (unfolded && fold) {
+                    fold.click();
+                }
+
+                var again = focused ? box.querySelector('[data-refocus="' + focused + '"]') : null;
+
+                if (again) {
+                    again.focus();
+                }
+            }
+
+            function took(run) {
+                var keep = {};
+
+                Object.keys(run).forEach(function (name) {
+                    if ((name !== 'steps') && (name !== 'graph')) {
+                        keep[name] = run[name];
+                    }
+                });
+                card.run = keep;
+                draw();
+            }
+
+            function stop(run, control) {
+                ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+                    if (!yes) {
+                        return null;
+                    }
+
+                    control.disabled = true;
+
+                    return api('ws_flow_run_cancel', { run_id: run.id }).then(function (data) {
+                        toast(t('fl_run_cancelled'), 'success');
+                        took(data.run);
+                    });
+                }).catch(function (error) {
+                    control.disabled = false;
+                    fail(error);
+                });
+            }
+
+            // Every few seconds at first, then slower; it stops once the run
+            // ended or the card left the page (a redraw makes a new one).
+            function follow() {
+                if (!flowRunOpen(card.run.status)) {
+                    return;
+                }
+
+                window.setTimeout(function () {
+                    if (!box.isConnected) {
+                        return;
+                    }
+
+                    if (document.hidden) {
+                        follow();
+                        return;
+                    }
+
+                    waited++;
+                    api('ws_flow_run_get', { run_id: card.run.id }).then(function (data) {
+                        took(data.run);
+                        follow();
+                    }).catch(function () {
+                        follow();
+                    });
+                }, flowRunWait(waited));
+            }
+
+            draw();
+            follow();
+
+            return box;
+        },
+
         pollNode: function (message) {
             var self = this;
             var poll = message.poll;
@@ -11576,6 +11768,10 @@
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
                     } } : null,
+                    // A flow the member may start here; the run opens its
+                    // tasks in this channel and leaves its card in it.
+                    (CFG.flows && CFG.flows.nav && !self.isThread && !self.era && ((self.channel.kind === 'public') || (self.channel.kind === 'private')))
+                        ? { icon: 'bi-play-circle', label: t('fl_here_start'), action: function () { self.flowStarter(); } } : null,
                     // A scheduled job is a flow with a time start: a new one
                     // posting here, opened on the canvas.
                     (CFG.scheduled && !self.isThread) ? { icon: 'bi-alarm', label: t('sa_flow_new'), action: function () {
@@ -15909,6 +16105,33 @@
     // A new flow made from a draft, a scheduled action or Add › Scheduled
     // flow, opened on the canvas; what the flow keeps otherwise (left) is
     // told first, and stay runs when the person stays where they are.
+    // Is a run still going (running or waiting)?
+    function flowRunOpen(status) {
+        return (status === 'running') || (status === 'waiting');
+    }
+
+    // How long a run's card waits before it reads the run again: 4 s for
+    // the first minute, 15 s for the next ten, then a minute.
+    function flowRunWait(reads) {
+        return (reads < 15) ? 4000 : ((reads < 55) ? 15000 : 60000);
+    }
+
+    // A token for one start from the composer (ws_flow_start_token_valid():
+    // letters, digits and . _ : -, at most 56).
+    function flowStartToken() {
+        var random = new Uint8Array(12);
+
+        if (window.crypto && window.crypto.getRandomValues) {
+            window.crypto.getRandomValues(random);
+        } else {
+            for (var i = 0; i < random.length; i++) {
+                random[i] = Math.floor(Math.random() * 256);
+            }
+        }
+
+        return 'channel.' + Array.prototype.map.call(random, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
+    }
+
     function flowOpened(result, stay) {
         var go = function () {
             window.location.href = CFG.urls.flows + '?flow=' + result.flow_id;
