@@ -1,0 +1,20 @@
+{
+  "object_state": "VALID",
+  "status": "SUCCESS",
+  "object_created": "2026-10-29T09:12:08.441Z",
+  "object_updated": "2026-10-29T09:12:09.010Z",
+  "object_id": "915d94940ea54c3a80cbfa328722f5a1",
+  "object_owner": "shop@example.com",
+  "test": true,
+  "rate": "a7e5b9c39c3b4b9a8e0a4b5b7c5d6e1f",
+  "tracking_number": "01234567890123",
+  "tracking_status": "UNKNOWN",
+  "eta": "2026-11-02T00:00:00Z",
+  "tracking_url_provider": "https://tracking.dpd.de/parcelstatus?query=01234567890123&locale=en_DE",
+  "label_file_type": "PDF_A6",
+  "label_url": "https://shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf?Signature=AyiitLq2g%2F2R9fjboCTVxi5z7JQ%3D&Expires=1793273529&AWSAccessKeyId=AKIAJGLCC5MYLLWIG42A",
+  "commercial_invoice_url": null,
+  "messages": [],
+  "metadata": "Order 10042",
+  "parcel": "ec952343dd4843c39b42aca9a8d1ce3c"
+}

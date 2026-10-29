@@ -20,7 +20,7 @@ description: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/
 - A Site Log line on share, level change, removal (API inside `ws_api_as_owner()`). A person newly shared with gets bell row `flow_shared` (`separate`, sentence in `ws_scheduled_notices`). Removal leaves it: ws_inbox has no flow id.
 
 ## Lists, panel actions, API?
-- `ws_flows_list()` adds shared flows and reads their shares in one query; the canvas lists others' flows under "Shared with me and my channels" with the level. `ws_flows_nav_visible()` counts shares.
+- `ws_flows_list()` adds shared flows and reads their shares in one query; the flow list shows the level under another person's flow's name. `ws_flows_nav_visible()` counts shares.
 - Panel actions `ws_flow_shares`, `ws_flow_share_set`, `ws_flow_share_remove` answer the API's shape, `manage`, `owner_id`.
 - GET `/workspace/flows/{id}/shares` (workspace:read, a tool); POST `/shares` (201 new, 200 changed), DELETE `/shares/{share_id}` and POST `/delete`: dry_run, `'mcp' => false`, `ws_api_own_words_only()` (key, OAuth refused), refuse `ws_api_is_assistant()`. Object WorkspaceFlowShare (level, effective_level, name). Who reaches the flow reads its shares; a channel they do not read is left out (nameless to the owner).
 

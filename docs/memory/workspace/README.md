@@ -92,9 +92,9 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-composer-later.md: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite): the owner's answers that still bind and what is left for later
 - workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 - workspace-crm-lead-intake.md: Lead step and box (CRM seams 6, PR #2092): a submitted form's customer into their channel or a new New customer channel; contact by forms.contact_id or e-mail, hourly cap
-- workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams slice 3, #1666): the API's customer summary through the ws_channel_customer panel action, addresses per row, ids kept back
+- workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams 3, #1666): the customer summary via the ws_channel_customer action, addresses per row, ids kept back, New cart quote (#3197)
 - workspace-customer-history.md: A channel's customer history (CRM seams slice 4, #1681): union read of orders, invoices, quotes, forms and Workspace tags, rights per source, paging, API route, card part
-- workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote seam
+- workspace-customer-summary.md: A channel's customer summary (GET /workspace/channels/{id}/customer): identity, orders, ERP balance, sales quotes, forms; rights and key scopes per section, money, the cart quote section
 - workspace-date-fields.md: Workspace date and time fields on the one control: pgDateField(), the watcher that draws them, script-written values, the control in the lazy record loader (#2867)
 - workspace-discussion-follow-screen.md: Stop / Follow again for the assistant a discussion follows (PR #2997, answer 4a of #2419): header line, channel line, system line, API follow fields and endpoint
 - workspace-discussion-follow.md: The assistant a discussion follows (ws_threads.follow_agent, step 11.0.113, decision #2419, PR #2924): who is followed, which message asks it, the no-pile-up rule, scheduled sends
@@ -147,6 +147,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
+- workspace-flows-scheduled-section.md: Staff's Scheduled actions as a section of the Flows screen (?view=scheduled): the entry under the flow list, scheduledList(), Show on canvas
 - workspace-flows-scheduled-ways-in.md: Scheduled work opens on the flow canvas (merge plan 4b, R2): Add › Scheduled flow's mini window (C3, #3066), Duplicate, Edit retrying the conversion; no New on the list, no note toolbar entry
 - workspace-flows-shares.md: Flows shared with the team (F7, ws_flow_shares, 11.0.83): view/run/edit, who manages and publishes, access, runs, Claude's reach, lists, bell row, panel actions, API routes, the Share dialog
 - workspace-flows-steps.md: Step boxes of a flow (steps.php, F4a #1835, F4b #1857, F4b2 #1923, F4b3 #1957): 13 kinds run by ws_scheduled_do(), the MCP and table boxes, outcomes, owner rights, {{node.ID.FIELD}}, never twice

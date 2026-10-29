@@ -248,7 +248,7 @@
         panel.appendChild(foot);
 
         panel._pgAi = {
-            button: button, settings: settings, seq: 0, over: 0, result: null, held: [],
+            button: button, settings: settings, seq: 0, over: 0, result: null, held: [], askedTone: '', focusBack: null,
             adapter: button.pgAiWrite || null,
             tone: tone, hint: hint, body: body, use: use, again: again
         };
@@ -257,10 +257,43 @@
             closePanel(panel, true);
         });
 
-        tone.addEventListener('change', function () {
+        // A pointer pick asks at once. An arrow key on a closed select
+        // changes the value and fires change on every step, and each request
+        // takes a draft from the day's quota, so after a navigation key the
+        // tone is asked for on Enter or when the select loses focus.
+        var toneKeyed = false;
+
+        var askTone = function () {
+            toneKeyed = false;
+
+            if (tone.disabled || (tone.value === panel._pgAi.askedTone)) {
+                return;
+            }
+
             lastTone = tone.value;
             ask(panel);
+        };
+
+        tone.addEventListener('keydown', function (event) {
+            if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'PageUp', 'PageDown'].indexOf(event.key) !== -1) {
+                toneKeyed = true;
+            } else if (event.key === 'Enter') {
+                event.preventDefault();
+                askTone();
+            }
         });
+
+        tone.addEventListener('pointerdown', function () {
+            toneKeyed = false;
+        });
+
+        tone.addEventListener('change', function () {
+            if (!toneKeyed) {
+                askTone();
+            }
+        });
+
+        tone.addEventListener('blur', askTone);
 
         again.addEventListener('click', function () {
             ask(panel);
@@ -341,12 +374,30 @@
         }
     }
 
+    // Disabling the focused control (the tone, "Try again") drops focus to
+    // the page, so the control that had it gets it back when the request
+    // ends, unless focus has gone somewhere else meanwhile.
     function setBusy(panel, busy) {
         var state = panel._pgAi;
+        var active = document.activeElement;
+
+        if (busy && active && (active !== panel) && panel.contains(active)) {
+            state.focusBack = active;
+        }
 
         state.again.disabled = busy;
         state.tone.disabled = busy;
         state.use.disabled = busy || !state.result;
+
+        if (!busy && state.focusBack) {
+            active = document.activeElement;
+
+            if (panel.parentNode && (!active || (active === document.body) || (active === state.focusBack))) {
+                state.focusBack.focus();
+            }
+
+            state.focusBack = null;
+        }
     }
 
     // What is going on, with a spinner: writing, a download, a translation.
@@ -450,6 +501,7 @@
 
         releaseHeld(state);
         state.result = null;
+        state.askedTone = state.tone.value;
         setBusy(panel, true);
         showStatus(panel, text);
 

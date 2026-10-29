@@ -209,6 +209,16 @@
         ['draft', 'fl_chip_draft']
     ];
 
+    // The palette's groups in their order, with their headings.
+    var PALETTE_GROUPS = [
+        ['start', 'fl_group_start'],
+        ['values', 'fl_group_values'],
+        ['logic', 'fl_group_logic'],
+        ['people', 'fl_group_people'],
+        ['message', 'fl_group_message'],
+        ['system', 'fl_group_system']
+    ];
+
     // The box whose line icon stands for a way to start in the flow list.
     var START_BOXES = { time: 'schedule', manual: 'manual', event: 'event', join: 'join' };
 
@@ -245,6 +255,7 @@
         listing: false,     // the flow list shown full width, no flow open
         chip: '',           // the flow list's chip: a way to start, 'draft', '' for all
         query: '',          // what the flow list is searched for
+        paletteQuery: '',   // what the palette is searched for
         space: false,
         drag: null,
         pointers: {},
@@ -759,8 +770,9 @@
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
         ui.app = el('div', 'wsf-app');
-        ui.listCol = el('aside', 'wsf-list');
-        ui.listCol.setAttribute('aria-label', t('fl_nav'));
+        // The palette: the left column of the editor.
+        ui.palette = el('aside', 'wsf-palette');
+        ui.palette.setAttribute('aria-label', t('fl_palette'));
         ui.main = el('div', 'wsf-main');
         ui.side = el('aside', 'wsf-side');
         ui.side.id = 'wsf-side';
@@ -798,9 +810,6 @@
         ui.viewport.appendChild(ui.layer);
 
         ui.empty = el('div', 'wsf-empty d-none', t('fl_empty_canvas'));
-        ui.palette = el('div', 'wsf-palette');
-        ui.palette.setAttribute('role', 'toolbar');
-        ui.palette.setAttribute('aria-label', t('fl_palette'));
         ui.zoom = el('div', 'wsf-zoom');
         ui.zoom.setAttribute('role', 'toolbar');
         ui.zoom.setAttribute('aria-label', t('fl_zoom'));
@@ -820,7 +829,6 @@
         ui.stage = el('div', 'wsf-stage');
         ui.stage.appendChild(ui.viewport);
         ui.stage.appendChild(ui.empty);
-        ui.stage.appendChild(ui.palette);
         ui.stage.appendChild(ui.zoom);
         ui.outlineBox = el('div', 'wsf-outline d-none');
         ui.outlineBox.setAttribute('role', 'region');
@@ -843,7 +851,7 @@
         ui.gallery.setAttribute('aria-label', t('fl_tpl_title'));
         ui.main.appendChild(ui.gallery);
 
-        ui.app.appendChild(ui.listCol);
+        ui.app.appendChild(ui.palette);
         ui.app.appendChild(ui.main);
         ui.app.appendChild(ui.side);
 
@@ -862,105 +870,8 @@
     // ── The list ───────────────────────────────────────────────────────
 
     function drawList() {
-        K.clear(ui.listCol);
-
         if (state.listing) {
             drawRows();
-        }
-
-        [[true, 'fl_list_mine'], [false, 'fl_list_shared']].forEach(function (part) {
-            var flows = state.flows.filter(function (flow) {
-                return flow.mine === part[0];
-            });
-
-            if (!flows.length && !part[0]) {
-                return;
-            }
-
-            ui.listCol.appendChild(el('div', 'wsf-list-title', t(part[1])));
-
-            var list = el('ul', 'list-unstyled mb-5');
-
-            if (!flows.length) {
-                list.appendChild(el('li', 'small fg-secondary px-3', t('fl_none')));
-            }
-
-            flows.forEach(function (flow) {
-                var item = el('li');
-                var link = el('button', 'wsf-list-item' + ((state.flow && state.flow.id === flow.id) ? ' active' : ''));
-                var text = el('span', 'wsf-list-text');
-
-                link.type = 'button';
-                link.appendChild(K.icon('bi-diagram-3'));
-                text.appendChild(el('span', 'wsf-list-name', flow.name));
-
-                // Somebody else's flow says what the person may do with it.
-                if (!flow.mine && LEVELS[flow.access]) {
-                    text.appendChild(el('span', 'wsf-list-level', t(LEVELS[flow.access])));
-                }
-
-                link.appendChild(text);
-                link.appendChild(statusBadge(flow, true));
-
-                if (state.flow && state.flow.id === flow.id) {
-                    link.setAttribute('aria-current', 'true');
-                }
-
-                // The list is drawn again once the flow is open, and the
-                // focus comes back to its entry; on a phone the list closes,
-                // and the flow's name takes it.
-                link.setAttribute('data-refocus', 'flow-' + flow.id);
-                link.addEventListener('click', function () {
-                    ui.app.classList.remove('wsf-show-list');
-                    state.refocus = 'flow-' + flow.id + ' name';
-                    open(flow.id);
-                });
-                item.appendChild(link);
-
-                // The flow's last run as its flag; its link opens the flow,
-                // then the run.
-                if (flow.last_run) {
-                    item.appendChild(runFlag(flow.last_run, {
-                        key: 'list-flag-' + flow.id,
-                        label: t('fl_flag_last') + ': ' + flow.name,
-                        open: function (run) {
-                            ui.app.classList.remove('wsf-show-list');
-                            ((state.flow && state.flow.id === flow.id) ? Promise.resolve() : open(flow.id)).then(function () {
-                                openLastRun(run);
-                            });
-                        }
-                    }));
-                }
-
-                list.appendChild(item);
-            });
-
-            ui.listCol.appendChild(list);
-        });
-
-        // Staff's scheduled actions: one entry, the section it opens.
-        if (FL.scheduled) {
-            var item = el('li');
-            var link = el('button', 'wsf-list-item' + ((state.section === 'scheduled') ? ' active' : ''));
-            var list = el('ul', 'list-unstyled mb-5 pt-3 border-top');
-
-            link.type = 'button';
-            link.appendChild(K.icon('bi-alarm'));
-            link.appendChild(el('span', 'wsf-list-text', t('sa_title')));
-            link.setAttribute('data-refocus', 'scheduled');
-
-            if (state.section === 'scheduled') {
-                link.setAttribute('aria-current', 'true');
-            }
-
-            link.addEventListener('click', function () {
-                ui.app.classList.remove('wsf-show-list');
-                state.refocus = 'scheduled';
-                showScheduled();
-            });
-            item.appendChild(link);
-            list.appendChild(item);
-            ui.listCol.appendChild(list);
         }
     }
 
@@ -1240,6 +1151,7 @@
         ui.gallery.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
+        ui.app.classList.add('wsf-no-palette');
         K.clear(ui.side);
         K.clear(ui.boxes);
         drawEdges();
@@ -1282,7 +1194,6 @@
             window.clearTimeout(state.saveTimer);
             showNone();
             listing(false);
-            listToggle();
             state.section = 'scheduled';
 
             try {
@@ -1300,7 +1211,6 @@
             newFlowButton();
             flowsButton();
             K.scheduledList(ui.scheduled);
-            listToggle();
             drawList();
             refocus();
         }).catch(K.fail);
@@ -1749,7 +1659,6 @@
             showScheduled();
         });
         ui.bar.appendChild(back);
-        listToggle();
         ui.bar.appendChild(el('span', 'fw-semibold wsf-name-text', item.name));
         ui.bar.appendChild(el('span', 'ws-sa-state ws-sa-state-' + item.status, item.status_label));
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
@@ -2010,17 +1919,6 @@
         ui.bar.appendChild(back);
     }
 
-    function listToggle() {
-        var toggle = K.button('btn btn-sm btn-ghost md:d-none', t('fl_nav'), 'bi-list-ul');
-
-        toggle.setAttribute('aria-expanded', ui.app.classList.contains('wsf-show-list') ? 'true' : 'false');
-        toggle.addEventListener('click', function () {
-            var shown = ui.app.classList.toggle('wsf-show-list');
-            toggle.setAttribute('aria-expanded', shown ? 'true' : 'false');
-        });
-        ui.bar.appendChild(toggle);
-    }
-
     // A flow that may be run now: live, published, and the person's to edit
     // or to run (ws_flow_run_start_check() decides the rest).
     function runnable() {
@@ -2095,7 +1993,6 @@
         }
 
         flowsButton();
-        listToggle();
 
         if (state.edit) {
             ui.name = el('input', 'form-control form-control-sm wsf-name');
@@ -3176,51 +3073,130 @@
         });
     }
 
-    // The buttons that add a box; on the canvas they may also be dragged to
-    // where the box should go.
+    // The buttons that add a box; in the palette they may also be dragged
+    // to where the box should go.
     function paletteButtons(className, draggable) {
-        var started = state.graph.nodes.some(function (node) { return node.kind === 'manual'; });
-
         return paletteItems().map(function (item) {
-            var add = K.button(className, t(item[1]));
-
-            add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
-
-            // One box starts a flow; a second would be a problem to fix.
-            if ((item[0] === 'manual') && started) {
-                add.disabled = true;
-                add.title = t('fl_one_start');
-            }
-
-            add.addEventListener('click', function () { addItem(item[0]); });
-
-            // The outline's buttons take the focus when the last box there
-            // is removed.
-            if (!draggable) {
-                add.setAttribute('data-refocus', 'outline-add-' + item[0]);
-            }
-
-            if (draggable) {
-                add.draggable = true;
-                add.addEventListener('dragstart', function (event) {
-                    event.dataTransfer.setData('text/plain', 'wsf:' + item[0]);
-                    event.dataTransfer.effectAllowed = 'copy';
-                });
-            }
-
-            return add;
+            return paletteButton(item, className, draggable);
         });
     }
 
-    function drawPalette() {
-        K.clear(ui.palette);
-        ui.palette.classList.toggle('d-none', !state.edit || !state.flow);
+    function paletteButton(item, className, draggable) {
+        var add = K.button(className, t(item[1]));
 
-        if (state.edit) {
-            templateButton(ui.palette);
-            paletteButtons('btn btn-sm btn-ghost wsf-palette-item', true).forEach(function (add) {
-                ui.palette.appendChild(add);
+        add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
+
+        // One box starts a flow; a second would be a problem to fix.
+        if ((item[0] === 'manual') && startNode()) {
+            add.disabled = true;
+            add.title = t('fl_one_start');
+        }
+
+        add.addEventListener('click', function () { addItem(item[0]); });
+        // The outline's buttons take the focus when the last box there is
+        // removed.
+        add.setAttribute('data-refocus', (draggable ? 'palette-add-' : 'outline-add-') + item[0]);
+
+        if (draggable) {
+            add.draggable = true;
+            add.addEventListener('dragstart', function (event) {
+                event.dataTransfer.setData('text/plain', 'wsf:' + item[0]);
+                event.dataTransfer.effectAllowed = 'copy';
             });
+        }
+
+        return add;
+    }
+
+    // The box that starts the flow, null before it has one.
+    function startNode() {
+        return state.graph.nodes.filter(function (node) { return KINDS[node.kind] && (KINDS[node.kind].group === 'start'); })[0] || null;
+    }
+
+    // The palette's groups in their order, each with the items whose name
+    // holds every word searched for; a group with none is left out.
+    function paletteGroups(items, query) {
+        var words = String(query || '').toLowerCase().split(/\s+/).filter(Boolean);
+
+        return PALETTE_GROUPS.map(function (group) {
+            return {
+                group: group[0],
+                items: items.filter(function (item) {
+                    var name = t(item[1]).toLowerCase();
+
+                    return KINDS[item[0]] && (KINDS[item[0]].group === group[0]) && words.every(function (word) { return name.indexOf(word) !== -1; });
+                })
+            };
+        }).filter(function (group) { return group.items.length > 0; });
+    }
+
+    // A group's heading; the start group names the flow's start once it
+    // has one.
+    function paletteHeading(group) {
+        var start = (group === 'start') ? startNode() : null;
+
+        return start ? t('fl_palette_this_flow', t(kindOf(start).name)) : t(PALETTE_GROUPS.filter(function (item) { return item[0] === group; })[0][1]);
+    }
+
+    // The editor's left column: Start from a template (while the flow is
+    // empty), a search field and the boxes to add in their groups. Only
+    // whoever edits the flow has it.
+    function drawPalette() {
+        var shown = !!(state.edit && state.flow);
+
+        K.clear(ui.palette);
+        ui.app.classList.toggle('wsf-no-palette', !shown);
+
+        if (!shown) {
+            return;
+        }
+
+        templateButton(ui.palette);
+
+        var search = el('input', 'form-control form-control-sm wsf-palette-search');
+
+        search.type = 'search';
+        search.value = state.paletteQuery;
+        search.placeholder = t('fl_palette_search');
+        search.setAttribute('aria-label', t('fl_palette_search'));
+        search.setAttribute('data-refocus', 'palette-search');
+        search.addEventListener('input', function () {
+            state.paletteQuery = search.value;
+            drawPaletteGroups();
+        });
+        ui.palette.appendChild(search);
+        ui.paletteGroups = el('div', 'wsf-palette-groups');
+        ui.palette.appendChild(ui.paletteGroups);
+        drawPaletteGroups();
+    }
+
+    function drawPaletteGroups() {
+        var groups = paletteGroups(paletteItems(), state.paletteQuery);
+
+        K.clear(ui.paletteGroups);
+        ui.paletteStart = null;
+
+        groups.forEach(function (group) {
+            var wrap = el('div', 'wsf-palette-group wsf-group-' + group.group);
+            var head = el('h3', 'wsf-palette-head', paletteHeading(group.group));
+
+            head.id = 'wsf-palette-' + group.group;
+            wrap.setAttribute('role', 'group');
+            wrap.setAttribute('aria-labelledby', head.id);
+            wrap.appendChild(head);
+
+            if (group.group === 'start') {
+                ui.paletteStart = head;
+            }
+
+            group.items.forEach(function (item) {
+                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-ghost wsf-palette-item', true));
+            });
+            ui.paletteGroups.appendChild(wrap);
+        });
+
+        if (!groups.length) {
+            ui.paletteGroups.appendChild(el('p', 'small fg-secondary', t('fl_palette_none')));
         }
     }
 
@@ -6366,8 +6342,10 @@
 
         if (structure) {
             // The first box placed, or the last one removed, takes the
-            // template entry away or brings it back.
-            if (!!ui.palette.querySelector('.wsf-palette-template') !== templateOffered()) {
+            // template entry away or brings it back; a start box placed or
+            // removed renames the start group.
+            if ((!!ui.palette.querySelector('.wsf-palette-template') !== templateOffered())
+                || (ui.paletteStart && (ui.paletteStart.textContent !== paletteHeading('start')))) {
                 drawPalette();
             }
 

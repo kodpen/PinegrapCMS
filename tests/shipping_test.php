@@ -513,3 +513,32 @@ function test_shipping_postcode_province_unknown_state()
 	pg_assert_same('', pg_shipping_postcode_province('TR', 'Kadıköy', '06100'));
 	pg_assert_same('', pg_shipping_postcode_province('TR', '', '06100'));
 }
+
+// The European carriers a label service such as Shippo names, each with its
+// own tracking page and no number pattern (their numbers overlap the plain
+// digits and S10 shapes).
+function test_shipping_european_carriers()
+{
+	$carriers = pg_shipping_carriers();
+	$pages = array(
+		'dhl'          => 'https://www.dhl.de/en/privatkunden/pakete-empfangen/verfolgen.html?piececode=',
+		'deutschepost' => 'https://www.deutschepost.de/de/s/sendungsverfolgung.html?piececode=',
+		'dpd'          => 'https://tracking.dpd.de/parcelstatus?query=',
+		'royalmail'    => 'https://www.royalmail.com/track-your-item#/tracking-results/',
+	);
+
+	foreach ($pages as $key => $page) {
+		pg_assert_true(isset($carriers[$key]), $key);
+		pg_assert_same(0, strpos($carriers[$key]['url'], $page), $key . '.url');
+		pg_assert_same(array(), $carriers[$key]['patterns'], $key . '.patterns');
+	}
+
+	pg_assert_same('dhl', pg_shipping_carrier('00340434161094042557', 'DHL Express'), 'alias');
+	pg_assert_same('deutschepost', pg_shipping_carrier('RR123456785DE', 'Deutsche Post'), 'two-word alias');
+	pg_assert_same('royalmail', pg_shipping_carrier('AB123456785GB', 'royal_mail'), 'a Shippo carrier token');
+	pg_assert_same('dpd', pg_shipping_carrier('01234567890123', 'DPD Classic'), 'a word of the code');
+	pg_assert_same('dpd', pg_shipping_carrier('01234567890123', 'Standard', 'DPD'), 'the site default in capitals');
+	pg_assert_contains('piececode=00340434161094042557', get_shipping_tracking_url('00340434161094042557', 'DHL Paket', ''), 'link');
+	pg_assert_same('Royal Mail', get_shipping_carrier_name('AB123456785GB', 'Royal Mail', ''), 'name');
+	pg_assert_false(pg_shipment_number_warning('01234567890123', 'dpd'), 'no pattern, no warning');
+}
