@@ -44,11 +44,13 @@ function test_login_captcha_screen_prints_forgot_password_link_after_form()
 {
 	$body = login_captcha_screen_test_body();
 	$form_end = strpos($body, '</form>');
-	$link = strpos($body, "'/forgot_password.php?send_to='");
+	$links = strpos($body, "' . \$links . '");
 
 	pg_assert_contains('FORGOT_PASSWORD_LINK == true', $body);
 	pg_assert_contains("lang('Forgot password?')", $body);
-	pg_assert_true($form_end !== false && $link !== false && $link > $form_end, 'link after the form');
+	pg_assert_contains("'/forgot_password.php?send_to='", $body);
+	pg_assert_contains('$links = \'\';', $body);
+	pg_assert_true($form_end !== false && $links !== false && $links > $form_end, 'links printed after the form');
 	pg_assert_contains("h(urlencode(\$send_to))", $body);
 }
 
