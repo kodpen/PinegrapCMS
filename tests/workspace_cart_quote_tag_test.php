@@ -97,6 +97,7 @@ function test_workspace_cart_quote_tag_opens_one_quote_with_its_workspace_button
 
 	pg_assert_contains("\$quote_id = is_scalar(\$_GET['id'] ?? null) ? max(0, (int) \$_GET['id']) : 0;", $screen, 'the screen reads ?id=');
 	pg_assert_contains('pg_cart_quote_panel_rows($contact_id, PG_CART_QUOTE_PANEL_LIMIT, $quote_id)', $screen, 'and lists that quote alone');
+	pg_assert_contains("<a href=\"view_cart_quotes.php?id=' . \$id . '\"", $screen, 'each row\'s number opens its quote alone');
 	pg_assert_true((bool) preg_match("/if \\(\\(\\\$quote_id > 0\\) && \\\$rows && [^\\n]*\\) \\{\\s*require_once\\([^\\n]*workspace\\/bootstrap\\.php'\\);\\s*\\\$output_workspace_button = ws_record_button\\(\\\$user, 'cart_quote', \\\$quote_id, /", $screen), 'the Workspace button only for one quote that is there');
 
 	pg_assert_contains("q.id = '\" . (int) \$quote_id . \"'", pg_test_function_source('pg_cart_quote_panel_rows'), 'the list narrowed to the quote');

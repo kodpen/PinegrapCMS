@@ -95,7 +95,7 @@ foreach ($rows as $row) {
     $output_rows .= '
             <tr id="' . $id . '">
                 <td class="align-middle text-start col-reorder-none action-buttons">' . $actions . '</td>
-                <td class="align-middle" data-order="' . $id . '">#' . $id . '<div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div></td>
+                <td class="align-middle" data-order="' . $id . '"><a href="view_cart_quotes.php?id=' . $id . '" aria-label="' . h(lang('Cart quote') . ' #' . $id) . '">#' . $id . '</a><div class="small fg-secondary">' . h((string) $row['token_hint']) . '…</div></td>
                 <td class="align-middle">' . $output_contact . '</td>
                 <td class="align-middle">' . h(lang(array('string' => '{var:1} item(s)', 'vars' => array($quantity)))) . (($names !== array()) ? '<div class="small fg-secondary">' . h(implode(', ', $names)) . '</div>' : '') . '</td>
                 <td class="align-middle"><span class="' . h($badges[$state] ?? 'badge theme-secondary') . '">' . h(pg_cart_quote_state_label($state)) . '</span>' . $output_order . '</td>
