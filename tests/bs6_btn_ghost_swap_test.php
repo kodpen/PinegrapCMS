@@ -2,9 +2,10 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source test for the .btn-ghost to .btn-text.theme-secondary swap in the
- * Workspace and ERP screens (the rich text tool rows included), the designer
- * list and the shared list helpers: the converted files carry no .btn-ghost.
+ * Source test for the .btn-ghost to .btn-text.theme-secondary swap: the
+ * converted Workspace and ERP screens (the rich text tool rows included), the
+ * designer list and the shared list helpers carry no .btn-ghost, and neither
+ * does any other panel file outside the flow canvas and the stylesheet.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -79,4 +80,33 @@ function test_bs6_btn_ghost_swap_designer_and_list_helpers()
 	foreach (array('includes/designer_screen.php', 'includes/fn/output.php') as $path) {
 		pg_assert_same(0, bs6_btn_ghost_test_count($path), $path . ' carries no .btn-ghost');
 	}
+}
+
+function test_bs6_btn_ghost_swap_whole_panel()
+{
+	// Every product file outside the libraries, the flow canvas (its own
+	// work converts it) and the stylesheet that still defines the rules.
+	$skip = array(
+		'assets/js/workspace_flow.js',
+		'assets/js/workspace_flow.min.js',
+		'assets/css/backend.src.css',
+		'assets/css/backend.min.css',
+	);
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
+	$found = array();
+
+	foreach ($iterator as $file) {
+		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
+
+		if (!preg_match('/\.(php|js|css)$/', $path) || strpos($path, 'assets/lib/') === 0 || in_array($path, $skip, true)) {
+			continue;
+		}
+
+		if (bs6_btn_ghost_test_count($path) > 0) {
+			$found[] = $path;
+		}
+	}
+
+	pg_assert_same(array(), $found, 'no panel file carries .btn-ghost');
 }

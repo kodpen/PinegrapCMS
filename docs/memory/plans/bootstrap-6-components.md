@@ -17,7 +17,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 
 ## What did research add (B9k, not owner decisions)?
 - Slice 1 done (#2273): `.ws-cb-progress-bar` to `.progress`, `.pg-chip` to `.chip`, the workspace toast to Toast (`ui/bootstrap-6-own-widget-swaps.md`).
-- `.btn-ghost` to `.btn-text.theme-secondary` is done everywhere but `workspace_flow.js` (#2373, #2479, #2505, #2552). The editor toast (`sdToast`) is on Toast (#2721). Focus ring colour and 3px rings on the v6 tokens (#2561); the other ring widths and offsets are B10 token tuning (owner's visual approval). Guest toast, `.ws-chip`, role cards and status choice wait for B11 (reasons in `ui/bootstrap-6-own-widget-swaps.md`).
+- `.btn-ghost` to `.btn-text.theme-secondary` is done everywhere but `workspace_flow.js` (#2373, #2479, #2505, #2552; `edit_theme_file.php` again in #PRNUM, the test scans every panel file). The editor toast (`sdToast`) is on Toast (#2721). Focus ring colour and 3px rings on the v6 tokens (#2561); the other ring widths and offsets are B10 token tuning (owner's visual approval). Guest toast, `.ws-chip`, role cards and status choice wait for B11 (reasons in `ui/bootstrap-6-own-widget-swaps.md`).
 - Only where screenshots show no change, else in B11: own theme tokens and focus ring to v6 tokens, `.btn-ghost` (285) to `.btn-text.theme-secondary`, own toasts to Toast, `.pg-chip` to `.chip`, pills and `.ws-chip` to `.badge-subtle`, role cards to `form-field-card`, status choice to `label.btn-check.btn-subtle`, `.ws-cb-progress-bar` to `.progress`.
 
 ## What stays as it is?
