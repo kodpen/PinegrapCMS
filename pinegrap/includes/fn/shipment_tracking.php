@@ -25,6 +25,9 @@
  * run, and its parcels wait after its place for the next one. A failed
  * question writes nothing.
  *
+ * Loaded where it is needed: shipment_tracking_job.php, and the Shipping
+ * card's save, which switches the job on (pg_label_settings_save()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
