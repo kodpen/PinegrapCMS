@@ -20,8 +20,10 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 
 - G3 flow-only templates. Done (#2196): new customer, quote approval, text review (`workspace/workspace-flows-template-format.md`).
 
+- G1b AI start of New flow: server function (this PR); the panel route, js flag and AI card in the client half.
+
 ## Where to start?
-- All steps done; the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
+- G1b's client half: after G1b's server function, the panel route, the js flag and the AI card (`workspace/workspace-flow-ai-start.md`). Then the plan closes once open question 1 is answered (its decision goes to `workspace/workspace-flows-template-format.md`).
 
 ## Which questions are answered?
 1. Answered (#2416): yes, in two steps: G3 "Save as template" (a site template row in the built-ins' format; schema when claimed), G4 export and import over the API with dry run.
