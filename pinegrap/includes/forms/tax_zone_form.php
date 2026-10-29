@@ -160,9 +160,9 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options)
                         <div class="row">
                             <div class="col-12 mb-12">
                                 <div class="card my-7 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -179,9 +179,9 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options)
                             </div>
                             <div class="col-12 md:col-6 mb-12">
                                 <div class="card my-7 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Tax Zone Countries') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-1">
@@ -194,9 +194,9 @@ function pg_tax_zone_form_cards($values, $country_options, $state_options)
                             </div>
                             <div class="col-12 md:col-6 mb-12">
                                 <div class="card my-7 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Tax Zone States or Provinces') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-1">

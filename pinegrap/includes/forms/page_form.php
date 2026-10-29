@@ -2561,7 +2561,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
 
         $output_forms_page_type_properties .=
             '<div class="col-12 my-3" id="form_view_directory_form_list_views_row" style="' . $form_view_directory_form_list_views_row_style . '">
-                <h5>' . lang('Form List Views') . '</h5>
+                <h3 class="h5">' . lang('Form List Views') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-body overflow-auto" >
                         ' . $output_form_view_directory_form_list_view_rows . '
@@ -2676,7 +2676,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         
         $output_calendars_page_type_properties =
             '<div class="col-12 my-3" id="calendar_view_calendars_row" style="' . $calendar_view_calendars_row_style . '">
-                <h5>' . lang('Calendars') . '</h5>
+                <h3 class="h5">' . lang('Calendars') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
@@ -2702,7 +2702,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                 <select class="form-control" name="calendar_view_calendar_event_view_page_id" id="calendar_view_calendar_event_view_page_id"><option value="">-' . lang(array('string'=>'Select {var:1}','vars'=>array(lang('calendar event view page')) )) . '-</option>' . select_page(($calendar_view_properties['calendar_event_view_page_id'] ?? ''), 'calendar event view') . '</select>
             </div>
             <div class="col-12 my-3" id="calendar_event_view_calendars_row" style="' . $calendar_event_view_calendars_row_style . '">
-                <h5>' . lang('Calendars') . '</h5>
+                <h3 class="h5">' . lang('Calendars') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-7">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
@@ -2746,9 +2746,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     $output_page_type_selector = 
         '<div class="col-12 md:col-4 lg:col-3 xl:col-2">
             <div class="card my-7 position-sticky" style="top:56px;">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Page Type') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12">
@@ -2770,9 +2770,9 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         '<a name="interactive_page_feature"></a>
         <div class="col-12 collapse" id="options_row">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('System Options') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3" id="layout_type_row" style="' . $layout_type_row_style . '">

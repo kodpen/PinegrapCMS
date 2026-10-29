@@ -53,9 +53,9 @@ function pg_verified_shipping_address_form_card($liveform)
                         <div class="row">
                             <div class="col-12 md:col-8 mb-12">
                                 <div class="card my-7 h-100">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Verified Shipping Address') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-3">

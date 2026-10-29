@@ -34,9 +34,9 @@ function pg_login_region_form_card($liveform, $defaults = false)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
@@ -47,7 +47,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                                 <div class="input-group-text">' . h('</login>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-12">' . lang('Not Logged In') . '</h5>
+                                        <h3 class="h5 mt-12">' . lang('Not Logged In') . '</h3>
                                         <div class="col-12 my-3">
                                             <label for="not_logged_in_header" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_header', 'id'=>'not_logged_in_header', 'style'=>'height: 200px')) . '
@@ -64,7 +64,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'not_logged_in_footer', 'id'=>'not_logged_in_footer', 'style'=>'height: 200px')) . '
                                             ' . pg_code_editor_attach(array('id' => 'not_logged_in_footer', 'code_type' => 'mixed', 'height' => '200px')) . '
                                         </div>
-                                        <h5 class="mt-12">' . lang('Logged In') . '</h5>
+                                        <h3 class="h5 mt-12">' . lang('Logged In') . '</h3>
                                         <div class="col-12 my-3">
                                             <label for="logged_in_header" class="form-label">' . lang('Header') . '</label>
                                             ' . $liveform->output_field(array('type'=>'textarea', 'name'=>'logged_in_header', 'id'=>'logged_in_header', 'style'=>'height: 200px')) . '

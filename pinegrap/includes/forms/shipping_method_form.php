@@ -640,9 +640,9 @@ function pg_shipping_method_form_cards($values, $zone_options)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 sm:col-6 lg:col-4 my-3">
@@ -677,9 +677,9 @@ function pg_shipping_method_form_cards($values, $zone_options)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Charges') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3 collapse" id="realtime_rate_row">
@@ -718,9 +718,9 @@ function pg_shipping_method_form_cards($values, $zone_options)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Delivery Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -752,12 +752,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             <div class="form-text text-end">' . $time_help . '</div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <h5 class="fg-secondary">' . lang('Handling on') . '</h5>
+                                            <h3 class="h5 fg-secondary">' . lang('Handling on') . '</h3>
                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">' . $day_boxes('handle') . '
                                             </div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <h5 class="fg-secondary mt-5">' . lang('Ships on') . '</h5>
+                                            <h3 class="h5 fg-secondary mt-5">' . lang('Ships on') . '</h3>
                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-auto">' . $day_boxes('ship') . '
                                             </div>
                                         </div>
@@ -792,9 +792,9 @@ function pg_shipping_method_form_cards($values, $zone_options)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Shipping Method Availability') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -829,10 +829,10 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                             </div>
                                         </div>
                                         <div class="col-12 my-3">
-                                            <h5 class="fg-secondary mt-5">' . lang('Available on') . '</h5>
+                                            <h3 class="h5 fg-secondary mt-5">' . lang('Available on') . '</h3>
                                             <div class="row row-cols-1 sm:row-cols-2 md:row-cols-3 lg:row-cols-4 xl:row-cols-5">' . $output_available_days . '
                                             </div>
-                                            <h6><em>' . lang(array('string'=>'For reference, the current site time is {var:1}.','vars'=>date(pg_time_format_code()))) . '</em></h6>
+                                            <div class="h6"><em>' . lang(array('string'=>'For reference, the current site time is {var:1}.','vars'=>date(pg_time_format_code()))) . '</em></div>
                                         </div>
 
                                     </div>
