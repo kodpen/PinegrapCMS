@@ -12,6 +12,9 @@ description: add_calendar_event.php and edit_calendar_event.php draw and check t
 - Create (0): start and end prefilled with the next half hour and one hour later; initial spots row shown; product picker `get_product_options()` (same as `true, 0`).
 - Edit (id): no default times; a stored unpublish 0 shows as empty; a Remaining Spots field; the initial spots row starts hidden and the separate reservations switch re-runs `toggle_calendar_event_recurrence()`, which tells the screens apart by `#number_of_remaining_spots_row`; the stored product stays in the picker.
 
+## How are the repeat fields named?
+- The "Up To:" caption is an `input-group-text`, so the count box `#total_recurrence_number` carries `aria-label` Up To and the unit select `#recurrence_type` `aria-label` Repeat (`tests/field_caption_links_test.php`).
+
 ## What does the edit call change?
 - edit_calendar_event.php passes the posted `id`: the location check then leaves the event itself out (`check_calendar_event_location_availability()` 4th argument) and skips instances listed in `calendar_event_exceptions`. The add call passes `'0'`, which is the function's default.
 

@@ -64,8 +64,8 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 my-3">
                                                     <div class="input-group">
-                                                        <input type="text" name="name" id="name" class="form-control " style="width:70%"/>
-                                                        <select class="form-control" id="type" name="type" required>
+                                                        <input type="text" name="name" id="name" aria-label="' . h(lang('File Name')) . '" class="form-control " style="width:70%"/>
+                                                        <select class="form-control" id="type" aria-label="' . h(lang('File Type')) . '" name="type" required>
                                                             <option value="txt" selected>.txt</option>
                                                             <option value="json">.json</option>
                                                             <option value="svg">.svg</option>

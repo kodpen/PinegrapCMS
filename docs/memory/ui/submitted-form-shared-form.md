@@ -21,3 +21,6 @@ description: The submitted form create and edit screens share includes/forms/sub
 
 ## What happens to a chosen file when the form is sent back?
 - A browser never refills a file box. Before the panel redirect back, both screens call `pg_submitted_form_mark_chosen_files()`: each File Upload field with a chosen file and no error of its own goes into the liveform entry `PG_SUBMITTED_FORM_CHOOSE_AGAIN`, and the markup prints "please choose it again" under that box (tied with `aria-describedby`), then clears the entry. The site's own edit page redirect is left as it is.
+
+## How are the fields named?
+- Text box, text area, pick list and file upload print `<label for>` the field id (`output_field()` prints no id unless given one, so the pick list and the upload pass `'id' => $field['id']`). Radio button and check box groups are a `fieldset` with the question as `legend`; the check box group's hidden field stays inside it, before the options. Date and time rows are left to the date picker work. Test: `tests/field_caption_links_test.php`.

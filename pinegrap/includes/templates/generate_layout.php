@@ -35,6 +35,7 @@ if (!defined('PG_INIT_LOADED')) {
                                         'type' => 'textarea',
                                         'name' => 'layout',
                                         'id' => 'layout',
+                                        'aria-label' => lang('Layout'),
                                         'class' => 'd-none h-100'))?>
                                     <?=pg_code_editor_attach(array(
                                         'id' => 'layout',
