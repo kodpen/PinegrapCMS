@@ -28,7 +28,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 5. F5 approval, delay, wait with timeout, retry or skip.
 6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes; F6c workflow mode (#3122).
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md).
-8. F8 MCP box (answer 5): F8a read tool #3000; F8b canvas form #3028; F8c writes propose and wait.
+8. F8 MCP box (answer 5): F8a read tool #3000; F8b canvas form #3028; F8c writes propose and wait: F8c-1 server done #3144, F8c-2 canvas form.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations taken (owner: decide without asking); 8 below.
@@ -42,4 +42,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- F8c (workspace/workspace-flows-mcp-box.md); F6b next. Values: plans/workspace-flows-data-passing.md. Read workspace/README.md.
+- F8c-2 (workspace/workspace-flows-mcp-box-writes.md); F6b next. Values: plans/workspace-flows-data-passing.md.
