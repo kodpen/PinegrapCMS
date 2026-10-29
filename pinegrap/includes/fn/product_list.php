@@ -733,7 +733,7 @@ function pg_product_list_row($product, $view, $context)
     }
 
     $cells = array(
-        pg_list_cell('<input class="check" type="checkbox" name="products[]" value="' . $id . '" class="checkbox" />', 'select-all align-middle text-start'),
+        pg_list_cell('<input class="check" type="checkbox" name="products[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($product['name'])))) . '" />', 'select-all align-middle text-start'),
         pg_list_cell($buttons, 'align-middle text-start action-buttons'),
     );
 
@@ -744,7 +744,7 @@ function pg_product_list_row($product, $view, $context)
     foreach ($view['columns'] as $code) {
         switch ($code) {
             case 'id':
-                $cells[] = pg_list_cell(h($product['name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_bar($product) . '</a>', $list_cells['name']['class'], array('data-pg-cell' => 'name'));
+                $cells[] = pg_list_cell(h($product['name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($product)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=product&amp;id=' . $id . get_token_query_string_field() . '">' . pg_seo_render_bar($product) . '</a>', $list_cells['name']['class'], array('data-pg-cell' => 'name'));
                 break;
 
             case 'short_description':

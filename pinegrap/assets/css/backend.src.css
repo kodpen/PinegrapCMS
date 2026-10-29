@@ -4682,8 +4682,10 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   --bs-btn-hover-color: var(--pg-primary-ink);
 }
 
-/* One action per row on a phone. Three long labels side by side cannot fit, and
-   wrapping them inside a welded group is what made this unreadable. */
+/* Two actions per row on a phone. Three long labels side by side cannot fit,
+   but one per row turned a four- or five-action bar into a 190-240px sticky
+   column covering the form. Each action takes half a row less half the gap; an
+   odd last action, or one whose label is too long for half, takes the row. */
 @media (max-width: 575.98px) {
   nav.buttons.navigation {
     margin-right: 0.5rem;
@@ -4691,18 +4693,19 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   }
 
   nav.buttons.navigation > .container {
-    flex-direction: column;
+    flex-direction: row;
+    flex-wrap: wrap;
     align-items: stretch;
     width: 100%;
   }
 
   nav.buttons.navigation .btn {
-    width: 100%;
+    flex: 1 1 calc(50% - 0.25rem);
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }
 
-  /* Full width leaves no side gutter to keep clear, so the bar stacks above the
+  /* A full-width bar leaves no side gutter to keep clear, so it sits above the
      bubble instead of beside it. The inline bottom:.5rem on 140 pages is what
      the !important is for. */
   body:has(#pg-chat-root) nav.buttons.navigation {

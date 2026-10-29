@@ -19,4 +19,7 @@ description: Owner decision for panel edit screens: a wide screen is not spent o
 - Short cards are paired in one row or moved into the status column.
 - A screen that departs from the pattern says why in a code comment.
 
+## How does the save bar sit on a phone?
+- Below 576px the shared rule in `backend.src.css` (`nav.buttons.navigation`) lays the actions two per row (`flex: 1 1 calc(50% - 0.25rem)`); an odd last action or a label too long for half takes the row. One per row made a 4–5 action bar a 190–240px sticky column over the form (`edit_file.php`, `view_orders.php` with rows ticked). Fix it there, never in a screen's markup. With the chat bubble the bar sits `--pg-chat-clearance` higher.
+
 Related: docs/memory/ui/admin-screen-toolbar.md
