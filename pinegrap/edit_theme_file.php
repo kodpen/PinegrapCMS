@@ -123,13 +123,13 @@ if (!$_POST) {
         
         // if this is a system theme then output the edit theme button
         if ($row[0] > 0) {
-            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-palette me-2" aria-hidden="true"></i>' . lang('Edit Theme') . '</button>';
-            $output_export_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i>' . lang('Export') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-palette me-2" aria-hidden="true"></i>' . lang('Edit Theme') . '</button>';
+            $output_export_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_file.php?id=' . urlencode($_GET['id']) . '&export=true')) . '\'"><i class="bi bi-box-arrow-up me-2" aria-hidden="true"></i>' . lang('Export') . '</button>';
             $output_download_file_button = '';
         } else {
-            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-filetype-css me-2" aria-hidden="true"></i>' . lang('Edit CSS') . '</button>';
+            $output_edit_theme_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.location=\'' . h(escape_javascript(PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . urlencode($_GET['id']) . '&send_to=' . urlencode(get_request_uri()) . '&from=edit_theme_file')) . '\'"><i class="bi bi-filetype-css me-2" aria-hidden="true"></i>' . lang('Edit CSS') . '</button>';
             $output_export_button = '';
-            $output_download_file_button = '<button type="button" class="btn btn-sm btn-ghost" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang('Download File') . '</button>';
+            $output_download_file_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" onclick="window.open(\'' . h(escape_javascript(PATH . encode_url_path($file_name))) . '\')"><i class="bi bi-file-earmark-arrow-down me-2" aria-hidden="true"></i>' . lang('Download File') . '</button>';
         }
 
         // A theme recorded here but missing from the disk says so before it is
