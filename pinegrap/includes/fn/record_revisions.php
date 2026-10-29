@@ -594,7 +594,7 @@ function pg_record_revision_compare($fields, $revision, $current)
             'type'     => (string) $field['type'],
             'revision' => $old,
             'current'  => $new,
-            'changed'  => ($old != $new),
+            'changed'  => ($old !== $new),
         );
     }
 
@@ -718,4 +718,366 @@ function pg_record_revision_value_text($list, $file_names)
     $text = implode(', ', $parts);
 
     return (mb_strlen($text) > 300) ? mb_substr($text, 0, 300) . '…' : $text;
+}
+
+/**
+ * The History section shows the newest revisions of an item, up to this many.
+ */
+define('PG_RECORD_REVISION_HISTORY_ROWS', 50);
+
+/**
+ * Whether an item gets the History section: the table is there and the
+ * item's form is a collection.
+ *
+ * @param int $page_id the item's form (forms.page_id)
+ * @return bool
+ */
+function pg_record_revision_history_enabled($page_id)
+{
+    return pg_record_revisions_ready()
+        && ((int) db_value("SELECT collection FROM custom_form_pages WHERE page_id = '" . (int) $page_id . "' LIMIT 1") === 1);
+}
+
+/**
+ * One revision of an item, or null when the item has no such revision.
+ *
+ * @param int $form_id
+ * @param int $revision_no
+ * @return array|null revision_no, values_json, record_json, user_id, source, created_at
+ */
+function pg_record_revision_get($form_id, $revision_no)
+{
+    if ((int) $form_id <= 0 || (int) $revision_no <= 0 || !pg_schema_has('record_revisions', 'source')) {
+        return null;
+    }
+
+    $row = db_item(
+        "SELECT revision_no, values_json, record_json, user_id, source, created_at
+         FROM record_revisions
+         WHERE form_id = '" . (int) $form_id . "' AND revision_no = '" . (int) $revision_no . "'
+         LIMIT 1");
+
+    return $row ? $row : null;
+}
+
+/**
+ * The fields a revision is compared and restored by, in form order.
+ *
+ * @param int $page_id
+ * @return array form_fields rows: id, label, name, type, wysiwyg
+ */
+function pg_record_revision_form_fields($page_id)
+{
+    return (array) db_items(
+        "SELECT id, label, name, type, wysiwyg
+         FROM form_fields
+         WHERE page_id = '" . (int) $page_id . "' AND type != 'information'
+         ORDER BY sort_order");
+}
+
+/**
+ * The item's values as they are stored now.
+ *
+ * @param int $form_id
+ * @return array pg_record_revision_values()
+ */
+function pg_record_revision_current_values($form_id)
+{
+    return pg_record_revision_values(db_items(
+        "SELECT form_field_id, data, file_id
+         FROM form_data
+         WHERE form_id = '" . (int) $form_id . "'
+         ORDER BY id ASC"));
+}
+
+/**
+ * The names of the files that still exist among some value lists.
+ *
+ * @param array $value_sets lists of pg_record_revision_values() arrays
+ * @return array file id => name
+ */
+function pg_record_revision_file_names($value_sets)
+{
+    $ids = array();
+
+    foreach ((array) $value_sets as $values) {
+        foreach ((array) $values as $list) {
+            $file_id = pg_record_revision_file_id($list);
+
+            if ($file_id > 0) {
+                $ids[$file_id] = $file_id;
+            }
+        }
+    }
+
+    $names = array();
+
+    if ($ids) {
+        foreach ((array) db_items("SELECT id, name FROM files WHERE id IN (" . implode(',', $ids) . ")") as $row) {
+            $names[(int) $row['id']] = (string) $row['name'];
+        }
+    }
+
+    return $names;
+}
+
+/**
+ * Fills the edit form with a revision's values (fields the revision has no
+ * value for are emptied; files and signatures are left to the save) and
+ * returns what the screen says about the fields that are not filled.
+ *
+ * @param liveform $liveform
+ * @param int      $form_id
+ * @param int      $page_id
+ * @param array    $revision pg_record_revision_get()
+ * @param bool     $fill     false when the form already holds posted values
+ * @return array list of notes (HTML, the labels escaped)
+ */
+function pg_record_revision_load($liveform, $form_id, $page_id, $revision, $fill)
+{
+    $fields   = pg_record_revision_form_fields($page_id);
+    $values   = pg_record_revision_decode($revision['values_json']);
+    $current  = pg_record_revision_current_values($form_id);
+    $names    = pg_record_revision_file_names(array($values));
+    $plan     = pg_record_revision_restore_plan($fields, $values, $current, array_keys($names));
+    $notes    = array();
+
+    foreach ($fields as $field) {
+        $id     = (string) (int) $field['id'];
+        $status = isset($plan[$id]) ? $plan[$id] : 'unchanged';
+        $label  = ((string) $field['label'] !== '') ? (string) $field['label'] : (string) $field['name'];
+
+        if ($status === 'value') {
+            if (!$fill) {
+                continue;
+            }
+
+            $value = pg_record_revision_form_value(isset($values[$id]) ? $values[$id] : array());
+
+            if ($field['type'] === 'text area' && (int) $field['wysiwyg'] === 1 && is_string($value)) {
+                $value = prepare_rich_text_editor_content_for_output(pg_sanitize_rich_text($value, 'staff'));
+            }
+
+            $liveform->assign_field_value($field['id'], prepare_form_data_for_output($value, $field['type'], false));
+        } elseif ($status === 'file') {
+            $notes[] = lang(array('string' => '{var:1}: the file of this revision comes back when you save.', 'vars' => array(h($label))));
+        } elseif ($status === 'gone') {
+            $notes[] = lang(array('string' => '{var:1}: not restored, the file of this revision has been deleted since.', 'vars' => array(h($label))));
+        } elseif ($status === 'kept') {
+            $notes[] = lang(array('string' => '{var:1}: not restored, the current value stays.', 'vars' => array(h($label))));
+        }
+    }
+
+    return $notes;
+}
+
+/**
+ * On the save of a loaded revision: points the file fields back at the
+ * revision's files that still exist, unless this save uploaded or removed
+ * a file in that field itself. The current file is not deleted, since
+ * newer revisions still refer to it.
+ *
+ * @param int   $form_id
+ * @param int   $page_id
+ * @param array $revision      pg_record_revision_get()
+ * @param array $skip_field_ids fields whose file this save changed
+ * @return void
+ */
+function pg_record_revision_restore_files($form_id, $page_id, $revision, $skip_field_ids)
+{
+    $form_id = (int) $form_id;
+    $fields  = pg_record_revision_form_fields($page_id);
+    $values  = pg_record_revision_decode($revision['values_json']);
+    $names   = pg_record_revision_file_names(array($values));
+    $plan    = pg_record_revision_restore_plan($fields, $values, pg_record_revision_current_values($form_id), array_keys($names));
+    $skip    = array_map('strval', (array) $skip_field_ids);
+
+    foreach ($fields as $field) {
+        $id = (string) (int) $field['id'];
+
+        if (!isset($plan[$id]) || $plan[$id] !== 'file' || in_array($id, $skip, true)) {
+            continue;
+        }
+
+        $file_id = pg_record_revision_file_id($values[$id]);
+
+        db("DELETE FROM form_data WHERE form_id = '$form_id' AND form_id != '0' AND form_field_id = '$id'");
+        db_q(
+            "INSERT INTO form_data (form_id, form_field_id, file_id, name) VALUES (?, ?, ?, ?)",
+            array((string) $form_id, $id, (string) $file_id, (string) $field['name']));
+    }
+}
+
+/**
+ * The label of a revision's source.
+ *
+ * @param string $source
+ * @return string
+ */
+function pg_record_revision_source_label($source)
+{
+    switch (pg_record_revision_source($source)) {
+        case 'restore':
+            return lang('Restore');
+        case 'api':
+            return lang('API');
+        case 'workspace':
+            return lang('Workspace');
+        default:
+            return lang('Edit');
+    }
+}
+
+/**
+ * The History section of an item's edit screen: its revisions (who, when,
+ * source) with Compare and Load, and the comparison of one revision with
+ * the current values when asked for.
+ *
+ * @param int    $form_id
+ * @param int    $page_id
+ * @param int    $compare_no the revision to compare, 0 for none
+ * @param string $send_to    the page the screen goes back to, '' for none
+ * @return string HTML
+ */
+function pg_record_revision_history_markup($form_id, $page_id, $compare_no, $send_to)
+{
+    $form_id = (int) $form_id;
+    $rows    = db_items(
+        "SELECT record_revisions.revision_no, record_revisions.source, record_revisions.created_at, user.user_username
+         FROM record_revisions
+         LEFT JOIN user ON user.user_id = record_revisions.user_id
+         WHERE record_revisions.form_id = '$form_id'
+         ORDER BY record_revisions.revision_no DESC
+         LIMIT " . PG_RECORD_REVISION_HISTORY_ROWS);
+
+    $base = 'edit_submitted_form.php?id=' . $form_id . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : '');
+    $body = '';
+
+    if (!$rows) {
+        $body = '<p class="fg-secondary mb-0">' . lang('No revisions yet. One is recorded with every save that changes this item.') . '</p>';
+    } else {
+        $list = '';
+
+        foreach ($rows as $row) {
+            $no   = (int) $row['revision_no'];
+            $list .=
+                '<tr' . (($no === (int) $compare_no) ? ' class="table-active"' : '') . '>
+                    <td>' . $no . '</td>
+                    <td>' . get_relative_time(array('timestamp' => (int) $row['created_at'])) . '</td>
+                    <td>' . h(($row['user_username'] !== null && $row['user_username'] !== '') ? $row['user_username'] : lang('Unknown')) . '</td>
+                    <td>' . h(pg_record_revision_source_label($row['source'])) . '</td>
+                    <td class="text-end text-nowrap">
+                        <a class="btn btn-sm btn-text theme-secondary" href="' . h($base . '&compare=' . $no) . '#history">' . lang('Compare') . '</a>
+                        <a class="btn btn-sm btn-outline theme-secondary" href="' . h($base . '&revision=' . $no) . '">' . lang('Load') . '</a>
+                    </td>
+                </tr>';
+        }
+
+        $body =
+            '<div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                    <thead><tr>
+                        <th scope="col">' . lang('Revision') . '</th>
+                        <th scope="col">' . lang('When') . '</th>
+                        <th scope="col">' . lang('Who') . '</th>
+                        <th scope="col">' . lang('Source') . '</th>
+                        <th scope="col"><span class="visually-hidden">' . lang('Actions') . '</span></th>
+                    </tr></thead>
+                    <tbody>' . $list . '</tbody>
+                </table>
+            </div>';
+    }
+
+    $revision = ((int) $compare_no > 0) ? pg_record_revision_get($form_id, $compare_no) : null;
+
+    if ($revision) {
+        $body .= pg_record_revision_compare_markup($form_id, $page_id, $revision, $base);
+    }
+
+    return
+        '<div class="card my-7" id="history">
+            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('History') . '</div>
+            <div class="card-body">' . $body . '</div>
+        </div>';
+}
+
+/**
+ * The comparison of one revision with the current values, field by field,
+ * changed fields marked.
+ *
+ * @param int    $form_id
+ * @param int    $page_id
+ * @param array  $revision pg_record_revision_get()
+ * @param string $base     the screen's URL for this item
+ * @return string HTML
+ */
+function pg_record_revision_compare_markup($form_id, $page_id, $revision, $base)
+{
+    $values  = pg_record_revision_decode($revision['values_json']);
+    $current = pg_record_revision_current_values($form_id);
+    $names   = pg_record_revision_file_names(array($values, $current));
+    $record  = json_decode((string) $revision['record_json'], true);
+    $now     = (string) db_value("SELECT address_name FROM forms WHERE id = '" . (int) $form_id . "' LIMIT 1");
+
+    $rows = pg_record_revision_compare(pg_record_revision_form_fields($page_id), $values, $current);
+
+    array_unshift($rows, array(
+        'label'    => lang('Address Name'),
+        'revision' => array((is_array($record) && isset($record['address_name'])) ? (string) $record['address_name'] : ''),
+        'current'  => array($now),
+        'changed'  => !(is_array($record) && isset($record['address_name']) && (string) $record['address_name'] === $now),
+    ));
+
+    $out = '';
+
+    foreach ($rows as $row) {
+        $old = pg_record_revision_value_text($row['revision'], $names);
+        $new = pg_record_revision_value_text($row['current'], $names);
+
+        $out .=
+            '<tr>
+                <th scope="row">' . h($row['label']) . ($row['changed'] ? ' <span class="badge theme-warning fw-light">' . lang('Changed') . '</span>' : '') . '</th>
+                <td' . ($row['changed'] ? ' class="fw-semibold"' : '') . '>' . (($old !== '') ? h($old) : '-') . '</td>
+                <td>' . (($new !== '') ? h($new) : '-') . '</td>
+            </tr>';
+    }
+
+    $no = (int) $revision['revision_no'];
+
+    return
+        '<h3 class="h6 mt-7">' . lang(array('string' => 'Revision {var:1} compared with the current values', 'vars' => array($no))) . '</h3>
+        <div class="table-responsive">
+            <table class="table table-sm align-top mb-5">
+                <thead><tr>
+                    <th scope="col">' . lang('Field') . '</th>
+                    <th scope="col">' . lang(array('string' => 'Revision {var:1}', 'vars' => array($no))) . '</th>
+                    <th scope="col">' . lang('Current') . '</th>
+                </tr></thead>
+                <tbody>' . $out . '</tbody>
+            </table>
+        </div>
+        <a class="btn btn-sm btn-solid theme-primary" href="' . h($base . '&revision=' . $no) . '">' . lang(array('string' => 'Load revision {var:1}', 'vars' => array($no))) . '</a>';
+}
+
+/**
+ * The notice above a form filled with a revision: which one, that saving
+ * restores it, and the fields it does not fill.
+ *
+ * @param array $revision pg_record_revision_get()
+ * @param array $notes    pg_record_revision_load()
+ * @return string HTML
+ */
+function pg_record_revision_loaded_notice($revision, $notes)
+{
+    $list = '';
+
+    foreach ((array) $notes as $note) {
+        $list .= '<li>' . $note . '</li>';
+    }
+
+    return
+        '<div class="alert theme-primary" role="status">
+            <p class="mb-0">' . lang(array('string' => 'Revision {var:1} is loaded into the form. Saving restores it; leaving without saving keeps the item as it is.', 'vars' => array((int) $revision['revision_no']))) . '</p>
+            ' . (($list !== '') ? '<ul class="mb-0 mt-5">' . $list . '</ul>' : '') . '
+        </div>';
 }

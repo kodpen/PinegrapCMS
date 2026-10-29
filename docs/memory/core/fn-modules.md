@@ -52,7 +52,7 @@ description: Generated from the module field of the memory files: each includes/
 - `product_list`: [[product-list-paging]]
 - `prototype`: [[designer-prototype-viewer]]
 - `prototype_links`: [[designer-prototype-share-links]]
-- `record_revisions`: [[collection-revisions]]
+- `record_revisions`: [[collection-history]], [[collection-revisions]]
 - `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
 - `seo`: [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
