@@ -1,0 +1,53 @@
+{
+  "data": [
+    {
+      "code": "sendcloud:letter",
+      "name": "Unstamped letter",
+      "carrier": {"code": "sendcloud", "name": "Sendcloud"},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "0.00", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "postnl:standard",
+      "name": "PostNL Standard",
+      "carrier": {"code": "postnl", "name": "PostNL"},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "7.25", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "dpd:home",
+      "name": "DPD Home",
+      "carrier": {"code": "dpd", "name": "DPD"},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "6.10", "currency": "EUR"}}, "lead_time": 48}]
+    },
+    {
+      "code": "dhl:servicepoint",
+      "name": "DHL ServicePoint",
+      "carrier": {"code": "dhl", "name": "DHL"},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": true},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "3.90", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "dhl_express:worldwide/incoterm=dap",
+      "name": "DHL Express Worldwide",
+      "carrier": {"code": "dhl_express", "name": "DHL Express"},
+      "requirements": {"fields": [], "export_documents": true, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "4.10", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "fedex:domestic",
+      "name": "FedEx Domestic",
+      "carrier": {"code": "fedex", "name": "FedEx"},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": {"code": "price_unavailable", "message": "No price"},
+      "quotes": []
+    }
+  ],
+  "message": null
+}
