@@ -28,8 +28,8 @@ function test_update_search_index_menu_entry_takes_focus()
 {
 	$source = keyboard_skipped_entries_source('includes/fn/output.php');
 
-	pg_assert_false(strpos($source, "<a  onclick='open_search_index_window();'") !== false, 'menu entry without href');
-	pg_assert_true(strpos($source, "<a href='#' role='button' data-pg-menu-skip onclick='open_search_index_window(); return false;'") !== false, 'menu entry is a focusable button-role link');
+	pg_assert_false(strpos($source, "<a  onclick=\\'open_search_index_window();\\'") !== false, 'menu entry without href');
+	pg_assert_true(strpos($source, "<a href=\\'#\\' role=\\'button\\' data-pg-menu-skip onclick=\\'open_search_index_window(); return false;\\'") !== false, 'menu entry is a focusable button-role link');
 }
 
 // The region type choices are buttons with their ids kept for the wiring.
