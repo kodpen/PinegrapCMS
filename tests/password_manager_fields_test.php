@@ -42,7 +42,7 @@ function test_set_password_card_names_the_account()
 		'username field has no name'
 	);
 	$form = strpos($block, '<form ');
-	$field = strpos($block, '$output_username');
+	$field = strpos($block, "' . \$output_username . '");
 	$closing = strpos($block, '</form>');
 	pg_assert_true($form !== false && $field > $form && $field < $closing, 'username field sits inside the form');
 }
