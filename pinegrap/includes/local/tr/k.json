@@ -72,6 +72,7 @@
     "Key code ({var:1}) was created.": "Anahtar kodu ({var:1}) oluşturuldu.",
     "Key code ({var:1}) was deleted through the API by the application {var:2} (key {var:3}).": "Anahtar kod ({var:1}), {var:2} uygulaması tarafından (anahtar {var:3}) API üzerinden silindi.",
     "Key codes imported: {var:1} added, {var:2} changed, {var:3} unchanged, {var:4} line(s) skipped.": "Anahtar kodlar içe aktarıldı: {var:1} eklendi, {var:2} değişti, {var:3} aynı kaldı, {var:4} satır atlandı.",
+    "Key events": "Önemli etkinlikler",
     "Key link": "Anahtar bağlantısı",
     "Key link (otpauth://)": "Anahtar bağlantısı (otpauth://)",
     "Key moment": "Önemli gelişme",

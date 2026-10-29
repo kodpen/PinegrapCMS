@@ -36,6 +36,7 @@ description: Generated from the module field of the memory files: each includes/
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `geo`: [[panel-script-number-format]]
+- `google_analytics`: [[google-analytics-card]]
 - `imap_client`: [[mail-imap-client]]
 - `innodb`: [[panel-script-number-format]]
 - `lang_files`: [[lang-files]]

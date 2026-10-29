@@ -3372,7 +3372,13 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             spark("pg_orders_spark_count", "bar", data.counts, count);
 
             var palette = [primary, color("--bs-success", "#198754"), color("--bs-warning", "#ffc107"), color("--bs-info", "#0dcaf0"), color("--bs-danger", "#dc3545"), color("--bs-secondary", "#6c757d")];
-            var ink = color("--bs-secondary-color", "#6c757d");
+            // A custom property reads back as light-dark() text a canvas
+            // cannot parse, so the panel ink is resolved through a probe.
+            var probe = document.createElement("span");
+            probe.style.color = "var(--pg-fg-2)";
+            document.body.appendChild(probe);
+            var ink = getComputedStyle(probe).color;
+            probe.remove();
             var top = document.getElementById("pg_orders_top");
             if (top && data.top.length) {
                 new Chart(top, {

@@ -412,6 +412,25 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         }
     }
 
+    // Google Analytics figures (includes/fn/google_analytics.php): choose a
+    // GA4 property, read its figures now or stop using it. The messages
+    // carry Google's own words, so they are escaped whole.
+    if (array_key_exists('ga_card', $_POST)) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+        foreach (pg_ga_save_from_screen(array(
+            'property' => (string) post_value('ga_property'),
+            'refresh'  => (bool) post_value('ga_refresh'),
+            'unlink'   => (bool) post_value('ga_unlink'),
+        )) as $ga_message) {
+            if ($ga_message[0] === 'error') {
+                $liveform->add_error(h($ga_message[1]));
+            } else {
+                $liveform->add_notice(h($ga_message[1]));
+            }
+        }
+    }
+
     // Google Merchant Center (includes/fn/merchant_center.php), after the
     // feeds so a Google feed switched on in the same save already has the
     // address that is registered. The messages carry Google's own words, so

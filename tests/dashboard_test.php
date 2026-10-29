@@ -24,14 +24,14 @@ function pg_test_dashboard_widget_ids()
 {
 	$ids = array('clock');
 
-	for ($id = 1; $id <= 31; $id++) {
+	for ($id = 1; $id <= 32; $id++) {
 		$ids[] = (string) $id;
 	}
 
 	return $ids;
 }
 
-// Each of the 32 ids has its file, and loading it defines its function.
+// Each of the 33 ids has its file, and loading it defines its function.
 function test_dashboard_every_widget_has_file_and_function()
 {
 	foreach (pg_test_dashboard_widget_ids() as $id) {
@@ -56,7 +56,7 @@ function test_dashboard_invalid_ids_are_refused()
 	$ids = array(
 		'empty'      => '',
 		'zero'       => '0',
-		'32'         => '32',
+		'33'         => '33',
 		'99'         => '99',
 		'traversal'  => '../x',
 		'nested'     => '1/../2',
@@ -312,6 +312,7 @@ function test_dashboard_percent_figures_follow_the_language()
 		'includes/dashboard/widgets/widget_5.php'  => array("' %' . abs(", '" %" + Math.abs(', "\$vs5_pct . '%'"),
 		'includes/dashboard/widgets/widget_18.php' => array("optimization_percent'] . '%"),
 		'includes/dashboard/widgets/widget_31.php' => array("0) . '%</span>'"),
+		'includes/dashboard/widgets/widget_32.php' => array("0) . '%</span>'"),
 		'includes/dashboard/widgets/widget_2.php'  => array("\$health_score . '%\"", "pg-health-score\">' . (int) \$health_score . '<span>%</span>'"),
 	);
 

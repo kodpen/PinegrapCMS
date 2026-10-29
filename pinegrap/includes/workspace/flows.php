@@ -2744,6 +2744,15 @@ function ws_flow_js_strings()
         'fl_tpl_start'        => lang('Start a new flow'),
         'fl_tpl_empty'        => lang('Empty canvas'),
         'fl_tpl_empty_help'   => lang('Start with nothing and add the boxes yourself.'),
+        'fl_ai_sketch'        => lang('Describe it to AI'),
+        'fl_ai_sketch_help'   => lang('Say in one sentence what the flow should do. Pinegrap AI draws a draft for you to check and publish.'),
+        'fl_ai_sketch_example' => lang('For example: every Monday at 09:00, send the team the orders still open'),
+        'fl_ai_sketch_go'     => lang('Draft the flow'),
+        'fl_ai_sketch_working' => lang('Pinegrap AI is drafting the flow. This can take a little while.'),
+        'fl_ai_sketch_empty'  => lang('Write in a sentence what the flow should do.'),
+        'fl_ai_sketch_region' => lang('Drafted by Pinegrap AI'),
+        'fl_ai_sketch_drafted' => lang('Pinegrap AI drafted this flow from your sentence. Check every box before you publish it.'),
+        'fl_ai_sketch_hide'   => lang('Hide'),
         'fl_tpl_from_template' => lang('Start from a template'),
         'fl_tpl_back'         => lang('Back to the flow'),
         'fl_tpl_use'          => lang('Use'),
@@ -3010,6 +3019,10 @@ function ws_flow_js_config($viewer, $mode)
         // "Save as template" in the editor: builders, once the table of
         // saved templates is there (flow_templates_saved.php).
         'template_save' => $build && function_exists('ws_flow_templates_saved_ready') && ws_flow_templates_saved_ready(),
+        // "Describe it to AI" in New flow: builders, while Pinegrap AI can
+        // be asked (its licence included, flow_draft.php).
+        'ai_sketch' => $build && function_exists('ws_flow_ai_sketch_ready') && ws_flow_ai_sketch_ready($viewer),
+        'ai_sketch_max' => WS_FLOW_AI_SKETCH_MAX,
         'steps'    => $steps,
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,

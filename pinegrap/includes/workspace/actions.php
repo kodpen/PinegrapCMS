@@ -184,6 +184,52 @@ function ws_action_flow_refused($result)
 }
 
 /**
+ * "Describe it to AI" in New flow: a new draft flow of the person from one
+ * sentence (ws_flow_ai_sketch()), never published here; publishing stays
+ * theirs, on the canvas.
+ *
+ * @param array         $viewer
+ * @param array         $request  sentence
+ * @param callable|null $ask      messages => answer; pg_ai_chat() when null
+ * @return array
+ */
+function ws_action_flow_ai_sketch($viewer, $request, $ask = null)
+{
+    $sentence = $request['sentence'] ?? '';
+
+    if (!is_string($sentence)) {
+        return ws_action_error(lang('Write in a sentence what the flow should do.'), 'sentence');
+    }
+
+    $result = ws_flow_ai_sketch($viewer, $sentence, 0, $ask);
+    $flow = $result['ok'] ? ws_flow_for($viewer, (int) $result['flow_id'], 'edit') : null;
+
+    return ws_action_flow_ai_sketch_answer($result, $flow ? ws_flow_detail($viewer, $flow) : null);
+}
+
+/**
+ * What the New flow card reads of a drafted flow (pure): the flow to open
+ * on the canvas, what is left to fix and the model's notes; a refusal in
+ * words on the sentence field.
+ *
+ * @param array      $result ws_flow_ai_sketch()
+ * @param array|null $flow   ws_flow_detail() of the new flow
+ * @return array
+ */
+function ws_action_flow_ai_sketch_answer($result, $flow)
+{
+    if (!$result['ok']) {
+        return ws_action_error((string) $result['error'], 'sentence');
+    }
+
+    if (!$flow) {
+        return ws_action_error(lang('That flow could not be found.'), 'sentence');
+    }
+
+    return ws_action_ok(array('flow' => $flow, 'problems' => array_values($result['problems']), 'notes' => array_values($result['notes'])));
+}
+
+/**
  * Only what a start of a run may carry: the client's token, which makes a
  * start sent twice (a double click, a request sent again after its answer
  * was lost) one run. It comes as start_token: `token` of a panel request is
@@ -770,6 +816,10 @@ function ws_handle_action($action, $request)
 
             return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
                 'published' => $result['published'], 'publish_error' => $result['publish_error']));
+
+        // "Describe it to AI" in New flow: a draft flow from one sentence.
+        case 'ws_flow_ai_sketch':
+            return ws_action_flow_ai_sketch($viewer, $request);
 
         // A flow's draft saved as a template of the site, and a saved
         // template's title, help and group changed or binned by its saver or

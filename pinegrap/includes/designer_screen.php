@@ -925,17 +925,23 @@ function pg_designer_list_status_cell($d)
     $c = array('pages' => (int)$d['page_count'], 'drafts' => (int)$d['draft_count'], 'home' => (int)$d['home_count']);
     $s = pg_designer_design_state($c);
 
+    // The state is told by its words and a mark of its own shape (a full,
+    // half or empty circle), never by colour alone; only a live design's
+    // mark wears the accent.
+    $mark = function ($icon, $text) {
+        return '<span class="sdh-state"><i class="bi ' . $icon . '" aria-hidden="true"></i>' . h($text) . '</span>';
+    };
     if ($s['state'] === 'live') {
-        $badge = '<span class="badge rounded-pill theme-success"><i class="bi bi-broadcast me-1" aria-hidden="true"></i>' . h(lang('Live on the site')) . '</span>';
+        $badge = $mark('bi-circle-fill', lang('Live on the site'));
         $note  = h(lang('All pages are on the site.'));
     } elseif ($s['state'] === 'draft') {
-        $badge = '<span class="badge rounded-pill theme-secondary"><i class="bi bi-eye-slash me-1" aria-hidden="true"></i>' . h(lang('Draft')) . '</span>';
+        $badge = $mark('bi-circle', lang('Draft'));
         $note  = ($c['home'] > 0) ? h(lang('The home page stays on the site.')) : h(lang('Visitors cannot open the pages; administrators can.'));
     } elseif ($s['state'] === 'mixed') {
-        $badge = '<span class="badge rounded-pill theme-warning"><i class="bi bi-circle-half me-1" aria-hidden="true"></i>' . h(lang('Partly on the site')) . '</span>';
+        $badge = $mark('bi-circle-half', lang('Partly on the site'));
         $note  = h(lang(array('string' => '{var:1} of {var:2} pages are drafts', 'vars' => array($c['drafts'], $c['pages']))));
     } else {
-        $badge = '<span class="badge rounded-pill theme-secondary">' . h(lang('Empty')) . '</span>';
+        $badge = $mark('bi-dash-circle-dotted', lang('Empty'));
         $note  = h(lang('No pages yet. Open it to add one.'));
     }
 
@@ -943,7 +949,7 @@ function pg_designer_list_status_cell($d)
     // next change comes.
     $scheduled = isset($d['scheduled_count']) ? (int)$d['scheduled_count'] : 0;
     if ($scheduled > 0 && $s['state'] !== 'empty') {
-        $badge .= ' <span class="badge rounded-pill theme-info sdh-scheduled"><i class="bi bi-clock me-1" aria-hidden="true"></i>' . h(lang('On a schedule')) . '</span>';
+        $badge .= '<span class="sdh-state sdh-scheduled"><i class="bi bi-clock" aria-hidden="true"></i>' . h(lang('On a schedule')) . '</span>';
         $next  = isset($d['scheduled_next']) ? (int)$d['scheduled_next'] : 0;
         $note .= ' · ' . h(($next > 0)
             ? lang(array('string' => '{var:1} scheduled, next change {var:2}', 'vars' => array($scheduled, pg_page_schedule_label($next))))
@@ -1013,8 +1019,14 @@ function pg_designer_list_theme_label($d)
 
 /**
  * The drawing at the top of a start card: what the start does, in the
- * panel's own colours (assets/css/designer_home.css). The template card
- * shows three of the templates themselves, fanned out.
+ * panel's neutral greys with one touch of its primary colour
+ * (assets/css/designer_home.css: every shape takes a class there, none
+ * carries a colour of its own). The template card shows three of the
+ * templates themselves, side by side.
+ *
+ * Classes: p paper, g ground, l line, k ink, s line stroke, sk ink stroke,
+ * dash dashed ink stroke, cursor; the accent only as a (fill) and as (its
+ * subtle surface).
  *
  * @param string $kind      blank | import | paste | template
  * @param array  $templates pg_design_templates(), for the template card
@@ -1033,8 +1045,6 @@ function pg_designer_home_drawing($kind, $templates = array())
                      . pg_design_thumb_svg(($s['look'] !== null) ? $s['look'] : $look0, (string)$s['palette'], '', '', $s['thumb'])
                      . '</span>';
         }
-        // The first template in the middle, in front.
-        if (count($minis) === 3) $minis = array($minis[1], $minis[0], $minis[2]);
         if ($minis) return '<span class="sdh-ill sdh-ill-tpl" aria-hidden="true">' . implode('', $minis) . '</span>';
         $kind = 'template-none';
     }
@@ -1047,31 +1057,31 @@ function pg_designer_home_drawing($kind, $templates = array())
              . '<rect x="' . ($x + 33) . '" y="13.5" width="' . min(60, $w - 45) . '" height="7" rx="3.5" class="g"/>';
     };
     // From the source on the left into the page on the right.
-    $arrow = '<path d="M78 48 h20" class="sa" stroke-dasharray="3 4"/><path d="M96 43 l6 5 l-6 5" class="sa"/>';
+    $arrow = '<path d="M80 48 h18" class="sk"/><path d="M95 44 l4 4 l-4 4" class="sk"/>';
 
     switch ($kind) {
         case 'blank':
             // An empty canvas, and a block on its way in from the palette.
             $art = $window(66, 158)
                  . '<rect x="78" y="32" width="134" height="44" rx="6" class="dash"/>'
-                 . '<circle cx="166" cy="54" r="9" class="as"/><path d="M166 50 v8 M162 54 h8" class="sa"/>'
+                 . '<path d="M166 50 v8 M162 54 h8" class="sk"/>'
                  . '<rect x="16" y="14" width="38" height="68" rx="7" class="p s"/>'
                  . '<rect x="23" y="22" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="36" width="24" height="10" rx="2.5" class="g"/>'
                  . '<rect x="23" y="50" width="24" height="10" rx="2.5" class="g"/><rect x="23" y="64" width="24" height="10" rx="2.5" class="g"/>'
-                 . '<g transform="rotate(-5 67 50)"><rect x="40" y="40" width="54" height="20" rx="4" class="a"/>'
-                 . '<rect x="47" y="46" width="24" height="3" rx="1.5" fill="#fff" fill-opacity=".9"/><rect x="47" y="52" width="36" height="3" rx="1.5" fill="#fff" fill-opacity=".6"/></g>'
+                 . '<rect x="40" y="40" width="54" height="20" rx="4" class="a"/>'
+                 . '<rect x="47" y="46" width="24" height="3" rx="1.5" class="p"/><rect x="47" y="52" width="36" height="3" rx="1.5" class="p"/>'
                  . '<path d="M88 54 v14 l3.6 -3.4 l2.6 5.8 l2.6 -1.2 l-2.6 -5.7 l4.9 -.3 z" class="cursor"/>';
             break;
         case 'import':
             // A zipped project; its pages arrive as tabs.
             $teeth = '';
             for ($i = 0; $i < 6; $i++) {
-                $teeth .= '<rect x="' . (($i % 2) ? 43 : 37) . '" y="' . (16 + $i * 6) . '" width="6" height="3.5" rx="1" class="k2"/>';
+                $teeth .= '<rect x="' . (($i % 2) ? 43 : 37) . '" y="' . (16 + $i * 6) . '" width="6" height="3.5" rx="1" class="k"/>';
             }
             $art = '<path d="M22 10 h31 l13 13 v59 a4 4 0 0 1 -4 4 h-40 a4 4 0 0 1 -4 -4 v-68 a4 4 0 0 1 4 -4 z" class="p s"/>'
-                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s" fill="none"/>'
+                 . '<path d="M53 10 v9 a4 4 0 0 0 4 4 h9" class="s"/>'
                  . $teeth
-                 . '<rect x="35" y="53" width="12" height="15" rx="3" class="a"/><circle cx="41" cy="63" r="2" class="p"/>'
+                 . '<rect x="35" y="53" width="12" height="15" rx="3" class="k"/><circle cx="41" cy="63" r="2" class="p"/>'
                  . $arrow
                  . '<rect x="110" y="10" width="114" height="76" rx="8" class="p s"/>'
                  . '<rect x="118" y="15" width="28" height="10" rx="3" class="as"/><rect x="121" y="22.5" width="22" height="2" rx="1" class="a"/>'
@@ -1084,14 +1094,14 @@ function pg_designer_home_drawing($kind, $templates = array())
         case 'paste':
             // Markup on the clipboard; it lands on the page as a section.
             $art = '<rect x="18" y="14" width="54" height="72" rx="7" class="p s"/>'
-                 . '<rect x="32" y="9" width="26" height="10" rx="4" class="k2"/>'
-                 . '<path d="M31 31 l-5 5 l5 5" class="sa"/><path d="M59 31 l5 5 l-5 5" class="sa"/><path d="M48 30 l-6 12" class="sa"/>'
+                 . '<rect x="32" y="9" width="26" height="10" rx="4" class="k"/>'
+                 . '<path d="M31 31 l-5 5 l5 5" class="sk"/><path d="M59 31 l5 5 l-5 5" class="sk"/><path d="M48 30 l-6 12" class="sk"/>'
                  . '<rect x="27" y="52" width="36" height="3.5" rx="1.75" class="l"/><rect x="33" y="59" width="30" height="3.5" rx="1.75" class="l"/>'
                  . '<rect x="33" y="66" width="22" height="3.5" rx="1.75" class="l"/><rect x="27" y="73" width="30" height="3.5" rx="1.75" class="l"/>'
                  . $arrow
                  . $window(110, 114)
                  . '<rect x="120" y="30" width="94" height="6" rx="2" class="g"/>'
-                 . '<rect x="120" y="41" width="94" height="27" rx="4" class="as"/><rect x="120" y="41" width="94" height="27" rx="4" class="dash"/>'
+                 . '<rect x="120" y="41" width="94" height="27" rx="4" class="as"/>'
                  . '<rect x="128" y="48" width="42" height="5" rx="2" class="a"/><rect x="128" y="57" width="70" height="3.5" rx="1.75" class="l"/>'
                  . '<rect x="120" y="73" width="94" height="6" rx="2" class="g"/>';
             break;
@@ -1238,14 +1248,14 @@ function pg_designer_home_design_card($d, $pages, $ctx)
     $facts[] = array(lang('Last modified'), lang(array('string' => '{var:1}, by {var:2}', 'vars' => array($when, h($who)))));
     $facts_html = '';
     foreach ($facts as $f) {
-        $facts_html .= '<div><dt>' . h($f[0]) . '</dt><dd>' . $f[1] . '</dd></div>';
+        $facts_html .= '<dt>' . h($f[0]) . '</dt><dd>' . $f[1] . '</dd>';
     }
 
     // Four buttons at most; everything else is in the menu. "Put on the
     // site" shows while there are drafts (designer_home.js hides it once
     // there are none); taking a live design off the site is left to the
     // menu, where it is not one stray click away.
-    $buttons = '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
+    $buttons = '<a class="btn btn-sm btn-solid theme-primary px-5" href="' . h($edit_url) . '"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>' . h(lang('Edit')) . '</a>';
     if (!empty($ctx['can_change'])) {
         $buttons .= '<a class="btn btn-sm btn-text theme-secondary" href="' . h($add_url) . '"><i class="bi bi-file-earmark-plus me-1" aria-hidden="true"></i>' . h(lang('Add Page')) . '</a>';
     }
@@ -1264,9 +1274,9 @@ function pg_designer_home_design_card($d, $pages, $ctx)
          .     '<div class="row g-7">'
          .         '<div class="col-12 lg:col-5 2xl:col-4">' . $picture . '</div>'
          .         '<div class="col-12 lg:col-7 2xl:col-8">'
-         .             ($home ? '<div class="sdh-flag"><i class="bi bi-house-door" aria-hidden="true"></i>' . h(lang('The home page is in this design')) . '</div>' : '')
          .             '<div class="sdh-title-row"><h3 class="sdh-name">' . $title . '</h3>' . $more . '</div>'
          .             pg_designer_list_status_cell($d)
+         .             ($home ? '<p class="sdh-flag"><i class="bi bi-house-door" aria-hidden="true"></i>' . h(lang('The home page is in this design')) . '</p>' : '')
          .             '<dl class="sdh-facts">' . $facts_html . '</dl>'
          .             $pages_html
          .             '<div class="sdh-actions">' . $buttons . '</div>'
@@ -1432,16 +1442,16 @@ function pg_designer_start_screen($ctx)
                 </div>
                 <div class="row g-5">
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('blank'), 'bi-file-earmark-plus', lang('Create New'),
-                            lang('An empty page on the canvas, on Bootstrap 5 or as a custom design. Add sections from the palette and build the design up.'),
+                            lang('An empty page; add sections from the palette.'),
                             array('modal' => '#sdNewDesignModal')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('import'), 'bi-file-earmark-zip', lang('Import HTML / ZIP'),
-                            lang('Bring in a finished HTML page or a whole project archive. Pages become tabs, files go to the file manager.'),
+                            lang('An HTML page or a project archive; its pages become tabs.'),
                             array('modal' => '#sdNewDesignModal', 'start' => 'import')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('paste'), 'bi-clipboard-plus', lang('Paste HTML content'),
-                            lang('Paste the markup straight in — from a code editor, from a page you have open. The design starts from what you paste.'),
+                            lang('The design starts from the markup you paste.'),
                             array('modal' => '#sdNewDesignModal', 'start' => 'paste')) . '
                     ' . pg_designer_home_start_card(pg_designer_home_drawing('template', $templates), 'bi-grid-1x2', lang('Choose a Template'),
-                            lang('Start from a ready-made design and change what you like.'),
+                            lang('A ready-made design to change as you like.'),
                             $templates ? array('modal' => '#sdTemplateModal', 'id' => 'sdh-start-template') : array('disabled' => true)) . '
                 </div>
             </section>';
@@ -1633,7 +1643,7 @@ function pg_designer_components_card($user)
                     </tr>';
     }
 
-    $comp_button = '<button type="button" class="btn btn-sm btn-outline theme-secondary" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="badge rounded-pill theme-secondary ms-1" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
+    $comp_button = '<button type="button" class="btn btn-sm btn-text theme-secondary" id="sd-comp-open" data-bs-toggle="drawer" data-bs-target="#sd-comp-offcanvas" aria-controls="sd-comp-offcanvas"><i class="bi bi-boxes me-1" aria-hidden="true"></i>' . h(lang('Shared components and system widgets')) . ' <span class="sdh-count" id="sd-comp-total">' . count($comp_rows) . '</span></button>';
 
     $comp_panel = '
         <dialog class="drawer drawer-end" id="sd-comp-offcanvas" aria-labelledby="sd-comp-offcanvas-title">
