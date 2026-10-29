@@ -2551,9 +2551,17 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '<button type="button" class="btn-data-control m-1 btn btn-outline theme-danger border-2 pg-admin-cancel-btn no-submit" data-order-id="' . $id . '" data-order-number="' . h($order_number) . '" title="' . lang('Cancel Order') . '"><i class="bi bi-x-octagon"></i></button>';
         }
 
+        // An incomplete order has no number yet: the row box is named by the
+        // billing name, else by the id.
+        $output_row_name = (trim((string) $order_number) !== '') ? $order_number : trim($billing_first_name . ' ' . $billing_last_name);
+
+        if ($output_row_name === '') {
+            $output_row_name = '#' . $id;
+        }
+
         $output_rows .=
             '<tr id="' . $id . '">
-                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="orders[]" value="' . $id . '" class="checkbox" /></td>
+                <td class="select-all align-middle text-start"><input class="check" type="checkbox" name="orders[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($output_row_name)))) . '" /></td>
                 <td class="align-middle text-start col-reorder-none action-buttons">
                     <button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
                     ' . $output_cancel_button . '

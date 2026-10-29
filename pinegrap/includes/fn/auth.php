@@ -2829,6 +2829,25 @@ function get_access_control_type_name($access_control_type)
             break;
     }
 }
+// A folder's access level for a list cell: the file manager's icon for the
+// level and its name for screen readers, so the cell's colour is not the only
+// sign of it.
+function pg_folder_access_mark($access_control_type)
+{
+    $icons = array(
+        'public' => 'bi-people-fill',
+        'guest' => 'bi-incognito',
+        'registration' => 'bi-person-fill',
+        'membership' => 'bi-person-vcard-fill',
+        'private' => 'bi-lock-fill',
+    );
+
+    if (!isset($icons[$access_control_type])) {
+        return '';
+    }
+
+    return '<i class="bi ' . $icons[$access_control_type] . ' me-1" aria-hidden="true"></i><span class="visually-hidden">' . h(get_access_control_type_name($access_control_type)) . '</span>';
+}
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $access_control_type = '')
 {
