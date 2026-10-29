@@ -45313,6 +45313,7 @@ const StyleDesigner = (function () {
                 _sectionOpts.push(['recipient_items',      _sdT('The recipient\'s items (a product that cannot go to the address carries its remove link)')]);
             } else if (_semSwRegion === 'shipping_address_and_arrival') {
                 _sectionOpts.push(['custom_shipping_form', _sdT('Custom shipping form fields (hidden when the page has none)')]);
+                _sectionOpts.push(['verified_addresses',   _sdT('Verified shipping address pick lists and the Use This Address button')]);
             } else if (_semSwRegion === 'comments') {
                 _sectionOpts.push(['comment_captcha',      _sdT('CAPTCHA (depends on the site setting; hidden for staff)')]);
                 _sectionOpts.push(['comment_rating_input', _sdT('Star rating input (hidden when stars are off for the page)')]);
@@ -63678,7 +63679,10 @@ const StyleDesigner = (function () {
                 // named state: the page's script shows the one the chosen
                 // country uses. One loop row per arrival date that can be
                 // requested; a date whose day the visitor picks keeps its
-                // date box. Mirrors
+                // date box. The help box above the address offers the
+                // verified shipping addresses; the server draws its pick
+                // lists and the script that fills the controls by name.
+                // Mirrors
                 // _render_system_widget_shipping_address_and_arrival().
                 var saId = 'f_' + Math.random().toString(36).slice(2, 7);
                 var saCountry = _swAcctSelect(_sdT('Country'), saId + '_country', 'country', 'col-sm-6');
@@ -63726,6 +63730,14 @@ const StyleDesigner = (function () {
                             createNode('content', { contentType: 'span', text: _sdT('Recipient:'), cssClass: 'me-1' }),
                             createNode('content', { contentType: 'span', text: _sdT('Ship-to name'), cssClass: 'fw-semibold',
                                 _bindings: { text: '__recipient_name' } })
+                        ]),
+                        createNode('semantic', { tag: 'div', cssClass: 'border rounded p-3 mb-4', customName: _sdT('Shipping Address Help'),
+                            _bindings: { eo_visible_if: 'has_verified_addresses' } }, [
+                            createNode('content', { contentType: 'heading', tag: 'h5', text: _sdT('Shipping Address Help'), cssClass: 'mb-2' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Don\'t know the exact address?'), cssClass: 'fw-semibold mb-1' }),
+                            createNode('content', { contentType: 'paragraph', text: _sdT('Choose from one of our verified shipping addresses.'), cssClass: 'text-muted mb-3' }),
+                            createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Verified Addresses'),
+                                _bindings: { section: 'verified_addresses' } })
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('Name') }, [
                             _swAcctSelect(_sdT('Salutation'), saId + '_salutation', 'salutation', 'col-sm-4'),

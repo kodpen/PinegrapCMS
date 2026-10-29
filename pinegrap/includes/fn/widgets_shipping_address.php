@@ -208,6 +208,157 @@ function pg_sa_state_script($form_id, $states, $zip, $prefix = '')
         . '})();</script>';
 }
 
+/**
+ * The controls a picked verified address fills, by name: the widget's own
+ * address controls (pg_sa_address_fields()), as the classic page's "Use This
+ * Address" button fills them. The country goes before the state, so the
+ * state control the country uses is the one named `state` when it is set.
+ *
+ * @return array
+ */
+function pg_sa_verified_fill_fields()
+{
+    return array('company', 'address_1', 'address_2', 'city', 'zip_code', 'country', 'state');
+}
+
+/**
+ * The verified shipping address help box, drawn into the widget's
+ * `verified_addresses` section: a country, a state and an address pick list,
+ * a message, the picked address and the "Use This Address" button. The pick
+ * lists carry no name, so the form posts none of them; the script
+ * (pg_sa_verified_script()) finds the parts by data-pg-sa-v.
+ *
+ * @param string $box_id    id of the box, unique on the page
+ * @param array  $countries list of [code, label] (the first may be the empty choice)
+ * @param string $default   country code chosen at first, the site's default
+ * @return string
+ */
+function pg_sa_verified_box_html($box_id, $countries, $default)
+{
+    $id = h((string)$box_id);
+    $options = '<option value=""></option>';
+    foreach ((array)$countries as $c) {
+        if ((string)$c[0] === '') continue;
+        $selected = ((string)$c[0] === (string)$default) ? ' selected' : '';
+        $options .= '<option value="' . h((string)$c[0]) . '"' . $selected . '>' . h((string)$c[1]) . '</option>';
+    }
+    return '<div id="' . $id . '" class="pg-sa-verified">'
+        . '<div class="mb-3" data-pg-sa-v="country-wrap">'
+        .   '<label class="form-label" for="' . $id . '-country">' . h(lang('Select a Country:')) . '</label>'
+        .   '<select class="form-select" id="' . $id . '-country" data-pg-sa-v="country">' . $options . '</select></div>'
+        . '<div class="mb-3" data-pg-sa-v="state-wrap" hidden>'
+        .   '<label class="form-label" for="' . $id . '-state">' . h(lang('Select a State:')) . '</label>'
+        .   '<select class="form-select" id="' . $id . '-state" data-pg-sa-v="state"></select></div>'
+        . '<div class="mb-3" data-pg-sa-v="address-wrap" hidden>'
+        .   '<label class="form-label" for="' . $id . '-address">' . h(lang('Select a Verified Address:')) . '</label>'
+        .   '<select class="form-select" id="' . $id . '-address" data-pg-sa-v="address"></select></div>'
+        . '<div class="mb-2" data-pg-sa-v="message" role="status" hidden></div>'
+        . '<div class="mb-3 fw-bold" data-pg-sa-v="summary" hidden></div>'
+        . '<div class="mb-3" data-pg-sa-v="button-wrap" hidden>'
+        .   '<button type="button" class="btn btn-primary" data-pg-sa-v="use">' . h(lang('Use This Address')) . '</button></div>'
+        . '</div>';
+}
+
+/**
+ * The script of the help box, as the classic page's software_change_verified_*
+ * and software_use_verified_address() work: the country lists its states,
+ * the state its verified addresses, a picked address is shown, and the
+ * button copies it into the widget's controls by name
+ * (pg_sa_verified_fill_fields()), the country first with a change event so
+ * the state script (pg_sa_state_script()) switches the state control.
+ *
+ * @param string $form_id   id of the widget's form
+ * @param string $box_id    id of the help box
+ * @param array  $states    list of [id, name, country code]
+ * @param array  $addresses rows of _pg_sa_verified_addresses() with a `label`
+ * @return string
+ */
+function pg_sa_verified_script($form_id, $box_id, $states, $addresses)
+{
+    $list = array();
+    foreach ((array)$addresses as $a) {
+        $row = array('id' => (string)$a['id'], 'label' => (string)$a['label'], 'state_id' => (string)$a['state_id']);
+        foreach (array('company', 'address_1', 'address_2', 'city', 'state_code', 'zip_code', 'country_code', 'country_name') as $k) {
+            $row[$k] = isset($a[$k]) ? (string)$a[$k] : '';
+        }
+        $list[] = $row;
+    }
+    $data = encode_json(array(
+        'states'    => array_values((array)$states),
+        'addresses' => $list,
+        'fields'    => pg_sa_verified_fill_fields(),
+        'words'     => array(
+            'country' => lang('Sorry, we don\'t have any verified addresses for that Country.'),
+            'state'   => lang('Sorry, we don\'t have any verified addresses for that State.'),
+            'used'    => lang('The shipping address fields have been updated with') . ':',
+        ),
+    ));
+    $data = str_replace('</', '<\/', $data);
+    return '<script>(function(){'
+        . 'var f=document.getElementById(' . encode_json((string)$form_id) . '),b=document.getElementById(' . encode_json((string)$box_id) . ');'
+        . 'if(!f||!b)return;var d=' . $data . ';'
+        . 'function q(n){return b.querySelector("[data-pg-sa-v="+n+"]");}'
+        . 'var cs=q("country"),ss=q("state"),as=q("address"),msg=q("message"),sum=q("summary");'
+        . 'if(!cs||!ss||!as)return;'
+        . 'function show(n,on){var e=q(n);if(e)e.hidden=!on;}'
+        . 'function say(t,bad){if(!msg)return;msg.textContent=t;msg.classList.toggle("text-danger",bad);msg.hidden=false;}'
+        . 'function fill(s,rows){s.innerHTML="";s.appendChild(new Option("",""));rows.forEach(function(r){s.appendChild(new Option(r[1],r[0]));});return rows.length>0;}'
+        . 'function picked(){var v=as.value,hit=null;d.addresses.forEach(function(a){if(a.id===v)hit=a;});return hit;}'
+        . 'function country(){["state-wrap","address-wrap","message","summary","button-wrap"].forEach(function(n){show(n,false);});'
+        .   'if(cs.value==="")return;'
+        .   'if(fill(ss,d.states.filter(function(s){return s[2]===cs.value;})))show("state-wrap",true);else say(d.words.country,true);}'
+        . 'function state(){["address-wrap","message","summary","button-wrap"].forEach(function(n){show(n,false);});'
+        .   'if(ss.value==="")return;var rows=[];'
+        .   'd.addresses.forEach(function(a){if(a.state_id===ss.value)rows.push([a.id,a.label]);});'
+        .   'if(fill(as,rows))show("address-wrap",true);else say(d.words.state,true);}'
+        . 'function address(){["message","summary","button-wrap"].forEach(function(n){show(n,false);});'
+        .   'var a=picked();if(!a||!sum)return;sum.textContent="";'
+        .   'var lines=[];if(a.company!=="")lines.push(a.company);lines.push(a.address_1);if(a.address_2!=="")lines.push(a.address_2);'
+        .   'lines.push(a.city+", "+a.state_code+" "+a.zip_code);lines.push(a.country_name);'
+        .   'lines.forEach(function(t,i){if(i)sum.appendChild(document.createElement("br"));sum.appendChild(document.createTextNode(t));});'
+        .   'show("summary",true);show("button-wrap",true);}'
+        . 'function take(){var a=picked();if(!a)return;'
+        .   'd.fields.forEach(function(n){var e=f.querySelector("[name=\""+n+"\"]");if(!e)return;'
+        .     'e.value=n==="country"?a.country_code:(n==="state"?a.state_code:a[n]);'
+        .     'if(n==="country")e.dispatchEvent(new Event("change",{bubbles:true}));});'
+        .   'show("button-wrap",false);as.value="";say(d.words.used,false);}'
+        . 'cs.addEventListener("change",country);ss.addEventListener("change",state);as.addEventListener("change",address);'
+        . 'var u=q("use");if(u)u.addEventListener("click",take);country();'
+        . '})();</script>';
+}
+
+// The verified shipping addresses, read as the classic page reads them
+// (get_shipping_address_and_arrival.php): the state's code and its country,
+// ordered by company, then address line 1. Each row gets the pick list's
+// label: the company, else address line 1, then the city.
+function _pg_sa_verified_addresses()
+{
+    $rows = (array)db_items(
+        "SELECT
+            verified_shipping_addresses.id,
+            verified_shipping_addresses.company,
+            verified_shipping_addresses.address_1,
+            verified_shipping_addresses.address_2,
+            verified_shipping_addresses.city,
+            verified_shipping_addresses.state_id,
+            states.code as state_code,
+            verified_shipping_addresses.zip_code,
+            countries.code as country_code,
+            countries.name as country_name
+        FROM verified_shipping_addresses
+        LEFT JOIN states ON verified_shipping_addresses.state_id = states.id
+        LEFT JOIN countries ON states.country_id = countries.id
+        ORDER BY
+            verified_shipping_addresses.company,
+            verified_shipping_addresses.address_1");
+    foreach ($rows as &$r) {
+        $r['label'] = ((string)$r['company'] !== '' ? (string)$r['company'] : (string)$r['address_1']) . ', ' . (string)$r['city'];
+        $r['country_name'] = pg_geo_country_label((string)$r['country_name'], (string)$r['country_code']);
+    }
+    unset($r);
+    return $rows;
+}
+
 // The page the widget is drawn on, as the handler needs it in page_id: the
 // page being drawn, else the one the address names.
 function _pg_sa_page_id()
@@ -393,7 +544,9 @@ function _pg_sa_state_controls(&$tree, $value, $country_states, $name = 'state')
 // Tokens: ^^__recipient_name^^ (ship-to name), ^^__address_type_url^^ (the
 // address type help page; a link bound to it drops when there is none),
 // ^^__custom_form_title^^, ^^__cart_url^^.
-// Section: custom_shipping_form (the page's custom shipping form fields).
+// Sections: custom_shipping_form (the page's custom shipping form fields),
+// verified_addresses (the verified shipping address help box, with its
+// script; shown by has_verified_addresses).
 // Flags: pg_sa_flags(). Errors: liveform 'shipping_address_and_arrival'.
 // cfg: next_page_id, address_type (bool), address_type_page_id.
 function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
@@ -437,6 +590,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $multi = defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient';
 
     $arrival_dates = $has_recipient ? _pg_sa_arrival_dates() : array();
+    $verified = $has_recipient ? _pg_sa_verified_addresses() : array();
     $custom_form = $has_recipient && !empty($settings['form']);
     $type_on = !empty($settings['address_type']);
 
@@ -470,23 +624,27 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     _pg_member_drop_empty_links($tree, array('__address_type_url' => $type_url, '__cart_url' => $cart_url));
 
     // An arrival date row's own flag is decided per row, below.
-    $sa_flags = pg_sa_flags($has_recipient, $multi, count($arrival_dates) > 0, $custom_form);
+    $sa_flags = pg_sa_flags($has_recipient, $multi, count($arrival_dates) > 0, $custom_form, count($verified) > 0);
     _eo_apply_visibility_bindings($tree, $sa_flags + array('arrival_is_custom' => true));
 
     $states = array();
+    $verified_states = array();
     $zip = array();
+    $countries = array();
     if ($has_recipient) {
-        foreach ((array)db_items("SELECT states.code, states.name, countries.code AS country_code FROM states
+        foreach ((array)db_items("SELECT states.id, states.code, states.name, countries.code AS country_code FROM states
             LEFT JOIN countries ON countries.id = states.country_id ORDER BY states.name") as $s) {
             $states[(string)$s['country_code']][] = array((string)$s['code'], (string)$s['name']);
+            $verified_states[] = array((string)$s['id'], (string)$s['name'], (string)$s['country_code']);
         }
+        $countries = _pg_acct_country_options();
         foreach ((array)db_items("SELECT code FROM countries WHERE zip_code_required = 1") as $c) $zip[] = (string)$c['code'];
 
         $fill = $values;
         foreach (array('state', 'address_type', 'arrival_date', 'custom_arrival_date', 'shipping_same_as_billing') as $k) unset($fill[$k]);
         _pg_acct_fill_values($tree, $fill, array(
             'salutation' => _pg_acct_pairs(get_salutation_options()),
-            'country'    => _pg_acct_country_options(),
+            'country'    => $countries,
         ));
         _pg_sa_state_controls($tree, $values['state'], isset($states[$values['country']]) ? $states[$values['country']] : array());
         if ($type_on) {
@@ -501,7 +659,9 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
 
     // The custom shipping form: the classic page's rows, its own markup.
     $scripts = '';
-    $sections = array('custom_shipping_form' => '');
+    $sections = array('custom_shipping_form' => '', 'verified_addresses' => '');
+    $verified_id = 'pg-sa-verified-w' . $widget_id;
+    if ($verified) $sections['verified_addresses'] = pg_sa_verified_box_html($verified_id, $countries, _pg_acct_default_country());
     if ($custom_form) {
         $info = get_form_info($page_id, 0, 0, 0, (string)$settings['form_label_column_width'], false, $lf, 'frontend', false, 'desktop', 0);
         if (trim((string)$info['content']) !== '') {
@@ -552,6 +712,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $form_id = 'pg-sa-form-w' . $widget_id;
     $folder_id = $page_id > 0 ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'") : 0;
     $scripts .= pg_sa_state_script($form_id, $states, $zip);
+    if ($verified) $scripts .= pg_sa_verified_script($form_id, $verified_id, $verified_states, $verified);
     $rendered = _pg_member_form_wrap($rendered . $scripts, _pg_acct_software_path() . '/shipping_address_and_arrival.php', array(
         'page_id'    => $page_id,
         'ship_to_id' => $ship_to_id,
