@@ -64,7 +64,7 @@ function pg_mcp_resource_kinds() {
 			'route'        => 'workspace.refs.get',
 			'name'         => 'workspace_record_refs',
 			'title'        => 'Where a record was talked about',
-			'description'  => 'The messages and tasks that point at one record, in the channels the person may read. type is order, product, product_group, offer, contact, user_account, erp_account, invoice, waybill, receipt, edoc, erp_quote, form, calendar_event, file or page; id is the record\'s id.'
+			'description'  => 'The messages and tasks that point at one record, in the channels the person may read. type is order, product, product_group, offer, cart_quote, contact, user_account, erp_account, invoice, waybill, receipt, edoc, erp_quote, form, calendar_event, file or page; id is the record\'s id.'
 		)
 
 	);

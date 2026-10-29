@@ -2790,6 +2790,7 @@ function ws_ai_type_scope($type)
         'product'        => 'products:read',
         'product_group'  => 'products:read',
         'offer'          => 'offers:read',
+        'cart_quote'     => 'orders:read',
         'contact'        => 'customers:read',
         'erp_account'    => 'erp:read',
         'invoice'        => 'erp:read',

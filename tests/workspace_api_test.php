@@ -35,6 +35,7 @@ if (!defined('PG_API_PANEL')) {
 }
 
 require_once(PG_FUNCTIONS_DIR . '/includes/mcp/tools.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/api/schema.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/api/scopes.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/translate/api.php');
@@ -1200,6 +1201,21 @@ function test_ws_api_search_record_scopes_name_known_kinds()
 	}
 
 	pg_assert_same(2, $quote_routes, 'the ERP\'s quote routes were read');
+
+	// A cart quote is found with the scope the order routes read with: its
+	// screens open to the same right as the order screens
+	// (validate_ecommerce_access()), and the store hands orders:read to the
+	// same people (api_owner_scopes()).
+	$order_routes = 0;
+
+	foreach (api_schema() as $route) {
+		if (in_array($route['id'], array('orders.list', 'orders.get'), true)) {
+			$order_routes++;
+			pg_assert_same($route['scope'], ws_api_search_record_scopes()['cart_quote'] ?? null, 'a cart quote is searched with the scope of ' . $route['id']);
+		}
+	}
+
+	pg_assert_same(2, $order_routes, 'the order routes were read');
 }
 
 // A person signed in on their own device writes in their own name; an
