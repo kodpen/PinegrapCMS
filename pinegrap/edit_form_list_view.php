@@ -770,7 +770,7 @@ if (!$_POST) {
                                             </ul>
                                         </div>
                                         <div class="col-12 text-end my-3">
-                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
+                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints"><span class="material-icons me-1" aria-hidden="true">info</span>' . lang('Hints') . '</button>
                                         </div>
                                         <div class="col mt-5">
                                             <div class="form-text text-start">' . lang(array('string'=>'Display layout of submitted form data fields within View{var:1}','vars'=>$collection_field_marker)) . '</div>
@@ -906,11 +906,11 @@ if (!$_POST) {
                                                                             </ul>
                                                                         </div>
                                                                         <div class="col-12 text-end my-3">
-                                                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints_for_advanced_search"><span class="material-icons me-1">info</span>' . lang('Hints') . '</button>
+                                                                            <button type="button" class="btn btn-link pg-link-secondary" data-bs-toggle="dialog" data-bs-target="#hints_for_advanced_search"><span class="material-icons me-1" aria-hidden="true">info</span>' . lang('Hints') . '</button>
                                                                         </div>
                                                                         <div class="col mt-5">
-                                                                            <div class="form-text text-start">' . lang(array('string'=>'Layout of fields in advanced search{var:1}','vars'=>$collection_field_marker)) . '</div>
-                                                                            <textarea id="search_advanced_layout" name="search_advanced_layout">' . h($search_advanced_layout) . '</textarea>
+                                                                            <div class="form-text text-start" id="search_advanced_layout_label">' . lang(array('string'=>'Layout of fields in advanced search{var:1}','vars'=>$collection_field_marker)) . '</div>
+                                                                            <textarea id="search_advanced_layout" name="search_advanced_layout" aria-labelledby="search_advanced_layout_label">' . h($search_advanced_layout) . '</textarea>
                                                                             ' . pg_code_editor_attach(array('id' => 'search_advanced_layout', 'code_type' => 'mixed')) . '
                                                                         </div>
                                                                     </div>
