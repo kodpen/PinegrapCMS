@@ -17,7 +17,7 @@ module: seo, auth
 - The folder cell's colour class (`.public`, `.private` …) was the only sign. `pg_folder_access_mark()` (`includes/fn/auth.php`) puts the file manager's icon for the level (`includes/panel/explorer.php`, aria-hidden) and a visually-hidden `get_access_control_type_name()` before the aria-hidden folder ligature.
 
 ## Why do folder names, descriptions, labels and shipping names wrap?
-- They were cut in a 100px (folder, about 7 letters) or 200px box with `text-truncate`; the full text sat only in a td `title`, which `pgBindTitlePopovers()` turns into a hover popover on a cell that takes no focus, so keyboard, touch and zoomed users never read it (#this PR).
+- They were cut in a 100px (folder, about 7 letters) or 200px box with `text-truncate`; the full text sat only in a td `title`, which `pgBindTitlePopovers()` turns into a hover popover on a cell that takes no focus, so keyboard, touch and zoomed users never read it (#3170).
 - `pg_folder_list_name()` (`includes/fn/auth.php`) prints access mark, ligature and the name as `badge … text-wrap text-break`; the cell carries `text-wrap`, since `table.chart td` is `nowrap` and BS6 `.badge` sets `nowrap` itself. Used by the files, pages, design files and themes lists.
 - Descriptions (files, design files), form field labels and the shipping method Name and Message cells sit in `<div class="text-wrap text-break" style="max-width:20rem;">`, with no title.
 - A form's `information` field keeps the 200px cut preview with its title: it is sanitized rich text that can run to paragraphs.
