@@ -214,7 +214,7 @@ function test_panel_gate_answers()
 	pg_assert_same('exempt', pg_panel_gate('site_chat_nope'), 'unknown site chat name');
 	pg_assert_same('session', pg_panel_gate('get_form'), 'any_role');
 	pg_assert_same('session', pg_panel_gate('get_forms'), 'any_role');
-	pg_assert_same('role', pg_panel_gate('get_page'), 'gated row');
+	pg_assert_same('role', pg_panel_gate('get_pages'), 'gated row');
 	pg_assert_same('role', pg_panel_gate('ca_bundle_update'), 'gated row');
 	pg_assert_same('role', pg_panel_gate('nope'), 'unknown');
 	pg_assert_same('role', pg_panel_gate('Null'), 'no action');

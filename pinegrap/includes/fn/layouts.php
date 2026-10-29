@@ -8,8 +8,7 @@
  * (generate_layout_content()); once someone saves a text that differs from
  * the generated one it is written to data/layouts/<page id>.php and
  * page.layout_modified is set. A hosted site neither writes nor uses the
- * file. Read and saved by the classic page designer (get_layout,
- * update_layout), and through layout_code by the visual designer's layout
+ * file. Read and saved through layout_code by the visual designer's layout
  * code tab and the layout editor screen (edit_page_layout.php).
  *
  * @author      Erdal Güral (Kodpen)

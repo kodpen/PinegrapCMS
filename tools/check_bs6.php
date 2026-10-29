@@ -86,8 +86,6 @@ $reviewed = array(
 	// Selectors no element carries any more, kept for markup a site pastes,
 	// and the shell rule giving the editor's chrome v5's light outline.
 	'assets/css/backend.src.css' => array('.btn-outline-light' => 4, '.btn-outline-dark' => 1, '.was-validated' => 2),
-	// The page designer's preview draws the site, which stays on Bootstrap 5.
-	'assets/js/page_designer.js' => array('btn-danger -> btn-solid theme-danger' => 1),
 	// The form validation script sets v5's class; panel CSS styles it.
 	// A theme stem whose values are v6 themes (`'bg-' + tone`).
 	// The DataTables column menu keeps dropdown-menu / dropdown-item beside

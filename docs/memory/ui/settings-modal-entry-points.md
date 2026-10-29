@@ -6,7 +6,7 @@ description: How Site Settings opens: header gear button, pgOpenSettings, URL ho
 ## Where is the settings button and where is the dialog printed?
 - Own step in the UI tour (`pg_tour_shell_steps()`, `at => 'settings'`, target `#pg_settings_open`). `PG_TOUR_SHELL_KEY` was raised to `shell.3` because the frame changed (everyone sees the tour once more); the "and settings too" sentence left the menu steps.
 - The button is in the header next to the notification bell (`pg_settings_modal_button()`). The left menu has a Site Settings row too (slot 20), but it leads to the settings pages, not the dialog: its links carry `data-pg-settings-page`, which `asked()` leaves alone (`main-menu-settings-row.md`).
-- Button and dialog are printed in `output_header()`, NOT the footer: the visual page editor (`includes/designer_screen.php`) and `page_designer.php` do not call the footer, so a footer dialog would vanish exactly where it helps most.
+- Button and dialog are printed in `output_header()`, NOT the footer: the visual page editor (`includes/designer_screen.php`) does not call the footer, so a footer dialog would vanish exactly where it helps most.
 - Not printed when `$toolbar` is set (`$toolbar != true` gate): that header is a thin strip in the edited site's frame, no place for a dialog. `output_header_secure()` screens (pickers) never get it.
 - Open from anywhere: `window.pgOpenSettings('firewall', 'pgset-waf')`.
 

@@ -16,7 +16,7 @@ description: Main menu on wide screens: expanded / mini / hidden, the one bar bu
 - Ctrl+D clicks it. On the front-end toolbar Ctrl+D is still the fullscreen switch.
 
 ## Where is the state kept?
-- Cookie `softwaremenustatus` = expanded | collapsed | hidden, kept a year (the old one lasted a day). `pg_menu_state()` reads it (anything else is collapsed; `tests/menu_state_test.php`) so `output_header()` draws `.expanded` or `.menu-hidden` on `.software-container` before any script. `.menu-hidden` is drawn only where the sidebar is (not on `hide_menu` screens such as the page designer).
+- Cookie `softwaremenustatus` = expanded | collapsed | hidden, kept a year (the old one lasted a day). `pg_menu_state()` reads it (anything else is collapsed; `tests/menu_state_test.php`) so `output_header()` draws `.expanded` or `.menu-hidden` on `.software-container` before any script. `.menu-hidden` is drawn only where the sidebar is (not on `hide_menu` screens such as the visual editor).
 - `backend.src.js`: `setMenuState()` writes the cookie, `paintMenuState()` the classes, `paintMenuToggle()` the button, `shownMenuState()` reads the state off the container for the next click; `syncMenuMode()` drops the wide classes on entering drawer mode and repaints from the cookie on leaving it.
 
 ## What does hidden do to the layout?

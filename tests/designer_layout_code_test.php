@@ -5,8 +5,8 @@
  * Tests for a classic page's custom layout as a code tab of the visual
  * designer: the file name built from the page id alone, the white-space
  * blind comparison with the generated layout that keeps a page unmodified,
- * and the layout_code endpoint, which asks for the classic layout editor's
- * right (role 1 or better) and a form token before it reads the page.
+ * and the layout_code endpoint, which asks for the layout editor's right
+ * (role 1 or better) and a form token before it reads the page.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -62,9 +62,10 @@ function test_layout_code_action_row()
 	pg_assert_true($entry['write']);
 	pg_assert_false(!empty($entry['any_role']), 'no role 2 or 3 request reaches it');
 
-	// The classic layout editor's actions keep the same gate.
-	pg_assert_false($actions['get_layout']['exempt']);
-	pg_assert_false($actions['update_layout']['exempt']);
+	// The page designer's get_layout and update_layout are gone: the
+	// designer's tab and the layout editor screen share this action.
+	pg_assert_false(isset($actions['get_layout']), 'get_layout is not listed');
+	pg_assert_false(isset($actions['update_layout']), 'update_layout is not listed');
 }
 
 function test_layout_code_handler_checks()
@@ -86,8 +87,8 @@ function test_layout_code_handler_checks()
 	pg_assert_true(($token < $role) && ($role < $query), 'both before the table is touched');
 	pg_assert_true(($custom !== false) && ($custom < $save), 'only a page drawing a custom layout');
 
-	$classic = (string) file_get_contents(PG_FUNCTIONS_DIR . '/page_designer.php');
-	pg_assert_contains("validate_area_access(\$user, 'designer');", $classic, 'the classic layout editor keeps the same right');
+	$editor = (string) file_get_contents(PG_FUNCTIONS_DIR . '/edit_page_layout.php');
+	pg_assert_contains("validate_area_access(\$user, 'designer');", $editor, 'the layout editor screen asks for the same right');
 
 	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/designer_screen.php');
 	pg_assert_contains("'layoutCode'    => ((int)\$user['role'] <= 1)", $screen, 'the editor offers the tab to the same role');

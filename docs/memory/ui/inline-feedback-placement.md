@@ -15,7 +15,6 @@ description: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInl
 - Symptom (#3026): the injector set `aria-invalid` only when it ran, so a field a script marked later (product code already used, blank SKU on save, option/attribute/barcode/price-rule boxes, local sale and ERP quick-account dialogs) got the red class alone and was focused with no error read; a cleared mark kept no aria state.
 - A `MutationObserver` on the document (`attributeFilter: ['class']`) calls `pgFieldAria()` for an `input`/`select`/`textarea` whose `is-invalid` came or went: `aria-invalid="true"` and the field's message id in `aria-describedby` (other ids kept) while invalid, both removed when the class goes. The message is a later sibling before the next control, else the one after the row wrapper (`pgFieldFeedback()`); one without an id gets one.
 - `window.pgFieldInvalid(el, on, message)` marks or clears at once; with a message and none on the page it makes one (`data-pg-made`) where `pgPutFeedback()` puts it and removes it on clear. Scripts that only toggle the class need no change.
-- Not covered: the Page Designer (`page_designer.php` loads no `backend.min.js`), so its region-name mark still has no `aria-invalid`.
 
 ## What about forms with their own message?
 - `includes/forms/short_link_form.php`: the static "Required Area" inside the name's input-group is gone (liveform's message covers it).

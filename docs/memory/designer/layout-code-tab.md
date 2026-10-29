@@ -9,7 +9,7 @@ module: layouts
 - `_design.layoutPages` (`includes/designer_screen.php`) lists the design's pages that qualify (`pg_layout_custom_page_ids()`); the active tab page decides.
 
 ## Where does Ctrl+G land? (#1881)
-- On such a page of a design, the toolbar's `page_designer_button` ("Open Style Designer", `pg_page_actions()`) adds `&layout=1` (`pg_layout_tab_param()`: role 0-1, not hosted); the classic page designer used to open on the layout there. "Edit Page Style" still opens the canvas, so both are listed.
+- On such a page of a design, the toolbar's `page_designer_button` ("Open Style Designer", `pg_page_actions()`) adds `&layout=1` (`pg_layout_tab_param()`: role 0-1, not hosted), where the retired page designer opened. "Edit Page Style" opens the canvas, so both are listed.
 - `_design.openLayout` (`pg_layout_open_page_id()`): the landed page only, when it is in `layoutPages`; the editor drops `layout` from the address and calls `_sdLayoutCodeOpen()`, so a tree that lost its `system` node still reaches the layout.
 - Every page whose custom layout is drawn qualifies: a `layout_modified` page with layout type `system` draws the system template; a standard page never calls `render_layout()`.
 
@@ -21,12 +21,12 @@ module: layouts
 - `_design.layoutCode` shows the buttons; api.php action `layout_code` (`includes/panel/designer.php`), not exempt, then `validate_token()` and a role <= 1 check before any query; refuses a page without a custom layout.
 
 ## Where do read and save live?
-- `includes/fn/layouts.php` (loaded where needed, not by the manifest): `pg_layout_read()`, `pg_layout_save()`, `pg_layout_generated()`, `pg_layout_same_as_generated()`, `pg_layout_file_name()`. The classic `get_layout`/`update_layout` handlers call the same functions.
+- `includes/fn/layouts.php` (loaded where needed, not by the manifest): `pg_layout_read()`, `pg_layout_save()`, `pg_layout_generated()`, `pg_layout_same_as_generated()`, `pg_layout_file_name()`. `edit_page_layout.php` saves through the same action ([[layout-editor-classic]]).
 - The file is `LAYOUT_DIRECTORY_PATH/<int page id>.php`; `pg_layout_file_name()` accepts only a positive integer, so no request value reaches the path.
 - Save: a text equal to the generated one with white space removed deletes the file and sets `page.layout_modified = 0` (the layout then follows the form's fields again); anything else writes the file and sets 1. Logged as "layout for page (name) was modified". Page cache: `save` dirty, `read`/`regenerate` clean.
 
 ## Hosted sites?
-- `pg_hosted()`: Ctrl+G opens the canvas; the tab is read only (`_design.layoutReadOnly`), no Regenerate, save refused with "Custom layouts are not available on this site."; read shows the generated layout, which is what `render_layout()` draws there (the classic `get_layout` now shows the same).
+- `pg_hosted()`: Ctrl+G opens the canvas; the tab is read only (`_design.layoutReadOnly`), no Regenerate, save refused with "Custom layouts are not available on this site."; read shows the generated layout, which is what `render_layout()` draws there.
 
 ## What stays?
 - The field-change warning for a modified custom layout: `pg_field_form_layout_warning()` (`includes/forms/field_form.php`, used by `add_field.php` and `edit_field.php`), `delete_fields.php`.

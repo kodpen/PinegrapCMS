@@ -24,7 +24,7 @@ description: Panel CSS and JS traps that fail silently, with their files: hiding
 ## What about forms, panels and pickers?
 - Drawers (`<dialog class="drawer">`) stay inside the `<form>`: the top layer moves nothing in the DOM, so their fields submit; anything with a form of its own stays outside the main form (`user-permission-rows.md`).
 - Open dialogs and drawers are in the browser's top layer, where no z-index reaches. A floating layer for something inside one is appended to `pgUI.overlayHost(el)`: select2's dropdown and the Datepicker's calendar do (`placeInOverlayHost()` in `pg_fields.js` moves the calendar box on each open, `pg-datepicker.md`); one hung off `<body>` stays behind the dialog whatever its z-index.
-- An empty `data-bs-title` or `data-bs-content` reads as `null` in Bootstrap and its type check throws. The classic popover loop in `backend.src.js` passes an empty string for an empty attribute (the option wins over the attribute) and catches a throw per element: one bad element in that `$(document).ready` stopped the main menu set-up after it (#2037, `page_designer.php`'s title popover filled later by script).
+- An empty `data-bs-title` or `data-bs-content` reads as `null` in Bootstrap and its type check throws. The classic popover loop in `backend.src.js` passes an empty string for an empty attribute (the option wins over the attribute) and catches a throw per element: one bad element in that `$(document).ready` stopped the main menu set-up after it (#2037, the retired page designer's title popover, filled later by script).
 - `multiselectCheckbox` fires no event per box: bind behaviour to state and re-sync on every change (`user-permission-rows.md`).
 
 ## Which JS traps have files of their own?

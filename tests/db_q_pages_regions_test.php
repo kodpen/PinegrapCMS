@@ -156,7 +156,7 @@ function db_q_pages_regions_test_files()
 		'includes/fn/image.php' => 0,
 		'includes/fn/editor.php' => 0,
 		'includes/fn/design_themes.php' => 0,
-		'includes/panel/content.php' => 2,
+		'includes/panel/content.php' => 1,
 	);
 }
 

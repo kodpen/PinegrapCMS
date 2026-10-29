@@ -175,6 +175,12 @@ $file_list = array(
     'assets/multiselect-checkbox',
     'assets/page_designer.css',
     'assets/page_designer.js',
+    // The legacy page designer, retired with 2026.11.0: a classic style
+    // opens in the visual designer and a page's custom layout in
+    // edit_page_layout.php.
+    'page_designer.php',
+    'assets/js/page_designer.js',
+    'assets/css/page_designer.css',
     'assets/pg_carousel_layout.css',
     'assets/pg_civ_variants.js',
     'assets/pg_lightbox.css',

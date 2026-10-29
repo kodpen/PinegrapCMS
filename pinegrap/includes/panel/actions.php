@@ -163,9 +163,6 @@ function pg_panel_actions()
         // the LiveSite migration on another site, with a user name and a
         // password in the body; their names and answers are a contract.
         'get_common_regions' => array('file' => 'content.php', 'handler' => 'pg_panel_get_common_regions', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_dynamic_region' => array('file' => 'content.php', 'handler' => 'pg_panel_get_dynamic_region', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_dynamic_regions' => array('file' => 'content.php', 'handler' => 'pg_panel_get_dynamic_regions', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_file' => array('file' => 'content.php', 'handler' => 'pg_panel_get_file', 'exempt' => false, 'token' => false, 'write' => false),
         'get_folders' => array('file' => 'content.php', 'handler' => 'pg_panel_get_folders', 'exempt' => false, 'token' => false, 'write' => false),
         // Forms decide who may read them in forms.php, so the general gate
         // only asks for the session.
@@ -181,28 +178,16 @@ function pg_panel_actions()
         'audit_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'audit_log_changes' => array('file' => 'lists.php', 'handler' => 'pg_panel_audit_log_changes', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
         'waf_log_list_rows' => array('file' => 'lists.php', 'handler' => 'pg_panel_waf_log_list_rows', 'exempt' => false, 'any_role' => true, 'token' => true, 'write' => false),
-        'get_page' => array('file' => 'content.php', 'handler' => 'pg_panel_get_page', 'exempt' => false, 'token' => false, 'write' => false),
         'get_pages' => array('file' => 'content.php', 'handler' => 'pg_panel_get_pages', 'exempt' => false, 'token' => false, 'write' => false),
         'test' => array('file' => 'content.php', 'handler' => 'pg_panel_test', 'exempt' => false, 'token' => false, 'write' => false),
-        'create_dynamic_region' => array('file' => 'content.php', 'handler' => 'pg_panel_create_dynamic_region', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_dynamic_region' => array('file' => 'content.php', 'handler' => 'pg_panel_update_dynamic_region', 'exempt' => false, 'token' => true, 'write' => true),
         // A basic user sorts the menus they may edit.
         'sort_menu_items' => array('file' => 'content.php', 'handler' => 'pg_panel_sort_menu_items', 'exempt' => true, 'token' => true, 'write' => true),
 
-        // The page designer (assets/js/page_designer.js): designers only.
-        'get_design_files' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_design_files', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_designer_region' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designer_region', 'exempt' => false, 'token' => false, 'write' => false),
+        // The LiveSite migration reads these two from another site as well,
+        // with a user name and a password in the body; their names and
+        // answers are a contract.
         'get_designer_regions' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_designer_regions', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_items_in_style' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_items_in_style', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_layout' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_layout', 'exempt' => false, 'token' => false, 'write' => false),
-        'get_style' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_style', 'exempt' => false, 'token' => false, 'write' => false),
         'get_styles' => array('file' => 'designer.php', 'handler' => 'pg_panel_get_styles', 'exempt' => false, 'token' => false, 'write' => false),
-        'create_design_region' => array('file' => 'designer.php', 'handler' => 'pg_panel_create_design_region', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_designer_region' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_designer_region', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_file' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_file', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_layout' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_layout', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_page_designer_properties' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_page_designer_properties', 'exempt' => false, 'token' => true, 'write' => true),
-        'update_style' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_style', 'exempt' => false, 'token' => true, 'write' => true),
         // The front-end toolbar's open/closed state lives in the caller's own
         // session. Every role; the handler checks the session and the token.
         'update_toolbar_properties' => array('file' => 'designer.php', 'handler' => 'pg_panel_update_toolbar_properties', 'exempt' => true, 'token' => true, 'write' => true),

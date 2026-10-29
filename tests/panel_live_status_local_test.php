@@ -2,8 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Source checks for answers that come back without a page load: Page
- * Designer reads the save answer's status before it says Saved; the file
+ * Source checks for answers that come back without a page load: the file
  * manager's notices and its search count, the picture picker's Unsplash
  * status and the picture editor's status are live regions. A unit test
  * cannot run the browser's accessibility tree, so these pin the source.
@@ -33,36 +32,6 @@ function panel_live_status_local_slice($source, $from, $to)
 	$end = strpos($source, $to, $start + strlen($from));
 
 	return $end === false ? substr($source, $start) : substr($source, $start, $end - $start);
-}
-
-function test_page_designer_save_reads_the_answer_status()
-{
-	$js = panel_live_status_local_source('assets/js/page_designer.js');
-	$save = panel_live_status_local_slice($js, "url: 'api.php',\n                                data: JSON.stringify(data),", '// When the cancel button is clicked');
-
-	pg_assert_true($save !== '', 'the save request is found');
-	pg_assert_contains("response.status !== 'success'", $save, 'an answer that is not success is a failure');
-	pg_assert_contains('error: function', $save, 'a network failure has its own callback');
-	pg_assert_contains('saveFailed(', $save, 'both failure paths say why');
-
-	// The failure check comes before the content is recorded as saved.
-	$check = strpos($save, "response.status !== 'success'");
-	$cleared = strpos($save, 'content_changed = false;');
-	pg_assert_true($check !== false && $cleared !== false && $check < $cleared, 'content_changed stays true for a refused save');
-}
-
-function test_page_designer_save_failure_is_an_alert()
-{
-	$js = panel_live_status_local_source('assets/js/page_designer.js');
-	pg_assert_contains('class="page_designer_save_error', $js, 'the footer holds the failure line');
-	pg_assert_true(
-		(bool) preg_match('/page_designer_save_error[^>]*role="alert"/', $js),
-		'the failure line is an alert'
-	);
-	pg_assert_contains("labels['The changes could not be saved.']", $js, 'the failure line has a translated lead');
-
-	$php = panel_live_status_local_source('page_designer.php');
-	pg_assert_contains('"The changes could not be saved.":"\' . escape_javascript(lang(\'The changes could not be saved.\'))', $php, 'the label comes from page_designer.php');
 }
 
 function test_explorer_toasts_are_announced()

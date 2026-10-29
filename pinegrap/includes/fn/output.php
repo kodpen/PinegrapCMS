@@ -2132,18 +2132,13 @@ function output_header($properties = false)
     // are in the page panel now and the middle is empty, which is the only
     // thing that was ever in the way.
     //
-    // Not on the screens that hide the menu. Those are immersive tools, and the
-    // page designer is the case that matters: its search is its own -- styles,
-    // regions and design files, opened in the code editor rather than navigated
-    // to -- it is wired in page_designer.js against the same dialog, and it
-    // answers to a click and not to Ctrl+K. A field advertising the panel-wide
-    // palette and a shortcut that does nothing there would be wrong twice, so
-    // those screens keep the compact button they have always had.
+    // Not on the screens that hide the menu (the visual editor): those are
+    // immersive tools and keep the compact button they have always had.
     // Site Settings is a dialog that opens over whatever screen the operator
     // is on, so both halves of it are printed here rather than in the footer:
-    // the visual editor and the page designer are full-height applications
-    // that never call output_footer(), and a setting is wanted from those
-    // screens as much as from any other.
+    // the visual editor is a full-height application that never calls
+    // output_footer(), and a setting is wanted from it as much as from any
+    // other screen.
     //
     // Not in the toolbar. That header is the thin strip inside the frame of
     // the site being edited, and a dialog the size of the viewport has
@@ -4113,7 +4108,6 @@ function output_menu($properties = false)
         case 'view_system_style_source.php':
         case 'add_custom_style.php':
         case 'edit_custom_style.php':
-        case 'page_designer.php':
         case 'view_themes.php':
         case 'add_theme_file.php':
         case 'edit_theme_file.php':
@@ -5580,15 +5574,15 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
 
     if ($user['role'] < 2) {
 
-        // Keeps the page_designer_button class wherever it is drawn: the
-        // Ctrl+G handler clicks it by that name, and page_designer.js turns it
-        // into "Close Page Designer" while the designer is open.
+        // The style designer, under the page_designer_button class the
+        // Ctrl+G handlers click by that name (backend.src.js,
+        // frontend.src.js). A custom style has no such button: its code is
+        // edited through "Edit Page Style" below.
         if ($style_type == 'system') {
 
-            // A converted classic page that draws a custom layout: Ctrl+G
-            // opened the classic page designer on that layout, so it lands
-            // on the designer's layout tab. The URL then differs from "Edit
-            // Page Style", which still opens the canvas, and both stay.
+            // A page that draws a custom layout lands on the designer's
+            // layout tab. The URL then differs from "Edit Page Style", which
+            // opens the canvas, and both stay.
             $layout_tab = '';
 
             if ($style_page !== '') {
@@ -5600,12 +5594,6 @@ function pg_page_actions($page_id, $style_id, $user, $send_to = null)
                 'icon'  => 'easel',
                 'label' => lang('Open Style Designer'),
                 'url'   => $software . 'edit_system_style.php?id=' . urlencode($style_id) . $style_page . $layout_tab . '&send_to=' . $send_to,
-                'class' => 'page_designer_button');
-        } else {
-            $actions[] = array(
-                'icon'  => 'easel',
-                'label' => lang('Open Page Designer'),
-                'url'   => $software . 'page_designer.php?url=' . $send_to,
                 'class' => 'page_designer_button');
         }
 

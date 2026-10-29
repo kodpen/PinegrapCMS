@@ -5,7 +5,7 @@ description: get_page_content.php evaluates the assembled page when PHP_REGIONS 
 
 ## Where does page PHP run?
 - `get_page_content.php` runs the assembled page through `eval` when `PHP_REGIONS` is on (default) and the page holds a PHP open tag; `dregion` code and `custom_php` nodes have their own evals. Style code, designer regions and those nodes are designer work (role 0-1) and PHP in them is a feature.
-- Shared components, system widgets and page text are expanded into the page BEFORE that eval, so markup that a content-level operator writes reaches it. Reordering the pipeline is parked in `plans/legacy-page-designer-retirement.md`; the defence below stands on its own.
+- Shared components, system widgets and page text are expanded into the page BEFORE that eval, so markup that a content-level operator writes reaches it. Reordering it, so that only designer code (style code, designer regions) is evaluated, before text and widgets are expanded, is parked (owner 2026-10-19: no change now); the defence below stands on its own.
 
 ## What is pg_defuse_php_tags() and where is it called?
 - `pg_defuse_php_tags($html)` (`includes/fn/core.php`, beside `h()`) rewrites `<?` to `&lt;?`: the characters stay on screen, the PHP parser sees no open tag, the rest of the markup is untouched. It is for markup printed raw; plain text goes through `h()` as before.

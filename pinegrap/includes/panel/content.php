@@ -2,23 +2,16 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Panel actions - pages, folders, files, forms, common and dynamic regions,
- * menus and uploads.
+ * Panel actions - pages, folders, forms, common regions, menus and uploads.
  *
  *   upload_file            uploads a file into a folder
  *   get_common_regions     the common regions (LiveSite migration)
- *   get_dynamic_region     one dynamic region
- *   get_dynamic_regions    the dynamic regions
- *   get_file               one design file and its content
  *   get_folders            the folders (LiveSite migration)
  *   get_form               one custom form
  *   get_forms              the custom forms
- *   get_page               one page
  *   get_pages              the pages (LiveSite migration)
  *   test                   answers success; the LiveSite migration tests its
  *                          connection with it
- *   create_dynamic_region  creates a dynamic region
- *   update_dynamic_region  saves a dynamic region
  *   sort_menu_items        the order of a menu's items
  *
  * Called by pg_panel_dispatch() (includes/panel/actions.php); see that file
@@ -158,125 +151,6 @@ function pg_panel_get_common_regions($request, $action)
     exit();
 }
 
-function pg_panel_get_dynamic_region($request, $action)
-{
-    $dynamic_region = db_item(
-        "SELECT
-                dregion_id AS id,
-                dregion_name AS name,
-                dregion_code AS content
-            FROM dregion
-            WHERE dregion_id = '" . escape($request['dynamic_region']['id']) . "'"
-    );
-
-    // If a dynamic region was not found then respond with an error.
-    if (!$dynamic_region) {
-        $response = array(
-            'status' => 'error',
-            'message' => 'Dynamic Region could not be found.'
-        );
-
-        echo encode_json($response);
-        exit();
-    }
-
-    $response = array(
-        'status' => 'success',
-        'dynamic_region' => $dynamic_region
-    );
-
-    echo encode_json($response);
-    exit();
-}
-
-function pg_panel_get_dynamic_regions($request, $action)
-{
-    $sql_content = "";
-
-    if ($request['content'] == true) {
-        $sql_content = ", dregion_code AS content";
-    }
-
-    $sql_search = "";
-
-    if ($request['search'] != '') {
-        $sql_search = "WHERE dregion_name LIKE '%" . escape(escape_like($request['search'])) . "%'";
-    }
-
-    $dynamic_regions = db_items(
-        "SELECT
-                dregion_id AS id,
-                dregion_name AS name
-                $sql_content
-            FROM dregion
-            $sql_search
-            ORDER BY dregion_timestamp DESC"
-    );
-
-    $response = array(
-        'status' => 'success',
-        'dynamic_regions' => $dynamic_regions
-    );
-
-    echo encode_json($response);
-    exit();
-}
-
-function pg_panel_get_file($request, $action)
-{
-    $file = db_item(
-        "SELECT
-                id,
-                name,
-                size,
-                theme
-            FROM files
-            WHERE id = '" . escape($request['file']['id']) . "'"
-    );
-
-    // If a file was not found then respond with an error.
-    if (!$file) {
-        $response = array(
-            'status' => 'error',
-            'message' => 'File could not be found.'
-        );
-
-        echo encode_json($response);
-        exit();
-    }
-
-    // The key that signs the site's mail is never read out, whoever asks
-    // (pg_file_withheld()); get_file.php does not serve it either.
-    if (pg_file_withheld($file['name'])) {
-        echo encode_json(array(
-            'status' => 'error',
-            'message' => lang('Access denied')
-        ));
-        exit();
-    }
-
-    // If this file is a CSS theme, then determine what type of theme it is.
-    if ($file['theme'] == 1) {
-        // If this is a system theme, then set that.
-        if (db_value("SELECT COUNT(*) FROM system_theme_css_rules WHERE file_id = '" . $file['id'] . "'") > 0) {
-            $file['theme_type'] = 'system';
-
-        } else {
-            $file['theme_type'] = 'custom';
-        }
-    }
-    $file['size'] = convert_bytes_to_string($file['size']);
-    $file['content'] = file_get_contents(FILE_DIRECTORY_PATH . '/' . $file['name']);
-
-    $response = array(
-        'status' => 'success',
-        'file' => $file
-    );
-
-    echo encode_json($response);
-    exit();
-}
-
 function pg_panel_get_folders($request, $action)
 {
     $folders = db_items(
@@ -322,59 +196,6 @@ function pg_panel_get_forms($request, $action)
     $request['check_access'] = true;
 
     respond(get_forms($request));
-}
-
-function pg_panel_get_page($request, $action)
-{
-    if ($request['page']['id'] != '') {
-        $where = "page_id = '" . e($request['page']['id']) . "'";
-
-    } else {
-        $where = "page_name = '" . e($request['page']['name']) . "'";
-    }
-
-    $page = db_item(
-        "SELECT
-                page_id AS id,
-                page_name AS name,
-                page_type AS type,
-                layout_type
-            FROM page
-            WHERE $where"
-    );
-
-    // If a page was not found then respond with an error.
-    if (!$page) {
-        $response = array(
-            'status' => 'error',
-            'message' => 'Page could not be found.'
-        );
-
-        echo encode_json($response);
-        exit();
-    }
-
-    // If page type properties were requested, and this page has page type properties,
-    // then get them.
-    if (
-        isset($request['page_type_properties']) &&
-        $request['page_type_properties']
-        && check_for_page_type_properties($page['type'])
-    ) {
-        $page_type_properties = get_page_type_properties($page['id'], $page['type']);
-
-        if ($page_type_properties) {
-            $page['page_type_properties'] = $page_type_properties;
-        }
-    }
-
-    $response = array(
-        'status' => 'success',
-        'page' => $page
-    );
-
-    echo encode_json($response);
-    exit();
 }
 
 function pg_panel_get_pages($request, $action)
@@ -465,94 +286,6 @@ function pg_panel_get_pages($request, $action)
 
 function pg_panel_test($request, $action)
 {
-    $response = array('status' => 'success');
-
-    echo encode_json($response);
-    exit();
-}
-
-function pg_panel_create_dynamic_region($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    validate_token();
-    $user = validate_user();
-    validate_area_access($user, 'administrator');
-
-    if (($user['role'] < 1) && ((defined('DYNAMIC_REGIONS') == true) && (DYNAMIC_REGIONS == true))) {
-        $name = trim($request['dynamic_region']['name']);
-
-        $query = "INSERT INTO dregion (dregion_name, dregion_code, dregion_user, dregion_timestamp) "
-            . "VALUES (?, ?, ?, UNIX_TIMESTAMP())";
-        // insert row into region table
-        $result = db_q($query, array((string) $name, (string) $request['dynamic_region']['code'], (int) USER_ID)) or output_error('Query failed');
-        log_activity(lang(array('string' => '{var:1} ({var:2}) was created', 'vars' => array(lang('dynamic region'), $name))), $_SESSION['sessionusername']);
-
-        $response = array(
-            'status' => 'success',
-            'name' => $name
-        );
-    } else {
-        $response = array(
-            'status' => 'error',
-            'message' => lang('Access denied'),
-        );
-    }
-
-    echo encode_json($response);
-    exit();
-}
-
-function pg_panel_update_dynamic_region($request, $action)
-{
-    // Kept global: helpers read the session user through `global $user`;
-    // see includes/panel/actions.php.
-    global $user;
-
-    validate_token();
-
-    // A dynamic region is PHP that runs on every page it is placed on.
-    // Creating and editing one (add_dynamic_region.php,
-    // edit_dynamic_region.php) stands at administrator, and the page
-    // designer only offers the region editor to role 0, so the save
-    // endpoint holds the same line rather than the general designer gate.
-    $user = validate_user();
-
-    if ((int) $user['role'] !== 0) {
-        respond(array(
-            'status' => 'error',
-            'message' => lang('Access denied.'),
-        ));
-    }
-
-    $dynamic_region = db_item(
-        "SELECT dregion_id AS id
-            FROM dregion
-            WHERE dregion_id = '" . escape($request['dynamic_region']['id']) . "'"
-    );
-
-    // If a dynamic region was not found then respond with an error.
-    if (!$dynamic_region) {
-        $response = array(
-            'status' => 'error',
-            'message' => 'Dynamic Region could not be found.'
-        );
-
-        echo encode_json($response);
-        exit();
-    }
-
-    db(
-        "UPDATE dregion
-            SET
-                dregion_code = '" . escape($request['dynamic_region']['content']) . "',
-                dregion_timestamp = UNIX_TIMESTAMP(),
-                dregion_user = '" . USER_ID . "'
-            WHERE dregion_id = '" . escape($request['dynamic_region']['id']) . "'"
-    );
-
     $response = array('status' => 'success');
 
     echo encode_json($response);

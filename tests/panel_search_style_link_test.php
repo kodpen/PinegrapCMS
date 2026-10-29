@@ -6,7 +6,8 @@
  * endpoint (includes/panel/search.php) sends the style's type, limited to
  * 'system' and 'custom', and the palette (assets/js/backend.src.js) opens
  * edit_<type>_style.php?id= like view_styles.php, or the style list when
- * the type is missing. page_designer.php reads no style_id parameter.
+ * the type is missing. It once linked page_designer.php?style_id=, a screen
+ * that read no such parameter and is now gone.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com

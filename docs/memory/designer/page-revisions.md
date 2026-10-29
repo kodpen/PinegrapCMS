@@ -21,7 +21,7 @@ description: Page revisions (page_revisions, 11.0.15): what a row holds, when a 
 - Site Settings › Features › Page Revisions (`pgset-revisions`); an empty or non-numeric box keeps the stored value (1 would let the sweep keep one revision).
 
 ## What is not covered?
-- Classic (legacy) pages: no revisions and no scheduling; their editor is retiring (`plans/legacy-page-designer-retirement.md`).
+- Classic (legacy) pages: no revisions and no scheduling (`page-designer-retired.md`).
 - Open: shared components (`shared_component` actions) have no writer. Same table with a `shared_id` column, or one of their own?
 
 Related: docs/memory/designer/page-revisions-concurrency.md, docs/memory/designer/page-revisions-history-panel.md, docs/memory/designer/page-schedule.md

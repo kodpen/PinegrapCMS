@@ -12,7 +12,6 @@ description: Dialogs and fields drawn by script after load name themselves: uniq
 - Pintura dialog (`image_editor_modal.js`) names `pgImageEditorTitle`.
 - Orders list Paraşüt export dialog (`view_orders.php`) names `xlsl_setup_title`.
 - Image editor Save Option dialog (`image_editor_edit.php`) names `save_option_title`; its format select is `lang('File Format')`.
-- Page Designer (`page_designer.js`): the System Tags dialog names `editor_region_title`; its four close buttons read `labels['Close']`, which `page_designer.php` passes in its label map.
 
 ## What rules came with it?
 - A dialog title id is unique: the two `exampleModalLabel` copies were renamed.

@@ -4,7 +4,7 @@ description: Where each classic region type goes in the visual designer (common,
 ---
 
 ## Why do classic regions move into the designer?
-- Owner 2026-10-19: the legacy page designer retires only when every page moves without loss; common and designer regions must be editable in the visual designer as shared-component-like blocks, keeping the content rights of the people who edit them today (managers, role-3 users granted a region in `users_common_regions_xref`, users with a folder's edit right). Retirement steps: `plans/legacy-page-designer-retirement.md`.
+- Owner 2026-10-19: the legacy page designer retires only when every page moves without loss; common and designer regions must be editable in the visual designer as shared-component-like blocks, keeping the content rights of the people who edit them today (managers, role-3 users granted a region in `users_common_regions_xref`, users with a folder's edit right). It retired in 2026.11.0: `page-designer-retired.md`.
 
 ## Where does each region type go?
 | Region | Becomes | Memory |
@@ -24,3 +24,4 @@ description: Where each classic region type goes in the visual designer (common,
 ## What is still open?
 - A site with no visual design cannot open a component on its own.
 - Find and replace does not search shared component trees or designer page trees; site search reads no designer page tree.
+- The unread `cregion` row of a converted common region was kept "until the legacy designer retires"; the retirement removed none, and whether the rows go is not decided.

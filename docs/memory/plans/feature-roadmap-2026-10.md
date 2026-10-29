@@ -5,7 +5,7 @@ description: Feature roadmap decided 2026-10-19 from the gap analysis: 24 approv
 
 ## What was decided on 2026-10-19?
 - All 24 candidates of the October 2026 gap analysis are approved as plans (one file each, listed below). Research evidence: `docs/_ozellik_adaylari.md`.
-- Legacy code is never removed by these plans: old payment gateways, the classic checkout flow, classic styles and renderers stay as they are and keep working. New work is added beside them (frozen, not deleted). Retiring the legacy page designer is a separate decision (`legacy-page-designer-retirement.md`).
+- Legacy code is never removed by these plans: old payment gateways, the classic checkout flow, classic styles and renderers stay as they are and keep working. New work is added beside them (frozen, not deleted). Retiring the legacy page designer is a separate decision (`designer/page-designer-retired.md`).
 - Page revision history **and** scheduled publishing are approved; live pages still publish directly (no working copy).
 - Open questions of the analysis were closed with the recommended answers; each plan file records its own.
 
