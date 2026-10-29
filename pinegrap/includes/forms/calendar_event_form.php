@@ -570,7 +570,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
 
         $output_locations = '
             <div class="col-12 my-3">
-                <h5>' . lang('Available Event Location(s)') . '</h5>
+                <h3 class="h5">' . lang('Available Event Location(s)') . '</h3>
                 <div class="card multiselect-checkbox-container rounded-0 mb-1">
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
@@ -618,9 +618,9 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Main Informations') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-4 my-3">
@@ -647,9 +647,9 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Schedule') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-1">
@@ -807,9 +807,9 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Location(s)') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         ' . $output_locations . '
@@ -819,13 +819,13 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Event Calendar(s)') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <h5>' . lang('Post to any of my Calendars') . '</h5>
+                                            <h3 class="h5">' . lang('Post to any of my Calendars') . '</h3>
                                             <div class="card multiselect-checkbox-container rounded-0 mb-1">
                                                 <div class="card-header border-0 bg-reset">
                                                     <div class="form-field">
@@ -845,9 +845,9 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Reservations') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">

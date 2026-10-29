@@ -32,7 +32,7 @@ function pg_user_form_rights_cards($permission_rows)
     return '
                     <div class="card mb-5 d-none" id="pg_permissions_everything">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</h2>
                         </div>
                         <div class="card-body">
                             ' . pg_user_permission_everything() . '
@@ -41,7 +41,7 @@ function pg_user_form_rights_cards($permission_rows)
 
                     <div class="card mb-5" id="pg_permissions_block">
                         <div class="card-header bg-reset border-0 d-flex justify-content-between align-items-center">
-                            <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</span>
+                            <h2 class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('User Rights') . '</h2>
                             <span class="small fg-secondary" data-pg-tally="' . h(lang(array('string' => '{var:1} of {var:2} areas on', 'vars' => array('{n}', '{m}')))) . '"></span>
                         </div>
                         <div class="card-body p-0">

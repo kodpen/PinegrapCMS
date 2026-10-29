@@ -39,9 +39,9 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -57,7 +57,7 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                             <label for="parent_id" class="form-label">' . lang('Parent Menu Item') . '</label>
                                             <select name="parent_id" id="parent_id" class="form-control">' . $parent_id_options . '</select>
                                         </div>
-                                        <div class="col-12 mt-7"><h5>' . lang('Link Menu Item To') . '</h5></div>
+                                        <div class="col-12 mt-7"><h3 class="h5">' . lang('Link Menu Item To') . '</h3></div>
                                         <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
                                             <div class="input-group flex-wrap">

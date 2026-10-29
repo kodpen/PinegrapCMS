@@ -115,9 +115,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Preview Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 sm:col-6 lg:col-4 my-3">
@@ -149,9 +149,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Arrival Date Availability') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -184,9 +184,9 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                         </div>
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Arrival Date Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-4">
@@ -194,7 +194,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                                             <input value="' . $date('arrival_date') . '" placeholder="' . date(get_date_format_code() . '/Y') . '" type="text" name="arrival_date" id="arrival_date" class="form-control" maxlength="10" autocomplete="off" data-pg-date/>
                                         </div>
                                         <div class="col-12 mt-7">
-                                            <h5>' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h5>
+                                            <h3 class="h5">' . lang('Or allow Customer to enter this Arrival Date during checkout') . '</h3>
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -215,7 +215,7 @@ function pg_arrival_date_form_cards($values, $cutoffs_js = null)
                                             </div>
                                         </div>
                                         <div class="col-12 my-3" id="shipping_cutoff_heading_row"' . $shipping_cutoff_row_style . '>
-                                            <h4 class="fw-bold fg-secondary">' . lang('Shipping Cut-offs') . '</h4>
+                                            <h3 class="h4 fw-bold fg-secondary">' . lang('Shipping Cut-offs') . '</h3>
                                         </div>
                                         <div id="shipping_cutoff_row"' . $shipping_cutoff_row_style . '>
                                             <div>

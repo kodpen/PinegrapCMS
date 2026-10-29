@@ -94,7 +94,7 @@ function build_sortable_html($menu_id, $grouped_items = null, $parent_id = 0, $l
     foreach ($grouped_items[$parent_id] as $item) {
         $html .= '<li class="sort-item" data-id="' . h($item['id']) . '">';
         $html .= '<div class="d-flex align-items-center py-3 px-3 border rounded-4 mb-1 bg-body" style="margin-left:' . $indent_px . 'px; cursor:default">';
-        $html .= '<i class="bi bi-grip-vertical me-3 fg-secondary sort-drag-handle" style="cursor:grab; font-size:1.1rem"></i>';
+        $html .= '<button type="button" class="btn btn-link p-0 me-3 fg-secondary sort-drag-handle" style="cursor:grab; font-size:1.1rem" aria-label="' . h(lang(array('string' => 'Move {var:1}', 'vars' => array($item['name'])))) . '" aria-describedby="sort_keys_hint"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>';
         $html .= '<span>' . h($item['name']) . '</span>';
         $html .= '</div>';
         $html .= build_sortable_html($menu_id, $grouped_items, $item['id'], $level + 1);
@@ -298,6 +298,7 @@ pg_page_shell( array(
                 </div>
                 <div class="card-body">
                     <p class="fg-secondary small">' . lang('Drag items to reorder or move to a different level.') . '</p>
+                    <p id="sort_keys_hint" class="fg-secondary small">' . h(lang('With the keyboard, focus a grip: Up and Down move the item, Right moves it under the item above when that item has sub-items, Left moves it out one level.')) . '</p>
                     <div id="sortable_tree">
                         ' . $sortable_html . '
                     </div>
@@ -364,6 +365,54 @@ pg_page_shell( array(
                         });
                     });
                 }
+
+                // The keyboard path: Up and Down swap an item with its sibling;
+                // Right moves it to the end of the sub-items of the item above
+                // and Left moves it out after its parent, only into groups the
+                // tree already has. Save Order reads the tree as after a drag.
+                $(\'#sortable_tree\').on(\'keydown\', \'.sort-drag-handle\', function(event) {
+                    var $item = $(this).closest(\'.sort-item\');
+                    var $target = null;
+
+                    if (event.key === \'ArrowUp\' || event.key === \'ArrowDown\') {
+                        var $other = event.key === \'ArrowUp\' ? $item.prev(\'.sort-item\') : $item.next(\'.sort-item\');
+                        if ($other.length) {
+                            if (event.key === \'ArrowUp\') {
+                                $item.insertBefore($other);
+                            } else {
+                                $item.insertAfter($other);
+                            }
+                        }
+                    } else if (event.key === \'ArrowRight\') {
+                        $target = $item.prev(\'.sort-item\').children(\'.sort-group\');
+                        if ($target.length) {
+                            $target.append($item);
+                        }
+                    } else if (event.key === \'ArrowLeft\') {
+                        var $parent = $item.parent().closest(\'.sort-item\');
+                        if ($parent.length) {
+                            $target = $parent.parent();
+                            $item.insertAfter($parent);
+                        }
+                    } else {
+                        return;
+                    }
+
+                    event.preventDefault();
+
+                    if ($target && $target.length) {
+                        updateIndentation($item, getGroupLevel($item.parent()));
+                    }
+
+                    this.focus();
+
+                    var $siblings = $item.parent().children(\'.sort-item\');
+                    if (typeof window.pgAnnounce === \'function\') {
+                        window.pgAnnounce(' . str_replace('</', '<\/', encode_json(lang('Position {position} of {total}'))) . '
+                            .replace(\'{position}\', $siblings.index($item) + 1)
+                            .replace(\'{total}\', $siblings.length));
+                    }
+                });
 
                 $(\'#save_sort_order\').on(\'click\', function() {
                     var btn = $(this);

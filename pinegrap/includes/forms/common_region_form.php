@@ -35,7 +35,7 @@ function pg_common_region_form_card($name = '', $content = '', $beside = '', $wi
 
     if ($with_content) {
         $output_content = '
-                                        <h5 class="mt-12">' . lang('Shared Content to appear on associated Pages') . '</h5>
+                                        <h3 class="h5 mt-12">' . lang('Shared Content to appear on associated Pages') . '</h3>
                                         <div class="col-12 my-3">
                                             <label for="content_textarea" class="form-label">' . lang('Content') . '</label>
                                             <textarea id="content_textarea" name="content" style="width: 100%" rows="30" wrap="off">' . h(prepare_rich_text_editor_content_for_output($content)) . '</textarea>
@@ -46,9 +46,9 @@ function pg_common_region_form_card($name = '', $content = '', $beside = '', $wi
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
