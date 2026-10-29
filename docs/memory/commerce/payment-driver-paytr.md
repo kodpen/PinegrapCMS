@@ -1,6 +1,6 @@
 ---
 name: payment-driver-paytr
-description: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed payment page, server-to-server callback with the OK answer completes the incomplete order; CSP for the frame; limits
+description: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed page, the server callback with OK completes the incomplete order; CSP; limits
 ---
 
 ## What is it?
@@ -23,12 +23,12 @@ description: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token
 - The definition's `csp`: `script-src` and `frame-src` `https://www.paytr.com`. `pg_payment_csp_sources($gateway, $card_on, $store_on)` adds every redirect driver with `csp` whose `connect_apps` switch is on (`pg_payment_redirect_switched_on()`, one `enabled` query: the policy is sent before the site's key is read); `pg_payment_csp_merge()` joins the lists. waf.php passes `$store_on` = `config.ecommerce`.
 
 ## Limits?
-- No instalments, refund or cancel through PayTR yet (plan 4c2): refund on PayTR's panel.
+- Refund: `payment-driver-paytr-refund.md` (#3055). No instalments (#3057) and no cancel through PayTR.
 - The visitor who pays reaches the receipt page while the order is completed by the callback: the receipt does not show the order (no session `completed_order_id`); if the callback is late the cart still shows it.
 - A success for an earlier attempt's merchant_oid (another tab) is `unknown_order`: nothing done, no alert.
 - A test-mode payment completes the order like a live one; the log line says "(test mode)".
 
 ## How was it verified?
-- `tests/payment_paytr_test.php` (fixed hash vectors, stand-in get-token answers, outcome and reply). No live or test PayTR call, no browser round trip.
+- `tests/payment_paytr_test.php` (fixed hash vectors, stand-in get-token answers, outcome and reply). No live PayTR call or browser round trip.
 
-Related: commerce/payment-drivers.md, commerce/payment-callback.md, commerce/payment-method-lists.md, plans/payment-driver-layer.md
+Related: commerce/payment-driver-paytr-refund.md, commerce/payment-drivers.md, commerce/payment-callback.md, commerce/payment-method-lists.md, plans/payment-driver-layer.md

@@ -4,7 +4,7 @@
  *
  * Tests for the PayTR driver (includes/payments/paytr.php): the get-token
  * hash, the amount in kuruş, the iframe page, the callback's hash check and
- * its "OK" answer, and what payment_callback.php does with a PayTR message
+ * its "OK" answer, the refund request and how its answers are read, and what payment_callback.php does with a PayTR message
  * (includes/payments/callback.php). PayTR is never called: a stand-in
  * answers the get-token request.
  *
@@ -74,6 +74,23 @@ function payment_paytr_test_http($status, $body)
 
 		return array('status' => $status, 'body' => $body, 'error' => ($status === 0) ? 'Connection timed out' : '');
 	};
+}
+
+// Stands in for PayTR's refund API and keeps the fields and the endpoint.
+function payment_paytr_test_refund_http($response)
+{
+	$GLOBALS['payment_paytr_test_sent'] = null;
+
+	return function ($fields, $endpoint) use ($response) {
+		$GLOBALS['payment_paytr_test_sent'] = array('fields' => $fields, 'endpoint' => $endpoint);
+
+		return $response + array('status' => 200, 'body' => null, 'error' => '', 'errno' => 0);
+	};
+}
+
+function payment_paytr_test_refund_order($changes = array())
+{
+	return array_merge(array('id' => '42', 'transaction_id' => 'PG42T1761730000', 'payment_method' => 'PayTR'), $changes);
 }
 
 function payment_paytr_test_callback($changes = array(), $key = 'KEYkey', $salt = 'SALTsalt')
@@ -296,4 +313,111 @@ function test_payment_paytr_migration_appends_the_method()
 
 	pg_assert_contains('upgrade_2026_11_0_paytr();                  // 11.0.122', $source);
 	pg_assert_contains("\"ENUM(\" . \$enum_match[1] . \",'PayTR') \"", $source);
+}
+
+// PayTR's refund formula, fixed values: merchant_id, merchant_oid,
+// return_amount, then the salt; HMAC-SHA256 with the key, base64.
+function test_payment_paytr_refund_hash()
+{
+	$fields = array('merchant_id' => '123456', 'merchant_oid' => 'PG42T1761730000', 'return_amount' => '11.97', 'reference_no' => 'not hashed');
+
+	pg_assert_same('Ho4tDOXk6CCFc3nAXfh91TAhEHMkBPuEA0hbnBPe/AA=', pg_payment_paytr_refund_hash($fields, 'KEYkey', 'SALTsalt'));
+}
+
+function test_payment_paytr_refund_capability()
+{
+	pg_assert_same(array('partial_refund'), pg_payment_paytr_capabilities());
+	pg_assert_true(function_exists('pg_payment_paytr_refund'));
+}
+
+function test_payment_paytr_refund_request_and_success()
+{
+	$http = payment_paytr_test_refund_http(array('body' => array('status' => 'success', 'is_test' => '0', 'merchant_oid' => 'PG42T1761730000', 'return_amount' => '11.97', 'reference_no' => 'PG42R1761730000')));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 1196.6, payment_paytr_test_settings(), $http));
+	$sent = $GLOBALS['payment_paytr_test_sent'];
+
+	pg_assert_same('refund', $sent['endpoint']);
+	pg_assert_same('123456', $sent['fields']['merchant_id']);
+	pg_assert_same('PG42T1761730000', $sent['fields']['merchant_oid']);
+	pg_assert_same('11.97', $sent['fields']['return_amount'], 'hundredths rounded, sent as decimal text');
+	pg_assert_same('PG42R1761730000', $sent['fields']['reference_no']);
+	pg_assert_same('Ho4tDOXk6CCFc3nAXfh91TAhEHMkBPuEA0hbnBPe/AA=', $sent['fields']['paytr_token']);
+
+	pg_assert_true($answer['success']);
+	pg_assert_same('refunded', $answer['status']);
+	pg_assert_same(1197, $answer['amount']);
+	pg_assert_same('PG42R1761730000', $answer['refund_reference']);
+	pg_assert_contains('PayTR refunded 11.97 of payment PG42T1761730000 for order #42.', $answer['log'][0]);
+}
+
+function test_payment_paytr_refund_full_amount()
+{
+	$http = payment_paytr_test_refund_http(array('body' => array('status' => 'success', 'merchant_oid' => 'PG42T1761730000', 'return_amount' => '123.50')));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 12350, payment_paytr_test_settings(), $http));
+
+	pg_assert_same('123.50', $GLOBALS['payment_paytr_test_sent']['fields']['return_amount']);
+	pg_assert_same(12350, $answer['amount']);
+}
+
+function test_payment_paytr_refund_refusals_carry_paytrs_message()
+{
+	$http = payment_paytr_test_refund_http(array('body' => array('status' => 'error', 'err_no' => '006', 'err_msg' => 'Toplam iade tutarı odeme tutarindan fazla olamaz')));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 99999, payment_paytr_test_settings(), $http));
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear'], 'a refusal is not unclear');
+	pg_assert_same('Toplam iade tutarı odeme tutarindan fazla olamaz', $answer['error']);
+	pg_assert_same('Toplam iade tutarı odeme tutarindan fazla olamaz', $answer['raw']['message']);
+	pg_assert_same('006', $answer['raw']['code']);
+
+	$http = payment_paytr_test_refund_http(array('body' => array('status' => 'failed')));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 100, payment_paytr_test_settings(), $http));
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear']);
+	pg_assert_same('no payment PG42T1761730000 at PayTR', $answer['raw']['message']);
+}
+
+function test_payment_paytr_refund_refused_before_asking()
+{
+	$http = payment_paytr_test_refund_http(array());
+
+	foreach (array(
+		array(payment_paytr_test_refund_order(array('transaction_id' => '')), 100, payment_paytr_test_settings()),
+		array(payment_paytr_test_refund_order(array('transaction_id' => 'ch_123')), 100, payment_paytr_test_settings()),
+		array(payment_paytr_test_refund_order(), 0, payment_paytr_test_settings()),
+		array(payment_paytr_test_refund_order(), 100, payment_paytr_test_settings(array('merchant_salt' => ''))),
+	) as $i => $case) {
+		$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with($case[0], $case[1], $case[2], $http));
+
+		pg_assert_false($answer['success'], 'case ' . $i);
+		pg_assert_false($answer['unclear'], 'case ' . $i);
+	}
+
+	pg_assert_same(null, $GLOBALS['payment_paytr_test_sent'], 'PayTR is not asked');
+}
+
+function test_payment_paytr_refund_unclear_answers()
+{
+	// No connection: nothing was sent, the refund may be asked again.
+	$http = payment_paytr_test_refund_http(array('status' => 0, 'error' => 'Could not resolve host', 'errno' => 6));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 100, payment_paytr_test_settings(), $http));
+
+	pg_assert_false($answer['success']);
+	pg_assert_false($answer['unclear']);
+	pg_assert_same('Could not resolve host', $answer['error']);
+
+	// A timeout: the request may have gone out.
+	$http = payment_paytr_test_refund_http(array('status' => 0, 'error' => 'Operation timed out', 'errno' => 28));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 100, payment_paytr_test_settings(), $http));
+
+	pg_assert_true($answer['unclear']);
+	pg_assert_contains('Operation timed out', $answer['error']);
+
+	// A page that is not PayTR's JSON.
+	$http = payment_paytr_test_refund_http(array('status' => 502, 'body' => null));
+	$answer = pg_payment_answer('refund', pg_payment_paytr_refund_with(payment_paytr_test_refund_order(), 100, payment_paytr_test_settings(), $http));
+
+	pg_assert_true($answer['unclear']);
+	pg_assert_contains('HTTP 502', $answer['error']);
 }
