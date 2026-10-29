@@ -13752,7 +13752,11 @@ a.ws-chip:hover {
 
 /* The writing box: formatted text, chips and cards, and still a chat field.
    (assets/js/workspace_editor.js) */
+/* The box is a div.form-control, which Bootstrap 6 lays out as a flex row:
+   text runs, code spans, tables and lists would stand side by side as
+   columns. Its content flows as text and blocks. */
 .ws-rich {
+  display: block;
   position: relative;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
