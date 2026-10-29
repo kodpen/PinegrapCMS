@@ -599,12 +599,29 @@ if (!isset($_POST['name'])) {
         var form = cb.closest("form");
         if (!form) return;
 
+        // Set while the canvas draws; the converted data is then sent once
+        // through requestSubmit(), which fires a real submit event (so the
+        // window-level double-submit guard marks the form) and keeps the
+        // pressed button\'s name in the request.
+        var busy = false;
+
         form.addEventListener("submit", function (e) {
-            if (!cb.checked) return;
-            if (document.getElementById("svg_convert_data").value) return; // prevent double-submit
+            var submitter = e.submitter || null;
+
+            if (busy) {
+                e.preventDefault();
+                return;
+            }
+
+            // Only Save and Save & Return convert; Delete and Duplicate go
+            // through untouched.
+            if (!cb.checked || !submitter || ((submitter.name !== "submit_save") && (submitter.name !== "submit_save_and_return"))) return;
+
+            // The second pass, sent by requestSubmit() below.
+            if (document.getElementById("svg_convert_data").value) return;
 
             e.preventDefault();
-            e.stopImmediatePropagation();
+            busy = true;
 
             var format = document.getElementById("svg_convert_format").value;
             var svgW   = parseInt(document.getElementById("svg_convert_width").value, 10);
@@ -624,9 +641,21 @@ if (!isset($_POST['name'])) {
                 ctx.drawImage(img, 0, 0, w, h);
                 var mime = format === "jpeg" ? "image/jpeg" : (format === "webp" ? "image/webp" : "image/png");
                 document.getElementById("svg_convert_data").value = canvas.toDataURL(mime, 0.92);
-                form.submit();
+                busy = false;
+
+                if (typeof form.requestSubmit === "function") {
+                    form.requestSubmit(submitter);
+                } else {
+                    var field = document.createElement("input");
+                    field.type = "hidden";
+                    field.name = submitter.name;
+                    field.value = submitter.value;
+                    form.appendChild(field);
+                    form.submit();
+                }
             };
             img.onerror = function () {
+                busy = false;
                 alert(' . json_encode(lang('SVG could not be rendered for conversion. Make sure the SVG file is valid.')) . ');
             };
             img.src = svgUrl;
