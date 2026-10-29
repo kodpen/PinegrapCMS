@@ -21,7 +21,7 @@ description: Generated from the module field of the memory files: each includes/
 - `commission_list`: [[commission-list-paging]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
-- `contact_list`: [[server-paged-lists]]
+- `contact_list`: [[contact-list-names]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]]
 - `designer_fx`: [[designer-interactions]]

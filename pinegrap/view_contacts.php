@@ -610,7 +610,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 $checked = '';
             }
 
-            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_[' . lang('None') . ']" value="[' . lang('None') . ']"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_[' . lang('None') . ']"> [' . lang('None') . '] (' . get_number_of_contacts('[' . lang('None') . ']', $require_email = false) . ')</label></div>';
+            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_[' . lang('None') . ']" value="[' . lang('None') . ']"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_[' . lang('None') . ']"> [' . lang('None') . '] (' . pg_format_number(get_number_of_contacts('[' . lang('None') . ']', $require_email = false), 0) . ')</label></div>';
         }
 
         foreach ($contact_groups as $contact_group) {
@@ -624,7 +624,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 $checked = '';
             }
 
-            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_' . $contact_group['id'] . '" value="' . $contact_group['id'] . '"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . ' (' . $number_of_contacts . ')</label></div>';
+            $output_contact_groups .= '<div class="form-field"><input type="checkbox" name="contact_groups[]" id="contact_group_' . $contact_group['id'] . '" value="' . $contact_group['id'] . '"' . $checked . ' class="check multiselect-checkbox" /><label class="" for="contact_group_' . $contact_group['id'] . '"> ' . h($contact_group['name']) . ' (' . pg_format_number($number_of_contacts, 0) . ')</label></div>';
         }
 
         // If the Opt in status is not on display the opt in select box.
@@ -650,7 +650,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
             $output_opt_status = '
                 <select class="form-control" id="opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>';
         } else {
-            $output_opt_status = lang('Opt-In');
+            $output_opt_status = '
+                <input value="' . h(lang('Opt-In')) . '" type="text" class="form-control disabled" disabled="disabled" id="opt_in_status" name="fake_opt_in_status" />';
         }
 
         // If any of the Membership filters are not on.
@@ -729,7 +730,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         $output_advanced_filters =
             '<div class="advanced_filters advanced-filter-bar  position-fixed-md"  id="advanced_filters" >
                 <div class="p-3 border justify-content-between d-flex flex-wrap header">
-                    <p class="m-0"><span class="material-icons pe-1">filter_list</span>' . lang('Filters') . '</p>
+                    <p class="m-0"><span class="material-icons pe-1" aria-hidden="true">filter_list</span>' . lang('Filters') . '</p>
                     <a class="btn btn-close " title="' . $output_advanced_filters_label . '" href="view_contacts.php?advanced_filters=' . $output_advanced_filters_value . '" ></a>
                 </div>
                 <form class="advanced-filter-body p-3 pt-0 disable_shortcut" id="search_advanced" action="view_contacts.php" method="get">
@@ -820,10 +821,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="website" class="form-label">' . lang('Website') . '</label>
-                            <input type="text" id="website" name="website" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['website'] ?? '')) . '"/>
-                        </div>
-                        <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="lead_source" class="form-label">' . lang('Lead Source') . '</label>
                             <input type="text" id="lead_source" name="lead_source" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['lead_source'] ?? '')) . '"/>
                         </div>
@@ -891,7 +888,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             <input type="text" id="member_id" name="member_id" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['member_id'] ?? '')) . '"/>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label for="member_id" class="form-label">' . lang('Expiration Date') . '</label>
+                            <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
                             <input type="text" id="expiration_date" name="expiration_date" class="form-control" value="' . h(($_SESSION['software']['view_contacts']['expiration_date'] ?? '')) . '" data-pg-date />
                             ' . get_date_picker_format() . pg_fields_script() . '
                         </div>
@@ -916,7 +913,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                             </div>
                         </fieldset>
                         <div class="col-12 text-center position-sticky my-3" style="bottom:.5rem;">
-                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3">sync</i>' . lang('Update') . '</button>
+                            <button type="submit" name="submit_data" value="Update" class="btn btn-solid theme-primary my-1"><i class="material-icons me-3" aria-hidden="true">sync</i>' . lang('Update') . '</button>
                         </div>
                     </div>
                 </form>
@@ -1003,11 +1000,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         $output_merge_contacts_button = '
          <div class=" btn-group btn-group-sm flex-wrap">
-             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link pg-link-warning py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
+             <button type="submit" name="submit_data" value="Merge Contacts" class="btn btn-link pg-link-warning py-0 m-1" data-confirm-content="' . lang('WARNING: All contacts that match the filters will be permanently merged together. This includes contacts from all result pages that might exist. Please make sure that you perform an update to the filters before you attempt to merge. An update will allow you to see which contacts will be merged before you actually merge them. If you would like to continue with the merge, please click OK. Otherwise, please click Cancel.') . '"><span class="material-icons me-1" aria-hidden="true">healing</span>' . lang(array('string'=>'Merge') ) . '</button>
          </div>';
         
         // output the merge selected button
-        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
+        $output_modify_selected_buttons = '<button type="button" value="Merge Selected" class="btn mb-1 mt-1 btn-solid theme-warning disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected duplicate {var:1} will be merged together.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3" aria-hidden="true">healing</span>' . lang(array('string'=>'Merge Selected') ) . '</button>';
     
     // else output the default table headings
     } else {
@@ -1032,8 +1029,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
         
         // output the opt in and opt out buttons
         $output_modify_selected_buttons = '
-        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
-        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
+        <button type="button" value="Opt-In Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-in.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3" aria-hidden="true">radio_button_checked</span>' . lang(array('string'=>'Opt-In Selected') ) . '</button>
+        <button type="button" value="Opt-Out Selected" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . lang(array('string'=>'WARNING: The selected {var:1} will be opted-out.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3" aria-hidden="true">radio_button_unchecked</span>' . lang(array('string'=>'Opt-Out Selected') ) . '</button>';
     
     }
     
@@ -1055,7 +1052,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                 ' . $liveform->output_errors() . '
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
-                <nav id="button_bar" class="pg-toolbar navigation" aria-label="Button Bar">
+                <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                             <form id="export_form" class="disable_shortcut d-inline-block" method="get">
                                 ' . get_token_field() . '
                                 <a class="btn btn-sm btn-solid theme-primary m-1 " href="add_contact.php?send_to=' . h(REQUEST_URL) . '"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>
@@ -1099,11 +1096,11 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                                     ' . $output_rows . '
                                 </tbody>
                             </table>
-                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+                            <nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                                 <div class="container">
                                     <div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0 enable-on-selected">
                                         ' . $output_organize_selected_button . $output_modify_selected_buttons . '
-                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
+                                        <button type="button" value="Delete Selected" class="btn mb-1 mt-1 btn-solid theme-danger disabled" data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('contacts')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span>' . lang(array('string'=>'Delete Selected') ) . '</button>
                                     </div>
                                 </div>
                             </nav>

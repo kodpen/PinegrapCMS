@@ -712,6 +712,24 @@ function pg_contact_list_address_line($label, $parts)
 }
 
 /**
+ * The name a row's check box reads: the full name, else the company, else
+ * the e-mail address.
+ *
+ * @param array $contact a row of pg_contact_list_select()
+ * @return string unescaped
+ */
+function pg_contact_list_row_name($contact)
+{
+    $name = trim(($contact['first_name'] ?? '') . ' ' . ($contact['last_name'] ?? ''));
+
+    if ($name === '') {
+        $name = trim($contact['company'] ?? '');
+    }
+
+    return ($name !== '') ? $name : (string) ($contact['email_address'] ?? '');
+}
+
+/**
  * One row of the contacts list.
  *
  * @param array  $contact     a row of pg_contact_list_select()
@@ -739,7 +757,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
     }
 
     $cells = array(
-        pg_list_cell('<input class="check" type="checkbox" name="contacts[]" value="' . $id . '" class="checkbox" />', 'select-all align-middle text-start'),
+        pg_list_cell('<input class="check" type="checkbox" name="contacts[]" value="' . $id . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => pg_contact_list_row_name($contact)))) . '" />', 'select-all align-middle text-start'),
         pg_list_cell('<button type="button" class="btn-data-control m-1 btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $edit_url . '\'"><i class="bi bi-pencil"></i></button>', 'align-middle text-start col-reorder-none action-buttons'),
         pg_list_cell($picture, 'align-middle text-start'),
     );
@@ -801,7 +819,7 @@ function pg_contact_list_row($contact, $user, $filter, $group_names, $file_name)
             $cells[] = $phone;
             $cells[] = $email;
             $cells[] = pg_list_cell($user_cell);
-            $cells[] = pg_list_cell($contact['opt_in'] ? '<span class="material-icons">task_alt</span>' : '', 'align-middle text-center');
+            $cells[] = pg_list_cell($contact['opt_in'] ? '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . h(lang('Yes')) . '</span>' : '', 'align-middle text-center');
         }
     }
 
