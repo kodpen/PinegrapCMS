@@ -155,6 +155,7 @@ function pg_label_builtin_drivers()
         'basitkargo' => array('label' => 'Basit Kargo', 'file' => 'basitkargo.php', 'portal' => 'https://basitkargo.com/api'),
         'shippo'     => array('label' => 'Shippo', 'file' => 'shippo.php', 'portal' => 'https://portal.goshippo.com/api-config/api'),
         'sendcloud'  => array('label' => 'Sendcloud', 'file' => 'sendcloud.php', 'portal' => 'https://app.sendcloud.com/v2/settings/integrations/manage'),
+        'aras'       => array('label' => 'Aras Kargo', 'file' => 'aras.php', 'portal' => 'https://esasweb.araskargo.com.tr'),
     );
 }
 
