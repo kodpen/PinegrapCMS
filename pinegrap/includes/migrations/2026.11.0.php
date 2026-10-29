@@ -109,6 +109,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_shipment_labels();        // 11.0.125
 	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
 	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
+	upgrade_2026_11_0_shipment_label_returns(); // 11.0.126
 
 }
 
@@ -3478,5 +3479,22 @@ function upgrade_2026_11_0_workspace_ref_sources() {
 	}
 
 	install_note('Workspace: the records a note tags and those a workflow table row links to are now listed in the record\'s Workspace drawer and the customer\'s history, each only to who may read the note or the table. Notes and rows saved before this update are added by the scheduled general job, a few seconds at a time.');
+
+}
+
+// Return labels made from a customer return (2026.11.0, 11.0.126;
+// includes/fn/shipment_labels.php, pg_shipment_label_create_for_return()).
+//
+// order_return_id is the order_returns row a return label was made for; 0 for
+// every label made on the order screen, whose one-active-label rule stays per
+// address. A label made from a request is looked up by this column, so one
+// request never buys a second label while another request on the same
+// address still can get its own.
+function upgrade_2026_11_0_shipment_label_returns() {
+
+	install_add_column('shipment_labels', 'order_return_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('shipment_labels', 'idx_shipment_label_return', "KEY idx_shipment_label_return (order_return_id)");
+
+	install_note('Returns: an approved return request can get a return label from the carrier label service that ships with its return carrier; the label\'s code is given to the customer by e-mail and on their order page.');
 
 }
