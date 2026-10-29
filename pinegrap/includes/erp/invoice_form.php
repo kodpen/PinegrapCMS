@@ -465,19 +465,24 @@ function erp_invoice_form_cards($liveform, $options = array())
             <span>' . lang('Lines') . '</span>
             <div class="d-flex flex-wrap align-items-center gap-3 ms-auto">
                 ' . (($withholding_shown || erp_turkish_features())
-                    ? '<div class="form-field mb-0 fg-body fw-normal fs-md" style="text-transform:none" title="' . h(lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.')) . '">
-                    <div class="switch"><input class="" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle' . ($withholding_shown ? ' checked' : '') . ' /></div>
+                    ? '<div class="form-field mb-0 fg-body fw-normal fs-md" style="text-transform:none">
+                    <div class="switch"><input class="" type="checkbox" role="switch" id="erp_withholding_on" data-erp-withholding-toggle aria-describedby="erp_withholding_hint"' . ($withholding_shown ? ' checked' : '') . ' /></div>
                     <label class="small" for="erp_withholding_on">' . lang('VAT withholding') . '</label>
                 </div>'
                     : '') . '
-                <div class="input-group input-group-sm" style="width: 16rem;" title="' . h(lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.')) . '">
-                    <span class="input-group-text"><i class="bi bi-upc-scan"></i></span>
-                    <input type="text" class="form-control" data-erp-barcode autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
+                <div class="fg-body fw-normal fs-md" style="width: 16rem; text-transform:none">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text"><i class="bi bi-upc-scan" aria-hidden="true"></i></span>
+                        <input type="text" class="form-control" data-erp-barcode aria-describedby="erp_barcode_hint" autocomplete="off" placeholder="' . h(lang('Scan a barcode')) . '" aria-label="' . h(lang('Barcode')) . '" />
+                    </div>
                 </div>
                 <button type="button" class="btn btn-sm btn-outline theme-secondary no-submit" data-erp-add-line><i class="bi bi-plus-lg me-3"></i>' . lang('Add line') . '</button>
             </div>
         </div>
         <div class="card-body">
+            <div class="form-text mt-0 mb-3"><span id="erp_barcode_hint">' . lang('Scan a barcode or type a SKU and press Enter: the product lands on a line, or its quantity goes up by one.') . '</span>' . (($withholding_shown || erp_turkish_features())
+                ? ' <span id="erp_withholding_hint">' . lang('The buyer pays part of the VAT to the tax office: pick the withholding code on each line it applies to.') . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Withholding'), lang('Withholding code and the share of the VAT the buyer pays to the tax office.')))) . '</span>'
+                : '') . '</div>
             <div class="table-responsive">
                 <table class="table table-sm align-middle mb-0" data-erp-lines-table>
                     <thead>
@@ -488,11 +493,11 @@ function erp_invoice_form_cards($liveform, $options = array())
                             <th class="text-end" style="width:8%">' . lang('Quantity') . '</th>
                             <th style="width:11%">' . lang('Unit') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Unit price') . '</th>
-                            <th class="text-end" style="width:7%" title="' . h(lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')) . '">' . lang('Campaign %') . '</th>
-                            <th class="text-end" style="width:7%" title="' . h(lang('Your discount, applied on what the campaign leaves.')) . '">' . lang('Discount %') . '</th>
+                            <th class="text-end" style="width:7%">' . lang('Campaign %') . '</th>
+                            <th class="text-end" style="width:7%">' . lang('Discount %') . '</th>
                             <th class="text-end" style="width:7%">' . h(erp_tax_label('percent')) . '</th>' . (erp_tax2_enabled() ? '
                             <th class="text-end" style="width:7%">' . h(erp_tax2_name() . ' %') . '</th>' : '') . '
-                            <th style="width:9%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . ' title="' . h(lang('Withholding code and the share of the VAT the buyer pays to the tax office.')) . '">' . lang('Withholding') . '</th>
+                            <th style="width:9%" data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>' . lang('Withholding') . '</th>
                             <th class="text-end" style="width:11%">' . lang('Line total') . '</th>
                             <th style="width:2.5rem"></th>
                         </tr>
@@ -501,6 +506,7 @@ function erp_invoice_form_cards($liveform, $options = array())
                 </table>
             </div>
             <template data-erp-line-template>' . $output_template . '</template>
+            <div class="form-text" id="erp_lines_columns_hint">' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Campaign %'), lang('The store\'s campaign on the product, applied before the typed discount. Clear it to sell at the list price.')))) . ' ' . lang(array('string' => '{var:1}: {var:2}', 'vars' => array(lang('Discount %'), lang('Your discount, applied on what the campaign leaves.')))) . '</div>
             <div class="form-text">' . lang('Amounts are in the document currency. Empty rows are ignored. Picking a product fills the line; everything on it stays editable.') . '</div>
         </div>
     </div>
