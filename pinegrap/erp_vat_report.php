@@ -432,7 +432,7 @@ pg_page_shell([
                     <label class="small fg-secondary" for="erp_vat_kind">' . lang('Document type') . '</label>
                     <select class="form-control form-control-sm w-auto" id="erp_vat_kind">' . $kind_options . '</select>
                 </div>
-                <div class="card-body p-0 table-responsive" style="max-height:40rem">
+                <div class="card-body p-0 table-responsive" style="max-height:40rem;scroll-padding-top:2.5rem">
                     <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_vat_documents">
                         <thead class="sticky-top">
                             <tr>

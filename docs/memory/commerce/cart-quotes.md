@@ -18,7 +18,12 @@ module: cart_quotes
 ## Personal data?
 - `cart_quotes.contact_id` is a `pg_contact_holders()` holder (merge `move`, erase `find`); erasure anonymises `contact_id = 0` (products kept for the store); the export's `cart_quotes` section lists the person's quotes with their items, never the token.
 
-## What is not built yet (5b on)?
-- Panel screen, channel form, Workspace card (`ws_customer_cart_quote_rows()` is still the seam), tag (`sepet`, `cartquote`), `cart_quote.*` API routes and events, cancel, a sweep writing `expired` (`plans/workspace-quotes.md`).
+## Where does staff work with them?
+- `view_cart_quotes.php` (Orders menu after Returns; `?contact_id=` one contact's): newest 200, state badge, hint; an open quote gets Cancel (`pg_cart_quote_cancel()`) or New link (`pg_cart_quote_new_link()`, the old one stops). The link is shown once, in the notice.
+- `add_cart_quote.php`: customer box and 10 product boxes (`data-pg-combobox` with its own `?request=contacts|products` search, donations not offered), quantities, Valid until (default 30 days, `pg_cart_quote_until()`: end of that day, empty = no end).
+- Workspace customer card: section "Open cart quotes" (`ws_customer_cart_quote_rows()`: the contact's open, unexpired quotes, line counts, no amount), linking to the list for that contact.
+
+## What is not built yet?
+- Channel form, tag (`sepet`, `cartquote`), `cart_quote.*` API routes and events, a sweep writing `expired` (`plans/workspace-quotes.md`).
 
 Related: docs/memory/plans/workspace-quotes.md, docs/memory/core/contact-holders.md, docs/memory/core/personal-data-erasure.md
