@@ -8,7 +8,6 @@ description: What workflow tables leave for later (T1-T6 done): API/MCP import r
 - xlsx export of a table (`includes/fn/office.php`); a "my tables" strip on /workspace/my-day.
 - A table bin or versions (a delete is final, `workflow-tables.md`); `ws_inbox` has no table column, so a share's bell line names no table (kind-only line, `workflow-tables-screen.md`).
 - Tags in rows (`wtable_row` in `ws_refs`) wait for `plans/workspace-crm-seams.md` step 9 (`ws_refs.source_type` widening). The CRM pipeline is a shared table with a status and contact-link columns plus flows (same plan).
-- `pg_contact_holders()` does not re-point contact-link cells on a merge (`workflow-tables.md`).
 
 ## Where did the rest go?
 - Canvas, table automations and workflow mode: `plans/workspace-flows.md`. Scheduled-actions API: `workspace-scheduled-actions-api.md`, `workspace-scheduled-draft-proposals.md`.
