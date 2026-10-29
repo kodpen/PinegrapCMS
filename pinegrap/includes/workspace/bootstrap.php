@@ -88,6 +88,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates_saved.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_versions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_catalogue.php');

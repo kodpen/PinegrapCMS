@@ -3420,7 +3420,7 @@ function upgrade_2026_11_0_cart_quotes() {
 }
 
 // Flow templates saved on the site (2026.11.0, 11.0.115;
-// includes/workspace/flow_templates.php). A person saves a flow's draft as a
+// includes/workspace/flow_templates_saved.php). A person saves a flow's draft as a
 // template; the gallery lists it beside the built-in ones under "Saved on this
 // site". template_key is 'site_<id>', so it never meets a built-in key. graph
 // is the normalized draft graph with the secrets of its boxes dropped;

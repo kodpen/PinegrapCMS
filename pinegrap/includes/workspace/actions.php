@@ -754,6 +754,43 @@ function ws_handle_action($action, $request)
             return ws_action_ok(array('flow' => ws_flow_detail($viewer, ws_flow_for($viewer, $flow['id'], 'edit')),
                 'published' => $result['published'], 'publish_error' => $result['publish_error']));
 
+        // A flow's draft saved as a template of the site, and a saved
+        // template's title, help and group changed or binned by its saver or
+        // a Manager and above (flow_templates_saved.php).
+        case 'ws_flow_template_save':
+            $flow = ws_flow_for($viewer, (int) ($request['flow_id'] ?? 0), 'edit');
+
+            if (!$flow) {
+                return ws_action_error(lang('Only the owner of a flow can change it.'));
+            }
+
+            $result = ws_flow_template_save($viewer, $flow, array_intersect_key($request, array('title' => true, 'help' => true, 'category' => true)));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('template' => $result['template']));
+
+        case 'ws_flow_template_update':
+            $result = ws_flow_template_update($viewer, ws_flow_template_saved_id((string) ($request['key'] ?? '')),
+                array_intersect_key($request, array('title' => true, 'help' => true, 'category' => true)));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array('template' => $result['template']));
+
+        case 'ws_flow_template_bin':
+            $result = ws_flow_template_bin($viewer, ws_flow_template_saved_id((string) ($request['key'] ?? '')));
+
+            if (!$result['ok']) {
+                return ws_action_flow_refused($result);
+            }
+
+            return ws_action_ok(array());
+
 
         // canvas: started, listed, read and cancelled through the runner's
         // own checks, the ones the API's run routes make, and answered in
