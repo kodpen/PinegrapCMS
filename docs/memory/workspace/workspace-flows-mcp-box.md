@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-mcp-box
-description: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's read tool through ws_mcp_tool_call() with the owner's account; answer as output, writes refused
+description: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step kind mcp runs a connected server's tool through ws_mcp_tool_call() with the owner's account, its answer an output; asking first: F8c
 ---
 
 ## What is it?
@@ -9,16 +9,16 @@ description: The MCP box of flows (F8a #3000, F8b #3028 canvas, answer 5): step 
 ## How is it built on the canvas (F8b, PR #3028)?
 - `ws_flow_js_config()` gives `steps.mcp` = `ws_step_mcp_form_servers()` (steps.php, pure): each active server the person may call (an OAuth one only with their or the site's account), its `ws_mcp_form_tools()` (name, description cut at 200) and `asks` (approve tools). A server with no such tool is left out. No new read: it rides the screen's config.
 - `paletteItems()` in workspace_flow.js offers "Run a tool of an MCP server" only while `steps.mcp` is not empty; a new box takes the one server there is.
-- `mcpFields()`: server, tool (only the offered ones; a kept tool that asks first or is off shows the check's refusal, `mcpToolProblem()`), `arguments` as a value field (VALUE_FIELDS, so the picker and threads insert `{{node.*}}`/`{{trigger.*}}`), `mcpArgumentsProblem()` reads it as `ws_step_mcp_arguments()` does. Config problems still come from the save's Problems list; the owner's check at publish.
+- `mcpFields()`: server, tool (only the offered ones; a kept tool that asks first or is off shows a refusal, `mcpToolProblem()`, though the server runs one that asks first since F8c-1), `arguments` as a value field (VALUE_FIELDS, so the picker and threads insert `{{node.*}}`/`{{trigger.*}}`), `mcpArgumentsProblem()` reads it as `ws_step_mcp_arguments()` does. Config problems still come from the save's Problems list; the owner's check at publish.
 - Every edit goes through `refreshNode()` → `changed()`, so undo/redo covers it. Tests: `mcp_box` in tests/workspace_flows_canvas_test.php, `mcp_form_servers` in tests/workspace_flow_steps_test.php.
 
 ## What does it keep?
-- Config: `server_id`, `tool`, `arguments` (a JSON object as text, '' for none; an object sent by the API is kept as its JSON, up to `WS_STEP_MCP_ARGUMENTS_MAX` 20000).
+- Config: `server_id`, `tool`, `arguments` (a JSON object as text, '' for none; an object sent by the API is kept as its JSON, up to `WS_STEP_MCP_ARGUMENTS_MAX` 20000); `channel_id`, `closes_in` for a tool that asks first.
 - `arguments` is the kind's one text: `{{node.*}}` and `{{trigger.*}}` fill it with target `json` (`ws_step_fill_target()`): the value goes in as the inside of a JSON string, no word joiner, since nothing reads the text after. `ws_step_mcp_arguments()` checks it with each value blank: a value outside quotes, a list or bad JSON is a `bad_config` problem.
 
 ## Which tools may it run?
-- `ws_step_mcp_tool_problem()` (pure): only a tool on and running without approval, as the form (`ws_mcp_form_tools()`): read-only by the server's hint or declared by the administrator. A tool that asks first (`approve`) is refused at publish and run; writes that propose and wait are F8c.
-- `ws_step_mcp_check()` with the owner's rights at publish and at each run: server active, the tool, the arguments, on an OAuth server an account (`ws_mcp_oauth_account()`: the owner's own, else the site's).
+- `ws_step_mcp_tool_problem()` (pure): a tool turned on: read-only by the server's hint or declared by the administrator (`ws_mcp_form_tools()`), or one that asks first (`approve`), which waits for the owner's approval of each call (F8c-1, `workspace-flows-mcp-box-writes.md`).
+- `ws_step_mcp_check()` with the owner's rights at publish and at each run: server active, the tool, the arguments, on an OAuth server an account (`ws_mcp_oauth_account()`: the owner's own, else the site's; the own only for a tool that asks first).
 
 ## How does it call?
 - `ws_mcp_tool_call()` in mcp_form.php is the one call of the form and the box: connection with the person's own account first, one token renewal, `ws_mcp_remember()`, `last_used`. The form keeps its rate limit and its `ws_mcp_calls` row (via form).

@@ -867,6 +867,31 @@ function ws_flow_effect_approval_id($effect)
 }
 
 /**
+ * The effect of a box whose call was approved and is still to be made (an
+ * MCP box whose tool asks first, steps.php): approved:<id>, the request
+ * that approved it. Nothing waits on it: the box is ready again.
+ *
+ * @param int $approval_id
+ * @return string
+ */
+function ws_flow_approved_key($approval_id)
+{
+    return 'approved:' . (int) $approval_id;
+}
+
+/**
+ * The approval request an effect says approved the box's call
+ * (approved:<id>), 0 for none.
+ *
+ * @param string $effect
+ * @return int
+ */
+function ws_flow_effect_approved_id($effect)
+{
+    return preg_match('/^approved:([1-9][0-9]{0,9})$/', (string) $effect, $match) ? (int) $match[1] : 0;
+}
+
+/**
  * How the way a request ended settles the approval box that asked it.
  * Approved and rejected are decisions: the box is done on them, and a
  * decision no arrow leaves on ends the branch. Expired and withdrawn
@@ -2928,14 +2953,16 @@ function ws_flow_retry_recheck($step)
  * and has its next look in WS_FLOW_RECHECK seconds, in case the event is
  * lost. A step that gave no request fails. A box that ended while its
  * request was being asked (the run cancelled at that moment) still names
- * the request, which stays as it is.
+ * the request, which stays as it is. An MCP box whose tool asks first waits
+ * the same way for the request that asks its owner to approve the call.
  *
  * @param array  $step        ws_flow_run_steps row, running
  * @param int    $approval_id the request asked
  * @param string $text        the step's sentence
  * @param array  $data        ws_step_result_data()
+ * @param string $kind        the box's kind: approval or mcp
  */
-function ws_flow_approval_wait($step, $approval_id, $text, $data)
+function ws_flow_approval_wait($step, $approval_id, $text, $data, $kind = 'approval')
 {
     if ((int) $approval_id <= 0) {
         ws_flow_step_settle($step, 'running', 'failed', '', lang('The approval request could not be asked.'), $data);
@@ -2960,7 +2987,7 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data)
     }
 
     db("UPDATE ws_flow_run_steps SET effect = '" . e($key) . "'
-        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . 'approval') . "' AND status IN ('skipped', 'failed')");
+        WHERE id = '" . (int) $step['id'] . "' AND effect = '" . e(WS_STEP_BEGAN . $kind) . "' AND status IN ('skipped', 'failed')");
 }
 
 /**
@@ -2969,6 +2996,10 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data)
  * values; still open, it goes on waiting. The request as it stands now is
  * what counts, not what an event said. A box of a run that ended is let go;
  * its request stays as it is.
+ *
+ * An MCP box waits on the request for its call: approved, it is made ready
+ * again to make the call (ws_flow_approved_ready()); ended any other way, it
+ * settles as an approval box, with the values of an MCP box.
  *
  * @param array $step ws_flow_run_steps row, waiting
  * @return bool whether this request settled it
@@ -2994,14 +3025,21 @@ function ws_flow_approval_recheck($step)
         $outcome = 'withdrawn';
     }
 
-    $routed = ($outcome !== '') && ws_flow_outcome_routed(ws_flow_run_graph($run), $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
+    $graph = ws_flow_run_graph($run);
+    $node = ws_flow_graph_node($graph, $step['node_id']);
+    $mcp = $node && ((string) $node['kind'] === 'mcp');
+    $title = $approval ? (string) $approval['title'] : '';
+
+    if ($mcp && ($outcome === 'approved')) {
+        return ws_flow_approved_ready($step, $approval_id, lang(array('string' => 'The approval request “{var:1}” was approved.', 'vars' => $title)));
+    }
+
+    $routed = ($outcome !== '') && ws_flow_outcome_routed($graph, $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
     $settled = ws_flow_approval_settlement($outcome, $routed);
 
     if ($settled['status'] === '') {
         return false;
     }
-
-    $title = $approval ? (string) $approval['title'] : '';
 
     switch ($settled['outcome']) {
         case 'approved':
@@ -3022,9 +3060,47 @@ function ws_flow_approval_recheck($step)
                 : lang('The approval request is gone.');
     }
 
-    $data = array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
+    // An MCP box keeps the values it declares (no answer: the call was not
+    // made); an approval box its request and the request's message.
+    $data = $mcp
+        ? ws_step_result_data('mcp', $node['config'], array())
+        : array('approval_id' => $approval_id, 'message_id' => $approval ? (((int) $approval['message_id'] > 0) ? (int) $approval['message_id'] : null) : null);
 
     return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, $data);
+}
+
+/**
+ * A box whose call its owner approved goes back to ready, so the next claim
+ * makes the call (an MCP box, steps.php, ws_step_mcp_approved_call()): from
+ * waiting on that request only, in one write, so two looks make it ready
+ * once. Its effect names the request that approved it
+ * (ws_flow_approved_key()); its result keeps the arguments it asked with.
+ * The claim that takes it counts no new try: asking and calling are one try
+ * of the box (ws_flow_retry_until(), ws_flow_stale_action()).
+ *
+ * @param array  $step        ws_flow_run_steps row, waiting
+ * @param int    $approval_id the request that approved the call
+ * @param string $text        the box's sentence meanwhile
+ * @return bool whether this request made it ready
+ */
+function ws_flow_approved_ready($step, $approval_id, $text)
+{
+    $result = json_decode((string) ($step['result'] ?? ''), true);
+    $data = is_array($result['data'] ?? null) ? $result['data'] : array();
+
+    ws_flow_run_touch((int) $step['run_id']);
+
+    db("UPDATE ws_flow_run_steps SET status = 'ready', outcome = '', effect = '" . e(ws_flow_approved_key($approval_id)) . "',
+            wait_event = '', wait_key = '', wake_at = 0, ready_at = '" . time() . "', claimed_at = 0, finished_at = 0,
+            attempt = '" . max(0, (int) ($step['attempt'] ?? 0) - 1) . "',
+            result = '" . e(ws_flow_result_pack($text, $data)) . "'
+        WHERE id = '" . (int) $step['id'] . "' AND status = 'waiting' AND wait_key = '" . e(ws_flow_approval_key($approval_id)) . "'");
+
+    $ready = ((int) mysqli_affected_rows(db::$con) === 1);
+
+    ws_flow_run_refresh((int) $step['run_id']);
+
+    return $ready;
 }
 
 /**
