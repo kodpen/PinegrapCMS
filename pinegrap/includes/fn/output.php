@@ -1610,10 +1610,34 @@ function pg_widget_empty($icon, $message, $tone = '', $action_label = '', $actio
 // The stylesheet the control panel loads when config.php does not name one.
 // init.php defines CONTROL_PANEL_STYLESHEET_URL from this, and private_label.php
 // compares against it to tell a private-label stylesheet from the default.
+//
+// The minified copy (pg_css_bundles()) when the site runs minified
+// (ENVIRONMENT_SUFFIX 'min', the default) and the copy is there; the source in
+// src mode, and when an update left the copy out.
 function pg_default_control_panel_stylesheet_url()
 {
-    return PATH . SOFTWARE_DIRECTORY . '/assets/css/backend.src.css?v=' .
-        @filemtime(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+    $file = 'assets/css/backend.src.css';
+
+    if ((!defined('ENVIRONMENT_SUFFIX') || (ENVIRONMENT_SUFFIX === 'min')) && is_file(PG_FUNCTIONS_DIR . '/assets/css/backend.min.css')) {
+        $file = 'assets/css/backend.min.css';
+    }
+
+    return PATH . SOFTWARE_DIRECTORY . '/' . $file . '?v=' . @filemtime(PG_FUNCTIONS_DIR . '/' . $file);
+}
+
+/**
+ * The stylesheets served minified: each .min.css under assets/css/ and the
+ * source it is built from by tools/build_css.php (comments and spare
+ * whitespace taken out, see tools/css_minify.php). After editing a source,
+ * run the tool; CI fails a .min.css that no longer matches.
+ *
+ * @return array .min.css path => source path, both under the software directory
+ */
+function pg_css_bundles()
+{
+    return array(
+        'assets/css/backend.min.css' => 'assets/css/backend.src.css',
+    );
 }
 
 // Cloudflare's Email Address Obfuscation rewrites every address in an HTML
