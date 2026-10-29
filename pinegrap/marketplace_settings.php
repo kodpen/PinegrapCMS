@@ -1335,11 +1335,25 @@ function mp_settings_ago($timestamp) {
 
 	if ($seconds < 60) { return lang('Just now'); }
 
-	if ($seconds < 3600) { return lang(array('string' => '{var:1} minutes ago', 'vars' => (int)($seconds / 60))); }
+	if ($seconds < 3600) {
 
-	if ($seconds < 86400) { return lang(array('string' => '{var:1} hours ago', 'vars' => (int)($seconds / 3600))); }
+		$count = (int)($seconds / 60);
 
-	return lang(array('string' => '{var:1} days ago', 'vars' => (int)($seconds / 86400)));
+		return lang(array('string' => '{var:1} minute{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
+
+	}
+
+	if ($seconds < 86400) {
+
+		$count = (int)($seconds / 3600);
+
+		return lang(array('string' => '{var:1} hour{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
+
+	}
+
+	$count = (int)($seconds / 86400);
+
+	return lang(array('string' => '{var:1} day{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
 
 }
 

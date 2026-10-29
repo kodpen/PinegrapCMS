@@ -639,19 +639,13 @@ if (!$_POST) {
             go($_SERVER['PHP_SELF']);
         }
 
-        if ($number_of_replacements == 1) {
-            $match_plural_suffix = '';
-            $match_verb          = 'was';
-        } else {
-            $match_plural_suffix = 'es';
-            $match_verb          = 'were';
-        }
+        $match_plural_suffix = $number_of_replacements == 1 ? '' : 'es';
 
         $item_plural_suffix = $number_of_items == 1 ? '' : 's';
 
         $message = lang(array(
-            'string' => '{var:1} match{suffix:1} {var:2} found and replaced in {var:3} item{suffix:2}.',
-            'vars'   => array(pg_format_number($number_of_replacements, 0), $match_verb, pg_format_number($number_of_items, 0)),
+            'string' => '{var:1} match{suffix:1} found and replaced in {var:2} item{suffix:2}.',
+            'vars'   => array(pg_format_number($number_of_replacements, 0), pg_format_number($number_of_items, 0)),
             'suffix' => array($match_plural_suffix, $item_plural_suffix),
         ));
 

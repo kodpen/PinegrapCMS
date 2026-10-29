@@ -585,15 +585,21 @@ function pg_chat_last_seen_label($timestamp)
     $ago = time() - $timestamp;
 
     if ($ago < 3600) {
-        return lang(array('string' => '{var:1} minutes ago', 'vars' => max(1, (int) floor($ago / 60))));
+        $count = max(1, (int) floor($ago / 60));
+
+        return lang(array('string' => '{var:1} minute{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
     }
 
     if ($ago < 86400) {
-        return lang(array('string' => '{var:1} hours ago', 'vars' => (int) floor($ago / 3600)));
+        $count = (int) floor($ago / 3600);
+
+        return lang(array('string' => '{var:1} hour{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
     }
 
     if ($ago < 604800) {
-        return lang(array('string' => '{var:1} days ago', 'vars' => (int) floor($ago / 86400)));
+        $count = (int) floor($ago / 86400);
+
+        return lang(array('string' => '{var:1} day{suffix:1} ago', 'vars' => $count, 'suffix' => ($count == 1 ? '' : 's')));
     }
 
     return get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date'));

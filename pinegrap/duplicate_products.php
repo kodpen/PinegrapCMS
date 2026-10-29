@@ -754,19 +754,8 @@ if (!$_POST) {
 
         // if at least 1 product was exported, then log activity
         if (count($products) > 0) {
-            // if only 1 product was exported, then prepare message phrasing in a certain way
-            if (count($products) == 1) {
-                $plural_suffix = '';
-                $was_or_were = 'was';
-
-            // else more than 1 product was exported, so prepare message phrasing in a different way
-            } else {
-                $plural_suffix = 's';
-                $was_or_were = 'were';
-            }
-
             // add log message about products being exported
-            log_activity(count($products) . ' product' . $plural_suffix . ' ' . $was_or_were . ' exported', $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => '{var:1} product(s) were exported', 'vars' => count($products))), $_SESSION['sessionusername']);
         }
 
     // else the user did not select to export products, so just list products
