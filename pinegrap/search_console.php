@@ -298,7 +298,8 @@ if (!$linked) {
 	$period_links = '';
 
 	foreach (array(7, 28, 90) as $choice) {
-		$period_links .= '<a class="btn btn-sm ' . (($choice === $days) ? 'btn-solid theme-primary' : 'btn-outline theme-primary') . '" href="search_console.php?days=' . $choice . '">'
+		$period_links .= '<a class="btn btn-sm ' . (($choice === $days) ? 'btn-solid theme-primary' : 'btn-outline theme-primary') . '" href="search_console.php?days=' . $choice . '"'
+			. (($choice === $days) ? ' aria-current="page"' : '') . '>'
 			. h(lang(array('string' => '{var:1} days', 'vars' => $choice))) . '</a>';
 	}
 
@@ -442,20 +443,22 @@ if (!$linked) {
 						labels: data.labels,
 						datasets: [
 							{ label: ' . json_encode(lang('Clicks')) . ', data: data.clicks, yAxisID: "clicks", borderColor: color("--bs-primary", "#0d6efd"), backgroundColor: color("--bs-primary", "#0d6efd"), tension: 0.3, pointRadius: 2 },
-							{ label: ' . json_encode(lang('Impressions')) . ', data: data.impressions, yAxisID: "impressions", borderColor: color("--bs-purple", "#6f42c1"), backgroundColor: color("--bs-purple", "#6f42c1"), tension: 0.3, pointRadius: 2 }
+							{ label: ' . json_encode(lang('Impressions')) . ', data: data.impressions, yAxisID: "impressions", borderColor: color("--bs-purple", "#6f42c1"), backgroundColor: color("--bs-purple", "#6f42c1"), tension: 0.3, pointRadius: 3, borderDash: [6, 4], pointStyle: "rectRot" }
 						]
 					},
 					options: {
 						maintainAspectRatio: false,
 						interaction: { mode: "index", intersect: false },
 						plugins: {
-							legend: { position: "bottom", labels: { color: ink } },
+							// Dash, point shape and axis titles tell the two lines
+							// apart where blue and purple look alike.
+							legend: { position: "bottom", labels: { color: ink, usePointStyle: true } },
 							tooltip: { callbacks: { label: function (ctx) { return ctx.dataset.label + ": " + format(ctx.parsed.y); } } }
 						},
 						scales: {
 							x: { ticks: { color: ink }, grid: { color: grid } },
-							clicks: { position: "left", beginAtZero: true, grid: { color: grid }, ticks: { color: ink, callback: function (value) { return format(value); } } },
-							impressions: { position: "right", beginAtZero: true, grid: { color: grid, drawOnChartArea: false }, ticks: { color: ink, callback: function (value) { return format(value); } } }
+							clicks: { position: "left", beginAtZero: true, title: { display: true, text: ' . json_encode(lang('Clicks')) . ', color: ink }, grid: { color: grid }, ticks: { color: ink, callback: function (value) { return format(value); } } },
+							impressions: { position: "right", beginAtZero: true, title: { display: true, text: ' . json_encode(lang('Impressions')) . ', color: ink }, grid: { color: grid, drawOnChartArea: false }, ticks: { color: ink, callback: function (value) { return format(value); } } }
 						}
 					}
 				});
