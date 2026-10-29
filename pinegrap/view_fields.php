@@ -469,6 +469,9 @@ $liveform = new liveform('view_fields');
 
 echo
 pg_page_shell(array(
+    'title' => $output_form_designer_subnav_heading . ' | ' . $output_form_designer_content_heading,
+    'icon' => (($form_type == 'product') || ($form_type == 'product_group')) ? 'store' : 'design',
+    'heading' => $output_form_designer_content_heading,
     'cancel'=>array('enable'=>true,'onclick'=>$output_cancel_onclick),
     'breadcrumb' => array_merge(
         $pg_breadcrumb_parent_items,

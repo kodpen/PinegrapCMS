@@ -143,7 +143,7 @@ $form_action = function ($action, $label, $class, $icon, $confirm) use ($count_i
 
 echo
 pg_page_shell([
-    'title' => (string) $count['title'],
+    'title' => h((string) $count['title']),
     'extra classes' => 'erp erp_stock',
     'icon' => 'erp',
     'heading' => h((string) $count['title']) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',

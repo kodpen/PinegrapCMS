@@ -80,6 +80,9 @@ if ($form_info['wysiwyg_fields']) {
 }
 
 $output = pg_page_shell( array(
+    'title' => h($form_description) . ' | ' . lang('Preview Form'),
+    'icon' => 'store',
+    'heading' => lang('Preview Form'),
     'cancel'=>array('enable'=>'true', 'title'=>lang('Back to Product Form'), 'url'=>'view_fields.php?product_id=' . (int)$_GET['product_id']),
     'breadcrumb' => array(
         array('label' => lang('All Products'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_products.php'),
