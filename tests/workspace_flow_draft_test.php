@@ -365,3 +365,104 @@ function test_ws_flow_patch_marks()
 	pg_assert_contains("'published_at'", $marks, 'until the flow is published');
 	pg_assert_contains("['base']['flow_id']", $marks, 'of this flow');
 }
+
+// The card's window: places moved to the margin, outbound boxes, a patch's
+// marks and removed boxes, threads only between boxes drawn, value boxes not
+// tried.
+function test_ws_flow_card_graph()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 400, 'y' => 96),
+			array('id' => 'task_1', 'kind' => 'task', 'x' => 688, 'y' => 96, 'label' => 'First'),
+			array('id' => 'mail', 'kind' => 'email', 'x' => 976, 'y' => 224),
+			array('id' => 'hook', 'kind' => 'webhook', 'x' => 976, 'y' => 352),
+			array('id' => 'vals', 'kind' => 'constants', 'x' => 400, 'y' => 352),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'task_1', 'on' => 'next'),
+			array('from' => 'task_1', 'to' => 'mail', 'on' => 'done'),
+		),
+	));
+	$card = ws_flow_card_graph($graph);
+	$by = array();
+
+	foreach ($card['nodes'] as $node) {
+		$by[$node['id']] = $node;
+	}
+
+	pg_assert_same(array(WS_FLOW_CARD_PAD, WS_FLOW_CARD_PAD), array($by['start']['x'], $by['start']['y']), 'the leftmost and topmost box sits at the margin');
+	pg_assert_same(976 - 400 + WS_FLOW_CARD_PAD, $by['mail']['x'], 'the others keep their distance');
+	pg_assert_same(976 - 400 + 2 * WS_FLOW_CARD_PAD + WS_FLOW_CARD_BOX_W, $card['width'], 'width');
+	pg_assert_same(352 - 96 + 2 * WS_FLOW_CARD_PAD + WS_FLOW_CARD_BOX_H, $card['height'], 'height');
+	pg_assert_same('First', $by['task_1']['name'], 'named by its label');
+	pg_assert_true($by['mail']['outbound'] && $by['hook']['outbound'], 'e-mail and webhook send outside');
+	pg_assert_true(!$by['task_1']['outbound'] && !$by['start']['outbound'], 'a task and a start do not');
+	pg_assert_true($by['task_1']['try'] && $by['mail']['try'], 'boxes are tried');
+	pg_assert_true(!$by['vals']['try'], 'a value box is not');
+	pg_assert_same('', $by['mail']['mark'], 'nothing marked without a patch');
+	pg_assert_same(2, count($card['edges']), 'threads');
+	pg_assert_same(array(), $card['removed'], 'nothing removed');
+
+	foreach (array('email', 'webhook', 'mcp', 'change') as $kind) {
+		pg_assert_true(in_array($kind, ws_flow_card_outbound_kinds(), true), $kind . ' is outbound');
+	}
+}
+
+function test_ws_flow_card_graph_patch()
+{
+	$keys = workspace_flow_draft_keys();
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 96, 'y' => 96),
+			array('id' => 'task_1', 'kind' => 'task', 'x' => 384, 'y' => 96, 'config' => array('title' => 'One')),
+			array('id' => 'old', 'kind' => 'task', 'x' => 384, 'y' => 224, 'label' => 'Old one', 'config' => array('title' => 'Old')),
+		),
+		'edges' => array(array('from' => 'start', 'to' => 'task_1', 'on' => 'next'), array('from' => 'start', 'to' => 'old', 'on' => 'next')),
+	));
+	$made = ws_flow_patch_apply($graph, array(
+		array('op' => 'add', 'id' => 'tell', 'kind' => 'notify', 'label' => 'Tell', 'settings' => array('text' => 'Done')),
+		array('op' => 'connect', 'from' => 'task_1', 'to' => 'tell', 'on' => 'done'),
+		array('op' => 'set', 'id' => 'task_1', 'label' => 'First'),
+		array('op' => 'remove', 'id' => 'old'),
+		array('op' => 'add', 'id' => 'brief', 'kind' => 'task', 'settings' => array('title' => 'Brief')),
+		array('op' => 'remove', 'id' => 'brief'),
+	), $keys);
+
+	pg_assert_true($made['ok'], 'made');
+
+	$card = ws_flow_card_graph($made['graph'], $made['ops']);
+	$marks = array();
+
+	foreach ($card['nodes'] as $node) {
+		$marks[$node['id']] = $node['mark'];
+	}
+
+	pg_assert_same(array('start' => '', 'task_1' => 'changed', 'tell' => 'added'), $marks, 'added and changed boxes marked, as on the canvas');
+	pg_assert_same(array('Old one'), $card['removed'], 'a removed box is listed by name; one added and removed in the same patch is not');
+	pg_assert_same(2, count($card['edges']), 'the removed box\'s threads are gone');
+}
+
+// The panel action reads the graph with the rights opening the card asks,
+// and the card carries the window only to the person it was proposed to.
+function test_ws_flow_card_graph_wiring()
+{
+	$read = workspace_flow_draft_code('ws_flow_draft_card_graph_read');
+	pg_assert_contains("['requested_by']", $read, 'only the person it was proposed to');
+	pg_assert_contains('ws_can_schedule(', $read, 'who builds flows');
+	pg_assert_contains('ws_can_post_channel(', $read, 'where they may still post');
+	pg_assert_contains("'edit')", $read, 'a patch needs edit access to its flow');
+	pg_assert_contains('ws_flow_patch_apply(', $read, 'the patch made on the flow as it is now');
+	pg_assert_contains('ws_flow_share_manager(', $read, 'tried only by the one the try allows');
+	pg_assert_true(strpos($read, 'ws_flow_save(') === false && strpos($read, 'db("UPDATE') === false, 'nothing is written');
+
+	$entry = workspace_flow_draft_code('ws_flow_draft_change_entry');
+	pg_assert_contains("'window'", $entry, 'the card says when it draws the flow');
+	pg_assert_contains('$asker', substr($entry, strpos($entry, "'window'"), 200), 'for the asker only');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$case = strpos($actions, "case 'ws_flow_draft_graph':");
+	pg_assert_true($case !== false, 'the panel action is there');
+	pg_assert_contains('ws_flow_draft_card_graph_read(', substr($actions, (int) $case, 300), 'and reads it');
+	pg_assert_contains("'ws_flow_draft_graph'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/panel/actions.php'), 'the panel lets it through');
+}

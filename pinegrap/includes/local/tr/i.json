@@ -728,6 +728,7 @@
     "It will help you to increase the amount of product stock with the barcode device.": "Barkod cihazı ile ürün stok miktarını arttırmanıza yardımcı olacaktır.",
     "It works for 10 minutes.": "Kod 10 dakika geçerlidir.",
     "It would fail: {var:1}": "Başarısız olurdu: {var:1}",
+    "It would not run: {var:1}": "Çalışmazdı: {var:1}",
     "Italic": "İtalik",
     "Italic (Ctrl+I)": "İtalik (Ctrl+I)",
     "Item": "Öğe",

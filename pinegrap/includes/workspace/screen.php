@@ -723,6 +723,11 @@ function ws_screen_config($viewer, $mode, $extra = array())
         $strings = array_merge($strings, ws_scheduled_js_strings(), ws_scheduled_messages_js_strings(), ws_scheduled_draft_js_strings());
     }
 
+    // The window of a flow draft's card (flow_draft.php).
+    if (function_exists('ws_flow_draft_js_strings')) {
+        $strings = array_merge($strings, ws_flow_draft_js_strings());
+    }
+
     // The event rule of a scheduled action and a channel's watch switch
     // (includes/workspace/watch.php, assets/js/workspace_events.js).
     if (function_exists('ws_events_js_strings')) {

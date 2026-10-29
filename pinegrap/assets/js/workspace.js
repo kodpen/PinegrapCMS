@@ -9822,6 +9822,193 @@
             });
         },
 
+        // A flow draft's card drawn as a small flow window
+        // (ws_flow_draft_card_graph_read()): its boxes where the canvas puts
+        // them, the threads between, outbound boxes and a patch's boxes
+        // marked. A box picked shows below with its link to the canvas and
+        // its try once the draft is a flow. The graph is read once a page.
+        flowWindow: function (change) {
+            var self = this;
+            var wrap = el('div', 'ws-fd-window');
+            var key = change.id + ':' + change.status + ':' + change.flow_id;
+
+            self.flowGraphs = self.flowGraphs || {};
+
+            if (!self.flowGraphs[key]) {
+                self.flowGraphs[key] = api('ws_flow_draft_graph', { change_id: change.id }).then(function (data) {
+                    return data.graph;
+                });
+            }
+
+            self.flowGraphs[key].then(function (graph) {
+                self.flowWindowDraw(wrap, graph);
+            }).catch(function (error) {
+                delete self.flowGraphs[key];
+                wrap.appendChild(el('div', 'ws-draft-meta fg-emphasis-warning', (error && error.message) || String(error)));
+            });
+
+            return wrap;
+        },
+
+        flowWindowDraw: function (wrap, graph) {
+            var NS = 'http://www.w3.org/2000/svg';
+            var W = 208;
+            var H = 80;
+            var SCALE = 0.4;
+            var byId = {};
+            var picked = null;
+
+            if (!graph || !graph.nodes.length) {
+                return;
+            }
+
+            function make(tag, attrs, text) {
+                var node = document.createElementNS(NS, tag);
+
+                Object.keys(attrs || {}).forEach(function (name) {
+                    node.setAttribute(name, String(attrs[name]));
+                });
+
+                if (text) {
+                    node.textContent = text;
+                }
+
+                return node;
+            }
+
+            var pane = el('div', 'ws-fd-pane');
+            var drawing = make('svg', {
+                viewBox: '0 0 ' + graph.width + ' ' + graph.height,
+                width: Math.round(graph.width * SCALE),
+                height: Math.round(graph.height * SCALE),
+                role: 'group',
+                'aria-label': t('fd_window')
+            });
+            var detail = el('div', 'ws-fd-detail ws-draft-meta', t('fd_box_pick'));
+
+            detail.setAttribute('aria-live', 'polite');
+
+            graph.nodes.forEach(function (node) {
+                byId[node.id] = node;
+            });
+
+            graph.edges.forEach(function (edge) {
+                var from = byId[edge.from];
+                var to = byId[edge.to];
+                var x1 = from.x + W;
+                var y1 = from.y + H / 2;
+                var x2 = to.x;
+                var y2 = to.y + H / 2;
+                var bend = Math.max(48, Math.abs(x2 - x1) / 2);
+
+                drawing.appendChild(make('path', {
+                    'class': 'ws-fd-thread',
+                    d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + bend) + ' ' + y1 + ' ' + (x2 - bend) + ' ' + y2 + ' ' + x2 + ' ' + y2
+                }));
+            });
+
+            function show(node, group) {
+                if (picked) {
+                    picked.classList.remove('is-picked');
+                }
+
+                picked = group;
+                group.classList.add('is-picked');
+                clear(detail);
+                detail.appendChild(el('b', '', node.name));
+                detail.appendChild(document.createTextNode(' · ' + node.label));
+
+                if (node.outbound) {
+                    detail.appendChild(document.createTextNode(' · ' + t('fd_outbound')));
+                }
+
+                if (node.mark) {
+                    detail.appendChild(document.createTextNode(' · ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed')));
+                }
+
+                var tools = el('div', 'ws-fd-tools');
+
+                if (graph.flow_id) {
+                    var link = el('a', '', t('fd_box_open'));
+                    link.href = CFG.urls.flows + '?flow=' + graph.flow_id + '&box=' + encodeURIComponent(node.id);
+                    tools.appendChild(link);
+                }
+
+                if (graph.flow_id && graph.can_try && node['try']) {
+                    var answer = el('div', 'ws-fd-try');
+                    var go = button('btn btn-sm btn-text theme-primary', t('fd_box_try'), 'bi-play');
+
+                    go.addEventListener('click', function () {
+                        go.disabled = true;
+
+                        api('ws_flow_box_try', { flow_id: graph.flow_id, node_id: node.id }).then(function (data) {
+                            var tried = data['try'] || {};
+
+                            go.disabled = false;
+                            clear(answer);
+                            answer.appendChild(el('div', '', tried.refusal ? t('fd_try_refusal', tried.refusal) : (tried.said || '')));
+
+                            (tried.next || []).forEach(function (moment) {
+                                answer.appendChild(el('div', '', moment));
+                            });
+                        }).catch(function (error) {
+                            go.disabled = false;
+                            fail(error);
+                        });
+                    });
+
+                    tools.appendChild(go);
+                    detail.appendChild(tools);
+                    detail.appendChild(answer);
+                } else if (tools.childNodes.length) {
+                    detail.appendChild(tools);
+                }
+            }
+
+            graph.nodes.forEach(function (node) {
+                var group = make('g', {
+                    'class': 'ws-fd-box' + (node.outbound ? ' is-outbound' : '') + (node.mark ? ' is-' + node.mark : ''),
+                    tabindex: 0,
+                    role: 'button',
+                    'aria-label': node.name + ', ' + node.label + (node.outbound ? ', ' + t('fd_outbound') : '')
+                        + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
+                });
+                var name = node.name.length > 18 ? node.name.slice(0, 17) + '…' : node.name;
+
+                group.appendChild(make('title', {}, node.name + ' · ' + node.label));
+                group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 12 }));
+                group.appendChild(make('text', { x: node.x + 14, y: node.y + 34, 'class': 'ws-fd-name' }, name));
+                group.appendChild(make('text', { x: node.x + 14, y: node.y + 64, 'class': 'ws-fd-kind' },
+                    node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : (node.label.length > 22 ? node.label.slice(0, 21) + '…' : node.label)));
+
+                if (node.outbound) {
+                    group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 34) + ' ' + (node.y + 34) + ' l16 -16 m-10 0 h10 v10' }));
+                }
+
+                group.addEventListener('click', function () {
+                    show(node, group);
+                });
+                group.addEventListener('keydown', function (event) {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        show(node, group);
+                    }
+                });
+                drawing.appendChild(group);
+            });
+
+            pane.appendChild(drawing);
+            wrap.appendChild(pane);
+
+            // A patch's removed boxes; the waiting card lists them among
+            // its changes already.
+            if (graph.flow_id && graph.removed.length) {
+                wrap.appendChild(el('div', 'ws-draft-meta', t('fd_removed', graph.removed.join(', '))));
+            }
+
+            wrap.appendChild(detail);
+        },
+
         changesNode: function (message) {
             var self = this;
             var box = el('div', 'ws-drafts ws-changes');
@@ -9866,6 +10053,11 @@
                 head.appendChild(el('span', 'ws-change-type', change.type_label));
                 card.appendChild(head);
 
+                // A flow draft drawn small; its boxes are not listed then.
+                if (change.window) {
+                    card.appendChild(self.flowWindow(change));
+                }
+
                 // Many records at once (bulk.php): how many, a few of them
                 // below, and while it is applied how far it has got.
                 if (change.bulk) {
@@ -9884,7 +10076,9 @@
                 } else {
                     var list = el('dl', 'ws-change-fields');
 
-                    change.fields.forEach(function (field) {
+                    change.fields.filter(function (field) {
+                        return !change.window || !/^(box_|more$)/.test(field.name || '');
+                    }).forEach(function (field) {
                         list.appendChild(el('dt', '', field.label));
 
                         var value = el('dd');

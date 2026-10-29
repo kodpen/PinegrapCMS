@@ -16568,6 +16568,74 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
   margin-top: .25rem;
   white-space: pre-line;
 }
+.ws-fd-window {
+  margin-top: .35rem;
+}
+.ws-fd-pane {
+  max-width: 100%;
+  max-height: 16rem;
+  overflow: auto;
+  border: 1px solid var(--pg-border-color);
+  border-radius: var(--ws-radius);
+  background: var(--pg-bg-body);
+}
+.ws-fd-pane svg {
+  display: block;
+}
+.ws-fd-thread {
+  fill: none;
+  stroke: var(--pg-fg-3);
+  stroke-width: 3;
+}
+.ws-fd-box {
+  cursor: pointer;
+}
+.ws-fd-box rect {
+  fill: var(--pg-bg-body);
+  stroke: var(--pg-border-color);
+  stroke-width: 3;
+}
+.ws-fd-box.is-outbound rect {
+  stroke: var(--pg-warning);
+}
+.ws-fd-box.is-added rect,
+.ws-fd-box.is-changed rect {
+  stroke: var(--pg-info);
+  stroke-dasharray: 12 8;
+  fill: var(--pg-info-bg-subtle);
+}
+.ws-fd-box.is-picked rect,
+.ws-fd-box:focus-visible rect {
+  stroke: rgb(var(--ws-accent-rgb));
+  stroke-width: 6;
+}
+.ws-fd-box:focus {
+  outline: none;
+}
+.ws-fd-name {
+  fill: var(--pg-fg-body);
+  font-size: 26px;
+  font-weight: 600;
+}
+.ws-fd-kind {
+  fill: var(--pg-fg-2);
+  font-size: 22px;
+}
+.ws-fd-out {
+  fill: none;
+  stroke: var(--pg-warning);
+  stroke-width: 4;
+  stroke-linecap: round;
+}
+.ws-fd-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: .5rem;
+}
+.ws-fd-try {
+  white-space: pre-line;
+}
 .ws-draft-actions {
   display: flex;
   flex-wrap: wrap;
