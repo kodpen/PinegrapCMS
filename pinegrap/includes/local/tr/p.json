@@ -194,6 +194,7 @@
     "Paid now": "Şimdi ödendi",
     "Paid on": "Ödeme tarihi",
     "Paid on {var:1} from {var:2}. The amount and the date are what left the till; to change them, cancel the expense and record it again.": "{var:1} tarihinde {var:2} hesabından ödendi. Tutar ve tarih kasadan çıkan paradır; değiştirmek için gideri iptal edip yeniden kaydedin.",
+    "Paid, but the renewal order could not be written.": "Ödendi, ancak yenileme siparişi yazılamadı.",
     "Pair a device": "Cihaz eşleştir",
     "Pairing code": "Eşleştirme kodu",
     "Pancake Stack": "Pankek",
