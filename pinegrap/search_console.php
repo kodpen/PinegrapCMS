@@ -327,10 +327,21 @@ if (!$linked) {
 		// Day labels follow the site's date order (month first or day first).
 		$day_label_format = (DATE_FORMAT == 'month_day') ? 'm/d' : 'd.m';
 
+		// The day chart's figures live only on its canvas and in its
+		// tooltips, so a table carries them for screen readers.
+		$day_rows = '';
+
 		foreach ($daily as $day => $values) {
 			$chart['labels'][] = date($day_label_format, strtotime($day . ' 12:00:00'));
 			$chart['clicks'][] = $values['clicks'];
 			$chart['impressions'][] = $values['impressions'];
+
+			$day_rows .= '
+						<tr>
+							<th scope="row">' . h(date(get_date_format_code() . '/Y', strtotime($day . ' 12:00:00'))) . '</th>
+							<td>' . search_console_number($values['clicks']) . '</td>
+							<td>' . search_console_number($values['impressions']) . '</td>
+						</tr>';
 		}
 
 		$tile = function ($label, $value, $change, $note) {
@@ -398,7 +409,18 @@ if (!$linked) {
 			<div class="card my-5">
 				<div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . h(lang('By day')) . '</div>
 				<div class="card-body">
-					<div style="height:16rem"><canvas id="search_console_chart" aria-label="' . h(lang('Clicks and impressions by day')) . '" role="img"></canvas></div>
+					<div style="height:16rem"><canvas id="search_console_chart" aria-hidden="true"></canvas></div>
+					<table class="visually-hidden" id="search_console_days">
+						<caption>' . h(lang('Clicks and impressions by day')) . '</caption>
+						<thead>
+							<tr>
+								<th scope="col">' . h(lang('Date')) . '</th>
+								<th scope="col">' . h(lang('Clicks')) . '</th>
+								<th scope="col">' . h(lang('Impressions')) . '</th>
+							</tr>
+						</thead>
+						<tbody>' . $day_rows . '</tbody>
+					</table>
 				</div>
 			</div>
 
