@@ -26,6 +26,9 @@ description: Owner's 2026-10-27 widget designability answers: OR conditions, hid
 - The page's own record (allow-listed fields) plus three visit facts: signed in, cart has items, cart item count. They only choose which element shows; no personal data.
 - Why: covers the most wanted visitor-dependent bands with translatable elements; caching stays correct; the list starts narrow.
 
+## Parts anywhere on the page? (W17, #3074)
+- Decided (architect, 2026-10-29): the remaining W17 step places the read-only parts of the page's record (price block, gallery, breadcrumb, rating, stock) outside the widget box: a part node names the page's detail widget, whose renderer draws it in the same request; nothing posts, the page stays cacheable, a tree without such a node renders as before. Parts with controls (forms, variant picker, cart summary) stay inside their widget (the W16 rule; liveform names, messages node and personal-cache rules would follow); a later step asks first.
+
 ## Per-placement settings? (W21)
 - The look is shared. Each placement may only narrow its content: records filter, product group, calendar, menu or ad region, count, order. Texts stay in the widget.
 - Why: look edited once, translations keep working, a page can only narrow so nothing hidden leaks, placements without values unchanged.
