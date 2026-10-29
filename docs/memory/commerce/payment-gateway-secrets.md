@@ -1,6 +1,6 @@
 ---
 name: payment-gateway-secrets
-description: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #PR; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
+description: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #3058; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 module: payments
 ---
 
@@ -9,7 +9,7 @@ module: payments
 - Each column holds `pgenc2:<base64 of iv(12) + tag(16) + ciphertext>` (AES-256-GCM, key = HMAC-SHA256 of `pinegrap-gateway-secret-v2` with `ENCRYPTION_KEY`, `pg_gateway_secret_key()`; `pg_gateway_secret_seal()` / `pg_gateway_secret_open()`). A wrong key or a changed byte fails the tag and opens to `null`. The prefix tells it from a plain value, which may contain `:`.
 
 ## Why not the first form any more?
-- The first form (#2791, 2026-10-28) was `pgenc1:<base64 ciphertext>:<base64 iv>`, AES-256-CBC with key = sha256 of `ENCRYPTION_KEY` and no MAC. A wrong key passed the PKCS#7 padding check about once in 256 tries and returned garbage instead of `null`: a test failed at random on CI (#3025, #3039) and after a key reset a gateway could get garbage instead of `''`. Replaced in #PR.
+- The first form (#2791, 2026-10-28) was `pgenc1:<base64 ciphertext>:<base64 iv>`, AES-256-CBC with key = sha256 of `ENCRYPTION_KEY` and no MAC. A wrong key passed the PKCS#7 padding check about once in 256 tries and returned garbage instead of `null`: a test failed at random on CI (#3025, #3039) and after a key reset a gateway could get garbage instead of `''`. Replaced in #3058.
 - `pgenc1:` values still open with the right key (dev/test sites hold them); a wrong key can still give garbage for them. Any commerce settings save that keeps one (blank or masked box) re-seals it as `pgenc2:`; a first-form secret too long for the new form (42–47 characters in a 100-wide column) stays `pgenc1:` under the same key, and goes plain on a key reset (the too-long rule below).
 - Before #2791 they were plain and printed into `value=` on the settings screen (owner decision 2026-10-28).
 
