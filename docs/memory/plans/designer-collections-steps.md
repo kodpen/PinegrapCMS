@@ -11,24 +11,12 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - The canvas stays the record: kinds live on the control (`props._cf.kind`, `_cf.ref`) and the save derives row columns, like `translate_values`.
 
 ## Which steps?
-- **C1 — reference resolution in record widgets (no schema). Done, #1981:** the `__ref` binding in `form_list_view`/`form_item_view` (`designer/collection-references.md`).
+- **Done:** C1 #1981 (`__ref` binding, `designer/collection-references.md`); C2 #1997 (step 11.0.43, flag and kinds, `designer/collection-fields.md`); C3 #2601, C3b #2694, C3c #2814 (typed inputs, `designer/collection-inputs.md`); C4a #2709, C4b2 #2897, C4b2b #2917 (lists, filters, "Shown record", `designer/collection-lists.md`); C4b1 #2835 (references by kind); C5a #2910 (feed categories print the label).
 
-- **C2 — collection flag and field kinds (Q1, Q2). Done, #1997:** step 11.0.43, the form switch, the Form Field "Kind" (number, image, reference + its form); slug moved to C5 (`designer/collection-fields.md`).
-
-- **C3 — typed inputs. Done, #2601:** number, image and reference pick list inputs with their server checks (`designer/collection-inputs.md`).
-
-- **C3b — radio and check box references, image preview. Done, #2694.** **C3c — product and page pickers. Done, #2814** (`designer/collection-inputs.md`).
-
-- **C4a — lists by kind. Done, #2709:** numeric sort for number; reference filter by address name or code, printing the record's label (`designer/collection-lists.md`).
-
-- **C4b1 — references by kind. Done, #2835** (`designer/collection-references.md`).
-- **C4b2 — "records that reference this one". Done, #2897:** server half, the list filter's dynamic value `shown record` (`designer/collection-lists.md`).
-- **C4b2b — the editor side. Done, #2917:** offer "Shown record" in the filter rows' dynamic values (`style_designer.js`, beside `url parameter`, lists only; `_sdT` key via `tr_add.php`); needs that file free.
-
-- **C5a — feeds print a reference's label. Done, #2910:** an RSS `<category>` of a reference, product or page field prints the label, not the code. JSON-LD prints no category.
 - **C5b — slug field.** A `slug` kind (text box) feeds `update_submitted_form_address_name()` before the Title field; `pg_coll_kinds()` and its twin `_CF_KINDS` in `style_designer.js` (a test compares them), the Form Field "Kind" option.
 
-- **C6 — templates opt in.** Blog, menu, events, staff templates add the flag and kinds (`design-templates-file-format.md`); a categories collection for blog. Installed sites change nothing.
+- **C6a — templates opt in.** In progress: the blog, staff, menu, events, article and story forms of the design templates carry `'collection' => 1`, their cover and photo file fields `_cf.kind 'image'`; each changed template's version raised. Installed sites change nothing.
+- **C6b — template references.** Resolve `_cf.ref 'tab:<key>'` at Publish, create the forms in order (target first), seed sample records by label, map `_cf.ref` in the design export; then a categories collection for blog.
 
 - **C7 — item revisions (Q3).** `record_revisions` on the `page_revisions` pattern from `custom_form.php` and `edit_submitted_form.php`.
 
@@ -39,4 +27,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C4b2b and C5a are done. Next is C5b (the slug field kind) or C6 (templates).
+- Next is C5b (the slug field kind) or C6b (template references).
