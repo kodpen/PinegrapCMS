@@ -2601,6 +2601,9 @@ function pg_pb_render_image_picker_assets()
 {
     $labels = array(
         'Cover'            => lang('Cover'),
+        'move_photo'       => lang('Move photo {position} of {total}'),
+        'reorder_position' => lang('Position {position} of {total}'),
+        'reorder_hint'     => lang('Use the arrow keys to change the order.'),
         'Remove'           => lang('Remove'),
         'request_failed'   => lang('Sorry, we could not accept your request.'),
         'upload_rejected'  => lang('Not uploaded, these are not image files: {files}'),
@@ -4630,6 +4633,9 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         'Remove'             => lang('Remove'),
         'Remove image'       => lang('Remove image'),
         'Cover'              => lang('Cover'),
+        'move_photo'         => lang('Move photo {position} of {total}'),
+        'reorder_position'   => lang('Position {position} of {total}'),
+        'reorder_hint'       => lang('Use the arrow keys to change the order.'),
         'Select All'         => lang('Select All'),
         'Clear'              => lang('Clear'),
         'Combinations'       => lang('Combinations'),

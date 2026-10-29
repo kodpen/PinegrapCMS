@@ -735,6 +735,10 @@ foreach ($widget_ids as $widget_id) {
 // $widget_order, and that whole list is what the browser is handed below.
 $output_widgets = '';
 
+// The header is the drag handle and cannot take focus, so the cards that can
+// be dragged also carry a grip button: the arrow keys on it move the card.
+$widget_movable = ($user['role'] < 2);
+
 foreach ($widget_order as $widget_id) {
 
     $widget = $widget_registry[$widget_id] + $widget_defaults;
@@ -747,6 +751,9 @@ foreach ($widget_order as $widget_id) {
         '<div class="pg-widget' . ($widget['wide'] ? ' pg-widget-wide' : '') . '">'
         . '<div widget-id="' . (int) $widget_id . '" class="card widget">'
         . '<div class="card-header pg-widget-handle border-0 bg-reset position-relative">'
+        . ($widget_movable
+            ? '<button type="button" class="pg-widget-move btn btn-link p-0 me-2 fg-secondary" aria-label="' . h(lang(array('string' => 'Move {var:1}', 'vars' => array(trim(strip_tags($widget['title'])))))) . '" aria-describedby="pg_widget_move_hint"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>'
+            : '')
         . (($widget['icon'] != '') ? '<i class="bi ' . $widget['icon'] . ' me-3"></i>' : '')
         . $widget['title']
         . $widget['action']
@@ -867,6 +874,52 @@ if ($user['role'] < 2) {
                 pg_save_widget_order(pg_widget_order, "repositioning");
             }
         });
+    });
+
+    // The keyboard path: an arrow key on the grip of a card swaps the card with
+    // its neighbour (Left and Up earlier, Right and Down later, since the grid
+    // wraps) and stores the order the way a drag does.
+    $(document).on("keydown", ".pg-widget-move", function(event) {
+
+        var step = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[event.key];
+
+        if (!step) {
+            return;
+        }
+
+        event.preventDefault();
+
+        var $card = $(this).closest(".pg-widget");
+        var $other = (step < 0) ? $card.prev(".pg-widget") : $card.next(".pg-widget");
+
+        if ($other.length) {
+
+            if (step < 0) {
+                $card.insertBefore($other);
+            } else {
+                $card.insertAfter($other);
+            }
+
+            this.focus();
+
+            var visible = [];
+
+            $.each($("#widgets .widget"), function() {
+                visible.push($(this).attr("widget-id"));
+            });
+
+            pg_widget_order = pg_merge_widget_order(visible);
+
+            pg_save_widget_order(pg_widget_order, "repositioning");
+        }
+
+        var $cards = $("#widgets .pg-widget");
+
+        if (typeof window.pgAnnounce === "function") {
+            window.pgAnnounce(' . encode_json(lang('Position {position} of {total}')) . '
+                .replace("{position}", $cards.index($card) + 1)
+                .replace("{total}", $cards.length));
+        }
     });';
 }
 
@@ -967,6 +1020,7 @@ $output_header_includes .
             ' . $output_changelog_modal . '
             ' . $output_status_popover_script . '
             
+            ' . ($widget_movable ? '<span id="pg_widget_move_hint" class="visually-hidden">' . h(lang('Use the arrow keys to change the order.')) . '</span>' : '') . '
             <div id="widgets" class="pg-widgets mb-12">
                 ' . $output_widgets . '
             </div>
