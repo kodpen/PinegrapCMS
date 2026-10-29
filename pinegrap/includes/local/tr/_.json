@@ -1365,6 +1365,7 @@
     "{var:1} × {var:2} added to the cart": "{var:1} × {var:2} sepete eklenir",
     "{var:1} × {var:2} added with {var:3} off": "{var:1} × {var:2} {var:3} indirimle eklenir",
     "{var:1} – {var:2} · {var:3} messages · cleared by {var:4}": "{var:1} – {var:2} · {var:3} mesaj · temizleyen: {var:4}",
+    "{var:1} — part of {var:2}": "{var:1} — {var:2} parçası",
     "{var:1} — records of {var:2}": "{var:1} — {var:2} kayıtları",
     "{var:1} — runs {var:2} version(s) again": "{var:1} — {var:2} sürüm yeniden koşulur",
     "{var:1} → {var:2} · engine": "{var:1} → {var:2} · motor",

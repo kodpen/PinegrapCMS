@@ -301,6 +301,8 @@
     "Part of an array formula. Change it in a spreadsheet program.": "Bir dizi formülünün parçası. Bir tablo programında değiştirin.",
     "Part of the invoice has been returned ({var:1} of {var:2}); the return form comes up with what is left.": "Faturanın bir kısmı iade edildi ({var:2} tutarın {var:1} kadarı); iade formu kalanlarla açılır.",
     "Part of the issue": "Ait olduğu sayı",
+    "Part of {var}": "{var} parçası",
+    "Part of {var}: it shows the record this widget shows, and nothing when the page opens none.": "{var} parçası: bu bileşenin gösterdiği kaydı gösterir, sayfa kayıt açmadığında hiçbir şey göstermez.",
     "Part time": "Yarı zamanlı",
     "Part {var:1} of the payment was not recorded: {var:2}": "Ödemenin {var:1}. parçası kaydedilmedi: {var:2}",
     "Part {var:1}: amount": "{var:1}. parça: tutar",

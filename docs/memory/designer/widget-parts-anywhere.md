@@ -1,6 +1,6 @@
 ---
 name: widget-parts-anywhere
-description: W17 parts anywhere (#3074, #3085): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
+description: W17 parts anywhere (#3074, #3085, #3111): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 module: widgets_parts_anywhere
 ---
 
@@ -19,8 +19,8 @@ module: widgets_parts_anywhere
 ## Byte identity?
 - A tree without a `partOf` node renders as before: no marker, and every pass returns early on `strpos()`.
 
-## What is left?
-- W17b: editor placement and canvas preview (`style_designer.src.js`).
+## And the designer?
+- It places and previews parts (W17b, #3111): [[widget-parts-anywhere-editor]].
 
 ## Tests?
 - `tests/widget_parts_anywhere_test.php`: unchanged tree, marker, refused controls, the part drawn as inside the widget (conditions, finish pass), leftovers.

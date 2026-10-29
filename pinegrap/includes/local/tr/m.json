@@ -729,6 +729,8 @@
     "Move it anyway": "Yine de taşı",
     "Move it to this page": "Bu sayfaya taşı",
     "Move money from one of your tills to another. Nobody owes anybody anything differently afterwards.": "Kendi kasalarınız arasında para aktarın. Kimsenin borç durumu değişmez.",
+    "Move outside": "Dışarıya taşı",
+    "Move outside the widget": "Bileşenin dışına taşı",
     "Move page content into the page": "Sayfa içeriğini sayfaya taşı",
     "Move photo {position} of {total}": "Fotoğrafı taşı: {position} / {total}",
     "Move the group “{var:1}” inside “{var:2}”? With it go {var:3} groups and {var:4} channels inside it; access given on “{var:2}” reaches them too.": "“{var:1}” grubu “{var:2}” grubunun içine taşınsın mı? Onunla birlikte içindeki {var:3} grup ve {var:4} kanal da taşınır; “{var:2}” grubunda verilen yetki bunlara da ulaşır.",
