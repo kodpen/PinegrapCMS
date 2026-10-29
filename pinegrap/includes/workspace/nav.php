@@ -35,6 +35,8 @@ function ws_nav_groups($viewer, $flags = null)
     if ($flags === null) {
         $flags = array(
             'notes'         => function_exists('ws_notes_ready') && ws_notes_ready(),
+            // Every member keeps tables of their own (wtables.php).
+            'wtables'       => function_exists('ws_wtables_ready') && ws_wtables_ready(),
             'calendar_feed' => function_exists('ws_calendar_feed_ready') && ws_calendar_feed_ready(),
             // Staff's scheduled actions, until Flows lists them
             // (ws_flows_scheduled()); their scheduled messages stay here.
@@ -75,6 +77,10 @@ function ws_nav_groups($viewer, $flags = null)
 
     if (!empty($flags['notes'])) {
         $groups['work'][] = array('key' => 'notes', 'label' => lang('My Notes'), 'icon' => 'bi-journal-text', 'url' => $base . 'workspace_notes.php');
+    }
+
+    if (!empty($flags['wtables'])) {
+        $groups['work'][] = array('key' => 'wtables', 'label' => lang('Tables'), 'icon' => 'bi-table', 'url' => $base . 'workspace_wtables.php');
     }
 
     $groups['work'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
@@ -139,6 +145,7 @@ function ws_side_screen($script)
         'workspace.php'               => 'channels',
         'workspace_tasks.php'         => 'tasks',
         'workspace_notes.php'         => 'notes',
+        'workspace_wtables.php'       => 'wtables',
         'workspace_board.php'         => 'board',
         'workspace_calendar.php'      => 'calendar',
         'workspace_calendar_feed.php' => 'calendar_feed',

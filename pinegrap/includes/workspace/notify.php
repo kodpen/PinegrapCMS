@@ -379,14 +379,15 @@ function ws_inbox_describe($viewer, $row)
 
         // A workflow table was shared with the person (wtable_shares.php):
         // the sentence that names the table and what they may do with it
-        // sits beside the inbox row, as for a flow shared.
+        // sits beside the inbox row, as for a flow shared. The inbox row
+        // names no table, so the line opens the tables shared with them.
         case 'wtable_shared':
             $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
 
             return array(
                 'title' => lang(array('string' => '{var:1} shared a table with you', 'vars' => $actor)),
                 'body'  => $notice ? (string) $notice['text'] : '',
-                'url'   => $base . 'workspace.php',
+                'url'   => $base . 'workspace_wtables.php?scope=shared',
                 'icon'  => 'bi-table',
             );
 

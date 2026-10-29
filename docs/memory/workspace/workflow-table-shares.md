@@ -14,7 +14,7 @@ description: Workflow table shares (wtable_shares.php, T1c, #2820): owner-only, 
 - Whoever reaches the table sees the list; a channel they do not read is left out, shown nameless to the owner. A person who left the team `gives` ''.
 
 ## Who is told?
-- A person newly shared with: `ws_notify(…, 'wtable_shared', separate)` with the sentence "Table “name” · Can edit" in `ws_scheduled_notices`, as `flow_shared`. The line opens `workspace.php` until the tables screen (T1e) exists. Sharing, changing and removing write a Site Log line.
+- A person newly shared with: `ws_notify(…, 'wtable_shared', separate)` with the sentence "Table “name” · Can edit" in `ws_scheduled_notices`, as `flow_shared`. The line opens the tables shared with them on the tables screen (`workflow-tables-screen.md`). Sharing, changing and removing write a Site Log line.
 
 ## Why no ws_inbox_reach_lost() / _regained() here?
 - Those are keyed by a channel's lines; a table share writes no channel line, and `ws_inbox` has no column naming a table (adding one is a schema change). So a removed share leaves its bell line, as a removed flow share does: it names the table and opens nothing.
