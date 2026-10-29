@@ -13,7 +13,7 @@ module: order_completion
 - `submit_order()` on null (a second submit of the same checkout): logs "A second checkout of an order that was already completed changed nothing.", empties the cart session and goes to the receipt with `?order_id=`. Before, both requests completed the order: two numbers, two `order.created`, mails and stock twice. Since A2d2 the key code use, gift card redemption and commission rows run behind the lock too; auto-registration stays before it (`order-completion-before-lock.md`).
 
 ## What does it write, in order?
-- The UPDATE (columns from `pg_order_complete_columns()`, in the caller's order, every value as quoted text as the inline query did; `ip_address` through `IFNULL(INET_ATON(?), 0)`); unknown column or non-scalar value → null and an `error_log` line.
+- The UPDATE (columns from `pg_order_complete_columns()`, in the caller's order, every value as quoted text as the inline query did; `ip_address` through `IFNULL(INET_ATON(?), 0)`; `checkout_page_id` (A3a, #2998) from `pg_order_checkout_page_id()` only while `pg_schema_has()` finds it); unknown column or non-scalar value → null and an `error_log` line.
 - `pg_order_drop_saved_lines()`, the order number (`LOCK TABLES next_order_number WRITE`, read, advance, unlock, `UPDATE orders SET order_number`), `pg_legal_documents_store()`, `api_webhook_enqueue('order.created')`, `pg_sms_order_received()`. Returns the order number.
 - A failed query ends the request (`output_error`), as before.
 

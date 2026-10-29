@@ -659,3 +659,50 @@ function test_order_completion_gift_card_error_message()
 	pg_assert_contains(' Givex error: Card expired.', $message, 'a Givex error');
 	pg_assert_same(false, strpos($message, 'ABCDEFGHIJKL'), 'never the whole code');
 }
+
+function test_order_completion_checkout_page_id()
+{
+	pg_assert_same(17, pg_order_checkout_page_id('17'), 'a page id');
+	pg_assert_same(17, pg_order_checkout_page_id(17), 'an integer');
+	pg_assert_same(0, pg_order_checkout_page_id(''), 'none');
+	pg_assert_same(0, pg_order_checkout_page_id('0'), 'zero');
+	pg_assert_same(0, pg_order_checkout_page_id('17abc'), 'not digits only');
+	pg_assert_same(0, pg_order_checkout_page_id(array('17')), 'not a scalar');
+	pg_assert_same(0, pg_order_checkout_page_id('4294967296'), 'above INT UNSIGNED');
+}
+
+function test_order_completion_payment_started_query()
+{
+	$settled = array(
+		'payment_method' => 'Credit/Debit Card',
+		'subtotal' => 10000, 'discount' => 500, 'tax' => 1710, 'shipping' => 990,
+		'gift_card_discount' => 0, 'surcharge' => 12.6, 'checkout_page_id' => '31',
+	);
+	$query = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, true);
+
+	pg_assert_same(
+		"UPDATE orders SET transaction_id = ?, total = ?, payment_method = ?, subtotal = ?, discount = ?, tax = ?, shipping = ?, gift_card_discount = ?, surcharge = ?, checkout_page_id = ? WHERE id = ? AND status = 'incomplete'",
+		$query['sql'], 'the payment, the figures and the page, only on an incomplete order');
+	pg_assert_same(array('pi_3abc', '12213', 'Credit/Debit Card', '10000', '500', '1710', '990', '0', '13', '31', '42'), $query['params'], 'minor units rounded, never cut');
+
+	$without = pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12213), $settled, false);
+	pg_assert_false(strpos($without['sql'], 'checkout_page_id') !== false, 'no page before step 11.0.120');
+	pg_assert_same(10, count($without['params']), 'one parameter fewer');
+
+	pg_assert_same(null, pg_order_payment_started_query(0, array('transaction_id' => 'pi_3abc', 'total' => 1), $settled, true), 'no order');
+	pg_assert_same(null, pg_order_payment_started_query(42, array('transaction_id' => '', 'total' => 1), $settled, true), 'no payment id');
+}
+
+function test_order_completion_checkout_page_column_guarded()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+
+	pg_assert_same(2, substr_count($source, "pg_schema_has('orders', 'checkout_page_id')"), 'the redirect and the completing UPDATE ask by exact name');
+	pg_assert_contains("array('checkout_page_id' => pg_order_checkout_page_id(\$page_id))", $source, 'the completing UPDATE writes the page');
+	pg_assert_true(in_array('checkout_page_id', pg_order_complete_columns(), true), 'a column the completion may write');
+
+	$migration = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/migrations/2026.11.0.php');
+	pg_assert_contains("upgrade_2026_11_0_order_checkout_page();    // 11.0.120", $migration, 'called in the open version, label 11.0.120');
+	pg_assert_contains("install_add_column('orders', 'checkout_page_id', \"INT UNSIGNED NOT NULL DEFAULT 0\");", $migration, 'through the idempotent helper');
+	pg_assert_false(preg_match('/db\(\s*"ALTER TABLE orders/i', $migration) === 1, 'never a direct ALTER');
+}
