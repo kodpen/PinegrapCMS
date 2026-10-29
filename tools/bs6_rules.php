@@ -1184,7 +1184,7 @@ function bs6_scope_kind($path)
 	// elements of a custom_form widget tree.
 	$site_fn = array(
 		'consent.php', 'language_redirect.php', 'layout_convert.php', 'maintenance_mode.php', 'meta_tags.php',
-		'reviews.php', 'visitor_texts.php',
+		'reviews.php', 'visitor_texts.php', 'site_datetime.php',
 	);
 	if (strpos($path, 'includes/fn/') === 0 && (in_array($base, $site_fn, true) || preg_match('/^widgets(_[a-z0-9_]+)?\.php$/', $base))) {
 		return 'site';
@@ -1194,7 +1194,7 @@ function bs6_scope_kind($path)
 		'assets/js/payment_hosted.js', 'assets/js/pg_ai_summary.js', 'assets/js/pg_consent.js', 'assets/js/pg_lightbox.js',
 		'assets/js/pg_search_highlight.js', 'assets/js/pg_civ_variants.js', 'assets/js/pg_scroller.js',
 		'assets/js/pg_theme_switcher.js', 'assets/css/pg_carousel_layout.css', 'assets/css/pg_consent.css',
-		'assets/css/pg_lightbox.css',
+		'assets/css/pg_lightbox.css', 'assets/css/pg_datetime_site.css',
 	);
 	if (in_array($path, $site_assets, true) || preg_match('/^(frontend|chat_site)\.(src|min)\.js$/', $base) || preg_match('#^assets/js/chat_site#', $path)) {
 		return 'site';

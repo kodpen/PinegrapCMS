@@ -59,6 +59,7 @@ description: Generated from the module field of the memory files: each includes/
 - `seo`: [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipping`: [[order-address-postcode-note]]
+- `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]
 - `sms_codes`: [[sms-codes]]

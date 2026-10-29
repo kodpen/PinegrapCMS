@@ -11,7 +11,9 @@
  * through these objects, so the swap changes the engine here, not the
  * screens. Every kind runs on Bootstrap 6 ('v6'); only a page without it that
  * has select2 (a site page) draws a combobox that searches the server as a
- * select2 ('v5'). A page without either keeps plain fields that still post.
+ * select2 ('v5'). Dates and times also run on a site page whose tags
+ * pg_site_datetime_inject() printed. A page without either keeps plain
+ * fields that still post.
  *
  *   <input data-pg-chips>                 Bootstrap 6 Chips drawn after the hidden
  *                                         input, which keeps the joined list: comma
@@ -124,14 +126,19 @@
     // gives how it waits for its library too.
 
     // Dates and times need Bootstrap 6 (the calendar's look and the panel's
-    // overlay host) and the calendar library, which pg_datetime.js loads.
+    // overlay host) and the calendar library, which pg_datetime.js loads. A
+    // site page whose tags pg_site_datetime_inject() printed (DT.site())
+    // needs only the library: its stylesheet comes with the tags.
     function calendarReady() {
-        return !!(window.pgUI && window.pgUI.version() === 6) && DT.ready();
+        return !!(DT.site() || (window.pgUI && window.pgUI.version() === 6)) && DT.ready();
     }
 
-    // How a date field waits for both; null on a page without Bootstrap 6,
-    // where it stays a plain field.
+    // How a date field waits for them; null on a panel-less page without
+    // Bootstrap 6 and without the site tags, where it stays a plain field.
     function calendarWait() {
+        if (DT.site()) {
+            return DT.whenReady;
+        }
         var v = window.pgUI ? window.pgUI.version() : -1;
         if (v !== 6 && v !== 0) {
             return null;
