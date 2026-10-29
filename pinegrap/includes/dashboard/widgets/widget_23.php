@@ -346,13 +346,14 @@ function pg_dashboard_widget_23($request, $user)
                     <span class="text-truncate" style="font-size:12px" title="' . h($pf_page['label']) . '">' . h($pf_label) . '</span>
                     <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . pg_format_number($pf_page_avg, 0) . ' ms</span>
                 </div>
-                <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" title="' . lang(array(
+                <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" aria-hidden="true">
+                    <div class="progress-bar ' . $pf_bar . '" style="width:' . $pf_width . '%"></div>
+                </div>
+                <div class="fg-secondary mt-1" style="font-size:10px">' . lang(array(
                     'string' => '{var:1} request{suffix:1} · peak {var:2} ms',
                     'vars'   => array(pg_format_number((int) $pf_page['hits'], 0), pg_format_number((int) $pf_page['max_ms'], 0)),
                     'suffix' => ((int) $pf_page['hits'] == 1 ? '' : 's'),
-                )) . '">
-                    <div class="progress-bar ' . $pf_bar . '" style="width:' . $pf_width . '%"></div>
-                </div>
+                )) . '</div>
             </div>';
         }
 

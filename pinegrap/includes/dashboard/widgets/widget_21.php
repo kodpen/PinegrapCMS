@@ -219,14 +219,18 @@ function pg_dashboard_widget_21($request, $user)
                     <div class="d-flex align-items-center justify-content-between" style="gap:6px">
                         <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
                         <span class="text-truncate fg-secondary" style="font-size:11px" title="' . h($waf_event['rule_id']) . '">' . $waf_identity . '</span>
-                        <span class="badge rounded-pill flex-shrink-0" style="background:var(--pg-bg-2);color:inherit;font-size:10px" title="' . lang('Requests') . '">&times;' . pg_format_number($waf_event_hits, 0) . '</span>
+                        <span class="badge rounded-pill flex-shrink-0" style="background:var(--pg-bg-2);color:inherit;font-size:10px"><span aria-hidden="true">&times;' . pg_format_number($waf_event_hits, 0) . '</span><span class="visually-hidden">' . lang(array(
+                            'string' => '{var:1} request{suffix:1}',
+                            'vars'   => pg_format_number($waf_event_hits, 0),
+                            'suffix' => ((int) $waf_event_hits == 1 ? '' : 's'),
+                        )) . '</span></span>
                     </div>
                     <div class="d-flex align-items-center mt-1" style="gap:6px">
                         <span class="text-truncate fg-secondary flex-shrink-0" style="font-size:10px;max-width:45%" title="' . h($waf_event['target']) . '">' . h($waf_evidence) . '</span>
-                        <div class="progress flex-fill" style="height:4px;background:var(--pg-bg-2)" title="' . lang('Score') . ': ' . $waf_event_score . ' / ' . (int) $waf_threshold_value . '">
+                        <div class="progress flex-fill" style="height:4px;background:var(--pg-bg-2)" aria-hidden="true">
                             <div class="progress-bar ' . $waf_bar_class . '" style="width:' . $waf_score_percent . '%"></div>
                         </div>
-                        <span class="fg-secondary flex-shrink-0" style="font-size:10px;min-width:1.4rem;text-align:right">' . $waf_event_score . '</span>
+                        <span class="fg-secondary flex-shrink-0 text-nowrap" style="font-size:10px;min-width:1.4rem;text-align:right"><span class="visually-hidden">' . lang('Score') . ': </span>' . $waf_event_score . ' / ' . (int) $waf_threshold_value . '</span>
                     </div>
                 </div>';
             }
