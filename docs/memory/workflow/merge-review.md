@@ -10,6 +10,7 @@ description: Rule (2026-10-25): the merging session reviews each PR once, fixes 
 
 ## Which findings are fixed before merging?
 - Blocking ones only: a security hole, data loss, a wrong result on a real path, a broken install or upgrade, red CI. Fix it on the branch (small) or send the PR back (below).
+- A new item in a Workspace channel's menu is checked against the channel-menu rule (`workspace/README.md` key rules): one that creates or changes other records is blocking.
 - Everything else (naming, style, a missing test for an edge case, a memory wording) is left as it is: no follow-up issue, no comment. The next session in the area meets it in the code and fixes what is worth its own small PR.
 
 ## Who fixes a PR that is sent back?

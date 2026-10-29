@@ -20,6 +20,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - Put a new record kind in every list `tests/workspace_record_kinds_test.php` lays it against, or in that list's exceptions with the reason (`workspace-record-kinds.md`).
 - Give a new or moved change kind or field, catalogue event, task/order/approval status, `ws_event()` emitter, `ws_scheduled_run()`/`_due()`/`_execute()` call or `ws_scheduled_*` route its line in `workspace_flows_parity_table()`, or tests/workspace_flows_parity_test.php fails (`workspace-flows-parity-test.md`).
 - Put a new place of the workspace in `ws_nav_groups()` under the gate of its screen: the main menu's Workspace list draws only what the server sends and hides nothing itself (`workspace-menu-list.md`).
+- Put in the channel menu (`channelMenu()` in workspace.js) only the channel's own settings and actions (channel settings, notifications, voice, make private, move to group, templates, share link, clear, archive, leave; a customer channel's New sales quote): creating or changing other records is a / command or the record's own screen, never a channel-menu item; a new entry point whose place is not obvious is a product-behaviour question for the architect (`workflow/decisions-made-workspace-2.md`, `plans/workspace-create-command.md`).
 <!-- key-rules:end -->
 
 ## Files
