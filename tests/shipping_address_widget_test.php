@@ -83,6 +83,9 @@ function test_shipping_address_widget_flags()
 	$off = pg_sa_flags(false, true, true, true);
 	pg_assert_true($off['no_recipient'] && $off['is_multi_recipient'], 'no recipient');
 	pg_assert_false($off['has_arrival_dates'] || $off['has_custom_form'], 'the form blocks need a recipient');
+	pg_assert_false($on['has_verified_addresses'], 'no verified address, no help box');
+	pg_assert_true(pg_sa_flags(true, false, false, false, true)['has_verified_addresses'], 'verified addresses show the help box');
+	pg_assert_false(pg_sa_flags(false, false, false, false, true)['has_verified_addresses'], 'the help box needs a recipient');
 }
 
 function test_shipping_address_widget_arrival_row_names()

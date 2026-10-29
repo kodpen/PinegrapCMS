@@ -153,9 +153,10 @@ function pg_sa_date_input_value($value)
  * @param bool $multi_recipient  the shop ships to several recipients per order
  * @param bool $has_arrival_dates at least one arrival date can be requested
  * @param bool $has_custom_form  the page has a custom shipping form
+ * @param bool $has_verified     the site has verified shipping addresses to pick from
  * @return array
  */
-function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_custom_form)
+function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_custom_form, $has_verified = false)
 {
     $sa_flags = array(
         'has_recipient'      => (bool)$has_recipient,
@@ -163,6 +164,7 @@ function pg_sa_flags($has_recipient, $multi_recipient, $has_arrival_dates, $has_
         'is_multi_recipient' => (bool)$multi_recipient,
         'has_arrival_dates'  => $has_recipient && $has_arrival_dates,
         'has_custom_form'    => $has_recipient && $has_custom_form,
+        'has_verified_addresses' => $has_recipient && $has_verified,
     );
     return $sa_flags;
 }

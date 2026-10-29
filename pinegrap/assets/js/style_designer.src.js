@@ -42636,6 +42636,7 @@ const StyleDesigner = (function () {
             ['is_multi_recipient', _sdT('The shop ships to several recipients per order')],
             ['has_arrival_dates',  _sdT('An arrival date can be requested')],
             ['has_custom_form',    _sdT('The page has a custom shipping form')],
+            ['has_verified_addresses', _sdT('Verified shipping addresses can be picked')],
             ['arrival_is_custom',  _sdT('Row: the visitor picks the day')]
         ],
         wishlist: [
