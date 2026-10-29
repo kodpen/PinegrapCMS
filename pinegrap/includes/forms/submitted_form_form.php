@@ -229,8 +229,8 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 md:col-6 lg:col-4 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
+                        <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
+                        ' . $liveform->output_field(array('type'=>'select', 'name'=>$name, 'id'=>$field['id'], 'value'=>$field['default_value'], 'options'=>$pick_list_options, 'class'=>'form-control', 'size'=>$field['size'], 'multiple'=>$multiple)) . '
                         ' . $field_required . '
                     </div>';
 
@@ -256,8 +256,10 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $output_options . '
+                        <fieldset>
+                            <legend class="form-label fs-md">' . h($field['label']) . '</legend>
+                            ' . $output_options . '
+                        </fieldset>
                     </div>';
 
                 break;
@@ -308,9 +310,11 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                     '<div class="col-12 my-3 ' . $row_class . '">
-                        <label class="form-label">' . h($field['label']) . '</label>
-                        ' . $output_hidden . '
-                        ' . $output_options . '
+                        <fieldset>
+                            <legend class="form-label fs-md">' . h($field['label']) . '</legend>
+                            ' . $output_hidden . '
+                            ' . $output_options . '
+                        </fieldset>
                     </div>';
 
                 break;
@@ -396,7 +400,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
                     }
                 }
 
-                $file_attributes = array('type'=>'file', 'name'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size']);
+                $file_attributes = array('type'=>'file', 'name'=>$field['id'], 'id'=>$field['id'], 'class'=>'form-control', 'style'=>'min-width:200px;', 'size'=>$field['size']);
                 $output_choose_again = '';
 
                 // The form came back with an error elsewhere: the file chosen
@@ -408,7 +412,7 @@ function pg_submitted_form_fields_markup($liveform, $user, $page_id, $office_use
 
                 $output_fields .=
                 '<div class="col-12 border py-3 my-3 ' . $row_class . '">
-                    <label class="form-label">' . h($field['label']) . '</label>
+                    <label class="form-label" for="' . h($field['id']) . '">' . h($field['label']) . '</label>
                     <div class="input-group d-flex flex-row flex-wrap">
                         ' . $output_file_info . '
                         ' . $output_upload_label . $liveform->output_field($file_attributes) . $output_delete_option . '

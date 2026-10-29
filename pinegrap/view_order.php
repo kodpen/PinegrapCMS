@@ -947,6 +947,7 @@ if (!$_POST) {
                 $output_delivery_date_field = '';
                 $output_shipping_tracking_numbers = '';
                 $output_shipping_tracking_numbers_field = '';
+                $output_tracking_numbers_caption = '<span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>';
                 
                 // If the order is complete, then output ship date and shipping tracking numbers.
                 if ($status != 'incomplete') {
@@ -1113,6 +1114,10 @@ if (!$_POST) {
                 $shipment_numbers_field = 'ship_to_id_tracking_numbers_' . $ship_to_id;
 
                 $output_shipping_tracking_numbers_field = $liveform->output_field(array('type'=>'text', 'id'=>$shipment_numbers_field, 'name'=>'ship_to_id_' . $ship_to_id . '_tracking_numbers','class'=>'form-control tagin min-height-tagin', 'data-pg-chips' => '' )) . pg_fields_script();
+
+                // A label, not an aria-label: the chips box takes its name
+                // from the hidden input's <label>.
+                $output_tracking_numbers_caption = '<label class="col fg-secondary mt-5" for="' . h($shipment_numbers_field) . '">' . lang('Tracking Numbers') . ':</label>';
                     
                 }
 
@@ -1224,7 +1229,7 @@ if (!$_POST) {
                                             <span class="col-auto badge">' . $shipping_method . '</span>
                                         </div>
                                         <div class="row">
-                                            <span class="col fg-secondary mt-5">' . lang('Tracking Numbers') . ':</span>
+                                            ' . $output_tracking_numbers_caption . '
                                             <span class="col-12 mt-3">' . $output_shipping_tracking_numbers . '
                                             ' . $output_shipping_tracking_numbers_field . '</span>
                                         </div>

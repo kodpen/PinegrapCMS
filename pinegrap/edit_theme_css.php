@@ -110,7 +110,7 @@ if (!$_POST) {
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 my-3">
-                                                <label class="form-label">' . lang('CSS File') . '</label>
+                                                <label class="form-label" for="code">' . lang('CSS File') . '</label>
                                                 <div id="edit_custom">
                                                     <textarea name="code" id="code" rows="25" cols="60" wrap="off">' . h($code) . '</textarea>
                                                     ' . pg_code_editor_attach(array('id' => 'code', 'code_type' => 'css')) . '

@@ -339,7 +339,7 @@ if (!isset($_POST['name'])) {
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12 my-3">
-                            <label class="form-label">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
+                            <label class="form-label" for="code">' . lang( array('string'=>'{var:1} file','vars'=>strtoupper($file_extension)) )
                                 . ($read_only ? ' <span class="badge theme-secondary">' . lang('Read only') . '</span>' : '') . '</label>
                             <div id="edit_custom">
                                 <textarea name="code" id="code" rows="25" cols="60" wrap="off"' . ($read_only ? ' readonly="readonly"' : '') . '>' . h($code) . '</textarea>
