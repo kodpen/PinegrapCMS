@@ -515,8 +515,10 @@ foreach ($jobs as $job) {
         . '<span class="flex-grow-1 text-truncate">' . h(isset($engine_labels[$job['engine']]) ? $engine_labels[$job['engine']] : $job['engine']) . ' · ' . h($job_scope) . '</span>'
         . '<span class="fg-secondary">' . (int) $job['done_count'] . '/' . (int) $job['total'] . (((int) $job['failed_count'] > 0) ? ' <span class="fg-danger">(' . (int) $job['failed_count'] . ')</span>' : '') . '</span>'
         . '<span class="fg-secondary">' . get_relative_time(array('timestamp' => (int) $job['created_at'])) . '</span>'
-        . (($job['error'] !== null && $job['error'] !== '') ? '<i class="bi bi-exclamation-circle fg-danger" title="' . h($job['error']) . '" aria-hidden="true"></i>' : '')
-        . '</div>';
+        . '</div>'
+        // The job's error as text under its row: a title on an icon is
+        // hover-only, out of reach of the keyboard and screen readers.
+        . (($job['error'] !== null && $job['error'] !== '') ? '<div class="d-flex align-items-baseline gap-2 pb-3"><i class="bi bi-exclamation-circle fg-danger small" aria-hidden="true"></i><span class="fg-danger small text-break">' . h($job['error']) . '</span></div>' : '');
 }
 
 if ($output_jobs === '') {
