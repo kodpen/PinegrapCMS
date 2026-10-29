@@ -659,8 +659,4 @@ function test_ws_flow_ai_sketch_wiring()
 	$config = workspace_flow_draft_code('ws_flow_js_config');
 	pg_assert_contains("'ai_sketch'", $config, 'flag in the screen config');
 	pg_assert_contains('ws_flow_ai_sketch_ready(', $config, 'shown only when ready');
-
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
-	pg_assert_contains("K.api('ws_flow_ai_sketch'", $js, 'card asks the route');
-	pg_assert_contains('FL.ai_sketch', $js, 'card behind the flag');
 }

@@ -3010,6 +3010,10 @@ function ws_flow_js_config($viewer, $mode)
         // "Save as template" in the editor: builders, once the table of
         // saved templates is there (flow_templates_saved.php).
         'template_save' => $build && function_exists('ws_flow_templates_saved_ready') && ws_flow_templates_saved_ready(),
+        // "Describe it to AI" in New flow: builders, while Pinegrap AI can
+        // be asked (its licence included, flow_draft.php).
+        'ai_sketch' => $build && function_exists('ws_flow_ai_sketch_ready') && ws_flow_ai_sketch_ready($viewer),
+        'ai_sketch_max' => WS_FLOW_AI_SKETCH_MAX,
         'steps'    => $steps,
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,
