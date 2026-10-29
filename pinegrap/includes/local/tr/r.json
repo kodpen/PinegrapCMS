@@ -1026,6 +1026,7 @@
     "Right-clicking a product group in the tree opens this: open it, edit it, a new product group inside it, paste, rename, duplicate, publish or unpublish it, and delete -- which sends the group and everything under it to the Recycle Bin. The store root itself cannot be renamed or deleted, so those entries are switched off on it.": "Ağaçtaki bir ürün grubuna sağ tıklayınca bu çıkar: aç, düzenle, içine yeni ürün grubu, yapıştır, yeniden adlandır, çoğalt, yayına al ya da yayından kaldır, bir de sil — bu, grubu ve altındaki her şeyi Geri Dönüşüm Kutusu'na gönderir. Mağazanın kök grubu yeniden adlandırılamaz ve silinemez; o yüzden onda bu maddeler kapalı görünür.",
     "Rights": "Yetkiler",
     "Rights are not picked one by one for this role. To limit them, choose the User role.": "Bu rolde yetkiler tek tek seçilmez. Sınırlamak için Kullanıcı rolünü seçin.",
+    "Rights for {var:1}": "{var:1} için yetkiler",
     "Rings, necklaces and earrings, made to be worn every day.": "Her gün takılmak için yapılmış yüzükler, kolyeler ve küpeler.",
     "Rings, totes, sunglasses…": "Yüzük, çanta, güneş gözlüğü…",
     "Risograph": "Risograf",

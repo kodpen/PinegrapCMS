@@ -218,6 +218,7 @@ $explorer_lang = array(
     'access_control' => lang('Access Control'),
     'last_modified' => lang('Last Modified'),
     'folder' => lang('Folder'),
+    'file_content' => lang('File Content'),
     'folders' => lang('Folders'),
     'pictures' => lang('Pictures'),
     'all_files' => lang('All files'),
@@ -329,6 +330,7 @@ $explorer_lang = array(
     'save' => lang('Save'),
     'user_column' => lang('User'),
     'rights_column' => lang('Rights'),
+    'rights_for_user' => lang('Rights for {var:1}'),
     'no_basic_users' => lang('There are no users with a basic user role.'),
     'access_note' => lang('Access Control for all Pages and Files within this Folder'),
     'rights_note' => lang('Edit rights also apply to all folders within this folder.'),
@@ -510,6 +512,7 @@ $explorer_lang = array(
     'bulk_description_mode' => lang('Description'),
     'bulk_description_set' => lang('Replace with the text below'),
     'bulk_description_clear' => lang('Clear'),
+    'bulk_description_text' => lang('New description'),
     'bulk_optimize_label' => lang('Optimize images'),
     'bulk_optimize_none' => lang('Do not optimize'),
     'bulk_optimize_only' => lang('Compress only, keep the original size'),
@@ -1840,7 +1843,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 <div class="row g-5 mt-0">
                     <div class="col-12 md:col-6">
-                        <label class="form-label" for="upload_folder"><?php echo lang('Folder'); ?></label>
+                        <label class="form-label" for="upload_folder" id="upload_folder_label"><?php echo lang('Folder'); ?></label>
                         <select class="form-control" id="upload_folder"></select>
                         <!-- In the backup folder there is nothing to choose:
                              the upload lands where you are standing, and it is
@@ -11937,6 +11940,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         document.getElementById('upload_folder').classList.toggle('d-none', backupArea);
         document.getElementById('upload_backup_path').classList.toggle('d-none', !backupArea);
+        // The Folder label names whichever box is shown.
+        document.getElementById('upload_folder_label').htmlFor = backupArea ? 'upload_backup_path' : 'upload_folder';
         document.getElementById('upload_description_col').classList.toggle('d-none', backupArea);
         document.getElementById('upload_switches').classList.toggle('d-none', backupArea);
         document.getElementById('upload_folder_note').textContent = backupArea
@@ -12800,8 +12805,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 response.users.forEach(function (userRow) {
 
-                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '">' +
-                        '<div class="fw-semibold text-break mb-1">' + esc(userRow.username) + '</div>' +
+                    html += '<div class="border-bottom pb-3 mb-3" data-user-id="' + userRow.id + '" role="group" aria-labelledby="commerce_user_' + userRow.id + '">' +
+                        '<div class="fw-semibold text-break mb-1" id="commerce_user_' + userRow.id + '">' + esc(userRow.username) + '</div>' +
                         switchRow('manage', userRow.id, L.commerce_manage, userRow.manage) +
                         switchRow('reports', userRow.id, L.commerce_reports, userRow.reports) +
                         (response.offline_payment ? switchRow('offline_payment', userRow.id, L.commerce_offline_payment, userRow.offline_payment) : '') +
@@ -12894,7 +12899,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                         usersHtml += '<tr data-user-id="' + userRow.id + '">' +
                             '<td class="text-break">' + esc(userRow.username) + '<div>' + inherited + '</div></td>' +
-                            '<td><select class="form-control form-control-sm access-rights-select">' +
+                            '<td><select class="form-control form-control-sm access-rights-select" aria-label="' + esc(fmt(L.rights_for_user, [userRow.username])) + '">' +
                             '<option value="0"' + (userRow.rights === 0 ? ' selected' : '') + '>' + esc(L.no_access) + '</option>' +
                             '<option value="1"' + (userRow.rights === 1 ? ' selected' : '') + '>' + esc(L.view_access) + '</option>' +
                             '<option value="2"' + (userRow.rights === 2 ? ' selected' : '') + '>' + esc(L.edit_access) + '</option>' +
@@ -13256,6 +13261,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     ['clear', L.bulk_description_clear]
                 ]) +
                 bulkCompanion('bulk_description_wrap',
+                    '<label class="form-label" for="bulk_description">' + esc(L.bulk_description_text) + '</label>' +
                     '<textarea id="bulk_description" class="form-control" rows="3"></textarea>');
 
             // Optimizing is an action rather than a field: it is not written
@@ -13391,7 +13397,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             function zoneChecks(name, label) {
 
-                var html = '<div class="mb-5"><label class="form-label">' + esc(label) + '</label>';
+                // The caption names the list as a group, so each zone is read with
+                // the list it belongs to.
+                var html = '<div class="mb-5" role="group" aria-labelledby="' + name + '_label">' +
+                    '<div class="form-label" id="' + name + '_label">' + esc(label) + '</div>';
 
                 (response.zones || []).forEach(function (zone) {
                     html += '<div class="form-field">' +
@@ -14049,6 +14058,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 textarea.className = 'form-control font-monospace';
                 textarea.value = file.content || '';
                 textarea.readOnly = !file.editable;
+                textarea.setAttribute('aria-label', L.file_content);
             } else {
                 // The editor is built in place, in the window's own box;
                 // the text goes back through getValue() when the file is
@@ -14064,7 +14074,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     lint: file.editable && (language !== 'text'),
                     theme: (document.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light',
                     labels: { syntaxError: L.syntax_error },
-                    keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }]
+                    keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }],
+                    // The editor's content is what a screen reader lands on.
+                    extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content })
                 });
 
                 // The panel's colour scheme switch reaches the editors it
