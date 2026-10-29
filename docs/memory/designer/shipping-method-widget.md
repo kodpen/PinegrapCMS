@@ -23,4 +23,4 @@ module: widgets_shipping_method
 - The recipient's items (`recipient_items`): name, quantity, amount; a product that cannot go to the address carries the restriction message and its remove link. A designable list can follow with the product list engine (W9).
 
 ## What is left out?
-- The currency switcher the classic custom layout offers.
+- Nothing of the classic custom layout; the currency picker: [[checkout-currency-picker]].
