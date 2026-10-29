@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(dirname(__FILE__) . '/includes/forms/email_campaign_form.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -101,11 +102,6 @@ if (!$_POST) {
         $creator_username = '[' . lang('Unknown') . ']';
     }
     
-    // if the start time is set to 0's, then set to blank
-    if ($start_time == '0000-00-00 00:00:00') {
-        $start_time = '';
-    }
-    
     $output_button_bar = '';
     
     // if e-mail campaign job is off and e-mail campaign status is ready, then prepare to output button bar with send campaign button
@@ -118,8 +114,11 @@ if (!$_POST) {
             </nav>';
     }
     
+    // A completed campaign is shown with its values as text.
+    $readonly = ($status == 'complete');
+
     // if the e-mail campaign is not complete, then prepare information for editing
-    if ($status != 'complete') {
+    if (!$readonly) {
         $output_heading = lang('Edit Campaign');
         $output_subheading = lang('Update this e-mail campaign\'s properties.');
         
@@ -161,33 +160,7 @@ if (!$_POST) {
         
         $output_status = '<select id="status" name="status" class="form-control">' .  $output_status_options . '</select>';
         
-        $output_subject = '<input value="' . h($subject) . '" type="text" name="subject" placeholder="' . lang('Subject') . '" maxlength="255" id="subject" class="form-control" />';
         $output_bcc_email_address = '<div class="row"><div class="col-12 md:col-auto"><input value="' . h($bcc_email_address) . '" type="text" class="form-control text-end" id="bcc_email_address" name="bcc_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"></div></div>';
-        $output_from_name = '<input value="' . h($from_name) . '" type="text" class="form-control" id="from_name" name="from_name" />';
-        $output_from_email_address = '<input value="' . h($from_email_address) . '" type="text" class="form-control text-end" id="from_email_address" name="from_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
-        $output_reply_email_address = '<input value="' . h($reply_email_address) . '" type="text" class="form-control text-end" id="reply_email_address" name="reply_email_address" maxlength="100" inputmode="email" data-inputmask-alias="email"/>';
-        $output_start_time =
-            '<input value="' . prepare_form_data_for_output($start_time, 'date and time') . '" type="text" maxlength="19" class="form-control" id="start_time" name="start_time" data-pg-datetime />
-            <div class="text-end form-text">' . lang('Leave blank to send as soon as possible.') . '</div>
-            ' . get_date_time_picker_format() . pg_fields_script();
-
-        if ($purpose == 'commercial') {
-            $purpose_commercial_checked = 'checked="checked"';
-            $purpose_transactional_checked = '';
-        } else {
-            $purpose_commercial_checked = '';
-            $purpose_transactional_checked = 'checked="checked"';
-        }
-
-        $output_purpose =
-            '<div class="form-field">
-                <input class="radio" type="radio" name="purpose" id="purpose_commercial" value="commercial"' . $purpose_commercial_checked . '>
-                <label class="" for="purpose_commercial">' . lang('Commercial') . ' (' . lang('send email to opted-in contacts only. Example: \'We have an offer for you\'') . ')</label>
-            </div>
-            <div class="form-field">
-                <input class="radio" type="radio" name="purpose" id="purpose_transactional" value="transactional"' . $purpose_transactional_checked . '>
-                <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
-            </div>';
 
         $output_buttons =
             '<nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
@@ -205,21 +178,8 @@ if (!$_POST) {
         $output_subheading = lang('View this e-mail campaign\'s information.');
         $output_form_start = '';
         $output_status = h(get_email_campaign_status_name($status));
-        $output_subject = '<p>' . h($subject) . '</p>';
         $output_bcc_email_address = '<p>' . h($bcc_email_address) . '</p>';
-        $output_from_name = '<p>' . h($from_name) . '</p>';
-        $output_from_email_address = '<p>' . h($from_email_address) . '</p>';
-        $output_reply_email_address = '<p>' . h($reply_email_address) . '</p>';
-        
-        $output_start_time = '<p>' . h(prepare_form_data_for_output($start_time, 'date and time')) . '</p>';
-        
-        // if the start time is blank, then set to better value
-        if ($output_start_time == '') {
-            $output_start_time = '<p>' . lang('Immediately') . '</p>';
-        }
 
-        $output_purpose = '<p>' . lang(h(ucwords($purpose))) . '</p>';
-        
         $output_buttons = '';
         $output_form_end = '';
     }
@@ -435,27 +395,6 @@ if (!$_POST) {
             break;
     }
     
-    $output_start_time_rows = '';
-    
-    // if an e-mail campaign job is setup on the server, then allow e-mail campaign to be scheduled
-    if (email_campaign_job_enabled()) {
-        $output_start_time_rows =
-            '<div class="col-12">
-                <div class="card my-7">
-                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                        ' . lang('E-Mail Message Delivery Schedule') . '
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-12 md:col-6 lg:col-4 my-3">
-                                <label class="form-label" for="start_time">' . lang('Send at this Date & Time') . '</label>
-                                ' . $output_start_time . '
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>';
-    }
     print
     pg_page_shell(
         array(
@@ -496,73 +435,20 @@ if (!$_POST) {
                         </div>
                     </div> 
                     ' . $output_auto_campaign . '
-                    <div class="col-12">
-                        <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('E-Mail Message') . '
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12 my-3">
-                                        <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                        ' . $output_subject . '
-                                    </div> 
-                                    <div class="col-12 my-3">
-                                        <label for="format" class="form-label">' . lang('Format') . '</label>
-                                        <p>' . $output_format . '</p>
-                                    </div> 
-                                    <div class="col-12 my-3">
-                                        <p for="subject" class="form-label">' . lang('Body') . '</p>
-                                        ' . $output_body . '
-                                    </div> 
-                                </div> 
-                            </div> 
-                        </div> 
-                    </div>
+                    ' . pg_email_campaign_message_card(
+                        pg_email_campaign_subject_row($subject, $readonly),
+                        pg_email_campaign_format_row($output_format, true),
+                        '<div class="col-12 my-3">
+                            <p class="form-label">' . lang('Body') . '</p>
+                            ' . $output_body . '
+                        </div>'
+                    ) . '
                     ' . $output_to_rows . '
-                    <div class="col-12">
-                        <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                ' . lang('E-Mail Message From') . '
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12 sm:col-6 xl:col-12 my-3">
-                                        <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                        ' . $output_from_name . '
-                                    </div>
-                                    <div class="col-12">
-                                        <div class="row">
-                                            <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                ' . $output_from_email_address . '
-                                            </div>
-                                            <div class="col-12 sm:col-6 xl:col-4 my-3">
-                                                <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
-                                                ' . $output_reply_email_address . '
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    ' . $output_start_time_rows . '
-                    <div class="col-12">
-                        <div class="card my-7">
-                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Purpose') . ' (' . lang('as defined by the CAN-SPAM Act') . ')
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-12 my-5">
-                                        <label class="form-label">' . lang('Purpose') . '</label>
-                                        ' . $output_purpose . '
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_email_campaign_from_card(array(
+                        'from_name' => $from_name,
+                        'from_email_address' => $from_email_address,
+                        'reply_email_address' => $reply_email_address,
+                    ), $readonly) . pg_email_campaign_schedule_card($start_time, $readonly) . pg_email_campaign_purpose_card($purpose, $readonly) . '
                     ' . $output_buttons . '
                     ' . $output_form_end . '
                 </div>
