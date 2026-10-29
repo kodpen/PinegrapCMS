@@ -178,7 +178,7 @@ if (!$_POST) {
                         </div>
                         <div class="card-body">
                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                            ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control w-auto')) . '
+                            ' . $liveform->output_field(array('type'=>'file', 'name'=>'file', 'size'=>'60', 'id'=>'file', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                         </div>
                     </div>
 

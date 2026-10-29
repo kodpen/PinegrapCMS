@@ -630,7 +630,7 @@ class liveform {
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
                 
-                return '<input type="file" name="' . h($field) . '" size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
+                return '<input type="file" name="' . h($field) . '"' . $output_id_attribute . ' size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
                 break;
 
             case 'submit':

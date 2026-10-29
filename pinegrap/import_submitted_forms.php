@@ -90,11 +90,11 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label class="form-label" for="custom_form_page_id">' . lang('Select the Custom Form') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'options'=>$custom_form_options)) . '
+                                            ' . $liveform->output_field(array('type'=>'select', 'name'=>'custom_form_page_id', 'id'=>'custom_form_page_id', 'class'=>'form-control', 'required'=>'required', 'options'=>$custom_form_options)) . '
                                         </div>
                                     </div>
                                 </div>       

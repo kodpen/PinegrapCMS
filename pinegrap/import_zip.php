@@ -57,7 +57,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 lg:col-auto my-3">
                                             <label for="file" class="form-label">' . lang('Select .zip to Upload') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto')) . '
+                                            ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 lg:col my-3">
                                             <label for="name" class="form-label">' . lang('Tag') . '</label>

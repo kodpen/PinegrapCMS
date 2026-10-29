@@ -89,7 +89,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            <input name="file" id="file" type="file" size="60" class="form-control w-auto" />
+                                            <input name="file" id="file" type="file" size="60" class="form-control w-auto" required />
                                         </div>
                                         <div class="col-12 my-5" role="radiogroup" aria-labelledby="import_mode_label">
                                             <div class="form-label" id="import_mode_label">'. lang('Import Mode') . '</div>
