@@ -341,6 +341,7 @@ $config = array(
         'reload' => lang('Reload'),
         'searchFailed' => lang('The search did not answer. Try again.'),
         'loadFailed' => lang('The details could not be loaded.'),
+        'loading' => lang('Loading...'),
         'splitRest' => lang('{var:1} left on the account'),
         'splitPaid' => lang('The parts cover the total.'),
         'splitOver' => lang('The parts add up to more than the total.'),
