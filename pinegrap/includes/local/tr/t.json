@@ -3811,6 +3811,7 @@
     "The {var:1} that you entered ({var:2}) could not be found. Please try a different code.": "Girdiğiniz {var:1} ({var:2}) bulunamadı. Lütfen farklı bir kod deneyin.",
     "The {var:1} that you entered ({var:2}) is not available at this time. Please try a different code.": "Girdiğiniz {var:1} ({var:2}) şu anda kullanılamıyor. Lütfen farklı bir kod deneyin.",
     "The {var:1} that you entered ({var:2}) is valid, but the offer cannot be applied to your {var:3} until the requirements of the offer are met.": "Girdiğiniz {var:1} ({var:2}) geçerli, ancak teklifin koşulları sağlanmadan teklif {var:3} için uygulanamaz.",
+    "The {var:1} tool of @{var:2} does not say which page to fetch.": "@{var:2} sunucusunun {var:1} aracı hangi sayfayı getireceğini belirtmiyor.",
     "The {var:1} tool of @{var:2} takes no search words.": "@{var:2} sunucusunun {var:1} aracı arama sözcüğü almıyor.",
     "The {var:1} who joined this week have not heard from you yet.": "Bu hafta katılan {var:1} senden henüz haber almadı.",
     "The {var:1} you entered was not found. Please enter a different {var:1}.": "Girdiğiniz {var:1} bulunamadı. Lütfen farklı bir {var:1} girin.",

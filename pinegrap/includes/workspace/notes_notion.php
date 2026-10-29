@@ -573,3 +573,115 @@ function ws_note_notion_file($page)
         'id'      => ws_note_source_id('markdown', array('id' => $page['id'])),
     ), $page['body']);
 }
+
+/* ---------------------------------------------------------------------------
+   The stage
+   --------------------------------------------------------------------------- */
+
+/**
+ * Fetches the pages picked and lays them out in a stage as Markdown files,
+ * as notes_keep.php lays out a Keep export: from there the file import's
+ * plan, batches and finish take them. A page that cannot be fetched or is
+ * no page is left out and named in the warnings; nothing is written as a
+ * note yet.
+ *
+ * @param array    $viewer
+ * @param string[] $ids    page ids, as the picker listed them
+ * @param string   $token  the stage's name
+ * @return array ok, error, token, warnings
+ */
+function ws_note_notion_stage($viewer, $ids, $token)
+{
+    $fail = function ($error, $dir = '') {
+        ws_note_import_remove($dir);
+
+        return array('ok' => false, 'error' => $error, 'token' => '', 'warnings' => array());
+    };
+
+    $picked = array();
+
+    foreach ((array) $ids as $id) {
+        $id = ws_note_notion_page_id(is_string($id) ? $id : '');
+
+        if ($id !== '') {
+            $picked[$id] = true;
+        }
+    }
+
+    if (empty($picked)) {
+        return $fail(lang('Pick the pages to import.'));
+    }
+
+    if (count($picked) > WS_NOTE_NOTION_PICK_MAX) {
+        return $fail(lang(array('string' => 'Pick at most {var:1} pages at a time.', 'vars' => WS_NOTE_NOTION_PICK_MAX)));
+    }
+
+    $status = ws_note_notion_status($viewer);
+
+    if ($status['state'] !== 'ready') {
+        return $fail($status['message']);
+    }
+
+    $argument = ws_note_notion_argument_name($status['fetch'], array('id', 'url', 'page_id'));
+
+    if ($argument === '') {
+        return $fail(lang(array('string' => 'The {var:1} tool of @{var:2} does not say which page to fetch.', 'vars' => array($status['fetch']['name'], $status['server']['alias']))));
+    }
+
+    $dir = ws_note_import_stage_dir($token);
+
+    if (($dir === '') || !@mkdir($dir, 0755) || !@mkdir($dir . '/files', 0755)) {
+        ws_note_import_log_failure('creating the stage folder of a Notion import');
+
+        return $fail(lang('The file could not be saved.'), $dir);
+    }
+
+    $entries = array();
+    $warnings = array();
+    $taken = array();
+    $last = '';
+
+    foreach (array_keys($picked) as $id) {
+        $call = ws_note_notion_call($status['server'], (int) $viewer['id'], $status['fetch'], array($argument => $id));
+        $page = $call['ok'] ? ws_note_notion_page($call['result'], $id) : array('ok' => false, 'error' => $call['error']);
+
+        if (!$page['ok']) {
+            $last = $page['error'];
+            $warnings[] = lang(array('string' => 'Page {var:1}: {var:2}', 'vars' => array($id, $page['error'])));
+            continue;
+        }
+
+        $number = count($entries);
+        $text = ws_note_notion_file($page);
+
+        if (@file_put_contents($dir . '/files/' . $number . '.txt', $text) === false) {
+            ws_note_import_log_failure('writing a page of a Notion import');
+
+            return $fail(lang('The file could not be saved.'), $dir);
+        }
+
+        $title = ($page['title'] !== '') ? $page['title'] : lang('Untitled');
+        $entries[] = array(ws_note_export_name($title, $number + 1, $taken) . '.md', strlen($text), max($page['created'], $page['updated']), $number);
+    }
+
+    if (empty($entries)) {
+        return $fail(($last !== '') ? $last : lang('The page could not be read.'), $dir);
+    }
+
+    $stage = array(
+        'dir'      => $dir,
+        'user'     => (int) $viewer['id'],
+        'created'  => time(),
+        'zip'      => false,
+        'provider' => 'notion',
+        'name'     => 'Notion',
+        'entries'  => $entries,
+    );
+
+    if (!ws_note_import_save($stage)) {
+        return $fail(lang('The file could not be saved.'), $dir);
+    }
+
+    return array('ok' => true, 'error' => '', 'token' => $token, 'warnings' => $warnings);
+}
+

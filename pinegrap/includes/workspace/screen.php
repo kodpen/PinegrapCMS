@@ -828,6 +828,9 @@ function ws_screen_config($viewer, $mode, $extra = array())
             'types' => ws_note_import_extensions(),
             'limit' => WS_NOTE_LIMIT,
         ) : null,
+        // A From Notion part in the import window: the site has a Notion
+        // MCP server (notes_notion.php).
+        'notes_notion' => function_exists('ws_note_notion_server') && (ws_note_notion_server() !== null),
         // The paperclip also picks from the file manager (library.php).
         'library'      => function_exists('ws_library_browse'),
         // Word and Excel files of a conversation, drawn by a script fetched
