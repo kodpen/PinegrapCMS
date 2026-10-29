@@ -382,7 +382,7 @@ pg_page_shell([
                 <div class="col-12 2xl:col-5">
                     <div class="card h-100">
                         <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('By account') . '</div>
-                        <div class="card-body p-0 table-responsive" style="max-height:36rem">
+                        <div class="card-body p-0 table-responsive" style="max-height:36rem;scroll-padding-top:2.5rem">
                             <table class="table table-sm table-hover align-middle mb-0" data-pg-sort id="erp_profit_accounts">
                                 <thead class="sticky-top">
                                     <tr>

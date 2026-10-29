@@ -110,39 +110,40 @@
         none: ['fl_step_none', 'bi-circle']
     };
 
-    // What each kind of box is: its sign, its name, its group (start,
+    // What each kind of box is (its line icon is FLOW_ICONS[kind] of
+    // workspace.js, K.flowIcon()): its name, its group (start,
     // values, logic, people, message or system, which gives its colour:
     // --wsf-kind of .wsf-group-<group> in backend.src.css), whether an arrow
     // may lead into it, and the outcomes an arrow may leave it on (the first
     // is the one a new arrow takes), as ws_flow_kinds() has them.
     var KINDS = {
-        manual: { icon: 'bi-play-circle', name: 'fl_kind_manual', group: 'start', into: false, out: ['next'] },
-        schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', group: 'start', into: false, out: ['next'] },
-        event: { icon: 'bi-lightning', name: 'fl_kind_event', group: 'start', into: false, out: ['next'] },
-        join: { icon: 'bi-person-plus', name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
-        row: { icon: 'bi-table', name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
-        task: { icon: 'bi-check2-square', name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
-        post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
-        email: { icon: 'bi-envelope', name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
-        notify: { icon: 'bi-bell', name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
-        task_open: { icon: 'bi-plus-square', name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
-        webhook: { icon: 'bi-broadcast', name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
-        web_check: { icon: 'bi-globe2', name: 'fl_kind_web_check', group: 'system', into: true, out: ['done', 'failed'] },
-        task_digest: { icon: 'bi-list-check', name: 'fl_kind_task_digest', group: 'people', into: true, out: ['done', 'failed'] },
-        report: { icon: 'bi-bar-chart', name: 'fl_kind_report', group: 'message', into: true, out: ['done', 'failed'] },
-        checkin: { icon: 'bi-person-check', name: 'fl_kind_checkin', group: 'people', into: true, out: ['done', 'failed'] },
-        start_action: { icon: 'bi-alarm', name: 'fl_kind_start_action', group: 'system', into: true, out: ['done', 'failed'] },
-        start_flow: { icon: 'bi-diagram-3', name: 'fl_kind_start_flow', group: 'system', into: true, out: ['done', 'failed'] },
-        change: { icon: 'bi-pencil-square', name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
-        lead: { icon: 'bi-person-vcard', name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
-        mcp: { icon: 'bi-plug', name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed'] },
-        approval: { icon: 'bi-patch-check', name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
-        condition: { icon: 'bi-signpost-split', name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
-        delay: { icon: 'bi-hourglass', name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
-        end: { icon: 'bi-flag', name: 'fl_kind_end', group: 'logic', into: true, out: [] },
+        manual: { name: 'fl_kind_manual', group: 'start', into: false, out: ['next'] },
+        schedule: { name: 'fl_kind_schedule', group: 'start', into: false, out: ['next'] },
+        event: { name: 'fl_kind_event', group: 'start', into: false, out: ['next'] },
+        join: { name: 'fl_kind_join', group: 'start', into: false, out: ['next'] },
+        row: { name: 'fl_kind_row', group: 'start', into: false, out: ['next'] },
+        task: { name: 'fl_kind_task', group: 'people', into: true, out: ['done', 'cancelled', 'timeout'] },
+        post: { name: 'fl_kind_post', group: 'message', into: true, out: ['done', 'failed'] },
+        email: { name: 'fl_kind_email', group: 'message', into: true, out: ['done', 'failed'] },
+        notify: { name: 'fl_kind_notify', group: 'message', into: true, out: ['done', 'failed'] },
+        task_open: { name: 'fl_kind_task_open', group: 'people', into: true, out: ['done', 'failed'] },
+        webhook: { name: 'fl_kind_webhook', group: 'system', into: true, out: ['done', 'failed'] },
+        web_check: { name: 'fl_kind_web_check', group: 'system', into: true, out: ['done', 'failed'] },
+        task_digest: { name: 'fl_kind_task_digest', group: 'people', into: true, out: ['done', 'failed'] },
+        report: { name: 'fl_kind_report', group: 'message', into: true, out: ['done', 'failed'] },
+        checkin: { name: 'fl_kind_checkin', group: 'people', into: true, out: ['done', 'failed'] },
+        start_action: { name: 'fl_kind_start_action', group: 'system', into: true, out: ['done', 'failed'] },
+        start_flow: { name: 'fl_kind_start_flow', group: 'system', into: true, out: ['done', 'failed'] },
+        change: { name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
+        lead: { name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
+        mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed'] },
+        approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
+        condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
+        delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
+        end: { name: 'fl_kind_end', group: 'logic', into: true, out: [] },
         // A value box: no arrows, its values reach the boxes through threads.
-        constants: { icon: 'bi-tag', name: 'fl_kind_constants', group: 'values', into: false, out: [], pure: true },
-        value: { icon: 'bi-calculator', name: 'fl_kind_value', group: 'values', into: false, out: [], pure: true }
+        constants: { name: 'fl_kind_constants', group: 'values', into: false, out: [], pure: true },
+        value: { name: 'fl_kind_value', group: 'values', into: false, out: [], pure: true }
     };
 
     // What an arrow is taken on, as its box says it.
@@ -169,32 +170,32 @@
 
     // What the palette adds.
     var PALETTE = [
-        ['manual', 'bi-play-circle', 'fl_add_manual'],
-        ['schedule', 'bi-clock', 'fl_kind_schedule'],
-        ['event', 'bi-lightning', 'fl_kind_event'],
-        ['join', 'bi-person-plus', 'fl_kind_join'],
-        ['row', 'bi-table', 'fl_kind_row'],
-        ['task', 'bi-check2-square', 'fl_add_task'],
-        ['condition', 'bi-signpost-split', 'fl_kind_condition'],
-        ['delay', 'bi-hourglass', 'fl_kind_delay'],
-        ['post', 'bi-chat-left-text', 'fl_add_post'],
-        ['email', 'bi-envelope', 'fl_add_email'],
-        ['notify', 'bi-bell', 'fl_kind_notify'],
-        ['task_open', 'bi-plus-square', 'fl_kind_task_open'],
-        ['webhook', 'bi-broadcast', 'fl_kind_webhook'],
-        ['web_check', 'bi-globe2', 'fl_kind_web_check'],
-        ['task_digest', 'bi-list-check', 'fl_kind_task_digest'],
-        ['report', 'bi-bar-chart', 'fl_kind_report'],
-        ['checkin', 'bi-person-check', 'fl_kind_checkin'],
-        ['start_action', 'bi-alarm', 'fl_kind_start_action'],
-        ['start_flow', 'bi-diagram-3', 'fl_kind_start_flow'],
-        ['change', 'bi-pencil-square', 'fl_kind_change'],
-        ['lead', 'bi-person-vcard', 'fl_kind_lead'],
-        ['mcp', 'bi-plug', 'fl_kind_mcp'],
-        ['approval', 'bi-patch-check', 'fl_kind_approval'],
-        ['constants', 'bi-tag', 'fl_kind_constants'],
-        ['value', 'bi-calculator', 'fl_kind_value'],
-        ['end', 'bi-flag', 'fl_add_end']
+        ['manual', 'fl_add_manual'],
+        ['schedule', 'fl_kind_schedule'],
+        ['event', 'fl_kind_event'],
+        ['join', 'fl_kind_join'],
+        ['row', 'fl_kind_row'],
+        ['task', 'fl_add_task'],
+        ['condition', 'fl_kind_condition'],
+        ['delay', 'fl_kind_delay'],
+        ['post', 'fl_add_post'],
+        ['email', 'fl_add_email'],
+        ['notify', 'fl_kind_notify'],
+        ['task_open', 'fl_kind_task_open'],
+        ['webhook', 'fl_kind_webhook'],
+        ['web_check', 'fl_kind_web_check'],
+        ['task_digest', 'fl_kind_task_digest'],
+        ['report', 'fl_kind_report'],
+        ['checkin', 'fl_kind_checkin'],
+        ['start_action', 'fl_kind_start_action'],
+        ['start_flow', 'fl_kind_start_flow'],
+        ['change', 'fl_kind_change'],
+        ['lead', 'fl_kind_lead'],
+        ['mcp', 'fl_kind_mcp'],
+        ['approval', 'fl_kind_approval'],
+        ['constants', 'fl_kind_constants'],
+        ['value', 'fl_kind_value'],
+        ['end', 'fl_add_end']
     ];
 
     var K = null;
@@ -286,7 +287,7 @@
     }
 
     function kindOf(node) {
-        return KINDS[node.kind] || { icon: 'bi-question-square', name: 'fl_box', into: true, out: [] };
+        return KINDS[node.kind] || { name: 'fl_box', into: true, out: [] };
     }
 
     // The classes of a box (and of its outline entry) that give it its
@@ -1171,7 +1172,7 @@
 
         icons.setAttribute('aria-hidden', 'true');
         template.graph.nodes.forEach(function (node) {
-            icons.appendChild(K.icon((KINDS[node.kind] || {}).icon || 'bi-square'));
+            icons.appendChild(K.flowIcon(node.kind));
         });
 
         card.appendChild(icons);
@@ -2128,7 +2129,7 @@
             box.appendChild(port('in'));
         }
 
-        head.appendChild(K.icon(kind.icon));
+        head.appendChild(K.flowIcon(node.kind));
         head.appendChild(el('span', 'wsf-node-kind', t(kind.name)));
         head.appendChild(K.icon('bi-exclamation-triangle-fill', 'wsf-node-warn'));
         box.appendChild(head);
@@ -2297,10 +2298,90 @@
     // How many tones a type's threads take turns in (.wsf-tone-<type>-<n>).
     var THREAD_TONES = { number: 3, text: 3 };
 
-    // The row under a box: a field chip's and a value dot's width, the gap
-    // between them and where the row starts; both are 18 px high, half
-    // under the box's bottom edge.
-    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9 };
+    // The row under a box: a field chip's and a value dot's full width, the
+    // gap between them, where the row starts and ends inside the box, and
+    // the ring's size; all 18 px high, half under the box's bottom edge. A
+    // thread bends at most `deep` px further down to pass under a box.
+    var DATA_ROW = { field: 76, out: 84, gap: 4, left: 8, half: 9, ring: 18, deep: 160 };
+
+    // Where the chips (fields first) and the dots of a box's row go: at full
+    // width while they fit within the box, else all as wide as the box's
+    // width shared out allows (a dot never narrower than its ring, the
+    // label then cut, its full name on hover), so the row is never wider
+    // than its box. Each slot is { left, width } from the box's left edge.
+    function dataRowSlots(fields, outs) {
+        var room = BOX_W - 2 * DATA_ROW.left;
+        var count = fields + outs;
+        var full = fields * DATA_ROW.field + outs * DATA_ROW.out + Math.max(0, count - 1) * DATA_ROW.gap;
+        var slots = { field: [], out: [] };
+        var at = DATA_ROW.left;
+        var width = 0;
+        var step = 0;
+        var i;
+
+        if (full <= room) {
+            for (i = 0; i < count; i++) {
+                width = (i < fields) ? DATA_ROW.field : DATA_ROW.out;
+                slots[(i < fields) ? 'field' : 'out'].push({ left: at, width: width });
+                at += width + DATA_ROW.gap;
+            }
+
+            return slots;
+        }
+
+        width = Math.max(DATA_ROW.ring, Math.floor((room - (count - 1) * DATA_ROW.gap) / count));
+        step = (count > 1) ? Math.min(width + DATA_ROW.gap, (room - width) / (count - 1)) : 0;
+
+        for (i = 0; i < count; i++) {
+            slots[(i < fields) ? 'field' : 'out'].push({ left: DATA_ROW.left + Math.round(i * step), width: width });
+        }
+
+        return slots;
+    }
+
+    // A thread hanging from (x1, y1) to (x2, y2), sag px below the lower
+    // end. When its curve would pass under one of the boxes given ({ x, y }
+    // of their top left corner, the two it joins left out), it hangs deeper,
+    // 16 px at a time, until it passes below them all, at most DATA_ROW.deep
+    // px more; past that (a box far below) it keeps its own sag. Gives the
+    // path and the sag taken.
+    function threadPath(x1, y1, x2, y2, sag, boxes) {
+        var low = Math.max(y1, y2);
+        var crosses = function (depth) {
+            var cx = (x1 + x2) / 2;
+            var cy = low + depth;
+
+            return boxes.some(function (box) {
+                var left = box.x - 4;
+                var right = box.x + BOX_W + 4;
+                var top = box.y - 4;
+                var bottom = box.y + BOX_H + DATA_ROW.ring;
+
+                for (var n = 1; n < 24; n++) {
+                    var u = n / 24;
+                    var x = (1 - u) * (1 - u) * x1 + 2 * u * (1 - u) * cx + u * u * x2;
+                    var y = (1 - u) * (1 - u) * y1 + 2 * u * (1 - u) * cy + u * u * y2;
+
+                    if ((x > left) && (x < right) && (y > top) && (y < bottom)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            });
+        };
+        var depth = sag;
+
+        while (crosses(depth) && (depth < sag + DATA_ROW.deep)) {
+            depth += 16;
+        }
+
+        if (crosses(depth)) {
+            depth = sag;
+        }
+
+        return { d: 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (low + depth) + ' ' + x2 + ' ' + y2, sag: depth };
+    }
 
     function fieldTexts(node) {
         var config = node.config || {};
@@ -2457,13 +2538,16 @@
     }
 
     // The threads on the canvas: under each box a row of the fields it fills
-    // (chips, first) and of the values it gives (dots), and from each dot a
-    // 1 px line to the chip of each field it fills, hanging below both by
-    // 10 px + 0.06 of its span. The threads of one dot leave it a few px
-    // apart, the one going farthest on the left (it sags more, so they do not
-    // cross near the dot); threads between the same two boxes hang 4 px
-    // apart. Read only: the row takes no pointer and the outline says the
-    // same in words.
+    // (chips, first) and of the values it gives (dots), never wider than the
+    // box (dataRowSlots()); chips in the order of the boxes they read from,
+    // dots in the order of the boxes they reach, left to right, so threads
+    // cross less. From each dot a 1 px line to the chip of each field it
+    // fills, hanging below both by 10 px + 0.06 of its span, deeper where it
+    // would pass under another box (threadPath()). The threads of one dot
+    // leave it a few px apart, the one going farthest on the left (it sags
+    // more, so they do not cross near the dot); threads between the same two
+    // boxes hang 4 px apart. The row is hidden from screen readers: the
+    // outline says the same in words.
     function drawData() {
         Array.prototype.slice.call(ui.layer.querySelectorAll('.wsf-thread, .wsf-data')).forEach(function (node) {
             node.remove();
@@ -2477,15 +2561,17 @@
         };
         var slot = function (id, part, key) {
             var item = rows[id];
-            var at = DATA_ROW.left;
 
-            if (part === 'out') {
-                at += item.fields.length * (DATA_ROW.field + DATA_ROW.gap) + item.outs.indexOf(key) * (DATA_ROW.out + DATA_ROW.gap);
-            } else {
-                at += item.fields.indexOf(key) * (DATA_ROW.field + DATA_ROW.gap);
-            }
+            item.slots = item.slots || dataRowSlots(item.fields.length, item.outs.length);
 
-            return at;
+            return item.slots[part][(part === 'out') ? item.outs.indexOf(key) : item.fields.indexOf(key)];
+        };
+        // Where the boxes at the other ends of a chip or a dot stand, on
+        // average: the row is laid out in that order.
+        var reach = function (id, key) {
+            var others = rows[id].ends[key].slice(1).map(nodeById).filter(Boolean);
+
+            return others.length ? others.reduce(function (sum, node) { return sum + node.x; }, 0) / others.length : Infinity;
         };
         var add = function (map, key, thread) {
             (map[key] = map[key] || []).push(thread);
@@ -2553,6 +2639,16 @@
         });
 
         Object.keys(rows).forEach(function (id) {
+            ['fields', 'outs'].forEach(function (part) {
+                var order = rows[id][part].slice();
+
+                rows[id][part].sort(function (a, b) {
+                    return (reach(id, a) - reach(id, b)) || (order.indexOf(a) - order.indexOf(b));
+                });
+            });
+        });
+
+        Object.keys(rows).forEach(function (id) {
             var node = nodeById(id);
             var box = ui.boxes.querySelector('.wsf-node[data-node="' + id + '"]');
 
@@ -2564,8 +2660,11 @@
                 var bad = threads.some(function (thread) { return (thread.to === id) && (thread.field === key) && !thread.from; });
                 var label = rows[id].labels[key];
                 var chip = el('span', 'wsf-data wsf-data-field ' + toneClass(label) + (bad ? ' wsf-data-bad' : '') + (rows[id].open[key] ? ' wsf-data-target' : ''), label.fieldLabel);
+                var at = slot(id, 'field', key);
 
-                chip.style.left = slot(id, 'field', key) + 'px';
+                chip.style.left = at.left + 'px';
+                chip.style.setProperty('--wsf-w', at.width + 'px');
+                chip.title = label.fieldLabel;
                 chip.setAttribute('data-ends', rows[id].ends[key].join(' '));
                 chip.setAttribute('aria-hidden', 'true');
 
@@ -2579,10 +2678,13 @@
             rows[id].outs.forEach(function (token) {
                 var value = rows[id].values[token];
                 var dot = el('span', 'wsf-data wsf-data-out ' + toneClass(value) + (value.unused ? ' wsf-data-unused' : ''));
+                var at = slot(id, 'out', token);
 
                 dot.appendChild(el('span', 'wsf-data-ring', (value.type === 'number') ? '#' : 'T'));
                 dot.appendChild(el('span', 'wsf-data-label', value.value));
-                dot.style.left = slot(id, 'out', token) + 'px';
+                dot.style.left = at.left + 'px';
+                dot.style.setProperty('--wsf-w', at.width + 'px');
+                dot.title = value.value;
                 dot.setAttribute('data-ends', rows[id].ends[token].join(' '));
                 dot.setAttribute('aria-hidden', 'true');
 
@@ -2624,14 +2726,16 @@
                 return;
             }
 
-            var x1 = from.x + slot(from.id, 'out', thread.token) + DATA_ROW.half + start[index];
-            var x2 = to.x + slot(to.id, 'field', thread.field) + DATA_ROW.field / 2 + end[index];
+            var field = slot(to.id, 'field', thread.field);
+            var x1 = from.x + slot(from.id, 'out', thread.token).left + DATA_ROW.half + start[index];
+            var x2 = to.x + field.left + field.width / 2 + end[index];
             var y1 = from.y + BOX_H + DATA_ROW.half;
             var y2 = to.y + BOX_H + DATA_ROW.half;
             var sag = 10 + 0.06 * Math.abs(x2 - x1) + 4 * pairs[from.id + ' ' + to.id].indexOf(thread);
+            var others = state.graph.nodes.filter(function (node) { return (node !== from) && (node !== to); });
             var path = svgEl('path', 'wsf-thread ' + toneClass(thread) + (thread.skipped ? ' wsf-thread-skipped' : ''));
 
-            path.setAttribute('d', 'M' + x1 + ' ' + y1 + ' Q' + ((x1 + x2) / 2) + ' ' + (Math.max(y1, y2) + sag) + ' ' + x2 + ' ' + y2);
+            path.setAttribute('d', threadPath(x1, y1, x2, y2, sag, others).d);
             path.setAttribute('data-from', from.id);
             path.setAttribute('data-to', to.id);
             path.setAttribute('data-field', thread.field);
@@ -2651,7 +2755,7 @@
         dot.classList.add('wsf-data-live');
         dot.setAttribute('data-node', node.id);
         dot.setAttribute('data-token', token);
-        dot.title = t('fl_thread_dot');
+        dot.title = (dot.title ? dot.title + '\n' : '') + t('fl_thread_dot');
 
         if (state.binding && (state.binding.from === node.id) && (state.binding.token === token)) {
             dot.classList.add('wsf-data-hot');
@@ -2851,7 +2955,9 @@
         var started = state.graph.nodes.some(function (node) { return node.kind === 'manual'; });
 
         return paletteItems().map(function (item) {
-            var add = K.button(className, t(item[2]), item[1]);
+            var add = K.button(className, t(item[1]));
+
+            add.insertBefore(K.flowIcon(item[0], 'me-1'), add.firstChild);
 
             // One box starts a flow; a second would be a problem to fix.
             if ((item[0] === 'manual') && started) {
@@ -5932,7 +6038,7 @@
             var head = el('h3', 'wsf-outline-head');
 
             item.setAttribute('data-node', node.id);
-            head.appendChild(K.icon(kindOf(node).icon, 'me-1'));
+            head.appendChild(K.flowIcon(node.kind, 'me-1'));
             head.appendChild(el('span', 'wsf-outline-kind', t(kindOf(node).name)));
             head.appendChild(el('span', 'wsf-outline-title', outlineTitle(node)));
             paintMark(item, head, node);
@@ -7695,7 +7801,9 @@
 
         orderedNodes().forEach(function (node) {
             var step = stepOf(node.id);
-            var row = K.button('wsf-run-step-row', '', kindOf(node).icon);
+            var row = K.button('wsf-run-step-row', '');
+
+            row.appendChild(K.flowIcon(node.kind));
 
             row.setAttribute('data-refocus', 'run-step-' + node.id);
             row.appendChild(el('span', 'wsf-run-step-name', nameOf(node)));

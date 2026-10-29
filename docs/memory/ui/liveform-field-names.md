@@ -1,6 +1,6 @@
 ---
 name: liveform-field-names
-description: Accessible names of liveform fields and hand-built pagers: aria-label and file id, required import pickers, new-password on outside sign-in and secret boxes, ERP fields
+description: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields
 ---
 
 ## Does liveform print an aria-label?
@@ -14,6 +14,10 @@ description: Accessible names of liveform fields and hand-built pagers: aria-lab
 
 ## Why do Migration's source sign-in and marketplace secrets say new-password?
 - The browser filled the panel's own saved sign-in into Migration's source e-mail/password (then sent to the typed URL) and into a marketplace secret box, where on an edit it replaced the stored secret. `autocomplete="off"` is ignored on password fields; `new-password` (as `smtp_settings.php`) keeps it out.
+- The API console (`includes/api/console.php`, `/docs`) has the same trap: its Secret key box said `off`, so the panel sign-in landed in Application key / Secret key and Connect sent it as HTTP Basic. `con_secret` says `new-password` since #3159; `con_key` stays `off`.
+
+## Why does the default Set Password card hold a hidden username field?
+- Password managers take the account from an `autocomplete="username"` field in the same form; the card showed the e-mail only as a `<p>`, so the new password was saved against no account. `get_set_password.php`'s default card (`$page_id <= 0`) prints `#set_password_username` (e-mail, else user name) inside the form when a token named the account: `visually-hidden`, `readonly`, `tabindex="-1"`, `aria-hidden`, no `name`, so nothing new is posted. The site layout path is unchanged. Pinned by `tests/password_manager_fields_test.php`.
 
 ## Which ERP fields got names beside the liveform ones?
 - The return quantity (`Returning`), the receipt allocation (`Allocate to {var:1}` with the invoice number), the bank statement mapping and date-order selects (label `for` + id), its expense category, the cheque step bank account and reason (aria-label: those fields repeat across step forms, so ids would clash), the account Notes. A fixed account or currency box has its own `*_locked` id the label points at. Pinned by `tests/erp_field_names_test.php`.

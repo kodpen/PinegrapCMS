@@ -537,6 +537,7 @@ function ws_customer_js_strings()
         'cust_orders'     => lang('Orders'),
         'cust_balance'    => lang('Balance'),
         'cust_quotes'     => lang('Open sales quotes'),
+        'cust_cart_quotes' => lang('Open cart quotes'),
         'cust_forms'      => lang('Form submissions'),
         'cust_empty'      => lang('Nothing to show for this customer yet.'),
         'cust_history'       => lang('History'),
@@ -915,9 +916,25 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
         }
     }
 
-    // Cart quotes are laid out here once their tables exist
-    // (ws_customer_cart_quote_rows()), as a section of their own and never
-    // among the sales quotes. Until then nothing is shown for them.
+    // Cart quotes are a section of their own, never among the sales quotes:
+    // they carry no price, only how many products they hold.
+    if (!empty($rights['cart_quotes']) && isset($data['cart_quotes'])) {
+        $rows = array_slice(array_values((array) ($data['cart_quotes']['rows'] ?? array())), 0, $limit);
+        $count = max((int) ($data['cart_quotes']['count'] ?? 0), count($rows));
+        $latest = array();
+
+        foreach ($rows as $row) {
+            $latest[] = array(
+                'id'          => (int) $row['id'],
+                'valid_until' => (int) ($row['valid_until'] ?? 0),
+                'lines'       => (int) ($row['line_count'] ?? 0),
+            );
+        }
+
+        if ($count > 0) {
+            $out['cart_quotes'] = array('count' => $count, 'latest' => $latest);
+        }
+    }
 
     if (!empty($rights['forms']) && !empty($data['forms'])) {
         $forms = array();
@@ -1026,6 +1043,23 @@ function ws_customer_card_build($identity, $summary, $base)
         }
 
         $sections['sales_quotes'] = array('count' => (int) $summary['sales_quotes']['count'], 'latest' => $latest);
+    }
+
+    if (isset($summary['cart_quotes'])) {
+        $latest = array();
+
+        foreach ((array) $summary['cart_quotes']['latest'] as $row) {
+            $until = ws_customer_date_text($row['valid_until'] ?? 0);
+
+            $latest[] = array_merge($row, array(
+                'number'           => '#' . (int) $row['id'],
+                'url'              => $base . 'view_cart_quotes.php?contact_id=' . (int) ($identity['contact_id'] ?? 0),
+                'lines_text'       => lang(array('string' => '{var:1} item(s)', 'vars' => array((int) ($row['lines'] ?? 0)))),
+                'valid_until_text' => ($until !== '') ? lang(array('string' => 'Valid until {var:1}', 'vars' => array($until))) : '',
+            ));
+        }
+
+        $sections['cart_quotes'] = array('count' => (int) $summary['cart_quotes']['count'], 'latest' => $latest);
     }
 
     if (isset($summary['forms'])) {
@@ -1254,20 +1288,30 @@ function ws_customer_sales_quote_rows($identity, $limit)
 }
 
 /**
- * The cart quotes of a customer: none yet. Cart quotes (cart_quotes,
- * cart_quote_items) are proposed in plans/workspace-quotes.md slice 5 and have
- * no table; their rows come in here, apart from the sales quotes, under the
- * ecommerce right ('cart_quotes' in ws_customer_summary_rights()), and
- * ws_customer_summary_build() lays them out then. Until then nothing is read,
- * so the summary never shows the section.
+ * The open cart quotes made for a customer's contact (includes/fn/cart_quotes.php),
+ * newest first, each with how many lines it holds: apart from the sales
+ * quotes, under the ecommerce right ('cart_quotes' in
+ * ws_customer_summary_rights()). A quote past its last day is not open.
  *
  * @param array $identity ws_customer_identity()
  * @param int   $limit
- * @return array count, rows
+ * @return array count, rows (id, valid_until, line_count)
  */
 function ws_customer_cart_quote_rows($identity, $limit)
 {
-    return array('count' => 0, 'rows' => array());
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !pg_cart_quotes_ready()) {
+        return array('count' => 0, 'rows' => array());
+    }
+
+    $where = "q.contact_id = '" . $contact_id . "' AND q.status = 'open' AND (q.valid_until = 0 OR q.valid_until >= '" . time() . "')";
+
+    return array(
+        'count' => (int) db_value("SELECT COUNT(*) FROM cart_quotes AS q WHERE " . $where),
+        'rows'  => (array) db_items("SELECT q.id, q.valid_until, (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+            FROM cart_quotes AS q WHERE " . $where . " ORDER BY q.id DESC LIMIT " . max(1, (int) $limit)),
+    );
 }
 
 /**

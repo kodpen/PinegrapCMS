@@ -50,6 +50,7 @@ description: Generated from the module field of the memory files: each includes/
 - `output`: [[list-status-words]]
 - `page_facts`: [[page-conditions]]
 - `payments`: [[payment-driver-paytr-installments]], [[payment-gateway-secrets]]
+- `pdf_merge`: [[shipment-label-bulk]]
 - `privacy`: [[consent-log-and-audit-trail]]
 - `privacy_export`: [[personal-data-export]]
 - `privacy_retention`: [[privacy-log-retention]]

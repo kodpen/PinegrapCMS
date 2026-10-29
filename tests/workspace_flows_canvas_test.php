@@ -1490,7 +1490,7 @@ function test_workspace_flows_canvas_row_box()
 		array('nodeById', 'kindOf', 'stepLists', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
-var PALETTE = [['row', 'bi-table', 'fl_kind_row'], ['post', 'bi-chat-left-text', 'fl_add_post'], ['mcp', 'bi-plug', 'fl_kind_mcp']];
+var PALETTE = [['row', 'fl_kind_row'], ['post', 'fl_add_post'], ['mcp', 'fl_kind_mcp']];
 var ROW_WHATS = { created: 'fl_row_created', updated: 'fl_row_updated', deleted: 'fl_row_deleted' };
 var FL = {
     trigger_outputs: { kinds: { row: [{ key: 'table_id', label: 'Table' }, { key: 'row_id', label: 'Row' }] }, events: {} },
@@ -1639,4 +1639,222 @@ function test_workspace_flows_canvas_group_colours()
 	preg_match_all("/'wsf-group-([a-z]+)'/", $actions[1], $used);
 	pg_assert_same(4, count($used[1]), 'every scheduled-action box has a group');
 	pg_assert_same(array(), array_values(array_diff($used[1], array_keys(ws_flows_canvas_test_groups()))), 'only groups the CSS colours');
+}
+
+// The canvas's own sizes (BOX_W, BOX_H, DATA_ROW), as the script has them.
+function ws_flows_canvas_test_sizes()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	preg_match_all('/^    var (BOX_W|BOX_H|DATA_ROW) = [^\n]+;$/m', $source, $found);
+	pg_assert_same(3, count($found[0]), 'the box and row sizes are in the script');
+
+	return implode("\n", $found[0]) . "\n";
+}
+
+// The row under a box never grows wider than its box: for 1 to 6 values
+// given, with no, one or two fields read, every chip and dot lies within
+// the box's width, none overlaps the next while they fit, and a dot is
+// never narrower than its ring. Before, the chips (76 px) and dots (84 px)
+// went on in one row, so a box giving four values ("Ask for approval")
+// spread it under its neighbours.
+function test_workspace_flows_canvas_data_row_stays_within_the_box()
+{
+	$result = ws_flows_canvas_test_node(array('dataRowSlots'), ws_flows_canvas_test_sizes() . <<<'JS'
+var out = { box: BOX_W, ring: DATA_ROW.ring, rows: [] };
+[0, 1, 2].forEach(function (fields) {
+    [1, 2, 3, 4, 5, 6].forEach(function (outs) {
+        out.rows.push({ fields: fields, outs: outs, slots: dataRowSlots(fields, outs) });
+    });
+});
+out.two = dataRowSlots(0, 2);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	foreach ($result['rows'] as $row) {
+		$name = $row['fields'] . ' fields, ' . $row['outs'] . ' values';
+		$all = array_merge($row['slots']['field'], $row['slots']['out']);
+
+		pg_assert_same($row['fields'], count($row['slots']['field']), $name . ': a slot per field');
+		pg_assert_same($row['outs'], count($row['slots']['out']), $name . ': a slot per value');
+
+		foreach ($all as $index => $slot) {
+			pg_assert_true($slot['left'] >= 0 && $slot['left'] + $slot['width'] <= $result['box'], $name . ': item ' . $index . ' within the box');
+			pg_assert_true($slot['width'] >= $result['ring'], $name . ': item ' . $index . ' at least a ring wide');
+
+			if ($index > 0) {
+				pg_assert_true($slot['left'] >= $all[$index - 1]['left'] + $all[$index - 1]['width'], $name . ': item ' . $index . ' after the one before');
+			}
+		}
+	}
+
+	pg_assert_same(array(array('left' => 8, 'width' => 84), array('left' => 96, 'width' => 84)), $result['two']['out'], 'two values keep their full width');
+}
+
+// A thread that would pass under another box hangs deeper until it passes
+// below it; one that passes clear keeps its sag, and so does one whose box
+// lies too far down to hang below.
+function test_workspace_flows_canvas_thread_bends_around_a_box()
+{
+	$result = ws_flows_canvas_test_node(array('threadPath'), ws_flows_canvas_test_sizes() . <<<'JS'
+var y = 89;
+console.log(JSON.stringify({
+    clear: threadPath(104, y, 704, y, 46, []),
+    below: threadPath(104, y, 704, y, 46, [{ x: 300, y: 400 }]),
+    under: threadPath(104, y, 704, y, 46, [{ x: 300, y: 40 }]),
+    deep: threadPath(104, y, 704, y, 46, [{ x: 300, y: 100 }])
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(46, $result['clear']['sag'], 'nothing in the way: its own sag');
+	pg_assert_same('M104 89 Q404 135 704 89', $result['clear']['d'], 'the quadratic curve below the chord');
+	pg_assert_same(46, $result['below']['sag'], 'a box far below is not in the way');
+	pg_assert_true($result['under']['sag'] > 46, 'a box in the way: it hangs deeper');
+	// The curve's lowest point is halfway between the ends' level and the
+	// control point; it passes below the box and its data row (40 + 80 + 18).
+	pg_assert_true(89 + $result['under']['sag'] / 2 > 138, 'and passes below the box');
+	pg_assert_same(46, $result['deep']['sag'], 'a box too far down to pass below: its own sag');
+}
+
+// The row as drawn: a box's chips and dots within its width, a value no
+// thread takes drawn only while its box is selected, and the dots in the
+// order of the boxes they reach.
+function test_workspace_flows_canvas_data_row_drawing()
+{
+	$result = ws_flows_canvas_test_node(array('dataRowSlots', 'threadPath', 'toneClass', 'drawData'), ws_flows_canvas_test_sizes() . <<<'JS'
+var THREAD_TONES = { number: 3, text: 3 };
+var drawn = {};
+var nodes = [
+    { id: 'a', kind: 'approval', x: 0, y: 0 },
+    { id: 'b', kind: 'task', x: 640, y: 0 },
+    { id: 'c', kind: 'post', x: 320, y: 0 }
+];
+function nodeById(id) { return nodes.filter(function (node) { return node.id === id; })[0] || null; }
+function thread(token, to, field) { return { token: token, from: 'a', to: to, field: field, fieldLabel: field, value: token, type: 'text', tone: 0, skipped: false }; }
+function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')]; }
+function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function (token) { return { token: token, label: token, type: 'text' }; }); }
+function bindTargets() { return []; }
+function markThreads() {}
+function liveDot() {}
+function svgEl(tag, className) { return new FakeNode(tag, className); }
+FakeNode.prototype.style = null;
+ui.layer = new FakeNode('div');
+ui.svg = new FakeNode('svg');
+ui.boxes.querySelector = function (selector) {
+    var id = /data-node="([^"]+)"/.exec(selector)[1];
+    return (drawn[id] = drawn[id] || new FakeNode('div', 'wsf-node'));
+};
+var made = el;
+el = function (tag, className, text) {
+    var node = made(tag, className, text);
+    node.style = { setProperty: function (name, value) { node.style[name] = value; } };
+    return node;
+};
+state.graph = { nodes: nodes };
+state.edit = true;
+function row(id) {
+    return (drawn[id] ? drawn[id].children : []).map(function (item) {
+        return { kind: item.className.indexOf('wsf-data-out') !== -1 ? 'out' : 'field', left: parseInt(item.style.left, 10), width: parseInt(item.style['--wsf-w'], 10), name: item.title, unused: item.className.indexOf('wsf-data-unused') !== -1 };
+    });
+}
+drawData();
+var out = { plain: row('a'), reader: row('b'), paths: ui.svg.children.length };
+drawn = {};
+state.selected = { type: 'node', id: 'a' };
+drawData();
+out.selected = row('a');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	foreach (array('plain', 'reader', 'selected') as $part) {
+		foreach ($result[$part] as $item) {
+			pg_assert_true($item['left'] >= 0 && $item['left'] + $item['width'] <= 208, $part . ': ' . $item['name'] . ' within the box');
+		}
+	}
+
+	pg_assert_same(array('t3', 't1', 't2', 't4'), array_column($result['plain'], 'name'), 'the dot reaching the nearer box first');
+	pg_assert_same(array(false, false, false, false), array_column($result['plain'], 'unused'), 'unused values not drawn while the box is not selected');
+	pg_assert_same(array('title', 'text'), array_column($result['reader'], 'name'), 'the reading box shows a chip per field');
+	pg_assert_same(4, $result['paths'], 'a thread per value and field');
+	pg_assert_same(6, count($result['selected']), 'selected: its unused values too');
+	pg_assert_same(array(true, true), array_slice(array_column($result['selected'], 'unused'), 4), 'the unused ones last');
+}
+
+// Every kind of box has a line icon of its own in workspace.js's set (16 ×
+// 16 view, drawn by flowIcon() as an SVG the screen reader skips); the
+// canvas draws boxes, palette, outline, template cards and run steps with
+// it, and the mini window of a draft with the same paths. Before, each kind
+// had a Bootstrap icon, and the mini window none.
+function test_workspace_flows_canvas_kinds_have_line_icons()
+{
+	$flow = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$host = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $flow, $kinds), 'KINDS is in the canvas script');
+	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $flow, $palette), 'PALETTE is in the canvas script');
+	pg_assert_true((bool) preg_match('/\n    var FLOW_ICONS = \{\n.*?\n    \};\n/s', $host, $icons), 'FLOW_ICONS is in workspace.js');
+	pg_assert_false(strpos($kinds[0] . $palette[0], "'bi-") !== false, 'no Bootstrap icon left on a kind');
+
+	foreach (array("K.flowIcon(node.kind)", "K.flowIcon(node.kind, 'me-1')", "K.flowIcon(item[0], 'me-1')") as $use) {
+		pg_assert_contains($use, $flow, 'the canvas draws ' . $use);
+	}
+
+	pg_assert_contains('flowIcon: flowIcon,', $host, 'the kit lends flowIcon()');
+	pg_assert_contains('flowIconPaths(node.kind).forEach', $host, 'the mini window draws the same icon');
+
+	$result = ws_flows_canvas_test_node(array(), $kinds[0] . $icons[0]
+		. ws_flows_canvas_test_script_function($host, 'flowIconPaths') . ws_flows_canvas_test_script_function($host, 'flowIcon') . <<<'JS'
+document.createElementNS = function (ns, tag) { var node = new FakeNode(tag); node.ns = ns; return node; };
+var made = flowIcon('approval', 'me-1');
+console.log(JSON.stringify({
+    kinds: Object.keys(KINDS),
+    icons: Object.keys(FLOW_ICONS),
+    paths: FLOW_ICONS,
+    unknown: flowIconPaths('nothing'),
+    made: { tag: made.tag, ns: made.ns, attrs: made.attrs, paths: made.children.map(function (path) { return path.attrs.d; }) }
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array(), array_values(array_diff($result['kinds'], $result['icons'])), 'every kind has its icon');
+	pg_assert_same(array(), array_values(array_diff($result['icons'], $result['kinds'])), 'no icon for a kind that is not there');
+
+	foreach ($result['paths'] as $kind => $paths) {
+		pg_assert_true(count($paths) > 0, $kind . ' has a path');
+
+		foreach ($paths as $d) {
+			pg_assert_true((bool) preg_match('/^M[0-9. ]+[MLHVCSQTAZmlhvcsqtaz0-9 .-]*$/', $d), $kind . ': a path: ' . $d);
+			// Every absolute point stays in the 16 × 16 view.
+			preg_match('/^M([0-9.]+) ([0-9.]+)/', $d, $first);
+			pg_assert_true($first[1] >= 0 && $first[1] <= 16 && $first[2] >= 0 && $first[2] <= 16, $kind . ': starts in the view');
+		}
+	}
+
+	pg_assert_same(array('M2.5 2.5h11v11h-11z'), $result['unknown'], 'an unknown kind: a plain square');
+	pg_assert_same('svg', $result['made']['tag']);
+	pg_assert_same('http://www.w3.org/2000/svg', $result['made']['ns']);
+	pg_assert_same(array('class' => 'ws-flow-icon me-1', 'viewBox' => '0 0 16 16', 'width' => '16', 'height' => '16', 'aria-hidden' => 'true', 'focusable' => 'false'), $result['made']['attrs']);
+	pg_assert_same($result['paths']['approval'], $result['made']['paths'], 'its paths drawn');
+
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\n\.ws-flow-icon \{[^}]*width: 16px;[^}]*stroke: currentColor;[^}]*stroke-width: 1\.5;/', $css), 'drawn 16 px with a 1.5 px stroke in the colour around it');
 }

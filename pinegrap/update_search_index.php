@@ -90,15 +90,19 @@ output_header_secure(array(
             $("html, body").animate({ scrollTop: $(document).height()  });
             $("#start").hide();
             $("#finish").show();
+            // #finish is revealed outside any live region; the status region
+            // printed in the header announces the end of the run.
+            $("#finish_status").text($("#finish_message").text());
         });
     </script>
 
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid gap-3">
-            <span id="start" class="navbar-text d-flex align-items-center gap-3 small">
-                <span class="spinner-border spinner-border-sm fg-success flex-shrink-0" role="status"></span>
+            <span id="start" class="navbar-text d-flex align-items-center gap-3 small" role="status">
+                <span class="spinner-border spinner-border-sm fg-success flex-shrink-0" aria-hidden="true"></span>
                 ' . lang('Spidering all Pages for text and files and updating the Search Index. Please leave this window open until it is complete') . '...
             </span>
+            <span id="finish_status" class="visually-hidden" role="status"></span>
             
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item">
@@ -1363,7 +1367,7 @@ echo '
     <div id="finish" class="text-center py-7" style="display:none">
         <i class="bi bi-check-circle-fill fg-success d-block mb-3" style="font-size:2.5rem"></i>
         
-        <div class="fw-semibold mb-5">' . lang('The Search Index has been updated successfully!') . '</div>
+        <div id="finish_message" class="fw-semibold mb-5">' . lang('The Search Index has been updated successfully!') . '</div>
         <button type="button" class="btn btn-sm btn-outline theme-secondary" onclick="window.close()">
             <i class="bi bi-x-lg me-1"></i>' . lang('Close') . '
         </button>

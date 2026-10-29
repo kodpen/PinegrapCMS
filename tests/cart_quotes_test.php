@@ -153,3 +153,12 @@ function test_cart_quote_plan_brings_quantities_within_the_rules()
 	), $plan['add'], 'minimum, maximum, stock, backorder');
 	pg_assert_same(array(array('product_id' => 5, 'reason' => 'stock')), $plan['skipped'], 'less stock than the minimum');
 }
+
+function test_cart_quote_until_is_the_end_of_the_day_named()
+{
+	pg_assert_same(0, pg_cart_quote_until(''), 'no end');
+	pg_assert_same(mktime(23, 59, 59, 11, 30, 2026), pg_cart_quote_until('2026-11-30'), 'the whole day');
+	pg_assert_same(null, pg_cart_quote_until('2026-02-30'), 'no such day');
+	pg_assert_same(null, pg_cart_quote_until('30/11/2026'), 'not Y-m-d');
+	pg_assert_same(null, pg_cart_quote_until('0000-00-00'), 'the empty date');
+}

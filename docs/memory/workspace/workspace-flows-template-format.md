@@ -21,6 +21,9 @@ description: Flow templates (G1 #2161, flow_templates.php): format, the schedule
 ## Which day does a start box get?
 - A day of the site's calendar, as the scheduler reads date + time: from `today` (`date('Y-m-d')`) at noon in UTC (`DateTimeImmutable`). `strtotime('next monday')` in PHP's zone gave the Sunday before east of UTC (PR #2230); tested in five zones.
 
+## Which are saved on the site?
+- Staff-saved ones, category `saved`, key `site_<id>`: `workspace-flows-template-saved.md`.
+
 ## Which are a flow's own?
 - new_customer, quote_approval, text_review (G3): `workspace-flows-template-flow-only.md`.
 

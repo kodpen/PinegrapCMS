@@ -31,4 +31,4 @@ Open: 2. Template scope: personal, channel, site-wide → personal, site-wide.
 
 ## Where to start?
 - Slices 1-3 and 6 are built (6's Settings checkbox waits for the owner). 4 and 7 ask the owner first.
-- 5a PR #3091: tables 11.0.124, model, link page `cart_quote.php`, order completion, contact holder, export, erasure (commerce/cart-quotes.md). Next 5b: panel screen (list, make, cancel) and the Workspace card (`ws_customer_cart_quote_rows()`); then channel form, tag, `cart_quote.*` routes.
+- 5a PR #3091: tables 11.0.124, model, link page `cart_quote.php`, order completion, contact holder, export, erasure (commerce/cart-quotes.md). 5b PR #3148: panel list and new-quote screen, cancel, new link, Workspace card section. Next 5c: channel form; then tag, `cart_quote.*` routes.

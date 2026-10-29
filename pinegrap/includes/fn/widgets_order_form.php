@@ -59,9 +59,10 @@ function pg_of_layout($layout)
  * @param bool   $recipient the visitor picks the recipient (multi-recipient
  *                          shipping and an available shippable product)
  * @param string $skip_label the skip button's label ('' for none)
+ * @param array  $currencies pg_sw_currency_rows()
  * @return array
  */
-function pg_of_flags($layout, $products, $recipient, $skip_label)
+function pg_of_flags($layout, $products, $recipient, $skip_label, $currencies = array())
 {
     $available = 0;
     $non_donations = 0;
@@ -81,6 +82,7 @@ function pg_of_flags($layout, $products, $recipient, $skip_label)
         'has_quantity'         => !$list && $non_donations > 0,
         'has_recipient_choice' => $available > 0 && (bool)$recipient,
         'has_skip_button'      => trim((string)$skip_label) !== '',
+        'has_currency_choice'  => count((array)$currencies) > 1,
     );
     return $of_flags;
 }
@@ -302,6 +304,8 @@ function pg_of_row_html($row_tree, $product, $posted, $prefill, $schedule, $widg
 // add_name (the recipient), the submit_add and submit_skip buttons.
 // Tokens: ^^__add_button_label^^, ^^__skip_button_label^^,
 // ^^__currency_symbol^^, ^^__cart_url^^.
+// Currency picker: the currency_id select and the currency_update button
+// (pg_sw_currency_picker()), shown by has_currency_choice.
 // Flags: pg_of_flags(). Errors: liveform 'order_form'.
 // cfg: product_group_id, product_layout, add_button_label,
 // add_button_next_page_id, skip_button_label, skip_button_next_page_id.
@@ -341,7 +345,8 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     }
     $recipient = defined('ECOMMERCE_SHIPPING') && ECOMMERCE_SHIPPING
         && defined('ECOMMERCE_RECIPIENT_MODE') && ECOMMERCE_RECIPIENT_MODE === 'multi-recipient' && $shippable;
-    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label);
+    $currencies = pg_sw_currency_rows();
+    $of_flags = pg_of_flags($layout, $products, $recipient, $skip_label, $currencies);
 
     $price_html = function ($p) use ($discounted) {
         $id = $p['id'];
@@ -361,6 +366,7 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
         _pg_member_drop_control($tree, 'add_name');
     }
     if (!$of_flags['has_skip_button']) _pg_member_drop_control($tree, 'submit_skip');
+    pg_sw_currency_picker($tree, $widget_id, $currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
 
     // The drop-down layout's pick list: each available product with its
     // price; one the stock leaves out carries its out-of-stock words.
@@ -424,7 +430,9 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
         '__cart_url'          => h($cart_url),
     );
     $rendered = _pg_member_apply_tokens($rendered, $tokens);
-    if (!$of_flags['has_products'] && !$of_flags['has_skip_button']) return $rendered;
+    // The picker's own form follows the widget's: forms cannot nest.
+    $currency_form = pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());
+    if (!$of_flags['has_products'] && !$of_flags['has_skip_button']) return $rendered . $currency_form;
 
     // The start date boxes' picker reads its options from the classic script.
     if ($has_schedule && (!ECOMMERCE_CREDIT_DEBIT_CARD || ECOMMERCE_PAYMENT_GATEWAY != 'ClearCommerce')) {
@@ -433,5 +441,5 @@ function _render_system_widget_order_form($tree_json, $widget_id, $cfg = array()
     return _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/order_form.php', array(
         'page_id'         => $page_id,
         'require_cookies' => 'true',
-    ), 'pg-order-form');
+    ), 'pg-order-form') . $currency_form;
 }
