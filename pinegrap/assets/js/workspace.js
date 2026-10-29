@@ -7882,11 +7882,6 @@
                 divider();
             }
 
-            if (channel.bulk_products && !channel.archived) {
-                item(t('bulk_make_products'), 'bi-box-seam', function () { self.bulkMakeProducts({}); });
-                divider();
-            }
-
             if (channel.joined) {
                 [['all', t('notify_all')], ['mentions', t('notify_mentions')], ['none', t('notify_none')]].forEach(function (option) {
                     item(option[1] + (channel.notify === option[0] ? ' ✓' : ''), option[0] === 'none' ? 'bi-bell-slash' : 'bi-bell', function () {

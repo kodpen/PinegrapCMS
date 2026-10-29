@@ -22,7 +22,11 @@
  * discussion is a task of the channel.
  *
  * The assistants may be asked in a discussion wherever they may be asked in
- * its channel; the first time one is, the channel's message says so.
+ * its channel; the first time one is, the channel's message says so. The
+ * discussion then follows the last one asked (ws_threads.follow_agent, also
+ * set when it was started from an assistant's answer or a request to one):
+ * a person's later message there that asks nobody and mentions nobody asks
+ * the followed one, without its @name.
  *
  * Anybody in a discussion may conclude it: it is kept as it was, read only,
  * for WS_THREAD_KEEP_DAYS days, and then deleted with everything in it
@@ -281,6 +285,12 @@ function ws_thread_start($viewer, $message, $title = '')
         ws_notify($author, 'thread', array('channel_id' => $thread_id, 'message_id' => (int) $message['id'], 'actor_id' => (int) $viewer['id']));
     }
 
+    // Started from an assistant's answer or a request to one: that
+    // assistant follows the discussion.
+    if (ws_thread_follow_ready()) {
+        ws_thread_follow_set($thread_id, ws_thread_message_agent($message));
+    }
+
     ws_channel_membership_forget();
 
     ws_message_system($thread_id, lang(array('string' => '{var:1} started this discussion', 'vars' => '<@user:' . (int) $viewer['id'] . '>')));
@@ -459,6 +469,276 @@ function ws_thread_assistant_asked($channel, $agent)
     db("UPDATE ws_threads SET assistants = '" . e(implode(',', array_unique($agents))) . "' WHERE channel_id = '" . (int) $channel['id'] . "'");
 
     ws_message_touch((int) $thread['message_id']);
+}
+
+/**
+ * Is ws_threads.follow_agent there (2026.11.0, 11.0.113)? The files land
+ * before the upgrade runs, so every read and write asks first.
+ *
+ * @return bool
+ */
+function ws_thread_follow_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = ws_threads_ready() && pg_schema_has('ws_threads', 'follow_agent');
+    }
+
+    return $ready;
+}
+
+/**
+ * An agent's key as follow_agent keeps it: claude, ai or mcp:<server id>;
+ * '' for anything else.
+ *
+ * @param string $agent
+ * @return string
+ */
+function ws_thread_follow_clean($agent)
+{
+    $agent = strtolower(trim((string) $agent));
+
+    if (($agent === 'claude') || ($agent === 'ai')) {
+        return $agent;
+    }
+
+    return preg_match('/^mcp:([1-9][0-9]{0,9})$/', $agent, $match) ? 'mcp:' . (int) $match[1] : '';
+}
+
+/**
+ * The agent a discussion follows, '' for none.
+ *
+ * @param int $channel_id the discussion
+ * @return string
+ */
+function ws_thread_follow_agent($channel_id)
+{
+    if (!ws_thread_follow_ready()) {
+        return '';
+    }
+
+    return ws_thread_follow_clean(db_value("SELECT follow_agent FROM ws_threads WHERE channel_id = '" . (int) $channel_id . "'"));
+}
+
+/**
+ * Sets the agent a discussion follows; '' follows nobody.
+ *
+ * @param int    $channel_id the discussion
+ * @param string $agent      claude | ai | mcp:<server id> | ''
+ */
+function ws_thread_follow_set($channel_id, $agent)
+{
+    if (!ws_thread_follow_ready()) {
+        return;
+    }
+
+    db("UPDATE ws_threads SET follow_agent = '" . e(ws_thread_follow_clean($agent)) . "' WHERE channel_id = '" . (int) $channel_id . "'");
+}
+
+/**
+ * The agents a message asks by name or by answering one of their answers,
+ * as ws_message_ask_assistants() asks them: Claude, then an MCP server that
+ * is an agent itself or Pinegrap AI.
+ *
+ * @param string $body       normalised (ws_tokens_normalise())
+ * @param int    $message_id
+ * @return string[] agent keys
+ */
+function ws_thread_agents_asked($body, $message_id)
+{
+    $out = array();
+
+    if (function_exists('ws_claude_schema_ready') && ws_claude_schema_ready() && (ws_claude_asked($body) || ws_claude_answers_claude($message_id))) {
+        $out[] = 'claude';
+    }
+
+    $server = function_exists('ws_mcp_ask_server') ? ws_mcp_ask_server($body, $message_id) : null;
+
+    if ($server && function_exists('ws_mcp_agent_mode') && ws_mcp_agent_ready() && ws_mcp_agent_mode($server)) {
+        $out[] = 'mcp:' . (int) $server['id'];
+    } elseif ($server || (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() && (ws_ai_asked($body) || ws_ai_answers_ai($message_id)))) {
+        // Pinegrap AI, with a server's tools or without.
+        $out[] = 'ai';
+    }
+
+    return $out;
+}
+
+/**
+ * The agent a message belongs to as a discussion started from it sees it:
+ * the one that wrote it as an answer, or the last one it asks.
+ *
+ * @param array $message
+ * @return string agent key, '' for none
+ */
+function ws_thread_message_agent($message)
+{
+    if ((string) $message['sender_kind'] === 'app') {
+        $app_id = (int) $message['sender_id'];
+
+        if (function_exists('ws_claude_schema_ready') && ws_claude_schema_ready() && ($app_id === (int) ws_claude_config()['app_id'])) {
+            return 'claude';
+        }
+
+        if (function_exists('ws_ai_schema_ready') && ws_ai_schema_ready() && ($app_id === (int) ws_ai_config()['app_id'])) {
+            return 'ai';
+        }
+
+        return '';
+    }
+
+    // An MCP agent's answer is posted in the name of the person who asked.
+    if (function_exists('ws_mcp_agent_ready') && ws_mcp_agent_ready()) {
+        $server_id = (int) db_value("SELECT mcp_server_id FROM ws_ai_requests
+            WHERE reply_message_id = '" . (int) $message['id'] . "' AND agent = 'mcp' AND status = 'answered' ORDER BY id DESC LIMIT 1");
+
+        if ($server_id > 0) {
+            return 'mcp:' . $server_id;
+        }
+    }
+
+    $asked = ws_thread_agents_asked(ws_tokens_normalise(trim((string) $message['body'])), (int) $message['id']);
+
+    return empty($asked) ? '' : (string) end($asked);
+}
+
+/**
+ * Whom a message in a discussion leaves followed, and whom it asks as the
+ * followed one. An agent asked by name becomes the followed one (the last
+ * one asked); a person's message that asks nobody and mentions nobody asks
+ * the followed agent. A message an application or a bot wrote asks nobody,
+ * so two agents never answer each other.
+ *
+ * @param string   $followed the agent followed now, '' for none
+ * @param string[] $asked    the agents the message asks (ws_thread_agents_asked())
+ * @param bool     $person   a person wrote it
+ * @param bool     $mentions it mentions colleagues, teams or applications
+ * @return array follow (agent key or ''), ask (agent key or '')
+ */
+function ws_thread_follow_decide($followed, $asked, $person, $mentions)
+{
+    $followed = ws_thread_follow_clean($followed);
+
+    if (!$person) {
+        return array('follow' => $followed, 'ask' => '');
+    }
+
+    $asked = array_values(array_filter(array_map('ws_thread_follow_clean', (array) $asked)));
+
+    if (!empty($asked)) {
+        return array('follow' => (string) end($asked), 'ask' => '');
+    }
+
+    return array('follow' => $followed, 'ask' => $mentions ? '' : $followed);
+}
+
+/**
+ * Whether a message mentions anybody: a colleague, a team or an application.
+ *
+ * @param string $body normalised
+ * @return bool
+ */
+function ws_thread_body_mentions($body)
+{
+    foreach (ws_tokens($body) as $token) {
+        if ($token['sigil'] === '@') {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * What a new message does with the followed agent's open requests in the
+ * discussion. One sent (a run took it, or it waits for its asker's
+ * approval) or one that asked by name is answered with the latest messages
+ * read: no new request. Otherwise a new request is queued for the latest
+ * message, and the queued ones that only followed are dropped once it is,
+ * so the answer goes to the latest message and the agent answers once.
+ *
+ * @param array[] $open rows: id, status (queued | sent), named (its message asked the agent by name)
+ * @return array queue (bool), drop (request ids)
+ */
+function ws_thread_follow_pending_plan($open)
+{
+    $drop = array();
+
+    foreach ((array) $open as $row) {
+        if (((string) $row['status'] !== 'queued') || !empty($row['named'])) {
+            return array('queue' => false, 'drop' => array());
+        }
+
+        $drop[] = (int) $row['id'];
+    }
+
+    return array('queue' => true, 'drop' => $drop);
+}
+
+/**
+ * Asks the agent a discussion follows about a person's message that asks
+ * nobody: the usual checks of each agent stay (allowed there, waiting
+ * limits, an MCP server's account), only its name need not be written.
+ *
+ * @param array  $viewer
+ * @param array  $channel    the discussion
+ * @param int    $message_id
+ * @param string $body       normalised
+ * @param string $agent      the followed agent's key
+ * @return string claude | agent | ai: whose request was queued, '' for none
+ */
+function ws_thread_follow_ask($viewer, $channel, $message_id, $body, $agent)
+{
+    $agent = ws_thread_follow_clean($agent);
+
+    if ($agent === '') {
+        return '';
+    }
+
+    $server_id = (strpos($agent, 'mcp:') === 0) ? (int) substr($agent, 4) : 0;
+    $where = ($server_id > 0)
+        ? " AND agent = 'mcp' AND mcp_server_id = '" . $server_id . "'"
+        : ws_ai_agent_where($agent);
+
+    $open = array();
+
+    foreach ((array) db_items("SELECT id, message_id, status FROM ws_ai_requests
+        WHERE channel_id = '" . (int) $channel['id'] . "' AND status IN ('queued', 'sent')" . $where) as $row) {
+        $asked = ws_message((int) $row['message_id']);
+        $named = $asked && in_array($agent, ws_thread_agents_asked(ws_tokens_normalise(trim((string) $asked['body'])), (int) $asked['id']), true);
+        $open[] = array('id' => (int) $row['id'], 'status' => (string) $row['status'], 'named' => $named, 'message_id' => (int) $row['message_id']);
+    }
+
+    $plan = ws_thread_follow_pending_plan($open);
+
+    if (!$plan['queue']) {
+        return '';
+    }
+
+    if ($agent === 'claude') {
+        $queued = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body, true);
+        $kind = 'claude';
+    } elseif ($server_id > 0) {
+        $queued = function_exists('ws_mcp_agent_after_send') && (ws_mcp_agent_after_send($viewer, $channel, $message_id, $body, $server_id) === true);
+        $kind = 'agent';
+    } else {
+        $queued = function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body, true);
+        $kind = 'ai';
+    }
+
+    if (!$queued) {
+        return '';
+    }
+
+    foreach ($open as $row) {
+        if (in_array($row['id'], $plan['drop'], true)) {
+            db("DELETE FROM ws_ai_requests WHERE id = '" . $row['id'] . "' AND status = 'queued'");
+            ws_message_touch($row['message_id']);
+        }
+    }
+
+    return $kind;
 }
 
 /**

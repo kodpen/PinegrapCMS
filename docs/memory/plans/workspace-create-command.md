@@ -16,7 +16,7 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - **S4** A channel spreadsheet as the source: `/oluştur ürün` as a reply to, or sent with, a CSV/xlsx/xls/ods file reads it through `ws_bulk_file_table()`. The file's "Make products" button, `bulkMakeProducts()` and `channel.bulk_products` (`includes/workspace/channels.php`) go, with the unused keys. Tests as S3.
 
 ## Which steps are done?
-- None yet.
+- S1 (#2927): the menu item is gone; tests/workspace_channel_menu_test.php guards the menu's item keys.
 
 ## What is open? (architect questions, not decided here)
 - Which other kinds `/oluştur` takes later (task, customer, sales quote, workflow table row…), and whether `/görev` then becomes an alias like `/ürün`.
@@ -24,4 +24,4 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - The reply form of S4 when the file is someone else's message: allowed for anyone who may read it, or the poster only?
 
 ## Where to start?
-- S1 after #2905 (holds workspace.js) merges. Read `workspace/README.md` key rules, workspace-bulk-create.md, workspace-quick-create.md, workspace-command-registry.md.
+- S2. Read `workspace/README.md` key rules, workspace-bulk-create.md, workspace-quick-create.md, workspace-command-registry.md.

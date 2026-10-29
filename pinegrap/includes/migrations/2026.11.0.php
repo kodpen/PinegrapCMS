@@ -98,6 +98,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_ai_prompt_version();      // 11.0.112
 	upgrade_2026_11_0_review_photos();          // 11.0.57
 	upgrade_2026_11_0_record_share_image_field(); // 11.0.18
+	upgrade_2026_11_0_workspace_thread_follow(); // 11.0.113
 
 }
 
@@ -3188,5 +3189,20 @@ function upgrade_2026_11_0_record_share_image_field() {
 	install_add_column('custom_form_pages', 'share_image_field_id', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Custom forms: the share picture of a record page can now come from a file field chosen in the form settings, before the RSS media field. Nothing changes until a form picks one.');
+
+}
+
+// The assistant a discussion follows (2026.11.0, 11.0.113;
+// includes/workspace/threads.php). ws_threads.follow_agent names the agent
+// that answers every later person's message in the discussion without its
+// @name: 'claude', 'ai' or 'mcp:<server id>'; '' follows nobody. 64
+// characters leave room for longer agent keys without a MODIFY. Every
+// existing discussion starts with '', so nothing answers until an assistant
+// is asked there again.
+function upgrade_2026_11_0_workspace_thread_follow() {
+
+	install_add_column('ws_threads', 'follow_agent', "VARCHAR(64) NOT NULL DEFAULT ''");
+
+	install_note('Workspace: an assistant asked in a discussion, or whose answer a discussion was started from, now answers the later messages there without being named again. Discussions started before this update follow nobody until an assistant is asked in them.');
 
 }

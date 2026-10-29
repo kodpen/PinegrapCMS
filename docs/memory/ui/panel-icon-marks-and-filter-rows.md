@@ -4,7 +4,7 @@ description: Ligature status marks with a hidden text, filter-link rows as nav n
 ---
 
 ## How is an icon-only status mark named?
-- A Material Icons ligature (`task_alt` in the recurring commission profile list, `pg_commission_profile_list_row()`) is `aria-hidden="true"` and followed by `<span class="visually-hidden">` with `lang('Yes')`; without it a screen reader reads "task_alt". A ligature inside a labelled button (`save`) is `aria-hidden` too.
+- A Material Icons ligature (`task_alt` in the recurring commission profile list, `pg_commission_profile_list_row()`) is `aria-hidden="true"` and followed by `<span class="visually-hidden">` with `lang('Yes')`; without it a screen reader reads "task_alt". The Enabled column of My Campaign Profiles does the same. A ligature inside a labelled button (`save`) is `aria-hidden` too.
 
 ## How is a row of filter links marked up?
 - As `<nav aria-label="Filters">` with plain links carrying `aria-current`, like `.mpp-modes`. `role="tablist"` with no `role="tab"` children is announced as an empty tab list (the three `.mpp-tabs` rows of `marketplace_products.php`). No script or style reads the role.
@@ -18,4 +18,4 @@ description: Ligature status marks with a hidden text, filter-link rows as nav n
 ## Where does Edit Recurring Commission Profile go back to?
 - Cancel, the breadcrumb and the save redirect all lead to `view_recurring_commission_profiles.php`, the only screen that opens it.
 
-Test: `tests/returns_commission_names_test.php`.
+Tests: `tests/returns_commission_names_test.php`; the three e-mail campaign lists (row boxes, `'{var:1}%'` progress, ligatures, landmarks) in `tests/email_campaign_list_names_test.php`.

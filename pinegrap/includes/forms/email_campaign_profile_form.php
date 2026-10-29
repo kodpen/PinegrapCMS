@@ -265,9 +265,8 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-1">
-                                            <div class="col-12">
-                                                <label class="form-label">' . lang('Format') . '</label>
-                                            </div>
+                                            <fieldset>
+                                            <legend class="form-label fs-md">' . lang('Format') . '</legend>
                                             <div class="form-field  d-inline-grid me-5">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_plain_text', 'name'=>'format', 'value'=>'plain_text', 'checked'=>'checked', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_plain_text_row')) . '
                                                 <label for="format_plain_text">' . lang('Plain Text') . '</label>
@@ -276,6 +275,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'format_html', 'name'=>'format', 'value'=>'html', 'class'=>'radio collapse-switcher', 'data-bs-target' => '#email_format_html_row')) . '
                                                 <label for="format_html">' . lang('HTML') . '</label>
                                             </div>
+                                            </fieldset>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="email_format_plain_text_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(18px, 0px);"></div>
                                                 <div class="popover-body">
@@ -303,7 +303,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                                 <div class="row">
                                                                     <div class="col-12 my-1">
                                                                         <div style="margin-bottom: 1em">' . lang('Body Preview') . '</div>
-                                                                        <iframe id="body_preview_iframe" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
+                                                                        <iframe id="body_preview_iframe" title="' . h(lang('Body Preview')) . '" src="' . $output_body_preview_iframe_source . '" style="min-width:250px;width: 100%;max-width:100%;min-height:300px; height: 500px;resize: both;overflow: auto;"></iframe>
                                                                     </div>
                                                                 </div>
                                                             </div>
@@ -359,12 +359,12 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
-                                            <label class="form-label">' . lang('Send e-mail') . '</label>
+                                            <div class="form-label">' . lang('Send e-mail') . '</div>
                                             <div class="input-group mb-5 ">
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-digits'=>'9', 'data-inputmask-placeholder'=>'1' )) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'id'=>'schedule_period', 'options'=>array('' => '', lang('before') => 'before', lang('after') => 'after'))) . '
-                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'id'=>'schedule_base', 'options'=>array('' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'schedule_length', 'aria-label'=>lang('Send e-mail'), 'class'=>'form-control text-end', 'value'=>'1', 'size'=>'3', 'maxlength'=>'9', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal', 'data-inputmask-digits'=>'9', 'data-inputmask-placeholder'=>'1' )) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'schedule_unit', 'aria-label'=>lang('Day(s)/Hour(s)'), 'class'=>'form-control', 'options'=>array(lang('day(s)') => 'days', lang('hour(s)') => 'hours'))) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_period', 'aria-label'=>lang('Before/After'), 'id'=>'schedule_period', 'options'=>array('' => '', lang('before') => 'before', lang('after') => 'after'))) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control collapse ' . $rows['calendar_schedule'], 'name'=>'schedule_base', 'aria-label'=>lang('From Action/From Calendar event start time'), 'id'=>'schedule_base', 'options'=>array('' => '', lang('from action') => 'action', lang('from calendar event start time') => 'calendar_event_start_time'))) . '
                                                 <span class="collapse input-group-text ' . $rows['standard_schedule'] . '" id="standard_schedule_period_and_base">&nbsp;' . lang('after action') . '</span>
                                             </div>
                                         </div>
@@ -387,7 +387,8 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-5">
-                                            <label class="form-label">' . lang('Purpose') . '</label>
+                                            <fieldset>
+                                            <legend class="form-label fs-md">' . lang('Purpose') . '</legend>
                                             <div class="form-field">
                                                 ' . $liveform->output_field(array(
                                                     'type' => 'radio',
@@ -407,6 +408,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                     'class' => 'radio')) . '
                                                 <label class="" for="purpose_transactional">' . lang('Transactional') . ' (' . lang('send email, regardless of opt-in. Example: \'Your order has been shipped\'') . ')</label>
                                             </div>
+                                            </fieldset>
                                         </div>
                                     </div>
                                 </div>

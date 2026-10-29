@@ -540,38 +540,47 @@ function ws_mcp_agent_limit_problem($user_id)
  * @param array  $channel
  * @param int    $message_id
  * @param string $body
+ * @param int    $followed the server of a discussion that follows it, asked
+ *                         without its alias (ws_thread_follow_ask()); a
+ *                         refusal is not written after every message there
  * @return bool|null null when the message is no agent's, false when it is
  *                   but could not be queued (the channel was told why)
  */
-function ws_mcp_agent_after_send($viewer, $channel, $message_id, $body)
+function ws_mcp_agent_after_send($viewer, $channel, $message_id, $body, $followed = 0)
 {
     if (!ws_mcp_agent_ready() || !function_exists('ws_mcp_ask_server')) {
         return null;
     }
 
-    $server = ws_mcp_ask_server($body, $message_id);
+    $followed = (int) $followed;
+    $server = ($followed > 0) ? ws_mcp_server($followed) : ws_mcp_ask_server($body, $message_id);
 
     if (!$server || !ws_mcp_agent_mode($server)) {
         return null;
     }
 
-    if (!ws_ai_channel_allowed($channel)) {
-        ws_message_system($channel['id'], lang(array('string' => '@{var:1} cannot be asked in this channel: what is written here leaves the site only where Pinegrap AI may be asked. Somebody who manages the channel can allow it from the channel menu.', 'vars' => $server['alias'])));
+    $refuse = function ($text) use ($channel, $followed) {
+        if ($followed === 0) {
+            ws_message_system($channel['id'], $text);
+        }
+
         return false;
+    };
+
+    if (!ws_ai_channel_allowed($channel)) {
+        return $refuse(lang(array('string' => '@{var:1} cannot be asked in this channel: what is written here leaves the site only where Pinegrap AI may be asked. Somebody who manages the channel can allow it from the channel menu.', 'vars' => $server['alias'])));
     }
 
     $limit = ws_mcp_agent_limit_problem((int) $viewer['id']);
 
     if ($limit !== '') {
-        ws_message_system($channel['id'], $limit);
-        return false;
+        return $refuse($limit);
     }
 
     $problem = ws_mcp_agent_problem($server, $viewer, (int) $channel['id']);
 
     if ($problem !== '') {
-        ws_message_system($channel['id'], $problem);
-        return false;
+        return $refuse($problem);
     }
 
     list($pv_column, $pv_value) = pg_ai_prompt_version_insert();

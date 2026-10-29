@@ -186,7 +186,8 @@ decision questions.
    (keep `mysqli_report(MYSQLI_REPORT_OFF)`); prices are integer minor units,
    round with `round()`, never truncate with `(int)`; edit `.src.js` **and**
    serve `.min.js`: after editing a bundled script (`pg_js_bundles()`,
-   `workspace*.js` included) run `php tools/build_js.php`; in the role
+   `workspace*.js` and `backend.src.js` included) run `php tools/build_js.php`,
+   after editing `backend.src.css` run `php tools/build_css.php`; in the role
    hierarchy Designer (1) is above Manager (2).
 8. Talk to the owner in Turkish. One task is one small PR. User documentation
    is never written in the repo (`workflow/owner-rules.md`).
@@ -210,6 +211,7 @@ php tools/test.php [filter]     # tests/*_test.php (pure functions)
 php tools/check_copies.php      # only the intended get_file.php copies
 php tools/check_bs6.php --strict  # no Bootstrap 5 left in panel markup
 php tools/build_js.php --check  # .min.js bundles match their sources
+php tools/build_css.php --check # .min.css stylesheets match their sources
 php tools/build_code_editor.php --check  # code editor bundle matches tools/code_editor/
 php tools/memory_index.php --check  # memory index matches its files
 bash tools/static_analysis.sh   # PHPStan level 0 + PHP 7.1+ compatibility against their baselines
