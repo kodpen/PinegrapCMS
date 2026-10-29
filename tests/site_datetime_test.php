@@ -150,6 +150,7 @@ function test_site_datetime_checkout_renderers_hook_their_fields()
 	) as $path => $count) {
 		pg_assert_same($count, substr_count($source($path), "'data-pg-date' => ''"), $path . ' hooks its own date boxes');
 	}
+	pg_assert_contains('maxlength="10" value="\' . h($start) . \'" data-pg-date>', $source('includes/fn/widgets_order_form.php'), 'the order form widget\'s start date');
 
 	// A custom layout's boxes come from the site's files: bound by id, a time
 	// box on the time row alone, a custom arrival date among the dates.
@@ -164,7 +165,7 @@ function test_site_datetime_checkout_renderers_hook_their_fields()
 
 	// The page brings the picker options with the control
 	// (pg_site_datetime_inject()); no jQuery UI picker is left.
-	foreach (array('get_shopping_cart.php', 'get_express_order.php', 'get_billing_information.php', 'get_shipping_address_and_arrival.php', 'get_order_form.php') as $path) {
+	foreach (array('get_shopping_cart.php', 'get_express_order.php', 'get_billing_information.php', 'get_shipping_address_and_arrival.php', 'get_order_form.php', 'includes/fn/widgets_order_form.php') as $path) {
 		pg_assert_false((bool) preg_match('/\\.(date)?(time)?picker\\(/', $source($path)), $path . ' calls no jQuery UI picker');
 		pg_assert_false(strpos($source($path), 'get_date_picker_format()') !== false, $path . ' prints no picker options of its own');
 	}
