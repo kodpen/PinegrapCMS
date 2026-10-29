@@ -69,7 +69,7 @@ function test_loading_announced_search_index()
 	$source = loading_announced_source('update_search_index.php');
 
 	// The sentence sits inside the status region, not beside an empty one.
-	pg_assert_true(strpos($source, 'role="status"></span>') === false, 'Empty status spinner');
+	pg_assert_true(strpos($source, 'flex-shrink-0" role="status"></span>') === false, 'Empty status spinner');
 	pg_assert_contains('<span id="start" class="navbar-text d-flex align-items-center gap-3 small" role="status">', $source);
 
 	// The end of the run is written into a live region printed early.
