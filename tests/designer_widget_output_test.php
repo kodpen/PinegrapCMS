@@ -167,6 +167,6 @@ function test_designer_widget_output_carousel_links_named()
 function test_designer_widget_output_fluid_alias_on_widgets()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
-	pg_assert_contains('if ($email) return pg_sw_finish_widget_html($out, $scope);', $source);
-	pg_assert_contains('return pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));', $source);
+	pg_assert_contains('$out = $email ? pg_sw_finish_widget_html($out, $scope)', $source);
+	pg_assert_contains(': pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));', $source);
 }
