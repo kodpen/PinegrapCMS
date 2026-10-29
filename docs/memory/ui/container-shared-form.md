@@ -12,3 +12,6 @@ description: add_container.php and edit_container.php draw and check the contain
 
 ## What does the edit call change?
 - It passes the posted `id`: the name check (`db_q`, `name = ? AND id != ?`) then leaves the container itself out. The create call passes 0, which no row has.
+
+## How are the dimension boxes named?
+- `Dimensions` is the `<legend class="form-label fs-md">` of a `<fieldset>` holding the Inches/Cm radios and both rows. Each of the six boxes has its own visible `<label for>` (`Length`, `Width`, `Height`) and is a `form-adorn form-adorn-end` with an `aria-hidden` `in`/`cm`, three per `row g-3` (`col-12 sm:col-4`). The old English `L`/`W`/`H` add-ons and the placeholders that named the boxes are gone. Ids and the toggled wrappers `#length_inches` / `#length_cm` are kept. Test: `tests/commerce_form_group_names_test.php`.
