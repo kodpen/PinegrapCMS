@@ -18,7 +18,7 @@ module: site_datetime
 - The theme follows the nearest `data-bs-theme` (`themeAttrDetect`), else the system: Bootstrap 5.3.8 sites set it on `<html>` (theme switcher).
 
 ## Which site renderers are hooked?
-- S2 (#S2PR): `get_form_info()` date, date-and-time and time rows (site and panel alike; only the panel prints `picker_scripts`), form item view and form list view boxes, the comment publish time (classic `#publish_date_and_time`, widget `#comment_publish_date_and_time`). All keep site text (`26/10/2026 5:00 PM`, `5:00 PM`); time rows get the time row alone.
+- S2 (#3132): `get_form_info()` date, date-and-time and time rows (site and panel alike; only the panel prints `picker_scripts`), form item view and form list view boxes, the comment publish time (classic `#publish_date_and_time`, widget `#comment_publish_date_and_time`). All keep site text (`26/10/2026 5:00 PM`, `5:00 PM`); time rows get the time row alone.
 - The custom form screen's inputs come from custom layouts kept in site databases, so it binds by id: `pg_site_datetime_bind(array('date' => ids, 'datetime' => ids, 'time' => ids))` prints `<span hidden data-pg-date-bind="{json}">`; `pg_fields.js` gives each `<input>` with such an id the hook of its kind before drawing (once; a hooked field keeps its own).
 - Comment publish focus goes through `software.focus_date_field()` (`frontend.src.js` and the hand-patched `frontend.min.js`, which terser cannot rebuild byte for byte): `pgFields.focus()` on the box.
 - Left: S3 (checkout) still loads jQuery UI and the timepicker add-on (`tests/bs6_timepicker_addon_test.php` lists those files); jQuery UI stays loaded on sites.
