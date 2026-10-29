@@ -3,8 +3,8 @@
  * Pinegrap - Enterprise Website Platform
  *
  * The design file cards, shared by the upload and the edit screens
- * (add_design_file.php, edit_design_file.php): the File Access Control card
- * and the Description card. The screens keep what differs: the dropzone
+ * (add_design_file.php, edit_design_file.php, add_file.php, edit_file.php):
+ * the File Access Control card and the Description card. The screens keep what differs: the dropzone
  * upload, the rename and delete, the editor buttons, every query and the
  * redirect. The cards read no database, so the file screens can draw them
  * with their own folder options.
@@ -22,7 +22,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 /**
  * The File Access Control card: the Folder select and its optional rows.
  *
- * Options: 'design' (bool, the checked Design File switch), 'theme' (null,
+ * Options: 'design' (bool, the Design File switch), 'design_checked' (bool,
+ * whether that switch is on; a plain file screen passes its stored flag),
+ * 'theme' (null,
  * or array('checked' => bool, 'disabled' => bool) for the Theme switch of a
  * CSS file), 'extra_rows' (markup printed after the switches).
  *
@@ -34,6 +36,7 @@ function pg_design_file_form_access_card($folder_options, $options = array())
 {
     $options += array(
         'design' => false,
+        'design_checked' => true,
         'theme' => null,
         'extra_rows' => '',
     );
@@ -44,7 +47,7 @@ function pg_design_file_form_access_card($folder_options, $options = array())
         $rows .= '
                                     <div class="col-12 my-5">
                                         <div class="form-field">
-                                            <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1" checked="checked"></div>
+                                            <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"' . ($options['design_checked'] ? ' checked="checked"' : '') . '></div>
                                             <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
                                         </div>
                                     </div>';
