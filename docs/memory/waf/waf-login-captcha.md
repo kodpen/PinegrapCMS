@@ -16,4 +16,8 @@ description: pg_login_captcha_* login question: when it appears, counter-driven 
 ## What does a wrong answer count as?
 - A failed attempt (`pg_login_record_failure`), NOT an offence. The first version counted offences and banned an office address for an hour: the question is a step BEFORE the lock, so it cannot be harsher than the lock; five wrong answers must not put an office behind 403.
 
+## What else does the question card show besides the question?
+- The account box is labelled `Email or username` (the callers and `validate_login()` take either), and after `</form>` the card prints what the sign-in card it replaces prints (`get_login.php`): the Forgot password? link (when `FORGOT_PASSWORD_LINK` is on, with the posted `send_to`) and `pg_signin_buttons($send_to, false)`.
+- Why: a refused password at the threshold gets this card at once, and its error text (`pg_login_refused_message()`) points to "the forgot password link below"; without the link someone who forgot the password got only a sum. The buttons open no way past the question: the passkey sign-in is answered in `index.php` before `pg_login_captcha_gate()`, and `signin.php` is not gated.
+
 Related: docs/memory/waf/waf-login-throttle.md, docs/memory/waf/waf-ip-subject-ipv6-64.md

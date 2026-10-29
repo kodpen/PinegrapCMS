@@ -1140,6 +1140,7 @@ $output_header_includes .
             return;
         }
         if (!response || (response.status !== "success")) {
+            pg_widget_failed(widget_id);
             return;
         }
         var $widget = $(".card[widget-id=" + widget_id + "]");
@@ -1163,6 +1164,31 @@ $output_header_includes .
         pg_widget_focus_restore($widget[0], focus_key);
     }
 
+    // A card whose request failed or was refused. Only a card still showing
+    // its skeleton is changed: one already drawn keeps its last content, and
+    // the next refresh tries again. Most cards are never asked for again, so
+    // without this the skeleton would pulse until the page is reloaded.
+    function pg_widget_failed(widget_id) {
+        var $widget = $(".card[widget-id=" + widget_id + "]");
+        var $placeholder = $widget.find(".card-body-placeholder");
+        if (!$placeholder.length) {
+            return;
+        }
+        var $body = $("<div class=\"card-body pg-widget-failed d-flex flex-column align-items-start gap-3\"></div>");
+        $("<p class=\"mb-0 fg-secondary\" role=\"status\"></p>").text(' . json_encode(lang('Something went wrong. Please try again.')) . ').appendTo($body);
+        $("<button type=\"button\" class=\"btn btn-sm btn-outline theme-secondary\"></button>")
+            .text(' . json_encode(lang('Try again')) . ')
+            .on("click", function(){
+                // The skeleton goes back, so a second failure is shown again.
+                $(this).prop("disabled", true);
+                delete pg_widgets.html[widget_id];
+                $body.replaceWith($placeholder);
+                pg_widgets_request([widget_id]);
+            })
+            .appendTo($body);
+        $placeholder.replaceWith($body);
+    }
+
     // One card at a time, the way the dashboard always asked. Used when the
     // batch fails as a whole -- one card that dies takes the batch response
     // with it, and here it takes only itself -- and by an installation part
@@ -1180,6 +1206,9 @@ $output_header_includes .
                 type: "POST",
                 success: function(response) {
                     pg_widget_apply(widget_id, response);
+                },
+                error: function() {
+                    pg_widget_failed(widget_id);
                 }
             });
         });
@@ -1206,6 +1235,8 @@ $output_header_includes .
                 ids.forEach(function(widget_id){
                     if (response.widgets[widget_id]) {
                         pg_widget_apply(widget_id, response.widgets[widget_id]);
+                    } else {
+                        pg_widget_failed(widget_id);
                     }
                 });
             },

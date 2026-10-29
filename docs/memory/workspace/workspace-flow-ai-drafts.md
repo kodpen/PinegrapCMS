@@ -18,7 +18,7 @@ description: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): cat
 
 ## What is checked and kept?
 - `ws_flow_ai_propose()`: `ws_flow_problems()` texts go back to the model once (`flow_tries`); a second time the draft is kept and the card names them. New flow: `ws_flow_draft_proposal_row()` (the A8 check). Patch: `ws_flow_for(…, 'edit')`, not binned, `ws_flow_save_check()` with the flow; snapshot adds `base` (flow_id, draft_rev), `patch` (ops), `touched`. At most 2 per answer, in `$state['proposals']['flows']`, stored by `ws_ai_deliver()` with `ws_changes_store()`. Drafting saves and publishes nothing.
-- Answer words: an answer with only drafts gets "I drafted the flow below. Nothing runs until you open it and publish it."
+- Only drafts: "I drafted the flow below. Nothing runs until you open it and publish it." From a sentence: `workspace-flow-ai-start.md`.
 
 ## How does the card open?
 - Same card (`ws_flow_draft_change_entry()`); a patch lists its changes (`ws_flow_patch_lines()`: Adds, Connects, Removes, Changes) instead of boxes.
@@ -33,4 +33,4 @@ description: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): cat
 - As a mini flow window since D8b (#3032): `workspace-flow-draft-card-window.md`.
 
 ## Tests
-- tests/workspace_flow_draft_test.php (schema, refusals, layout, patch, wiring).
+- tests/workspace_flow_draft_test.php: schema, refusals, layout, patch, wiring.

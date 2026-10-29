@@ -56,6 +56,7 @@ function ai_prompt_rules_test_builders()
 		'includes/workspace/scheduled_draft.php' => array('ws_scheduled_draft_messages', 'writer'),
 		'includes/translate/engine_ai.php'       => array('pg_tr_ai_instructions', 'writer'),
 		'includes/fn/ai_write.php'               => array('pg_ai_write_messages', 'writer'),
+		'includes/workspace/flow_draft.php'      => array('ws_flow_ai_sketch_messages', 'writer'),
 	);
 }
 

@@ -4706,6 +4706,29 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
         $messages .= '<div class="alert theme-danger" role="alert"><i class="bi bi-exclamation-triangle-fill me-3" aria-hidden="true"></i>' . h($message) . '</div>';
     }
 
+    // The forgot password link and the other ways in the sign-in card offers.
+    // The passkey and provider sign-ins are answered before this gate, so
+    // offering them opens no way past the question.
+    $send_to = isset($_POST['send_to']) && is_scalar($_POST['send_to']) ? (string) $_POST['send_to'] : '';
+
+    $forgot_password_link = '';
+
+    if (FORGOT_PASSWORD_LINK == true) {
+        $forgot_password_link = '<a class="text-center" href="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/forgot_password.php?send_to=' . h(urlencode($send_to)) . '">' . lang('Forgot password?') . '</a>';
+    }
+
+    $signin_buttons = pg_signin_buttons($send_to, false);
+
+    $links = '';
+
+    if (($forgot_password_link !== '') || ($signin_buttons !== '')) {
+        $links =
+            '<div class="d-flex flex-column gap-3 mt-5">
+                ' . $forgot_password_link . '
+                ' . $signin_buttons . '
+            </div>';
+    }
+
     if (!headers_sent()) {
         header('Cache-Control: no-store, no-cache, must-revalidate');
     }
@@ -4721,7 +4744,7 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
                         ' . get_token_field() . '
                         ' . $hidden . '
                         <div class="mb-5">
-                            <label for="' . h($screen['identifier']) . '" class="form-label">' . lang('Email') . '</label>
+                            <label for="' . h($screen['identifier']) . '" class="form-label">' . lang('Email or username') . '</label>
                             <input type="text" id="' . h($screen['identifier']) . '" name="' . h($screen['identifier']) . '" value="' . h((string) $identifier) . '" class="form-control" required="required" autocomplete="username" spellcheck="false"/>
                         </div>
                         <div class="mb-5">
@@ -4734,6 +4757,7 @@ function pg_login_captcha_screen($identifier, $liveform, $screen, $message)
                         </div>
                         <button type="submit" class="btn btn-solid theme-primary w-100">' . lang('Login') . '</button>
                     </form>
+                    ' . $links . '
                 </div>
             </div>
         </main>'
