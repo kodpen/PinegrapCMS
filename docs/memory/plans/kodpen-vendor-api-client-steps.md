@@ -6,7 +6,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 ## Which steps are there?
 - S under 400, M about 1,000 product lines; lines of 2026-10-29. Every step: v1 code only behind the switch, api2 as today; tests red first; PHP 7.1 syntax, optional APIs behind `function_exists()`; `tr_add`; memory (`platform/` unless named) in the PR; no changelog line before P8. Done: `P<n> done (#n): <topic file>`.
 
-- P1 This plan, with the vendor's three vector files byte for byte in `tests/fixtures/vendor_api/`.
+- P1 done (#3203): this plan, with the vendor's three vector files byte for byte in `tests/fixtures/vendor_api/`.
 
 - P2 (S, `.github/`, owner's machine) Release packages: `release-packages.yml` (`-design-update.md`); `docker-publish.yml` skips pre-releases. Test: actionlint; a local `v2026.4.10` build equal to the vendor's. Memory: `release/` new `release-packages.md` (tool sha256), `release-status.md`, `version-numbering.md`; `docker-image-publishing.md`; `workflow/ci-workflows.md`.
 

@@ -23,8 +23,8 @@ Source: the vendor plan's section 9 and its owner decisions, numbered as there (
 - Until release day licences answer 503 `not_live` (card: technical reason, 15-min retry); stable offers nothing (404 or an older adopted release); beta offers the pre-release the owner points at.
 
 ## Which questions are open?
-- Q1 (owner; P6 waits; P1's PR opens the `architect` issue): does a beta site without a build id (stable install, 2026.4.x updated) get the beta build of its own version? The matrix says yes, but that build may be older than the release or newer: the client cannot tell. Recommendation: only over a build file naming a beta build; Repair still installs the pointer's build, named on screen.
-- To record (P1's PR asks the architect; decisions list; P7 waits): widget 14 retired in 2026.11.0 with its Subscription ID field, column kept (decision 3); `download_assistant.php` keeps its api2 call and key (2).
+- Q1 (owner; P6 waits; issue #3204): does a beta site without a build id (stable install, 2026.4.x updated) get the beta build of its own version? The matrix says yes, but that build may be older than the release or newer: the client cannot tell. Recommendation: only over a build file naming a beta build; Repair still installs the pointer's build, named on screen.
+- To record (issue #3205; decisions list; P7 waits): widget 14 retired in 2026.11.0 with its Subscription ID field, column kept (decision 3); `download_assistant.php` keeps its api2 call and key (2).
 - Open on the vendor side, no step waits: the old fixed beta download on release day (how many sites meet Q1); KVKK erasure (P7's note promises none); an outbox "try now".
 - Inputs: the two public P-256 keys, lower-case ids (P5c; P8 waits); the primary id as P2's repository variable.
 
