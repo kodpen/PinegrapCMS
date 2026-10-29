@@ -1,6 +1,6 @@
 ---
 name: order-completion-function
-description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
+description: Plan (#2382; A1 done in #2199, A2 in #2638–#2972): submit_order() completion tail as one session-free function with a once-only lock; then the Stripe webhook and PayTR complete orders through it
 ---
 
 ## What did the owner decide?
@@ -20,8 +20,8 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
   - A2d, cut in three:
     - A2d1: done (#2914) (`commerce/order-completion-after-lines.md`); the ERP invoice call was already session-free and stays a call.
     - A2d2: done (#2937) (`commerce/order-completion-before-lock.md`): key code use, gift card redemption and its error mail, commission rows behind the lock; auto-registration stays with the request (sign-in; its user id goes into the UPDATE).
-    - A2d3: `pg_order_complete()` calls the stage functions in order (the product loop, with the reward points and contact groups it collects, included), so one call completes the whole order.
-  - Stays in `submit_order()`: the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the redirect.
+    - A2d3: done (#2972): `pg_order_complete()` runs every stage with a `$context` (`commerce/order-completion.md`).
+  - Stays in `submit_order()`: auto-registration, the six frozen legacy gateways and their recurring profiles (a card the visitor typed), the session values the receipt page reads, the post-save hook, the redirect.
 - A3 (S-M): `pg_payment_notify_outcome()`'s `paid`/`authorized` branch completes an incomplete order through A2 when the order's `transaction_id` equals the intent, the amount equals `orders.total` (integer hundredths) and the currency is the store's; a mismatch logs and alerts and completes nothing. Tests: completes once; a second event, or an order already complete, is a no-op; a mismatch alerts. Then PayTR (4c of `payment-driver-layer.md`) uses the same function.
 
 ## Open questions?
@@ -29,5 +29,5 @@ description: Plan (#2382; A1 done in #2199, A2a in #2638): submit_order() comple
 - For A3: the receipt e-mail's settings (on, subject, format, header, footer, page) live on the checkout page (`order_preview_pages` / `express_order_pages`), and the order does not name the page it was placed from. A3 needs them without the visitor; if that takes a column, it is an architect question first.
 
 ## Where to start?
-- A2d3: `pg_order_complete()` calls the stage functions in order (`includes/fn/order_completion.php`, `tests/order_completion_test.php`). Do not start A3 before its open question is answered (architect).
+- A3, after the architect answers its open questions (receipt settings without the visitor; a guest's account): ask first, do not start before. Then build the context from the order row and the line query of `submit_order()`, call `pg_order_complete()`, then `pg_erp_auto_invoice()`.
 - `commerce/order-completion.md`, `commerce/order-completion-after-lines.md`, `commerce/order-completion-before-lock.md`, `commerce/payment-callback.md`.
