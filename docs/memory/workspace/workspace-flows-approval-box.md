@@ -8,7 +8,7 @@ description: The approval box of a flow (F5c, PR #2142): asks, waits on approval
 - Settings `channel_id`, `title` (the box's title on the canvas), `text`, `approvers` (up to 50), `rule` (any, all), `closes_in` ('' or 1 to `WS_STEP_APPROVAL_CLOSES_MAX` = 720 hours). Publish problems: no channel (an approval needs one), no title, nobody asked; `ws_approval_input()` checks the people against the channel with the owner's rights.
 
 ## How does it run and wait?
-- `ws_step_run()` sets `closes_at` = now + hours, then `ws_scheduled_do()`, whose approval case now returns `approval_id` and passes `closes_at` (parity line `approval.closes_at`; the scheduled form sets none).
+- `ws_step_run()` sets `closes_at` = now + hours, then `ws_scheduled_do()`, whose approval case now returns `approval_id` and passes `closes_at` (parity line `approval.closes_at`; a scheduled action sets none).
 - Asked: `ws_flow_approval_wait()` in one conditional UPDATE writes effect and wait_key `approval:<id>`, `wait_event` `workspace.approval.decided` (`WS_FLOW_APPROVAL_WAIT`), `wake_at` +1 h. Not asked: the step's failure settles as any step (failed, or done on a failed arrow).
 - Woken by `ws_flow_wake()` (`ws_flow_wake_key()` maps the event's `id`) or the hourly recheck (`ws_flow_step_recheck()` → `ws_flow_approval_recheck()`), which reads the request itself.
 - Stopped half way after `began:approval`: fails (never asked twice); with `approval:<id>` written: resumes waiting.

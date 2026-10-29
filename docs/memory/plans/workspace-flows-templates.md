@@ -10,7 +10,7 @@ description: Plan (owner request 2026-10-27, draft): a flow template gallery tha
 - Motion respects prefers-reduced-motion (placed at once). Timings: workspace-flows-visual-spec.md.
 
 ## What comes over from scheduled actions?
-- Each `sa_tpl_*` becomes a flow template with the same texts, so no new translation for the same sentence (slice 4 of workspace-flows-scheduled-merge.md: templates become starters).
+- Each `sa_tpl_*` becomes a flow template with the same texts, so no new translation for the same sentence (slice 4 of workspace/workspace-flows-scheduled-merge.md: templates become starters).
 - Flow-only templates show what a form cannot: tasks that wait for each other, approvals, threads (new customer, quote approval).
 
 ## Which steps? (one PR each)

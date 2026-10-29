@@ -4,7 +4,7 @@ description: A scheduled action converted into a flow (anchor converted, 5a #255
 ---
 
 ## What is it?
-- A `ws_scheduled_actions` row with `flow_id` and `anchor = 'converted'` (column 11.0.88, decided in #2396; hidden anchors: `workspace-flows-anchors.md`). It keeps its id, card, history, state and news (plan answers 2b and 5, plans/workspace-flows-scheduled-merge.md). Rows are converted right after the 2026.11.0 upgrade (below).
+- A `ws_scheduled_actions` row with `flow_id` and `anchor = 'converted'` (column 11.0.88, decided in #2396; hidden anchors: `workspace-flows-anchors.md`). It keeps its id, card, history, state and news (answers 2b and 5, `workspace-flows-scheduled-merge.md`). Rows are converted right after the 2026.11.0 upgrade (below).
 
 ## How are rows converted?
 - `includes/workspace/scheduled_convert.php`: `ws_scheduled_run()` first calls `ws_scheduled_convert_due()` (10 a request, 5 s): `kind = 'action'`, `flow_id = 0`, `anchor = ''`, not cancelled. The upgrade cannot load the Workspace code, so the driver does it in the first ticks; actions the form saves later convert the same way.

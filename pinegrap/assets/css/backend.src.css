@@ -8425,45 +8425,6 @@ button.no-popover:focus-visible {
   height: calc(100% + var(--bs-stepper-gap));
 }
 
-/* ── Step rail of the workspace automation flow ───────────────────────────
-   The form's steps in a Workspace automation (workspace.js, .ws-sa-flow): a
-   numbered node with a line joining the nodes, a box beside it. */
-
-.pg-step { display: grid; grid-template-columns: 2.75rem minmax(0, 1fr); }
-.pg-step + .pg-step { margin-top: .75rem; }
-
-.pg-step-rail { position: relative; display: flex; justify-content: center; }
-.pg-step-rail::before {
-  content: "";
-  position: absolute;
-  top: 2.3rem;
-  bottom: -.75rem;
-  width: 2px;
-  background: var(--pg-border-color);
-}
-.pg-step:last-child .pg-step-rail::before { display: none; }
-
-.pg-step-node {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.75rem;
-  height: 1.75rem;
-  margin-top: .5rem;
-  border: 2px solid var(--pg-border-color);
-  border-radius: 50%;
-  background: var(--pg-bg-body);
-  color: var(--pg-fg-2);
-  font-size: .8rem;
-  font-weight: 700;
-}
-
-@media (max-width: 575.98px) {
-  .pg-step { grid-template-columns: 1.9rem minmax(0, 1fr); }
-}
-
 /* ══ Settings screen ══════════════════════════════════════════════════════
    The layout is Bootstrap's: a row, a column for the rail, a column for the
    sections. What is here is the rail's own appearance, the order the sections
@@ -11663,78 +11624,7 @@ html[data-bs-theme="dark"] .ws-group-icon {
   font-size: .6em;
   line-height: 1;
 }
-/* Scheduled actions: days, follow-ups, counts, the words filled in. */
-.ws-sa-days {
-  display: flex;
-  flex-wrap: wrap;
-  gap: .25rem;
-}
-.ws-sa-days .btn {
-  min-width: 2.6rem;
-  padding: .15rem .4rem;
-}
-.ws-sa-when-more {
-  display: grid;
-  grid-template-columns: minmax(0, 12rem) minmax(0, 12rem);
-  gap: .5rem;
-  align-items: start;
-  margin-top: .35rem;
-  padding-left: 1.75rem;
-}
-.ws-sa-when-days {
-  margin-top: .35rem;
-  padding-left: 1.75rem;
-}
-.ws-sa-when-trigger {
-  padding: .5rem .65rem;
-  border: 1px dashed var(--pg-border-color);
-  border-radius: var(--ws-radius-sm);
-  margin-bottom: .5rem;
-}
-.ws-sa-follows {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-  margin-bottom: .35rem;
-}
-.ws-sa-follow {
-  padding: .5rem .6rem;
-  border: 1px solid var(--pg-border-color);
-  border-left: 3px solid var(--ws-accent);
-  border-radius: var(--ws-radius-sm);
-  background: var(--pg-bg-1);
-}
-.ws-sa-follow-head {
-  display: flex;
-  align-items: center;
-  gap: .35rem;
-  margin-bottom: .4rem;
-}
-.ws-sa-follow-head :is(select.form-control) {
-  max-width: 14rem;
-}
-.ws-sa-follow-head .ws-sa-remove {
-  margin-left: auto;
-}
-.ws-sa-metric-list {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(14rem, 1fr));
-  gap: .1rem .75rem;
-}
-.ws-sa-metric {
-  display: flex;
-  flex-direction: column;
-  gap: .35rem;
-}
-.ws-sa-words summary {
-  cursor: pointer;
-}
-.ws-sa-words-list {
-  display: flex;
-  flex-direction: column;
-  gap: .15rem;
-  padding: .4rem 0 0 .25rem;
-}
+/* Scheduled actions: a follow-up of the card that runs on a failure. */
 .ws-sa-follow-line.ws-sa-on-failed b {
   color: var(--pg-danger-fg-emphasis);
 }
@@ -13359,211 +13249,8 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
   font-size: .75rem;
   color: var(--pg-fg-2);
 }
-.ws-sa-offcanvas.drawer-end {
-  --pg-drawer-width: min(40rem, 100vw);
-}
-.ws-sa-section {
-  margin-top: 1rem;
-  padding-top: .75rem;
-  border-top: 1px solid var(--pg-border-color-translucent);
-}
-.ws-sa-section-title {
-  font-weight: 700;
-  font-size: .85rem;
-  text-transform: uppercase;
-  letter-spacing: .04em;
-  color: var(--pg-fg-2);
-}
-/* The form as a flow: its steps down the step rail (Step rail of the workspace
-   automation flow above), each a box; the outline above them says in words
-   what it will do. */
-.ws-sa-flow {
-  margin-top: .75rem;
-}
-.ws-sa-flow .pg-step {
-  grid-template-columns: 2.25rem minmax(0, 1fr);
-}
-.ws-sa-flow .pg-step + .pg-step {
-  margin-top: .5rem;
-}
-.ws-sa-flow .pg-step-rail::before {
-  bottom: -.5rem;
-}
-.ws-sa-flow .pg-step-node {
-  border-color: rgba(var(--ws-accent-rgb), .55);
-  color: var(--ws-accent);
-}
-.ws-sa-flow .ws-sa-section {
-  margin-top: 0;
-  padding: .6rem .75rem .7rem;
-  border: 1px solid var(--pg-border-color-translucent);
-  border-radius: var(--ws-radius);
-  background: var(--pg-bg-body);
-}
-.ws-sa-step-number {
-  display: inline-block;
-  margin-right: .35rem;
-  color: var(--ws-accent);
-}
-.ws-sa-when-join {
-  max-width: 24rem;
-}
-.ws-sa-outline {
-  margin-top: .5rem;
-  padding: .55rem .7rem;
-  border-radius: var(--ws-radius);
-  background: var(--ws-soft);
-  font-size: .8rem;
-}
-.ws-sa-outline:empty {
-  display: none;
-}
-.ws-sa-outline-row {
-  display: grid;
-  grid-template-columns: 1.1rem auto minmax(0, 1fr);
-  gap: .35rem;
-  align-items: baseline;
-}
-.ws-sa-outline-row + .ws-sa-outline-row {
-  margin-top: .2rem;
-}
-.ws-sa-outline-row .bi {
-  color: var(--ws-accent);
-}
-.ws-sa-outline-row b {
-  white-space: nowrap;
-}
-.ws-sa-outline.ws-sa-outline-error {
-  background: color-mix(in srgb, var(--pg-danger) 8%, transparent);
-  color: var(--pg-danger-fg-emphasis);
-}
-.ws-sa-sentence {
-  margin-bottom: .75rem;
-  padding: .6rem .75rem;
-  border: 1px dashed rgba(var(--ws-accent-rgb), .55);
-  border-radius: var(--ws-radius);
-  background: var(--ws-soft);
-}
-.ws-sa-sentence-row {
-  display: flex;
-  gap: .5rem;
-  align-items: flex-start;
-}
-.ws-sa-sentence-row textarea {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.ws-sa-sentence-row .btn {
-  flex: none;
-  white-space: nowrap;
-}
-.ws-sa-sentence-said {
-  margin-top: .35rem;
-  color: var(--pg-fg-2);
-}
-.ws-sa-gallery-wrap {
-  margin-bottom: .75rem;
-}
-.ws-sa-gallery-wrap > summary {
-  list-style: none;
-  cursor: pointer;
-}
-.ws-sa-gallery-wrap > summary::-webkit-details-marker {
-  display: none;
-}
-.ws-sa-gallery-title {
-  font-weight: 700;
-  font-size: .85rem;
-  color: var(--pg-fg-2);
-}
-.ws-sa-gallery-wrap > summary .ws-sa-gallery-title::after {
-  content: " ▾";
-}
-.ws-sa-gallery-wrap[open] > summary .ws-sa-gallery-title::after {
-  content: " ▴";
-}
-.ws-sa-gallery {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(12.5rem, 1fr));
-  gap: .45rem;
-  margin: .5rem 0 .75rem;
-}
-.ws-sa-template {
-  display: flex;
-  gap: .55rem;
-  align-items: flex-start;
-  padding: .5rem .6rem;
-  border: 1px solid var(--pg-border-color);
-  border-radius: var(--ws-radius-sm);
-  background: var(--pg-bg-body);
-  color: var(--pg-fg-body);
-  text-align: left;
-  font-size: .8rem;
-}
-.ws-sa-template:hover,
-.ws-sa-template.active {
-  border-color: var(--ws-accent);
-  background: var(--ws-soft);
-}
-.ws-sa-template-icon {
-  flex: none;
-  font-size: 1.05rem;
-  color: var(--ws-accent);
-}
-.ws-sa-template-text {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-}
-.ws-sa-template-text small {
-  color: var(--pg-fg-2);
-}
-.ws-sa-when {
-  display: grid;
-  grid-template-columns: auto 1fr 7rem 10rem;
-  gap: .5rem;
-  align-items: end;
-}
-.ws-sa-when-icon {
-  font-size: 1.2rem;
-  color: var(--ws-accent);
-  padding-bottom: .35rem;
-}
-.ws-sa-condition {
-  display: flex;
-  gap: .35rem;
-  align-items: flex-start;
-  margin-top: .5rem;
-  padding: .5rem;
-  border-radius: var(--ws-radius-sm);
-  background: var(--pg-bg-1);
-}
-.ws-sa-condition-grid {
-  flex: 1 1 auto;
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
-  gap: .4rem;
-}
 .ws-sa-field .form-label {
   color: var(--pg-fg-2);
-}
-.ws-sa-action-detail {
-  display: flex;
-  flex-direction: column;
-  gap: .5rem;
-  margin-top: .5rem;
-}
-.ws-sa-body .ws-rich.ws-rich-field {
-  min-height: 6rem;
-}
-.ws-sa-field-row {
-  display: flex;
-  gap: .35rem;
-  align-items: flex-start;
-  margin-bottom: .35rem;
-}
-.ws-sa-field-row > :is(select.form-control) {
-  flex: 0 0 11rem;
 }
 .ws-sa-picker {
   position: relative;
@@ -13596,20 +13283,6 @@ html[data-bs-theme="dark"] .ws-head[data-ws-colored] .ws-head-icon {
 }
 .ws-sa-picker-item:hover {
   background: var(--pg-bg-1);
-}
-@media (max-width: 575.98px) {
-  .ws-sa-when {
-    grid-template-columns: 1fr 1fr;
-  }
-  .ws-sa-when-icon {
-    display: none;
-  }
-  .ws-sa-field-row {
-    flex-wrap: wrap;
-  }
-  .ws-sa-field-row > :is(select.form-control) {
-    flex: 1 1 100%;
-  }
 }
 .ws-delete-scopes .form-field {
   margin-bottom: .45rem;
@@ -18608,12 +18281,6 @@ button.ws-home-row:hover,
     }
 }
 /* Workspace: the site's events (includes/workspace/watch.php, assets/js/workspace_events.js) */
-.ws-sa-when-event {
-    max-width: 24rem;
-}
-.ws-sa-when-event-filter {
-    margin-top: .5rem;
-}
 .ws-form-card {
     max-width: 34rem;
     margin-top: .4rem;

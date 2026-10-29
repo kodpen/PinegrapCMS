@@ -78,8 +78,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-flows-data-passing.md: Plan (owner request 2026-10-27, draft being refined): values carried from one Flows box to the next; output schemas, a value picker, reference checks, trigger values, escaping, then AI drafts
 - workspace-flows-data-threads.md: Plan (owner request 2026-10-27, draft being refined): the Flows canvas side of data passing; thin typed threads from a box's bottom into the field they fill, the double-click fork, pure value boxes
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
-- workspace-flows-scheduled-merge.md: Plan (2026-10-24): scheduled actions move into Flows, no feature lost; one screen, read-only graph, boxes, all converted
-- workspace-flows-scheduled-parity.md: Parity rows of plans/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
+- workspace-flows-scheduled-parity.md: Parity rows of workspace/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md
 - workspace-flows-templates.md: Plan (owner request 2026-10-27, draft): a flow template gallery that takes over the scheduled-action templates; cards with a box preview, animated placement on the canvas, a short setup
 - workspace-flows-visual-spec.md: Plan (owner request 2026-10-27, draft): the Flows canvas look in numbers; line widths, type colours and tones, thread sag and gaps, icons, run flags, the mini window, template motion
 - workspace-flows.md: Plan (2026-10-24): one Flows system: process templates, "when X do Y" rules, an n8n-like canvas; canvas first, one engine

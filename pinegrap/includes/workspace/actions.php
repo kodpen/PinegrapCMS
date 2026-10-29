@@ -391,14 +391,6 @@ function ws_handle_action($action, $request)
                 'channel_id' => (int) ($request['channel_id'] ?? 0),
             ))));
 
-        // The actions a follow-up can start, for the form.
-        case 'ws_scheduled_targets':
-            if (!ws_can_schedule($viewer)) {
-                return ws_action_error(lang('Only staff can schedule actions.'));
-            }
-
-            return ws_action_ok(array('items' => ws_scheduled_targets($viewer)));
-
         case 'ws_scheduled_get':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;
 
@@ -410,65 +402,6 @@ function ws_handle_action($action, $request)
 
             // The graph "Show on canvas" draws (ws_scheduled_graph()).
             return ws_action_ok(array('item' => $item, 'graph' => ws_scheduled_graph($item)));
-
-        case 'ws_scheduled_save':
-            $result = ws_scheduled_save($viewer, array(
-                'id'          => (int) ($request['id'] ?? 0),
-                'name'        => (string) ($request['name'] ?? ''),
-                'rules'       => is_array($request['rules'] ?? null) ? $request['rules'] : array(),
-                // "action" names the request itself; what is done comes as main_action.
-                'action'      => is_array($request['main_action'] ?? null) ? $request['main_action'] : null,
-                'then_action' => is_array($request['then_action'] ?? null) ? $request['then_action'] : null,
-                // What follows, by how the action went (5.85); without it the
-                // one "then" above.
-                'follow'      => is_array($request['follow'] ?? null) ? $request['follow'] : null,
-                'channel_id'  => (int) ($request['channel_id'] ?? 0),
-                'note_id'     => (int) ($request['note_id'] ?? 0),
-            ));
-
-            if (!$result['ok']) {
-                return ws_action_error($result['error'], $result['field']);
-            }
-
-            // A new one opened from a draft Pinegrap AI made in a channel:
-            // the draft's card says it was saved (scheduled_draft.php).
-            if (((int) ($request['id'] ?? 0) === 0) && ((int) ($request['draft_change_id'] ?? 0) > 0) && function_exists('ws_scheduled_draft_saved')) {
-                ws_scheduled_draft_saved($viewer, (int) $request['draft_change_id'], (int) $result['id'], (int) $result['message_id']);
-            }
-
-            return ws_action_ok(array('id' => $result['id'], 'message_id' => $result['message_id'], 'item' => ws_scheduled_present($viewer, ws_scheduled($result['id']), true)));
-
-        // What the form would save, in words, as it is filled in.
-        case 'ws_scheduled_preview':
-            $result = ws_scheduled_preview($viewer, array(
-                'id'          => (int) ($request['id'] ?? 0),
-                'name'        => (string) ($request['name'] ?? ''),
-                'rules'       => is_array($request['rules'] ?? null) ? $request['rules'] : array(),
-                'action'      => is_array($request['main_action'] ?? null) ? $request['main_action'] : null,
-                'then_action' => is_array($request['then_action'] ?? null) ? $request['then_action'] : null,
-                'follow'      => is_array($request['follow'] ?? null) ? $request['follow'] : null,
-                'channel_id'  => (int) ($request['channel_id'] ?? 0),
-                'note_id'     => (int) ($request['note_id'] ?? 0),
-            ));
-
-            if (!$result['ok']) {
-                return ws_action_error($result['error'], $result['field']);
-            }
-
-            unset($result['ok'], $result['error'], $result['field']);
-
-            return ws_action_ok($result);
-
-        // The form filled in by Pinegrap AI from a sentence: nothing is
-        // saved, the form opens again with the draft (scheduled_draft.php).
-        case 'ws_scheduled_draft':
-            $result = ws_scheduled_draft($viewer, (string) ($request['text'] ?? ''), (int) ($request['channel_id'] ?? 0));
-
-            if (!$result['ok']) {
-                return ws_action_error($result['error']);
-            }
-
-            return ws_action_ok(array('draft' => $result['data'], 'notes' => $result['notes']));
 
         case 'ws_scheduled_status':
             $scheduled = ws_can_schedule($viewer) ? ws_scheduled_action((int) ($request['id'] ?? 0)) : null;

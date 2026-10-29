@@ -18,7 +18,7 @@ description: Plan (2026-10-24, not started, answers open): a reusable box-and-ar
 - `PGGraphCanvas` in assets/js/pg_graph_canvas.js, bundle pg_graph_canvas.min.js, CSS `pgc-` on `--pgc-*` tokens with Bootstrap fallbacks (the Workspace maps them to `--ws-*`), texts from `pg_graph_canvas_js_strings()` in a new includes/fn/graph_canvas.php.
 - `PGGraphCanvas.create(root, adapter)` returns load, graph, select, readOnly, overlay, destroy; ids per instance, arrowheads set from JS, listeners removed on destroy, Ctrl+S optional.
 - Adapter: kit (or the core's own helpers and dialog), texts, kinds (icon, name, arrows in, outcomes, defaults, size), ports, canConnect, isStart, node renderer, side-panel forms, palette, save(graph, {keepalive}) giving problems or a conflict (or no autosave, an onConnect that may refuse), a state overlay (tone, badge, taken arrows, focus keys), onSelect, onOpen.
-- Flows keeps `KINDS`, `RUN_STATES`, `STEP_STATES`, forms, toolbar, publish, runs, graph JSON; new boxes (plans/workspace-flows-scheduled-merge.md) live in its adapter only.
+- Flows keeps `KINDS`, `RUN_STATES`, `STEP_STATES`, forms, toolbar, publish, runs, graph JSON; new boxes (workspace/workspace-flows-scheduled-merge.md) live in its adapter only.
 
 ## Slices (one PR each)
 1. Commit the harness (tests/js/, run by hand; needs Node and Chromium) and record today's result.
