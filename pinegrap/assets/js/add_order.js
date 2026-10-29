@@ -882,6 +882,7 @@
             var results = (data && data.results) || [];
             if (!results.length) {
                 productList.show('<div class="pg-sale-res-empty">' + esc(t.noProductsEnter) + '</div>', []);
+                announce(t.noProductsEnter);
                 return;
             }
             var html = results.map(function (p, index) {
@@ -899,6 +900,7 @@
         }).catch(function () {
             if (ticket === productTicket) {
                 productList.show('<div class="pg-sale-res-empty">' + esc(t.searchFailed) + '</div>', []);
+                announce(t.searchFailed);
             }
         });
     }
@@ -1103,6 +1105,7 @@
         }).catch(function () {
             if (ticket === customerTicket) {
                 customerList.show('<div class="pg-sale-res-empty">' + esc(t.searchFailed) + '</div>', []);
+                announce(t.searchFailed);
             }
         });
     }
@@ -1117,6 +1120,8 @@
 
         if (!results.length) {
             html = '<div class="pg-sale-res-empty">' + esc(t.noCustomers) + '</div>';
+            // A plain line in the list is not an option, so it is read out.
+            announce(t.noCustomers);
         }
 
         // Somebody the shop has not met yet: a new account from the name typed.
