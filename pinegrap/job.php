@@ -784,6 +784,13 @@ if (
         ws_scheduled_run(WS_SCHEDULED_BATCH, WS_FLOW_BUDGET_JOB);
     }
 
+    // The tags of the notes and workflow table rows saved before ws_refs
+    // took them (includes/workspace/refs.php), a few seconds a tick until
+    // they are through; then one small read of the marker.
+    if (ws_enabled()) {
+        ws_ref_sources_backfill_run();
+    }
+
 }
 
 // Workspace mailboxes read over IMAP (includes/workspace/mail_fetch.php), on

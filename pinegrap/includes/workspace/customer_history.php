@@ -3,9 +3,9 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Workspace - the history of a channel's customer: their orders, invoices,
- * sales quotes and submitted forms, and the messages and tasks elsewhere in
- * the Workspace that tag them or a record tied to them, as one list, newest
- * first.
+ * sales quotes and submitted forms, and the messages, tasks, notes and
+ * workflow table rows elsewhere in the Workspace that tag them or a record
+ * tied to them, as one list, newest first.
  *
  * It is read from the tables those records live in, each time it is asked
  * for; there is no activity table to keep in step, so records from before
@@ -127,7 +127,9 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  * @param array    $data   rows per source: orders, invoices, sales_quotes
  *                         (each with state_label), forms (each with open),
  *                         messages (channel_name, sender_name, excerpt),
- *                         tasks (title, status_label)
+ *                         tasks (title, status_label), notes (name, excerpt,
+ *                         updated_at), rows (table_id, table, title,
+ *                         updated_at)
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
  * @param int      $limit  the entries the page holds
@@ -218,6 +220,16 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['tasks'] ?? array()) as $row) {
             $entries[] = $entry('task', $row['id'], $row['created_at'] ?? 0, (string) $row['title'], lang('Task'),
                 (string) ($row['status_label'] ?? ''), null, '', $base . 'workspace_tasks.php?task=' . (int) $row['id']);
+        }
+
+        foreach ((array) ($data['notes'] ?? array()) as $row) {
+            $entries[] = $entry('note', $row['id'], $row['updated_at'] ?? 0, (string) $row['name'], (string) $row['excerpt'], '', null, '',
+                $base . 'workspace_notes.php?note=' . (int) $row['id']);
+        }
+
+        foreach ((array) ($data['rows'] ?? array()) as $row) {
+            $entries[] = $entry('wtable_row', $row['id'], $row['updated_at'] ?? 0, (string) $row['title'], (string) $row['table'], '', null, '',
+                $base . 'workspace_wtables.php?id=' . (int) $row['table_id'] . '&row=' . (int) $row['id'] . '#ws-wt-row-form');
         }
     }
 
@@ -380,15 +392,17 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
 }
 
 /**
- * The messages and tasks that tag the customer or a record tied to it
- * (ws_refs), below the page's start, newest first: a message only in a
- * channel the reader may read and not in this channel, whose own messages
- * are on screen already; a task only where the reader may see it. Nothing for
- * whoever is no member of the Workspace. The API marks its reader: without
- * tasks:read no task (history_tasks false), and Claude's key reads messages
- * and tasks only in channels Claude may be asked in (history_claude), as
- * every other Workspace read of channel content (ws_api_refs_within()). The
- * panel's reader carries neither mark.
+ * The messages, tasks, notes and workflow table rows that tag the customer
+ * or a record tied to it (ws_refs), below the page's start, newest first: a
+ * message only in a channel the reader may read and not in this channel,
+ * whose own messages are on screen already; a task only where the reader may
+ * see it; a note only where the reader may read it, a row only where they
+ * reach its table. Nothing for whoever is no member of the Workspace. The
+ * API marks its reader: without tasks:read no task (history_tasks false),
+ * and Claude's key reads messages and tasks only in channels Claude may be
+ * asked in (history_claude), as every other Workspace read of channel
+ * content (ws_api_refs_within()), and notes and tables as their own routes
+ * do. The panel's reader carries neither mark.
  *
  * @param array $viewer
  * @param array $channel  the customer's channel
@@ -396,11 +410,13 @@ function ws_customer_history_form_rows($viewer, $identity, $before, $limit)
  * @param int   $before   0 for none
  * @param int   $limit
  * @return array messages (id, channel_id, channel_name, sender_name, excerpt,
- *               created_at), tasks (id, title, status_label, created_at)
+ *               created_at), tasks (id, title, status_label, created_at),
+ *               notes (id, name, excerpt, updated_at), rows (id, table_id,
+ *               table, title, updated_at)
  */
 function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $limit)
 {
-    $out = array('messages' => array(), 'tasks' => array());
+    $out = array('messages' => array(), 'tasks' => array(), 'notes' => array(), 'rows' => array());
 
     if (empty($viewer['member']) || !is_array($identity)) {
         return $out;
@@ -413,10 +429,15 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
     );
     $records[$identity['customer']['type']][] = (int) $identity['customer']['id'];
     $where = array();
+    $keys = array();
 
     foreach ($records as $type => $ids) {
         if (!empty($ids)) {
             $where[] = "(ref_type = '" . e($type) . "' AND ref_id IN ('" . implode("','", ws_customer_ids($ids)) . "'))";
+
+            foreach (ws_customer_ids($ids) as $id) {
+                $keys[] = $type . ':' . $id;
+            }
         }
     }
 
@@ -491,6 +512,35 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
             if (count($out['tasks']) >= $limit) {
                 break;
             }
+        }
+    }
+
+    foreach (ws_ref_notes_open($viewer, $sources['note'], $before) as $note) {
+        if ($claude && !ws_api_note_reachable($viewer, $note)) {
+            continue;
+        }
+
+        $out['notes'][] = array(
+            'id'         => (int) $note['id'],
+            'name'       => ws_note_title($viewer, $note),
+            'excerpt'    => ws_plain_excerpt($viewer, $note['body'], 140),
+            'updated_at' => (int) $note['updated_at'],
+        );
+
+        if (count($out['notes']) >= $limit) {
+            break;
+        }
+    }
+
+    foreach (ws_ref_rows_open($viewer, $sources['wtable_row'], $keys, $before) as $row) {
+        if ($claude && !ws_api_wtable_reachable($viewer, array('id' => $row['table_id'], 'access' => $row['access']))) {
+            continue;
+        }
+
+        $out['rows'][] = $row;
+
+        if (count($out['rows']) >= $limit) {
+            break;
         }
     }
 

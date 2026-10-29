@@ -4227,6 +4227,18 @@ function ws_api_refs_schema()
         )),
         'tasks'    => array('integer'),
         'channels' => array(array('id' => 'integer', 'name' => 'string')),
+        'notes'    => array(array(
+            'id'      => 'integer',
+            'name'    => 'string',
+            'excerpt' => 'string',
+            'updated' => 'string',
+        )),
+        'rows'     => array(array(
+            'id'       => 'integer',
+            'table_id' => 'integer',
+            'table'    => 'string',
+            'title'    => 'string',
+        )),
     );
 }
 
@@ -4270,6 +4282,25 @@ function ws_api_refs_get($params)
     $viewer = ws_api_viewer();
     $refs = ws_record_refs($viewer, (string) $params['type'], (int) $params['id'], 100);
 
+    // A note and a table reach the application Claude works through as
+    // they do on their own routes; the channel gate below keeps only the
+    // three lists that sit in channels.
+    $notes = array();
+
+    foreach ($refs['notes'] as $note) {
+        if (ws_api_note_reachable($viewer, $note)) {
+            $notes[] = array('id' => (int) $note['id'], 'name' => (string) $note['name'], 'excerpt' => (string) $note['excerpt'], 'updated' => (string) $note['time']);
+        }
+    }
+
+    $rows = array();
+
+    foreach ($refs['rows'] as $row) {
+        if (ws_api_wtable_reachable($viewer, array('id' => (int) $row['table_id'], 'access' => (string) $row['access']))) {
+            $rows[] = array('id' => (int) $row['id'], 'table_id' => (int) $row['table_id'], 'table' => (string) $row['table'], 'title' => (string) $row['title']);
+        }
+    }
+
     // The application Claude works through reads only where Claude may be
     // asked, as it does everywhere else: ws_record_refs() counts every
     // channel the owner reads, private ones and guest rooms included.
@@ -4307,7 +4338,7 @@ function ws_api_refs_get($params)
         $channels[] = array('id' => (int) $channel['id'], 'name' => (string) $channel['name']);
     }
 
-    api_ok(array('messages' => $messages, 'tasks' => $tasks, 'channels' => $channels));
+    api_ok(array('messages' => $messages, 'tasks' => $tasks, 'channels' => $channels, 'notes' => $notes, 'rows' => $rows));
 }
 
 // What ws_api_plan_get() returns, one row per person.

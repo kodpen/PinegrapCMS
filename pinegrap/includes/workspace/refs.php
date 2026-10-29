@@ -14,7 +14,10 @@
  * way round a right the reader does not hold.
  *
  * Each tag is also a row in ws_refs, which is what lets the order screen, the
- * contact card and the product editor ask where they were talked about.
+ * contact card and the product editor ask where they were talked about. The
+ * records a note tags and those a workflow table row links to are kept there
+ * too (source note, wtable_row), each listed only to who reaches the note or
+ * the table.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -432,22 +435,25 @@ function ws_refs_store($source_type, $source_id, $channel_id, $tokens)
 }
 
 /**
- * The texts whose tags ws_refs keeps, as its source_type names them.
+ * The texts whose tags ws_refs keeps, as its source_type names them:
+ * messages and tasks, and since 2026.11.0 (11.0.116) notes and the rows of
+ * workflow tables, whose tags are written once the column takes them
+ * (ws_ref_sources_ready()).
  *
  * @return string[]
  */
 function ws_ref_source_types()
 {
-    return array('message', 'task');
+    return array('message', 'task', 'note', 'wtable_row');
 }
 
 /**
  * The ids of ws_refs rows grouped by the text each tag was written in, per
  * source of ws_ref_source_types(), each id once, in the order read. A row of
- * any other source is left out rather than read as a message or a task: its
- * id belongs to another table, and who may see it is that source's own
- * check. That includes the '' an ENUM column keeps, under the site's
- * non-strict sql_mode, for a value it does not list.
+ * any other source is left out rather than read as one of these: its id
+ * belongs to another table, and who may see it is that source's own check.
+ * That includes the '' an ENUM column keeps, under the site's non-strict
+ * sql_mode, for a value it does not list.
  *
  * @param array[] $rows source_type, source_id
  * @return array source type => int[] (id => id)
@@ -466,6 +472,354 @@ function ws_ref_sources($rows)
     }
 
     return $out;
+}
+
+/**
+ * The seconds one run of the general job gives the backfill of older notes
+ * and table rows (ws_ref_sources_backfill_run()), and how many it reads at a
+ * time.
+ */
+define('WS_REF_BACKFILL_SECONDS', 5);
+define('WS_REF_BACKFILL_BATCH', 100);
+
+/**
+ * Does ws_refs take the tags of notes and workflow table rows: is its
+ * source_type a VARCHAR (2026.11.0, 11.0.116)? On the ENUM('message','task')
+ * of 2026.4.4 such a row would be kept as '' (the site's sql_mode is not
+ * strict), and the files land before the step runs, so their writers
+ * (ws_ref_source_write()) and the backfill wait for it. The readers need not:
+ * ws_ref_sources() leaves an unknown source out. Asked once a request.
+ *
+ * @return bool
+ */
+function ws_ref_sources_ready()
+{
+    static $ready = null;
+
+    if ($ready === null) {
+        $ready = (strtolower((string) db_value("SELECT DATA_TYPE FROM information_schema.COLUMNS
+            WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'ws_refs' AND COLUMN_NAME = 'source_type'")) === 'varchar');
+    }
+
+    return $ready;
+}
+
+/**
+ * The records a note's text tags, as ws_refs keeps them for it: the record
+ * tokens (<#order:1045>) whose sign belongs to their kind, each once, in the
+ * order written. People, departments, applications, tasks, plan items and
+ * channels are left out: only a record's own screen and a customer's history
+ * ask where it was written about. Pure.
+ *
+ * @param string $body
+ * @return array[] type, id
+ */
+function ws_note_ref_tokens($body)
+{
+    $records = array_flip(ws_record_type_keys());
+    $out = array();
+
+    foreach (ws_tokens(ws_tokens_normalise((string) $body)) as $token) {
+        if (isset($records[$token['type']]) && ($token['id'] > 0)) {
+            $out[$token['type'] . ':' . $token['id']] = array('type' => $token['type'], 'id' => $token['id']);
+        }
+    }
+
+    return array_values($out);
+}
+
+/**
+ * The records a workflow table row points at, as ws_refs keeps them for it:
+ * its record-link cells ({kind, id}) in the link columns the table has now,
+ * whose kind is a record's (ws_record_type_keys()), each once. The cell of a
+ * deleted column, kept in the row's JSON until the row is next written, does
+ * not count. Pure.
+ *
+ * @param array $columns column id => column (type), ws_wtable_columns()
+ * @param array $cells   column id => stored value
+ * @return array[] type, id
+ */
+function ws_wtable_row_ref_tokens($columns, $cells)
+{
+    $records = array_flip(ws_record_type_keys());
+    $out = array();
+
+    foreach ((array) $cells as $column_id => $value) {
+        if ((($columns[(string) $column_id]['type'] ?? '') !== 'link') || !is_array($value)) {
+            continue;
+        }
+
+        $kind = is_string($value['kind'] ?? null) ? $value['kind'] : '';
+        $id = is_numeric($value['id'] ?? null) ? (int) $value['id'] : 0;
+
+        if (isset($records[$kind]) && ($id > 0)) {
+            $out[$kind . ':' . $id] = array('type' => $kind, 'id' => $id);
+        }
+    }
+
+    return array_values($out);
+}
+
+/**
+ * Writes the record tags of notes or of workflow table rows into ws_refs,
+ * replacing what each had, as ws_refs_store() does for a message: one DELETE
+ * and one INSERT for all of them. Their channel_id is 0: a note or a table
+ * is no channel's, and a tag kept with a channel would make that channel
+ * watch the record (ws_watch_channels()). Nothing is written before the
+ * column takes the source (ws_ref_sources_ready()).
+ *
+ * @param string $source_type note | wtable_row
+ * @param array  $tags        source id => ws_note_ref_tokens() or
+ *                            ws_wtable_row_ref_tokens(); an empty list
+ *                            removes that source's rows
+ */
+function ws_ref_source_write($source_type, $tags)
+{
+    if (!in_array($source_type, array('note', 'wtable_row'), true) || empty($tags) || !ws_ref_sources_ready()) {
+        return;
+    }
+
+    $ids = array();
+    $values = array();
+    $now = time();
+
+    foreach ((array) $tags as $source_id => $tokens) {
+        if ((int) $source_id <= 0) {
+            continue;
+        }
+
+        $ids[] = (int) $source_id;
+
+        foreach ((array) $tokens as $token) {
+            $values[] = "('" . $source_type . "', '" . (int) $source_id . "', 0, '" . e($token['type']) . "', '" . (int) $token['id'] . "', '" . $now . "')";
+        }
+    }
+
+    if (empty($ids)) {
+        return;
+    }
+
+    db("DELETE FROM ws_refs WHERE source_type = '" . $source_type . "' AND source_id IN (" . implode(',', $ids) . ")");
+
+    if (!empty($values)) {
+        db("INSERT INTO ws_refs (source_type, source_id, channel_id, ref_type, ref_id, created_at)
+            VALUES " . implode(', ', $values));
+    }
+}
+
+/**
+ * The notes among $ids the reader may read (ws_note_access(): its owner, a
+ * person it is shared with, a reader of a channel it is shared in; being an
+ * administrator gives nothing), the latest changed first, each with its
+ * access; with $before, only those last changed before it. The text is read
+ * as far as a list reads it, enough for a name and an excerpt.
+ *
+ * @param array $viewer
+ * @param int[] $ids
+ * @param int   $before 0 for any
+ * @return array[] id, user_id, title, body, created_at, updated_at, access
+ */
+function ws_ref_notes_open($viewer, $ids, $before = 0)
+{
+    $ids = array_filter(array_map('intval', (array) $ids));
+    $out = array();
+
+    if (empty($ids) || !ws_notes_ready()) {
+        return $out;
+    }
+
+    $rows = (array) db_items("SELECT id, user_id, title, LEFT(body, " . (int) WS_NOTE_LIST_BODY . ") AS body, created_at, updated_at
+        FROM ws_notes
+        WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
+        ORDER BY updated_at DESC, id DESC");
+    $shares = ws_note_shares_map(array_column($rows, 'id'));
+
+    foreach ($rows as $row) {
+        $row['access'] = ws_note_access($viewer, $row, $shares[(int) $row['id']] ?? array());
+
+        if ($row['access'] !== '') {
+            $out[] = $row;
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * The workflow table rows among $ids whose table the reader reaches
+ * (ws_wtable_access(): its owner while in the team, a person or a channel it
+ * is shared with; being an administrator gives nothing) and that still point
+ * at one of $records (a link column deleted since, or a cell an erasure
+ * emptied, no longer counts), the latest changed first; with $before, only
+ * those last changed before it. Each comes with its table's name, the
+ * reader's access to the table and a title: its first filled text cell, else
+ * "Row n".
+ *
+ * @param array    $viewer
+ * @param int[]    $ids
+ * @param string[] $records the records asked about, as type:id
+ * @param int      $before  0 for any
+ * @return array[] id, table_id, table, access, title, updated_at
+ */
+function ws_ref_rows_open($viewer, $ids, $records, $before = 0)
+{
+    $ids = array_filter(array_map('intval', (array) $ids));
+    $records = array_flip((array) $records);
+    $out = array();
+
+    if (empty($ids) || !ws_wtables_ready()) {
+        return $out;
+    }
+
+    $tables = array();
+
+    foreach ((array) db_items("SELECT id, table_id, position, cells, updated_at FROM ws_wtable_rows
+        WHERE id IN (" . implode(',', $ids) . ")" . (((int) $before > 0) ? " AND updated_at < '" . (int) $before . "'" : '') . "
+        ORDER BY updated_at DESC, id DESC") as $row) {
+        $table_id = (int) $row['table_id'];
+
+        if (!array_key_exists($table_id, $tables)) {
+            $table = ws_wtable($table_id);
+            $access = ws_wtable_access($viewer, $table);
+            $tables[$table_id] = ($access !== '') ? array('name' => (string) $table['name'], 'access' => $access, 'columns' => ws_wtable_columns($table_id)) : null;
+        }
+
+        if ($tables[$table_id] === null) {
+            continue;
+        }
+
+        $columns = $tables[$table_id]['columns'];
+        $cells = ws_wtable_cells_decode($row['cells']);
+        $points = false;
+
+        foreach (ws_wtable_row_ref_tokens($columns, $cells) as $token) {
+            $points = $points || isset($records[$token['type'] . ':' . $token['id']]);
+        }
+
+        if (!$points) {
+            continue;
+        }
+
+        $title = '';
+
+        foreach ($columns as $column_id => $column) {
+            if (($title === '') && ($column['type'] === 'text') && is_scalar($cells[$column_id] ?? null)) {
+                $title = mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $cells[$column_id])), 0, 140);
+            }
+        }
+
+        $out[] = array(
+            'id'         => (int) $row['id'],
+            'table_id'   => $table_id,
+            'table'      => $tables[$table_id]['name'],
+            'access'     => $tables[$table_id]['access'],
+            'title'      => ($title !== '') ? $title : lang(array('string' => 'Row {var:1}', 'vars' => (int) $row['position'])),
+            'updated_at' => (int) $row['updated_at'],
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * Where the indexing of the notes and table rows saved before ws_refs took
+ * them stands, as kept in config_text (ws_refs_backfill): the source being
+ * read (note, then wtable_row), the last id done, and done once both are
+ * through. Anything else reads as the start. Pure.
+ *
+ * @param string $text
+ * @return array source, after, done
+ */
+function ws_ref_backfill_cursor($text)
+{
+    $cursor = json_decode((string) $text, true);
+    $cursor = is_array($cursor) ? $cursor : array();
+
+    return array(
+        'source' => (($cursor['source'] ?? '') === 'wtable_row') ? 'wtable_row' : 'note',
+        'after'  => max(0, (int) ($cursor['after'] ?? 0)),
+        'done'   => !empty($cursor['done']),
+    );
+}
+
+/**
+ * The cursor after a batch: on past the last id read while the batch was
+ * full; a shorter batch ends its source, the notes going on to the rows and
+ * the rows ending the work. Pure.
+ *
+ * @param array $cursor  ws_ref_backfill_cursor()
+ * @param int   $last_id the last id the batch read
+ * @param int   $read    how many it read
+ * @param int   $batch   how many it asked for
+ * @return array source, after, done
+ */
+function ws_ref_backfill_next($cursor, $last_id, $read, $batch)
+{
+    if ((int) $read >= (int) $batch) {
+        return array('source' => $cursor['source'], 'after' => (int) $last_id, 'done' => false);
+    }
+
+    return array('source' => 'wtable_row', 'after' => 0, 'done' => ($cursor['source'] === 'wtable_row'));
+}
+
+/**
+ * Writes the tags of the notes and workflow table rows saved before ws_refs
+ * took them (2026.11.0, 11.0.116), from the general job, for at most
+ * $seconds a run: the notes first, then the rows, each batch's tags replaced
+ * as a save replaces them, and the place kept in config_text after every
+ * batch, so the next run goes on where this one stopped. Once through, the
+ * marker says so and a run reads nothing more; with the marker removed, it
+ * starts again, which changes nothing that is right. Waits for the column
+ * (ws_ref_sources_ready()).
+ *
+ * @param int $seconds
+ * @return array the cursor as left (ws_ref_backfill_cursor())
+ */
+function ws_ref_sources_backfill_run($seconds = WS_REF_BACKFILL_SECONDS)
+{
+    $cursor = ws_ref_backfill_cursor(pg_config_text('ws_refs_backfill'));
+
+    if ($cursor['done'] || !pg_schema_has('config_text') || !ws_ref_sources_ready()) {
+        return $cursor;
+    }
+
+    $started = microtime(true);
+
+    while (!$cursor['done'] && ((microtime(true) - $started) < $seconds)) {
+        $tags = array();
+        $last = $cursor['after'];
+
+        if ($cursor['source'] === 'note') {
+            $rows = ws_notes_ready() ? (array) db_items("SELECT id, body FROM ws_notes
+                WHERE id > '" . $cursor['after'] . "' ORDER BY id LIMIT " . WS_REF_BACKFILL_BATCH) : array();
+
+            foreach ($rows as $row) {
+                $tags[(int) $row['id']] = ws_note_ref_tokens($row['body']);
+                $last = (int) $row['id'];
+            }
+        } else {
+            $rows = ws_wtables_ready() ? (array) db_items("SELECT id, table_id, cells FROM ws_wtable_rows
+                WHERE id > '" . $cursor['after'] . "' ORDER BY id LIMIT " . WS_REF_BACKFILL_BATCH) : array();
+            $columns = array();
+
+            foreach ($rows as $row) {
+                if (!isset($columns[(int) $row['table_id']])) {
+                    $columns[(int) $row['table_id']] = ws_wtable_columns((int) $row['table_id']);
+                }
+
+                $tags[(int) $row['id']] = ws_wtable_row_ref_tokens($columns[(int) $row['table_id']], ws_wtable_cells_decode($row['cells']));
+                $last = (int) $row['id'];
+            }
+        }
+
+        ws_ref_source_write($cursor['source'], $tags);
+
+        $cursor = ws_ref_backfill_next($cursor, $last, count($rows), WS_REF_BACKFILL_BATCH);
+
+        pg_config_text_save('ws_refs_backfill', (string) json_encode($cursor['done'] ? array('done' => 1) : $cursor));
+    }
+
+    return $cursor;
 }
 
 /**
@@ -1340,18 +1694,19 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
  * Where a record was talked about and which tasks point at it, for the
  * "Workspace" drawer on the record's own screen. Only what the reader may
  * see is counted: a mention in a channel they cannot read is not even
- * admitted to exist.
+ * admitted to exist, nor a note or a table they do not reach.
  *
  * @param array  $viewer
  * @param string $type
  * @param int    $id
  * @param int    $limit
- * @return array messages, tasks, channels (customer channels, for a contact)
+ * @return array messages, tasks, notes, rows (of workflow tables), channels
+ *               (customer channels, for a contact), count
  */
 function ws_record_refs($viewer, $type, $id, $limit = 20)
 {
     $id = (int) $id;
-    $out = array('messages' => array(), 'tasks' => array(), 'channels' => array(), 'count' => 0);
+    $out = array('messages' => array(), 'tasks' => array(), 'notes' => array(), 'rows' => array(), 'channels' => array(), 'count' => 0);
 
     if (!$viewer['member'] || ($id <= 0)) {
         return $out;
@@ -1423,6 +1778,34 @@ function ws_record_refs($viewer, $type, $id, $limit = 20)
             $out['tasks'][] = $brief;
             $out['count']++;
         }
+    }
+
+    // Notes and table rows that tag it: each only where the reader reaches
+    // the note or the row's table.
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+
+    foreach (ws_ref_notes_open($viewer, $sources['note']) as $note) {
+        if (count($out['notes']) < $limit) {
+            $out['notes'][] = array(
+                'id'      => (int) $note['id'],
+                'name'    => ws_note_title($viewer, $note),
+                'owner'   => ws_person_name($note['user_id']),
+                'excerpt' => ws_plain_excerpt($viewer, $note['body'], 140),
+                'time'    => ws_time_label($note['updated_at']),
+                'access'  => (string) $note['access'],
+                'url'     => $base . 'workspace_notes.php?note=' . (int) $note['id'],
+            );
+        }
+
+        $out['count']++;
+    }
+
+    foreach (ws_ref_rows_open($viewer, $sources['wtable_row'], array($type . ':' . $id)) as $row) {
+        if (count($out['rows']) < $limit) {
+            $out['rows'][] = $row + array('url' => $base . 'workspace_wtables.php?id=' . $row['table_id'] . '&row=' . $row['id'] . '#ws-wt-row-form');
+        }
+
+        $out['count']++;
     }
 
     // The channels about the customer this record is, or is tied to.

@@ -11,6 +11,7 @@ description: Workspace reads with Claude's application key keep to the channels 
 ## How are record refs narrowed?
 - `ws_api_refs_get()` (GET /workspace/refs, its MCP tool `workspace_refs_get`, the resource `pinegrap://workspace/refs/{type}/{id}`) passes `ws_record_refs()` through `ws_api_refs_within()` for Claude's key: messages and customer channels in a barred channel are left out, and tasks in one; a task in no channel stays, as search keeps it.
 - Narrowed after `ws_record_refs()` stops at 100 messages, so Claude may get fewer than 100.
+- Its notes and table rows (#3135) are narrowed as their own routes narrow them, before the channel gate: `ws_api_note_reachable()`, `ws_api_wtable_reachable()` (a note or table that reached the owner only through a channel Claude may not be asked in is left out); the customer history does the same.
 
 ## What did it fix?
 - Refs was the one read without the gate: Claude's key got 140-character excerpts, channel and sender names and task ids from private channels whose people never let Claude in (`claude_access` 0 or 2), guest rooms and shared channels, wherever the owner was a member.
