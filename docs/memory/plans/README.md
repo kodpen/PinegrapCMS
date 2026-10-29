@@ -67,7 +67,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - widget-designability.md: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in widgets
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
-- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2931): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
+- workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1-T2 #2745-#2994): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md
 - workspace-composer-tools.md: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 - workspace-create-command.md: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; creates in a chat go through one /oluştur (/create) command, single preview or bulk card; the pasted-list window and file button go
 - workspace-crm-seams.md: Plan (2026-10-23; 1-8 done, PRs #1621 to #2643; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources

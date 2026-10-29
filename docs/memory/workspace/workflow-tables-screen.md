@@ -17,5 +17,8 @@ description: The workflow tables screen workspace_wtables.php (T1e, #2966): serv
 - Column options from the form (`ws_wtable_screen_options_from_form()`): decimals, currency, date time, link kinds (comma list), formula expression; status choices one label a line, a label kept keeps its key and colour (`ws_wtable_screen_status_choices()`), so cells keep their choice. The type is chosen once (`type_fixed`).
 - Shares card: everybody reaching the table sees the list; the owner shares with a team member (view/edit) or a public/private channel they read (view), and takes a share back. The `wtable_shared` bell line opens `workspace_wtables.php?scope=shared` (the inbox row names no table).
 
+## Where is the board view?
+- `?view=board`: the rows as cards by a status column (`workflow-table-board.md`).
+
 ## What is left out?
 - Editing in place, column reorder, row move (the store has `ws_wtable_row_move()`), a record-link picker (typed `kind:id`, shown `kind #id`, not resolved to a name), a table bin.

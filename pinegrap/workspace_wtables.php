@@ -45,7 +45,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     validate_token_field();
 
-    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level'));
+    pg_request_single_values(array('wt_action', 'wt_table', 'wt_column', 'wt_row', 'wt_share', 'revision', 'name', 'description', 'type', 'target', 'level', 'value'));
 
     $action = (string) ($_POST['wt_action'] ?? '');
     $table = ws_wtable((int) ($_POST['wt_table'] ?? 0));
@@ -187,6 +187,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $back .= '#ws-wt-shares';
             break;
 
+        case 'row_status':
+            // A card moved on the board: the status cell alone, on the
+            // revision the card was drawn with, answered in JSON.
+            $columns = $table ? ws_wtable_columns((int) $table['id']) : array();
+            $status_id = (int) ($_POST['wt_column'] ?? 0);
+            $row = ws_wtable_row((int) ($table['id'] ?? 0), (int) ($_POST['wt_row'] ?? 0));
+
+            if (!isset(ws_wtable_board_status_columns($columns)[$status_id])) {
+                $result = ws_wtable_refusal('not_found', '', 404);
+            } elseif (!$row) {
+                $result = ws_wtable_refusal('not_found', '', 404);
+            } else {
+                $result = ws_wtable_row_update($viewer, $table, $row, ws_wtable_board_move_input($status_id, $field('value'), $field('revision')));
+            }
+
+            header('Content-Type: application/json; charset=utf-8');
+            echo pg_json_encode_answer($result['ok']
+                ? array('ok' => true, 'message' => lang('The row was saved.'))
+                : array('ok' => false, 'message' => ws_wtable_screen_error_text($result['error'])));
+            exit;
+
         default:
             $back = $self_url;
     }
@@ -210,7 +231,30 @@ if (($table_id > 0) && !$table) {
     output_error(h(lang('That table could not be found.')) . ' <a href="' . h($self_url) . '">' . h(lang('Back')) . '</a>');
 }
 
+// The board's cards, read by the board component.
+if ($table && (($_GET['board_json'] ?? '') === '1')) {
+    $columns = ws_wtable_columns((int) $table['id']);
+    $status_id = ws_wtable_board_column_id($columns, $_GET['by'] ?? 0);
+    $rows = ($status_id > 0) ? ws_wtable_rows((int) $table['id'], $columns) : array();
+    $person_ids = array();
+
+    foreach ($rows as $row) {
+        foreach ($columns as $column_id => $column) {
+            if (($column['type'] === 'person') && !empty($row['cells'][$column_id])) {
+                $person_ids[] = (int) $row['cells'][$column_id];
+            }
+        }
+    }
+
+    $board = ws_wtable_board($columns, $rows, $status_id, empty($person_ids) ? array() : ws_people(array_unique($person_ids)), ws_wtable_may($table['access'], 'write'), (($_GET['all'] ?? '') === '1'));
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo pg_json_encode_answer($board);
+    exit;
+}
+
 $types = ws_wtable_column_types();
+$board_script = '';
 $levels = ws_wtable_share_levels();
 $access_labels = array('owner' => lang('Yours'), 'edit' => lang('Can edit'), 'view' => lang('Can view'));
 
@@ -711,21 +755,126 @@ if (!$table) {
             . h(lang(array('string' => '{var:1}\'s table · {var:2}', 'vars' => array($owner[(int) $table['user_id']]['name'] ?? '', $access_labels[$table['access']] ?? '')))) . '</p>';
     }
 
-    $body = '
-    ' . $owner_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
-    <div class="row g-5">
-        <div class="col-12 xl:col-8">
-            <div class="card mb-5" id="ws-wt-rows">
-                <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
-                    . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2></div>
-                <div class="card-body">' . $rows_body . '</div>
-            </div>
-            ' . $row_form . '
-        </div>
-        <div class="col-12 xl:col-4">
-            ' . $columns_card . $details_card . $shares_card . '
-        </div>
+    // The board view: the rows as cards by a status column, drawn by the
+    // channel Board tab's component (assets/js/workspace_board_channel.js).
+    $status_columns = ws_wtable_board_status_columns($columns);
+    $board_id = ws_wtable_board_column_id($columns, $_GET['by'] ?? 0);
+    $on_board = ($board_id > 0) && (($_GET['view'] ?? '') === 'board');
+    $views = '';
+
+    if ($board_id > 0) {
+        $views = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('View')) . '">';
+
+        foreach (array('table' => array(lang('Table'), 'bi-table'), 'board' => array(lang('Board'), 'bi-kanban')) as $key => $view) {
+            $here = (($key === 'board') === $on_board);
+            $views .= '<a class="btn btn-text theme-secondary' . ($here ? ' active' : '') . '" href="' . h($table_url . (($key === 'board') ? '&view=board&by=' . $board_id : '')) . '"'
+                . ($here ? ' aria-current="page"' : '') . '><i class="bi ' . $view[1] . ' me-1" aria-hidden="true"></i>' . h($view[0]) . '</a>';
+        }
+
+        $views .= '</div>';
+    }
+
+    if ($on_board) {
+        $by = '';
+
+        // More than one status column: which one the board groups by.
+        if (count($status_columns) > 1) {
+            $by = '<div class="btn-group btn-group-sm" role="group" aria-label="' . h(lang('Group by')) . '">';
+
+            foreach ($status_columns as $column_id => $name) {
+                $by .= '<a class="btn btn-text theme-secondary' . (($column_id === $board_id) ? ' active" aria-current="page' : '') . '" href="' . h($table_url . '&view=board&by=' . $column_id) . '">' . h($name) . '</a>';
+            }
+
+            $by .= '</div>';
+        }
+
+        $texts = ws_channel_board_js_strings();
+        $texts['cb_more_done'] = ws_js_template('{var:1} more', 1);
+        $texts['loading'] = lang('Loading…');
+        $texts['error_generic'] = lang('Something went wrong. Please try again.');
+        $config = array(
+            'read'     => $table_url . '&board_json=1&by=' . $board_id,
+            'write'    => $self_url,
+            'open'     => $table_url . '&row=',
+            'token'    => (string) ($_SESSION['software']['token'] ?? ''),
+            'table'    => $id,
+            'column'   => $board_id,
+            'texts'    => $texts,
+        );
+
+        $body = '
+    ' . $owner_note . '
+    <div class="card mb-5" id="ws-wt-board">
+        <div class="card-header d-flex flex-wrap align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-kanban me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $by . $views . '</div>
+        <div class="card-body ws-wt-board"><div class="small fg-secondary">' . h(lang('Loading…')) . '</div></div>
     </div>';
+
+        $board_script = pg_js_bundle_tags('assets/js/workspace_board_channel.min.js') . '
+<script type="application/json" id="ws-wt-board-config">' . str_replace('</', '<\\/', (string) pg_json_encode_answer($config)) . '</script>
+<script>
+(function () {
+    // The board reads the table\'s cards and writes a moved card\'s status
+    // through this screen; a card opens its row in the table view.
+    var config = JSON.parse(document.getElementById("ws-wt-board-config").textContent);
+    function answer(response) {
+        return response.json().catch(function () { return { ok: false, message: config.texts.error_generic }; });
+    }
+    function start() {
+        var pane = document.querySelector("#ws-wt-board .ws-wt-board");
+        if (!window.PGWsChannelBoard || !window.PGWsChannelBoard.mountSource) {
+            pane.textContent = config.texts.error_generic;
+            return;
+        }
+        window.PGWsChannelBoard.mountSource(pane, {
+            texts: config.texts,
+            load: function (options) {
+                return fetch(config.read + (options.all ? "&all=1" : ""), { credentials: "same-origin" }).then(function (response) {
+                    if (!response.ok) { throw new Error(config.texts.error_generic); }
+                    return response.json();
+                });
+            },
+            move: function (item, drop) {
+                var body = new FormData();
+                body.append("token", config.token);
+                body.append("wt_action", "row_status");
+                body.append("wt_table", config.table);
+                body.append("wt_column", config.column);
+                body.append("wt_row", item.id);
+                body.append("revision", item.revision);
+                body.append("value", drop);
+                return fetch(config.write, { method: "POST", body: body, credentials: "same-origin" }).then(answer).then(function (data) {
+                    if (!data.ok) { throw new Error(data.message); }
+                    return data.message;
+                });
+            },
+            open: function (item) {
+                window.location.href = config.open + item.id + "#ws-wt-row-form";
+            }
+        });
+    }
+    if (document.readyState === "loading") { document.addEventListener("DOMContentLoaded", start); } else { start(); }
+})();
+</script>';
+    } else {
+
+        $body = '
+        ' . $owner_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
+        <div class="row g-5">
+            <div class="col-12 xl:col-8">
+                <div class="card mb-5" id="ws-wt-rows">
+                    <div class="card-header d-flex align-items-center gap-3"><h2 class="h6 mb-0 flex-grow-1"><i class="bi bi-table me-1" aria-hidden="true"></i>'
+                        . h(lang(array('string' => '{var:1} rows', 'vars' => (int) $table['row_count']))) . '</h2>' . $views . '</div>
+                    <div class="card-body">' . $rows_body . '</div>
+                </div>
+                ' . $row_form . '
+            </div>
+            <div class="col-12 xl:col-4">
+                ' . $columns_card . $details_card . $shares_card . '
+            </div>
+        </div>';
+
+    }
 
     $toolbar = '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
@@ -809,4 +958,4 @@ pg_page_shell(array(
     if (type) { type.addEventListener("change", showOptions); showOptions(); }
 
 })();
-</script>' . output_footer();
+</script>' . $board_script . output_footer();
