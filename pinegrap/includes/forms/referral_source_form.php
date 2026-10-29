@@ -60,12 +60,12 @@ function pg_referral_source_form_card($values)
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('New Referral Source Information') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
-                                            <h5>' . lang('Order Preview Page Display Options') . '</h5>
+                                            <h3 class="h5">' . lang('Order Preview Page Display Options') . '</h3>
                                             
                                             <div class="col-12 md:col-6 my-3">
                                                 <label for="name" class="form-label">' . lang('Referral Source Name') . '</label>
@@ -84,7 +84,7 @@ function pg_referral_source_form_card($values)
 
                                         </div>
                                         <div class="row mt-7">
-                                            <h5>' . lang('New Referral Source Code for Order Reporting') . '</h5>
+                                            <h3 class="h5">' . lang('New Referral Source Code for Order Reporting') . '</h3>
                                             <div class="col-12 md:col-4 my-3">
                                                 <label for="code" class="form-label">' . lang('Referral Source Code') . '</label>
                                                 <input type="text" id="code" name="code" class="form-control" maxlength="50"' . $code_value . ' required />

@@ -30,9 +30,9 @@ function pg_dynamic_region_form_card($name = '', $code = '')
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
@@ -43,7 +43,7 @@ function pg_dynamic_region_form_card($name = '', $code = '')
                                                 <div class="input-group-text">' . h('</dregion>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-12">' . lang('PHP Code to appear on associated Pages') . '</h5>
+                                        <h3 class="h5 mt-12">' . lang('PHP Code to appear on associated Pages') . '</h3>
                                         <div class="col-12 my-3">
                                             <label for="code" class="form-label">' . lang('PHP Code Snippet') . '</label>
                                             <textarea name="code" id="code" rows="30" cols="60" wrap="off">' . h($code) . '</textarea>

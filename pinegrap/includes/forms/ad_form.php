@@ -31,9 +31,9 @@ function pg_ad_form_cards($liveform)
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Options') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -57,9 +57,9 @@ function pg_ad_form_cards($liveform)
                             </div>
                             <div class="col-12">
                                 <div class="card my-7">
-                                    <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Dynamic Ad Region Display Options') . '
-                                    </div>
+                                    </h2>
                                     <div class="card-body">
                                         <div class="row">
                                             <div class="col-12 md:col-4 my-3">

@@ -38,9 +38,9 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-6 my-3">
@@ -51,7 +51,7 @@ function pg_ad_region_form_card($liveform, $name_field, $defaults = false)
                                                 <div class="input-group-text">' . h('</ad>') . '</div>
                                             </div>
                                         </div>
-                                        <h5 class="mt-12">' . lang('Region Behavior') . '</h5>
+                                        <h3 class="h5 mt-12">' . lang('Region Behavior') . '</h3>
                                         <div class="col-12">
                                             <fieldset>
                                                 <legend class="form-label fs-md">' . lang('Display Type') . '</legend>
