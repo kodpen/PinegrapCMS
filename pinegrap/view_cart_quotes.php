@@ -6,7 +6,8 @@
  * (includes/fn/cart_quotes.php), newest first, with where each stands. An
  * open quote can be cancelled or given a new link; the link is shown only
  * when it is made, since only its hash is kept. ?contact_id= lists one
- * contact's quotes.
+ * contact's quotes; ?id= one quote, with its Workspace button: the address
+ * its Workspace tag opens.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -25,7 +26,9 @@ if (!defined('ECOMMERCE') || (ECOMMERCE !== true)) {
 
 $liveform = new liveform('view_cart_quotes');
 $contact_id = is_scalar($_GET['contact_id'] ?? null) ? max(0, (int) $_GET['contact_id']) : 0;
-$self = 'view_cart_quotes.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '');
+$quote_id = is_scalar($_GET['id'] ?? null) ? max(0, (int) $_GET['id']) : 0;
+$filter = array_filter(array('id' => $quote_id, 'contact_id' => $contact_id));
+$self = 'view_cart_quotes.php' . ($filter ? '?' . http_build_query($filter) : '');
 
 // Cancel, or a new link, for one open quote.
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -58,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $ready = pg_cart_quotes_ready();
-$rows = $ready ? pg_cart_quote_panel_rows($contact_id) : array();
+$rows = $ready ? pg_cart_quote_panel_rows($contact_id, PG_CART_QUOTE_PANEL_LIMIT, $quote_id) : array();
 $now = time();
 $badges = array('open' => 'badge theme-success', 'ordered' => 'badge theme-primary', 'expired' => 'badge theme-secondary', 'cancelled' => 'badge theme-danger');
 $output_rows = '';
@@ -107,6 +110,15 @@ $output_not_ready = $ready ? '' : '
 $output_limit = (count($rows) >= PG_CART_QUOTE_PANEL_LIMIT) ? '
                 <p class="small fg-secondary">' . h(lang(array('string' => 'The newest {var:1} cart quotes are shown.', 'vars' => array(PG_CART_QUOTE_PANEL_LIMIT)))) . '</p>' : '';
 
+// One quote shown: where it was talked about in the workspace, and the tasks
+// about it.
+$output_workspace_button = '';
+
+if (($quote_id > 0) && $rows && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+    require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+    $output_workspace_button = ws_record_button($user, 'cart_quote', $quote_id, lang('Cart quote') . ' #' . $quote_id);
+}
+
 echo
     pg_page_shell(array(
         'title'               => lang('Cart quotes'),
@@ -128,8 +140,9 @@ echo
             ' . $output_not_ready . '
             <nav id="button_bar" class="pg-toolbar navigation" aria-label="' . h(lang('Button Bar')) . '">
                 ' . ($ready ? '<a class="btn btn-sm btn-solid theme-primary rounded-pill px-12" href="add_cart_quote.php' . (($contact_id > 0) ? '?contact_id=' . $contact_id : '') . '"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New cart quote')) . '</a>' : '') . '
-                ' . (($contact_id > 0) ? '<a class="btn btn-sm btn-text theme-secondary" href="view_cart_quotes.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '
+                ' . ($filter ? '<a class="btn btn-sm btn-text theme-secondary" href="view_cart_quotes.php"><i class="bi bi-list-ul me-1" aria-hidden="true"></i>' . h(lang('All cart quotes')) . '</a>' : '') . '
                 <a class="btn btn-sm btn-text theme-secondary" href="view_orders.php"><i class="bi bi-cart4 me-1" aria-hidden="true"></i>' . h(lang('All Orders')) . '</a>
+                ' . $output_workspace_button . '
             </nav>
             ' . $output_limit . '
             <div class="card my-7">

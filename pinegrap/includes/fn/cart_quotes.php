@@ -529,19 +529,30 @@ function pg_cart_quote_state_label($state)
  *
  * @param int $contact_id only this contact's (0 for every quote)
  * @param int $limit
+ * @param int $quote_id   only this quote (0 for every quote)
  * @return array[] cart_quotes row + contact_name, creator, lines
  */
-function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_LIMIT)
+function pg_cart_quote_panel_rows($contact_id = 0, $limit = PG_CART_QUOTE_PANEL_LIMIT, $quote_id = 0)
 {
     if (!pg_cart_quotes_ready()) {
         return array();
+    }
+
+    $where = array();
+
+    if ((int) $contact_id > 0) {
+        $where[] = "q.contact_id = '" . (int) $contact_id . "'";
+    }
+
+    if ((int) $quote_id > 0) {
+        $where[] = "q.id = '" . (int) $quote_id . "'";
     }
 
     $rows = (array) db_items("SELECT q.*, c.first_name, c.last_name, c.company, u.user_username AS creator
         FROM cart_quotes AS q
         LEFT JOIN contacts AS c ON c.id = q.contact_id
         LEFT JOIN user AS u ON u.user_id = q.created_by
-        " . (((int) $contact_id > 0) ? "WHERE q.contact_id = '" . (int) $contact_id . "'" : "") . "
+        " . ($where ? "WHERE " . implode(" AND ", $where) : "") . "
         ORDER BY q.id DESC
         LIMIT " . max(1, (int) $limit));
 
