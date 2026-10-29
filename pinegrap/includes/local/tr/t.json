@@ -4743,6 +4743,7 @@
     "This season's coffee": "Bu mevsimin kahvesi",
     "This season's most talked-about novel, in a cloth-bound hardback with a ribbon marker.": "Bu mevsimin en çok konuşulan romanı; kumaş ciltli, kurdele ayraçlı.",
     "This secret is too long to be stored encrypted; at most {var:1} characters.": "Bu gizli değer şifreli saklanamayacak kadar uzun; en fazla {var:1} karakter olabilir.",
+    "This section has no pages.": "Bu bölümde sayfa yok.",
     "This sender has sent more than {var:1} e-mails in the last hour; try again later.": "Bu gönderen son bir saatte {var:1} e-postadan fazlasını gönderdi; daha sonra yeniden deneyin.",
     "This sends the message to @{var:2} through {var:1}, with your own account, and its agent acts on it there.": "Bu, mesajı sizin hesabınızla {var:1} aracı üzerinden @{var:2} hizmetine gönderir; oradaki ajan onun üzerine iş yapar.",
     "This sends the message to @{var:2} through {var:1}, with your own account, and its agent acts on it there. It may delete things there.": "Bu, mesajı sizin hesabınızla {var:1} aracı üzerinden @{var:2} hizmetine gönderir; oradaki ajan onun üzerine iş yapar. Orada bir şeyleri silebilir.",
