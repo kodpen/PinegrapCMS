@@ -89,6 +89,25 @@
 
         $items.find('.pg-pb-cover-badge').remove();
 
+        /* The keyboard path: a grip button on every tile, the arrow keys on it
+           move the tile (moveImage below). Added here because the picker
+           appends tiles from backend.src.js; kept rather than redrawn, so a
+           grip that has focus keeps it while the tiles move. */
+        $items.each(function(index) {
+            var $grip = $(this).find('.pg-pb-move');
+
+            if (!$grip.length) {
+                $grip = $('<button type="button" class="pg-pb-move btn btn-link p-0 me-auto fg-secondary bi bi-arrows-move"></button>')
+                    .attr('title', label('reorder_hint'));
+                var $header = $(this).find('.card-header').first();
+                ($header.length ? $header : $(this)).prepend($grip);
+            }
+
+            $grip.attr('aria-label', label('move_photo')
+                .replace('{position}', index + 1)
+                .replace('{total}', $items.length));
+        });
+
         if ($items.length) {
             $items.first().append(
                 '<span class="badge theme-primary pg-pb-cover-badge">' + esc(label('Cover')) + '</span>');
@@ -134,6 +153,42 @@
         if ('MutationObserver' in window) {
             new MutationObserver(refreshCoverBadge).observe($container[0], { childList: true });
         }
+
+        /* Arrow keys on a tile's grip: Left and Up earlier, Right and Down
+           later, since the grid wraps. The first tile is the cover. */
+        $container.on('keydown', '.pg-pb-move', function(event) {
+
+            var step = {ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1}[event.key];
+
+            if (!step) {
+                return;
+            }
+
+            event.preventDefault();
+
+            var $item = $(this).closest('.item');
+            var $other = step < 0 ? $item.prev('.item') : $item.next('.item');
+
+            if ($other.length) {
+                if (step < 0) {
+                    $item.insertBefore($other);
+                } else {
+                    $item.insertAfter($other);
+                }
+                this.focus();
+                refreshCoverBadge();
+            }
+
+            var $items = $container.find('.item');
+            var position = $items.index($item) + 1;
+            var text = label('reorder_position')
+                .replace('{position}', position)
+                .replace('{total}', $items.length);
+
+            if (typeof window.pgAnnounce === 'function') {
+                window.pgAnnounce(position === 1 ? text + '. ' + label('Cover') : text);
+            }
+        });
 
         refreshCoverBadge();
     }());

@@ -996,6 +996,7 @@
     "Position": "Konum",
     "Position applied for": "Başvurulan pozisyon",
     "Position in the list": "Listedeki yeri",
+    "Position {position} of {total}": "Sıra: {position} / {total}",
     "Position:": "Konum:",
     "Positions": "Pozisyonlar",
     "Positive when they owe you, negative when you owe them.": "Size borçluysa artı, siz borçluysanız eksi girin.",
