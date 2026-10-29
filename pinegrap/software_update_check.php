@@ -29,6 +29,8 @@
  *     'error'      => string,      // '', 'curl_missing', 'curl_error' or 'invalid_response'
  *     'curl_errno' => int,
  *     'curl_error' => string)
+ * and, from the Kodpen API, 'decision' (pg_vendor_release_offer()): what the
+ * answer offers, blocked or refused releases included.
  */
 function software_update_check($return_details = false)
 {
@@ -46,6 +48,52 @@ function software_update_check($return_details = false)
         log_activity('daily software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available');
         $details['error'] = 'curl_missing';
         return $return_details ? $details : false;
+    }
+
+    // The Kodpen API once PG_VENDOR_API_V1 is on (includes/fn/vendor_api.php).
+    // A release that is an update, or one blocked behind a stepping stone,
+    // raises the flag and the notification; an answer that offers nothing
+    // clears them; an unusable answer takes the error path of an unanswered
+    // request. With update checks off in data/config.php nothing is asked.
+    // The screen reads the decision (pg_vendor_release_offer()).
+    if (PG_VENDOR_API_V1 === true) {
+        if (defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
+            return $return_details ? $details : false;
+        }
+
+        $server = pg_update_server_version('update');
+
+        $details['curl_errno'] = $server['curl_errno'];
+        $details['curl_error'] = $server['curl_error'];
+
+        db("DELETE FROM notifications WHERE action = 'software_update'");
+
+        if ($server['error'] !== '') {
+            log_activity(($server['error'] === 'curl_error')
+                ? 'daily software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.' . pg_curl_tls_hint($server['curl_errno'])
+                : 'daily software update check received an invalid response from the software update server, so it is not known if there is a software update available');
+
+            $details['error'] = $server['error'];
+            return $return_details ? $details : false;
+        }
+
+        $decision = $server['decision'];
+        $flag = in_array($decision['outcome'], array('update', 'blocked'), true);
+
+        if ($flag) {
+            create_notification(array('action' => 'software_update', 'type' => 'success', 'user' => '[SOFTWARE]', 'title' => 'available'));
+        }
+
+        db("UPDATE config SET software_update_available = '" . ($flag ? 1 : 0) . "'");
+
+        $details['decision'] = $decision;
+        $details['available'] = ($decision['outcome'] === 'update');
+
+        if (is_array($decision['release'])) {
+            $details['response'] = array('version' => $decision['release']['version'] . (($decision['release']['build'] !== '') ? ' (' . $decision['release']['build'] . ')' : ''));
+        }
+
+        return $return_details ? $details : $details['available'];
     }
 
     $software_update_available = false;

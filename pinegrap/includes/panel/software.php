@@ -362,6 +362,69 @@ function pg_panel_software_update($request, $action)
                 }
             }
 
+            // The Kodpen API once PG_VENDOR_API_V1 is on
+            // (includes/fn/vendor_api.php): the release is pinned in the
+            // session for the steps after this one, which read nothing else,
+            // or the answer's own reason ends the update here. With update
+            // checks off in data/config.php nothing is asked.
+            if (PG_VENDOR_API_V1 === true) {
+                if (!$repair && defined('SOFTWARE_UPDATE_CHECK') && (SOFTWARE_UPDATE_CHECK != true)) {
+                    respond(array(
+                        'status' => 'error',
+                        'message' => lang('There is no update available.')
+                    ));
+                }
+
+                $server = pg_update_server_version($repair ? 'repair' : 'update');
+
+                if ($server['error'] === 'curl_missing') {
+                    respond(array(
+                        'status' => 'error',
+                        'message' => lang('Software update check could not communicate with the software update server, because cURL is not installed, so it is not known if there is a software update available.')
+                    ));
+                }
+
+                if ($server['error'] === 'curl_error') {
+                    log_activity('software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.');
+                    respond(array(
+                        'status' => 'error',
+                        'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'])
+                    ));
+                }
+
+                if ($server['error'] !== '') {
+                    log_activity('software update check received an invalid response from the software update server, so it is not known if there is a software update available');
+                    respond(array(
+                        'status' => 'error',
+                        'message' => lang('No response from the update server.')
+                    ));
+                }
+
+                $decision = $server['decision'];
+
+                if ($decision['pin'] === null) {
+                    respond(array(
+                        'status' => 'error',
+                        'message' => pg_vendor_release_message($decision, VERSION)
+                    ));
+                }
+
+                // The download is written under a name of its own in
+                // data/temp/, one per check.
+                $_SESSION['software']['update'] = $decision['pin'] + array('package_file' => 'vendor_update_' . bin2hex(random_bytes(8)) . '.zip');
+
+                if ($repair) {
+                    // software_repair.php?mode=done names the version in the
+                    // activity log.
+                    $_SESSION['software']['repair']['version'] = $decision['pin']['version'];
+                }
+
+                respond(array(
+                    'status' => 'success',
+                    'message' => pg_vendor_release_message($decision, VERSION)
+                ));
+            }
+
             $server = pg_update_server_version();
 
             if ($server['error'] === 'curl_missing') {

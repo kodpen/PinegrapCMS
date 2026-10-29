@@ -171,7 +171,25 @@ if ($software_update_check['error'] === 'invalid_response') {
 	exit();
 }
 
-$new_version = trim($response['version']);
+// The Kodpen API's answer (includes/fn/vendor_api.php): a release blocked
+// behind a stepping stone, a release of another channel and an access block
+// are errors with their own reason; an answer that offers nothing takes the
+// path below.
+if (isset($software_update_check['decision'])) {
+    $decision = $software_update_check['decision'];
+
+    if (in_array($decision['outcome'], array('blocked', 'refuse'), true) || ($decision['reason'] === 'access_blocked')) {
+        $liveform->remove_form();
+
+        $liveform = new liveform('settings');
+        $liveform->mark_error('update', pg_vendor_release_message($decision, VERSION));
+        header('Location: ' . URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('general', 'pgset-channel'));
+        exit();
+    }
+}
+
+// No response when update checks are off and the Kodpen API was not asked.
+$new_version = is_array($response) ? trim((string) $response['version']) : '';
 $old_version = VERSION;
 
 if($software_update_available == 0){
