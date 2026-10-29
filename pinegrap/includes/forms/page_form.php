@@ -2740,12 +2740,13 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
     $output_page_type_selector = 
         '<div class="col-12 md:col-4 lg:col-3 xl:col-2">
             <div class="card my-7 position-sticky" style="top:56px;">
-                <label for="type" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Page Type') . '
-                </label>
+                </div>
                 <div class="card-body">
                     <div class="row">
                         <div class="col-12">
+                            <label for="page_type" class="form-label visually-hidden">' . lang('Page Type') . '</label>
                             <select id="page_type" name="type" class="form-control" onchange="change_page_type(this.options[this.selectedIndex].value)">' . select_page_type($page_type, $user) . '</select>
                             <script>
                                 var original_page_type = "' . $page_type . '";

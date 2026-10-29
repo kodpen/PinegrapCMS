@@ -823,6 +823,7 @@
     "Sent by": "Gönderen",
     "Sent by e-mail": "E-postayla gönderildi",
     "Sent by the Workspace of {var:1} on {var:2}.": "{var:1} Çalışma Alanı tarafından {var:2} tarihinde gönderildi.",
+    "Sent folder": "Gönderilenler klasörü",
     "Sent form": "Gönderildi formu",
     "Sent from the ERP": "ERP'den gönderildi",
     "Sent from the mailbox's address with your name under it; the customer's last e-mail is quoted below. Only the customer receives it.": "E-posta kutusunun adresinden, altında sizin adınızla gönderilir; müşterinin son e-postası altta alıntılanır. Yalnızca müşteri alır.",

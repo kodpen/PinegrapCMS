@@ -180,6 +180,104 @@ function ws_mail_reply_route($box, $site_domain)
 }
 
 /**
+ * The sending services that keep what they send in the account's own sent
+ * folder: a copy added by the site would show twice.
+ *
+ * @return string[] domains; a sending server on one of them or below it
+ */
+function ws_mail_reply_keeps_sent()
+{
+    return array('gmail.com', 'googlemail.com', 'office365.com', 'outlook.com');
+}
+
+/**
+ * Whether an answer that has left is copied into the box's sent folder, so
+ * the mailbox shows it to a person who reads it in a mail program too: only
+ * a box read over IMAP (the copy signs in with its user and password), with
+ * the copy not switched off, and not through a service that keeps its own.
+ *
+ * @param array $box   ws_mail_boxes row
+ * @param array $route ws_mail_reply_route()
+ * @return array copy (bool), reason (off | no_imap | service), folder (as typed, '' to find it)
+ */
+function ws_mail_reply_copy_plan($box, $route)
+{
+    $settings = ws_mail_box_settings($box);
+    $skip = function ($reason) {
+        return array('copy' => false, 'reason' => $reason, 'folder' => '');
+    };
+
+    if (isset($settings['sent_copy']) && empty($settings['sent_copy'])) {
+        return $skip('off');
+    }
+
+    if (((string) ($box['transport'] ?? 'imap') !== 'imap') || ((string) ($settings['host'] ?? '') === '')
+        || ((string) ($settings['user'] ?? '') === '') || empty($settings['secret'])) {
+        return $skip('no_imap');
+    }
+
+    $smtp_host = !empty($route['smtp']) ? strtolower((string) $route['smtp']['host']) : '';
+
+    foreach (ws_mail_reply_keeps_sent() as $domain) {
+        if (($smtp_host === $domain) || (substr($smtp_host, -strlen('.' . $domain)) === '.' . $domain)) {
+            return $skip('service');
+        }
+    }
+
+    return array('copy' => true, 'reason' => '', 'folder' => (string) ($settings['sent_folder'] ?? ''));
+}
+
+/**
+ * Puts a sent answer into the box's sent folder over IMAP: the folder typed
+ * on the box, else the one the server marks as sent (pg_imap_sent_folder()).
+ *
+ * @param array  $box    ws_mail_boxes row
+ * @param string $folder ws_mail_reply_copy_plan()'s folder
+ * @param string $mime   the mail as it left (pg_mail_last_sent_mime())
+ * @return bool
+ */
+function ws_mail_reply_copy($box, $folder, $mime)
+{
+    if ((string) $mime === '') {
+        return false;
+    }
+
+    if (!function_exists('pg_imap_connect')) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/imap_client.php');
+    }
+
+    $settings = ws_mail_box_settings($box);
+    $secret = pg_connect_unseal((string) ($settings['secret'] ?? ''));
+
+    if (!isset($secret['password'])) {
+        return false;
+    }
+
+    // The writer is still waiting for the answer's result: a short budget.
+    $connected = pg_imap_connect((string) $settings['host'], (int) ($settings['port'] ?? 993), array('budget' => 10));
+
+    if (!$connected['ok']) {
+        return false;
+    }
+
+    $session = $connected['session'];
+    $copied = false;
+
+    if (pg_imap_login($session, (string) $settings['user'], (string) $secret['password'])) {
+        if ((string) $folder !== '') {
+            $copied = pg_imap_append($session, (string) $folder, $mime);
+        } else {
+            $found = pg_imap_sent_folder($session);
+            $copied = ($found !== '') && pg_imap_append($session, $found, $mime, '(\\Seen)', true);
+        }
+    }
+
+    pg_imap_logout($session);
+
+    return $copied;
+}
+
+/**
  * Words for a reason an answer cannot leave.
  *
  * @param string $error
@@ -311,7 +409,8 @@ function ws_mail_reply_site_domain()
  * @param array  $viewer
  * @param int    $conversation_id
  * @param string $text
- * @return array ok, error, detail (the server's words on not_sent), item_id, message_id
+ * @return array ok, error, detail (the server's words on not_sent), item_id,
+ *               message_id, copy (copied | failed, '' when the box keeps none)
  */
 function ws_mail_reply_send($viewer, $conversation_id, $text)
 {
@@ -353,6 +452,7 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
         'body'               => $body,
         'headers'            => $headers,
         'notify_sender'      => false,
+        'keep_mime'          => true,
     );
 
     if ($check['route']['smtp']) {
@@ -362,6 +462,8 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
     if (!email($properties)) {
         return array('ok' => false, 'error' => 'not_sent', 'detail' => (string) pg_mail_last_error(), 'item_id' => 0, 'message_id' => 0);
     }
+
+    $mime = (string) pg_mail_last_sent_mime();
 
     $references = trim(isset($headers['References']) ? str_replace(array('<', '>'), '', $headers['References']) : '');
 
@@ -374,9 +476,21 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
 
     $item_id = (int) mysqli_insert_id(db::$con);
 
+    // Copied last: the record of the answer never waits on the mailbox.
+    $copy = function () use ($box, $check, $mime) {
+        $plan = ws_mail_reply_copy_plan($box, $check['route']);
+
+        // No mail kept (a demonstration site sends none): nothing to copy.
+        if (!$plan['copy'] || ($mime === '')) {
+            return '';
+        }
+
+        return ws_mail_reply_copy($box, $plan['folder'], $mime) ? 'copied' : 'failed';
+    };
+
     // The mail has left; a lost row only costs the record of it.
     if ($item_id <= 0) {
-        return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => 0, 'message_id' => 0);
+        return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => 0, 'message_id' => 0, 'copy' => $copy());
     }
 
     $card = ws_message((int) $conversation['message_id']);
@@ -392,5 +506,5 @@ function ws_mail_reply_send($viewer, $conversation_id, $text)
             first_reply_at = IF(first_reply_at = 0, '" . $now . "', first_reply_at), updated_at = '" . $now . "'
         WHERE id = '" . $conversation_id . "'");
 
-    return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => $item_id, 'message_id' => (int) $message);
+    return array('ok' => true, 'error' => '', 'detail' => '', 'item_id' => $item_id, 'message_id' => (int) $message, 'copy' => $copy());
 }

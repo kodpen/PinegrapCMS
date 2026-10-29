@@ -752,14 +752,15 @@ if (!$_POST) {
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7 position-sticky" style="top:56px;">
-                                        <label for="name" class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
-                                        </label>
+                                        </div>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 md:col-8 lg:col-6 my-3">
+                                                    <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
-                                                        <label for="name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</label>
+                                                        <span class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</span>
                                                         <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                                     </div>
                                                 </div>

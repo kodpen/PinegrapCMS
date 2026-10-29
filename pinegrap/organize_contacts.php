@@ -60,36 +60,18 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
 <script type="text/javascript">
     function select_groups()
     {
-        opener.document.form.add_to_contact_groups.value = "";
-        
-        // loop through all add to contact group checkboxes
-        for (i = 0; i < document.form.add_to_contact_groups.length; i++) {
-            // if contact group checkbox is checked, then add contact group to hidden form field on opener
-            if (document.form.add_to_contact_groups[i].checked == true) {
-                // if there is already contact groups in the list of contact groups, then add a comma first
-                if (opener.document.form.add_to_contact_groups.value) {
-                    opener.document.form.add_to_contact_groups.value += ",";
-                }
-                
-                opener.document.form.add_to_contact_groups.value += document.form.add_to_contact_groups[i].value;
-            }
-        }
-        
-        opener.document.form.remove_from_contact_groups.value = "";
-        
-        // loop through all remove from contact group checkboxes
-        for (i = 0; i < document.form.remove_from_contact_groups.length; i++) {
-            // if contact group checkbox is checked, then add contact group to hidden form field on opener
-            if (document.form.remove_from_contact_groups[i].checked == true) {
-                // if there is already contact groups in the list of contact groups, then add a comma first
-                if (opener.document.form.remove_from_contact_groups.value) {
-                    opener.document.form.remove_from_contact_groups.value += ",";
-                }
-                
-                opener.document.form.remove_from_contact_groups.value += document.form.remove_from_contact_groups[i].value;
-            }
-        }
-        
+        // querySelectorAll, not the named form member: with a single group
+        // that member is the checkbox itself and has no length.
+        opener.document.form.add_to_contact_groups.value = Array.prototype.map.call(
+            document.querySelectorAll(\'input[name="add_to_contact_groups"]:checked\'),
+            function (box) { return box.value; }
+        ).join(",");
+
+        opener.document.form.remove_from_contact_groups.value = Array.prototype.map.call(
+            document.querySelectorAll(\'input[name="remove_from_contact_groups"]:checked\'),
+            function (box) { return box.value; }
+        ).join(",");
+
         // submit opener form and close this popup window
         opener.document.form.submit();
         window.close();
@@ -148,7 +130,7 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
                 </div>
             </div>
         </div>
-		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="data edit buttons ">
+		<nav class="buttons navigation text-center position-sticky" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
 			<div class="container">
 				<div class=" btn-group btn-group-sm flex-wrap justify-content-center mb-0">
 					<button type="button" name="submit_save" value="Organize Contact(s)" class="btn mb-1 mt-1  btn-solid theme-primary submit-primary" onclick="select_groups()"><span class="material-icons me-3">edit</span>' . lang(array('string'=>'Organize Contact(s)') ) . '</button>

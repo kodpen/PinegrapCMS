@@ -5,12 +5,13 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 
 ## What does ws_mail_ingest($raw, $box) do?
 - Parses with `pg_mail_parse(..., with_content)` (`mail-parse.md`), then answers `status`: `stored` (item, conversation, message ids), `duplicate`, `loop` (reason own | auto | bulk), `held`, `refused` (reason too_large | no_sender | no_channel | not_saved). Only `stored` keeps anything.
-- Callers: the `.eml` upload (`mail-card.md`) and `ws_mail_fetch()` (`mail-fetch.md`), which leaves held mail for a later run.
+- Callers: the `.eml` upload (`mail-card.md`) and `ws_mail_fetch()` (`mail-fetch.md`).
 
 ## How is a mail kept once?
 - `rfc_message_hash` = SHA-256 of `id:<Message-ID>`, else of `raw:<whole mail>` (`ws_mail_hash()`); `UNIQUE (box_id, rfc_message_hash)`. A failed item INSERT is read back as `duplicate` (two readers).
 
 ## What is the loop gate?
+- A delivery failure of a box answer is read first (`mail-sent-and-bounces.md`).
 - `ws_mail_loop_reason()`: this site's mark in `X-Pinegrap-Mail` (`mail-reply.md`), From = the box address, `Auto-Submitted` other than `no`, `Precedence: bulk | junk | list`. Then more than `WS_MAIL_SENDER_HOURLY` (20) items from one sender in one box in an hour is `held` (`idx_sender`).
 
 ## When is a sender verified?
@@ -34,4 +35,4 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 - `ws_mail_eml_sweep()` from `workspace_recurring_job.php` deletes files older than `WS_MAIL_EML_DAYS` (30), 500 a run, and empties `raw_path`; the item and messages stay.
 
 ## Tests?
-- `tests/workspace_mail_ingest_test.php`: the pure parts only.
+- `tests/workspace_mail_ingest_test.php`: pure parts.

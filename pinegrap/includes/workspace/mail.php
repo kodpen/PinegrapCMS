@@ -111,6 +111,179 @@ function ws_mail_loop_reason($parsed, $box_address)
 }
 
 /**
+ * A delivery status notification (RFC 3464, "multipart/report;
+ * report-type=delivery-status") that says a mail could not be delivered:
+ * the Message-ID of the mail it returns, whom it did not reach and why.
+ * A delay or a success report is not one.
+ *
+ * @param array $parsed pg_mail_parse() with with_content
+ * @return array|null original_id (without brackets), recipient, status, diagnostic
+ */
+function ws_mail_dsn($parsed)
+{
+    $type = pg_mail_header_params((string) ($parsed['headers']['content-type'][0] ?? ''));
+    $report = strtolower((string) ($type['params']['report-type'] ?? ''));
+
+    if (($type['value'] !== 'multipart/report') || !in_array($report, array('delivery-status', 'global-delivery-status'), true)) {
+        return null;
+    }
+
+    $status = '';
+    $original_id = '';
+
+    foreach ((array) $parsed['attachments'] as $part) {
+        $part_type = (string) $part['content_type'];
+
+        if (($status === '') && in_array($part_type, array('message/delivery-status', 'message/global-delivery-status'), true)) {
+            $status = (string) ($part['content'] ?? '');
+        }
+
+        if (($original_id === '') && in_array($part_type, array('message/rfc822', 'message/global', 'text/rfc822-headers', 'message/global-headers'), true)) {
+            $original = pg_mail_parse((string) ($part['content'] ?? ''));
+            $original_id = (string) $original['message_id'];
+        }
+    }
+
+    $failed = ws_mail_dsn_failed($status);
+
+    if (!$failed || ($original_id === '')) {
+        return null;
+    }
+
+    return array_merge($failed, array('original_id' => $original_id));
+}
+
+/**
+ * The first recipient a delivery-status part reports as failed. Its blocks
+ * are separated by an empty line; the first is about the message, the rest
+ * one recipient each.
+ *
+ * @param string $text the message/delivery-status part
+ * @return array|null recipient, status, diagnostic
+ */
+function ws_mail_dsn_failed($text)
+{
+    // Folded lines continue with white space.
+    $text = preg_replace("/\r?\n[ \t]+/", ' ', str_replace("\r\n", "\n", (string) $text));
+
+    foreach (preg_split("/\n[ \t]*\n/", trim($text)) as $block) {
+        $fields = array();
+
+        foreach (explode("\n", $block) as $line) {
+            $colon = strpos($line, ':');
+
+            if ($colon !== false) {
+                $fields[strtolower(trim(substr($line, 0, $colon)))] = trim(substr($line, $colon + 1));
+            }
+        }
+
+        if (strtolower((string) ($fields['action'] ?? '')) !== 'failed') {
+            continue;
+        }
+
+        // "rfc822; name@example.com": the address after its type.
+        $after_type = function ($value) {
+            $value = (string) $value;
+            $semicolon = strpos($value, ';');
+
+            return trim(($semicolon === false) ? $value : substr($value, $semicolon + 1));
+        };
+
+        $recipient = $after_type($fields['final-recipient'] ?? ($fields['original-recipient'] ?? ''));
+
+        return array(
+            'recipient'  => mb_substr(pg_mail_header_one_line($recipient), 0, 255),
+            'status'     => preg_match('/^[245]\.\d{1,3}\.\d{1,3}$/', (string) ($fields['status'] ?? '')) ? (string) $fields['status'] : '',
+            'diagnostic' => mb_substr(pg_mail_header_one_line($after_type($fields['diagnostic-code'] ?? '')), 0, 1000),
+        );
+    }
+
+    return null;
+}
+
+/**
+ * Whether a mail item is a delivery failure of an answer: an incoming item
+ * held outside every conversation, carrying the writer of the answer it
+ * returns (an incoming mail never has a writer).
+ *
+ * @param array|null $item ws_mail_items row
+ * @return bool
+ */
+function ws_mail_item_is_bounce($item)
+{
+    return is_array($item) && ((string) ($item['direction'] ?? 'in') === 'in')
+        && ((int) ($item['conversation_id'] ?? 0) === 0) && ((int) ($item['user_id'] ?? 0) > 0);
+}
+
+/**
+ * Keeps a delivery failure of one of the box's answers as a line under the
+ * conversation's card. The item stays out of the conversation (no
+ * conversation_id), so it is never quoted, counted or taken for the
+ * customer's mail; it keeps the box from reading the failure twice.
+ *
+ * @param string $raw
+ * @param array  $box
+ * @param array  $parsed
+ * @param string $hash   ws_mail_hash() of the failure
+ * @param array  $dsn    ws_mail_dsn()
+ * @param array  $sent   the outgoing ws_mail_items row it returns
+ * @return array|null ws_mail_ingest()'s result; null when the conversation
+ *                    has no channel to write in
+ */
+function ws_mail_bounce_store($raw, $box, $parsed, $hash, $dsn, $sent)
+{
+    $box_id = (int) $box['id'];
+    $conversation = db_item("SELECT * FROM ws_mail_conversations WHERE id = '" . (int) $sent['conversation_id'] . "'");
+    $channel = $conversation ? ws_channel((int) $conversation['channel_id']) : null;
+
+    if (!$channel || ((int) $channel['archived_at'] > 0)) {
+        return null;
+    }
+
+    $now = time();
+    $recipient = ($dsn['recipient'] !== '') ? $dsn['recipient'] : (string) $sent['to_list'];
+    $why = trim($dsn['status'] . ' ' . $dsn['diagnostic']);
+
+    $written = db("INSERT INTO ws_mail_items (box_id, direction, rfc_message_id, rfc_message_hash, in_reply_to,
+            from_email, from_name, to_list, subject, body_text, auth, user_id, sent_at, created_at)
+        VALUES ('" . $box_id . "', 'in', '" . e(mb_substr((string) $parsed['message_id'], 0, 255)) . "', '" . e($hash) . "',
+            '" . e(mb_substr($dsn['original_id'], 0, 255)) . "',
+            '" . e(mb_substr(strtolower(trim((string) ($parsed['from']['email'] ?? ''))), 0, 255)) . "', '" . e(mb_substr((string) ($parsed['from']['name'] ?? ''), 0, 255)) . "',
+            '" . e($recipient) . "', '" . e(mb_substr((string) $parsed['subject'], 0, 255)) . "', '" . e($why) . "', 'none',
+            '" . (int) $sent['user_id'] . "', '" . max(0, (int) $parsed['date']) . "', '" . $now . "')");
+
+    $item_id = $written ? (int) mysqli_insert_id(db::$con) : 0;
+    $result = array('status' => 'refused', 'reason' => 'not_saved', 'item_id' => 0, 'conversation_id' => 0, 'message_id' => 0);
+
+    if ($item_id <= 0) {
+        $existing = (int) db_value("SELECT id FROM ws_mail_items WHERE box_id = '" . $box_id . "' AND rfc_message_hash = '" . e($hash) . "'");
+
+        return ($existing > 0) ? array_merge($result, array('status' => 'duplicate', 'reason' => '', 'item_id' => $existing)) : $result;
+    }
+
+    $card = ws_message((int) $conversation['message_id']);
+    $parent_id = ($card && ((int) $card['channel_id'] === (int) $channel['id']) && ((int) $card['deleted_at'] === 0)) ? (int) $card['id'] : 0;
+    $body = ws_mail_message_body(lang(array('string' => 'Not delivered to {var:1}.', 'vars' => $recipient)) . (($why !== '') ? ' ' . $why : ''));
+    $message_id = ws_mail_message_write($channel['id'], $parent_id, $item_id, $body, 0, '', $now);
+
+    if ($parent_id > 0) {
+        ws_message_touch($parent_id);
+    }
+
+    $raw_path = ws_mail_eml_store(ws_mail_eml_path($box_id, $hash, $now), $raw);
+
+    db("UPDATE ws_mail_items SET message_id = '" . (int) $message_id . "', raw_path = '" . e($raw_path) . "' WHERE id = '" . $item_id . "'");
+
+    return array_merge($result, array(
+        'status'          => 'bounce',
+        'reason'          => '',
+        'item_id'         => $item_id,
+        'conversation_id' => (int) $conversation['id'],
+        'message_id'      => (int) $message_id,
+    ));
+}
+
+/**
  * Whether the sender's address was checked by the box's receiving server:
  * the DMARC result of an Authentication-Results header written by that
  * server. RFC 8601 has a server remove headers that claim its name, so only
@@ -444,6 +617,8 @@ function ws_mail_message_write($channel_id, $parent_id, $item_id, $body, $file_i
  * - stored:    written; item_id, conversation_id and message_id name it.
  * - duplicate: the box already holds this mail (item_id is that one).
  * - loop:      our own, automatic or bulk mail (reason); nothing kept.
+ * - bounce:    a delivery failure of one of the box's answers, kept as a
+ *              line under its conversation (ws_mail_bounce_store()).
  * - held:      the sender passed WS_MAIL_SENDER_HOURLY this hour; nothing
  *              kept, so a reader leaves it in the mailbox for a later run.
  * - refused:   no sender, too large to read, or no channel to write in
@@ -475,6 +650,23 @@ function ws_mail_ingest($raw, $box)
 
     if ($existing > 0) {
         return array_merge($result, array('status' => 'duplicate', 'item_id' => $existing));
+    }
+
+    // A delivery failure of one of the box's own answers is told under the
+    // conversation; any other automatic mail meets the loop gate.
+    $dsn = ws_mail_dsn($parsed);
+
+    if ($dsn) {
+        $sent = db_item("SELECT * FROM ws_mail_items
+            WHERE box_id = '" . $box_id . "' AND direction = 'out' AND rfc_message_hash = '" . e(ws_mail_hash($dsn['original_id'], '')) . "'");
+
+        if ($sent && ((int) $sent['conversation_id'] > 0)) {
+            $bounced = ws_mail_bounce_store($raw, $box, $parsed, $hash, $dsn, $sent);
+
+            if ($bounced) {
+                return $bounced;
+            }
+        }
     }
 
     $loop = ws_mail_loop_reason($parsed, (string) ($box['address'] ?? ''));
@@ -705,6 +897,17 @@ function ws_mail_card_html($row, $item)
 
     if (((int) $row['file_id'] > 0) && (trim((string) $row['body']) === '')) {
         return '';
+    }
+
+    // A delivery failure of an answer: whom it did not reach and the
+    // receiving server's words.
+    if (ws_mail_item_is_bounce($item)) {
+        return '<div class="ws-mail-card">'
+            . '<div class="small fg-secondary mb-1"><span class="badge theme-danger"><i class="bi bi-envelope-x me-1" aria-hidden="true"></i>' . h(lang('Not delivered')) . '</span>'
+            . ' <span class="ms-1">' . h(lang(array('string' => 'To {var:1}', 'vars' => (string) $item['to_list']))) . '</span></div>'
+            . '<div>' . h(lang('The answer did not reach the customer; the receiving server said:')) . '</div>'
+            . '<div class="small font-monospace mt-1">' . nl2br(h(((string) $item['body_text'] !== '') ? (string) $item['body_text'] : lang('No reason was given.')), false) . '</div>'
+            . '</div>';
     }
 
     $conversation = $item['conversation'];

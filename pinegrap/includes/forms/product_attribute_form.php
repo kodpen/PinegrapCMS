@@ -88,7 +88,7 @@ function pg_product_attribute_form_cards($liveform)
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-1 mb-3">
-                                            <label class="form-label" >' . lang('Atribute Options') . '</label>
+                                            <label class="form-label" >' . lang('Attribute Options') . '</label>
                                             <div class="options">
                                                 <div class="option_list row" ></div>
                                                 <button type="button" class="add_option btn btn-solid theme-primary mt-3"><span class="bi bi-plus-circle me-3"></span>' . lang('Add Option') . '</button>
@@ -98,6 +98,7 @@ function pg_product_attribute_form_cards($liveform)
                                                     options: ' . $output_options . ',
                                                     labels:{
                                                         "\'No Thanks\' Option":"' . lang('\'No Thanks\' Option') . '",
+                                                        "Option":"' . lang('Option') . '",
                                                         "Move Up":"' . lang('Move Up') . '",
                                                         "Move Down":"' . lang('Move Down') . '",
                                                         "Remove":"' . lang('Remove') . '"

@@ -47,13 +47,13 @@ function pg_product_group_form_unselected_rows($products, $show_image)
         }
         $output_rows .=
             '<tr id="' . $urow['id'] . '">' .
-            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '"/></td>' .
+            '<td class="select-all align-middle text-start"><input class="check" type="checkbox" name="products[]" value="' . $urow['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($urow['name'])))) . '"/></td>' .
             '<td class="align-middle text-start"><button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'edit_product.php?id=' . $urow['id'] . '\'"><i class="bi bi-pencil"></i></button></td>' .
             $uoutput_image_column .
             '<td class="chart_label align-middle ' . $ustatus_class . '">' . h($urow['name']) . '</td>' .
             '<td class="align-middle ' . $ustatus_class . '">' . h($urow['short_description']) . '</td>' .
             '<td class="align-middle text-end">' . prepare_amount($urow['price']) . '</td>' .
-            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" style="text-align: right;width:60px;" /></td>' .
+            '<td class="align-middle"><input class="form-control text-end" type="text" name="sort_order_product_' . $urow['id'] . '" size="5" value="" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $urow['name']) . '" style="text-align: right;width:60px;" /></td>' .
             '<td></td>' .
             '</tr>';
     }
@@ -213,7 +213,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
-                                                <label for="address_name" class="input-group-text material-icons" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
+                                                <label class="input-group-text material-icons" aria-hidden="true" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
                                                 <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v['address_name']) . '" />
                                             </div>
                                         </div>

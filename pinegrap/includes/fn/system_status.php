@@ -1114,6 +1114,13 @@ function pg_purge_caches()
  * Memoized per request: the System Status check and the repair's report both
  * read it. The status cache (ten minutes) holds the result between requests.
  *
+ * $files false asks about the folders only, which is all the update and
+ * repair screens show (pg_update_permissions_block()): no file is asked
+ * whether it can be written, and 'files' stays empty. On Windows each of
+ * those questions reads the file's access list, so the few thousand files
+ * of the software were most of the seconds those screens took to open. A
+ * full scan already made in the request answers a folders-only call too.
+ *
  * Compatibility: PHP 7.0 - 8.5
  * Returns: array(
  *     'directories'         => array relative path => octal mode, the folders that refuse (at most 200)
@@ -1125,14 +1132,39 @@ function pg_purge_caches()
  *     'truncated'           => bool  the walk stopped at its ceiling
  * )
  */
-function pg_write_permission_scan($fresh = false)
+function pg_write_permission_scan($fresh = false, $files = true)
 {
-    static $result = null;
+    static $results = array();
 
-    if (($result !== null) && !$fresh) {
-        return $result;
+    if ($fresh) {
+        $results = array();
     }
 
+    if (isset($results['full'])) {
+        return $results['full'];
+    }
+
+    $key = $files ? 'full' : 'folders';
+
+    if (!isset($results[$key])) {
+        $results[$key] = pg_write_permission_walk(rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/'), $files);
+    }
+
+    return $results[$key];
+}
+
+/**
+ * Function: pg_write_permission_walk
+ * ------------------------------------------
+ * The walk behind pg_write_permission_scan(), over any folder: every folder
+ * under $root (itself included) asked through pg_dir_writable(), and, when
+ * $files is true, every file outside data/ asked through is_writable().
+ *
+ * Compatibility: PHP 7.0 - 8.5
+ * Returns: the array pg_write_permission_scan() describes
+ */
+function pg_write_permission_walk($root, $files = true)
+{
     $result = array(
         'directories' => array(),
         'files' => array(),
@@ -1142,8 +1174,6 @@ function pg_write_permission_scan($fresh = false)
         'checked_files' => 0,
         'truncated' => false,
     );
-
-    $root = rtrim(str_replace('\\', '/', PG_FUNCTIONS_DIR), '/');
 
     // is_writable() answers from the stat cache, and the repair runs in the
     // same request as the scan it reports on.
@@ -1201,7 +1231,7 @@ function pg_write_permission_scan($fresh = false)
                 continue;
             }
 
-            if (!$entry->isFile()) {
+            if (!$files || !$entry->isFile()) {
                 continue;
             }
 

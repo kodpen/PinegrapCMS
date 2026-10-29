@@ -54,20 +54,22 @@ function pg_menu_form_card($liveform)
                                             </div>
                                         </div>
                                         <div class="col-12 mt-1">
-                                            <label class="form-label" for="">'. lang('Submenu Effect') . '</label>
+                                            <div class="form-label" id="effect_label">'. lang('Submenu Effect') . '</div>
                                         </div>
                                         <div class="col-12 mb-1">
+                                            <div role="radiogroup" aria-labelledby="effect_label">
                                             <div class="form-field d-inline-grid me-5" title="">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_popup',  'name'=>'effect', 'value'=>'Pop-up', 'class'=>'radio collapse-switcher', 'data-bs-target'=>'#pop-up_row')) . '
-                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="img" /></label>
+                                                <label class="" for="effect_popup">'. lang('Pop-up') . '<br><img src="assets/images/menu_effect_popup.png" width="71" height="75" alt="" /></label>
                                             </div>
                                             <div class="form-field d-inline-grid me-5">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_accordion', 'name'=>'effect', 'value'=>'Accordion', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="71" height="75" alt="img" /></label>
+                                                <label class="" for="effect_accordion">'. lang('Accordion') . '<br><img src="assets/images/menu_effect_accordion.png" width="71" height="75" alt="" /></label>
                                             </div>
                                             <div class="form-field d-inline-grid me-5">
                                                 ' . $liveform->output_field(array('type'=>'radio', 'id'=>'effect_none', 'name'=>'effect', 'value'=>'', 'class'=>'radio collapse-switcher')) . '
-                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="71" height="75" alt="img" /></label>
+                                                <label class="" for="effect_none">'. lang('None') . '<br><img src="assets/images/menu_effect_none.png" width="71" height="75" alt="" /></label>
+                                            </div>
                                             </div>
                                             <div class="collapse popover fade bs-popover-bottom p-0 mb-3 w-100" id="pop-up_row">
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(25px, 0px);"></div>
@@ -78,7 +80,7 @@ function pg_menu_form_card($liveform)
                                                             ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'first_level_popup_position', 'id'=>'first_level_popup_position', 'options'=>$popup_position_options)) . '
                                                         </div>
                                                         <div class="col-12 md:col-6 my-1">
-                                                            <label for="first_level_popup_position" class="form-label">' . lang('Then Expand Menu') . '</label>
+                                                            <label for="second_level_popup_position" class="form-label">' . lang('Then Expand Menu') . '</label>
                                                             ' . $liveform->output_field(array('type'=>'select', 'class'=>'form-control', 'name'=>'second_level_popup_position', 'id'=>'second_level_popup_position', 'options'=>$popup_position_options)) . '
                                                         </div>
                                                     </div>

@@ -182,7 +182,7 @@ if (!$_POST) {
     foreach ($items as $item) {
         // if this is a product
         if ($item['type'] == "product") {
-            $output_checkbox = '<input class="check" type="checkbox" name="products[]" checked="checked" value="' . $item['id'] . '"  />';
+            $output_checkbox = '<input class="check" type="checkbox" name="products[]" checked="checked" value="' . $item['id'] . '" aria-label="' . h(lang(array('string' => 'Select {var:1}', 'vars' => array($item['name'])))) . '" />';
             $output_product_group_class = '';
             $price = prepare_amount($item['price']);
             $id_type = 'product_id';
@@ -224,7 +224,7 @@ if (!$_POST) {
                 <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . '</td>
                 <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
                 <td class="align-middle text-end">' . $price . '</td>
-                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0"  style="text-align: right;width:60px;" /></td>
+                <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>
                 <td></td>
             </tr>';
     }
@@ -503,7 +503,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <nav id="button_bar" class="navigation " aria-label="Button Bar">
+                        <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
                             <div class=" btn-group btn-group-sm flex-wrap">
                                 <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="duplicate_product_group.php?id=' . h($_GET['id']) . '"><span class="material-icons me-1">control_point_duplicate</span>' . lang('Duplicate') . '</a>
                                 ' . $output_workspace_button . '
@@ -535,7 +535,7 @@ if (!$_POST) {
                             'product_group_id' => (int) $_GET['id'])) . '
                     </div>
                     <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
-                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="data edit buttons ">
+                    <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
                                 ' . ($group_binned
@@ -544,7 +544,7 @@ if (!$_POST) {
                                 ' . $output_delete_button . '
                             </div>
                             <span class="enable-on-selected"> 
-                                <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled material-icons" onclick="convert_product_group_to_product_form(\'edit_products.php\')">living</button>
+                                <button type="button" value="Modify Selected" title="' . lang('Modify Selected Products') . '" aria-label="' . h(lang('Modify Selected Products')) . '" data-bs-content="' . lang('All selected products will be modified. However, the changes you made on this page will be removed. If you have made any changes, save first.') . '" class="btn btn-sm my-1 btn-solid theme-primary p-3 disabled" onclick="convert_product_group_to_product_form(\'edit_products.php\')"><span class="material-icons" aria-hidden="true">living</span></button>
                             </span>
                         </div>
                     </nav>

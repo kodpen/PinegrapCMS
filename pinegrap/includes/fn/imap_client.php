@@ -609,6 +609,8 @@ function pg_imap_parse_untagged($raw)
     } elseif ($type === 'FETCH') {
         $tokens = pg_imap_tokenize($rest);
         $out['data'] = pg_imap_fetch_map(is_array($tokens[0] ?? null) ? $tokens[0] : array());
+    } elseif (($type === 'LIST') || ($type === 'LSUB')) {
+        $out['data'] = pg_imap_tokenize($rest);
     } elseif ($type === 'SEARCH') {
         $out['data'] = array();
 
@@ -1158,6 +1160,127 @@ function pg_imap_uid_move(&$session, $uids, $folder)
     }
 
     return !in_array('UIDPLUS', $session['capabilities'], true) || pg_imap_command($session, array('UID EXPUNGE', $set))['ok'];
+}
+
+/**
+ * The folders a LIST answer names, with their attributes.
+ *
+ * @param array $reply pg_imap_command()
+ * @return array[] list of name (as the server spells it, modified UTF-7), attributes (upper case)
+ */
+function pg_imap_list_result($reply)
+{
+    $out = array();
+
+    foreach ((array) $reply['untagged'] as $line) {
+        if (($line['type'] !== 'LIST') || !is_array($line['data'])) {
+            continue;
+        }
+
+        $tokens = $line['data'];
+
+        if (!is_array($tokens[0] ?? null) || !is_string($tokens[2] ?? null) || ($tokens[2] === '')) {
+            continue;
+        }
+
+        $out[] = array(
+            'name'       => $tokens[2],
+            'attributes' => array_map('strtoupper', array_filter($tokens[0], 'is_string')),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The folder sent mail is kept in: the one marked \Sent (RFC 6154), else
+ * the first with a usual name. Asks only for the marked folders where the
+ * server can (SPECIAL-USE), so a large account does not list every folder.
+ *
+ * @param array $session
+ * @return string the name as the server spells it (modified UTF-7), '' when none
+ */
+function pg_imap_sent_folder(&$session)
+{
+    $special = in_array('SPECIAL-USE', $session['capabilities'], true);
+    $reply = pg_imap_command($session, $special ? array('LIST (SPECIAL-USE)', '""', '"*"') : array('LIST', '""', '"*"'));
+
+    $found = $reply['ok'] ? pg_imap_pick_sent_folder(pg_imap_list_result($reply)) : '';
+
+    // A server that marks no folder may still have one by its usual name.
+    if (($found === '') && $special && ($session['error'] === '')) {
+        $reply = pg_imap_command($session, array('LIST', '""', '"*"'));
+        $found = $reply['ok'] ? pg_imap_pick_sent_folder(pg_imap_list_result($reply)) : '';
+    }
+
+    return $found;
+}
+
+/**
+ * Picks the sent folder out of a LIST answer: the \Sent mark first, then a
+ * usual name (with or without an INBOX. prefix), case ignored.
+ *
+ * @param array[] $folders pg_imap_list_result()
+ * @return string
+ */
+function pg_imap_pick_sent_folder($folders)
+{
+    foreach ((array) $folders as $folder) {
+        if (in_array('\\SENT', $folder['attributes'], true)) {
+            return (string) $folder['name'];
+        }
+    }
+
+    $usual = array('sent', 'sent items', 'sent messages', 'sent mail', 'inbox.sent', 'inbox/sent', 'inbox.sent items', 'inbox.sent messages');
+
+    foreach ($usual as $name) {
+        foreach ((array) $folders as $folder) {
+            if (in_array('\\NOSELECT', $folder['attributes'], true)) {
+                continue;
+            }
+
+            if (strtolower((string) $folder['name']) === $name) {
+                return (string) $folder['name'];
+            }
+        }
+    }
+
+    return '';
+}
+
+/**
+ * APPEND: puts a whole mail into a folder.
+ *
+ * @param array  $session
+ * @param string $folder  UTF-8, or the server's own spelling when $encoded
+ * @param string $mime    the mail as it was sent (CRLF line ends)
+ * @param string $flags   e.g. "(\Seen)"
+ * @param bool   $encoded whether $folder is already modified UTF-7 (from LIST)
+ * @return bool
+ */
+function pg_imap_append(&$session, $folder, $mime, $flags = '(\\Seen)', $encoded = false)
+{
+    $mime = (string) $mime;
+
+    if ($mime === '') {
+        return false;
+    }
+
+    if (strlen($mime) > PG_IMAP_MAX_LITERAL) {
+        pg_imap_fail($session, 'too_large');
+        return false;
+    }
+
+    // IMAP wants CRLF line ends in a message literal.
+    $mime = preg_replace("/\r?\n/", "\r\n", $mime);
+    $target = pg_imap_astring($encoded ? (string) $folder : pg_imap_utf7_encode($folder));
+    $reply = pg_imap_command($session, array('APPEND', $target, $flags, array('literal' => $mime)));
+
+    if (!$reply['ok'] && ($session['error'] === '')) {
+        pg_imap_fail($session, 'folder', $reply['text']);
+    }
+
+    return (bool) $reply['ok'];
 }
 
 /**

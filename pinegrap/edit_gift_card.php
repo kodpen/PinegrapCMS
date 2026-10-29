@@ -29,6 +29,7 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM gift_cards WHERE id = '" 
 }
 
 include_once('liveform.class.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/forms/gift_card_form.php');
 $liveform = new liveform('edit_gift_card');
 
 $gift_card = db_item(
@@ -294,49 +295,10 @@ if (!$_POST) {
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'id', 'value' => $_GET['id'])) . '
                     ' . $liveform->output_field(array('type' => 'hidden', 'name' => 'balance_was')) . '
-                    <div class="row">
-                        <div class="col-12">
-                            <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('Gift Card Options') . '
-                                </div>
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-12 sm:col-4 lg:col-3 xl:col-2 my-3">
-                                            <label for="balance" class="form-label">' . lang('Balance') . '</label>
-                                            <label class="form-control form-adorn form-adorn-end">
-                                                <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'balance', 'name' => 'balance', 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
-                                            </label>
-                                            <div class="form-text text-end">' . lang(array('string'=>'Original Amount: {var:1}','vars'=>array(pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) ))) . '</div>
-                                        </div>
-                                        <div class="col-12 sm:col-4 xl:col-3 my-3">
-                                            <label for="expiration_date" class="form-label">' . lang('Expiration Date') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'text',
-                                                'id' => 'expiration_date',
-                                                'name' => 'expiration_date',
-                                                'size' => '10',
-                                                'maxlength' => '10',
-                                                'class'=>'form-control',
-                                                'autocomplete'=>'off',
-                                                'data-pg-date' => '')) . '
-                                                ' . get_date_picker_format() . pg_fields_script() . '
-                                            <div class="form-text text-end">' . lang('leave blank for no expiration') . '</div>
-                                        </div>
-                                        <div class="col-12 xl:col-8 my-3">
-                                            <label for="notes" class="form-label">' . lang('Notes') . '</label>
-                                            ' . $liveform->output_field(array(
-                                                'type' => 'textarea',
-                                                'name' => 'notes',
-                                                'id' => 'notes',
-                                                'class' => 'form-control')) . '
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    ' . pg_gift_card_form_card($liveform, 'edit', array(
+                        'symbol' => BASE_CURRENCY_SYMBOL,
+                        'scripts' => get_date_picker_format() . pg_fields_script(),
+                        'original_amount' => pg_format_money($gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL))) . '
                     <div class="row mb-12 g-5">
                         ' . $output_order_info_rows . '
                         ' . $output_redemption_history . '
@@ -377,34 +339,12 @@ if (!$_POST) {
         
     // Otherwise the user selected to save the gift card, so save it.
     } else {
-        $balance = $liveform->get_field_value('balance');
         $expiration_date = $liveform->get_field_value('expiration_date');
         $notes = $liveform->get_field_value('notes');
 
-        // A balance is required: an empty one is no amount to save.
-        $liveform->validate_required_field('balance', lang(array('string'=>'{var:1} is required','vars'=>lang('Balance'))));
+        // A balance is required and 0 or above; a typed date must be valid.
+        $balance = pg_gift_card_form_check($liveform, 'edit');
 
-        // Read the balance either way it is typed (12,50 / 1,234.56).
-        $balance = pg_normalize_amount($balance);
-
-        // If the balance is not a number greater than or equal to 0, then
-        // add error.
-        if (
-            ($liveform->check_field_error('balance') == false)
-            &&
-            (
-                (is_numeric($balance) == false)
-                || ($balance < 0)
-            )
-        ) {
-            $liveform->mark_error('balance', lang('Please enter a valid balance.'));
-        }
-
-        // If an expiration date was entered and it is not valid, then add error.
-        if (($expiration_date != '') && (validate_date($expiration_date) == false)) {
-            $liveform->mark_error('expiration_date', lang('Please enter a valid expiration date.'));
-        }
-        
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors() == true) {
             go($_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
