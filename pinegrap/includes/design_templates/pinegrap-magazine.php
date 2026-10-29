@@ -2315,6 +2315,8 @@ $pages[] = array(
         // The BlogPosting author is the byline readers see, not the account
         // that sent the story (the sample stories have none).
         'schema_author'        => 'field:byline',
+        // The cover is the stories' share image (pg_cf_share_image_field_id()).
+        'share_image_field'    => 'cover_image',
     ),
     'tree'    => $page(array(
         $page_header(lang('Submit a Story'), lang('Write your story and send it to the editors. They read it, may ask for changes and decide when it goes live.')),

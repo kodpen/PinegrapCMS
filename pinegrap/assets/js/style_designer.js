@@ -35614,6 +35614,32 @@ const StyleDesigner = (function () {
                                     esc(_sdT('The author named in the structured data of the record pages.')) +
                                 '</div>';
                         })()) +
+                        // The file field whose upload is the record pages'
+                        // share image, by its name (the save turns it into the
+                        // field's id, pg_cf_share_image_field_id()); '' leaves
+                        // it to the RSS media field. Without either, the
+                        // records share the site's default image.
+                        row(_sdT('Share Image Field'), (function () {
+                            var all = _cfTree ? _cfFieldsOf(_cfTree) : [];
+                            var files = all.filter(function (f) { return f.name && f.type === 'file upload'; });
+                            var picked = String(_cfFS.share_image_field || '').toLowerCase();
+                            var hit = picked !== '' && files.some(function (f) { return String(f.name).toLowerCase() === picked; });
+                            var hasMedia = all.some(function (f) { return f.rss_field === 'media'; });
+                            return '<select class="form-control form-control-sm sd-cf-s" data-s="share_image_field">' +
+                                    '<option value=""' + (hit ? '' : ' selected') + '>' + esc(_sdT('The RSS media field')) + '</option>' +
+                                    files.map(function (f) {
+                                        var on = hit && String(f.name).toLowerCase() === picked;
+                                        return '<option value="' + esc(f.name) + '"' + (on ? ' selected' : '') + '>' + esc((f.label || f.name) + ' (' + f.name + ')') + '</option>';
+                                    }).join('') +
+                                '</select>' +
+                                '<div style="font-size:.66rem;color:#888;margin-top:3px;line-height:1.45">' +
+                                    esc(_sdT('The picture a record page shows when it is shared. It is used only when it is an image every visitor may open.')) +
+                                '</div>' +
+                                '<div id="sd-cf-share-warn" data-media="' + (hasMedia ? 1 : 0) + '" style="font-size:.7rem;color:#b45309;background:rgba(245,158,11,.10);padding:5px 8px;border-radius:3px;line-height:1.45;margin-top:4px' + (!hasMedia && !hit ? '' : ';display:none') + '">' +
+                                    '<span class="bi bi-exclamation-triangle-fill me-1"></span>' +
+                                    esc(_sdT('This form has no media field: its records share the site\'s default share image.')) +
+                                '</div>';
+                        })()) +
                         row(_sdT('Notification email'),
                             '<input type="text" class="form-control form-control-sm sd-cf-s" data-s="notify_email" value="' + esc(_cfFS.notify_email || '') + '" maxlength="255" placeholder="' + esc(_sdT('sample@site.com')) + '">' +
                             '<div style="font-size:.66rem;color:#888;margin-top:3px">' + esc(_sdT('Notified when the form is submitted. Separate several addresses with commas. Leave it empty and no notification is sent.')) + '</div>' +
@@ -37945,6 +37971,8 @@ const StyleDesigner = (function () {
                 _cfPageSettings()[el.dataset.s] = ('' + el.value).slice(0, 255);
                 var warn = (el.dataset.s === 'notify_email') ? document.getElementById('sd-cf-silent-warn') : null;
                 if (warn) warn.style.display = _cfSettingsSilent(_cfPageSettings()) ? '' : 'none';
+                var shareWarn = (el.dataset.s === 'share_image_field') ? document.getElementById('sd-cf-share-warn') : null;
+                if (shareWarn) shareWarn.style.display = (shareWarn.dataset.media !== '1' && el.value === '') ? '' : 'none';
             });
         });
         document.querySelectorAll('.sd-cf-sn').forEach(function (el) {

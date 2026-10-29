@@ -97,6 +97,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_card_security_codes();   // 11.0.56
 	upgrade_2026_11_0_ai_prompt_version();      // 11.0.112
 	upgrade_2026_11_0_review_photos();          // 11.0.57
+	upgrade_2026_11_0_record_share_image_field(); // 11.0.18
 
 }
 
@@ -3176,5 +3177,16 @@ function upgrade_2026_11_0_review_photos() {
 	install_add_column('config', 'review_photos', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Commerce: a product review can now carry a photo when Photo Reviews is switched on under Site Settings, Commerce. It is off on this site, and from now on a review takes no other file.');
+
+}
+// The share image field of a custom form's record pages (2026.11.0, 11.0.18;
+// pg_resolve_submitted_form_og_image() in includes/fn/seo.php): a file field
+// of the form whose upload becomes the page's og:image and BlogPosting image,
+// before the RSS media field. 0 keeps every form's output as it was.
+function upgrade_2026_11_0_record_share_image_field() {
+
+	install_add_column('custom_form_pages', 'share_image_field_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Custom forms: the share picture of a record page can now come from a file field chosen in the form settings, before the RSS media field. Nothing changes until a form picks one.');
 
 }

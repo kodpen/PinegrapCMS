@@ -431,7 +431,7 @@ function pg_cf_load_page_form_settings($page_id)
         'confirmation_message' => '', 'confirmation_page_id' => 0, 'contact_group_id' => 0,
         'membership' => 0, 'membership_days' => 0, 'auto_registration' => 0,
         'pretty_urls' => 0, 'double_opt_in' => 0, 'collection' => 0,
-        'schema_type' => 'BlogPosting', 'schema_author' => 'contact',
+        'schema_type' => 'BlogPosting', 'schema_author' => 'contact', 'share_image_field' => '',
     );
     if ($page_id <= 0 || !pg_cf_page_form_ready()) return $defaults;
     // The 11.0.27 column is read once it is there.
@@ -446,7 +446,8 @@ function pg_cf_load_page_form_settings($page_id)
                 membership, membership_days, pretty_urls" . ($double_opt_in_ready ? ', double_opt_in' : '')
                 . (pg_coll_ready() ? ', collection' : '')
                 . (pg_record_schema_type_setting_ready() ? ', schema_type' : '')
-                . (pg_blogposting_author_setting_ready() ? ', schema_author' : '') . "
+                . (pg_blogposting_author_setting_ready() ? ', schema_author' : '')
+                . (pg_record_share_image_setting_ready() ? ', share_image_field_id' : '') . "
          FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     if (!is_array($row)) return $defaults;
 
@@ -496,6 +497,13 @@ function pg_cf_load_page_form_settings($page_id)
             return (string)db_value("SELECT name FROM form_fields
                                      WHERE id = '" . (int)$field_id . "' AND page_id = '$page_id' AND form_type = 'custom' LIMIT 1");
         }),
+        // The file field whose upload is the record pages' share image, by
+        // its name as above; '' is the RSS media field (includes/fn/seo.php).
+        'share_image_field'    => ((int)($row['share_image_field_id'] ?? 0) > 0)
+                                      ? (string)db_value("SELECT name FROM form_fields
+                                                          WHERE id = '" . (int)$row['share_image_field_id'] . "' AND page_id = '$page_id'
+                                                            AND form_type = 'custom' AND type = 'file upload' LIMIT 1")
+                                      : '',
     );
 }
 
@@ -2777,7 +2785,8 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
     // Hand the ids back to the controls, so the next save recognises them
     // by row and not by name.
     $ids_by_name = array();
-    foreach (pg_cf_load_page_fields($page_id) as $f) {
+    $saved_fields = pg_cf_load_page_fields($page_id);
+    foreach ($saved_fields as $f) {
         $ids_by_name[mb_strtolower((string)$f['name'], 'UTF-8')] = (int)$f['id'];
     }
     foreach ($widgets as $w) _pg_cf_stamp_ids($w, $page_id, $ids_by_name);
@@ -2801,7 +2810,37 @@ function pg_cf_reconcile_page_form($page_id, $user_id, $settings = array())
             WHERE page_id = '$page_id' LIMIT 1");
     }
 
+    // The share image field (`share_image_field`, a file field's name; ''
+    // for the RSS media field), written after the fields like the author.
+    if (is_array($settings) && isset($settings['share_image_field']) && empty($res['read_only']) && pg_record_share_image_setting_ready()) {
+        db("UPDATE custom_form_pages
+            SET share_image_field_id = '" . pg_cf_share_image_field_id($settings['share_image_field'], $saved_fields) . "'
+            WHERE page_id = '$page_id' LIMIT 1");
+    }
+
     return $res;
+}
+
+/**
+ * The custom_form_pages.share_image_field_id a field name stands for: the id
+ * of the form's file field of that name ($fields: the form's fields with id,
+ * name and type), 0 for anything else, which keeps the RSS media field as
+ * the record pages' share image (pg_record_share_image_sources()).
+ *
+ * @param mixed $wanted  A field name, as a template or the designer gives it
+ * @param array $fields  pg_cf_load_page_fields()
+ * @return int
+ */
+function pg_cf_share_image_field_id($wanted, $fields)
+{
+    $name = is_scalar($wanted) ? mb_strtolower(trim((string)$wanted), 'UTF-8') : '';
+    if ($name === '' || !is_array($fields)) return 0;
+    foreach ($fields as $f) {
+        if (mb_strtolower((string)($f['name'] ?? ''), 'UTF-8') === $name && ($f['type'] ?? '') === 'file upload') {
+            return (int)$f['id'];
+        }
+    }
+    return 0;
 }
 
 /**
