@@ -4741,52 +4741,77 @@
         // text. Lists and cards stand on lines of their own: below the list
         // the caret is in, or after a line break when words stand before the
         // caret.
-        insertMarkup: function (blocks) {
+        insertMarkup: function (blocks, labels) {
+            var self = this;
+
+            return self.change(function () {
+                return self.placeBlocks(blocks, labels || {});
+            });
+        },
+
+        // A stored text (a saved reply) in place of the count characters
+        // written before the caret, its tags as chips (labels: token → name),
+        // as one step of the box's undo.
+        insertStored: function (count, markup, labels) {
+            var self = this;
+            var blocks = parseBlocks(String(markup || ''), !!self.options.headings);
+
+            self.restore();
+
+            return self.change(function () {
+                if (count > 0) {
+                    self.replaceTyped(count, { text: '' });
+                }
+
+                return self.placeBlocks(blocks, labels || {});
+            });
+        },
+
+        // The blocks at the selection, for insertMarkup() and insertStored().
+        placeBlocks: function (blocks, labels) {
             var self = this;
             var node = self.node;
 
-            return self.change(function () {
-                var range = selectionRange();
+            var range = selectionRange();
 
-                if (!range || !node.contains(range.startContainer)) {
-                    self.caretToEnd();
-                    range = selectionRange();
+            if (!range || !node.contains(range.startContainer)) {
+                self.caretToEnd();
+                range = selectionRange();
+            }
+
+            range.deleteContents();
+
+            var words = blocks.every(function (block) { return block.kind === 'text'; });
+            var fragment = markupNodes(blocks, labels || {});
+            var last = fragment.lastChild;
+            var item = words ? null : boundaryItem(node, range.startContainer, range.startOffset);
+
+            if (!last) {
+                return false;
+            }
+
+            if (words) {
+                range.insertNode(fragment);
+            } else if (item) {
+                node.insertBefore(fragment, item.parentNode.nextSibling);
+            } else {
+                var head = self.beforeCaret();
+                var spot = outOfMarks(node, range);
+
+                if (head !== '' && !/\n$/.test(head)) {
+                    fragment.insertBefore(el('br'), fragment.firstChild);
                 }
 
-                range.deleteContents();
-
-                var words = blocks.every(function (block) { return block.kind === 'text'; });
-                var fragment = markupNodes(blocks, {});
-                var last = fragment.lastChild;
-                var item = words ? null : boundaryItem(node, range.startContainer, range.startOffset);
-
-                if (!last) {
-                    return false;
-                }
-
-                if (words) {
-                    range.insertNode(fragment);
-                } else if (item) {
-                    node.insertBefore(fragment, item.parentNode.nextSibling);
+                if (spot.parent === node) {
+                    node.insertBefore(fragment, spot.before);
                 } else {
-                    var head = self.beforeCaret();
-                    var spot = outOfMarks(node, range);
-
-                    if (head !== '' && !/\n$/.test(head)) {
-                        fragment.insertBefore(el('br'), fragment.firstChild);
-                    }
-
-                    if (spot.parent === node) {
-                        node.insertBefore(fragment, spot.before);
-                    } else {
-                        node.appendChild(fragment);
-                    }
+                    node.appendChild(fragment);
                 }
+            }
 
-                select(last.parentNode, indexIn(last) + 1, last.parentNode, indexIn(last) + 1);
+            select(last.parentNode, indexIn(last) + 1, last.parentNode, indexIn(last) + 1);
 
-                return true;
-            });
+            return true;
         },
 
         editBlock: function (card) {

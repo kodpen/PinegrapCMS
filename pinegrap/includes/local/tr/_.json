@@ -317,6 +317,7 @@
     "{count} price(s) typed by hand will be recalculated from the rules.": "Elle girilen {count} fiyat kurallara göre yeniden hesaplanacak.",
     "{count} products and one product group covering them will be created.": "{count} ürün ve bunları kapsayan 1 ürün grubu oluşturulacak.",
     "{count} selected": "{count} seçili",
+    "{customer} and {order} are filled with the channel's customer and their latest order when the reply is put in.": "{customer} ve {order}, yanıt eklenirken kanalın müşterisi ve son siparişiyle doldurulur.",
     "{date}: today's date": "{date}: bugünün tarihi",
     "{notebook}: the notebook the note goes into": "{notebook}: notun gireceği defter",
     "{n} changes": "{n} değişiklik",

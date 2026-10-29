@@ -22,7 +22,7 @@ description: Shared names and single owners across the Workspace growth plans (2
 - Scheduled-actions API and who may create actions: workspace/workspace-scheduled-actions-api.md.
 - Flows (canvas, rules, process templates), their engine and step library: plans/workspace-flows.md, plans/workspace-flows-engine.md.
 - One follow-up opener `ws_followup_task_open()` (proposed): plans/workspace-crm-seams.md; quote expiry and the ERP overdue job (erp/erp-overdue-reminders.md) call it.
-- Saved replies: plans/workspace-composer-tools.md. Channel `/` commands: plans/workspace-slash-commands.md; other plans add registry entries (`/product` after its slice 2).
+- Saved replies: workspace/workspace-saved-replies.md (built). Channel `/` commands: plans/workspace-slash-commands.md; other plans add registry entries (`/product` after its slice 2).
 - Contacts in the audit trail and erasure: core/audit-trail-writers.md, core/personal-data-erasure.md; the CRM merge and erasure share one list of every `contact_id` holder (with `cart_quotes` and workflow-table cells).
 - Recorded audio and transcripts: workspace/workspace-voice-recording.md (done); live dictation: composer tools.
 - The site's own MCP server: plans/workspace-mcp-capabilities.md; outside MCP servers the Workspace calls: plans/workspace-mcp-connectors.md.

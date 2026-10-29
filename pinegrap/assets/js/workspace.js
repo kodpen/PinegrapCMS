@@ -11931,6 +11931,8 @@
             parts.push(emoji);
             // ":" and two letters suggest emoji in this box too.
             self.colonEmoji = true;
+            // ";" and a shortcut suggest the person's saved replies.
+            self.savedReplies = true;
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
@@ -11953,6 +11955,9 @@
                     } } : null,
                     (CFG.status && window.PGWsStatus && !self.isThread) ? { icon: 'bi-person-raised-hand', label: t('ci_new'), action: function () {
                         window.PGWsStatus.checkinForm(self, featureHelpers());
+                    } } : null,
+                    (CFG.saved_replies && window.PGWsReplies && self.rich) ? { icon: 'bi-chat-square-quote', label: t('replies_title'), action: function () {
+                        window.PGWsReplies.drawer(self, featureHelpers());
                     } } : null,
                     CFG.blocks ? { icon: 'bi-box-arrow-in-down', label: t('pull_title'), action: function () {
                         blockPuller(function (data) { self.insertPulled(data); });
@@ -13644,6 +13649,28 @@
                 return;
             }
 
+            // ";" and the start of a shortcut suggest the person's saved
+            // replies, filled for this channel; the list is read on the first
+            // ";" and the check runs again once it is in. Escape leaves that
+            // ";" alone (replySkip).
+            var semi = (self.savedReplies && self.rich && CFG.saved_replies && window.PGWsReplies && !self.rich.node.wsComposing && !self.rich.caretBlocked())
+                ? window.PGWsReplies.at(before) : null;
+
+            if (!semi) {
+                self.replySkip = -1;
+            } else if (semi.start !== self.replySkip) {
+                var replies = window.PGWsReplies.cached(self.channel ? self.channel.id : 0, api, function () {
+                    if (document.activeElement === self.input) {
+                        self.pickerCheck();
+                    }
+                });
+
+                if (replies && window.PGWsReplies.match(replies, semi.word, 8).length) {
+                    self.openPicker('reply', semi.word, semi.start);
+                    return;
+                }
+            }
+
             // A chip right before the sigil counts as a word boundary.
             if ((match = /(^|[\s\uFFFC])@([^\s@#<>\uFFFC]{0,30})$/.exec(before))) {
                 self.openPicker('people', match[2], before.length - match[2].length - 1);
@@ -14161,6 +14188,15 @@
                 return;
             }
 
+            // The saved replies whose shortcut starts with the word after ";".
+            if (mode === 'reply') {
+                self.picker.setAttribute('aria-label', t('replies_title'));
+                self.drawPicker(window.PGWsReplies.match(window.PGWsReplies.cached(self.channel ? self.channel.id : 0, api) || [], query, 8).map(function (reply) {
+                    return { reply: reply, label: reply.title, meta: ';' + reply.shortcut, detail: window.PGWsReplies.preview(reply, 80), icon: 'bi-chat-square-quote' };
+                }));
+                return;
+            }
+
             // Every name a command answers to, Turkish or English: the name
             // as typed first ("/gö" shows /görev), then with the Turkish
             // letters folded ("/go" finds it too, "/YARDIM" finds /yardım).
@@ -14502,9 +14538,14 @@
                     this.argDismissed = this.argumentKey(this.argument);
                 }
 
-                // An emoji list stays away for this ":".
+                // An emoji list stays away for this ":", a reply list for
+                // this ";".
                 if (this.pickerMode === 'emoji') {
                     this.emojiSkip = this.pickerStart;
+                }
+
+                if (this.pickerMode === 'reply') {
+                    this.replySkip = this.pickerStart;
                 }
 
                 this.closePicker();
@@ -14564,6 +14605,17 @@
                     rich.replaceTyped(word, { text: item.emoji });
                     return true;
                 });
+                return;
+            }
+
+            // A saved reply in place of the ";word", as one step of the box's
+            // undo: one Ctrl+Z brings the ";word" back.
+            if (item.reply && this.rich) {
+                var typedReply = Math.max(0, this.beforeCaret().length - this.pickerStart);
+
+                this.closePicker();
+                this.rich.insertStored(typedReply, item.reply.text, item.reply.labels || {});
+                this.autosize();
                 return;
             }
 
