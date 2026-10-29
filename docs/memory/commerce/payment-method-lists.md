@@ -18,7 +18,7 @@ description: One list of checkout payment methods (pg_payment_checkout_methods()
 ## What still needs a hand edit for a new method?
 - `orders.payment_method` ENUM: a migration step appends it (`install_column_info()`, `install_modify_column()`).
 - The receipt label map in includes/fn/widgets.php (falls back to the value). view_order_report.php's options append the drivers' methods since #1827.
-- CSP: `pg_payment_csp_sources()` adds only the card driver's hosts (PayTR's iframe needs more, step 4c).
+- CSP: a driver's `csp` hosts are added for the card driver and, since #3036, for each switched-on redirect driver that frames its page (`pg_payment_csp_sources()`, `payment-driver-paytr.md`).
 - frontend.src.js `init_payment_method()` swaps the button label only for PayPal and Pay With Iyzico; a driver's method keeps the standard label.
 - A site's own custom layout draws a driver's radio only if it loops `$payment_driver_methods`.
 

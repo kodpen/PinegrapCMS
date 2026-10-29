@@ -67,7 +67,11 @@ if (!$_POST) {
         OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'
     );
 
-    $output_header = pg_page_shell( array('cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
+    $output_header = pg_page_shell( array(
+            'title' => h($style_name) . ' | ' . lang('Edit Custom Page Style'),
+            'icon' => 'design',
+            'heading' => lang('Edit Custom Page Style'),
+            'cancel'=>array('enable'=>'true','url'=>$output_cancel_button_url) ,
             'breadcrumb' => array(array('label' => lang('All Page Styles'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_styles.php'), array('label' => lang('Edit Custom Page Style'))),
         ) ) . '<main id="content" class="container-fluid">';
     

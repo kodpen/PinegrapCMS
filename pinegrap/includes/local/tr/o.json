@@ -1304,6 +1304,7 @@
     "orders today": "bugün sipariş",
     "orders.payment_method already knows about Pay With Iyzico": "orders.payment_method zaten Pay With Iyzico değerini tanıyor",
     "orders.payment_method already knows about PayPal Checkout": "orders.payment_method zaten PayPal Checkout değerini biliyor",
+    "orders.payment_method already knows about PayTR": "orders.payment_method zaten PayTR'yi biliyor",
     "orders.payment_method does not exist, skipped": "orders.payment_method yok, atlandı",
     "orders.payment_method is not an ENUM, skipped": "orders.payment_method ENUM değil, atlandı",
     "orphaned form was moved to page ({var:1})": "sahipsiz form ({var:1}) sayfasına taşındı",

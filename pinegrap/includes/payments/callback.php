@@ -256,6 +256,44 @@ function pg_payment_callback_answer($http, $data)
 }
 
 /**
+ * The plain body a service needs back instead of the JSON answer (PayTR
+ * stops resending only on "OK"): the driver's reply, for a message the
+ * store took (status 200). A refused or failed message gets the JSON answer,
+ * so the service sends it again. Pure.
+ *
+ * @param array $answer  pg_payment_answer() of notify()
+ * @param array $outcome pg_payment_notify_outcome()
+ * @return string '' for the JSON answer
+ */
+function pg_payment_callback_reply($answer, $outcome)
+{
+    $reply = isset($answer['reply']) ? (string) $answer['reply'] : '';
+
+    return (((int) $outcome['http'] === 200) && (preg_match('/^[A-Za-z0-9 _.-]{1,64}$/', $reply) === 1)) ? $reply : '';
+}
+
+/**
+ * Sends a driver's plain reply and ends the request.
+ *
+ * @param string $reply
+ * @return void
+ */
+function pg_payment_callback_answer_text($reply)
+{
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    http_response_code(200);
+    header('Content-Type: text/plain; charset=utf-8');
+    header('Cache-Control: no-store');
+
+    echo $reply;
+
+    exit;
+}
+
+/**
  * Answers one message: payment_callback.php?driver=<key>.
  *
  * @return void
@@ -316,6 +354,12 @@ function pg_payment_callback_receive()
 
     if ($outcome['alert'] !== '') {
         pg_ops_alert('payment_notice', $outcome['alert']);
+    }
+
+    $reply = pg_payment_callback_reply($answer, $outcome);
+
+    if ($reply !== '') {
+        pg_payment_callback_answer_text($reply);
     }
 
     pg_payment_callback_answer($outcome['http'], array('status' => $outcome['status']));

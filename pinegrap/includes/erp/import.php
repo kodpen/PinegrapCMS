@@ -629,15 +629,11 @@ function erp_import_validate_row($account)
         }
     }
 
-    // A term is whole days; ten years is more than any trade allows.
-    if (((string) ($account['payment_days'] ?? '') !== '')
-        && ((preg_match('/^[0-9]{1,4}$/', (string) $account['payment_days']) !== 1) || ((int) $account['payment_days'] > 3650))) {
+    if (erp_account_days_refused((string) ($account['payment_days'] ?? ''))) {
         $errors[] = lang('Payment term must be a whole number of days, 0 to 3650.');
     }
 
-    // A threshold is whole days; ten years is more than any reminder needs.
-    if (((string) ($account['overdue_notify_days'] ?? '') !== '')
-        && ((preg_match('/^[0-9]{1,4}$/', (string) $account['overdue_notify_days']) !== 1) || ((int) $account['overdue_notify_days'] > 3650))) {
+    if (erp_account_days_refused((string) ($account['overdue_notify_days'] ?? ''))) {
         $errors[] = lang('Reminder threshold must be a whole number of days, 0 to 3650.');
     }
 

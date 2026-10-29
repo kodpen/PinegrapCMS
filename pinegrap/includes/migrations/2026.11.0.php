@@ -102,6 +102,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_thread_follow(); // 11.0.113
 	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
+	upgrade_2026_11_0_paytr();                  // 11.0.122
 
 }
 
@@ -3233,5 +3234,42 @@ function upgrade_2026_11_0_order_checkout_page() {
 function upgrade_2026_11_0_order_legal_acceptance() {
 
 	install_add_column('orders', 'legal_acceptance', "TEXT NULL");
+
+}
+
+// The PayTR payment driver (2026.11.0, 11.0.122; includes/payments/paytr.php).
+//
+// orders.payment_method is an ENUM and the connection runs without strict
+// mode, so a method outside the list is stored as '': 'PayTR' is appended to
+// the list the column already has, as 11.0.50 appended 'PayPal Checkout'.
+// Nullability and default are copied from the column as it is. The driver
+// keeps its keys in connect_apps, so no other column is needed.
+function upgrade_2026_11_0_paytr() {
+
+	$column = install_column_info('orders', 'payment_method');
+
+	if (!is_array($column)) {
+
+		install_skipped(lang('orders.payment_method does not exist, skipped'));
+
+	} elseif (stripos((string) $column['Type'], "'PayTR'") !== false) {
+
+		install_skipped(lang('orders.payment_method already knows about PayTR'));
+
+	} elseif (preg_match('/^enum\((.*)\)$/is', trim((string) $column['Type']), $enum_match)) {
+
+		$nullable = (strtoupper((string) $column['Null']) === 'YES');
+		$default  = ($column['Default'] === null) ? ($nullable ? 'NULL' : "''") : "'" . e((string) $column['Default']) . "'";
+
+		install_modify_column('orders', 'payment_method',
+			"ENUM(" . $enum_match[1] . ",'PayTR') " . ($nullable ? 'NULL' : 'NOT NULL') . " DEFAULT " . $default);
+
+	} else {
+
+		install_skipped(lang('orders.payment_method is not an ENUM, skipped'));
+
+	}
+
+	install_note('PayTR can now take payments: the visitor pays in PayTR\'s payment page, framed in the checkout, and PayTR confirms the payment to the store. Turn on "PayTR" in the Ecommerce settings with the merchant ID, key and salt, and add the webhook address shown there as the Notification URL in the PayTR Merchant Panel.');
 
 }

@@ -404,7 +404,7 @@ if ((int) $order['sent_at'] > 0) {
 
 echo
 pg_page_shell([
-    'title' => (string) $order['full_number'],
+    'title' => h((string) $order['full_number']),
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',

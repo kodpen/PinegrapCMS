@@ -15,6 +15,9 @@ description: Dashboard keyboard and screen-reader access: Online Engagement rows
 ## How does the refresh keep focus?
 - `pg_widget_apply()` replaces a card's body when its HTML changes, and Online Engagement's relative times change every minute. `pg_widget_focus_save()` reads the focused element's `data-pg-focus-key` inside the card, and `pg_widget_focus_restore()` focuses the element with that key after the append (`preventScroll`). A control with no key is not restored. The keys are `chat-<id>`, `user-<id>` and `chat-with-<id>`.
 
+## What does a System Status job do with focus and its report?
+- `pg_health_job()` (`backend.src.js`) redraws the card, which removes the pressed button. In `settle()` it focuses the new `#<action>` button (`preventScroll`) when focus fell to the body or stayed in the card, and says the report through `window.pgAnnounce(text, assertive)`: two visually hidden regions made empty at load, written 150 ms later, since a panel inserted with its words is not read. Pinned by `tests/panel_live_status_test.php`, with the e-Document result boxes, the Site Settings filter count and the message dialog's close name.
+
 ## How are percentages printed on the dashboard?
 - Through `lang(array('string' => '{var:1}%', 'vars' => …))`, which Turkish words as `%12`. Signs and arrows stay outside the template (`+%12`, `▲ %12`). The Visitor Summaries period switch takes the template from PHP as `T.percent` with a `{n}` placeholder. The System Status score puts its small `<span>%</span>` on the side the translated template puts it.
 - The Visitor Summaries period cells carry `aria-pressed`, and the switch sets it beside `.is-active`.

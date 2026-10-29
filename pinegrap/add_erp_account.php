@@ -139,15 +139,7 @@ if (!$_POST) {
     $country_code = erp_account_form_country($liveform);
     erp_account_form_check_formats($liveform, $country_code);
 
-    $payment_days = trim((string) $liveform->get_field_value('payment_days'));
-    if (($payment_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $payment_days) !== 1) || ((int) $payment_days > 3650))) {
-        $liveform->mark_error('payment_days', lang('Payment term must be a whole number of days, 0 to 3650.'));
-    }
-
-    $overdue_notify_days = trim((string) $liveform->get_field_value('overdue_notify_days'));
-    if (($overdue_notify_days !== '') && ((preg_match('/^[0-9]{1,4}$/', $overdue_notify_days) !== 1) || ((int) $overdue_notify_days > 3650))) {
-        $liveform->mark_error('overdue_notify_days', lang('Reminder threshold must be a whole number of days, 0 to 3650.'));
-    }
+    list($payment_days, $overdue_notify_days) = erp_account_form_check_days($liveform);
 
     $opening_amount = trim((string) $liveform->get_field_value('opening_amount'));
     $opening_date = trim((string) $liveform->get_field_value('opening_date'));
@@ -207,34 +199,9 @@ if (!$_POST) {
         go(PATH . SOFTWARE_DIRECTORY . '/add_erp_account.php');
     }
 
-    $result = erp_account_save(array(
-        'id' => 0,
-        'contact_id' => $contact_id,
-        'kind' => $liveform->get_field_value('kind'),
-        'title' => $liveform->get_field_value('title'),
-        'is_person' => ($liveform->get_field_value('is_person') === '1'),
-        'tax_number' => $liveform->get_field_value('tax_number'),
-        'tax_office' => $liveform->get_field_value('tax_office'),
-        'email' => $liveform->get_field_value('email'),
-        'phone' => $liveform->get_field_value('phone'),
-        'address' => $liveform->get_field_value('address'),
-        'district' => $liveform->get_field_value('district'),
-        'city' => $liveform->get_field_value('city'),
-        // A Turkish address has no state: the province is the city.
-        'state' => (erp_account_country($country_code) === 'TR') ? '' : $liveform->get_field_value('state'),
-        'postcode' => $liveform->get_field_value('postcode'),
-        'country_code' => ($country_code !== '') ? $country_code : erp_default_country_code(),
-        'currency' => $currency,
-        'status' => $liveform->get_field_value('status'),
-        'notes' => $liveform->get_field_value('notes'),
-        'payment_days' => (int) $payment_days,
-        'overdue_notify_days' => (int) $overdue_notify_days,
-        'overdue_notify_customer' => ($liveform->get_field_value('overdue_notify_customer') === '1'),
-        'invoice_email' => (string) $liveform->get_field_value('invoice_email'),
-        'invoice_mail' => ($liveform->get_field_value('invoice_mail') === '1'),
-        'credit_limit' => erp_kurus((string) $liveform->get_field_value('credit_limit')),
-        'created_by' => (int) $user['id'],
-    ));
+    // An empty country choice takes the store's country.
+    $result = erp_account_save(array('id' => 0) + erp_account_form_save_fields($liveform, $country_code, $currency, $contact_id,
+        $payment_days, $overdue_notify_days, erp_default_country_code()) + array('created_by' => (int) $user['id']));
 
     if (!$result['success']) {
         $liveform->mark_error('_error', $result['error']);
