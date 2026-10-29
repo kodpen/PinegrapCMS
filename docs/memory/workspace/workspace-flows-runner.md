@@ -4,7 +4,7 @@ description: Workspace flow runs (flow_runs.php): start, run channel, walk, task
 ---
 
 ## Where is it?
-- `includes/workspace/flow_runs.php`; handlers end `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. 11.0.80 columns only. Panel, run view: workspace-flows-canvas.md, workspace-flows-run-view.md.
+- `includes/workspace/flow_runs.php`; handlers end `api_flows.php`; tests `tests/workspace_flow_runs_test.php`. Panel, run view: workspace-flows-canvas.md, workspace-flows-run-view.md.
 
 ## How does a run start?
 - `ws_flow_run_start_check()` / `ws_flow_run_start()`: run or edit access, then the token (`start_key` = `ws_flow_start_key()`, manual: + sha1: the column ignores case) answers its run (200) before the live, manual-start, owner-on-staff, 500-open and 60-an-hour refusals. Paused or a view share: the token's run answers to its readers (`ws_flow_run_for_token()`), else 404 / 403. The run row is `INSERT … SELECT` from a live flow. `context` (once): trigger, box, the flow's `channel_id` and `flow_name` then.
@@ -14,7 +14,7 @@ description: Workspace flow runs (flow_runs.php): start, run channel, walk, task
 
 ## How does it move?
 - Pure `ws_flow_walk()`: a box whose arrows in have all settled is ready when one was taken and none comes from a blocked box, else skipped. Blocked = failed, or skipped behind a blocked box: a join however far behind a failure is skipped. `ws_flow_run_state()`: running, waiting, done, failed.
-- Conditional UPDATEs, affected rows counted; next boxes `INSERT IGNORE` on (run, node, pass 0).
+- Conditional UPDATEs, affected rows counted; next boxes `INSERT IGNORE` (run, node, pass: workspace-flows-for-each.md).
 
 ## What does a task box do?
 - Owner's rights now; `ws_task_create()`, due = ready day + `due_in`, last line `ws_flow_task_marker()` (context's flow name, run, `ws_flow_box_unique_name()`: label, plus id when shared). One UPDATE: effect and wait_key `task:<id>`, waiting, wake_at +1 h.

@@ -8,7 +8,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled.
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; "Add value" puts them in as chips (D6, workspace/workspace-flows-value-picker.md).
 - A reference to a missing box or field is a problem, one to a box that may not run a warning (D4, workspace/workspace-flows-references.md); at run time it still becomes ''.
-- `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition compares a box's or the trigger's value (D7). No loops (`pass` is always 0).
+- `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition compares a box's or the trigger's value (D7). A loop's body runs at `pass` = item (D9).
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
@@ -20,7 +20,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
   - D8c canvas (done, #2725, workspace/workspace-flow-ai-drafts.md): patch boxes marked until publish; `?flow=<id>&box=<id>` for D8b.
 
 - D9a webhook answer as a body output (#2414-2, done #2985, workspace/workspace-flows-webhook-body.md): `body` (16 KB, UTF-8) of the webhook kind, kept on the run row without a schema change, held back from readers who may not change the flow. Files: includes/workspace/scheduled.php, steps.php, flow_runs.php, api_flows.php, flow_run_events.php.
-- D9 later: lists and a "For each" box (`pass` > 0).
+- D9 For each (#3312): server half done #3323 (workspace/workspace-flows-for-each.md); canvas half (workspace_flow.js KINDS, palette, form, body drawing) next.
 
 ## What rules does D8 keep?
 - The model gets the kinds and their outputs (`ws_flow_js_config()`) as its tool schema: no invented kind, field or reference.
