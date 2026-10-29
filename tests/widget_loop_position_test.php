@@ -442,7 +442,7 @@ function _widget_loop_run_js($script)
 	if ($from === false) return null;
 	$to = strpos($js, "\n    ];\n", $from);
 	$cut = substr($js, $from, $to + 7 - $from);
-	foreach (array('_swInMainLoop', '_swPositionLabel', '_swBindTokenOptions', '_swBindLabel', '_sdListIsSourced', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel') as $name) {
+	foreach (array('_swInMainLoop', '_swPositionLabel', '_swBindTokenOptions', '_swBindLabel', '_sdListIsSourced', '_sdListsAbove', '_sdListRowOptions', '_sdListRowLabel', '_swTokenCondOnly') as $name) {
 		$fn = _widget_loop_js_function($js, $name);
 		pg_assert_true($fn !== '', $name . ' is found');
 		$cut .= $fn;

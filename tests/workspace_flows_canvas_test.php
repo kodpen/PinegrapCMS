@@ -1524,3 +1524,273 @@ JS
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text', 'trigger.cell_7=Customer:text', 'trigger.cell_9=Amount:number'), $result['values']);
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text'), $result['goneValues']);
 }
+
+// The groups of the flow boxes and their colours (dark theme as the visual
+// spec gives them; workspace-flows-look.md V1), in their listing order.
+function ws_flows_canvas_test_groups()
+{
+	return array(
+		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row')),
+		'values' => array('#e58fd0', array('constants', 'value')),
+		'logic' => array('#e9b44c', array('condition', 'delay', 'end')),
+		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
+		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp'))
+	);
+}
+
+// WCAG contrast ratio of two #rrggbb colours.
+function ws_flows_canvas_test_contrast($one, $two)
+{
+	$light = function ($hex) {
+		$sum = 0;
+
+		foreach (array(array(1, .2126), array(3, .7152), array(5, .0722)) as $part) {
+			$value = hexdec(substr($hex, $part[0], 2)) / 255;
+			$sum += $part[1] * (($value <= .03928) ? $value / 12.92 : pow(($value + .055) / 1.055, 2.4));
+		}
+
+		return $sum;
+	};
+	$a = $light($one);
+	$b = $light($two);
+
+	return (max($a, $b) + .05) / (min($a, $b) + .05);
+}
+
+// Every kind of box has exactly one group, the plan's, and a box and its
+// outline entry carry the group's class; the palette offers no kind
+// without one. Before, only four kinds had a colour of their own.
+function test_workspace_flows_canvas_every_kind_has_one_group()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var PALETTE = \[\n.*?\n    \];\n/s', $source, $palette), 'PALETTE is in the script');
+	pg_assert_contains("el('div', 'wsf-node ' + kindClasses(node.kind))", $source, 'a box takes its group class');
+	pg_assert_contains("el('li', 'wsf-outline-item ' + kindClasses(node.kind))", $source, 'an outline entry takes its group class');
+
+	$result = ws_flows_canvas_test_node(
+		array('kindClasses'),
+		$kinds[0] . $palette[0] . <<<'JS'
+var out = { groups: {}, classes: {}, palette: PALETTE.map(function (item) { return item[0]; }) };
+Object.keys(KINDS).forEach(function (kind) {
+    out.groups[kind] = KINDS[kind].group;
+    out.classes[kind] = kindClasses(kind);
+});
+out.unknown = kindClasses('nothing');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$expected = array();
+
+	foreach (ws_flows_canvas_test_groups() as $group => $entry) {
+		foreach ($entry[1] as $kind) {
+			pg_assert_false(isset($expected[$kind]), $kind . ' is in one group only');
+			$expected[$kind] = $group;
+		}
+	}
+
+	ksort($expected);
+	$given = $result['groups'];
+	ksort($given);
+	pg_assert_same($expected, $given, 'each kind in its group, none left out');
+
+	foreach ($result['classes'] as $kind => $classes) {
+		pg_assert_same('wsf-node-' . $kind . ' wsf-group-' . $expected[$kind], $classes, $kind . "'s classes");
+	}
+
+	pg_assert_same('wsf-node-unknown', $result['unknown'], 'an unknown kind has no group');
+	pg_assert_same(array(), array_values(array_diff($result['palette'], array_keys($expected))), 'every kind the palette adds has a group');
+}
+
+// Each group's colour is set once per theme: dark the spec's, light a
+// deeper tone readable on white (4.5:1); a box has a 1.5 px border all
+// round, not the 4 px left stripe, a value box a dashed one; control
+// arrows 2 px #7d8696 with a filled head; the scheduled-action drawing
+// uses the groups too.
+function test_workspace_flows_canvas_group_colours()
+{
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+
+	foreach (ws_flows_canvas_test_groups() as $group => $entry) {
+		pg_assert_true((bool) preg_match('/\n\.wsf-group-' . $group . ' \{ --wsf-kind: (#[0-9a-f]{6}); \}/', $css, $light), $group . ' has a light colour');
+		pg_assert_same(1, preg_match_all('/\n\.wsf-group-' . $group . ' \{/', $css), $group . "'s light colour is set once");
+		pg_assert_true(ws_flows_canvas_test_contrast($light[1], '#ffffff') >= 4.5, $group . ' light ' . $light[1] . ' keeps 4.5:1 on white');
+		pg_assert_contains('html[data-bs-theme="dark"] .wsf-group-' . $group . ' { --wsf-kind: ' . $entry[0] . '; }', $css, $group . "'s dark colour is the spec's");
+	}
+
+	pg_assert_false((bool) preg_match('/\.wsf-node-(manual|task|end|constants|value) \{ --wsf-kind/', $css), 'no colour per kind');
+	pg_assert_true((bool) preg_match('/\n\.wsf-node \{[^}]*border: 1\.5px solid var\(--wsf-kind/', $css, $box), 'a box has a 1.5 px border in its colour');
+	pg_assert_false(strpos($box[0], 'border-left') !== false, 'no left stripe');
+	pg_assert_contains(".wsf-node.wsf-group-values {\n  border-style: dashed;\n}", $css, 'a value box is dashed');
+	pg_assert_contains('html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }', $css, 'the selection ring');
+	pg_assert_contains(".wsf-edge-line {\n  fill: none;\n  stroke: #7d8696;\n  stroke-width: 2;\n  marker-end: url(#wsf-arrow);\n}", $css, 'control arrows');
+	pg_assert_contains('.wsf-arrowhead { fill: #7d8696; }', $css, 'a filled head');
+	pg_assert_contains('.wsf-edge.wsf-edge-taken .wsf-edge-line', $css, 'the run view keeps its taken arrows');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+	pg_assert_true((bool) preg_match('/var ACTION_KINDS = \{(.*?)\};/s', $source, $actions), 'ACTION_KINDS is in the script');
+	preg_match_all("/'wsf-group-([a-z]+)'/", $actions[1], $used);
+	pg_assert_same(4, count($used[1]), 'every scheduled-action box has a group');
+	pg_assert_same(array(), array_values(array_diff($used[1], array_keys(ws_flows_canvas_test_groups()))), 'only groups the CSS colours');
+}
+
+// The canvas's own sizes (BOX_W, BOX_H, DATA_ROW), as the script has them.
+function ws_flows_canvas_test_sizes()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	preg_match_all('/^    var (BOX_W|BOX_H|DATA_ROW) = [^\n]+;$/m', $source, $found);
+	pg_assert_same(3, count($found[0]), 'the box and row sizes are in the script');
+
+	return implode("\n", $found[0]) . "\n";
+}
+
+// The row under a box never grows wider than its box: for 1 to 6 values
+// given, with no, one or two fields read, every chip and dot lies within
+// the box's width, none overlaps the next while they fit, and a dot is
+// never narrower than its ring. Before, the chips (76 px) and dots (84 px)
+// went on in one row, so a box giving four values ("Ask for approval")
+// spread it under its neighbours.
+function test_workspace_flows_canvas_data_row_stays_within_the_box()
+{
+	$result = ws_flows_canvas_test_node(array('dataRowSlots'), ws_flows_canvas_test_sizes() . <<<'JS'
+var out = { box: BOX_W, ring: DATA_ROW.ring, rows: [] };
+[0, 1, 2].forEach(function (fields) {
+    [1, 2, 3, 4, 5, 6].forEach(function (outs) {
+        out.rows.push({ fields: fields, outs: outs, slots: dataRowSlots(fields, outs) });
+    });
+});
+out.two = dataRowSlots(0, 2);
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	foreach ($result['rows'] as $row) {
+		$name = $row['fields'] . ' fields, ' . $row['outs'] . ' values';
+		$all = array_merge($row['slots']['field'], $row['slots']['out']);
+
+		pg_assert_same($row['fields'], count($row['slots']['field']), $name . ': a slot per field');
+		pg_assert_same($row['outs'], count($row['slots']['out']), $name . ': a slot per value');
+
+		foreach ($all as $index => $slot) {
+			pg_assert_true($slot['left'] >= 0 && $slot['left'] + $slot['width'] <= $result['box'], $name . ': item ' . $index . ' within the box');
+			pg_assert_true($slot['width'] >= $result['ring'], $name . ': item ' . $index . ' at least a ring wide');
+
+			if ($index > 0) {
+				pg_assert_true($slot['left'] >= $all[$index - 1]['left'] + $all[$index - 1]['width'], $name . ': item ' . $index . ' after the one before');
+			}
+		}
+	}
+
+	pg_assert_same(array(array('left' => 8, 'width' => 84), array('left' => 96, 'width' => 84)), $result['two']['out'], 'two values keep their full width');
+}
+
+// A thread that would pass under another box hangs deeper until it passes
+// below it; one that passes clear keeps its sag, and so does one whose box
+// lies too far down to hang below.
+function test_workspace_flows_canvas_thread_bends_around_a_box()
+{
+	$result = ws_flows_canvas_test_node(array('threadPath'), ws_flows_canvas_test_sizes() . <<<'JS'
+var y = 89;
+console.log(JSON.stringify({
+    clear: threadPath(104, y, 704, y, 46, []),
+    below: threadPath(104, y, 704, y, 46, [{ x: 300, y: 400 }]),
+    under: threadPath(104, y, 704, y, 46, [{ x: 300, y: 40 }]),
+    deep: threadPath(104, y, 704, y, 46, [{ x: 300, y: 100 }])
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(46, $result['clear']['sag'], 'nothing in the way: its own sag');
+	pg_assert_same('M104 89 Q404 135 704 89', $result['clear']['d'], 'the quadratic curve below the chord');
+	pg_assert_same(46, $result['below']['sag'], 'a box far below is not in the way');
+	pg_assert_true($result['under']['sag'] > 46, 'a box in the way: it hangs deeper');
+	// The curve's lowest point is halfway between the ends' level and the
+	// control point; it passes below the box and its data row (40 + 80 + 18).
+	pg_assert_true(89 + $result['under']['sag'] / 2 > 138, 'and passes below the box');
+	pg_assert_same(46, $result['deep']['sag'], 'a box too far down to pass below: its own sag');
+}
+
+// The row as drawn: a box's chips and dots within its width, a value no
+// thread takes drawn only while its box is selected, and the dots in the
+// order of the boxes they reach.
+function test_workspace_flows_canvas_data_row_drawing()
+{
+	$result = ws_flows_canvas_test_node(array('dataRowSlots', 'threadPath', 'toneClass', 'drawData'), ws_flows_canvas_test_sizes() . <<<'JS'
+var THREAD_TONES = { number: 3, text: 3 };
+var drawn = {};
+var nodes = [
+    { id: 'a', kind: 'approval', x: 0, y: 0 },
+    { id: 'b', kind: 'task', x: 640, y: 0 },
+    { id: 'c', kind: 'post', x: 320, y: 0 }
+];
+function nodeById(id) { return nodes.filter(function (node) { return node.id === id; })[0] || null; }
+function thread(token, to, field) { return { token: token, from: 'a', to: to, field: field, fieldLabel: field, value: token, type: 'text', tone: 0, skipped: false }; }
+function dataThreads() { return [thread('t1', 'b', 'title'), thread('t2', 'b', 'text'), thread('t3', 'c', 'text'), thread('t4', 'b', 'title')]; }
+function boxValues() { return ['t1', 't2', 't3', 't4', 't5', 't6'].map(function (token) { return { token: token, label: token, type: 'text' }; }); }
+function bindTargets() { return []; }
+function markThreads() {}
+function liveDot() {}
+function svgEl(tag, className) { return new FakeNode(tag, className); }
+FakeNode.prototype.style = null;
+ui.layer = new FakeNode('div');
+ui.svg = new FakeNode('svg');
+ui.boxes.querySelector = function (selector) {
+    var id = /data-node="([^"]+)"/.exec(selector)[1];
+    return (drawn[id] = drawn[id] || new FakeNode('div', 'wsf-node'));
+};
+var made = el;
+el = function (tag, className, text) {
+    var node = made(tag, className, text);
+    node.style = { setProperty: function (name, value) { node.style[name] = value; } };
+    return node;
+};
+state.graph = { nodes: nodes };
+state.edit = true;
+function row(id) {
+    return (drawn[id] ? drawn[id].children : []).map(function (item) {
+        return { kind: item.className.indexOf('wsf-data-out') !== -1 ? 'out' : 'field', left: parseInt(item.style.left, 10), width: parseInt(item.style['--wsf-w'], 10), name: item.title, unused: item.className.indexOf('wsf-data-unused') !== -1 };
+    });
+}
+drawData();
+var out = { plain: row('a'), reader: row('b'), paths: ui.svg.children.length };
+drawn = {};
+state.selected = { type: 'node', id: 'a' };
+drawData();
+out.selected = row('a');
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	foreach (array('plain', 'reader', 'selected') as $part) {
+		foreach ($result[$part] as $item) {
+			pg_assert_true($item['left'] >= 0 && $item['left'] + $item['width'] <= 208, $part . ': ' . $item['name'] . ' within the box');
+		}
+	}
+
+	pg_assert_same(array('t3', 't1', 't2', 't4'), array_column($result['plain'], 'name'), 'the dot reaching the nearer box first');
+	pg_assert_same(array(false, false, false, false), array_column($result['plain'], 'unused'), 'unused values not drawn while the box is not selected');
+	pg_assert_same(array('title', 'text'), array_column($result['reader'], 'name'), 'the reading box shows a chip per field');
+	pg_assert_same(4, $result['paths'], 'a thread per value and field');
+	pg_assert_same(6, count($result['selected']), 'selected: its unused values too');
+	pg_assert_same(array(true, true), array_slice(array_column($result['selected'], 'unused'), 4), 'the unused ones last');
+}

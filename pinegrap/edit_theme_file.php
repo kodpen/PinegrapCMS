@@ -181,7 +181,7 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="col-12 my-3">
                                         <label for="name" class="form-label">' . lang('Name') . '</label>
-                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control')) . '
+                                        ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'value'=>$file_name, 'maxlength'=>'100', 'class'=>'form-control', 'required'=>'required')) . '
                                     </div>
                                 </div>
                             </div>
@@ -224,7 +224,7 @@ if (!$_POST) {
                             <div class="btn-group flex-wrap justify-content-center">
                                 <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
                                 <button type="button" class="btn my-1 btn-outline theme-secondary" onclick="window.location=\'' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_themes.php\'">' . lang('Cancel') . '</button>
-                                <button type="submit" name="delete" value="Delete" class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
+                                <button type="submit" name="delete" value="Delete" formnovalidate class="btn my-1 btn-solid theme-danger" data-confirm-content="' . lang(array('string' => 'WARNING: This {var:1} will be permanently deleted.', 'vars' => array(lang('theme')))) . '"><span class="material-icons me-3" aria-hidden="true">delete</span><span class="pg-btn-label">' . lang('Delete') . '</span></button>
                             </div>
                         </div>
                     </nav>

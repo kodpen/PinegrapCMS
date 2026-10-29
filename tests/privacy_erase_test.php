@@ -72,9 +72,9 @@ function test_privacy_erase_tables_are_pinned()
 	pg_assert_same(
 		array(
 			'ship_tos' => 'anonymise', 'order_documents' => 'anonymise',
-			'order_returns' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
+			'order_returns' => 'anonymise', 'shipment_labels' => 'anonymise', 'gift_cards' => 'anonymise', 'erp_accounts' => 'anonymise',
 			'erp_invoices' => 'anonymise', 'erp_quotes' => 'anonymise', 'erp_waybills' => 'anonymise',
-			'comments' => 'anonymise', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise',
+			'comments' => 'anonymise', 'consent_log' => 'anonymise', 'ws_approval_guests' => 'anonymise', 'cart_quotes' => 'anonymise',
 			'audit_log' => 'anonymise', 'record_revisions' => 'delete', 'files' => 'delete', 'form_data_cells' => 'anonymise',
 			'form_data' => 'delete', 'form_signatures' => 'delete', 'forms' => 'delete',
 			'watchers' => 'delete', 'wishlist_items' => 'delete', 'stock_notify' => 'delete',
@@ -106,6 +106,7 @@ function test_privacy_erase_tables_are_pinned()
 			),
 			'order_documents' => array('ip' => '', 'user_agent' => ''),
 			'order_returns' => array('customer_note' => '', 'requested_by' => 0),
+			'shipment_labels' => array('label_file' => ''),
 			'gift_cards' => array('from_name' => '', 'message' => '', 'recipient_email_address' => ''),
 			'erp_accounts' => array(
 				'title' => '{name}', 'tax_number' => '', 'tax_office' => '', 'email' => '{token}',
@@ -126,6 +127,7 @@ function test_privacy_erase_tables_are_pinned()
 			'comments' => array('name' => '', 'created_user_id' => 0),
 			'consent_log' => array('user_id' => 0, 'contact_id' => 0, 'ip' => '', 'user_agent' => ''),
 			'ws_approval_guests' => array('name' => '', 'email' => '{token}', 'decided_ip' => '', 'decided_agent' => ''),
+			'cart_quotes' => array('contact_id' => 0),
 			'audit_log' => array('label' => ''),
 			'form_data_cells' => array('data' => ''),
 			'ws_wtable_cells' => array('cells' => ''),
@@ -153,6 +155,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'ship_tos' => array('order_id' => 'order_ids'),
 			'order_documents' => array('order_id' => 'order_ids'),
 			'order_returns' => array('order_id' => 'order_ids'),
+			'shipment_labels' => array('order_id' => 'order_ids'),
 			'gift_cards' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'),
 			'erp_accounts' => array('id' => 'account_ids'),
 			'erp_invoices' => array('account_id' => 'account_ids'),
@@ -161,6 +164,7 @@ function test_privacy_erase_find_columns_are_pinned()
 			'comments' => array('created_user_id' => 'user_ids'),
 			'consent_log' => array('person_token' => 'tokens', 'user_id' => 'user_ids', 'contact_id' => 'contact_ids'),
 			'ws_approval_guests' => array('email' => 'emails'),
+			'cart_quotes' => array('contact_id' => 'contact_ids'),
 			'audit_log' => array('id' => 'audit_ids'),
 			'record_revisions' => array('form_id' => 'revision_form_ids'),
 			'files' => array('id' => 'file_ids'),

@@ -3121,16 +3121,18 @@ function pg_pb_render_styles()
             .pg-pb-strip .pg-pb-chip img { width: 100%; height: 100%; object-fit: cover; }
             .pg-pb-strip .pg-pb-chip .pg-pb-chip-remove {
                 position: absolute; inset: 0;
-                display: none;
+                /* Hidden with opacity, not display: a button without a box
+                   takes no focus, so Tab could never reach it. */
+                display: flex; opacity: 0;
                 align-items: center; justify-content: center;
                 background: rgba(0,0,0,.55); color: #fff;
                 border: 0; padding: 0; font-size: .7rem;
             }
             .pg-pb-strip .pg-pb-chip:hover .pg-pb-chip-remove,
-            .pg-pb-strip .pg-pb-chip:focus-within .pg-pb-chip-remove { display: flex; }
+            .pg-pb-strip .pg-pb-chip:focus-within .pg-pb-chip-remove { opacity: 1; }
             /* No hover on a touch screen: the remove button stays visible. */
             @media (hover: none) {
-                .pg-pb-strip .pg-pb-chip .pg-pb-chip-remove { display: flex; }
+                .pg-pb-strip .pg-pb-chip .pg-pb-chip-remove { opacity: 1; }
             }
 
             /* Variant table: the header row is hidden below lg and each cell

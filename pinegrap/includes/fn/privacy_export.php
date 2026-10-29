@@ -52,6 +52,7 @@ function pg_privacy_export_sections()
         'returns'            => lang('Returns'),
         'refunds'            => lang('Refunds'),
         'gift_cards'         => lang('Gift cards'),
+        'cart_quotes'        => lang('Cart quotes'),
         'form_submissions'   => lang('Form submissions'),
         'signatures'         => lang('Signatures'),
         'comments'           => lang('Comments and reviews'),
@@ -852,6 +853,25 @@ function pg_privacy_export_collect(array $found)
 
     foreach ($sections['gift_cards']['rows'] as $index => $row) {
         $sections['gift_cards']['rows'][$index]['code'] = pg_privacy_export_code_hint($row['code'] ?? '');
+    }
+
+    // Cart quotes made for the person, with their products; the link's token
+    // is not kept, and its hint opens nothing.
+    if (pg_cart_quotes_ready()) {
+        $sections['cart_quotes'] = _pg_privacy_export_select("SELECT id, contact_id, valid_until, status, order_id, created_at, updated_at FROM cart_quotes WHERE " . _pg_privacy_export_in('contact_id', $contact_ids) . " ORDER BY id", $contact_ids);
+        $quote_ids = _pg_privacy_export_column($sections['cart_quotes']['rows'], 'id');
+
+        if ($quote_ids) {
+            $quote_lines = array();
+
+            foreach (db_items("SELECT i.cart_quote_id, i.product_id, p.short_description, i.quantity FROM cart_quote_items AS i LEFT JOIN products AS p ON p.id = i.product_id WHERE " . _pg_privacy_export_in('i.cart_quote_id', $quote_ids) . " ORDER BY i.cart_quote_id, i.id") as $row) {
+                $quote_lines[(int) $row['cart_quote_id']][] = $row;
+            }
+
+            foreach ($sections['cart_quotes']['rows'] as $index => $row) {
+                $sections['cart_quotes']['rows'][$index]['items'] = isset($quote_lines[(int) $row['id']]) ? $quote_lines[(int) $row['id']] : array();
+            }
+        }
     }
 
     // Form submissions: the person's own, and those that name their address

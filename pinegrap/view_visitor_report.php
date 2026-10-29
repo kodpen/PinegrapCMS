@@ -103,7 +103,7 @@ if (!$_POST) {
         $output_edit_button = '
         <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">
             <div class=" btn-group flex-wrap">
-                <a class="btn btn-solid theme-primary"  href="#" id="edit_button" onclick="document.getElementById(\'button_bar\').style.display = \'none\'; document.getElementById(\'edit_form\').style.display = \'block\'; return false;" ><span class="material-icons me-1">edit</span>' . lang('Edit') . '</a>
+                <button type="button" class="btn btn-solid theme-primary" id="edit_button" onclick="var edit_form = document.getElementById(\'edit_form\'); edit_form.style.display = \'block\'; document.getElementById(\'button_bar\').style.display = \'none\'; var first_field = edit_form.querySelector(\'input:not([type=hidden]), select, textarea\'); if (first_field) {first_field.focus();}"><span class="material-icons me-1">edit</span>' . lang('Edit') . '</button>
             </div>
         </nav>';
         $output_edit_form_style = '; display: none';
@@ -514,14 +514,14 @@ if (!$_POST) {
     
     // else the user is editing a visitor report, so prepare cancel button to hide edit form and show edit button
     } else {
-        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'block\'; document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
+        $output_cancel_button = '<button type="button" name="cancel" value="Cancel" onclick="document.getElementById(\'button_bar\').style.display = \'block\'; document.getElementById(\'edit_button\').focus(); document.getElementById(\'edit_form\').style.display = \'none\';" class="btn my-1 btn-solid theme-secondary"><span class="material-icons me-3">close</span><span class="pg-btn-label" >' . lang(array('string'=>'Cancel Edit') ) . '</span></button>';
     }
     
     $output_delete_button = '';
     
     // if user is editing an existing visitor report, then prepare to output delete button
     if (isset($_GET['id']) == true) {
-        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+        $output_delete_button = '<button type="submit" name="submit_button" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('visitor report')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
     }
     
     // if there are no date filters, then prepare to output date changer
@@ -1264,7 +1264,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 sm:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Visitor Report Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 my-3">
                                             <h4 class="fw-bold fg-secondary">' . lang('Visitor Report Layout') . '</h4>
@@ -1317,7 +1317,7 @@ if (!$_POST) {
                                             window.onload = initialize_filters;
                                         </script>
                                         <div>
-                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</a>
+                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">

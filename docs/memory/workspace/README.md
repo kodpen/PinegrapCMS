@@ -107,6 +107,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-field-names.md: How Workspace drawer and dialog fields get their screen-reader names: formRow(), saLabelled(), ask(), labelTarget()/hasName(), the pickers
 - workspace-file-manager-files.md: A file of the file manager posted into a Workspace channel as a copy (library.php): "Send to a channel" in the file manager, "From the file manager" under the paperclip; who may pick what, refusals
 - workspace-flow-ai-drafts.md: Pinegrap AI drafts a flow (propose_flow, read_flow; D8a #2605): catalogue schema, graph or patch, automatic layout, the card's window (D8b), a patch opened onto its flow and marked on the canvas (D8c)
+- workspace-flow-ai-start.md: New flow from a sentence (G1b): ws_flow_ai_sketch() asks Pinegrap AI once for a flow in propose_flow's shape, one retry with the problems, saved as the person's draft flow, never published
 - workspace-flow-draft-card-window.md: The flow draft card as a mini flow window (D8b, #3032): panel action ws_flow_draft_graph, ws_flow_card_graph(), outbound and patch marks, link and try per box
 - workspace-flow-draft-proposals.md: An application proposes a flow as a draft card ({type: flow} in workspace.changes.propose, A8): what is sent, checked, kept, how the card opens it, what happens to {type: scheduled}
 - workspace-flows-anchors.md: Flow start boxes at a time, on an event, on a join (F4d, #2006, flow_anchors.php): the hidden anchor, the converted anchor (anchor column 11.0.88), publish sync, starts, write-back, lists
@@ -114,6 +115,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-api-templates.md: Flow templates over the external API (A6, #2298): GET /workspace/flow-templates, POST /workspace/flows with template and answers, what is checked, what never happens (publish)
 - workspace-flows-approval-box.md: The approval box of a flow (F5c, PR #2142): asks, waits on approval:<id>, leaves on approved, rejected, expired, withdrawn or failed; deadline in hours, woken by approval.decided or the hourly look
 - workspace-flows-arrows-always.md: Arrows on always in a flow (PR #2249): taken however the box ended, as a scheduled follow-up on always; which boxes have it, routing a failure, the timeout check, canvas
+- workspace-flows-box-look.md: How a flow box looks (V1 of plans/workspace-flows-look.md, PR #3118): its group and colour per theme, the 1.5 px border, the selection ring, control arrows, scheduled-action boxes
 - workspace-flows-box-try.md: Trying one box of a flow's draft without running it (F4e, PR #2024, ws_flow_box_try()): answers per kind, run values, rights, panel action, read-only API route, canvas button
 - workspace-flows-canvas.md: The flow canvas (workspace_flows.php, workspace_flow.js): who sees it, panel actions, editor, autosave, 409, focus, keys, outline, read-only, what is left; the run view has its own file
 - workspace-flows-catalogue.md: The box catalogue GET /workspace/flow-kinds (settings read from the normalizers) and GET /workspace/flows/{id}/validate (the publish check without publishing), flow_catalogue.php
@@ -149,7 +151,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
-- workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, T2): read from the fields, chips and dots under a box, tones, dimming, the toggle, the outline lines, drawing a thread into a field
+- workspace-flows-thread-binding.md: Drawing a data thread into a field on the Flows canvas (T2, PR #2540): live dots, drag, two taps or Fork, the lit fields, bindValue(), the keyboard's Pass to a field
+- workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, V6): read from the fields, the row under a box within its width, thread paths around boxes, tones, dimming, the toggle, the outline lines
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
 - workspace-flows-undo.md: Undo and redo on the flow canvas (workspace_flow.js): the toolbar buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
 - workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form

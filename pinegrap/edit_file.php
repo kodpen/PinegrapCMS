@@ -272,8 +272,8 @@ if (!isset($_POST['name'])) {
         $output_thumbnail = '
         <div class="col-12">
             <div class="card my-7 position-relative overflow-hidden" style="background-color:' . h($accent_color) . ';">
-                <a href="' . OUTPUT_PATH . $file_name . '" class="stretched-link" target="_blank"></a>
-                <img style="width: auto; height: auto; max-width: 100%; max-height: 300px; position: relative; z-index: 1;" class="card-img object-fit-contain lazy" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . $data_src . '" />
+                <a href="' . OUTPUT_PATH . h($file_name) . '" class="stretched-link" target="_blank" tabindex="-1" aria-hidden="true"></a>
+                <img style="width: auto; height: auto; max-width: 100%; max-height: 300px; position: relative; z-index: 1;" class="card-img object-fit-contain lazy" alt="" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . $data_src . '" />
             </div>
         </div>';
 
@@ -539,7 +539,7 @@ if (!isset($_POST['name'])) {
                                 <div class=" btn-group btn-group-sm flex-wrap">
                                     ' . $image_buttons . '
                                     <a class="btn btn-link pg-link-secondary py-0 mb-3"  href="' . OUTPUT_PATH . h($file_name) . '" target="_blank"><span class="material-icons me-1">open_in_browser</span>' . lang('Open in New Tab') . '</a>
-                                    <a class="btn btn-link pg-link-secondary py-0 mb-3" download="image" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
+                                    <a class="btn btn-link pg-link-secondary py-0 mb-3" download="' . h($file_name) . '" href="' . OUTPUT_PATH . h($file_name) . '" ><span class="bi bi-file-earmark-arrow-down bi-me-2"></span>' . lang('Download') . '</a>
                                 </div>
                             </nav>
                             <div class="row mb-3">
