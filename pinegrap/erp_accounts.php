@@ -162,7 +162,7 @@ foreach ($accounts as $account) {
             <td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Edit') . '" onclick="window.location.href=\'' . $output_link_url . '\'"><i class="bi bi-pencil"></i></button>
             </td>
-            <td style="max-width:220px" class="text-nowrap text-truncate align-middle chart_label' . $status_class . '">' . h($account['title']) . $output_edoc_flag . '</td>
+            <td style="max-width:220px" class="text-wrap text-break align-middle chart_label' . $status_class . '">' . h($account['title']) . $output_edoc_flag . '</td>
             <td class="align-middle">' . h($kind_labels[$account['kind']] ?? $account['kind']) . '</td>
             <td class="align-middle text-center" data-order="' . (($contact_id > 0) ? 1 : 0) . '">' . $output_contact . '</td>
             <td class="align-middle text-nowrap">' . h($account['tax_number']) . '</td>
