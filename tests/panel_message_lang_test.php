@@ -34,9 +34,10 @@ function test_panel_message_lang_software_update_steps()
 	$source = panel_message_lang_source('includes/fn/update.php');
 	pg_assert_true(!preg_match("/\\\$failure\\['message'\\] = (?!lang\\()/", $source), 'update.php: an extraction failure message outside lang()');
 
-	// The replace step's message may carry server file names.
+	// A step's message may carry server file names: every step prints it as text.
 	$source = panel_message_lang_source('software_update.php');
-	pg_assert_same(3, substr_count($source, 'LogBox.text(response.message);'), 'software_update.php: the replace step messages printed as text');
+	pg_assert_same(1, substr_count($source, 'log_box.text(response.message);'), 'software_update.php: the step messages printed as text');
+	pg_assert_true(strpos($source, '.html(response.message') === false, 'software_update.php: no step message printed as HTML');
 }
 
 function test_panel_message_lang_barcode_and_backups()

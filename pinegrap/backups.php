@@ -56,7 +56,7 @@ if ($unfinished_restore !== null) {
 	<div class="alert theme-warning d-flex gap-3 align-items-start">
 		<i class="bi bi-hourglass-split"></i>
 		<div>
-			' . h(lang(array('string' => 'A restore of the backup {var:1} is unfinished ({var:2}, last step {var:3}). The site runs on its own tables until it is finished.', 'vars' => array($unfinished_restore['folder'], pg_restore_progress_text($unfinished_restore), date('d.m.Y H:i', (int) $unfinished_restore['updated']))))) . '
+			' . h(lang(array('string' => 'A restore of the backup {var:1} is unfinished ({var:2}, last step {var:3}). The site runs on its own tables until it is finished.', 'vars' => array($unfinished_restore['folder'], pg_restore_progress_text($unfinished_restore), get_absolute_time(array('timestamp' => (int) $unfinished_restore['updated'], 'format' => 'plain_text')))))) . '
 			<a href="' . h(PATH . SOFTWARE_DIRECTORY . '/install/') . '">' . lang('Continue it or discard it on the installation screen.') . '</a>
 		</div>
 	</div>';
@@ -70,8 +70,8 @@ if($directory){
 		$output_rows .= '
 		<tr>
 			<td class="align-middle text-start actions-buttons">
-        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . lang('Download') . '" ><i class="bi bi-download"></i></button>
-        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . lang('Delete') . '" ><i class="bi bi-trash"></i></button>
+        	    <button type="submit" name="download_selected" value="Download '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-primary border-2 " title="' . h(lang('Download')) . '" aria-label="' . h(lang(array('string' => 'Download {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-download" aria-hidden="true"></i></button>
+        	    <button type="submit" name="delete_selected"   value="Delete '.h($backup_folder).'" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " data-confirm-content="' . lang(array('string'=>'WARNING: Selected {var:1} will be permanently deleted.','vars'=>array(lang('backup')))) . '" title="' . h(lang('Delete')) . '" aria-label="' . h(lang(array('string' => 'Delete {var:1}', 'vars' => array($backup_folder)))) . '"><i class="bi bi-trash" aria-hidden="true"></i></button>
         	</td>
 			<td>
 				'.h($backup_folder).'
@@ -156,12 +156,14 @@ if (!$_POST) {
 	                                    <div class="progress d-none">
 	                                        <div class="progress-bar progress-bar-striped"
 	                                             role="progressbar"
+	                                             aria-label="' . h(lang('Backup')) . '"
+	                                             aria-valuenow="0"
 	                                             aria-valuemin="0"
 	                                             aria-valuemax="100"
 	                                             style="width: 0%">
 	                                        </div>
 	                                    </div>
-	                                    <div class="logbox form-text"></div>
+	                                    <div class="logbox form-text" role="status"></div>
 	                                </div>
 	                                <div class="col-12 md:col-auto my-1">
 	                                    <label for="backup_folder_name" class="form-label">'
@@ -180,12 +182,15 @@ if (!$_POST) {
 	                                        </button>
 	                                    </fieldset>
 	                                    <script>
-	                                        var input = document.getElementById("backup_folder_name");
-	                                        input.addEventListener("keyup", function(event) {
-	                                            if (event.keyCode === 13) {
-	                                                event.preventDefault();
-	                                                document.getElementById("backup").click();
+	                                        // Return would submit #backupform with its first submit
+	                                        // button, a row\'s Download; keydown stops that before the
+	                                        // browser does it and starts the backup instead.
+	                                        document.getElementById("backup_folder_name").addEventListener("keydown", function(event) {
+	                                            if (event.key !== "Enter" || event.isComposing) {
+	                                                return;
 	                                            }
+	                                            event.preventDefault();
+	                                            document.getElementById("backup").click();
 	                                        });
 	                                    </script>
 	                                </div>

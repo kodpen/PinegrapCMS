@@ -1546,13 +1546,11 @@ function pg_update_permissions_block($user)
     if ((int) $user['role'] === 0) {
         $permissions_action = '
                 <button type="button" class="btn btn-solid theme-danger" id="write_permissions_fix"
-                        data-busy-label="' . h(lang('Fixing')) . '"
-                        data-idle-label="' . h(lang('Set the file permissions')) . '"
                         data-failed-label="' . h(lang('The permissions could not be changed.')) . '">
-                    <i class="bi bi-wrench-adjustable me-1"></i><span id="write_permissions_fix_state">' . h(lang('Set the file permissions')) . '</span>
+                    <i class="bi bi-wrench-adjustable me-1" aria-hidden="true"></i>' . h(lang('Set the file permissions')) . '
                 </button>
                 <span class="form-text d-block mt-3">' . h(lang('Sets these folders to 0777 and the files in them that refuse to 0666, so that both the web server and your FTP or file manager user can replace them. Folders that belong to another system user cannot be changed from here and are listed afterwards.')) . '</span>
-                <div class="form-text mt-3 d-none" id="write_permissions_fix_result"></div>';
+                <div class="form-text mt-3 d-none" id="write_permissions_fix_result" role="status"></div>';
     } else {
         $permissions_action = '<span class="form-text d-block mt-3">' . h(lang('An administrator can open them from this screen, or set them writable over FTP.')) . '</span>';
     }
@@ -1590,7 +1588,6 @@ function pg_update_permissions_script()
                 return;
             }
             button.prop("disabled", true);
-            $("#write_permissions_fix_state").text(button.attr("data-busy-label"));
             $.ajax({
                 contentType: "application/json",
                 url: "api.php",
@@ -1601,7 +1598,6 @@ function pg_update_permissions_script()
                 }),
                 success: function(response) {
                     result.text(response.message || button.attr("data-failed-label")).removeClass("d-none");
-                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
                     if (response.status == "success") {
                         window.setTimeout(function(){
                             window.location.reload();
@@ -1612,7 +1608,6 @@ function pg_update_permissions_script()
                 },
                 error: function() {
                     result.text(button.attr("data-failed-label")).removeClass("d-none");
-                    $("#write_permissions_fix_state").text(button.attr("data-idle-label"));
                     button.prop("disabled", false);
                 }
             });

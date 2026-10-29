@@ -211,118 +211,74 @@ pg_page_shell([
     ]) . '
 <main id="content" class="container-fluid">
 <script>
-    function update(){
-        $status = "";
-        var update_btn = $("#update");
-        var Progress = $(".progress .progress-bar");
-        var LogBox = $(".logbox");
-        LogBox.empty();
-        update_btn.html("<span class=\'spinner-border spinner-border-sm\'></span> ' . lang('Updating') . '...").addClass("disabled").removeClass("ready");
-        Progress.addClass("progress-bar-animated").removeClass("bg-danger").attr("style","width:20%");
-        LogBox.html("' . lang('Starting') . '...");
-        // Use AJAX to get various card info.
-        $.ajax({
-            contentType: "application/json",
-            url: "api.php",
-            data: JSON.stringify({
-                action: "software_update",
-                token:software_token ,
-                step: "check"
-            }),
-            type: "POST",
-            success: function(response) {
-                // Check the values in console
-                $status = response.status;
-                if($status == "success"){
-                    Progress.attr("style","width:40%");
-                    LogBox.html(response.message);
-                    $.ajax({
-                        contentType: "application/json",
-                        url: "api.php",
-                        data: JSON.stringify({
-                            action: "software_update",
-                            token:software_token ,
-                            step: "download"
-                        }),
-                        type: "POST",
-                        success: function(response) {
-                            $status = response.status;
-                            if($status == "success"){
-                                Progress.attr("style","width:60%");
-                                LogBox.html(response.message);
-                                // The files about to be replaced and the database
-                                // are backed up before anything is written over.
-                                $.ajax({
-                                    contentType: "application/json",
-                                    url: "api.php",
-                                    data: JSON.stringify({
-                                        action: "software_update",
-                                        token:software_token ,
-                                        step: "backup"
-                                    }),
-                                    type: "POST",
-                                    success: function(response) {
-                                        if (!response || (response.status != "success")) {
-                                            Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                                            LogBox.text(response ? response.message : "");
-                                            update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
-                                            return;
-                                        }
-                                        Progress.attr("style","width:80%");
-                                        LogBox.text(response.message);
-                                $.ajax({
-                                    contentType: "application/json",
-                                    url: "api.php",
-                                    data: JSON.stringify({
-                                        action: "software_update",
-                                        token:software_token ,
-                                        step: "replace"
-                                    }),
-                                    type: "POST",
-                                    success: function(response) {
-                                        $status = response.status;
-                                        if($status == "success"){
-                                            Progress.attr("style","width:100%");
-                                            LogBox.text(response.message);
-                                            window.setTimeout(function(){
-                                                window.location.replace("?mode=autoupgrade");
-                                            }, 3000);
-                                            
-                                        }else{
-
-                                            Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                                            LogBox.text(response.message);
-                                            update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
-                                        }
-                                    }
-                                });
-                                    },
-                                    error: function() {
-                                        Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                                        LogBox.text("' . escape_javascript(lang('The backup before the update could not be written. Nothing was changed.')) . '");
-                                        update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
-                                    }
-                                });
-                            }else{
-                                Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                                LogBox.html(response.message);
-                                update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
-                            }
-                        }
-                    });
-                }else{
-                    Progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style","width:100%");
-                    LogBox.html(response.message);
-                    update_btn.text("' . lang('Retry Update') . '").removeClass("disabled").addClass("ready");
-                }
-            }
-        });
-    }
     $(function(){
-        $("#update").click(function(){
-            if ($(this).hasClass("ready")) {
-                update();
+        var update_button = $("#update");
+        var progress = $(".progress .progress-bar");
+        var log_box = $(".logbox");
+
+        // The four steps of the update; each starts when the one before it
+        // answered with success. The backup step writes the files about to be
+        // replaced and the database to a pre-update archive first.
+        var steps = [
+            { step: "check", width: 40 },
+            { step: "download", width: 60 },
+            { step: "backup", width: 80 },
+            { step: "replace", width: 100 }
+        ];
+
+        function set_width(width) {
+            progress.css("width", width + "%").attr("aria-valuenow", width);
+        }
+
+        function fail(message) {
+            progress.addClass("bg-danger").removeClass("progress-bar-animated");
+            set_width(100);
+            log_box.text(message || "' . escape_javascript(lang('An error occurred.')) . '");
+            update_button.prop("disabled", false);
+        }
+
+        function run(index) {
+            $.ajax({
+                contentType: "application/json",
+                url: "api.php",
+                type: "POST",
+                data: JSON.stringify({
+                    action: "software_update",
+                    token: software_token,
+                    step: steps[index].step
+                }),
+                success: function(response) {
+                    if (!response || (response.status != "success")) {
+                        fail(response ? response.message : "");
+                        return;
+                    }
+                    set_width(steps[index].width);
+                    log_box.text(response.message);
+                    if (index + 1 < steps.length) {
+                        run(index + 1);
+                    } else {
+                        window.setTimeout(function(){
+                            window.location.replace("?mode=autoupgrade");
+                        }, 3000);
+                    }
+                },
+                error: function() {
+                    fail(steps[index].step == "backup"
+                        ? "' . escape_javascript(lang('The backup before the update could not be written. Nothing was changed.')) . '"
+                        : "' . escape_javascript(lang('An error occurred.')) . '");
+                }
+            });
+        }
+
+        update_button.click(function(){
+            if (update_button.prop("disabled")) {
+                return;
             }
+            update_button.prop("disabled", true);
+            progress.addClass("progress-bar-animated").removeClass("bg-danger");
+            set_width(20);
+            log_box.text("' . escape_javascript(lang('Starting')) . '...");
+            run(0);
         });
     });
 </script>
@@ -336,16 +292,17 @@ pg_page_shell([
         <div class="col-12 md:col-8 md:offset-2">
 			<div class="card my-12 border-4">
 				<div class="card-body">
-					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;">browser_updated</span><br/>' . lang('A new Update has been found!') . '</h4>
-                    <div class="text-center"><span class="fg-secondary h4">'. $old_version . '</span> <span class="material-icons h2">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">'. $new_version . '</span></div>
+					<h4 class="fg-success text-center"><span class="material-icons" style="line-height:1em;font-size:4em;" aria-hidden="true">browser_updated</span><br/>' . lang('A new Update has been found!') . '</h4>
+                    <div class="text-center"><span class="fg-secondary h4">'. $old_version . '</span> <span class="material-icons h2" aria-hidden="true">arrow_right_alt</span> <span class="fg-primary fw-bold h2 fg-success">'. $new_version . '</span></div>
                     
                     <div class="progress">
-                      <div class="progress-bar progress-bar-striped  text-start" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="logbox ms-1"></span></div>
+                      <div class="progress-bar progress-bar-striped" role="progressbar" aria-label="' . h(lang('Update')) . '" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
                     </div>
+                    <div class="logbox form-text" role="status"></div>
 				</div>
 				<div class="card-footer">
 					<div class="text-center">
-                    <a id="update" class="btn btn-subtle theme-secondary ' . ($update_blocked ? 'disabled' : 'ready') . '" href="#!"' . ($update_blocked ? ' aria-disabled="true" title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons">sync</span>' . lang('Update') . '</a></div>
+                    <button type="button" id="update" class="btn btn-subtle theme-secondary"' . ($update_blocked ? ' disabled title="' . h(lang('Open the folders listed above first.')) . '"' : '') . '><span class="me-1 material-icons" aria-hidden="true">sync</span>' . lang('Update') . '</button></div>
 				</div>
                 
 			</div>
