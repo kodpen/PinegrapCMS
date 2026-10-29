@@ -1159,6 +1159,7 @@
     "The cash flow covers what has happened, so the end date cannot be after today.": "Kasa akışı olmuş olanı gösterir, bu yüzden bitiş tarihi bugünden sonra olamaz.",
     "The catalog has no groups yet, so this product is not placed under one.": "Katalogda henüz grup yok, bu yüzden ürün bir grubun altına yerleştirilmiyor.",
     "The categories were saved.": "Kategoriler kaydedildi.",
+    "The category is added.": "Kategori eklendi.",
     "The category list could not be downloaded.": "Kategori listesi indirilemedi.",
     "The category list was downloaded.": "Kategori listesi indirildi.",
     "The category of {var:1} article(s) was saved.": "{var:1} ürün grubunun kategorisi kaydedildi.",

@@ -3124,16 +3124,37 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
     if ((int)db_value("SELECT COUNT(*) FROM forms WHERE page_id = '$page_id'") > 0) return 0;
 
     $fields = array();
-    foreach ((array)db_items("SELECT id, name, type, wysiwyg FROM form_fields WHERE page_id = '$page_id'") as $f) {
+    foreach ((array)db_items(
+        "SELECT id, name, type, wysiwyg, multiple"
+        . (pg_coll_ready() ? ", collection_kind, reference_page_id" : ", '' AS collection_kind, 0 AS reference_page_id") . "
+         FROM form_fields WHERE page_id = '$page_id'") as $f) {
         $fields[mb_strtolower((string)$f['name'], 'UTF-8')] = $f;
     }
     if (!$fields) return 0;
+
+    // A reference field's sample value names the record it points at by its
+    // label; the form it points into is written and seeded first
+    // (pg_cf_reconcile_plan()), so its records' codes can be looked up now.
+    $ref_codes = array();
+    foreach ($fields as $key => $f) {
+        $target = (int)$f['reference_page_id'];
+        if ((string)$f['collection_kind'] === 'reference' && $target > 0) {
+            $ref_codes[$key] = _pg_cf_seed_reference_labels($target);
+        }
+    }
 
     $pretty = (bool)db_value("SELECT pretty_urls FROM custom_form_pages WHERE page_id = '$page_id' LIMIT 1");
     $now = time();
     $copied = 0;
     foreach (array_slice(array_values($records), 0, 24) as $i => $record) {
         $values = _pg_cf_seed_record_values($record, $fields);
+        foreach ($ref_codes as $key => $codes) {
+            if (!isset($values[$key])) continue;
+            $type = (string)$fields[$key]['type'];
+            $rows = $type === 'check box' || ($type === 'pick list' && !empty($fields[$key]['multiple']));
+            $values[$key] = pg_cf_seed_reference_codes($values[$key], $codes, $rows);
+            if (!$values[$key]) unset($values[$key]);
+        }
         if (!$values) continue;
 
         $when = $now - ($i * 4 + 1) * 86400;
@@ -3158,6 +3179,64 @@ function _pg_cf_seed_given_records($page_id, $records, $user_id)
         $copied++;
     }
     return $copied;
+}
+
+/**
+ * A sample record's reference value: the labels it names, each turned into
+ * the reference code of the target record carrying that label (trimmed,
+ * case-insensitive). A label that names no record is left out, without an
+ * error. Several codes are one value joined by ', ' (a text box or a single
+ * pick list holds them so), or with $rows a value each (a check box group
+ * and a multiple pick list keep each choice in a row of its own).
+ *
+ * @param array $labels the sample record's labels
+ * @param array $codes  label => reference code of the target form's records
+ * @param bool  $rows   one value per code
+ * @return array the values to store; empty when no label matched
+ */
+function pg_cf_seed_reference_codes($labels, $codes, $rows = false)
+{
+    $by_label = array();
+    foreach ((array)$codes as $label => $code) {
+        $label = mb_strtolower(trim((string)$label), 'UTF-8');
+        if ($label !== '' && (string)$code !== '' && !isset($by_label[$label])) $by_label[$label] = (string)$code;
+    }
+    $out = array();
+    foreach ((array)$labels as $label) {
+        $label = mb_strtolower(trim((string)$label), 'UTF-8');
+        if (isset($by_label[$label]) && !in_array($by_label[$label], $out, true)) $out[] = $by_label[$label];
+    }
+    if (!$out || $rows) return $out;
+    return array(implode(', ', $out));
+}
+
+// The records of the form on $page_id by their label, as the reference pick
+// list shows them (the Title field, pg_coll_reference_options()): label =>
+// reference code, the oldest record first when two share a label. Read
+// fresh: the records were written in this request.
+function _pg_cf_seed_reference_labels($page_id)
+{
+    $page_id = (int)$page_id;
+    $out = array();
+    foreach ((array)db_items(
+        "SELECT
+            forms.reference_code,
+            (SELECT form_data.data
+             FROM form_data
+             JOIN form_fields ON form_data.form_field_id = form_fields.id
+             WHERE form_data.form_id = forms.id
+               AND form_fields.rss_field = 'title'
+             LIMIT 1) AS title
+         FROM forms
+         WHERE forms.page_id = '$page_id'
+           AND forms.complete = 1
+           AND forms.reference_code != ''
+         ORDER BY forms.id ASC
+         LIMIT 500") as $row) {
+        $title = trim((string)$row['title']);
+        if ($title !== '' && !isset($out[$title])) $out[$title] = (string)$row['reference_code'];
+    }
+    return $out;
 }
 
 // The values of one sample record that its form can hold, by the field's

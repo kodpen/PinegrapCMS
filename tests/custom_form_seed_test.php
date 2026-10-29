@@ -47,3 +47,24 @@ function test_custom_form_seed_skips_unknown_and_empty()
 	pg_assert_same(array(), $values);
 	pg_assert_same(array(), _pg_cf_seed_record_values('not a record', _test_cf_seed_fields()));
 }
+
+// A reference's sample value names the target record by its label; it is
+// stored as that record's reference code.
+function test_custom_form_seed_reference_by_label()
+{
+	$codes = array('News' => 'C1', 'Guides' => 'C2', 'Notes' => 'C3');
+	pg_assert_same(array('C2'), pg_cf_seed_reference_codes(array(' guides '), $codes), 'trimmed, any case');
+	pg_assert_same(array(), pg_cf_seed_reference_codes(array('Unknown'), $codes), 'an unknown label: no value');
+	pg_assert_same(array('C1'), pg_cf_seed_reference_codes(array('Unknown', 'News'), $codes), 'the known one kept');
+}
+
+// Several labels: one value joined by ', ', or a value each for a field that
+// keeps every choice in a row of its own; a code once.
+function test_custom_form_seed_reference_multi()
+{
+	$codes = array('News' => 'C1', 'Guides' => 'C2');
+	pg_assert_same(array('C2, C1'), pg_cf_seed_reference_codes(array('Guides', 'News', 'news'), $codes));
+	pg_assert_same(array('C2', 'C1'), pg_cf_seed_reference_codes(array('Guides', 'News'), $codes, true));
+	pg_assert_same(array(), pg_cf_seed_reference_codes(array('Guides'), array()), 'a target without records');
+	pg_assert_same(array(), pg_cf_seed_reference_codes(array('Guides'), array('Guides' => '')), 'a record without a code');
+}

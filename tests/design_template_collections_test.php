@@ -40,6 +40,16 @@ function _test_tpl_coll_attr($node, $name)
 	return null;
 }
 
+// The keys of a template's pages whose form is a collection.
+function _test_tpl_coll_form_keys($tpl)
+{
+	$keys = array();
+	foreach ((isset($tpl['pages']) && is_array($tpl['pages'])) ? $tpl['pages'] : array() as $p) {
+		if (!empty($p['form']['collection'])) $keys[] = (string)$p['key'];
+	}
+	return $keys;
+}
+
 // The form field type a control node becomes, as pg_coll_kinds() names it.
 function _test_tpl_coll_field_type($node)
 {
@@ -65,11 +75,11 @@ function _test_tpl_coll_nodes($value, &$out)
 }
 
 // The page forms that are collections, by template: blog, staff, menu,
-// events, articles and stories.
+// events, articles and stories, and the blog categories of hello-pinegrap.
 function test_design_template_collection_forms()
 {
 	$expected = array(
-		'hello-pinegrap'      => array('blog_new', 'staff_entry'),
+		'hello-pinegrap'      => array('blog_category_new', 'blog_new', 'staff_entry'),
 		'pinegrap-bookshop'   => array('blog_new', 'staff_entry'),
 		'pinegrap-boutique'   => array('blog_new', 'staff_entry'),
 		'pinegrap-cafe'       => array('blog_new', 'event_new', 'menu_new', 'staff_entry'),
@@ -112,7 +122,13 @@ function test_design_template_collection_kinds()
 			if (isset($cf['kind'])) {
 				pg_assert_true(isset($kinds[$cf['kind']]), $label . ': a known kind');
 				pg_assert_true(in_array($type, $kinds[$cf['kind']], true), $label . ': the field type can have the kind');
-				pg_assert_true(!isset($cf['ref']), $label . ': no reference before Publish resolves them');
+				// A reference names a page of the template holding a
+				// collection form; Publish resolves the key.
+				if (isset($cf['ref'])) {
+					pg_assert_same('reference', $cf['kind'], $label . ': only a reference names a form');
+					pg_assert_true((bool)preg_match('~^\{\{tab:([a-z0-9_]+)\}\}$~', (string)$cf['ref'], $m), $label . ': a tab key');
+					pg_assert_true(in_array($m[1], _test_tpl_coll_form_keys($tpl), true), $label . ': the key is a collection form of the template');
+				}
 			}
 			if ($type === 'file upload') {
 				$picture = _test_tpl_coll_attr($node, 'accept') === 'image/*';
@@ -122,4 +138,40 @@ function test_design_template_collection_kinds()
 		}
 	}
 	pg_assert_true($images >= 20, 'covers and photos carry the kind');
+}
+
+// The blog's categories: the post form's category field points into the
+// categories form, the sample posts name their category by a sample
+// category's name, and the post page prints it; the version was raised.
+function test_design_template_blog_categories()
+{
+	$templates = _test_tpl_coll_templates();
+	$tpl = $templates['hello-pinegrap'];
+	pg_assert_true(version_compare($tpl['version'], '2.5.0', '>='), 'the version raised');
+
+	$pages = array();
+	foreach ($tpl['pages'] as $p) $pages[$p['key']] = $p;
+	$names = array();
+	foreach ($pages['blog_category_new']['form']['sample_records'] as $r) $names[] = $r['name'];
+	pg_assert_true(count($names) >= 3, 'sample categories');
+	foreach ($pages['blog_new']['form']['sample_records'] as $r) {
+		pg_assert_true(in_array($r['category'], $names, true), $r['title'] . ': a sample category');
+	}
+
+	$nodes = array();
+	_test_tpl_coll_nodes($tpl['widgets']['blog_form'], $nodes);
+	$ref = null;
+	foreach ($nodes as $n) {
+		if (_test_tpl_coll_attr($n, 'name') === 'category') $ref = $n['props']['_cf'];
+	}
+	pg_assert_same('{{tab:blog_category_new}}', $ref['ref']);
+	pg_assert_same('category', $ref['rss_field'], 'the feed category');
+
+	$nodes = array();
+	_test_tpl_coll_nodes($tpl['widgets']['blog_post'], $nodes);
+	$spec = null;
+	foreach ($nodes as $n) {
+		if (isset($n['props']['_bindings']['text']) && $n['props']['_bindings']['text'] === '__ref') $spec = $n['props']['_bindParams']['text'];
+	}
+	pg_assert_same(array('field' => 'category', 'page_id' => '{{tab:blog_category_new}}', 'show' => 'name'), $spec);
 }

@@ -278,6 +278,7 @@ $staff_bar = function () use ($el, $link) {
             $el('nav', 'nav nav-underline gap-4', lang('Staff Links'), array(
                 $item('staff', lang('Staff Area')),
                 $item('blog_new', lang('New Blog Post')),
+                $item('blog_category_new', lang('Blog Categories')),
                 $item('staff_entry', lang('Add to the Staff Directory')),
                 $item('inbox', lang('Inbox')),
             ), array('smartActive' => true)),
@@ -1187,6 +1188,9 @@ $post_body = function ($paragraphs) {
 $sample_posts = array(
     array(
         'title'       => lang('Five small changes that make a site easier to use'),
+        // The category by its name: written as that category's reference
+        // code (pg_cf_seed_reference_codes()).
+        'category'    => lang('Guides'),
         'summary'     => lang('Bigger buttons, clearer headings, fewer steps. None of them takes a day, and visitors notice every one.'),
         'content'     => $post_body(array(
             lang('Most visitors decide in a few seconds whether a site is going to be easy. The good news is that the things that make the difference are small.'),
@@ -1197,6 +1201,7 @@ $sample_posts = array(
     ),
     array(
         'title'       => lang('How we answer every message within a day'),
+        'category'    => lang('News'),
         'summary'     => lang('Every message from the contact page becomes a conversation. This is how we keep the answers quick and personal.'),
         'content'     => $post_body(array(
             lang('When you write to us from the contact page, your message does not land in a crowded mailbox. It becomes a conversation that the whole team can see.'),
@@ -1207,6 +1212,7 @@ $sample_posts = array(
     ),
     array(
         'title'       => lang('A week behind the scenes'),
+        'category'    => lang('Behind the Scenes'),
         'summary'     => lang('Planning on Monday, building in the middle of the week and a short look back on Friday: a week of our team.'),
         'content'     => $post_body(array(
             lang('Our week starts with a short planning meeting. Everybody says what they are working on, and the plan board shows what is next.'),
@@ -1217,6 +1223,7 @@ $sample_posts = array(
     ),
     array(
         'title'       => lang('Say it in the first sentence'),
+        'category'    => lang('Guides'),
         'summary'     => lang('People skim. A page that puts the point first is read; a page that saves it for the end is not.'),
         'content'     => $post_body(array(
             lang('On the web, the first sentence does most of the work. Start with what the reader came for, then add the details for those who want them.'),
@@ -1225,6 +1232,15 @@ $sample_posts = array(
         )),
         'cover_image' => 'https://picsum.photos/seed/pinegrap-post-4/1200/675',
     ),
+);
+
+// The blog's categories: a collection of their own, so a post points at one
+// and its name is changed in one place. Written before the posts (their
+// category field points into this form), so the posts name them.
+$sample_categories = array(
+    array('name' => lang('News'), 'description' => lang('What is new with us and the site.')),
+    array('name' => lang('Guides'), 'description' => lang('Practical advice for a better site.')),
+    array('name' => lang('Behind the Scenes'), 'description' => lang('How our team works.')),
 );
 
 $staff_form_page = function ($key, $name, $title, $lead, $widget_key, $form) use ($root, $account_bar, $shared, $el, $page_header, $container, $row, $col, $widget) {
@@ -1272,6 +1288,15 @@ $pages[] = $staff_form_page('blog_new', lang('new-blog-post'), lang('New Blog Po
         'sample_records'       => $sample_posts,
         // The cover is the posts' share image (pg_cf_share_image_field_id()).
         'share_image_field'    => 'cover_image',
+    ));
+$pages[] = $staff_form_page('blog_category_new', lang('blog-categories'), lang('Blog Categories'),
+    lang('Add a category; posts choose it on the New Blog Post page.'), 'category_form',
+    array(
+        'form_name'            => lang('Blog Categories'),
+        'collection'           => 1,
+        'confirmation_message' => lang('The category is added.'),
+        'confirmation_page_id' => '{{tab:blog_new}}',
+        'sample_records'       => $sample_categories,
     ));
 $pages[] = $staff_form_page('staff_entry', lang('add-to-staff-directory'), lang('Add to the Staff Directory'),
     lang('Signed-in members see the directory from their account.'), 'staff_form',
@@ -1679,6 +1704,14 @@ $widgets = array(
                                     $span(lang('Jane Cooper'), 'pg-field-value', lang('Value'), $bind('submitter_name')),
                                 )),
                             )),
+                            // The post's category, a field of the category it points at;
+                            // the line leaves when the post has none.
+                            $el('p', 'pg-hide-if-empty mb-3', lang('Category'), array(
+                                $span(lang('Guides'), 'pg-field-value badge text-bg-primary', lang('Category'), array(
+                                    '_bindings'   => array('text' => '__ref'),
+                                    '_bindParams' => array('text' => array('field' => 'category', 'page_id' => '{{tab:blog_category_new}}', 'show' => 'name')),
+                                )),
+                            )),
                             $ai_summary(),
                             $optional_image('cover_image', 'title', 'rounded-3 object-fit-cover', 'ratio ratio-16x9 mb-4',
                                 'https://picsum.photos/seed/pinegrap-post/1200/675', lang('Cover Image')),
@@ -1700,9 +1733,28 @@ $widgets = array(
         'tree'   => $widget_root(array(
             $field('hp-post-title', lang('Title'), pg_cf_with_role($input('hp-post-title', 'text', 'title', 'off', true, array(array('name' => 'maxlength', 'value' => '150'))), 'title')),
             $field('hp-post-summary', lang('Summary'), pg_cf_with_role($textarea('hp-post-summary', 'summary', 3), 'description')),
+            // A category of the Blog Categories form; the site lists its
+            // records as the choices.
+            $field('hp-post-category', lang('Category'), pg_cf_with_role($el('select', 'form-select', lang('Field'), array(
+                $el('option', '', lang('Option'), array(), array('text' => lang('Choose a category'), '_attrs' => array(array('name' => 'value', 'value' => '')))),
+            ), array('id' => 'hp-post-category', '_attrs' => array(array('name' => 'name', 'value' => 'category')),
+                     '_cf' => array('kind' => 'reference', 'ref' => '{{tab:blog_category_new}}'))), 'category')),
             $field('hp-post-cover', lang('Cover Image'), pg_cf_with_role($file('hp-post-cover', 'cover_image', 'public'), 'media')),
             $field('hp-post-content', lang('Content'), $textarea('hp-post-content', 'content', 14)),
             $submit(lang('Publish'), lang('Send')),
+            $loop(array()),
+        )),
+    ),
+
+    // The staff page's category form: one category of the blog.
+    'category_form' => array(
+        'page'   => 'blog_category_new',
+        'slug'   => 'form',
+        'config' => array('regionType' => 'custom_form', 'form_source' => 'page'),
+        'tree'   => $widget_root(array(
+            $field('hp-category-name', lang('Name'), pg_cf_with_role($input('hp-category-name', 'text', 'name', 'off', true, array(array('name' => 'maxlength', 'value' => '80'))), 'title')),
+            $field('hp-category-description', lang('Description'), pg_cf_with_role($textarea('hp-category-description', 'description', 2, false), 'description')),
+            $submit(lang('Add'), lang('Send')),
             $loop(array()),
         )),
     ),
@@ -2377,7 +2429,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Say hello to Pinegrap'),
-    'version'     => '2.4.15',
+    'version'     => '2.5.0',
     'framework'   => 'bootstrap5',
     'order'       => 10,
     'icon'        => 'bi-hand-thumbs-up',
