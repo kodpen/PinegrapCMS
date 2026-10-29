@@ -1681,6 +1681,9 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 			<span class="input-group-text"><i class="bi bi-search"></i></span>
 			<input type="text" class="form-control" id="api_filter" aria-label="' . h(lang('Search application')) . '" placeholder="' . lang('Search application') . '" autocomplete="off">
 		</div>
+		<div class="visually-hidden" id="api_filter_status" role="status"
+			data-found="' . h(lang(array('string' => '{var:1} found', 'vars' => '{1}'))) . '"
+			data-none="' . h(lang('Nothing found.')) . '"></div>
 		<div class="flex-grow-1"></div>
 		<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php">
 			<i class="bi bi-file-earmark-text me-1"></i>' . lang('API Documentation') . '</a>
@@ -1704,6 +1707,7 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 				<span>' . lang('24 hours') . '</span><span></span>
 			</div>
 			<div id="api_rows">' . $app_rows . '</div>
+			<div class="api-empty d-none" id="api_filter_empty">' . h(lang('Nothing found.')) . '</div>
 			</div>
 		</div>
 	</div>
@@ -2317,13 +2321,30 @@ echo '
 		ask.focus();
 	});
 
-	// Filter
+	// Filter. The rows are a grid, so they are hidden with an inline display;
+	// the count is told to screen readers once the typing stops.
 	var filter = document.getElementById("api_filter");
+	var filterStatus = document.getElementById("api_filter_status");
+	var filterEmpty = document.getElementById("api_filter_empty");
+	var filterTimer = null;
 	filter.addEventListener("input", function () {
-		var needle = this.value.toLowerCase();
-		document.querySelectorAll(".api-row").forEach(function (row) {
-			row.style.display = row.textContent.toLowerCase().indexOf(needle) > -1 ? "" : "none";
+		var needle = this.value.toLowerCase().trim();
+		var rows = document.querySelectorAll(".api-row");
+		var shown = 0;
+		rows.forEach(function (row) {
+			var match = row.textContent.toLowerCase().indexOf(needle) > -1;
+			row.style.display = match ? "" : "none";
+			if (match) { shown++; }
 		});
+		filterEmpty.classList.toggle("d-none", needle === "" || rows.length === 0 || shown > 0);
+		clearTimeout(filterTimer);
+		filterStatus.textContent = "";
+		if (needle === "" || rows.length === 0) { return; }
+		filterTimer = setTimeout(function () {
+			filterStatus.textContent = shown > 0
+				? filterStatus.dataset.found.replace("{1}", shown)
+				: filterStatus.dataset.none;
+		}, 500);
 	});
 
 	// The subscription buttons post through the form the drawer already has: a

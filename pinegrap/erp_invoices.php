@@ -416,9 +416,9 @@ $output_bulk_buttons = '';
 if ($edoc_bulk) {
     $output_bulk_buttons = '
                 <span class="enable-on-selected d-inline-flex flex-wrap gap-1">
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
-                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled"><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_send" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Send the ticked invoices to the e-document provider? Invoices that were already sent are skipped.')) . '"><i class="bi bi-send me-1" aria-hidden="true"></i>' . lang('Send selected') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_submit" class="btn btn-sm btn-outline theme-secondary disabled" disabled data-confirm-content="' . h(lang('Hand the ticked drafts to GİB? Only documents waiting as a draft at the provider are handed over.')) . '"><i class="bi bi-bank me-1" aria-hidden="true"></i>' . lang('Hand to GİB') . '</button>
+                    <button type="submit" form="erp_edoc_bulk" name="erp_action" value="edoc_bulk_poll" class="btn btn-sm btn-outline theme-secondary disabled" disabled><i class="bi bi-arrow-repeat me-1" aria-hidden="true"></i>' . lang('Ask status') . '</button>
                 </span>';
 }
 

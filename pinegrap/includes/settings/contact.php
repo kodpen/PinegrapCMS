@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Site Settings - the Communication cards: e-mail campaigns, live chat,
- * MailChimp, SMS and İYS.
+ * MailChimp, SMS, İYS and Google reviews.
  *
  * Fills $pg_settings_cards, one grid column per card, in reading order. Which
  * cards belong here is said once, in includes/settings/registry.php; this file
@@ -279,6 +279,22 @@ $pg_settings_cards[] = '
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">' . pg_iys_settings_fields() . '
+                                    </div>
+                                </div>
+                            </div>
+                        </div>';
+
+// ── Google Reviews ──
+// The Places API key and the Place ID, kept sealed with the cache of what
+// Google answered (includes/fn/google_reviews.php).
+$pg_settings_cards[] = '
+                        <div id="pgset-google-reviews" class="pg-set-card">
+                            <div class="card">
+                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                    ' . lang('Google Reviews') . '
+                                </div>
+                                <div class="card-body">
+                                   <div class="row gy-5">' . pg_grev_settings_fields() . '
                                     </div>
                                 </div>
                             </div>

@@ -4561,6 +4561,10 @@ function pg_login_captcha_issue()
 /**
  * Check the answer against the question this session was issued, and
  * consume the question either way. Ten minutes to answer.
+ *
+ * Returns 'ok', 'wrong' (also for a missing or malformed question: a script
+ * that drops the session must not escape the counter) or 'expired' (a
+ * well-formed question older than ten minutes, whatever the answer).
  */
 function pg_login_captcha_check($answer)
 {
@@ -4569,24 +4573,24 @@ function pg_login_captcha_check($answer)
     unset($_SESSION['software']['login_captcha']);
 
     if (!is_array($pending) || !isset($pending['answer']) || !isset($pending['issued'])) {
-        return false;
+        return 'wrong';
     }
 
     if (((int) $pending['issued'] + 600) < time()) {
-        return false;
+        return 'expired';
     }
 
     $answer = trim((string) $answer);
 
-    return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer']));
+    return (preg_match('/^\d{1,2}$/', $answer) && ((int) $answer === (int) $pending['answer'])) ? 'ok' : 'wrong';
 }
 
 /**
  * Stop a sign-in attempt that owes an answer.
  *
  * Called right after pg_login_throttle_guard(), before the password is
- * looked at. The request ends on the question screen in two cases: no
- * answer was sent, or it was wrong. A wrong answer is recorded as a failed
+ * looked at. The request ends on the question screen in three cases: no
+ * answer was sent, the question ran out, or the answer was wrong. A wrong answer is recorded as a failed
  * attempt and as a firewall log entry, so it is visible and eventually locks
  * the address or the account out like any other failure - but it is not an
  * offence; see above.
@@ -4605,8 +4609,21 @@ function pg_login_captcha_gate($identifier, $liveform, $screen)
         pg_login_captcha_screen($identifier, $liveform, $screen, '');
     }
 
-    if (pg_login_captcha_check($_POST['login_captcha_answer'])) {
+    $outcome = pg_login_captcha_check($_POST['login_captcha_answer']);
+
+    if ($outcome === 'ok') {
         return;
+    }
+
+    // A question left open too long is not a guess: the answer was never
+    // compared and the password never looked at, so nothing is counted. The
+    // request still ends on a new question, so this opens no way past it.
+    if ($outcome === 'expired') {
+        if (function_exists('waf_log_event')) {
+            waf_log_event('log', 'login-captcha', 'login', 3, mb_substr(trim((string) $identifier), 0, 64), 'question expired');
+        }
+
+        pg_login_captcha_screen($identifier, $liveform, $screen, lang('The question was open for more than 10 minutes. Please answer the new one.'));
     }
 
     if (function_exists('waf_log_event')) {

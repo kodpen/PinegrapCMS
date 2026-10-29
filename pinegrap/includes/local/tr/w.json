@@ -557,6 +557,7 @@
     "When it closes, a clear winner is written into the channel as a decision and lands on the Decisions tab. A tie is left to the team.": "Kapandığında açık bir kazanan kanala karar olarak yazılır ve Kararlar sekmesine düşer. Berabere biterse karar ekibe kalır.",
     "When it runs could not be read from the sentence: it is set to tomorrow at 09:00.": "Ne zaman çalışacağı cümleden anlaşılamadı: yarın 09:00'a ayarlandı.",
     "When it runs, and what must hold then. Every rule has to hold; if one does not, the run is skipped.": "Ne zaman çalışacağı ve o sırada neyin sağlanması gerektiği. Her kural sağlanmalı; biri sağlanmazsa o çalışma atlanır.",
+    "When it was written (\"2 weeks ago\")": "Ne zaman yazıldığı (\"2 hafta önce\")",
     "When left empty, VISITOR_CURRENCY_SYMBOL from the site settings is used.": "Boş bırakılırsa site ayarındaki VISITOR_CURRENCY_SYMBOL kullanılır.",
     "When nobody is signed in, elements bound to \"{var}\" show this message.": "Giriş yapılmamışsa \"{var}\" alanına bağlanan öğeler bu mesajı gösterir.",
     "When nobody is signed in, the ^^__not_logged_in^^ token is filled with this message.": "Giriş yapılmamışsa ^^__not_logged_in^^ token'ı bu mesajla dolar.",

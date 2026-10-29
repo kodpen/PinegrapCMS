@@ -634,6 +634,10 @@
         var caption = element('div', 'small fg-secondary mt-5');
         var grid = element('div', 'mpp-pick-grid');
 
+        // Loading, the result title, Nothing found and errors are read out.
+        caption.setAttribute('role', 'status');
+        caption.setAttribute('aria-live', 'polite');
+
         built.body.appendChild(head);
         built.body.appendChild(search);
         built.body.appendChild(caption);
@@ -835,7 +839,12 @@
         var caption = element('div', 'small fg-secondary mb-3');
         var search = element('input', 'form-control');
         var hint = element('div', 'form-text', label('category_hint'));
+        var status = element('div', 'small fg-secondary');
         var results = element('div', 'mpa-results');
+
+        // Loading, Nothing found and errors are read out.
+        status.setAttribute('role', 'status');
+        status.setAttribute('aria-live', 'polite');
 
         search.type = 'search';
         search.placeholder = label('category_search');
@@ -844,6 +853,7 @@
         built.body.appendChild(caption);
         built.body.appendChild(search);
         built.body.appendChild(hint);
+        built.body.appendChild(status);
         built.body.appendChild(results);
         document.body.appendChild(built.root);
 
@@ -860,7 +870,7 @@
             }
         });
 
-        categories = { root: built.root, caption: caption, search: search, results: results, ids: [], request: 0 };
+        categories = { root: built.root, caption: caption, search: search, status: status, results: results, ids: [], request: 0 };
     }
 
     function findCategories() {
@@ -868,12 +878,13 @@
         var request = ++categories.request;
 
         categories.results.innerHTML = '';
+        categories.status.textContent = '';
 
         if (q === '') {
             return;
         }
 
-        categories.results.appendChild(element('div', 'small fg-secondary', label('loading')));
+        categories.status.textContent = label('loading');
 
         post('list_categories', { q: q }).then(function (answer) {
             if (request !== categories.request) {
@@ -881,9 +892,10 @@
             }
 
             categories.results.innerHTML = '';
+            categories.status.textContent = '';
 
             if (!answer.ok || !answer.categories.length) {
-                categories.results.appendChild(element('div', 'small fg-secondary', answer.ok ? label('nothing') : (answer.error || label('failed'))));
+                categories.status.textContent = answer.ok ? label('nothing') : (answer.error || label('failed'));
                 return;
             }
 
@@ -940,6 +952,7 @@
         categories.ids = ids;
         categories.caption.textContent = row ? row.getAttribute('data-mp-title') : label('category_for', [number(ids.length)]);
         categories.results.innerHTML = '';
+        categories.status.textContent = '';
 
         pgUI.dialog.show(categories.root).then(function () {
             categories.search.focus();

@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-from-table
-description: Run from a workflow table (F6c-a, #3145, decision #3122): rows compiled once into a draft flow (wtable_flow.php, ws_flow_from_wtable()), the column window on the table screen, rights; F6c-b left
+description: Run from a workflow table (F6c-a #3145, F6c-b, decision #3122): rows compiled into a draft flow (ws_flow_from_wtable()), rights; Run's optional customer, one open run per flow and contact
 ---
 
 ## What does it do?
@@ -17,5 +17,9 @@ description: Run from a workflow table (F6c-a, #3145, decision #3122): rows comp
 - `ws_wtable_flow_refusal()`: reads the table (view is enough) and `ws_can_schedule()`; the button shows only then. Assignees and role-3 reach are checked at publish (`ws_flow_publish_check()`) as for any flow. No schema.
 - Tests: `tests/workspace_wtable_flow_test.php`.
 
-## What is left (F6c-b)?
-- Run asks an optional customer (contacts the starter may read): run `subject_type = 'contact'`, `subject_id`; task titles carry the customer's name; a second Run for the same customer while one is open answers that run (start key per flow + contact). Runs without a customer as today. Needs the Run dialog in `workspace_flow.js` after the Flows look steps (plans/workspace-flows-look.md).
+## Run for a customer (F6c-b)?
+- Run's question (`startRun()` in `workspace_flow.js`) holds a contact search (`customerPicker()`, `ws_ref_search` type contact) for whoever has the contacts right (`FL.run_customer`); empty = a run about nobody, as before. Sent as `contact_id` (`ws_action_flow_run_fields()`).
+- `ws_flow_run_start_check()`: after a token's run, `ws_flow_run_contact_check()` (exists, contacts right, `ws_viewer_contacts_open()`; else 422 `contact_id`, existence not told). The flow's open run about the contact is answered (200) if the starter reads it, else 409 (`ws_flow_run_subject_answer()`), before the live and limit refusals.
+- A new run gets `subject_type = 'contact'`, `subject_id`, `start_key = ws_flow_contact_start_key(contact, last ended run id)`: the unique (flow_id, start_key) keeps two racing starts to one run; once it ends the next key differs. The token is not the key then; a retry meets the open run.
+- Context keeps `subject_name` at start; each task title gets ` – <name>` (`ws_flow_task_title_customer()`, within 200 characters, the name kept). No schema: the 11.0.80 columns. Not on the external API's run route yet.
+- Tests: `tests/workspace_flow_runs_test.php` (`…contact_start_key`, `…contact_open_run_answered`, `…task_title_with_customer`, `…contact_read_right`).

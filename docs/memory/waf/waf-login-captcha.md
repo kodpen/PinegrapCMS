@@ -1,6 +1,6 @@
 ---
 name: waf-login-captcha
-description: pg_login_captcha_* login question: when it appears, counter-driven decision, field name/id rule for password managers, wrong answer is not an offence.
+description: pg_login_captcha_* login question: when it appears, counter-driven decision, field name/id rule for password managers, wrong answer is not an offence, an expired question is not a failure.
 ---
 
 ## When does the login question appear?
@@ -15,6 +15,11 @@ description: pg_login_captcha_* login question: when it appears, counter-driven 
 
 ## What does a wrong answer count as?
 - A failed attempt (`pg_login_record_failure`), NOT an offence. The first version counted offences and banned an office address for an hour: the question is a step BEFORE the lock, so it cannot be harsher than the lock; five wrong answers must not put an office behind 403.
+
+## What does an expired question count as?
+- Nothing. `pg_login_captcha_check()` returns `'ok'`, `'wrong'` or `'expired'` (a well-formed question older than 600 s, whatever the answer) and consumes the question in every case. The gate logs `question expired`, records no `pg_login_record_failure()` and redraws the card with "The question was open for more than 10 minutes. Please answer the new one."
+- Why: someone who stepped away and came back with the right sum and password was told the sum was wrong and got one more failure toward the lockout, although the password was never looked at. The card still ends the request, so no guessing door opens.
+- A missing or malformed question (dropped cookie) stays `'wrong'` and counted, so a script cannot avoid the counter by dropping the session.
 
 ## What else does the question card show besides the question?
 - The account box is labelled `Email or username` (the callers and `validate_login()` take either), and after `</form>` the card prints what the sign-in card it replaces prints (`get_login.php`): the Forgot password? link (when `FORGOT_PASSWORD_LINK` is on, with the posted `send_to`) and `pg_signin_buttons($send_to, false)`.

@@ -103,11 +103,11 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
 		<div class="row">
             <div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
                 <div class="card mt-1 mb-3 multiselect-checkbox-container">
-                    <div class="card-header bg-reset border-0">' . lang(array('string'=>'Add to Contact Groups') ) . '</div>
+                    <div class="card-header bg-reset border-0" id="multiselect-checkbox-checker-0_title">' . lang(array('string'=>'Add to Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox"></div>
-                            <label for="multiselect-checkbox-checker-0" class="">' . lang('Select All') . '</label>
+                            <div class="switch"><input id="multiselect-checkbox-checker-0" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-0_label multiselect-checkbox-checker-0_title"></div>
+                            <label for="multiselect-checkbox-checker-0" class="" id="multiselect-checkbox-checker-0_label">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
@@ -117,11 +117,11 @@ output_header_secure(array('title'=>lang('Organize Contacts'),'icon'=>'contact')
             </div>
             <div class="col-xs-12  sm:col-12 md:col-8 lg:col-6 card-group">
                 <div class="card mt-1 mb-3 multiselect-checkbox-container">
-                    <div class="card-header bg-reset  border-0">' . lang(array('string'=>'Remove from Contact Groups') ) . '</div>
+                    <div class="card-header bg-reset  border-0" id="multiselect-checkbox-checker-1_title">' . lang(array('string'=>'Remove from Contact Groups') ) . '</div>
                     <div class="card-header border-0 bg-reset">
                         <div class="form-field">
-                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox"></div>
-                            <label for="multiselect-checkbox-checker-1" class="">' . lang('Select All') . '</label>
+                            <div class="switch"><input id="multiselect-checkbox-checker-1" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="multiselect-checkbox-checker-1_label multiselect-checkbox-checker-1_title"></div>
+                            <label for="multiselect-checkbox-checker-1" class="" id="multiselect-checkbox-checker-1_label">' . lang('Select All') . '</label>
                         </div>
                     </div>
                     <div class="card-body overflow-auto" style="max-height:300px">
