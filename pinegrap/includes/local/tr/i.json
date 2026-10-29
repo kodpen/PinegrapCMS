@@ -259,6 +259,7 @@
     "Imported:": "İçe aktarıldı:",
     "Imported: {var:1} short link(s) added, {var:2} changed, {var:3} skipped because a short link has the name already.": "İçe aktarıldı: {var:1} kısa link eklendi, {var:2} değiştirildi, adı zaten bir kısa linkte olduğu için {var:3} satır atlandı.",
     "Importing": "İçe Aktarılıyor",
+    "Importing notes": "Not içe aktarma",
     "Importing…": "İçe aktarılıyor…",
     "Importing… {var:1} of {var:2}": "İçe aktarılıyor… {var:1} / {var:2}",
     "Impressions": "Gösterim",
