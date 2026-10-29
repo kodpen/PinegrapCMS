@@ -4,8 +4,8 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 ---
 
 ## How does a control get its accessible name?
-- `aria-label` text goes through `lang()` like visible text: `aria-label="' . h(lang('Close')) . '"`, never a literal English word; landmarks too (`Button Bar`, `data edit buttons`: `tests/panel_landmark_names_test.php`). A visible `title` does not name a button for a screen reader.
-- A `<label for>` names the id the field really has. A field without a visible label gets a `visually-hidden` label (Find and Replace) or an `aria-label` (a list row's checkbox: "Select {var:1}" with the row's name; the Workspace task status filters: `t('task_status_filter')`).
+- `aria-label` text goes through `lang()` like visible text: `aria-label="' . h(lang('Close')) . '"`, never a literal English word; landmarks too (`Button Bar`, `data edit buttons`: `tests/panel_landmark_names_test.php`). A visible `title` names nothing for a screen reader.
+- A `<label for>` names the id the field really has. A field without a visible label gets a `visually-hidden` label (Find and Replace) or an `aria-label` (a list row's checkbox: "Select {var:1}"; the Workspace task status filters: `t('task_status_filter')`).
 - Close buttons (`.btn-close`) of dialogs, drawers and toasts always carry `aria-label` Close: a v6 dialog opened with `showModal()` puts focus on it first. Icon-only buttons and pager links get the action's name (Edit, Delete, Search, Previous page / Next page, Invoice Detail, Software Theme); the settings screen's disabled step button reuses Previous / Next. JS-built markup uses the screen's own label map (`t('Close')` in `image_editor_modal.js` from `$labels` in `get_image_editor_includes()`, `L.close` in `view_folders.php`). Pinned by `tests/panel_accessible_names_test.php`; the API applications screen (search box, dialog titles, fields, permission groups) by `tests/api_settings_theme_test.php`.
 - A dialog's `aria-labelledby` names its `h5.dialog-title` id (`cron_jobs_title`), never the dialog (that reads its whole body). A filter select behind an icon-ligature `<label for>` (`visibility`) carries a translated `aria-label`, else the ligature names it (#2668).
 - The settings autofill decoy `#fake_user_name` (`includes/settings/screen.php`) is `tabindex="-1" aria-hidden="true"`: out of keyboard and screen-reader reach.
@@ -24,6 +24,6 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 - Waiting on files other work holds: the feed groups label (`settings/seo.php`), the Iyzipay protected currency select id (`settings/prep.php`), the dark-theme today number of the Work Calendar (`backend.src.css`), the close buttons of `get_page_content.php` and the installer; the products list filter select (`view_products.php`) and the SearchBox dialog of `includes/fn/output.php` (its `aria-labelledby` names no element).
 - About 55 fields with a `title` beside a `<label>` (`panel-hint-tooltip-or-popover.md`).
 
-Reports, date filters: `report-screen-controls.md`. Lists: `list-row-names.md`.
+Reports, date filters: `report-screen-controls.md`. Lists: `list-row-names.md`. Script-built: `script-built-field-names.md`.
 
 Test: `tests/contrast_test.php` (`test_contrast_readable_ink_on`).

@@ -130,7 +130,7 @@
         if (_modalEl) return;
 
         var html =
-            '<dialog class="dialog dialog-xl pg-dialog-centered" id="pgImageEditorModal" style="height:88vh">' +
+            '<dialog class="dialog dialog-xl pg-dialog-centered" id="pgImageEditorModal" aria-labelledby="pgImageEditorTitle" style="height:88vh">' +
                 '<div class="dialog-header py-3">' +
                             '<h6 class="dialog-title mb-0 d-flex align-items-center" id="pgImageEditorTitle">' +
                                 _markSvg() +

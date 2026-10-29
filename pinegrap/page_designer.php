@@ -137,6 +137,7 @@ echo pg_page_shell(
                 "Code":"' . lang('Code') . '",
                 "maximise":"' . lang('maximise') . '",
                 "minimise":"' . lang('minimise') . '",
+                "Close":"' . lang('Close') . '",
                 "Close Page Designer":"' . lang('Close Page Designer') . '",
                 "Refresh Page":"' . lang('Refresh Page') . '",
                 "No Page":"' . lang('No Page') . '",
