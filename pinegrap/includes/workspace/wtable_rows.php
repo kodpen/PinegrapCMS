@@ -238,6 +238,29 @@ function ws_wtable_row_out($record, $columns, $bound = null)
 }
 
 /**
+ * A row as it is handed to other software: cells and formula errors as
+ * objects by column id (an empty one stays an object), the times as
+ * ISO-8601 UTC.
+ *
+ * @param array $row ws_wtable_row_out()
+ * @return array
+ */
+function ws_wtable_row_present($row)
+{
+    return array(
+        'id' => (int) $row['id'],
+        'position' => (int) $row['position'],
+        'revision' => (int) $row['revision'],
+        'cells' => (object) $row['cells'],
+        'formula_errors' => (object) $row['formula_errors'],
+        'created_by' => (int) $row['created_by'],
+        'created_at' => ws_flow_time($row['created_at']),
+        'updated_by' => (int) $row['updated_by'],
+        'updated_at' => ws_flow_time($row['updated_at']),
+    );
+}
+
+/**
  * Moving a row from one position to another among $count rows (positions
  * 1..$count): where it lands, and the rows between that shift by one to
  * make room.
@@ -321,6 +344,37 @@ function ws_wtable_rows($table_id, $columns = null)
     }
 
     return $rows;
+}
+
+/**
+ * One page of a table's rows in order, as read: the rows after a position,
+ * and the position the next page starts after (null on the last page).
+ *
+ * @param int   $table_id
+ * @param array $columns ws_wtable_columns()
+ * @param int   $after   the position of the last row of the page before, 0 for the first
+ * @param int   $limit   1-250
+ * @return array rows (ws_wtable_row_out()), next
+ */
+function ws_wtable_rows_page($table_id, $columns, $after, $limit)
+{
+    $limit = max(1, min(250, (int) $limit));
+
+    if (!ws_wtables_ready() || ((int) $table_id <= 0)) {
+        return array('rows' => array(), 'next' => null);
+    }
+
+    $records = (array) db_items("SELECT * FROM ws_wtable_rows WHERE table_id = '" . (int) $table_id . "'
+        AND position > '" . max(0, (int) $after) . "' ORDER BY position, id LIMIT " . ($limit + 1));
+    $more = (count($records) > $limit);
+    $bound = ws_wtable_formulas_bound($columns);
+    $rows = array();
+
+    foreach (array_slice($records, 0, $limit) as $record) {
+        $rows[] = ws_wtable_row_out($record, $columns, $bound);
+    }
+
+    return array('rows' => $rows, 'next' => ($more && !empty($rows)) ? (int) $rows[count($rows) - 1]['position'] : null);
 }
 
 /* ---------------------------------------------------------------------------

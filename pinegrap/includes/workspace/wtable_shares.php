@@ -513,3 +513,58 @@ function ws_wtable_share_remove($viewer, $table, $share_id)
 
     return $check;
 }
+
+/* ---------------------------------------------------------------------------
+   The tables a person reaches
+   --------------------------------------------------------------------------- */
+
+/**
+ * The tables the person reaches: their own, and those of others shared with
+ * them or in a channel they read, the latest changed first, each with its
+ * access (ws_wtable_access()). A table whose owner left the team is in
+ * nobody's list.
+ *
+ * @param array  $viewer
+ * @param string $scope all | mine | shared
+ * @return array[] ws_wtables rows with access
+ */
+function ws_wtables_reached($viewer, $scope = 'all')
+{
+    if (!ws_wtables_ready() || empty($viewer['member'])) {
+        return array();
+    }
+
+    $rows = ($scope === 'shared') ? array() : ws_wtables_own($viewer);
+
+    if ($scope === 'mine') {
+        return $rows;
+    }
+
+    $ids = array();
+
+    foreach ((array) db_items("SELECT table_id, target_type, target_id FROM ws_wtable_shares
+        WHERE (target_type = 'user' AND target_id = '" . (int) $viewer['id'] . "') OR target_type = 'channel'") as $share) {
+        if (((string) $share['target_type'] === 'user') || ws_flow_channel_readable($viewer, (int) $share['target_id'])) {
+            $ids[(int) $share['table_id']] = true;
+        }
+    }
+
+    if (!empty($ids)) {
+        $others = (array) db_items("SELECT id, user_id, name, description, row_count, revision, created_at, updated_at FROM ws_wtables
+            WHERE id IN ('" . implode("','", array_keys($ids)) . "') AND user_id <> '" . (int) $viewer['id'] . "'");
+
+        foreach ($others as $table) {
+            $table['access'] = ws_wtable_access($viewer, $table);
+
+            if ($table['access'] !== '') {
+                $rows[] = $table;
+            }
+        }
+    }
+
+    usort($rows, function ($a, $b) {
+        return array((int) $b['updated_at'], (int) $b['id']) <=> array((int) $a['updated_at'], (int) $a['id']);
+    });
+
+    return $rows;
+}

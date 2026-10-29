@@ -46,6 +46,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_sync.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_inbox.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_mcp.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_commands.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_wtables.php');
 
 /**
  * The permission rows on the Application Access screen.
@@ -233,6 +234,9 @@ function ws_openapi_objects()
         'WorkspaceMcpServer'        => 'ws_api_mcp_server_schema',
         'WorkspaceMcpTool'          => 'ws_api_mcp_tool_schema',
         'WorkspaceMcpProbe'         => 'ws_api_mcp_probe_schema',
+        'WorkspaceTable'            => 'ws_api_wtable_schema',
+        'WorkspaceTableColumn'      => 'ws_api_wtable_column_schema',
+        'WorkspaceTableRow'         => 'ws_api_wtable_row_schema',
     );
 }
 
@@ -2533,7 +2537,8 @@ function ws_api_routes()
 
     );
 
-    // Asking Claude in a channel (api_claude.php) and the changes an
-    // application proposes (api_proposals.php).
-    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes());
+    // Asking Claude in a channel (api_claude.php), the changes an
+    // application proposes (api_proposals.php) and workflow tables
+    // (api_wtables.php).
+    return array_merge($routes, ws_claude_api_routes(), ws_proposal_api_routes(), ws_wtable_api_routes());
 }

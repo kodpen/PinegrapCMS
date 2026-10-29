@@ -1312,6 +1312,24 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
 
     ws_wtable_columns_changed((int) $table['id']);
 
+    return $check;
+}
+
+/**
+ * May the person delete a column? The panel and the API's dry run ask this
+ * alone.
+ *
+ * @param array      $viewer
+ * @param array|null $table
+ * @param array|null $column
+ * @return array ok, error, field, status
+ */
+function ws_wtable_column_delete_check($viewer, $table, $column)
+{
+    if (!ws_wtable_may(ws_wtable_access($viewer, $table), 'write') || !is_array($column)) {
+        return ws_wtable_refusal('not_found', '', 404);
+    }
+
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200);
 }
 
@@ -1328,13 +1346,15 @@ function ws_wtable_column_update($viewer, $table, $column, $input)
  */
 function ws_wtable_column_delete($viewer, $table, $column)
 {
-    if (!ws_wtable_may(ws_wtable_access($viewer, $table), 'write') || !is_array($column)) {
-        return ws_wtable_refusal('not_found', '', 404);
+    $check = ws_wtable_column_delete_check($viewer, $table, $column);
+
+    if (!$check['ok']) {
+        return $check;
     }
 
     db("DELETE FROM ws_wtable_columns WHERE id = '" . (int) $column['id'] . "' AND table_id = '" . (int) $table['id'] . "'");
 
     ws_wtable_columns_changed((int) $table['id']);
 
-    return array('ok' => true, 'error' => '', 'field' => '', 'status' => 200);
+    return $check;
 }
