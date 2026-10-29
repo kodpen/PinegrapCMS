@@ -46,6 +46,20 @@ function test_product_screen_accessible_names_advanced_row_labels()
 	}
 }
 
+function test_product_screen_accessible_names_advanced_toggle_state()
+{
+	$js = product_screen_accessible_names_source('assets/js/product_builder.js');
+
+	// The toggle names its variant and says whether the row it opens is open.
+	pg_assert_contains('function advancedToggle(index, combo)', $js);
+	pg_assert_contains('advancedToggle(index, combo) +', $js);
+	pg_assert_contains('aria-controls="pg_pb_adv_\' + index + \'" aria-expanded="false"', $js);
+	pg_assert_contains("esc(label('Advanced Settings') + ': ' + comboLabel(combo))", $js);
+	pg_assert_contains('<i class="bi bi-chevron-down me-1" aria-hidden="true"></i>', $js);
+	pg_assert_same(2, substr_count($js, '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_\' + index + \'" data-pg-pb-adv="'), 'both advanced rows carry the id');
+	pg_assert_contains("$(this).attr('aria-expanded', open ? 'true' : 'false');", $js);
+}
+
 function test_product_screen_accessible_names_image_chip_remove()
 {
 	$js = product_screen_accessible_names_source('assets/js/product_builder.js');
