@@ -44,7 +44,7 @@ const StyleDesigner = (function () {
 
     // The text of a percent slider's value bubble (pgUI.range.bubble()).
     function _sdPercent(value) {
-        return value + '%';
+        return _sdT('{var:1}%', value);
     }
 
     // Locale for Date#toLocaleString: the panel's <html lang>, or the
@@ -164,7 +164,7 @@ const StyleDesigner = (function () {
         el.tabIndex = -1;
         el.innerHTML =
             '<div class="dialog-header py-3"><h6 class="dialog-title mb-0 text-truncate">' + esc(_sdT('Pages for "{var}"', entry.name)) + '</h6>' +
-                    '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                    '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
                 '<div class="dialog-body small">' +
                     '<p class="fg-secondary mb-3">' + esc(_sdT('A file that only some pages need (a map, a form script) is better kept to those pages, so the others open faster.')) + '</p>' +
                     '<label class="form-field mb-1"><input class="radio" type="radio" name="sd-ap-mode" value="all"' + (all ? ' checked' : '') + '>' +
@@ -6858,7 +6858,7 @@ const StyleDesigner = (function () {
             '</div>' +
             '<div class="sd-bp-bar-right">' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-out" title="' + esc(_sdT('Zoom Out (Ctrl+-)')) + '"><span class="bi bi-zoom-out"></span></button>' +
-            '<span class="sd-vb-zoom" id="sd-vb-zoom-label">100%</span>' +
+            '<span class="sd-vb-zoom" id="sd-vb-zoom-label">' + esc(_sdT('{var:1}%', 100)) + '</span>' +
             '<button type="button" class="sd-vb-btn" id="sd-vb-zoom-in" title="' + esc(_sdT('Zoom In (Ctrl++)')) + '"><span class="bi bi-zoom-in"></span></button>' +
             '<span class="sd-vb-sep"></span>' +
             '<button type="button" class="sd-vb-btn sd-vb-toggle" id="sd-vb-outline" title="' + esc(_sdT('Outline Grid')) + '"><span class="bi bi-grid-3x3"></span> <span class="sd-vb-txt">' + esc(_sdT('Outline')) + '</span></button>' +
@@ -8509,7 +8509,7 @@ const StyleDesigner = (function () {
         var ddContainer = selectedNode ? findDropdownContainer(selectedNode) : null;
         if (ddContainer) {
             _sdCtxBarIdle(bar, false);
-            if (labelEl) labelEl.textContent = 'Dropdown';
+            if (labelEl) labelEl.textContent = _sdT('Dropdown');
             bar.removeAttribute('data-ctx-target-id');
 
             // Open or closed on the canvas: a menu's open state is never in
@@ -8567,7 +8567,7 @@ const StyleDesigner = (function () {
         // Only show nav-item bar if NOT inside a dropdown (dropdown takes priority)
         if (navItemNode && !ddContainer) {
             _sdCtxBarIdle(bar, false);
-            if (labelEl) labelEl.textContent = 'Nav';
+            if (labelEl) labelEl.textContent = _sdT('Nav');
             if (showHide) showHide.style.display = 'none';
             bar.removeAttribute('data-ctx-target-id');
 
@@ -8593,7 +8593,7 @@ const StyleDesigner = (function () {
         var navbarNode = selectedNode ? findNavbarContainer(selectedNode) : null;
         if (navbarNode && !ddContainer) {
             _sdCtxBarIdle(bar, false);
-            if (labelEl) labelEl.textContent = 'Navbar';
+            if (labelEl) labelEl.textContent = _sdT('Navbar');
             if (showHide) showHide.style.display = 'none';
             bar.removeAttribute('data-ctx-target-id');
 
@@ -48677,8 +48677,8 @@ const StyleDesigner = (function () {
             '<div class="sd-sp-divider"></div>' +
             row(_sdT('Role'),              '<input type="text" class="form-control form-control-sm" data-nodeattr="role" value="' + esc(_aRole) + '" placeholder="' + esc(_sdT('e.g. group, navigation, banner')) + '">') +
             row(_sdT('Aria Label'),        '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-label" value="' + esc(_aLabel) + '" placeholder="' + esc(_sdT('Screen reader label')) + '">') +
-            row(_sdT('Aria Labelledby'),   '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-labelledby" value="' + esc(_aLBy) + '" placeholder="id of labelling element">') +
-            row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="id of describing element">')
+            row(_sdT('Aria Labelledby'),   '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-labelledby" value="' + esc(_aLBy) + '" placeholder="' + esc(_sdT('id of labelling element')) + '">') +
+            row(_sdT('Aria Describedby'),  '<input type="text" class="form-control form-control-sm" data-nodeattr="aria-describedby" value="' + esc(_aDBy) + '" placeholder="' + esc(_sdT('id of describing element')) + '">')
         );
 
         // Section order — Colors first (most visual), then layout:
@@ -49127,11 +49127,11 @@ const StyleDesigner = (function () {
                 var label, swatch;
                 if (g && g.type !== 'none') {
                     swatch = buildGradientStr(g);
-                    label  = (g.type === 'linear' ? 'Linear' : 'Radial') + ' Gradient';
+                    label  = g.type === 'linear' ? _sdT('Linear Gradient') : _sdT('Radial Gradient');
                 } else if (col) {
                     swatch = col; label = col;
                 } else {
-                    swatch = ''; label = 'None';
+                    swatch = ''; label = _sdT('None');
                 }
                 var lbl = document.querySelector('#sd-bcp-trigger .sd-bcp-trigger-label');
                 var sw  = document.querySelector('#sd-bcp-trigger .sd-bcp-swatch');
@@ -51620,7 +51620,7 @@ const StyleDesigner = (function () {
             '<div class="sd-gf-modal-dialog">' +
                 '<div class="sd-gf-modal-hdr">' +
                     '<span class="bi bi-fonts me-3"></span><span class="sd-gf-modal-title">Google Fonts</span>' +
-                    '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button"><span class="bi bi-x-lg"></span></button>' +
+                    '<button id="sd-gf-modal-close" class="sd-gf-modal-close" type="button" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
                 '</div>' +
                 '<div class="sd-gf-modal-body">' +
                     '<div class="sd-gf-modal-left">' +
@@ -51914,19 +51914,19 @@ const StyleDesigner = (function () {
                     '<div class="sd-as-co-hdr">' +
                         '<span class="bi bi-file-earmark-plus me-3"></span>' +
                         '<span class="sd-as-co-title">' + esc(_sdT('New File')) + '</span>' +
-                        '<button type="button" class="sd-as-co-close" id="sd-as-co-close"><span class="bi bi-x-lg"></span></button>' +
+                        '<button type="button" class="sd-as-co-close" id="sd-as-co-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
                     '</div>' +
                     '<div class="sd-as-co-body">' +
                         '<div class="sd-as-co-row" id="sd-as-co-name-row">' +
-                            '<label class="sd-as-co-label">' + esc(_sdT('File Name')) + '</label>' +
+                            '<label class="sd-as-co-label" for="sd-as-co-name">' + esc(_sdT('File Name')) + '</label>' +
                             '<input type="text" id="sd-as-co-name" class="sd-as-co-input" placeholder="' + esc(_sdT('e.g. style.css')) + '" maxlength="100">' +
                         '</div>' +
                         '<div class="sd-as-co-row">' +
-                            '<label class="sd-as-co-label">' + esc(_sdT('Folder')) + '</label>' +
+                            '<label class="sd-as-co-label" for="sd-as-co-folder">' + esc(_sdT('Folder')) + '</label>' +
                             '<select id="sd-as-co-folder" class="sd-as-co-input"></select>' +
                         '</div>' +
                         '<div class="sd-as-co-row">' +
-                            '<label class="sd-as-co-label">' + esc(_sdT('Description')) + ' <span class="sd-as-co-hint">' + esc(_sdT('(why it was created — a reminder of what not to delete)')) + '</span></label>' +
+                            '<label class="sd-as-co-label" for="sd-as-co-desc">' + esc(_sdT('Description')) + ' <span class="sd-as-co-hint">' + esc(_sdT('(why it was created — a reminder of what not to delete)')) + '</span></label>' +
                             '<textarea id="sd-as-co-desc" class="sd-as-co-input" rows="2" placeholder="' + esc(_sdT('e.g. the home page hero overlay')) + '"></textarea>' +
                         '</div>' +
                         '<div class="sd-as-co-row sd-as-co-switch-row">' +
@@ -52159,7 +52159,7 @@ const StyleDesigner = (function () {
                     '<div class="sd-fp-hdr">' +
                         '<span class="bi bi-folder2-open me-3"></span>' +
                         '<span class="sd-fp-title">' + esc(_sdT('Choose from a File')) + '</span>' +
-                        '<button type="button" class="sd-fp-close" id="sd-fp-close"><span class="bi bi-x-lg"></span></button>' +
+                        '<button type="button" class="sd-fp-close" id="sd-fp-close" aria-label="' + esc(_sdT('Close')) + '"><span class="bi bi-x-lg" aria-hidden="true"></span></button>' +
                     '</div>' +
                     '<div class="sd-fp-search-wrap">' +
                         '<span class="bi bi-search sd-fp-search-icon"></span>' +
@@ -58471,6 +58471,14 @@ const StyleDesigner = (function () {
         });
     }
 
+    // Bootstrap 6 has no btn-<tone> / btn-outline-<tone>: a choice's
+    // variant ('primary', 'outline-danger') becomes a style plus a theme.
+    function _sdChoiceBtnClass(variant) {
+        var v = String(variant || 'outline-secondary');
+        var m = /^outline-(.+)$/.exec(v);
+        return m ? 'btn-outline theme-' + m[1] : 'btn-solid theme-' + v;
+    }
+
     // A three-way question. pgConfirm() has two buttons; "copy / change all
     // / leave it" needs three, and a native confirm cannot ask it at all.
     // Resolves with the chosen value, or null when dismissed.
@@ -58487,12 +58495,12 @@ const StyleDesigner = (function () {
             el.tabIndex = -1;
             el.innerHTML =
                 '<div class="dialog-header py-3"><h6 class="dialog-title mb-0">' + esc(opts.title || '') + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button></div>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button></div>' +
                     '<div class="dialog-body small">' + (opts.html || esc(opts.message || '')) + '</div>' +
                     '<div class="dialog-footer py-3 flex-wrap">' +
                         (opts.choices || []).map(function (c) {
-                            return '<button type="button" class="btn btn-sm btn-' + esc(c.variant || 'outline-secondary') + '" data-choice="' + esc(c.value) + '">' +
-                                   (c.icon ? '<span class="bi ' + esc(c.icon) + ' me-1"></span>' : '') + esc(c.label) + '</button>';
+                            return '<button type="button" class="btn btn-sm ' + esc(_sdChoiceBtnClass(c.variant)) + '" data-choice="' + esc(c.value) + '">' +
+                                   (c.icon ? '<span class="bi ' + esc(c.icon) + ' me-1" aria-hidden="true"></span>' : '') + esc(c.label) + '</button>';
                         }).join('') +
                     '</div>';
             document.body.appendChild(el);
@@ -64126,7 +64134,7 @@ const StyleDesigner = (function () {
             _sdFxSoon();
         }
         var lbl = document.getElementById('sd-vb-zoom-label');
-        if (lbl) lbl.textContent = Math.round(canvasZoom * 100) + '%';
+        if (lbl) lbl.textContent = _sdT('{var:1}%', Math.round(canvasZoom * 100));
         updateIconResizeHandle();
     }
 
@@ -66155,7 +66163,7 @@ const StyleDesigner = (function () {
             var snaps = _loadSnapshots();
             var autosaveSnap = _readAutosaveAsSnapshot();
             var html = '<div class="sd-snap-hdr"><span class="bi bi-clock-history me-1"></span>' + esc(_sdT('History')) + '' +
-                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn"></button></div>';
+                '<button type="button" class="sd-snap-close-btn bi bi-x-lg" id="sd-snap-close-btn" aria-label="' + esc(_sdT('Close')) + '" title="' + esc(_sdT('Close')) + '"></button></div>';
             html += revisionsHtml();
             html += '<div class="sd-snap-sect"><span class="bi bi-camera me-1"></span>' + esc(_sdT('Local snapshots')) + '</div>' +
                 '<button type="button" class="sd-snap-new-btn" id="sd-snap-new"><span class="bi bi-plus-circle me-1"></span>' + esc(_sdT('New Snapshot')) + '</button>';
@@ -69477,7 +69485,7 @@ const StyleDesigner = (function () {
                 '<div class="dialog-header py-3">' +
                         '<h6 class="dialog-title mb-0"><span class="bi bi-eye me-3"></span>' +
                         esc(_sdT('View mode')) + '</h6>' +
-                        '<button type="button" class="btn-close" data-bs-dismiss="dialog"></button>' +
+                        '<button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' + esc(_sdT('Close')) + '"></button>' +
                     '</div>' +
                     '<div class="dialog-body small" id="sd-locked-body"></div>' +
                     '<div class="dialog-footer py-3">' +
@@ -72029,7 +72037,7 @@ const StyleDesigner = (function () {
             items.push({ id: 'add_content_' + k, label: _sdT('Add: {var}', c.label), icon: c.icon || 'bi-plus',
                 action: function() { _paletteInsert('content', { contentType: k }); } });
         });
-        if (_bsPalette) [['Container', 'container'], ['Row', 'row'], ['Column', 'col']].forEach(function(a) {
+        if (_bsPalette) [[_sdT('Container'), 'container'], [_sdT('Row'), 'row'], [_sdT('Column'), 'col']].forEach(function(a) {
             items.push({ id: 'add_layout_' + a[1], label: _sdT('Add: {var}', a[0]), icon: 'bi-layout-split',
                 action: function() { _paletteInsert(a[1], {}); } });
         });
