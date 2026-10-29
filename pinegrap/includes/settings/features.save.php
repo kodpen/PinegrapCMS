@@ -156,6 +156,11 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $sql_workspace_setting = "workspace_enabled = '" . (post_value('workspace_enabled') ? 1 : 0) . "',";
     }
 
+    // The menu-link prefetch switch, only once its column exists (2026.11.0).
+    if (db_item("SHOW COLUMNS FROM config WHERE Field = 'speculation_prefetch'")) {
+        $sql_workspace_setting .= "speculation_prefetch = '" . (post_value('speculation_prefetch') ? 1 : 0) . "',";
+    }
+
     // Only what the cards on this screen edit.
     db("UPDATE config
         SET

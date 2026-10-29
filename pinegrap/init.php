@@ -829,6 +829,11 @@ define('MAINTENANCE_ALLOW_IPS', (string) ($row['maintenance_allow_ips'] ?? ''));
 define('PAGE_REVISIONS_KEEP', isset($row['page_revisions_keep']) ? (int) $row['page_revisions_keep'] : 30);
 define('PAGE_REVISIONS_DAYS', isset($row['page_revisions_days']) ? (int) $row['page_revisions_days'] : 90);
 
+// Speculation Rules prefetch of menu links (2026.11.0, 11.0.127;
+// includes/fn/speculation.php). Off while the column is not there: before the
+// upgrade there is no switch to turn it off.
+define('SPECULATION_PREFETCH', isset($row['speculation_prefetch']) ? (int) $row['speculation_prefetch'] : 0);
+
 
 if (!defined('SOFTWARE_LANGUAGE')) {
     $lang = isset($row['software_language']) && $row['software_language'] !== '' && $row['software_language'] !== 'undefined'
