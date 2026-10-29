@@ -1055,19 +1055,24 @@ if (!$_POST) {
                     }
 
                     $output_shipment_labels = '';
-                    $shipment_label_active = false;
+                    $shipment_label_active = array(0 => false, 1 => false);
 
                     foreach (pg_shipment_label_rows($ship_to_id) as $shipment_label) {
                         $shipment_label_driver = pg_label_driver($shipment_label['driver']);
                         $shipment_label_cancelled = ($shipment_label['state'] === 'cancelled');
-                        $shipment_label_active = $shipment_label_active || (!$shipment_label_cancelled && !(int) $shipment_label['is_return']);
+                        $shipment_label_return = (int) $shipment_label['is_return'] ? 1 : 0;
+                        $shipment_label_active[$shipment_label_return] = $shipment_label_active[$shipment_label_return] || !$shipment_label_cancelled;
 
                         $output_shipment_labels .=
                             '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
                                 <span class="fw-medium text-break">' . h($shipment_label['number']) . '</span>
                                 <span class="small fg-secondary">' . h($shipment_label_driver ? $shipment_label_driver['label'] : $shipment_label['driver']) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
+                                ' . ($shipment_label_return ? '<span class="badge theme-info">' . lang('Return Label') . '</span>' : '') . '
                                 ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
-                                <a class="btn btn-link pg-link-secondary py-0 ms-auto pg-print-none" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
+                                <span class="ms-auto pg-print-none">
+                                    <a class="btn btn-link pg-link-secondary py-0" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
+                                    ' . ($shipment_label_cancelled ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="cancel-' . (int) $shipment_label['id'] . '" class="btn btn-link pg-link-danger py-0" data-confirm-content="' . h(lang('The label is cancelled at the carrier label service and its tracking number is removed from this address. Continue?')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Cancel Label') . '</button>') . '
+                                </span>
                             </li>';
                     }
 
@@ -1075,9 +1080,11 @@ if (!$_POST) {
                         $output_shipment_labels = '<ul class="list-unstyled mb-3">' . $output_shipment_labels . '</ul>';
                     }
 
-                    if ($shipment_label_drivers && !$shipment_label_active && !in_array($status, array('incomplete', 'cancelled'), true)) {
-                        $output_shipment_labels .=
-                            '<button type="submit" form="shipment-label-form" name="ship_to_id" value="' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary pg-print-none" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>';
+                    if ($shipment_label_drivers && !in_array($status, array('incomplete', 'cancelled'), true)) {
+                        $output_shipment_labels .= '<div class="d-flex flex-wrap gap-2 pg-print-none">'
+                            . ($shipment_label_active[0] ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>')
+                            . ($shipment_label_active[1] ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
+                            . '</div>';
                     }
 
                     if ($output_shipment_labels !== '') {
@@ -2956,7 +2963,6 @@ if (!$_POST) {
         $output_parasut_forms .
         '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">
             ' . get_token_field() . '
-            <input type="hidden" name="action" value="create">
         </form>
         </main>' . output_footer();
         $liveform->remove_form();

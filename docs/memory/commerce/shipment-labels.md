@@ -20,6 +20,6 @@ module: shipment_labels
 - `pg_shipment_label_expires_at()`: 30 days after the parcel's `delivered_at` (same `ship_to_id` and `number`) or the label's `cancelled_at`, 90 days after `created_at` at the latest. `pg_shipment_label_sweep_daily()` in `job.php`, once a day (state file `data/temp/shipment_label_sweep.txt`), at most 500 rows a run: file unlinked, `label_removed_at` set, row kept.
 - Erasure (`pg_privacy_erase_tables()` `shipment_labels`, anonymise): `_pg_privacy_erase_apply_shipment_labels()` removes the files, then `label_file` is blanked; the rows stay (reference and barcode name nobody). `delete_order.php` deletes files and rows (`pg_shipment_labels_delete_for_order()`).
 
-## What is not done yet?
-- Plan step 3b (`plans/shipping-carrier-labels.md`): bulk labels merged into one PDF on the fly, cancel through `cancel()` then the shipment write path, return labels.
-- Not run against a live service or a sandbox; the screen was not opened. Tests: `tests/shipment_labels_test.php` (carrier and driver choice, retention dates, file name and path safety, shipment shape, row shape from a stub driver).
+## What came after?
+- Bulk create and print, Cancel Label, return labels: `shipment-label-bulk.md` (plan step 3b).
+- Not run against a live service. Tests: `tests/shipment_labels_test.php` (carrier and driver choice, retention dates, file name and path safety, shipment shape, row shape from a stub driver).
