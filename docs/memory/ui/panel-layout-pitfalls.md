@@ -13,6 +13,7 @@ description: Panel CSS and JS traps that fail silently, with their files: hiding
 
 ## Which layouts collapse only on narrow screens?
 - `overflow` other than `visible` on a flex item drops its automatic minimum size: give the axis a floor first (`flex-overflow-hidden-pitfall.md`).
+- A Bootstrap 6 `.input-group` never wraps, an inline `width: 600px` beats `.form-control`, and a second `style` attribute is dropped: phone-width fixes in `phone-width-rows.md`.
 - Every flex item of a scroll chain needs `min-height: 0`, or the inner box never scrolls and the save bar falls below the screen; write `100dvh` after `100vh`, inside `@supports` (`settings-modal-layout.md`).
 
 ## Which CSS mistakes drop without a word?

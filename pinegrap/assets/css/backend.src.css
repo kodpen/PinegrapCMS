@@ -4682,8 +4682,9 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   --bs-btn-hover-color: var(--pg-primary-ink);
 }
 
-/* One action per row on a phone. Three long labels side by side cannot fit, and
-   wrapping them inside a welded group is what made this unreadable. */
+/* Two actions per row on a phone. Three long labels side by side cannot fit,
+   and one per row stacked a 4-5 action bar into a tall column floating over
+   the form while it scrolls; an odd last action takes the whole row. */
 @media (max-width: 575.98px) {
   nav.buttons.navigation {
     margin-right: 0.5rem;
@@ -4691,13 +4692,16 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   }
 
   nav.buttons.navigation > .container {
-    flex-direction: column;
     align-items: stretch;
     width: 100%;
   }
 
+  /* Half the row minus half the 0.5rem gap; a long label wraps inside its
+     button instead of pushing it past the bar. */
   nav.buttons.navigation .btn {
-    width: 100%;
+    flex: 1 1 calc(50% - 0.25rem);
+    min-width: 0;
+    white-space: normal;
     padding-top: 0.5rem !important;
     padding-bottom: 0.5rem !important;
   }

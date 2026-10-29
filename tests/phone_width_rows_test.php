@@ -26,7 +26,7 @@ function test_phone_width_variable_base_rate_tiers_wrap()
 {
 	$source = phone_width_rows_test_source('includes/forms/shipping_method_form.php');
 
-	pg_assert_true(preg_match('/for \(\$number = 2; \$number <= 4; \$number\+\+\) \{(.*?)\n    \}/s', $source, $loop) === 1, 'tier loop found');
+	pg_assert_true(preg_match('/\$output_variable_base_rates \.= \'(.*?)\';\n/s', $source, $loop) === 1, 'tier loop found');
 	$tier = $loop[1];
 
 	// The amount and the subtotal condition are two groups in a wrapping row.
@@ -50,8 +50,8 @@ function test_phone_width_save_bar_two_actions_per_row()
 	$phone = $block[0];
 
 	pg_assert_true(strpos($phone, 'flex-direction: column') === false, 'actions are not one per row');
-	pg_assert_true(preg_match('/nav\.buttons\.navigation > \.container \{[^}]*flex-wrap: wrap;/', $phone) === 1, 'bar wraps');
-	pg_assert_true(preg_match('/nav\.buttons\.navigation \.btn \{[^}]*flex: 1 1 calc\(50% - 0\.25rem\);/', $phone) === 1, 'two actions per row');
+	pg_assert_true(preg_match('/\nnav\.buttons\.navigation > \.container \{[^}]*flex-wrap: wrap;/', $css) === 1, 'bar wraps');
+	pg_assert_true(preg_match('/nav\.buttons\.navigation \.btn \{[^}]*flex: 1 1 calc\(50% - 0\.25rem\);\s*min-width: 0;\s*white-space: normal;/', $phone) === 1, 'two actions per row, long labels wrap');
 }
 
 function test_phone_width_login_region_code_fields_have_no_fixed_width()
