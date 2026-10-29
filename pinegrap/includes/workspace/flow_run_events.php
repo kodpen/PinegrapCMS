@@ -106,8 +106,8 @@ function ws_flow_run_event_run($run, $n)
 /**
  * The values a box kept, as a reader who may not change the flow reads them
  * (ws_api_flow_step_outputs() with $edit false): none of a change box or a
- * start-a-flow box, and of the others ints, strings cut to
- * WS_FLOW_EVENT_TEXT_CHARS and nulls.
+ * start-a-flow box, no webhook answer (ws_step_outputs_held()), and of the
+ * others ints, strings cut to WS_FLOW_EVENT_TEXT_CHARS and nulls.
  *
  * @param string $kind   the box's kind
  * @param mixed  $stored the box's result as kept
@@ -115,10 +115,6 @@ function ws_flow_run_event_run($run, $n)
  */
 function ws_flow_run_event_outputs($kind, $stored)
 {
-    if (in_array((string) $kind, array('change', 'start_flow'), true)) {
-        return array();
-    }
-
     $result = is_string($stored) ? json_decode($stored, true) : null;
     $out = array();
 
@@ -128,7 +124,7 @@ function ws_flow_run_event_outputs($kind, $stored)
         }
     }
 
-    return $out;
+    return ws_step_outputs_shown($kind, $out, false);
 }
 
 /**

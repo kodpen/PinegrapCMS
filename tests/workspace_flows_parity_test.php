@@ -2419,6 +2419,7 @@ function workspace_flows_parity_table()
 			array(array('WS_SCHEDULED_MAX_RECIPIENTS=20'), 3, 'email box and report box: 20 addresses'),
 			array(array('WS_SCHEDULED_LOCK=600'), 3, 'anchor: a run holds it 10 minutes (running_at)'),
 			array(array('WS_SCHEDULED_LEAD_HOURLY=20'), 3, 'lead box: at most 20 customer channels opened an hour by the owner'),
+			array(array('WS_SCHEDULED_WEBHOOK_BODY_BYTES=16384'), 3, 'webhook box: its answer kept as the body output, at most 16 KB of UTF-8 text (flows only)'),
 			array(array('WS_SCHEDULED_BATCH=5'), 3, 'driver: ws_scheduled_run() takes 5 anchors a request by default (ws_tick, job.php); the Workspace job asks for 20 (see starts)'),
 		),
 		'caps' => array(
