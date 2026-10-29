@@ -7,7 +7,7 @@
  * Attributes panel style), the title and the tooltip. What is typed goes
  * back to the props it was printed from, so the next refresh prints what
  * was typed. The code view's attribute writer and the emitter's style and
- * title helpers are cut out of assets/js/style_designer.js and run under
+ * title helpers are cut out of assets/js/style_designer.src.js and run under
  * Node; on a machine without Node the test is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -32,7 +32,7 @@ function designer_code_view_attrs_test_run($steps)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$parts = array(
 		array('function _sdCodeSetAttr(', "// Where a plain element's single text sits"),
 		array('function _sdInlineStyleProps(', 'function _toggleInlineDecl('),

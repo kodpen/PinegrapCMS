@@ -403,7 +403,7 @@ function test_widget_loop_position_pass_in_source()
 // The editor's palette names the same six tokens the pass fills.
 function test_widget_loop_position_js_parity()
 {
-	$js   = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js   = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, "\n    var SW_LOOP_POSITION_TOKEN_GROUPS = [");
 	pg_assert_true($from !== false, 'the palette is found');
 	if ($from === false) return;
@@ -436,7 +436,7 @@ function _widget_loop_run_js($script)
 		return null;
 	}
 
-	$js   = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js   = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, "\n    var SW_LOOP_POSITION_TOKEN_GROUPS = [");
 	pg_assert_true($from !== false, 'the palette is found');
 	if ($from === false) return null;

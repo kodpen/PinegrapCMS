@@ -269,7 +269,7 @@ function test_wishlist_heart_inject()
 // the starter cards carry a heart.
 function test_wishlist_heart_editor_offer_and_starters()
 {
-	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$has = function ($needle) use ($js) {
 		return strpos($js, $needle) !== false;
 	};

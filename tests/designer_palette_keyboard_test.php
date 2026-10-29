@@ -38,7 +38,7 @@ function designer_palette_keyboard_fn($source, $name)
 
 function test_designer_palette_keyboard_rows_are_focusable_buttons()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('<div class="sd-drag-item\' + (extraClass ? \' \' + extraClass : \'\') + \'" draggable="true" tabindex="0" role="button"', $source, 'palette rows (components, blocks, recents)');
 	pg_assert_contains('<div class="sd-drag-item sd-shared-drag-item" draggable="true" tabindex="0" role="button"', $source, 'shared rows');
@@ -49,7 +49,7 @@ function test_designer_palette_keyboard_rows_are_focusable_buttons()
 
 function test_designer_palette_keyboard_enter_space_insert()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 	$fn = designer_palette_keyboard_fn($source, '_sdWirePaletteKeys');
 
 	pg_assert_true($fn !== '', '_sdWirePaletteKeys exists');
@@ -61,7 +61,7 @@ function test_designer_palette_keyboard_enter_space_insert()
 
 function test_designer_palette_keyboard_headers_are_toggle_buttons()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('<div class="sd-category-header"><button type="button" class="sd-category-toggle" aria-expanded="true">', $source, 'Components and Blocks category headers');
 	pg_assert_contains("'<div class=\"sd-category-header\"><button type=\"button\" class=\"sd-category-toggle\" aria-expanded=\"true\"><span class=\"bi bi-chevron-down\"></span>' + esc(_sdT('Recently Used'))", $source, 'Recently Used header');
@@ -73,7 +73,7 @@ function test_designer_palette_keyboard_headers_are_toggle_buttons()
 
 function test_designer_palette_keyboard_search_named()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains("id=\"sd-search\" placeholder=\"' + esc(_sdT('Search...')) + '\" aria-label=\"' + esc(_sdT('Search components')) + '\"", $source, 'components search');
 	pg_assert_contains("id=\"sd-blocks-search\" placeholder=\"' + esc(_sdT('Search...')) + '\" aria-label=\"' + esc(_sdT('Search blocks')) + '\"", $source, 'blocks search');
@@ -84,7 +84,7 @@ function test_designer_palette_keyboard_search_named()
 
 function test_designer_palette_keyboard_bulk_check_is_v6_and_reachable()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 
 	pg_assert_true(strpos($source, "'form-check-input sd-bulk-check'") === false, 'no v5 form-check-input');
 	pg_assert_contains("box.className = 'check sd-bulk-check';", $source, 'v6 check class');
@@ -93,7 +93,7 @@ function test_designer_palette_keyboard_bulk_check_is_v6_and_reachable()
 
 function test_designer_palette_keyboard_tip_on_focus()
 {
-	$source = designer_palette_keyboard_source('assets/js/style_designer.js');
+	$source = designer_palette_keyboard_source('assets/js/style_designer.src.js');
 	$fn = designer_palette_keyboard_fn($source, '_sdPalTipWire');
 
 	pg_assert_contains("root.addEventListener('focusin'", $fn, 'card on focus');

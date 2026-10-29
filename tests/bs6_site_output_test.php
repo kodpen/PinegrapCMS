@@ -37,7 +37,7 @@ function bs6_so_test_texts($source)
 // the module) as array(name => array('marked' => bool, 'body' => string)).
 function bs6_so_test_members()
 {
-	$lines = explode("\n", (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.js'));
+	$lines = explode("\n", (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js'));
 	$starts = array();
 
 	foreach ($lines as $i => $line) {
@@ -96,7 +96,7 @@ function test_bs6_site_output_kept_by_codemod()
 
 function test_bs6_site_output_codemod_scope()
 {
-	pg_assert_true(bs6_codemod_converts('assets/js/style_designer.js'), 'marked editor file');
+	pg_assert_true(bs6_codemod_converts('assets/js/style_designer.src.js'), 'marked editor file');
 	pg_assert_true(bs6_codemod_converts('view_orders.php'), 'panel file');
 	pg_assert_false(bs6_codemod_converts('assets/css/style_designer.css'), 'unmarked editor file');
 	pg_assert_false(bs6_codemod_converts('assets/js/pg_style_predict.js'), 'the designer vocabulary is data');

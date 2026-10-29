@@ -46,7 +46,7 @@ function bs6_switch_stem_files($root)
 	$paths = array();
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
-		if (!bs6_codemod_converts($path) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js)$/', $path)) {
+		if (!bs6_codemod_converts($path) || $path === 'assets/js/style_designer.src.js' || !preg_match('/\.(php|js)$/', $path)) {
 			continue;
 		}
 

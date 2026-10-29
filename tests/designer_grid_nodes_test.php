@@ -4,7 +4,7 @@
  *
  * Tests for the opening tag of the designer's grid nodes (container, row,
  * col) on the page (_render_tree_node()) and in the editor's HTML
- * (_sdEmitNode() in assets/js/style_designer.js): each class once and
+ * (_sdEmitNode() in assets/js/style_designer.src.js): each class once and
  * escaped once, the sizing style before the Attributes panel's style, then
  * the id and the panel's other attributes, the same on both sides. The
  * editor's emitter is cut out of style_designer.js and run under Node; on a
@@ -95,7 +95,7 @@ function _test_designer_grid_js($nodes)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$parts = array(
 		array('function _sdEmitNode(', '// Children written into a component'),
 		array('function buildColClasses(', '// ========================= ROW / COL CLASS PARSERS'),
@@ -295,7 +295,7 @@ function test_designer_grid_search_mark_once()
 // The three cases of the emitter open their tag in one place.
 function test_designer_grid_emitter_uses_one_open_tag()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdEmitNode(');
 	$to = ($from !== false) ? strpos($source, "case 'region':", $from) : false;
 	$cases = ($from !== false && $to !== false) ? substr($source, $from, $to - $from) : '';

@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // kind => English key of SW_TYPES in style_designer.js.
 function _test_components_js_types()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'var SW_TYPES = [');
 	$end = $start === false ? false : strpos($js, '];', $start);
 	if ($start === false || $end === false) {

@@ -484,7 +484,7 @@ function test_catalog_rating_flags_keep()
 // "Show only when", and canvas samples that look like a rating.
 function test_catalog_rating_designer_offers()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	foreach (array('SW_CATALOG_TOKEN_GROUPS', 'SW_CATALOG_ITEM_TOKEN_GROUPS') as $palette) {
 		$start = strpos($js, 'var ' . $palette . ' = [');

@@ -44,7 +44,7 @@ function _url_filter_db_stub()
 
 function _url_filter_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // -- parameter names ---------------------------------------------------------

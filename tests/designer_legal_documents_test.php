@@ -172,7 +172,7 @@ function test_designer_legal_documents_starter_tree_carries_the_kvkk_lines()
 	designer_legal_documents_test_find($tree, 'eo_field', 'legal_kvkk', $boxes);
 	pg_assert_same(0, count($boxes), 'no sentence: no box');
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	foreach (array("sem('div', 'pg-legal-kvkk mb-2'", "bindings: { href: '__legal_kvkk_notice_url' }", "bindings: { eo_field: 'legal_kvkk' }",
 		"bindings: { text: '__legal_kvkk_consent_html' }", "{ bindings: { eo_visible_if: 'has_legal_kvkk_consent' } }", "kvkkBlock(),") as $needle) {
 		pg_assert_contains($needle, $js, 'editor twin: ' . $needle);

@@ -1,10 +1,10 @@
 ---
 name: designer-sdt-translation
-description: Designer _sdT() rules: editor data block must print before style_designer.js; English keys, no embedded numbers or variables, price keys, palette labels.
+description: Designer _sdT() rules: editor data block must print before the designer script; English keys, no embedded numbers or variables, price keys, palette labels.
 ---
 
 ## Why must the editor data come before the script?
-- `includes/designer_screen.php` prints the `OUTPUT_PATH` / `sdRegionData` / `sdDesign` block first, then `style_designer.js`. **Order is mandatory:** `_sdT()` reads the map at call time, and module-level records (`COMPONENTS`, `CONTENT`, form palette) are built while the file parses.
+- `includes/designer_screen.php` prints the `OUTPUT_PATH` / `sdRegionData` / `sdDesign` block first, then the designer script (`pg_js_bundle_tags('assets/js/style_designer.min.js', false)`, not deferred). **Order is mandatory:** `_sdT()` reads the map at call time, and module-level records (`COMPONENTS`, `CONTENT`, form palette) are built while the file parses.
 - If the data block comes later, labels freeze on the English key and no tr.json edit changes them. Symptom "some places untranslated" is a late map, not a missing translation.
 - Any new global the editor needs at parse time goes into this block, not into `$(document).ready`.
 

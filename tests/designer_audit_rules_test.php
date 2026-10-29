@@ -77,7 +77,7 @@ function designer_audit_rules_test_run($script, $page_level = false)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = '';
 
 	$names = array('_sdAttr', '_sdAuditHasText', '_sdAuditAttr', '_sdAuditHasName', '_sdAuditAltDecided', '_sdAuditTypeSubmits', '_sdAuditSubmits', '_sdAuditFormHasSubmit', '_sdAuditFormGoesNowhere', 'validateTree');
@@ -202,7 +202,7 @@ function test_designer_audit_rules_empty_button_or_link()
 // editor's language.
 function test_designer_audit_rules_image_alt_decision()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(
 		(bool) preg_match("/\n        image: \\{\n(?:.*\n){0,12}?\\s*defaultProps: \\{ src: '', alt: 'Image',/", $source),
 		'the palette image starts with the alt the rule reads as a placeholder'

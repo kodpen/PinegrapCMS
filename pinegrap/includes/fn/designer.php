@@ -2257,9 +2257,10 @@ function pg_designer_design_set_draft($style_id, $on, $user)
 
 /**
  * The editor's UI text keys: every _sdT('…') key in
- * assets/js/style_designer.js. The keys are English source text, so
- * the JS file itself is the single list — there is no second copy to keep in
- * step. Scanning 2.5 MB on every editor load would be wasteful; the result is
+ * assets/js/style_designer.src.js, the source the served .min.js is built
+ * from (the literals there are not guaranteed to keep their quotes). The keys
+ * are English source text, so the JS file itself is the single list — there
+ * is no second copy to keep in step. Scanning 4.7 MB on every editor load would be wasteful; the result is
  * cached in data/temp next to the file's mtime and size, and rebuilt when
  * the file changes.
  *
@@ -2271,7 +2272,7 @@ function pg_designer_i18n_keys()
     if ($keys !== null) return $keys;
     $keys = array();
 
-    $js = PG_FUNCTIONS_DIR . '/assets/js/style_designer.js';
+    $js = PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js';
     if (!is_file($js)) return $keys;
     $stamp = @filemtime($js) . ':' . @filesize($js);
 
@@ -2299,7 +2300,7 @@ function pg_designer_i18n_keys()
 }
 
 /**
- * The ready-made blocks' stylesheet as assets/js/style_designer.js defines
+ * The ready-made blocks' stylesheet as assets/js/style_designer.src.js defines
  * it: the marker comment (_SD_BLOCK_CSS_MARK), rule name → CSS text
  * (_SD_BLOCK_CSS) and block type → the rule names it needs
  * (_SD_BLOCK_CSS_NEEDS). The JS file is the only copy of the rules, so a
@@ -2314,7 +2315,7 @@ function _pg_designer_block_css_source()
     if ($source !== null) return $source;
     $source = array('mark' => '/* Pinegrap block styles */', 'rules' => array(), 'needs' => array());
 
-    $js = (string)@file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+    $js = (string)@file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
     if ($js === '') return $source;
 
     // The body of each object literal: from its opening line to the first

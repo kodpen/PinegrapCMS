@@ -12,7 +12,7 @@
  * blocks) have working toggles whose state agrees with their panels and
  * survives a save. A modal, offcanvas or dropdown menu open on the canvas
  * stays open through a rebuild of the canvas without reaching the tree. The
- * functions are cut out of assets/js/style_designer.js and run under Node
+ * functions are cut out of assets/js/style_designer.src.js and run under Node
  * (the canvas on a small DOM stand-in); on a machine without Node the test is
  * skipped. The builders are found with the source scanner of
  * designer_blocks_test.php.

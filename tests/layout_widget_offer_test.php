@@ -122,7 +122,7 @@ function _layout_widget_js_function($js, $name)
 
 function test_layout_widget_editor()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("_sdLayoutPropsHtml() + _sdLayoutWidgetPropsHtml(n)", $js, 'offered in the system region\'s panel');
 	pg_assert_contains("_sdLegacyRegionOwn(n)) return null;", $js, 'only for the page\'s own region');
 	pg_assert_contains("_sdLayoutWidgetPlace(selectedNode)", $js, 'the offer button is wired');

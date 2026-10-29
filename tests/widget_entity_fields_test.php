@@ -463,7 +463,7 @@ function test_widget_entity_fields_order_list_rows()
 // The list view never offers the record's allow-listed values.
 function test_widget_entity_fields_quiz_not_in_list_view()
 {
-	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true((bool)preg_match('/var SW_BUILTIN_FIELD_OPTIONS = (.*?);\n/s', $js, $m), 'list view options found');
 	pg_assert_false(strpos($m[1], 'SW_FORM_RECORD_ENTITY_TOKENS') !== false || strpos($m[1], '__quiz_score') !== false);
 }
@@ -472,7 +472,7 @@ function test_widget_entity_fields_quiz_not_in_list_view()
 // pg_sw_entity_fields(), and mark exactly the yes/no ones as condition-only.
 function test_widget_entity_fields_editor_twin()
 {
-	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string)file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	foreach (array('product' => 'SW_PRODUCT_ENTITY_TOKENS', 'calendar_event' => 'SW_EVENT_ENTITY_TOKENS', 'form_record' => 'SW_FORM_RECORD_ENTITY_TOKENS', 'order' => 'SW_ORDER_ENTITY_TOKENS', 'account' => 'SW_MEMBER_ENTITY_TOKENS', 'order_line' => 'SW_ORDER_LINE_ENTITY_TOKENS', 'ship_to' => 'SW_SHIP_TO_ENTITY_TOKENS', 'address_book' => 'SW_ADDRESS_BOOK_ENTITY_TOKENS') as $entity => $name) {
 		pg_assert_true((bool)preg_match('/var ' . $name . ' = \[(.*?)\n    \];/s', $js, $m), $name . ' found');

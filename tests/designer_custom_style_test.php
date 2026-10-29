@@ -137,7 +137,7 @@ function test_designer_custom_style_warnings()
 // stand-ins for the widget and shared component lookups.
 function test_designer_custom_style_off()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdCustomStyleOff(');
 	pg_assert_true($from !== false, '_sdCustomStyleOff is in the designer');
 

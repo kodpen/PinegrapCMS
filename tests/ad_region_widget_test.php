@@ -83,7 +83,7 @@ function test_ad_region_widget_registered()
 	pg_assert_true(isset(pg_sw_raw_token_keys()['__ad_content_html']), 'the ad\'s markup is raw');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_ad_region(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'ad_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'ad_region': {", $js, 'has a starter tree');
 	pg_assert_contains("ad_region:         SW_AD_REGION_TOKEN_GROUPS", $js, 'has a token palette');

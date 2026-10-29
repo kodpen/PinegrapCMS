@@ -156,7 +156,7 @@ function test_style_fields_suggest_and_apply()
 // The reason text beside a field suggestion.
 function test_style_fields_hint()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdFieldHint(');
 	pg_assert_true($from !== false, '_sdFieldHint is in the designer');
 

@@ -76,7 +76,7 @@ function test_collections_template_refs_editor_resolve()
 		return;
 	}
 
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'function _swResolveTreeTabRefs(');
 	$end = ($start === false) ? false : strpos($js, '// After a save:', $start);
 	pg_assert_true($start !== false && $end !== false, 'the editor has the resolver');

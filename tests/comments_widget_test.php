@@ -1426,7 +1426,7 @@ function test_comments_widget_pagination_fragment()
 // is never read as part of it.
 function comments_widget_test_starter_block()
 {
-	$js = comments_widget_test_source('assets/js/style_designer.js');
+	$js = comments_widget_test_source('assets/js/style_designer.src.js');
 	$start = strpos($js, "\n            case 'comments': {");
 
 	if ($start === false) {
@@ -1977,7 +1977,7 @@ function test_comments_widget_canvas_twin_fades_by_place()
 		return;
 	}
 
-	$js = comments_widget_test_source('assets/js/style_designer.js');
+	$js = comments_widget_test_source('assets/js/style_designer.src.js');
 	$code_js = '';
 	foreach (array('_parentIndexFor', 'findParent', '_cfNodeAttr', '_sdFindByPropId', '_sdCommentsPlace', '_swKindOf', '_sdCommentsModeOffBindings', '_sdCommentsModeOff', '_sdCommentsBindingOff') as $name) {
 		$body = comments_widget_test_js_function($js, $name);
@@ -2180,7 +2180,7 @@ function test_comments_widget_module_wiring()
 
 	// The canvas twin: a page with comments off fades the whole widget, and
 	// only a button is offered the send action.
-	$designer_js = comments_widget_test_source('assets/js/style_designer.js');
+	$designer_js = comments_widget_test_source('assets/js/style_designer.src.js');
 	$twin = strpos($designer_js, 'function _sdCommentsBindingOff(');
 	$twin_end = ($twin === false) ? false : strpos($designer_js, "\n    }\n", $twin);
 	pg_assert_true(($twin !== false) && ($twin_end !== false), 'the canvas twin');

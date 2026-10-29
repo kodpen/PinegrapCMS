@@ -10,7 +10,7 @@
  * Bootstrap's document listeners.
  *
  * The canvas stylesheet (IFRAME_CSS) is cut out of
- * assets/js/style_designer.js and evaluated under Node; on a machine without
+ * assets/js/style_designer.src.js and evaluated under Node; on a machine without
  * Node those tests are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -27,7 +27,7 @@ function _test_canvas_controls_js()
 {
 	static $js = null;
 	if ($js === null) {
-		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+		$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	}
 	return $js;
 }
@@ -491,7 +491,7 @@ function test_designer_canvas_controls_theme_toggle_icon_beside_editor_chrome()
 }
 
 // The editor's canvas theme code (applyCanvasTheme() and its two helpers),
-// cut out of assets/js/style_designer.js, set up as JavaScript on the stand-in
+// cut out of assets/js/style_designer.src.js, set up as JavaScript on the stand-in
 // canvas document of _test_canvas_controls_engine(): `ed.apply(mode, opts)`,
 // the toolbar button `tb`, the Themes panel's mode in `panelMode`; the canvas
 // document's pg-theme-change reaches the editor as in _sdInitCanvasDoc().

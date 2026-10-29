@@ -167,7 +167,7 @@ function bs6_switch_plan($root)
 		$plan[] = array($path, 'stems', 'bs6_switch_stems');
 	}
 
-	$plan[] = array('assets/js/style_designer.js', 'dialogs', 'bs6_switch_editor_dialogs');
+	$plan[] = array('assets/js/style_designer.src.js', 'dialogs', 'bs6_switch_editor_dialogs');
 
 	foreach (bs6_switch_drawer_files($root) as $path) {
 		$plan[] = array($path, 'drawer-vars', 'bs6_switch_drawer_variables');
@@ -212,7 +212,7 @@ function bs6_switch_script_check_files($root)
 	$paths = array();
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
-		if (bs6_codemod_converts($path) && $path !== 'assets/js/style_designer.js' && preg_match('/\.js$/', $path)
+		if (bs6_codemod_converts($path) && $path !== 'assets/js/style_designer.src.js' && preg_match('/\.js$/', $path)
 			&& strpos((string) file_get_contents(rtrim($root, '/') . '/' . $path), "'form-check") !== false) {
 			$paths[] = $path;
 		}
@@ -232,7 +232,7 @@ function bs6_switch_shell_files($root)
 	$paths = array();
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
-		if (!bs6_codemod_converts($path) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js)$/', $path)) {
+		if (!bs6_codemod_converts($path) || $path === 'assets/js/style_designer.src.js' || !preg_match('/\.(php|js)$/', $path)) {
 			continue;
 		}
 
@@ -256,7 +256,7 @@ function bs6_switch_own_class_files($root)
 	$sheets = bs6_switch_stylesheets($root);
 
 	foreach (bs6_scope_files(rtrim($root, '/')) as $path => $kind) {
-		if ((!in_array($path, $sheets, true) && !bs6_codemod_converts($path)) || $path === 'assets/js/style_designer.js' || !preg_match('/\.(php|js|css)$/', $path)) {
+		if ((!in_array($path, $sheets, true) && !bs6_codemod_converts($path)) || $path === 'assets/js/style_designer.src.js' || !preg_match('/\.(php|js|css)$/', $path)) {
 			continue;
 		}
 

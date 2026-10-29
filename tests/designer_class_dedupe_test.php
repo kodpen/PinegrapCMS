@@ -3,7 +3,7 @@
  * Pinegrap - Enterprise Website Platform
  *
  * Tests for the class dedupe of the visual designer (deduplicateCssClass()
- * in assets/js/style_designer.js): a new class replaces the one of the same
+ * in assets/js/style_designer.src.js): a new class replaces the one of the same
  * family at the same breakpoint and leaves the other breakpoints alone, so
  * d-none and d-md-block can sit together. The function and its prefix list
  * are cut out of the script and run under Node (skipped without Node).
@@ -29,7 +29,7 @@ function designer_class_dedupe_test_run($cases)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$list_from = strpos($source, '    var CLASS_MUTEX_PREFIXES = [');
 	$from = strpos($source, '    function deduplicateCssClass(');
 	pg_assert_true($list_from !== false && $from !== false, 'the designer has the prefix list and deduplicateCssClass()');

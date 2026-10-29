@@ -51,7 +51,7 @@ function test_tag_cloud_widget_registered()
 	pg_assert_true(isset($labels['tag_cloud_region']), 'panel label');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_tag_cloud_region(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'tag_cloud_region'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'tag_cloud_region': {", $js, 'has a starter tree');
 	pg_assert_contains("tag_cloud_region:  SW_TAG_CLOUD_TOKEN_GROUPS", $js, 'has a token palette');

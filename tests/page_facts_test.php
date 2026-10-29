@@ -169,7 +169,7 @@ function test_page_facts_values_of_an_email()
 // The editor offers the facts the server reads (SD_PAGE_FACTS).
 function test_page_facts_editor_list_matches()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($js, "\n    var SD_PAGE_FACTS = [");
 	pg_assert_true($from !== false, 'SD_PAGE_FACTS is found');
 	$block = substr($js, $from, strpos($js, "\n    ];\n", $from) - $from);

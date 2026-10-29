@@ -646,7 +646,7 @@ function bs6_find_class_lists($source, $strings = false)
 // names the canvas's Bootstrap 5 classes as data.
 function bs6_reads_class_strings($path)
 {
-	return str_replace('\\', '/', $path) !== 'assets/js/style_designer.js';
+	return str_replace('\\', '/', $path) !== 'assets/js/style_designer.src.js';
 }
 
 /**
@@ -1146,7 +1146,7 @@ function bs6_scope_kind($path)
 	// predictor (designer_vocab.php, pg_style_predict.js) describe the
 	// Bootstrap 5 API that site pages load, so their Bootstrap names are data.
 	$editor = array(
-		'assets/js/style_designer.js', 'assets/css/style_designer.css', 'includes/designer_screen.php',
+		'assets/js/style_designer.src.js', 'assets/css/style_designer.css', 'includes/designer_screen.php',
 		'includes/fn/designer.php', 'includes/designer_ai.php', 'assets/js/pg_style_suggest.js',
 		'assets/js/pg_style_predict.js', 'includes/fn/designer_vocab.php', 'assets/js/pg_style_complete.js',
 	);
@@ -1387,7 +1387,7 @@ function bs6_syntax_error($path, $source)
 // pg_page_shell().
 function bs6_marked_editor_files()
 {
-	return array('assets/js/style_designer.js', 'includes/designer_screen.php');
+	return array('assets/js/style_designer.src.js', 'includes/designer_screen.php');
 }
 
 // Whether --all, --diff and a named path rewrite this file without --force.

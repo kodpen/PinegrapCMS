@@ -8,7 +8,7 @@
  * element's toolbar goes above it, below it when there is no room above (the
  * top of the canvas) and inside it only when there is no room below either;
  * the page root's name tag sits at the bottom-left corner of the canvas.
- * _sdTbSpot() is cut out of assets/js/style_designer.js and run under Node
+ * _sdTbSpot() is cut out of assets/js/style_designer.src.js and run under Node
  * (skipped on a machine without Node); the rest is read from the sources.
  *
  * @author      Erdal Güral (Kodpen)
@@ -23,7 +23,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function designer_canvas_chrome_test_source()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // The body of the named function in style_designer.js, up to the next

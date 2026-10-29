@@ -4,7 +4,7 @@
  *
  * Tests for where the visual designer pastes a block, and for the rule that
  * keeps two of its functions from sharing a name. All of
- * assets/js/style_designer.js is one function scope, so a second function
+ * assets/js/style_designer.src.js is one function scope, so a second function
  * declaration of a name silently replaces the first for every caller: with
  * the in-memory paste's spot (beside, no index) answering for the paste
  * event's (into or beside, with an index), a pasted block went first in the
@@ -242,7 +242,7 @@ JS;
 // it is listed here so a new duplicate still fails.
 function test_designer_paste_target_function_names_are_declared_once()
 {
-	$answer = designer_paste_target_test_scan(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$answer = designer_paste_target_test_scan(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 
 	if ($answer === null) {
 		return;
@@ -292,7 +292,7 @@ function test_designer_paste_target_function_names_are_declared_once()
 // that only counts.
 function designer_paste_target_test_run($cases, $history = false)
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code = '';
 
 	// Every declaration of each name, in file order, so a second
@@ -576,7 +576,7 @@ function test_designer_paste_target_paste_event_goes_by_selection()
 // saved with the next save. No paste path places clipboard nodes on its own.
 function test_designer_paste_target_repeated_paste_duplicates()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(0, substr_count($source, 'clipboardNodes.forEach('), 'no paste path copies clipboardNodes into the tree itself');
 	pg_assert_same(4, substr_count($source, '_sdPasteNodes(clipboardNodes)'), 'the context-menu Paste, Ctrl+V in the designer and in the canvas, and the paste event\'s fallback paste through _sdPasteNodes()');
 

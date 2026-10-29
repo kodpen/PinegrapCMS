@@ -242,7 +242,7 @@ function test_custom_form_rich_text_page_injection_gated()
 // keeps the flag the rows hold (booleans or '1').
 function test_custom_form_rich_text_designer_switch()
 {
-	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(1, preg_match("~on\\('sd-cf-rich', 'change', function \\(el\\) \\{\\s*_cfRec\\(lead\\)\\.wysiwyg = !!el\\.checked;~", $source), 'switch handler');
 	pg_assert_contains("if (kind === 'textarea') rec.wysiwyg = _cfFlagOn(f.wysiwyg);", $source);
 	pg_assert_contains("return v === true || String(v) === '1';", $source);

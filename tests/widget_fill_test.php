@@ -444,7 +444,7 @@ function _widget_fill_js_literal($js, $name)
 
 function test_widget_fill_php_js_parity()
 {
-	$js = _widget_fill_source('assets/js/style_designer.js');
+	$js = _widget_fill_source('assets/js/style_designer.src.js');
 	pg_assert_true(_widget_fill_js_block($js) !== '', 'the Format row block is found');
 
 	$filters = _widget_fill_js_literal($js, '_SD_TEXT_FILTERS');
@@ -496,7 +496,7 @@ function _widget_fill_run_js($script)
 		return null;
 	}
 
-	$js = _widget_fill_source('assets/js/style_designer.js');
+	$js = _widget_fill_source('assets/js/style_designer.src.js');
 	$block = _widget_fill_js_block($js);
 	$dates = _widget_fill_js_literal($js, 'SW_DATE_FIELD_TOKENS');
 	$bindfmt = _widget_fill_js_function($js, '_sdBindFormatRow');
@@ -626,6 +626,6 @@ function test_widget_fill_style_designer_parses()
 		return;
 	}
 	$out = array();
-	exec('node --check ' . escapeshellarg(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js') . ' 2>&1', $out, $code);
+	exec('node --check ' . escapeshellarg(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js') . ' 2>&1', $out, $code);
 	pg_assert_same(0, $code, implode("\n", $out));
 }

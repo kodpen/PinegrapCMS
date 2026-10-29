@@ -6,7 +6,7 @@
  * (assets/js/pg_style_suggest.js): the one-time loader of the predictor and
  * the vocabulary, the element context it reads for the predictor, the class
  * counts of a design, and the designer's reason text for a class suggestion
- * (_sdClassHint() in assets/js/style_designer.js). Run under Node on plain
+ * (_sdClassHint() in assets/js/style_designer.src.js). Run under Node on plain
  * stand-ins for the document; skipped on a machine without Node. The
  * dropdown itself draws into the document and is not run here.
  *
@@ -159,7 +159,7 @@ function test_style_suggest_loads_once()
 // The reason text beside a class suggestion, for real predictor results.
 function test_style_suggest_class_hint()
 {
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdClassHint(');
 	pg_assert_true($from !== false, '_sdClassHint is in the designer');
 

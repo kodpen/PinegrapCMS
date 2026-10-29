@@ -27,7 +27,7 @@ function _test_dta_js_rule($name)
 {
 	static $lines = null;
 	if ($lines === null) {
-		$lines = explode("\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js'));
+		$lines = explode("\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js'));
 	}
 	$css = '';
 	$inside = false;

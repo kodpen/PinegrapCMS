@@ -6,7 +6,7 @@
  * node's attribute is printed as the classic `<dregion "x">name</dregion>`
  * tag, so get_page_content.php hands it to the code as $dregion_attribute,
  * the same on the page (_render_region_tag()) and in the editor
- * (_sdRegionTag() in assets/js/style_designer.js, run under Node when it is
+ * (_sdRegionTag() in assets/js/style_designer.src.js, run under Node when it is
  * there); and the designer's code tab reads and saves the region's PHP only
  * with the classic screen's right (administrators) and a form token.
  *
@@ -95,7 +95,7 @@ function test_dregion_tag_editor_twin()
 		return;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$script = 'function esc(s) { if (!s) return ""; return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }';
 
 	foreach (array(array('function _sdDregionAttr(', "\n    }\n"), array('function _sdRegionTag(', "\n    }\n")) as $part) {

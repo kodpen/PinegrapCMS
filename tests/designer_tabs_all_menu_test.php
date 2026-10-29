@@ -26,7 +26,7 @@ function designer_tabs_all_menu_test_source($path)
 // brace.
 function designer_tabs_all_menu_test_js_function($name)
 {
-	$js = designer_tabs_all_menu_test_source('assets/js/style_designer.js');
+	$js = designer_tabs_all_menu_test_source('assets/js/style_designer.src.js');
 	$start = strpos($js, "\n    function " . $name . '(');
 	$end = ($start === false) ? false : strpos($js, "\n    }\n", $start);
 

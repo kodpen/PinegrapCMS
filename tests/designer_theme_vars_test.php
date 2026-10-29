@@ -5,7 +5,7 @@
  * Tests for includes/fn/designer_theme_vars.php, the PHP twin of the visual
  * designer's Themes panel helpers the upgrade uses to split the old combined
  * light block (`:root, [data-bs-theme="light"]`) of stored designs. The
- * editor's helpers are cut out of assets/js/style_designer.js and run under
+ * editor's helpers are cut out of assets/js/style_designer.src.js and run under
  * Node over the same inputs; the PHP result must be the same text, byte for
  * byte. On a machine without Node the comparisons are skipped and the PHP
  * results are still checked against their expected values.
@@ -111,7 +111,7 @@ function designer_theme_vars_test_js()
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _findRuleBlock(');
 	$to = ($from !== false) ? strpos($source, '// Read the current value of a single theme var', $from) : false;
 	$theme = strpos($source, 'function _sdThemeCssFromUserStyles(');

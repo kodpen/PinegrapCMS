@@ -11,7 +11,7 @@
  * (pg_cf_apply_field_bindings(), _render_tree_node()), the `_cf` record
  * (_pg_cf_node_record(), _pg_cf_controls()), where the renderer reads the
  * address (includes/fn/widgets.php) and the editor's panel and twins
- * (assets/js/style_designer.js).
+ * (assets/js/style_designer.src.js).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -482,7 +482,7 @@ function test_cf_url_renderer_reads_the_filter_request()
 
 function test_cf_url_editor_panel()
 {
-	$js = _test_cf_url_source('assets/js/style_designer.js');
+	$js = _test_cf_url_source('assets/js/style_designer.src.js');
 	pg_assert_true(_test_cf_url_js_function($js, '_cfFieldLeadOf') !== '', '_cfFieldLeadOf is defined');
 	$applies = _test_cf_url_js_function($js, '_cfUrlParamApplies');
 	pg_assert_true($applies !== '', '_cfUrlParamApplies is defined');
@@ -517,7 +517,7 @@ function _test_cf_url_run_js($trees)
 		return null;
 	}
 
-	$js = _test_cf_url_source('assets/js/style_designer.js');
+	$js = _test_cf_url_source('assets/js/style_designer.src.js');
 	$from = strpos($js, "\n    var CF_TYPE_BY_INPUT = {");
 	$to = strpos($js, "\n    function _cfTypeLabel(");
 	pg_assert_true($from !== false && $to !== false, 'the control helpers are found');

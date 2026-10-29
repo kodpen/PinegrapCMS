@@ -2861,7 +2861,7 @@ function test_forum_css()
 		$families[] = $font['family'];
 	}
 	pg_assert_same(array('Figtree', 'JetBrains Mono'), $families, 'Figtree and JetBrains Mono');
-	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$picker = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	foreach ($families as $family) {
 		pg_assert_contains("'" . $family . "'", $picker, $family . ' is in the font picker');
 	}

@@ -2727,7 +2727,8 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	}
 
-	$output_designer_script = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/js/style_designer.js?v=' . (int) @filemtime(dirname(__FILE__) . '/../assets/js/style_designer.js');
+	// The designer is one file in either mode: its .min.js, or its source.
+	$output_designer_script = implode('', pg_js_bundle_urls('assets/js/style_designer.min.js'));
 
 	$output_design_choices = '';
 

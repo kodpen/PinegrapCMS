@@ -266,7 +266,7 @@ function test_short_link_page_rename_screens_keep_the_old_address()
 	pg_assert_contains('pg_designer_page_name_taken_elsewhere($name, $page_id)', $save, 'the designer name check lets the page\'s own redirect go');
 	pg_assert_contains("\$flag('page_name_redirect') === 1", $save, 'the old address is kept when the editor asks');
 
-	$editor = short_link_requests_test_source('assets/js/style_designer.js');
+	$editor = short_link_requests_test_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains('rec.page_name_redirect = (p.page_name_redirect === 0) ? 0 : 1;', $editor, 'the editor asks unless the box was switched off');
 	pg_assert_contains("document.getElementById('sd-page-name-redirect')", $editor, 'from the box under the name');

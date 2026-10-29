@@ -39,7 +39,7 @@ function test_designer_page_tasks_screen_prints_the_drawer_for_pages()
 
 function test_designer_page_tasks_menu_item_opens_the_record_drawer()
 {
-	$js = designer_page_tasks_test_source('assets/js/style_designer.js');
+	$js = designer_page_tasks_test_source('assets/js/style_designer.src.js');
 
 	pg_assert_contains("_design.workspaceTasks) && saved && p.page_id > 0 && !p.pickedPending", $js, 'only saved pages of this design');
 	pg_assert_contains("item('ws-tasks', 'bi-clipboard2-check', _sdT('Workspace tasks'))", $js, 'the menu item');

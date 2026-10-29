@@ -236,7 +236,7 @@ function test_page_canonical_designer_check_agrees()
 		return;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$from = strpos($source, 'function _sdCanonicalCheck(');
 	$to = strpos($source, 'function _sdMaxSnippetCheck(', $from);
 	pg_assert_true(($from !== false) && ($to !== false), 'the designer has the check');

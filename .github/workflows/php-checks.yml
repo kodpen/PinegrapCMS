@@ -99,7 +99,7 @@ jobs:
 
       - name: JavaScript syntax (node --check)
         run: |
-          node --check pinegrap/assets/js/style_designer.js
+          node --check pinegrap/assets/js/style_designer.src.js
           node --check pinegrap/assets/js/workspace.js
           node --check pinegrap/assets/js/backend.src.js
 

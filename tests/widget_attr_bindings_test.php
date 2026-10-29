@@ -286,7 +286,7 @@ function test_widget_attr_bindings_page_link_placeholder()
 
 function _attr_bind_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // A `var NAME = [ ... ];` block or a function of style_designer.js, cut out

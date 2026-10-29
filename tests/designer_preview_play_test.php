@@ -2,7 +2,7 @@
 /**
  * Pinegrap - Enterprise Website Platform
  *
- * Tests for the designer's Preview as a prototype (assets/js/style_designer.js):
+ * Tests for the designer's Preview as a prototype (assets/js/style_designer.src.js):
  * _sdPreviewPlayMap() names the open tabs a Preview link plays, and
  * _sdPreviewPlayHarness() writes a script that parses and keeps page names
  * from closing its own tag.
@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 // One function of the visual editor's source, or ''.
 function _test_preview_play_js_function($name)
 {
-	$js = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.js');
+	$js = (string) file_get_contents(dirname(__DIR__) . '/pinegrap/assets/js/style_designer.src.js');
 	$start = strpos($js, "\n    function " . $name . '(');
 	if ($start === false) {
 		return '';

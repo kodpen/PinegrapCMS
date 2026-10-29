@@ -178,7 +178,7 @@ function test_designer_fx_inject()
 
 function test_designer_fx_preview_pattern()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$found = preg_match("~\\{ test: (/[^\\n]*?/[a-z]*), file: 'assets/js/pg_fx\\.min\\.js' \\}~", $js, $m);
 	pg_assert_true((bool) $found, 'the preview has a row for pg_fx.min.js');
 	pg_assert_same(pg_fx_pattern(), $found ? $m[1] : '', 'the preview tests the same expression as the server');
@@ -208,7 +208,7 @@ function _test_fx_node($script)
 // The editor's twins give the same interaction and the same attributes.
 function test_designer_fx_editor_twins()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, '    // The lists are first-is-default');
 	$end = strpos($js, '    // The id, the title and tooltip, the interaction');
 	pg_assert_true($start !== false && $end !== false, 'the twins are found');
@@ -289,7 +289,7 @@ function test_designer_fx_script_reads_the_page()
 // rest and drops what no longer applies, and the panel wires it up.
 function test_designer_fx_panel()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$twins = strpos($js, '    // The lists are first-is-default');
 	$twins_end = strpos($js, '    // The id, the title and tooltip, the interaction');
 	$panel = strpos($js, '    var _SD_FX_CONTENT');

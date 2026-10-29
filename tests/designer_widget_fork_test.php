@@ -5,7 +5,7 @@
  * Tests for "Make a copy for this page" in the visual designer's widget
  * panel: when the button is offered (_swForkOffer()), and what the copy it
  * makes does to the page trees and the cache (_swForkForThisPage() with the
- * kind kept). The helpers are cut out of assets/js/style_designer.js and run
+ * kind kept). The helpers are cut out of assets/js/style_designer.src.js and run
  * under Node; on a machine without Node those cases are skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -20,7 +20,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function designer_widget_fork_test_source()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // Whether Node runs here. Only this skips a case: what Node prints is

@@ -83,7 +83,7 @@ function test_order_form_widget_registered()
 	pg_assert_same('order_form', $map['order form'], 'stands in for the classic type');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_order_form(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'order_form'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'order_form': {", $js, 'has a starter tree');
 	pg_assert_contains("order_form:        SW_ORDER_FORM_TOKEN_GROUPS", $js, 'has a token palette');

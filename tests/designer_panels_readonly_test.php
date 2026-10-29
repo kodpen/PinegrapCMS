@@ -7,7 +7,7 @@
  * reason text (_sdContentReason()). An element's classes, attributes and
  * inline style may change only inside an area marked as editable, since the
  * save takes text and image addresses alone elsewhere; the design's User
- * Styles never. The functions are cut out of assets/js/style_designer.js and
+ * Styles never. The functions are cut out of assets/js/style_designer.src.js and
  * run under Node with the editor's state stubbed; skipped without Node.
  *
  * @author      Erdal Güral (Kodpen)
@@ -62,7 +62,7 @@ function test_designer_panels_readonly_reason()
 		return;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$functions = '';
 
 	foreach (array('_sdCanEditNode', '_sdIsTextNode', '_sdPanelLockReason', '_sdContentReason') as $name) {

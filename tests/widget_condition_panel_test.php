@@ -21,7 +21,7 @@ if (!defined('PG_TEST_RUNNER')) {
 
 function _widget_cond_panel_js()
 {
-	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 }
 
 // The text of a `var NAME = [ ... ];` block of style_designer.js.

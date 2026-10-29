@@ -86,7 +86,7 @@ function test_collections_controls_carry_kind_and_reference()
 // The editor offers the kinds the server keeps, for the same field types.
 function test_collections_kinds_editor_twin()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(preg_match('/var _CF_KINDS = (\{.*?\});/s', $js, $m) === 1, 'the designer has _CF_KINDS');
 
 	$json = preg_replace(array('/(\w+):/', "/'/"), array('"$1":', '"'), $m[1]);

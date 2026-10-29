@@ -300,7 +300,7 @@ check_commit() {
 	if [ "$js" = 1 ]; then
 
 		if command -v node >/dev/null 2>&1; then
-			for file in pinegrap/assets/js/style_designer.js pinegrap/assets/js/workspace.js pinegrap/assets/js/backend.src.js; do
+			for file in pinegrap/assets/js/style_designer.src.js pinegrap/assets/js/workspace.js pinegrap/assets/js/backend.src.js; do
 				if [ -f "$dir/$file" ]; then
 					run_check "node --check $file" node --check "$file"
 				fi

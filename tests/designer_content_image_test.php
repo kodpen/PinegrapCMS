@@ -7,7 +7,7 @@
  * <img>, whose address the save takes (_pg_dm_take_image_src()), and not an
  * inline background image, which the save keeps as stored. The designer's own
  * functions (_sdCanEditNode(), _sdNodeImage(), _sdNodeContentImage()) are cut
- * out of assets/js/style_designer.js and run under Node with the editor's
+ * out of assets/js/style_designer.src.js and run under Node with the editor's
  * state stubbed; on a machine without Node the run is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -64,7 +64,7 @@ function designer_content_image_test_run($script)
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$functions = '';
 
 	foreach (array('_sdCanEditNode', '_sdNodeImage', '_sdNodeContentImage') as $name) {

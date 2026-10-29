@@ -28,7 +28,7 @@ function designer_datetime_source($path)
 // function declared at the same indent.
 function designer_datetime_js_function($name)
 {
-	$src = designer_datetime_source('assets/js/style_designer.js');
+	$src = designer_datetime_source('assets/js/style_designer.src.js');
 	if (!preg_match('/\n(    function ' . preg_quote($name, '/') . '\(.*?)\n    (?:function |var |\/\/)/s', $src, $m)) {
 		return '';
 	}
@@ -66,7 +66,7 @@ function test_designer_schedule_values_written_by_script_are_drawn()
 
 function test_designer_filter_value_box_takes_its_types_hook()
 {
-	$src = designer_datetime_source('assets/js/style_designer.js');
+	$src = designer_datetime_source('assets/js/style_designer.src.js');
 
 	pg_assert_same(1, preg_match("/var inputType = \\(type === 'date'\\) \\? 'date' : \\(type === 'date and time'\\) \\? 'datetime-local' : \\(type === 'time'\\) \\? 'time' : 'text';/", $src), 'the value box keeps its native type: the store stays ISO');
 	pg_assert_same(1, preg_match("/var valueHook = \\{ date: ' data-pg-date', 'datetime-local': ' data-pg-datetime', time: ' data-pg-time' \\}\\[inputType\\] \\|\\| '';/", $src), 'each native type gets its hook, text none');

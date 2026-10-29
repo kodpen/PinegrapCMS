@@ -26,7 +26,7 @@ function designer_bottom_panel_resize_test_source($path)
 // brace (at the indent given).
 function designer_bottom_panel_resize_test_js_function($name, $indent = '    ')
 {
-	$js = designer_bottom_panel_resize_test_source('assets/js/style_designer.js');
+	$js = designer_bottom_panel_resize_test_source('assets/js/style_designer.src.js');
 	$start = strpos($js, "\n" . $indent . 'function ' . $name . '(');
 	$end = ($start === false) ? false : strpos($js, "\n" . $indent . "}\n", $start);
 
@@ -36,7 +36,7 @@ function designer_bottom_panel_resize_test_js_function($name, $indent = '    ')
 // The bottom panel builder's vertical resize block.
 function designer_bottom_panel_resize_test_vresize_block()
 {
-	$js = designer_bottom_panel_resize_test_source('assets/js/style_designer.js');
+	$js = designer_bottom_panel_resize_test_source('assets/js/style_designer.src.js');
 	$start = strpos($js, '// ── Vertical resize (snap-to-collapse) ──');
 	$end = ($start === false) ? false : strpos($js, '// ── Grid column splitters', $start);
 

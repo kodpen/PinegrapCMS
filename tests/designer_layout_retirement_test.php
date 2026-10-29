@@ -76,6 +76,6 @@ function test_layout_retirement_wiring()
 	pg_assert_true(strpos($screen, "'openLayout'") !== false, 'the screen passes the page');
 	pg_assert_true(strpos($screen, 'pg_layout_open_page_id(') !== false);
 
-	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, 'design.openLayout') !== false, 'the editor opens the tab');
 }

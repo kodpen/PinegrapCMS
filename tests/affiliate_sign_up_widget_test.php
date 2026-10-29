@@ -55,7 +55,7 @@ function test_affiliate_sign_up_widget_registered()
 	pg_assert_same('affiliate_sign_up_form', $map['affiliate sign up form'], 'stands in for the classic type');
 	$designer = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/designer.php');
 	pg_assert_contains("_render_system_widget_affiliate_sign_up_form(", $designer, 'dispatched by _expand_system_widgets()');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_contains("{ type: 'affiliate_sign_up_form'", $js, 'in SW_TYPES');
 	pg_assert_contains("case 'affiliate_sign_up_form': {", $js, 'has a starter tree');
 	pg_assert_contains("affiliate_sign_up_form: SW_AFFILIATE_SIGN_UP_TOKEN_GROUPS", $js, 'has a token palette');
@@ -89,7 +89,7 @@ function test_affiliate_sign_up_widget_confirmation_wiring()
 	pg_assert_contains("'pg_widget_id'    => \$widget_id,", $widget, 'the affiliate form names its widget');
 	pg_assert_contains("(string)\$lf->get_field_value('screen') === 'confirm'", $widget, 'the confirmation screen');
 	pg_assert_contains('_pg_member_drop_all_controls($tree);', $widget, 'the design stays, its controls go');
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_same(3, substr_count($js, '_swConfirmRow(sid, _cfg, _sdT('), 'the setting on all three widgets');
 	pg_assert_contains('data-sw-cfg="confirmation_message" data-sw-cfg-max="2000"', $js, 'a message longer than a label');
 	pg_assert_contains("\$confirmed->assign_field_value('screen', 'confirm');", (string) file_get_contents(PG_FUNCTIONS_DIR . '/affiliate_sign_up_form.php'), 'the handler asks for it');

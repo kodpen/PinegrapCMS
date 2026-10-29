@@ -178,7 +178,7 @@ function test_record_view_filters_invalid_operator_closes()
 // widget's `filters`.
 function test_record_view_filters_editor_panel()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'if (_isFormItemView && _curFormId > 0) {');
 	pg_assert_true($start !== false, 'the record-view panel is found in style_designer.js');
 	$end = strpos($js, '// ── Records in the translation', $start);
@@ -192,7 +192,7 @@ function test_record_view_filters_editor_panel()
 // of reading as "is equal to".
 function test_record_view_filters_editor_flags_unknown_operator()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'function _swFormListFiltersHtml(');
 	pg_assert_true($start !== false, 'the filter rows are found in style_designer.js');
 	$rows = substr($js, $start, 6000);

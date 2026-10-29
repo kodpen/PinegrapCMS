@@ -1,6 +1,6 @@
 ---
 name: sdt-designer-js-text-rules
-description: How visible text in assets/js/style_designer.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
+description: How visible text in style_designer.src.js must use _sdT('English') keys: literal-key rule, server key scan and cache, variables instead of built keys, escaping, PHP/JS default twins, the checks.
 ---
 
 ## Why does the designer JS use _sdT()?
@@ -26,7 +26,8 @@ description: How visible text in assets/js/style_designer.js must use _sdT('Engl
 - PHP default trees and widget fallback texts use `lang()`; their JS twins (`_swTypeDefaults`, `_emptyDefault`) use `_sdT()` with the same key.
 
 ## How is it checked?
-- `php tools/check_lang.php` (CI) fails on a missing key and on any `_sdT()` call that is not a single-quoted literal. `node --check assets/js/style_designer.js` after editing it (`php -l` does not read it).
+- `php tools/check_lang.php` (CI) fails on a missing key and on any `_sdT()` call that is not a single-quoted literal. `node --check assets/js/style_designer.src.js` after editing it (`php -l` does not read it), then `php tools/build_js.php`.
+- `pg_designer_i18n_keys()` scans the source, not the served `style_designer.min.js` (#3063): terser may rewrite a literal's quotes.
 - A raw literal in a palette `label` or a `defaultProps` text is reported by no check (`check_lang.php` reads only `lang()` / `_sdT()` calls): verify by eye (`designer/designer-sdt-translation.md`).
 
 Related: docs/memory/core/designer-i18n-audit-tool.md

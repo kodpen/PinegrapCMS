@@ -9,7 +9,7 @@
  * editor's side (_sdImgDim(), _sdImgSizeCss(), the image's toHTML() and
  * addGlobalAttrs()) and the canvas's (the image's render() and
  * _sdApplyNodeAttrs(), on a small DOM stand-in) are cut out of
- * assets/js/style_designer.js and run under Node, and have to write the same
+ * assets/js/style_designer.src.js and run under Node, and have to write the same
  * markup as the page; on a machine without Node that part is skipped.
  *
  * @author      Erdal Güral (Kodpen)
@@ -233,7 +233,7 @@ function designer_image_size_test_cut($source, $start)
 }
 
 // Runs $body under Node after the designer's sizing helpers, the declarations
-// $more names and its Image element, cut out of assets/js/style_designer.js;
+// $more names and its Image element, cut out of assets/js/style_designer.src.js;
 // $body fills `out`, which comes back decoded. null without Node.
 function designer_image_size_test_js($body, $more = array())
 {
@@ -249,7 +249,7 @@ function designer_image_size_test_js($body, $more = array())
 		return null;
 	}
 
-	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$code_js = '';
 
 	foreach (array_merge(array('function _sdCssLen(', 'function _sdImgDim(', 'function _sdImgSizeCss(', 'function _sdImgInRatio(', 'function _sdImgRatioClass(', 'function _sdSizingValue(', 'function getNodeExtraStyle(', 'function getNodeExtraClasses(', 'var _SD_CONTENT_GLOBAL_ATTRS', 'function _sdContentSizingNode(', 'function _sdContentProps(', 'function _sdUniqueClasses(', 'function _sdDecodeAttr(', 'function _sdUserAttrValue(', 'function _sdFontFamilyCss(', 'function _sdNodeStyle(', 'function _sdNodeTitleAttrs(', 'function _sdFxSpec(', 'function _sdFxNormalize(', 'function _sdFxAttrs(', 'function _sdNodeExtraAttrs(', 'function addGlobalAttrs('), $more) as $start) {

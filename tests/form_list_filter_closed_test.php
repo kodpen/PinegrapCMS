@@ -214,7 +214,7 @@ function test_list_closed_every_path_uses_the_decision()
 // or an unknown operator says why no record is shown.
 function test_list_closed_editor_row_warning()
 {
-	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	$start = strpos($js, 'function _swFormListFiltersHtml(');
 	pg_assert_true($start !== false, 'the filter rows are found in style_designer.js');
 	$end = strpos($js, "\n    function ", $start + 10);
