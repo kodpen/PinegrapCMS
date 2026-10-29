@@ -19116,7 +19116,7 @@ button.ws-ack-count:hover {
 }
 .wsf-edge-line {
   fill: none;
-  stroke: var(--pg-fg-2);
+  stroke: #7d8696;
   stroke-width: 2;
   marker-end: url(#wsf-arrow);
 }
@@ -19127,7 +19127,7 @@ button.ws-ack-count:hover {
   pointer-events: stroke;
   cursor: pointer;
 }
-.wsf-arrowhead { fill: var(--pg-fg-2); }
+.wsf-arrowhead { fill: #7d8696; }
 .wsf-arrowhead-on { fill: var(--ws-accent); }
 .wsf-arrowhead-bad { fill: var(--pg-danger); }
 .wsf-edge.wsf-selected .wsf-edge-line {
@@ -19153,22 +19153,24 @@ button.ws-ack-count:hover {
   stroke-width: 2;
   stroke-dasharray: 5 4;
 }
-/* A box: its kind's colour on the left edge, the ports on the sides. */
-.wsf-node-manual { --wsf-kind: #4f8a5b; }
-.wsf-node-task { --wsf-kind: #4a7fa8; }
-.wsf-node-end { --wsf-kind: #6f6a5e; }
-html[data-bs-theme="dark"] .wsf-node-manual { --wsf-kind: #8fcf9b; }
-html[data-bs-theme="dark"] .wsf-node-task { --wsf-kind: #8fbde3; }
-html[data-bs-theme="dark"] .wsf-node-end { --wsf-kind: #b3ab9b; }
-/* A value box: no arrows, a dashed border in the value colour. */
-.wsf-node-constants,
-.wsf-node-value { --wsf-kind: #a8468f; }
-html[data-bs-theme="dark"] .wsf-node-constants,
-html[data-bs-theme="dark"] .wsf-node-value { --wsf-kind: #e58fd0; }
-.wsf-node.wsf-node-constants,
-.wsf-node.wsf-node-value {
+/* A box: its group's colour on its border, kind label and icon, the ports
+   on the sides (kindClasses() in workspace_flow.js). The light theme takes
+   deeper tones of the same hues, at least 4.5:1 on white. */
+.wsf-group-start { --wsf-kind: #1a7f4e; }
+.wsf-group-system { --wsf-kind: #0e7383; }
+.wsf-group-logic { --wsf-kind: #8a5c00; }
+.wsf-group-message { --wsf-kind: #2f62c4; }
+.wsf-group-people { --wsf-kind: #6d4bd0; }
+.wsf-group-values { --wsf-kind: #a8468f; }
+html[data-bs-theme="dark"] .wsf-group-start { --wsf-kind: #6fdca6; }
+html[data-bs-theme="dark"] .wsf-group-system { --wsf-kind: #45c4d6; }
+html[data-bs-theme="dark"] .wsf-group-logic { --wsf-kind: #e9b44c; }
+html[data-bs-theme="dark"] .wsf-group-message { --wsf-kind: #6ea8ff; }
+html[data-bs-theme="dark"] .wsf-group-people { --wsf-kind: #b49cff; }
+html[data-bs-theme="dark"] .wsf-group-values { --wsf-kind: #e58fd0; }
+/* A value box: no arrows, a dashed border. */
+.wsf-node.wsf-group-values {
   border-style: dashed;
-  border-left-style: solid;
 }
 .wsf-constant {
   display: grid;
@@ -19182,9 +19184,9 @@ html[data-bs-theme="dark"] .wsf-node-value { --wsf-kind: #e58fd0; }
   width: 208px;
   height: 80px;
   padding: 8px 12px;
-  border: 1px solid var(--pg-border-color);
-  border-left: 4px solid var(--wsf-kind, var(--pg-fg-2));
+  border: 1.5px solid var(--wsf-kind, var(--pg-border-color));
   border-radius: var(--ws-radius-sm);
+  --wsf-ring: #7c3aed;
   background: var(--pg-bg-body);
   box-shadow: var(--ws-shadow);
   cursor: grab;
@@ -19194,10 +19196,10 @@ html[data-bs-theme="dark"] .wsf-node-value { --wsf-kind: #e58fd0; }
 .wsf-readonly .wsf-node {
   cursor: pointer;
 }
+html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
+/* The selection ring outside the group's border. */
 .wsf-node.wsf-selected {
-  border-color: var(--ws-accent);
-  border-left-color: var(--wsf-kind, var(--ws-accent));
-  box-shadow: 0 0 0 2px rgba(var(--ws-accent-rgb), .35), var(--ws-shadow-accent);
+  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--wsf-ring), var(--ws-shadow-accent);
 }
 .wsf-node.wsf-bad {
   border-color: var(--pg-danger);
@@ -19931,14 +19933,13 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 }
 .wsf-run-view .wsf-node.wsf-run-none {
   border-style: dashed;
-  border-left-style: solid;
   box-shadow: none;
 }
 .wsf-run-view .wsf-node.wsf-run-none .wsf-node-title {
   color: var(--pg-fg-2);
 }
 .wsf-run-view .wsf-node.wsf-selected {
-  border-color: var(--ws-accent);
+  box-shadow: 0 0 0 1.5px var(--pg-bg-body), 0 0 0 3.5px var(--wsf-ring);
 }
 .wsf-run-task {
   position: relative;
@@ -20057,11 +20058,7 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
 /* ── /Workspace ── */
 /* A scheduled action drawn read-only in the Scheduled actions section of
    Flows (showAction() in workspace_flow.js): the flow boxes on a canvas
-   that scrolls, with the colours of a condition and a follow-up. */
-.wsf-node-sa-condition { --wsf-kind: #9a6b2f; }
-.wsf-node-sa-follow { --wsf-kind: #7a5ea8; }
-html[data-bs-theme="dark"] .wsf-node-sa-condition { --wsf-kind: #e0b36f; }
-html[data-bs-theme="dark"] .wsf-node-sa-follow { --wsf-kind: #c3a8ec; }
+   that scrolls, in their groups' colours (ACTION_KINDS). */
 .ws-sa-graph {
   height: auto;
   overflow: auto;
