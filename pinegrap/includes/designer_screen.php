@@ -2734,7 +2734,7 @@ function pg_designer_resolve_tab_refs($pages, $tab_ids)
     };
     // A '_' in the pattern matches any character, which only widens the
     // match; the tree walker reads the key exactly.
-    $tree_like = "tree_json LIKE '%\"page_id\":\"tab:%'";
+    $tree_like = "(tree_json LIKE '%\"page_id\":\"tab:%' OR tree_json LIKE '%\"ref\":\"tab:%')";
     if (!(int)db_value("SELECT COUNT(*) FROM shared_components WHERE system_region_config LIKE '%\"tab:%' OR $tree_like")) return;
     $sids = array();
     foreach ((array)$pages as $p) {
@@ -3162,8 +3162,12 @@ function pg_designer_screen_post($ctx)
                 WHERE style_id = '" . (int)$style_id . "'");
         }
     }
-    foreach ($cf_jobs as $cf_page_id => $cf_set) {
-        $cf_set = pg_designer_resolve_tab_values($cf_set, $tab_ids);
+    // A reference field keeps its form only while that form exists, so a
+    // form is made after the forms its fields point into; one in a loop of
+    // references is written once more when the others exist.
+    $cf_plan = $cf_jobs ? pg_cf_reconcile_plan(array_keys($cf_jobs)) : array('order' => array(), 'again' => array());
+    foreach ($cf_plan['order'] as $cf_page_id) {
+        $cf_set = pg_designer_resolve_tab_values($cf_jobs[$cf_page_id], $tab_ids);
         $cf_res = pg_cf_reconcile_page_form($cf_page_id, $user['id'], $cf_set);
         if (!empty($cf_res['addresses'])) {
             $warnings[] = lang(array(
@@ -3180,6 +3184,9 @@ function pg_designer_screen_post($ctx)
                                   (int)$cf_res['lost_values'] === 1 ? '' : 's'),
             ));
         }
+    }
+    foreach ($cf_plan['again'] as $cf_page_id) {
+        pg_cf_reconcile_page_form($cf_page_id, $user['id'], pg_designer_resolve_tab_values($cf_jobs[$cf_page_id], $tab_ids));
     }
 
     // A converted classic style's folder pages, when the editor's "Also

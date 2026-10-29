@@ -3067,13 +3067,20 @@ function pg_sw_page_link_settle($html, $nonce)
 }
 
 // A widget tree with the links' unpublished pages ('tab:<key>' in
-// props._bindParams.*.page_id) as the ids the tabs got on Publish ($tab_ids,
-// key => id); a key with no id (a tab closed meanwhile) gives 0. Nothing
-// else is read: a text or an attribute that reads 'tab:...' stays as it
-// is, and a tree with nothing to resolve comes back unchanged.
+// props._bindParams.*.page_id) and the forms a reference field points into
+// (props._cf.ref, a template's form naming another tab's form) as the ids
+// the tabs got on Publish ($tab_ids, key => id); a key with no id (a tab
+// closed meanwhile) gives 0. Nothing else is read: a text or an attribute
+// that reads 'tab:...' stays as it is, and a tree with nothing to resolve
+// comes back unchanged.
 function pg_sw_page_link_resolve_tabs($node, $tab_ids, $depth = 0)
 {
     if (!is_array($node) || $depth > 80) return $node;
+    if (isset($node['props']['_cf']['ref']) && is_string($node['props']['_cf']['ref'])
+        && strncmp($node['props']['_cf']['ref'], 'tab:', 4) === 0) {
+        $key = substr($node['props']['_cf']['ref'], 4);
+        $node['props']['_cf']['ref'] = isset($tab_ids[$key]) ? (int)$tab_ids[$key] : 0;
+    }
     if (isset($node['props']['_bindParams']) && is_array($node['props']['_bindParams'])) {
         foreach ($node['props']['_bindParams'] as $prop => $spec) {
             if (!is_array($spec) || !isset($spec['page_id']) || !is_string($spec['page_id'])

@@ -2890,6 +2890,77 @@ function pg_cf_template_schema_author($wanted, $ids_by_name)
 }
 
 /**
+ * The order in which the forms of these pages are written: a form after the
+ * forms its reference fields point into, because a field keeps its form only
+ * while that form exists (pg_coll_reference_target()). Pages a save makes
+ * together name each other before they have forms (a template's posts and
+ * its categories).
+ *
+ * @param int[] $page_ids the pages, in the order the save met them
+ * @return array array('order' => page ids, 'again' => page ids to write once
+ *               more, after all the others: pg_cf_reconcile_order())
+ */
+function pg_cf_reconcile_plan($page_ids)
+{
+    $refs = array();
+    $coll = function_exists('pg_coll_ready') && pg_coll_ready();
+    foreach ((array)$page_ids as $page_id) {
+        $page_id = (int)$page_id;
+        if ($page_id <= 0 || isset($refs[$page_id])) continue;
+        $refs[$page_id] = array();
+        if (!$coll) continue;
+        foreach (_pg_cf_page_form_widgets($page_id) as $w) {
+            foreach (_pg_cf_controls($w['tree'], $page_id) as $field) {
+                $target = pg_coll_field_reference($field['kind'], $field['reference_page_id']);
+                if ($target > 0 && !in_array($target, $refs[$page_id], true)) $refs[$page_id][] = $target;
+            }
+        }
+    }
+    return pg_cf_reconcile_order($refs);
+}
+
+/**
+ * The pages of $refs (page id => the page ids its reference fields point
+ * into) with every page after the pages it points at, otherwise in the
+ * given order. A page pointing at itself (related posts) needs nothing: its
+ * form is made before its fields are written. In a loop of references one
+ * page has to come first and loses its reference; it is listed in 'again',
+ * to be written once more when the others exist.
+ *
+ * @param array $refs
+ * @return array array('order' => int[], 'again' => int[])
+ */
+function pg_cf_reconcile_order($refs)
+{
+    $refs  = is_array($refs) ? $refs : array();
+    $order = array();
+    $seen  = array();
+    $visit = function ($id) use (&$visit, &$order, &$seen, $refs) {
+        if (isset($seen[$id])) return;
+        $seen[$id] = true;
+        foreach ((array)$refs[$id] as $target) {
+            $target = (int)$target;
+            if ($target !== $id && isset($refs[$target])) $visit($target);
+        }
+        $order[] = $id;
+    };
+    foreach (array_keys($refs) as $id) $visit((int)$id);
+
+    $pos   = array_flip($order);
+    $again = array();
+    foreach ($order as $id) {
+        foreach ((array)$refs[$id] as $target) {
+            $target = (int)$target;
+            if ($target !== $id && isset($pos[$target]) && $pos[$target] > $pos[$id]) {
+                $again[] = $id;
+                break;
+            }
+        }
+    }
+    return array('order' => $order, 'again' => $again);
+}
+
+/**
  * Copy sample records into a new form.
  *
  * An array: the records a design template brings along, each a list of

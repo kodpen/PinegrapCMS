@@ -24,6 +24,7 @@ description: Generated from the module field of the memory files: each includes/
 - `contact_list`: [[contact-list-names]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]]
+- `custom_form`: [[collection-template-refs]]
 - `designer_fx`: [[designer-interactions]]
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[card-data-manual-processing]]

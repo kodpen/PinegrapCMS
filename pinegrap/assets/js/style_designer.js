@@ -58584,12 +58584,18 @@ const StyleDesigner = (function () {
 
     // The page a link to another page opens, in a widget tree: every
     // props._bindParams.*.page_id that reads 'tab:<key>' becomes the page id
-    // in `map` (0 for a key it lacks), as pg_sw_page_link_resolve_tabs()
-    // does on the server. Nothing else is read. Returns whether anything
-    // changed.
+    // in `map` (0 for a key it lacks), and so does a reference field's form
+    // (props._cf.ref), as pg_sw_page_link_resolve_tabs() does on the server.
+    // Nothing else is read. Returns whether anything changed.
     function _swResolveTreeTabRefs(node, map) {
         if (!node || typeof node !== 'object') return false;
         var changed = false;
+        var cf = node.props && node.props._cf;
+        if (cf && typeof cf === 'object' && typeof cf.ref === 'string' && /^tab:/.test(cf.ref)) {
+            var refKey = cf.ref.slice(4);
+            cf.ref = map[refKey] ? parseInt(map[refKey], 10) : 0;
+            changed = true;
+        }
         var bp = node.props && node.props._bindParams;
         if (bp && typeof bp === 'object') {
             Object.keys(bp).forEach(function (k) {

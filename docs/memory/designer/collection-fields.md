@@ -21,7 +21,7 @@ description: Collection forms and field kinds (11.0.43, C2): the three columns, 
 
 ## Which design template forms are collections?
 - C6a (#2969): the blog (posts, journal, articles, stories), staff directory, cafe menu and events forms carry `'collection' => 1` in their page `form` (Publish writes it with the other form settings). Each template's `$file` helper adds `_cf.kind 'image'` to a field that takes only `image/*` (covers, photos, dish and event pictures, byline photos); attachments and CVs stay plain files. The template files are read only when a template is opened or published, so installed sites change nothing; the version of each changed template was raised.
-- No `_cf.ref` yet: a template reference needs the target form's page id at Publish (C6b in `plans/designer-collections-steps.md`).
+- A template's reference into another tab's form (`_cf.ref '{{tab:<key>}}'`) is resolved at Publish: `collection-template-refs.md` (C6b1).
 
 ## What does the slug kind do?
 - The record's address name (pretty URLs) comes from the first non-blank slug value, else the Title field (`pg_coll_address_source()`, read by `update_submitted_form_address_name()`; the slug column is probed only when `pg_coll_ready()`). A blank slug falls back to the title, so old records keep their names.

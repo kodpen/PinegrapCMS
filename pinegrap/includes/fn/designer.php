@@ -8656,11 +8656,18 @@ function pg_design_template_install($template_id, $user, $opts = array())
             SET style_custom_css = '" . escape($asset_css) . "', style_custom_js = '" . escape($asset_js) . "'
             WHERE style_id = '" . (int)$style_id . "'");
     }
+    // A form after the forms its reference fields point into, as the
+    // editor's save makes them (pg_cf_reconcile_plan()).
     if (function_exists('pg_cf_reconcile_page_form')) {
+        $form_settings = array();
         foreach ($pages as $p) {
             $settings = pg_designer_resolve_tab_values($p['form_settings'], $tab_ids);
             if (trim((string)(isset($settings['form_name']) ? $settings['form_name'] : '')) === '') unset($settings['form_name']);
-            pg_cf_reconcile_page_form($tab_ids[$p['key']], (int)$user['id'], $settings);
+            $form_settings[(int)$tab_ids[$p['key']]] = $settings;
+        }
+        $form_plan = pg_cf_reconcile_plan(array_keys($form_settings));
+        foreach (array_merge($form_plan['order'], $form_plan['again']) as $form_page_id) {
+            pg_cf_reconcile_page_form($form_page_id, (int)$user['id'], $form_settings[$form_page_id]);
         }
     }
 
