@@ -12,7 +12,7 @@ description: Panel chat window (chat_backend.src.js) from the keyboard: rows as 
 - Opening the window focuses the active tab; the launcher carries `aria-expanded`.
 - Escape inside the window closes an open emoji palette first, then the window. Closing (Escape, the close button) gives focus back to the launcher when it was inside the window; before, the panel hid under the focused button and focus fell to `<body>`.
 - Back from a conversation or the AI Chat focuses that row once the list arrives, else the active tab.
-- The window stays non-modal: no focus trap.
+- On a wide screen the window stays non-modal: Tab leaves it. On a phone (`isFullscreenLayout()`, 575.98px and below) it fills the screen and the page under it cannot scroll, so Tab past the last visible control (Shift+Tab before the first) wraps round inside the panel; before, Tab walked the hidden page beneath it.
 
 ## Why does the 15 s refresh not lose focus?
 - `refreshLists()` used to call `renderListView(null)` on every tick, which emptied the panel to "Loading…" and rebuilt header and rows. Now a tick keeps the drawn list (`state.listBody`) and redraws only the rows, then focuses the control with the key that had focus. Only a first draw or a tab change rebuilds the header, and it restores the focused key too.

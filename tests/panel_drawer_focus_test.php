@@ -79,3 +79,24 @@ function test_panel_drawer_focus_toast_and_confirm_close_translated()
 	pg_assert_contains('data-bs-dismiss="toast" aria-label="\' + escapeHtml(lang(\'Close\')) + \'"', $source);
 	pg_assert_contains('data-bs-dismiss="dialog" aria-label="\' + escapeHtml(lang(\'Close\')) + \'"', $source);
 }
+
+function test_panel_drawer_focus_menu_drawer_shuts_when_focus_leaves()
+{
+	$lost = panel_drawer_focus_function('drawerLostFocus');
+	pg_assert_contains('!isMenuDrawerMode() || !isMenuDrawerOpen()', $lost);
+	pg_assert_contains("closest('[data-pg-menu-hold]')", $lost);
+	pg_assert_contains("'menu_mode_toggle'", $lost);
+	pg_assert_contains('closeMenuDrawer();', $lost);
+
+	$init = panel_drawer_focus_function('initMenuDrawer');
+	pg_assert_contains("$('.software-sidebar').on('focusout'", $init);
+	pg_assert_contains('drawerLostFocus(document.activeElement)', $init, 'focus with no relatedTarget is read on the next turn');
+}
+
+function test_panel_drawer_focus_settings_drawer_shuts_when_focus_leaves()
+{
+	$lost = panel_drawer_focus_function('sideLostFocus');
+	pg_assert_contains("matchMedia('(max-width: 575.98px)')", $lost);
+	pg_assert_contains('drawer(false);', $lost);
+	pg_assert_contains("el.addEventListener('focusout'", panel_drawer_focus_function('wire'));
+}

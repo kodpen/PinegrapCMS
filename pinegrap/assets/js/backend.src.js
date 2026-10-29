@@ -926,6 +926,36 @@ $(document).ready(function () {
             }
         });
 
+        // Focus leaving the open drawer shuts it, as it shuts the widened
+        // rail of a wide screen: the sidebar comes before the screen in the
+        // page, so Tab past its last row would walk the controls under the
+        // scrim. Not for a layer that belongs to the menu ([data-pg-menu-hold])
+        // or the bar button, whose own click toggles the drawer. Focus with no
+        // relatedTarget (a frame, a blank spot) is read on the next turn.
+        function drawerLostFocus(next) {
+            if (!isMenuDrawerMode() || !isMenuDrawerOpen() || !next || (next === document.body) || (next.nodeType !== 1)) {
+                return;
+            }
+
+            if (next.closest('.software-sidebar') || next.closest('[data-pg-menu-hold]') || (next.id === 'menu_mode_toggle')) {
+                return;
+            }
+
+            closeMenuDrawer();
+        }
+
+        $('.software-sidebar').on('focusout', function (e) {
+            var next = e.relatedTarget;
+
+            if (next) {
+                drawerLostFocus(next);
+            } else {
+                window.setTimeout(function () {
+                    drawerLostFocus(document.activeElement);
+                }, 0);
+            }
+        });
+
         // A menu of the header opens over the screen below it, and the drawer
         // is drawn above the header's layer: left open, it would cover the
         // account sheet on a phone. Opening any of them puts the drawer away.
@@ -10304,6 +10334,41 @@ var pgSettingsModal = (function () {
             drawer(false);
         });
 
+        // On a phone the list is a drawer over the pane: Tab past its last
+        // row would land on the covered list button and the fields under the
+        // scrim. Focus leaving the list shuts it. A focus with no
+        // relatedTarget (a click on a blank spot, a frame) is read on the
+        // next turn, once it has settled.
+        function sideLostFocus(next) {
+
+            var side = byId('pg_settings_modal_side');
+
+            if (!side || !drawerOpen() || !window.matchMedia || !window.matchMedia('(max-width: 575.98px)').matches) {
+                return;
+            }
+
+            if (next && (next !== document.body) && !side.contains(next)) {
+                drawer(false);
+            }
+        }
+
+        el.addEventListener('focusout', function (event) {
+
+            var side = byId('pg_settings_modal_side');
+
+            if (!side || !side.contains(event.target)) {
+                return;
+            }
+
+            if (event.relatedTarget) {
+                sideLostFocus(event.relatedTarget);
+            } else {
+                window.setTimeout(function () {
+                    sideLostFocus(document.activeElement);
+                }, 0);
+            }
+        });
+
         // Escape closes the drawer before it closes the dialog. Bound to the
         // document in the capture phase because Bootstrap's own Escape handler
         // sits on the dialog element and was registered first.
@@ -12254,7 +12319,8 @@ $(function () {
         }
     }
 
-    // The same column on the next row (or the one before) that can change.
+    // The same column on the next row (or the one before) that can change;
+    // false when there is none (Tab on the last row, Shift+Tab on the first).
     function step(cell, direction) {
         var field = cell.getAttribute('data-pg-edit');
         var row = cell.closest('tr');
@@ -12266,9 +12332,11 @@ $(function () {
 
             if (next && !next.hasAttribute('data-pg-edit-busy')) {
                 open(next);
-                return;
+                return true;
             }
         }
+
+        return false;
     }
 
     function close(state) {
@@ -12381,8 +12449,12 @@ $(function () {
             send(state, value, (control.tagName === 'SELECT') ? control.options[control.selectedIndex].text : value);
         }
 
+        // With no row to go on to, the cell keeps the focus: its input has
+        // just left the page, which would drop the focus to <body>.
         if (direction) {
-            step(state.cell, direction);
+            if (!step(state.cell, direction)) {
+                state.cell.focus();
+            }
         } else if (refocus) {
             state.cell.focus();
         }
