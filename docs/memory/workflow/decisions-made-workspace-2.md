@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-2
-description: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items, creates in a chat go through /oluştur (/create), the customer channel's sales quote stays
+description: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 ---
 
 ## What may the channel menu hold?
@@ -13,5 +13,8 @@ description: Decisions list, workspace part 2 (2026-10-29 on): the channel menu 
 
 ## Does the customer channel's "New sales quote" stay in the menu?
 - Yes (owner, 2026-10-29): it is about the channel's own customer, so it is one of the channel's own actions.
+
+## Who may draft from a channel file, and what does /oluştur take? (#2999)
+- Decided (architect, 2026-10-29; plan `workspace-create-command.md` S4): `/oluştur ürün` as a reply to someone else's CSV/xlsx/xls/ods message is open to anyone who may read the message, post in the channel and change products, as the file button was: the drafts are the proposer's own and every row is checked again at Apply. `/oluştur grup` makes one record; several lines answer with a clear error (bulk groups only when asked for). No new kinds for now (task, customer, sales quote, workflow table row are asked when a need appears); `/görev` stays its own command, its parser reads `@people`, dates, `~estimate` and `!priority` anywhere.
 
 Related: docs/memory/workflow/decisions-made-workspace.md (part 1), docs/memory/workflow/decisions-made.md

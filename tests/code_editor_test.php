@@ -660,6 +660,26 @@ function test_code_editor_dialog_offers_a_format_button()
 	pg_assert_contains("'Format code'  => lang('Format code'),", $screen, 'the designer prints the label');
 }
 
+// The designer's bottom code view offers "Format code" in its strip for a
+// loaded, editable CSS, JavaScript or JSON file tab; the page tab (HTML) and
+// a read-only tab get none. The button runs the tab editor's format().
+function test_code_editor_designer_view_offers_a_format_button()
+{
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+	$from = strpos($js, '    function _sdCodeFormats(tab) {');
+	$check = ($from !== false) ? substr($js, $from, strpos($js, "\n    }\n", $from) - $from) : '';
+
+	pg_assert_true($check !== '', '_sdCodeFormats() is found');
+	pg_assert_contains("tab.key === 'page'", $check, 'the page tab has no button');
+	pg_assert_contains('tab.spec.readOnly', $check, 'a read-only tab has no button');
+	pg_assert_contains('!tab.loaded', $check, 'nor a tab whose text is not loaded');
+	pg_assert_contains("['css', 'javascript', 'json'].indexOf(tab.ed.getLanguage())", $check, 'only the languages with a formatter');
+	pg_assert_contains('if (_sdCodeFormats(active)) {', $js, 'the strip asks it for the active tab');
+	pg_assert_contains('id="sd-code-format"', $js, 'the strip draws the button');
+	pg_assert_contains("esc(_sdT('Format code'))", $js, 'with a translated label');
+	pg_assert_contains('active.ed.format();', $js, 'which runs the tab editor\'s format()');
+}
+
 // The dialog's footer has a minimap toggle beside "Format code": a toggle
 // button (aria-pressed) that starts from the editor's state and switches it.
 function test_code_editor_dialog_offers_a_minimap_toggle()

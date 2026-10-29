@@ -21,4 +21,4 @@ description: The code editor's minimap: @replit/codemirror-minimap in the lazy b
 - `_minimapExtension(cm, on)` gives the facet `showMinimap` with `displayText: 'blocks'` (cheaper than characters on a long page) and `showOverlay: 'mouse-over'` (the viewport box only while the pointer is over it). The host element has the class `pg-ce-minimap`. It draws on a canvas, so jsdom cannot show it; a Chromium run did.
 - Test: `tests/code_editor_test.php` reads the facet off a state under Node on the bundle, and checks the option, `setMinimap`/`hasMinimap`, the designer's call and both toggles.
 
-Related: docs/memory/core/code-editor-facade-and-bundle.md, docs/memory/plans/designer-code-editor.md
+Related: docs/memory/core/code-editor-facade-and-bundle.md, docs/memory/designer/designer-code-editor-decisions.md
