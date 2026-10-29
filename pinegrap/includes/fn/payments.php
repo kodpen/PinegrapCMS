@@ -1667,7 +1667,7 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
 
 /**
  * The legacy gateways' secret config columns and their widths. Each is kept
- * sealed with the site's key ("pgenc1:<ciphertext>:<iv>"), never printed back
+ * sealed with the site's key ("pgenc2:<iv tag ciphertext>"), never printed back
  * into the settings form; a plain value saved before still reads.
  *
  * @return array column => VARCHAR width
@@ -1704,8 +1704,22 @@ function pg_gateway_secret_shown($stored)
 }
 
 /**
- * The secret sealed with $key. Without a key (or OpenSSL) nothing can be
- * sealed and the value is returned as it is, as it was stored before.
+ * The AES-256-GCM key a secret is sealed with, derived from the site's key so
+ * it is never the same bytes as any other use of ENCRYPTION_KEY.
+ *
+ * @param string $key the site's ENCRYPTION_KEY
+ * @return string 32 raw bytes
+ */
+function pg_gateway_secret_key($key)
+{
+    return hash_hmac('sha256', 'pinegrap-gateway-secret-v2', (string) $key, true);
+}
+
+/**
+ * The secret sealed with $key as "pgenc2:" + base64 of the 12-byte IV, the
+ * 16-byte GCM tag and the ciphertext. The tag makes a wrong key or a changed
+ * byte fail instead of opening to garbage. Without a key (or OpenSSL) nothing
+ * can be sealed and the value is returned as it is, as it was stored before.
  *
  * @param string $plain
  * @param string $key   the site's ENCRYPTION_KEY
@@ -1719,15 +1733,22 @@ function pg_gateway_secret_seal($plain, $key)
         return $plain;
     }
 
-    $iv = random_bytes(16);
-    $cipher = openssl_encrypt($plain, 'aes-256-cbc', hash('sha256', (string) $key, true), OPENSSL_RAW_DATA, $iv);
+    $iv = random_bytes(12);
+    $tag = '';
+    $cipher = openssl_encrypt($plain, 'aes-256-gcm', pg_gateway_secret_key($key), OPENSSL_RAW_DATA, $iv, $tag, '', 16);
 
-    return ($cipher === false) ? $plain : 'pgenc1:' . base64_encode($cipher) . ':' . base64_encode($iv);
+    if (($cipher === false) || (strlen($tag) !== 16)) {
+        return $plain;
+    }
+
+    return 'pgenc2:' . base64_encode($iv . $tag . $cipher);
 }
 
 /**
  * The secret a stored value holds: a plain value as it is, a sealed one opened
- * with $key.
+ * with $key. The first sealed form ("pgenc1:<ciphertext>:<iv>", AES-256-CBC
+ * without a MAC) still opens; a wrong key can pass its padding check about
+ * once in 256 tries, so a save seals it again in the authenticated form.
  *
  * @param string $stored
  * @param string $key
@@ -1736,6 +1757,18 @@ function pg_gateway_secret_seal($plain, $key)
 function pg_gateway_secret_open($stored, $key)
 {
     $stored = (string) $stored;
+
+    if (strpos($stored, 'pgenc2:') === 0) {
+        $raw = base64_decode(substr($stored, 7), true);
+
+        if (($raw === false) || (strlen($raw) <= 28) || ((string) $key === '') || !function_exists('openssl_decrypt')) {
+            return null;
+        }
+
+        $plain = openssl_decrypt(substr($raw, 28), 'aes-256-gcm', pg_gateway_secret_key($key), OPENSSL_RAW_DATA, substr($raw, 0, 12), substr($raw, 12, 16));
+
+        return ($plain === false) ? null : $plain;
+    }
 
     if (strpos($stored, 'pgenc1:') !== 0) {
         return $stored;
@@ -1781,10 +1814,9 @@ function pg_gateway_secret_value($stored)
  */
 function pg_gateway_secret_max_length($width)
 {
-    // "pgenc1:" + base64 of the padded ciphertext + ":" + base64 of the IV.
-    $blocks = (int) floor((floor(((int) $width - 32) / 4) * 3) / 16);
-
-    return max(0, $blocks * 16 - 1);
+    // "pgenc2:" + base64 of IV (12) + tag (16) + ciphertext (as long as the
+    // secret, GCM has no padding).
+    return max(0, (int) floor(((int) $width - 7) / 4) * 3 - 28);
 }
 
 /**
@@ -1799,10 +1831,12 @@ function pg_gateway_secret_fits($plain, $width)
 
 /**
  * The value a settings save writes. A blank or masked box keeps the stored
- * secret: a sealed one that needs no new key is written back unchanged, a
- * plain one is sealed, and one that no longer opens is left alone rather than
- * wiped. A new value replaces it. A secret too long to seal into the column
- * (only a kept plain one; a new one is refused before the save) stays plain.
+ * secret: one in the current sealed form that needs no new key is written
+ * back unchanged, a plain or first-form one is sealed in the current form,
+ * and one that no longer opens is left alone rather than wiped. A new value
+ * replaces it. A kept secret too long to seal into the column (a new one is
+ * refused before the save) keeps a first-form seal under the same key, else
+ * stays plain.
  *
  * @param string $posted   the box as posted
  * @param string $stored   the config value
@@ -1823,7 +1857,7 @@ function pg_gateway_secret_for_save($posted, $stored, $old_key, $new_key, $width
             return $stored;
         }
 
-        if ((strpos($stored, 'pgenc1:') === 0) && ((string) $old_key === (string) $new_key)) {
+        if ((strpos($stored, 'pgenc2:') === 0) && ((string) $old_key === (string) $new_key)) {
             return $stored;
         }
     } else {
@@ -1831,7 +1865,9 @@ function pg_gateway_secret_for_save($posted, $stored, $old_key, $new_key, $width
     }
 
     if (!pg_gateway_secret_fits($plain, $width)) {
-        return $plain;
+        $same_key = ((string) $old_key === (string) $new_key) && ($stored !== '') && ($plain === pg_gateway_secret_open($stored, $old_key));
+
+        return ($same_key && (strpos($stored, 'pgenc1:') === 0)) ? $stored : $plain;
     }
 
     return pg_gateway_secret_seal($plain, $new_key);

@@ -128,7 +128,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - payment-driver-paytr.md: PayTR iFrame driver (method 'PayTR', 11.0.122, PR #3036): get-token hash, framed payment page, server-to-server callback with the OK answer completes the incomplete order; CSP for the frame; limits
 - payment-driver-stripe.md: Stripe on PaymentIntents (gateway 'Stripe PaymentIntents', 11.0.24, PR #937): Payment Element and ConfirmationToken, 3-D Secure return, refund, cancel, CSP; classic 'Stripe' untouched
 - payment-drivers.md: Payment driver layer (2026.11.0, PR #740; iyzico on it since step 2): pg_payment_<key>_ contract, pg_payment_call() answers, card vs redirect, add-ons, settings in connect_apps or config
-- payment-gateway-secrets.md: Legacy gateway secrets (Authorize.net key, PayPal passwords, iyzipay secret) sealed in config, drawn masked, opened in init.php; plain values still read; the 47-character limit
+- payment-gateway-secrets.md: Legacy gateway secrets sealed in config (pgenc2, AES-256-GCM since #PR; pgenc1 still read), drawn masked, opened in init.php; plain values still read; the 41-character limit
 - payment-hosted-classic-pages.md: Hosted card box (Stripe Payment Element, PR #2556) on the classic order preview and express order pages; how payment_hosted.js finds an unmarked card section
 - payment-iyzico-checkout.md: How submit_order.php pays with iyzico: the driver branch for Iyzipay and Pay With Iyzico, return modes, state, the removed inline code (PR #2770) and the instalment surcharge skip
 - payment-iyzico-threeds-return.md: How the iyzico card driver's complete() finishes the 3-D Secure return (PR #1710): the iyzipay_3ds_state row and its claim, the instalment limit, the amount check, the totals the order keeps (#1422)
