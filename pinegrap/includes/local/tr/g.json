@@ -222,6 +222,8 @@
     "Goods received": "Teslim alınanlar",
     "Goods received back": "Ürünler geri alındı",
     "Google": "Google",
+    "Google Analytics": "Google Analytics",
+    "Google Analytics figures are no longer read. The Google account stays connected until you remove it under Connected accounts.": "Google Analytics rakamları artık okunmuyor. Google hesabı, Bağlı hesaplar altından kaldırılana kadar bağlı kalır.",
     "Google Analytics: tells visits apart to measure how the site is used.": "Google Analytics: sitenin nasıl kullanıldığını ölçmek için ziyaretleri birbirinden ayırır.",
     "Google Client ID": "Google Client ID",
     "Google Client Secret": "Google Client Secret",

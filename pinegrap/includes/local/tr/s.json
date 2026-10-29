@@ -1384,6 +1384,7 @@
     "Shows": "Gösterim",
     "Shows the comments of the page it is placed on, under that page's comment settings, and the form that adds one. Placed on several pages, it keeps one look and shows each page its own comments.": "Yerleştirildiği sayfanın yorumlarını o sayfanın yorum ayarlarıyla ve yorum ekleme formuyla gösterir. Birden çok sayfaya yerleştirildiğinde tek görünümünü korur ve her sayfada o sayfanın kendi yorumlarını gösterir.",
     "Shows the next working week of a person, only to you.": "Bir kişinin önümüzdeki iş haftasını yalnızca size gösterir.",
+    "Shows the visitors, sessions and views Google Analytics counted on the dashboard.": "Google Analytics'in saydığı ziyaretçileri, oturumları ve görüntülemeleri kontrol panelinde gösterir.",
     "Shows which searches bring people to the site, verifies the site with Google and submits its sitemap.": "Siteye hangi aramaların ziyaretçi getirdiğini gösterir, siteyi Google'da doğrular ve site haritasını gönderir.",
     "Shrink": "Küçülme",
     "Shrink now": "Şimdi küçült",
