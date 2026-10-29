@@ -360,8 +360,84 @@
         }
     }
 
+    /* ── Focus across redraws ─────────────────────────────────────────── */
+
+    // The attributes that name a control in the parts every answer rewrites
+    // (cart rows, quick-amount chips, customer card). The control that had
+    // focus goes with the old markup, so its key is taken before the rewrite
+    // and the same control is focused in the fresh markup.
+    var focusAttrs = ['data-sale-inc', 'data-sale-dec', 'data-sale-qty', 'data-sale-rm', 'data-sale-recv', 'data-sale-cust'];
+
+    // The line id of the first cart row from this sibling on, walking
+    // forward or back.
+    function lineFrom(row, back) {
+        while (row && !row.hasAttribute('data-line')) {
+            row = back ? row.previousElementSibling : row.nextElementSibling;
+        }
+        return row ? row.getAttribute('data-line') : '';
+    }
+
+    function saveFocus(container) {
+        var node = document.activeElement;
+        if (!container || !node || (node === container) || !container.contains(node)) {
+            return null;
+        }
+        for (var i = 0; i < focusAttrs.length; i++) {
+            if (node.hasAttribute(focusAttrs[i])) {
+                var row = node.closest('tr[data-line]');
+                return {
+                    attr: focusAttrs[i],
+                    value: node.getAttribute(focusAttrs[i]),
+                    line: row ? row.getAttribute('data-line') : '',
+                    next: row ? lineFrom(row.nextElementSibling, false) : '',
+                    prev: row ? lineFrom(row.previousElementSibling, true) : ''
+                };
+            }
+        }
+        return null;
+    }
+
+    function usable(node) {
+        return node && !node.disabled && !node.hidden;
+    }
+
+    function rowQty(line) {
+        return line ? el.rows.querySelector('tr[data-line="' + line + '"] [data-sale-qty]') : null;
+    }
+
+    // The control to focus after a rewrite: the same one, else the nearest
+    // sensible one - the line's quantity box (its + went disabled), the next
+    // or previous line's box (the line is gone), the product box (the cart
+    // is empty); the Received box for a chip; the Pick button for the
+    // customer card (Remove the customer leaves only that one).
+    function focusTarget(container, key) {
+        var same = container.querySelector('[' + key.attr + '="' + String(key.value).replace(/["\\]/g, '\\$&') + '"]');
+        if (usable(same)) {
+            return same;
+        }
+        if (key.attr === 'data-sale-recv') {
+            return el.received;
+        }
+        if (key.attr === 'data-sale-cust') {
+            return container.querySelector('[data-sale-cust="change"]') || el.product;
+        }
+        return rowQty(key.line) || rowQty(key.next) || rowQty(key.prev) || el.product;
+    }
+
+    function restoreFocus(container, key) {
+        if (!key || (document.activeElement && container.contains(document.activeElement))) {
+            return;
+        }
+        var target = focusTarget(container, key);
+        if (target) {
+            target.focus({ preventScroll: true });
+        }
+    }
+
     function renderCart(cart) {
+        var focus = saveFocus(el.rows);
         el.rows.innerHTML = cart.rows;
+        restoreFocus(el.rows, focus);
         el.count.textContent = cart.count_text || '';
         el.summary.innerHTML = cart.summary;
         state.total = Number(cart.total_cents) || 0;
@@ -383,7 +459,9 @@
     function renderCustomer(customer) {
         state.customerHtml = customer.html;
         if (!state.picker && (el.customer.innerHTML !== customer.html)) {
+            var focus = saveFocus(el.customer);
             el.customer.innerHTML = customer.html;
+            restoreFocus(el.customer, focus);
         }
         if (el.invoice) {
             el.invoice.innerHTML = customer.invoice || '';
@@ -671,7 +749,9 @@
                     chips += '<button type="button" class="no-submit" data-sale-recv="' + (value * 100) + '">' + esc(money(value * 100).slice(0, -(decimalMark.length + 2))) + '</button>';
                 });
             }
+            var focus = saveFocus(el.quick);
             el.quick.innerHTML = chips;
+            restoreFocus(el.quick, focus);
         }
 
         var received = parseAmount(el.received.value);
@@ -906,13 +986,18 @@
         }
     });
 
-    el.rows.addEventListener('change', function (event) {
-        var input = event.target.closest('[data-sale-qty]');
-        if (!input) {
-            return;
-        }
+    function sendQty(input) {
         var value = parseInt(input.value, 10);
         send('set_qty', { item_id: input.getAttribute('data-sale-qty'), quantity: isNaN(value) ? 0 : value });
+    }
+
+    el.rows.addEventListener('change', function (event) {
+        var input = event.target.closest('[data-sale-qty]');
+        // Enter already sent this value.
+        if (!input || (input.getAttribute('data-sale-sent') === input.value)) {
+            return;
+        }
+        sendQty(input);
     });
 
     el.rows.addEventListener('keydown', function (event) {
@@ -921,8 +1006,13 @@
             return;
         }
         if (isEnter(event)) {
+            // Send the typed quantity and keep the focus here; the answer's
+            // redraw focuses the fresh box (restoreFocus).
             event.preventDefault();
-            input.blur();
+            if (input.value !== input.defaultValue) {
+                input.setAttribute('data-sale-sent', input.value);
+                sendQty(input);
+            }
         } else if ((event.key === 'ArrowUp') || (event.key === 'ArrowDown')) {
             event.preventDefault();
             var value = (parseInt(input.value, 10) || 0) + ((event.key === 'ArrowUp') ? 1 : -1);
