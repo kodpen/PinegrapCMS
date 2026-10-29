@@ -6,7 +6,7 @@ module: contacts
 
 ## What is it?
 - `pg_contact_holders()` (`includes/fn/contacts.php`): one entry per place a contact's id is kept: `column`, optional `table` (when the key is not the table) and `type` (column => `'contact'` for a column that also names other records), `merge`, `erase`. Decided in #2421 (a).
-- Holders: `orders`, `forms`, `email_recipients`, `erp_accounts`, `opt_in`, `contacts_contact_groups_xref`, `consent_log`, `user.user_contact`, `ws_channels.contact_id`, `ws_channels.customer_id` (type contact), `ws_refs`, `ws_approvals`, `ws_ai_changes` (typed record columns).
+- Holders: `orders`, `forms`, `email_recipients`, `erp_accounts`, `opt_in`, `contacts_contact_groups_xref`, `consent_log`, `user.user_contact`, `ws_channels.contact_id`, `ws_channels.customer_id` (type contact), `ws_refs`, `ws_approvals`, `ws_ai_changes` (typed record columns), `ws_mail_conversations`, `cart_quotes` (merge move, erase find: `commerce/cart-quotes.md`).
 
 ## What does the merge do with each?
 - `move`: `pg_contact_holders_move()` re-points the merged contacts' rows to the contact that stays, before they are deleted. Before this, only groups and opt-in moved; orders, forms, ERP accounts, Workspace channels kept a deleted contact's id.

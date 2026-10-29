@@ -30,4 +30,5 @@ Open: 2. Template scope: personal, channel, site-wide → personal, site-wide.
 3. Cart quote: own tables at catalogue prices, valid until expired or ordered; a single-use offer code later; never a per-line price (not the saved-cart link).
 
 ## Where to start?
-- Slices 1-3 and 6 are built (6's Settings checkbox waits for the owner). 4, 5 and 7 ask the owner first.
+- Slices 1-3 and 6 are built (6's Settings checkbox waits for the owner). 4 and 7 ask the owner first.
+- 5a (tables 11.0.124, model, link page `cart_quote.php`, order completion, contact holder, export, erasure; commerce/cart-quotes.md) is in its PR. Next 5b: panel screen (list, make, cancel) and the Workspace card (`ws_customer_cart_quote_rows()`); then channel form, tag, `cart_quote.*` routes.

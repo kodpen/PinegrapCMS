@@ -1,0 +1,62 @@
+/* Page rules sit in Bootstrap 6's custom layer: above its components,
+   below its helpers and utilities. */
+@layer custom {
+
+/*
+ * Pinegrap - the page a cart quote link leads to (cart_quote.php).
+ */
+
+/* Token layer: the --pg-* names this page's rules read, mapped to
+   Bootstrap's variables, as the approval link's page maps them. */
+:root,
+[data-bs-theme] {
+  --pg-bg-1: var(--bs-bg-1);
+  --pg-bg-body: var(--bs-bg-body);
+  --pg-border-color: var(--bs-border-color);
+  --pg-fg-2: var(--bs-fg-2);
+}
+
+body.pg-cart-quote {
+  min-height: 100vh;
+  margin: 0;
+  padding: 2rem 1rem;
+  background: var(--pg-bg-1);
+}
+
+.pg-cart-quote-card {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: 1rem;
+  background: var(--pg-bg-body);
+  box-shadow: 0 .25rem 1rem rgba(0, 0, 0, .05);
+}
+
+.pg-cart-quote-site {
+  margin-bottom: 1rem;
+  color: var(--pg-fg-2);
+  font-size: .875rem;
+}
+
+.pg-cart-quote-title {
+  margin-bottom: .75rem;
+  font-size: 1.375rem;
+  font-weight: 600;
+}
+
+.pg-cart-quote-meta {
+  color: var(--pg-fg-2);
+}
+
+.pg-cart-quote-lines td:first-child {
+  overflow-wrap: anywhere;
+}
+
+.pg-cart-quote-fine {
+  margin: 1rem 0 0;
+  color: var(--pg-fg-2);
+  font-size: .8125rem;
+}
+
+}

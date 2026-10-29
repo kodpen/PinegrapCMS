@@ -838,6 +838,9 @@ function pg_order_complete($order_id, array $values, array $documents = array(),
          SET order_number = ?
          WHERE id = ?", array((string) $order_number, (string) $order_id)) or output_error('Query failed.');
 
+    // A cart quote whose link filled this cart is now ordered.
+    pg_cart_quote_order_completed($order_id);
+
     // Keep the checkout documents with the order as the customer saw them,
     // now that the order has its number. Only reads the order; its totals are
     // final by this point.

@@ -8778,6 +8778,8 @@ function get_tables() {
 		'calendar_view_pages',
 		'calendar_views_calendars_xref',
 		'calendars',
+		'cart_quote_items',
+		'cart_quotes',
 		'catalog_detail_pages',
 		'catalog_pages',
 		'comments',

@@ -103,6 +103,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_checkout_page();    // 11.0.120
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 	upgrade_2026_11_0_paytr();                  // 11.0.122
+	upgrade_2026_11_0_cart_quotes();            // 11.0.124
 
 }
 
@@ -3271,5 +3272,46 @@ function upgrade_2026_11_0_paytr() {
 	}
 
 	install_note('PayTR can now take payments: the visitor pays in PayTR\'s payment page, framed in the checkout, and PayTR confirms the payment to the store. Turn on "PayTR" in the Ecommerce settings with the merchant ID, key and salt, and add the webhook address shown there as the Notification URL in the PayTR Merchant Panel.');
+
+}
+
+// Cart quotes (2026.11.0, 11.0.124; includes/fn/cart_quotes.php).
+//
+// A cart quote is a list of products and quantities staff prepare for a
+// customer and send as a link; the link puts the lines into the visitor's
+// cart at the catalogue's prices of that moment, so no price is kept here.
+// Only the SHA-256 of the link's token is stored (token_hash), with its first
+// characters (token_hint) to tell links apart in the panel. status is open,
+// ordered, expired or cancelled; order_id is the cart the link last filled,
+// and the order that completed the quote once status is ordered. valid_until
+// and the timestamps are unix seconds. Nothing is read until a quote is made.
+function upgrade_2026_11_0_cart_quotes() {
+
+	install_create_table('cart_quotes', "CREATE TABLE cart_quotes (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		token_hash CHAR(64) NOT NULL DEFAULT '',
+		token_hint VARCHAR(8) NOT NULL DEFAULT '',
+		contact_id INT UNSIGNED NOT NULL DEFAULT 0,
+		valid_until INT UNSIGNED NOT NULL DEFAULT 0,
+		status VARCHAR(16) NOT NULL DEFAULT 'open',
+		order_id INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_token_hash (token_hash),
+		KEY idx_contact (contact_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_create_table('cart_quote_items', "CREATE TABLE cart_quote_items (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		cart_quote_id INT UNSIGNED NOT NULL DEFAULT 0,
+		product_id INT UNSIGNED NOT NULL DEFAULT 0,
+		quantity INT UNSIGNED NOT NULL DEFAULT 1,
+		PRIMARY KEY (id),
+		KEY idx_cart_quote (cart_quote_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Cart quotes: the tables for cart quote links are in place. Nothing changes on the site until a cart quote is made.');
 
 }

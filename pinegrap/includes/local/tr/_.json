@@ -1083,6 +1083,7 @@
     "{var:1} products are out of stock.": "{var:1} ürünün stoğu tükendi.",
     "{var:1} products have run out of stock.": "{var:1} ürünün stoğu tükenmiş.",
     "{var:1} products matched on {var:2}.": "{var:2} üzerinde {var:1} ürün eşleşti.",
+    "{var:1} products of this cart quote cannot be ordered now and are left out.": "Bu sepet teklifindeki {var:1} ürün şu anda sipariş edilemediği için dışarıda bırakıldı.",
     "{var:1} products read, {var:2} suggestions ({var:3} sure).": "{var:1} ürün okundu, {var:2} öneri ({var:3} emin).",
     "{var:1} products were updated": "{var:1} ürün güncellendi",
     "{var:1} products were updated ({var:2}).": "{var:1} ürün güncellendi ({var:2}).",
