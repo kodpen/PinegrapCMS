@@ -20,7 +20,7 @@ module: list_paging, user_list, submitted_form_list, contact_list
 
 ## What do select all and the bulk buttons act on?
 - The rows on screen (exports and "all that match" read the whole filtered list on the server): DataTables kept only the drawn page in the DOM, so "Delete Selected" posted that page's check boxes. "Unlimited" in the length menu still lists every row.
-- `chart_checkbox_state_change()` marks `#select_all` mixed when some rows are ticked and sets the `disabled` property with the class on `.enable-on-selected button` (`.btn.disabled` only stops the pointer; PR #NNNN).
+- `chart_checkbox_state_change()` marks `#select_all` mixed when some rows are ticked and sets the `disabled` property with the class on `.enable-on-selected button` (`.btn.disabled` only stops the pointer; PR #3303).
 
 ## What must a row keep?
 - A row is `array('class', 'cells')` of `pg_list_cell($html, $class[, $attributes])`; `pg_list_row_data()` sends the cell classes in `DT_RowData.pgCells` (attributes in `pgAttrs`) and `createdRow` puts them back. Every cell is escaped where it is built. The edit link's `send_to` is the screen with its filter (the action's own address is `api.php`).
