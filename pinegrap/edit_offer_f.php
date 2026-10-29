@@ -1514,7 +1514,13 @@ function _pg_offer_value_text($action)
     if ($action['unit'] == 'amount') {
         return _pg_offer_money($action['value']);
     }
-    return '%' . (int) $action['value'];
+    return _pg_offer_percent_text($action['value']);
+}
+
+// A percentage as the panel language writes it: "10%" in English, "%10" in Turkish.
+function _pg_offer_percent_text($value)
+{
+    return lang(array('string' => '{var:1}%', 'vars' => (int) $value));
 }
 
 function _pg_offer_action_text($action, $products, $shipping_methods)
@@ -1524,7 +1530,7 @@ function _pg_offer_action_text($action, $products, $shipping_methods)
             if (!empty($action['tiers'])) {
                 $rungs = array();
                 foreach ($action['tiers'] as $tier) {
-                    $rungs[] = lang(array('string' => '{var:1}+ → %{var:2}', 'vars' => array(_pg_offer_money($tier['min']), (int) $tier['percent'])));
+                    $rungs[] = lang(array('string' => '{var:1}+ → {var:2}', 'vars' => array(_pg_offer_money($tier['min']), _pg_offer_percent_text($tier['percent']))));
                 }
                 return lang(array('string' => 'off the order, by tier: {var:1}', 'vars' => implode(' · ', $rungs)));
             }
@@ -1556,7 +1562,7 @@ function _pg_offer_action_text($action, $products, $shipping_methods)
                     $names[] = $method['name'];
                 }
             }
-            return lang(array('string' => '%{var:1} off shipping ({var:2})', 'vars' => array((int) $action['value'], $names ? implode(', ', $names) : '?')));
+            return lang(array('string' => '{var:1} off shipping ({var:2})', 'vars' => array(_pg_offer_percent_text($action['value']), $names ? implode(', ', $names) : '?')));
     }
     return '';
 }
@@ -1625,12 +1631,12 @@ function _pg_offer_action_chip($action, $products)
         case 'add product':
             return max(1, (int) $action['quantity']) . ' × ' . _pg_offer_product_label($action['product_id'], $products) . ' ' . lang('gift');
         case 'discount shipping':
-            return lang('Shipping') . ' %' . (int) $action['value'];
+            return lang('Shipping') . ' ' . _pg_offer_percent_text($action['value']);
     }
     return '';
 }
 
-// The one-line sentence: "Automatic · cart is ₺100.00 or more → %100 off shipping (…)".
+// The one-line sentence: "Automatic · cart is ₺100.00 or more → 100% off shipping (…)".
 function _pg_offer_sentence($state, $products, $shipping_methods)
 {
     $offer = $state['offer'];

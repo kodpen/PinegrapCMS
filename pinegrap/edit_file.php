@@ -422,7 +422,7 @@ if (!isset($_POST['name'])) {
             $image_library_available = (extension_loaded('imagick') || extension_loaded('gd'));
 
              if (!$optimized && $image_library_available) {
-                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name) . ' )</a>';
+                $optimize_button ='<a class="btn btn-link pg-link-secondary py-0 mb-3" href="optimize.php?id=' . h($_GET['id']) . get_token_query_string_field() . '"><i class="bi bi-rocket bi-me-2"></i>' . lang('Optimize this image') . '( ' . h(lang(array('string' => '{var:1}%', 'vars' => calculate_optimizable_percent(FILE_DIRECTORY_PATH . '/' . $file_name)))) . ' )</a>';
             }
 
             // The second half of the pair. Offered whatever the optimized flag
