@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-box-look
-description: How a flow box looks (V1 of plans/workspace-flows-look.md, PR #PRNUM): its group and colour per theme, the 1.5 px border, the selection ring, control arrows, scheduled-action boxes
+description: How a flow box looks (V1 of plans/workspace-flows-look.md, PR #3118): its group and colour per theme, the 1.5 px border, the selection ring, control arrows, scheduled-action boxes
 ---
 
 ## Which group is a box in?
