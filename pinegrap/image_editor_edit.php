@@ -338,26 +338,74 @@ if (!$_POST)
                     var newImage = URL.createObjectURL(e.detail.dest);
                     $("#image").attr("src", newImage);
             });
+            // The Save Option buttons stay disabled until the edited image
+            // is in the form: a click before that would post an empty
+            // image_file. Each send goes through requestSubmit(), so the
+            // window-level double-submit guard sees it.
+            var save_buttons = $("#image_save_keep, #image_save_replace");
+            var save_status = $("#image_save_status");
+
             $("#image").on("load", function () {
-                const fetchAsBlob = url => fetch(url).then(response => response.blob());
-            
-                const convertBlobToBase64 = blob => new Promise((resolve, reject) => {
-                const reader = new FileReader;
-                reader.onerror = reject;
-                reader.onload = () => {
-                    resolve(reader.result);
+                save_buttons.prop("disabled", true);
+                $("input[name=image_file]").val("");
+                save_status.text(' . json_encode(lang('Preparing the edited image…'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');
+
+                var fetchAsBlob = function (url) {
+                    return fetch(url).then(function (response) { return response.blob(); });
                 };
-                reader.readAsDataURL(blob);
-            });
-                
-            fetchAsBlob($(this).attr("src")).then(convertBlobToBase64).then(
-                function(value) {
+
+                var convertBlobToBase64 = function (blob) {
+                    return new Promise(function (resolve, reject) {
+                        var reader = new FileReader();
+                        reader.onerror = reject;
+                        reader.onload = function () {
+                            resolve(reader.result);
+                        };
+                        reader.readAsDataURL(blob);
+                    });
+                };
+
+                fetchAsBlob($(this).attr("src")).then(convertBlobToBase64).then(function (value) {
+                    if (!value) {
+                        throw new Error("empty image");
+                    }
+
                     var DATA = value.replace("data:image/jpeg;base64,","data:image/png;base64,");
                     $("input[name=image_file]").val(DATA);
+                    save_status.text("");
+                    save_buttons.prop("disabled", false);
+                }).catch(function () {
+                    save_buttons.prop("disabled", true);
+                    save_status.text(' . json_encode(lang('The edited image could not be read.') . ' ' . lang('Please try again.'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ');
+                });
+
+                pgUI.dialog.toggle("#confirm_modal");
+            });
+
+            save_buttons.on("click", function () {
+                var form = document.getElementById("image_form");
+
+                if (this.disabled || !form.elements.image_file.value) {
+                    return;
                 }
-            );
-            pgUI.dialog.toggle("#confirm_modal");
-        });
+
+                save_buttons.prop("disabled", true);
+                form.elements.save_option.value = this.getAttribute("data-save-option");
+
+                if (typeof form.requestSubmit === "function") {
+                    form.requestSubmit();
+                } else {
+                    form.submit();
+                }
+            });
+
+            // A page restored from the back/forward cache comes back with
+            // the buttons disabled by the click that left it.
+            $(window).on("pageshow", function (e) {
+                if (e.originalEvent.persisted && $("input[name=image_file]").val()) {
+                    save_buttons.prop("disabled", false);
+                }
+            });
         </script>
         <dialog class="dialog" id="confirm_modal" data-bs-backdrop="static" aria-labelledby="save_option_title">
                     <div class="dialog-header">
@@ -380,9 +428,10 @@ if (!$_POST)
                             <input type="hidden" name="column_to_update" value="' . h($_GET['column_to_update'] ?? '') . '" />
                             <input type="hidden" name="image_file" value="" />
                             <input type="hidden" name="save_option" value="" />
+                            <p id="image_save_status" role="status" class="small mb-2"></p>
                             <div class="d-flex justify-content-end">
                                 <div class="input-group input-group-sm me-3">
-                                    <button type="button" class="btn btn-sm btn-solid theme-primary" onclick="$(\'input[name=save_option]\').val(\'Keep and Save\');$(\'form#image_form\').submit();">' . lang('Keep Original And Save') . '</button>
+                                    <button type="button" id="image_save_keep" class="btn btn-sm btn-solid theme-primary" data-save-option="Keep and Save" disabled>' . lang('Keep Original And Save') . '</button>
                                     <select class="form-control" id="save_option_item_type" name="save_option_item_type" aria-label="' . h(lang('File Format')) . '">
                                         <option ' . $output_jpg_selected  . 'value="jpg">jpg</option>
                                         <option ' . $output_png_selected . 'value="png">png</option>
@@ -392,7 +441,7 @@ if (!$_POST)
                                     </select>
                                 </div>
                            
-                                <button type="button" class="btn btn-sm btn-solid theme-primary" onclick="$(\'input[name=save_option]\').val(\'Replace\');$(\'form#image_form\').submit();">' . lang('Replace') . '</button>
+                                <button type="button" id="image_save_replace" class="btn btn-sm btn-solid theme-primary" data-save-option="Replace" disabled>' . lang('Replace') . '</button>
                             </div>
                         </form>
                     </div>
@@ -413,7 +462,7 @@ else
     $object_id = $_POST['object_id'];
     $file_id = $_POST['file_id'];
     $send_to = $_POST['send_to'];
-    $image_data = $_POST['image_file'];
+    $image_data = (string) ($_POST['image_file'] ?? '');
     $error = false;
 
     // get file data from database
@@ -589,7 +638,8 @@ else
     }
 
     // if there was an error accessing the file, then output error
-    if ($image_data === false)
+    // An empty image would replace the original with a 0-byte file.
+    if (trim($image_data) === '')
     {
         log_activity(lang(array('string'=>'image ({var:1}) could not be retrieved from Editor','vars'=>$file_name)), $_SESSION['sessionusername']);
         output_error(lang('We\'re sorry, we encountered a problem while retrieving your edited image from Editor. Your image was not updated on the website. Please try again later.'));
