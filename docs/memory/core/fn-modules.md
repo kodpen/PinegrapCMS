@@ -61,7 +61,7 @@ description: Generated from the module field of the memory files: each includes/
 - `returns`: [[bootstrap-6-runtime-markup]]
 - `reviews`: [[product-review-photos]], [[product-reviews-verified]]
 - `seo`: [[list-row-names]], [[main-host-redirect]], [[record-breadcrumb-list-step]], [[record-page-schema-type]], [[robots-large-image-preview]], [[sitemap-cache]], [[sitemap-listed-pages]]
-- `shipment_labels`: [[shipment-label-returns]], [[shipment-labels]]
+- `shipment_labels`: [[shipment-label-api]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]
 - `shipping`: [[order-address-postcode-note]]
