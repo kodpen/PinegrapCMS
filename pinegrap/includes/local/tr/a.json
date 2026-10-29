@@ -743,6 +743,7 @@
     "A recurring product cannot be part of a bundle.": "Yinelenen ödemeli bir ürün bir paketin parçası olamaz.",
     "A redirect counts as an answer": "Yönlendirme de yanıt sayılsın",
     "A redirect sends visitors to the destination's own address and keeps their query string: 301 for the old address of a page that moved, 302 for a while.": "Yönlendirme ziyaretçiyi hedefin kendi adresine gönderir ve sorgu dizesini korur: taşınan bir sayfanın eski adresi için 301, bir süreliğine 302.",
+    "A refund is already being sent for this order. Wait for its answer before sending another.": "Bu sipariş için zaten bir iade gönderiliyor. Yenisini göndermeden önce yanıtını bekleyin.",
     "A refusal settles it at once. The result is written into the channel as a locked decision and lands on the Decision Timeline.": "Bir ret isteği hemen sonuçlandırır. Sonuç kanala kilitli bir karar olarak yazılır ve Karar Zaman Çizelgesi'ne düşer.",
     "A regular expression; the whole value must match (e.g. <code>[0-9]{10}</code>). The browser checks before submitting, the server on submit.": "Düzenli ifade; değerin tamamı uymalı (ör. <code>[0-9]{10}</code>). Tarayıcı gönderimden önce, sunucu gönderimde denetler.",
     "A rehearsal answers 200, as nothing is written.": "Prova hiçbir şey yazmadığı için 200 döner.",

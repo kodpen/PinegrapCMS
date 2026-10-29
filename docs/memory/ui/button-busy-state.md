@@ -13,4 +13,8 @@ description: Buttons never change their label or lock for a fixed time while a r
 ## What does a button that sends its own request do?
 - It is `disabled` exactly while its request runs, and enabled again on every path: success, an error answer and a network failure.
 
+## Which screens send once for longer than 3 s?
+- The barcode stock screens (barcode_increase/decrease_inventory.php): `#barcode_read_button` is disabled while its Read request runs (`complete` enables it); a scan is never held, a repeated scan is a real second unit. A success also fills the visually hidden `#barcode_status` (role=status) with the product and its new quantity. Before (PR #3167) a double click on Read with quantity 5 moved the stock by 6 (the box resets to 1).
+- The order screen's card refund dialog (view_order.php): a `window` submit listener lets the first submit of its form through and cancels any later one until the page leaves (reset on `pageshow` when persisted), sets `aria-busy` on the dialog and fills `#payment-refund-status`. The server takes `GET_LOCK(pg_payment_refund_lock_name($order_id), 0)` and turns a second request away; before, a second click while the provider answered refunded twice and both wrote the same `refunded_amount`.
+
 Related: docs/memory/ui/admin-screen-toolbar-rules.md

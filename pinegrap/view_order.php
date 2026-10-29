@@ -2306,11 +2306,41 @@ if (!$_POST) {
                                 : '') . $output_payment_refund_body . '
                             </div>
                             <div class="dialog-footer">
+                                <p class="small fg-secondary me-auto mb-0" id="payment-refund-status" role="status" aria-live="polite"></p>
                                 <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
                                 <button type="submit" name="submit_payment_refund" value="refund" class="btn btn-solid theme-primary">' . lang('Confirm Refund') . '</button>
                             </div>
                     </form>
-            </dialog>';
+            </dialog>
+            <script>
+            (function () {
+                // The refund is sent once: the first submit goes, any later one
+                // is cancelled until the page leaves, however long the payment
+                // service takes (the window guard only covers 3 seconds). The
+                // button is never disabled, so submit_payment_refund travels.
+                // Listening on window lets a handler that cancels a submit (a
+                // check that failed) keep the dialog usable.
+                var payment_refund_sent = false;
+                var dialog = document.getElementById("payment-refund-modal");
+                var form = dialog ? dialog.querySelector("form") : null;
+                var status = document.getElementById("payment-refund-status");
+                if (!form) { return; }
+                window.addEventListener("submit", function (event) {
+                    if (event.target !== form) { return; }
+                    if (payment_refund_sent) { event.preventDefault(); return; }
+                    if (event.defaultPrevented) { return; }
+                    payment_refund_sent = true;
+                    dialog.setAttribute("aria-busy", "true");
+                    if (status) { status.textContent = "' . escape_javascript(lang('Sending the refund. Wait for the answer before leaving this page.')) . '"; }
+                });
+                window.addEventListener("pageshow", function (event) {
+                    if (!event.persisted) { return; }
+                    payment_refund_sent = false;
+                    dialog.removeAttribute("aria-busy");
+                    if (status) { status.textContent = ""; }
+                });
+            })();
+            </script>';
     }
 
     // ── Order cancellation (gateway-independent) ────────────────────────
@@ -3045,6 +3075,17 @@ if (!$_POST) {
         $order_id = (int)$liveform->get('id');
         $refund_amount = (float)$liveform->get_field_value('refund_amount');
 
+        // A second request for the same order (the dialog sent twice while the
+        // payment service was still answering) is turned away rather than
+        // checked against a refunded total the first one has not written yet.
+        // The lock goes with the connection when an exit below ends the request.
+        $refund_lock = pg_payment_refund_lock_name($order_id);
+
+        if ((int) db_value("SELECT GET_LOCK('" . e($refund_lock) . "', 0)") !== 1) {
+            $liveform->mark_error('_error', lang('A refund is already being sent for this order. Wait for its answer before sending another.'));
+            go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
+        }
+
         // Load order to validate against remaining refundable amount; the
         // whole row, because it is what the payment driver is given.
         $order_row = db_item("SELECT * FROM orders WHERE id = '" . e($order_id) . "'");
@@ -3131,6 +3172,8 @@ if (!$_POST) {
         db("UPDATE orders SET refunded_amount = '" . e($new_refunded_total) . "', " . pg_order_touch_sql() . " WHERE id = '" . e($order_id) . "'");
         db("INSERT INTO order_refunds (order_id, amount_cents, refund_type, transaction_id, created_at)
             VALUES ('" . e($order_id) . "', '" . e($refund_cents) . "', 'refund', '" . e($refund_result['refund_reference']) . "', NOW())");
+
+        db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
         log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
 
