@@ -204,6 +204,7 @@ if ($initial_mode == 'short_links') {
 $explorer_lang = array(
     'loading' => lang('Loading'),
     'request_failed' => lang('The request failed. Please try again.'),
+    'session_expired' => lang('Your session has expired. Please sign in again.'),
     // Shown in the content area when a folder listing cannot be fetched --
     // a gateway or server timeout during a long bulk operation answers with
     // an HTML error page instead of JSON, so the grid says so and offers a
@@ -6981,8 +6982,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         Array.prototype.forEach.call(buttons, function (button) { button.disabled = true; });
         trigger.classList.add('disabled');
 
+        var failed = wrap.querySelector('.pg-seo-run-failed');
+
+        if (failed) { failed.remove(); }
+
+        // A followed redirect is the sign-in page and a refusal is not the
+        // checklist: neither is put in place of it.
         fetch(trigger.getAttribute('data-seo-url'), { credentials: 'same-origin' })
-            .then(function (response) { return response.text(); })
+            .then(function (response) {
+                if (!response.ok || response.redirected) { throw response; }
+                return response.text();
+            })
             .then(function (html) {
                 // The stored copy is stale the moment a re-run lands.
                 seoDetailCache = {};
@@ -6993,9 +7003,15 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (fresh) { wrap.replaceWith(fresh); } else { wrap.innerHTML = html; }
             })
-            .catch(function () {
+            .catch(function (error) {
                 Array.prototype.forEach.call(buttons, function (button) { button.disabled = false; });
                 trigger.classList.remove('disabled');
+
+                var alert = document.createElement('div');
+                alert.className = 'alert theme-danger small mt-3 mb-0 pg-seo-run-failed';
+                alert.setAttribute('role', 'alert');
+                alert.textContent = (error && ((error.status === 401) || (error.status === 403) || error.redirected)) ? L.session_expired : L.request_failed;
+                trigger.parentNode.appendChild(alert);
             });
     });
 
