@@ -223,7 +223,8 @@ async function main() {
         header: parts.header.className, title: parts.title.textContent, body: parts.body.className,
         footer: parts.footer.className, dismiss: parts.close.getAttribute('data-bs-dismiss'),
         label: parts.close.getAttribute('aria-label'), backdrop: parts.root.getAttribute('data-bs-backdrop'),
-        keyboard: parts.root.getAttribute('data-bs-keyboard'), id: parts.root.id
+        keyboard: parts.root.getAttribute('data-bs-keyboard'), id: parts.root.id,
+        title_id: parts.title.id, labelledby: parts.root.getAttribute('aria-labelledby')
     };
     out.v5_host_is_body = ui.overlayHost(modal) === d5.body;
     out.v5_ready = (await w5.pgBootstrapReady) === w5.bootstrap;
@@ -283,7 +284,8 @@ async function main() {
     out.v6_build = {
         root: parts6.root.tagName + '.' + parts6.root.className,
         header: parts6.header.className, body: parts6.body.className, footer: parts6.footer,
-        dismiss: parts6.close.getAttribute('data-bs-dismiss'), children: parts6.root.children.length
+        dismiss: parts6.close.getAttribute('data-bs-dismiss'), children: parts6.root.children.length,
+        labelledby: parts6.root.getAttribute('aria-labelledby') === parts6.title.id && parts6.title.id !== ''
     };
 
     // Range with the value bubble: v6 only, old wrappers disposed.
@@ -407,7 +409,9 @@ function test_pg_ui_build_dialog()
 		'backdrop' => 'static',
 		'keyboard' => 'false',
 		'id' => 'x',
-	), $r['v5_build']);
+		'title_id' => 'x-title',
+		'labelledby' => 'x-title',
+	), $r['v5_build'], 'the dialog is named by its title');
 
 	pg_assert_same(array(
 		'root' => 'DIALOG.dialog dialog-xl pg-dialog-centered dialog-scrollable',
@@ -416,6 +420,7 @@ function test_pg_ui_build_dialog()
 		'footer' => null,
 		'dismiss' => 'dialog',
 		'children' => 2,
+		'labelledby' => true,
 	), $r['v6_build'], 'one <dialog>, no wrappers, no footer when asked');
 }
 
