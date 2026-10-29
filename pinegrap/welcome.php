@@ -409,6 +409,8 @@ $placeholder_w24 = $pg_ph_card(
 $placeholder_w25 = $pg_ph_card($pg_ph_blocks(array(35)) . '<div class="pg-list">' . str_repeat($pg_ph_row, 4) . '</div>');
 // Google Search: the two figures over the list of searches.
 $placeholder_w31 = $pg_ph_card($pg_ph_blocks(array(48)) . '<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 5) . '</div>');
+// Google Analytics: the figures over the two short lists.
+$placeholder_w32 = $pg_ph_card($pg_ph_blocks(array(48)) . '<div class="pg-list">' . $pg_ph_heading . str_repeat($pg_ph_row_sm, 5) . '</div>');
 // The agenda: a day heading over small rows, twice.
 $placeholder_w29 = $pg_ph_card('<div class="pg-list">'
     . $pg_ph_heading . str_repeat($pg_ph_row_sm, 3)
@@ -480,6 +482,19 @@ $widget_registry[31] = array(
     'icon'  => 'bi-google',
     'body'  => $placeholder_w31,
     'show'  => ((($user['role'] < 3) || ($user['manage_visitors'] == true)) && pg_gsc_linked()));
+
+// Google Analytics: the GA4 property's figures, once one is chosen on
+// Settings > SEO > Visitor Tracking. Same reach as the visitor reports. Two
+// tracks: five figures and the week on the left, the top pages and sources
+// on the right.
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/google_analytics.php');
+
+$widget_registry[32] = array(
+    'title' => lang('Google Analytics'),
+    'icon'  => 'bi-bar-chart-line',
+    'body'  => $placeholder_w32,
+    'wide'  => true,
+    'show'  => ((($user['role'] < 3) || ($user['manage_visitors'] == true)) && pg_ga_linked()));
 
 // System status. One health score for the installation: the security checks
 // alongside the backup, update and scheduled-task checks that used to be a

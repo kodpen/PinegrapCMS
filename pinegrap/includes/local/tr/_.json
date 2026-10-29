@@ -1077,6 +1077,7 @@
     "{var:1} picked up. Left and right arrows choose a column, Enter puts it down, Esc leaves it where it was.": "{var:1} tutuldu. Sol ve sağ oklar sütunu seçer, Enter bırakır, Esc yerinde bırakır.",
     "{var:1} pinned a message to the top of the channel.": "{var:1} kanalın en üstüne bir mesaj sabitledi.",
     "{var:1} planned a meeting: {var:2}, {var:3} with {var:4}": "{var:1} bir toplantı planladı: {var:2}, {var:3}, katılanlar: {var:4}",
+    "{var:1} points": "{var:1} puan",
     "{var:1} pressing": "{var:1} acil",
     "{var:1} printed a message while running with the general job: {var:2}": "{var:1} genel görevle birlikte çalışırken ekrana bir mesaj bastı: {var:2}",
     "{var:1} private channel(s) you are not in hold {var:2} decision(s). What they say is not shown here.": "Üyesi olmadığınız {var:1} özel kanalda {var:2} karar var. Ne dedikleri burada gösterilmez.",
