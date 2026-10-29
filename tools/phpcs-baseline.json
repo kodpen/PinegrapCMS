@@ -1,12 +1,4 @@
 {
-    "pinegrap/includes/fn/core.php": {
-        "PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved": 5,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_connectDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_get_server_infoDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_queryDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_select_dbDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_set_charsetDeprecatedRemoved": 1
-    },
     "pinegrap/includes/fn/custom_form.php": {
         "PHPCompatibility.ControlStructures.ForbiddenBreakContinueOutsideLoop.FatalError": 1
     },
@@ -21,20 +13,9 @@
     "pinegrap/includes/fn/office.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated": 1
     },
-    "pinegrap/init.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
-    },
     "pinegrap/install/index.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
         "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
-    },
-    "pinegrap/router.php": {
-        "PHPCompatibility.Extensions.RemovedExtensions.mysql_DeprecatedRemoved": 4,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_connectDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_queryDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_select_dbDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mysql_set_charsetDeprecatedRemoved": 1
     },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
