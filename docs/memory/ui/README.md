@@ -91,6 +91,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count and expired rows on .fg-2 instead of opacity, the headline arrow's direction in words
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
+- dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
