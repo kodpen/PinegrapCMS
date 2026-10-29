@@ -3092,6 +3092,21 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         );
     }
 
+    // The doughnut's colours are its only key, so the canvas name lists
+    // every method with its count.
+    $payment_summary = lang('Payment methods');
+
+    if ($payment_split) {
+
+        $payment_parts = array();
+
+        foreach ($payment_split as $payment_row) {
+            $payment_parts[] = $payment_row['label'] . ': ' . pg_format_number($payment_row['count'], 0);
+        }
+
+        $payment_summary .= ' — ' . implode(', ', $payment_parts);
+    }
+
     $orders_chart_data = array(
         'labels'   => array_values($spark_keys),
         'counts'   => array_values($spark_counts),
@@ -3138,7 +3153,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <div class="card-body p-5">
                                 <div class="small fg-secondary mb-3"><i class="bi bi-credit-card me-1" aria-hidden="true"></i>' . h(lang('Payment methods')) . '</div>
                                 ' . (!empty($payment_split)
-                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_payments" role="img" aria-label="' . h(lang('Payment methods')) . '"></canvas></div>'
+                                    ? '<div class="pg-orders-chart"><canvas id="pg_orders_payments" role="img" aria-label="' . h($payment_summary) . '"></canvas></div>'
                                     : '<div class="fg-secondary small">' . h(lang('No orders in this range.')) . '</div>') . '
                             </div>
                         </div>
@@ -3354,7 +3369,15 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     options: {
                         maintainAspectRatio: false,
                         cutout: "62%",
-                        plugins: { legend: { position: "right", labels: { color: ink, boxWidth: 10, boxHeight: 10 } },
+                        // The legend names each slice with its count, so a
+                        // slice is found by its words, not only its colour.
+                        plugins: { legend: { position: "right", labels: { color: ink, boxWidth: 10, boxHeight: 10,
+                                       generateLabels: function (chart) {
+                                           return Chart.overrides.doughnut.plugins.legend.labels.generateLabels(chart).map(function (item) {
+                                               item.text = item.text + ": " + count(data.payments[item.index].count);
+                                               return item;
+                                           });
+                                       } } },
                                    tooltip: { callbacks: { label: function (ctx) { return ctx.label + ": " + count(ctx.parsed); } } } }
                     }
                 });
