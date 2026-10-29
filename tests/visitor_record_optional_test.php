@@ -31,7 +31,6 @@ function test_visitor_record_optional_updates_are_guarded()
 		'includes/fn/ecommerce.php',
 		'shopping_cart.php',
 		'billing_information.php',
-		'submit_order.php',
 		'express_order.php',
 		'retrieve_order.php',
 		'order_history_retrieve_order.php',
@@ -57,6 +56,17 @@ function test_visitor_record_optional_updates_are_guarded()
 
 		pg_assert_true($updates > 0, $file . ': no visitor update found');
 	}
+}
+
+// The order's visit is written by pg_order_complete_visitor(), which returns
+// before its UPDATE when it is given no visitor id; submit_order() passes the
+// session's, optional.
+function test_visitor_record_optional_order_completion_is_guarded()
+{
+	$function = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_visitor');
+
+	pg_assert_true(strpos($function, 'empty($visitor_id)') < strpos($function, 'UPDATE visitors'), 'the visitor id checked before the update');
+	pg_assert_contains("\$_SESSION['software']['visitor_id'] ?? 0", file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php'), 'submit_order() passes the optional session value');
 }
 
 // The redirect is outside the currency branch, so a post without a currency

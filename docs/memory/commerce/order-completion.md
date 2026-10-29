@@ -21,10 +21,10 @@ module: order_completion
 - `submit_order()` calls them where the code stood, so the order of writes is unchanged; the plan's last A2 step makes `pg_order_complete()` call them.
 - `pg_order_complete_receipt($order_id, $number, $receipt, $customer_email, $new_account)`: `$receipt` is the checkout page's receipt settings (email, subject, format, header, footer, page_id). BCC from the order's lines (`pg_order_receipt_bcc_list()`, pure: store address first, each valid product address once). The renderers still read the session for a new account's link; a request without a visitor has none.
 - `pg_order_complete_ship_dates($order_id, $order_date, $auto_registration, $user_id)`: address book entries (`new`/`existing`), ship and delivery dates (`pg_order_transit_date()`, `pg_order_ship_date_adjusted()`, pure).
-- Per order line, in `submit_order()`'s product loop: `commerce/order-completion-lines.md`; comments, e-mailed page and campaigns: `commerce/order-completion-line-comments.md`.
+- Per order line, in `submit_order()`'s product loop: `commerce/order-completion-lines.md`; comments, e-mailed page and campaigns: `commerce/order-completion-line-comments.md`. After the loop: `commerce/order-completion-after-lines.md`.
 
 ## What stays in submit_order()?
-- Everything not moved yet (gift card error mail, the reward points and contact groups the loop collects, what follows the loop (A2d): private access, rewards, contact groups, abandoned campaigns, ERP invoice), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
+- Everything not moved yet (the writes before the lock and the gift card error mail: A2d2; the reward points and contact groups the loop collects, the post-save hook: A2d3), the frozen legacy gateways and their recurring profiles, and the session values the receipt page reads.
 
 ## How is it tested?
 - `tests/order_completion_test.php`: the tail of `submit_order()` with each function's body spliced in at its call, as one ordered list of writes; one number, `order.created`, SMS; the query; the pure helpers.
