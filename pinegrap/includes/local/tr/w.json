@@ -948,6 +948,7 @@
     "Write here. # tags a person or a record, @Claude asks Claude; a line that ends with = is worked out.": "Buraya yazın. # ile kişi ya da kayıt etiketlenir, @Claude ile Claude'a sorulur; = ile biten satır hesaplanır.",
     "Write here. Tables and calculation blocks are worked out below as you type.": "Buraya yazın. Tablolar ve hesap blokları siz yazdıkça aşağıda hesaplanır.",
     "Write in a channel": "Bir kanala yaz",
+    "Write in a sentence what the flow should do.": "Akışın ne yapacağını bir cümleyle yazın.",
     "Write in a sentence what the scheduled action should do.": "Programlanmış işlemin ne yapacağını bir cümleyle yazın.",
     "Write in the cells. Tab moves to the next one; right-click a cell for rows, columns and alignment.": "Hücrelere yazın; Tab bir sonrakine geçer. Satır, sütun ve hizalama için hücreye sağ tıklayın.",
     "Write in the channel they joined: “{var:1}”": "Katıldığı kanala yaz: “{var:1}”",
