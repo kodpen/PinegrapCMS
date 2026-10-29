@@ -1,6 +1,6 @@
 ---
 name: two-step-sign-in-expiry
-description: What the second step (mfa.php) and the device-limit question (device_limit.php) do when the sign-in waited past its 10 minutes: the reason on the origin sign-in screen, account name and send_to kept
+description: Second step (mfa.php) and device-limit question that waited past 10 minutes: the reason on the origin sign-in screen, account name and send_to kept (PR #3309)
 module: mfa
 ---
 
