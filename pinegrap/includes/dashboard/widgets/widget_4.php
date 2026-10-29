@@ -293,7 +293,7 @@ function pg_dashboard_widget_4($request, $user)
                 <div class="flex-grow-1 overflow-hidden">
                     <div class="d-flex justify-content-between align-items-center">
                         ' . $eg_name_html . '
-                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:' . $eg_role_color . ';font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
+                        <span class="badge rounded-pill flex-shrink-0" style="background:' . $eg_role_color . '22;color:color-mix(in srgb, ' . $eg_role_color . ' 50%, var(--pg-fg-emphasis));font-size:10px">' . h(pg_chat_role_label($eg_person['user_role'])) . '</span>
                         ' . $eg_chat_icon . '
                     </div>
                     <small class="fg-secondary">' . $eg_seen_text . '</small>
