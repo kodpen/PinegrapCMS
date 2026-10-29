@@ -817,9 +817,9 @@ if (!$_POST) {
         $output_identity_lock_tag = '<span class="badge theme-danger fw-light"><i class="bi bi-lock-fill me-1"></i>' . h(lang('Sign-in Locked')) . '</span>';
 
         $output_sign_in_lock_notice =
-            '<div class="alert theme-danger d-flex align-items-center gap-3 py-3">'
+            '<div class="alert theme-danger d-flex flex-wrap align-items-center gap-3 py-3">'
             . '<i class="bi bi-lock-fill"></i>'
-            . '<span><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
+            . '<span class="flex-grow-1 min-w-0" style="flex-basis: 10rem"><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
                 'string' => 'Too many failed attempts. Clears on its own in {var:1} minutes.',
                 'vars'   => $sign_in_lock_minutes))) . '</span>'
             . '<button type="submit" form="unlock_sign_in_form" class="btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</button>'
@@ -1054,9 +1054,9 @@ if (!$_POST) {
         $identity_label = pg_signin_provider_label($identity_provider);
         $output_identity_panel .= '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => 'Sign in with {var:1}', 'vars' => $identity_label))) . '</div>
-                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
+                <div class="d-flex flex-wrap align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi ' . h(is_array($identity_definition) ? $identity_definition['icon'] : 'bi-person-badge') . '"></i></span>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1 min-w-0" style="flex-basis: 10rem">
                         <p class="small mb-0">' . h(lang(array('string' => 'The connection is tied to the {var:1} account itself, not to the email address - changing the email here does not remove it.', 'vars' => $identity_label))) . '</p>
                     </div>
                     <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
@@ -1089,9 +1089,9 @@ if (!$_POST) {
         $output_mfa_panel =
             '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang('Two-step verification')) . '</div>
-                <div class="d-flex align-items-start gap-5 border rounded-4 p-5">
+                <div class="d-flex flex-wrap align-items-start gap-5 border rounded-4 p-5">
                     <span class="pg-fact-icon"><i class="bi bi-shield-lock"></i></span>
-                    <div class="flex-grow-1">
+                    <div class="flex-grow-1 min-w-0" style="flex-basis: 10rem">
                         <p class="small mb-0">' . h($output_mfa_note) . '</p>
                     </div>
                     <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
