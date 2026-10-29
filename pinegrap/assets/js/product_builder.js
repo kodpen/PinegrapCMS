@@ -1755,11 +1755,15 @@
     /* Always rendered. It used to appear only while recurring was on, when the
        panel had nothing else in it; the panel now also holds the GTIN and the
        barcode, which every variant has whether or not it is a subscription. */
-    function advancedToggle(index) {
+    function advancedToggle(index, combo) {
 
+        /* Every row has one, so the name carries the combination, the way
+           cellName() names the matrix inputs. */
         return '<div class="mt-1">' +
-            '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 pg-pb-adv-toggle" data-pg-pb-adv="' + index + '">' +
-            '<i class="bi bi-chevron-down me-1"></i>' + esc(label('Advanced Settings')) +
+            '<button type="button" class="btn btn-sm btn-link text-decoration-none p-0 pg-pb-adv-toggle" data-pg-pb-adv="' + index + '"' +
+            ' aria-controls="pg_pb_adv_' + index + '" aria-expanded="false"' +
+            ' aria-label="' + esc(label('Advanced Settings') + ': ' + comboLabel(combo)) + '">' +
+            '<i class="bi bi-chevron-down me-1" aria-hidden="true"></i>' + esc(label('Advanced Settings')) +
             '</button></div>';
     }
 
@@ -1800,7 +1804,7 @@
         if (!recurringIsOn()) {
             /* The recurring fields are gone but the row still has to exist —
                the identifiers above are not conditional. */
-            return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
+            return '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_' + index + '" data-pg-pb-adv="' + index + '">' +
                 '<td colspan="6" class="bg-1">' +
                 '<div class="row g-3 align-items-start">' + identifiers + '</div>' +
                 '</td></tr>';
@@ -1821,7 +1825,7 @@
            with height:0 and overflow:hidden renders differently in every
            browser. The cell keeps its colspan and is deliberately NOT given
            d-block: a cell taken out of table layout loses colspan entirely. */
-        return '<tr class="pg-pb-adv-row d-none" data-pg-pb-adv="' + index + '">' +
+        return '<tr class="pg-pb-adv-row d-none" id="pg_pb_adv_' + index + '" data-pg-pb-adv="' + index + '">' +
             '<td colspan="6" class="bg-1">' +
             '<div class="row g-3 align-items-start">' +
 
@@ -1876,6 +1880,7 @@
         var open  = $row.hasClass('d-none');
 
         $row.toggleClass('d-none', !open);
+        $(this).attr('aria-expanded', open ? 'true' : 'false');
         $(this).find('i').attr('class', open ? 'bi bi-chevron-up me-1' : 'bi bi-chevron-down me-1');
     });
 
@@ -1928,7 +1933,7 @@
             '<td class="d-block lg:d-table-cell align-middle">' +
             '<span class="badge theme-secondary me-1">' + (index + 1) + '</span>' +
             '<span class="fw-semibold">' + esc(comboLabel(combo)) + '</span>' +
-            advancedToggle(index) +
+            advancedToggle(index, combo) +
             '</td>' +
 
             '<td class="d-block lg:d-table-cell align-middle">' +

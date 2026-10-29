@@ -19,3 +19,6 @@ description: The current link or menu item carries aria-current beside .active; 
 - The Product button was filled whenever the result did not target a group, so with Cheapest chosen two buttons were filled. Product is now chosen only when neither Group nor Cheapest is.
 
 Test: `tests/current_state_marks_test.php`.
+
+## How does the dashboard Sales Map say its period and map?
+- Its Filter menu's period (`data-smap`) and map (`data-smap-view`) choices are `menu-item` buttons in `includes/dashboard/widgets/widget_1.php`. They print `aria-pressed` in the same ternary as `.active`, and `show()` sets it beside the class. Bootstrap 6 menus add no `menuitem` role, so `aria-pressed` is valid there. Before, the choice showed only by the fill and a check icon.

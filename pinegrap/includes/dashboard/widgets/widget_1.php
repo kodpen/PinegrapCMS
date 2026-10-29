@@ -165,7 +165,7 @@ function pg_dashboard_widget_1($request, $user)
 
             $sm_switch .=
                 '<li><button type="button" class="menu-item'
-                . (($sm_view_key === $sm_view) ? ' active' : '') . '" data-smap-view="' . h($sm_view_key) . '">'
+                . (($sm_view_key === $sm_view) ? ' active" aria-pressed="true' : '" aria-pressed="false') . '" data-smap-view="' . h($sm_view_key) . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_view_label) . '</button></li>';
 
             foreach ($sales_map['periods'] as $sm_period_key => $sm_period) {
@@ -335,7 +335,7 @@ function pg_dashboard_widget_1($request, $user)
 
             $sm_tabs .=
                 '<li><button type="button" class="menu-item'
-                . (($sm_period_key === $sales_map['period']) ? ' active' : '') . '"'
+                . (($sm_period_key === $sales_map['period']) ? ' active" aria-pressed="true' : '" aria-pressed="false') . '"'
                 . ' data-smap="' . $sm_period_key . '">'
                 . '<i class="bi bi-check2 pg-smap-tick"></i>' . h($sm_period['label']) . '</button></li>';
         }
@@ -487,10 +487,12 @@ function pg_dashboard_widget_1($request, $user)
 
                     root.querySelectorAll("[data-smap]").forEach(function(btn){
                         btn.classList.toggle("active", btn.getAttribute("data-smap") === mode);
+                        btn.setAttribute("aria-pressed", btn.getAttribute("data-smap") === mode ? "true" : "false");
                     });
 
                     root.querySelectorAll("[data-smap-view]").forEach(function(btn){
                         btn.classList.toggle("active", btn.getAttribute("data-smap-view") === view);
+                        btn.setAttribute("aria-pressed", btn.getAttribute("data-smap-view") === view ? "true" : "false");
                     });
 
                     ensure();
