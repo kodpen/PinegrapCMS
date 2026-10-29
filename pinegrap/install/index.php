@@ -9087,6 +9087,7 @@ function get_tables() {
 		'page_translations',
 		'page_drafts',
 		'page_revisions',
+		'record_revisions',
 		'prototype_links',
 	);
 

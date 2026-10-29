@@ -855,3 +855,44 @@ function test_order_completion_legal_acceptance()
 	$store = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/legal_documents.php');
 	pg_assert_contains('function pg_legal_documents_store($order_id, array $accepted_types, $ip = null, $agent = null, $at = null)', $store);
 }
+
+// A payment's amount against the order's total: the total itself, the total
+// plus the installment difference of a payment in two or more installments,
+// or not the order's payment (below the total, or above it in one payment).
+function test_order_completion_paid_totals()
+{
+	pg_assert_same(array('total' => 12350, 'installment_charges' => 0, 'payment_installment' => 1), pg_payment_paid_totals(12350, 0, '12350'), 'the total, one payment');
+	pg_assert_same(array('total' => 12350, 'installment_charges' => 0, 'payment_installment' => 6), pg_payment_paid_totals(12350, 6, '12350'), 'the store paid the difference: the count only');
+	pg_assert_same(array('total' => 13105, 'installment_charges' => 755, 'payment_installment' => 6), pg_payment_paid_totals(13105, 6, '12350'), 'the customer paid the difference');
+
+	pg_assert_same(null, pg_payment_paid_totals(12000, 6, '12350'), 'below the total');
+	pg_assert_same(null, pg_payment_paid_totals(13105, 1, '12350'), 'above it in one payment');
+	pg_assert_same(null, pg_payment_paid_totals(13105, 0, '12350'), 'above it, installments not known');
+	pg_assert_same(null, pg_payment_paid_totals(null, 6, '12350'), 'no amount');
+	pg_assert_same(null, pg_payment_paid_totals('13105', 6, '12350'), 'an amount not in integer hundredths');
+}
+
+// The completion checks the amount against the total the order holds when
+// it completes it and writes the paid figures over the kept ones; the
+// commission stays on the total without the difference.
+function test_order_completion_payment_records_the_installment_difference()
+{
+	$completion = order_completion_test_function_text(PG_FUNCTIONS_DIR . '/includes/fn/order_completion.php', 'pg_order_complete_from_payment');
+
+	pg_assert_contains("function pg_order_complete_from_payment(\$order_id, \$status, array \$paid = array())", $completion);
+	pg_assert_contains("\$paid_totals = pg_payment_paid_totals(\$paid['amount'] ?? null, \$paid['installments'] ?? 0, \$order['total']);", $completion, 'against the total read under this request');
+	pg_assert_contains("'reason' => 'the amount paid is not the order\\'s total'", $completion);
+	pg_assert_contains("array_merge(pg_order_payment_completion_values(", $completion);
+	pg_assert_contains(", \$paid_totals),", $completion, 'the paid figures win over the kept ones');
+	pg_assert_contains("(int) \$order['total'] - (int) \$order['surcharge']", $completion, 'the commission base is the kept total');
+	pg_assert_true(strpos($completion, '$paid_totals = pg_payment_paid_totals(') < strpos($completion, 'pg_order_commission('), 'checked before anything is worked out');
+
+	$values = array_merge(
+		pg_order_payment_completion_values(array('payment_method' => 'PayTR', 'total' => '12350', 'surcharge' => '0', 'transaction_id' => 'PG42T1'), 'paid', 1761730000, '', '', null, false),
+		pg_payment_paid_totals(13105, 6, '12350'));
+	pg_assert_same(array(13105, 755, 6, 0), array($values['total'], $values['installment_charges'], $values['payment_installment'], $values['surcharge']), 'the written figures');
+
+	foreach (array('total', 'installment_charges', 'payment_installment') as $column) {
+		pg_assert_true(in_array($column, pg_order_complete_columns(), true), $column . ' is a completion column');
+	}
+}

@@ -2625,8 +2625,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $output_affiliate ='
                 <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Affiliate') . '</h5></div>
                 <div class="col-12">
-                    <label class="form-label">' . lang('Affiliate Code') . '</label>
-                    <input class="form-control" type="text" name="affiliate_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . '" />
+                    <label for="filter_affiliate_code" class="form-label">' . lang('Affiliate Code') . '</label>
+                    <input class="form-control" type="text" id="filter_affiliate_code" name="affiliate_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['affiliate_code'] ?? '')) . '" />
                 </div>';
         }
 
@@ -2652,8 +2652,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         if (ECOMMERCE_MULTICURRENCY === true) {
             $output_currency_row =
                 '<div class="col-12 sm:col-6 md:col-12 my-1">
-                    <label class="form-label">' . lang('Currency') . '</label>
-                    <select class="form-control" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . '</select>
+                    <label for="filter_currency_code" class="form-label">' . lang('Currency') . '</label>
+                    <select class="form-control" id="filter_currency_code" name="currency_code"><option value="">' . lang('Any') . '</option>' . get_currency_options(($_SESSION['software']['ecommerce']['view_orders']['currency_code'] ?? '')) . '</select>
                 </div>';
         } else {
             $output_currency_row = '';
@@ -2692,7 +2692,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 $date_type_ship_date_selected = ' selected="selected"';
             }
 
-            $output_date_type_field = '<select class="form-control" name="date_type"><option value="order_date"' . $date_type_order_date_selected . '>' . lang('Order Date') . '</option><option value="ship_date"' . $date_type_ship_date_selected . '>' . lang('Ship Date') . '</option></select>';
+            $output_date_type_field = '<select class="form-control" name="date_type" aria-label="' . h(lang('Date Type')) . '"><option value="order_date"' . $date_type_order_date_selected . '>' . lang('Order Date') . '</option><option value="ship_date"' . $date_type_ship_date_selected . '>' . lang('Ship Date') . '</option></select>';
         }
 
         $output_advanced_filters =
@@ -2705,202 +2705,202 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <div class="row">
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Order') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Order Number') . '</label>
-                            <input class="form-control" type="text" name="order_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . '" />
+                            <label for="filter_order_number" class="form-label">' . lang('Order Number') . '</label>
+                            <input class="form-control" type="text" id="filter_order_number" name="order_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['order_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Transaction ID') . '</label>
-                            <input class="form-control" type="text" name="transaction_id" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . '" />
+                            <label for="filter_transaction_id" class="form-label">' . lang('Transaction ID') . '</label>
+                            <input class="form-control" type="text" id="filter_transaction_id" name="transaction_id" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['transaction_id'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Authorization Code') . '</label>
-                            <input class="form-control" type="text" name="authorization_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . '" />
+                            <label for="filter_authorization_code" class="form-label">' . lang('Authorization Code') . '</label>
+                            <input class="form-control" type="text" id="filter_authorization_code" name="authorization_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['authorization_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Special Offer Code') . '</label>
-                            <input class="form-control" type="text" name="special_offer_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . '" />
+                            <label for="filter_special_offer_code" class="form-label">' . lang('Special Offer Code') . '</label>
+                            <input class="form-control" type="text" id="filter_special_offer_code" name="special_offer_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['special_offer_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Referral Source Code') . '</label>
-                            <input class="form-control" type="text" name="referral_source_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . '" />
+                            <label for="filter_referral_source_code" class="form-label">' . lang('Referral Source Code') . '</label>
+                            <input class="form-control" type="text" id="filter_referral_source_code" name="referral_source_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['referral_source_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Reference Code') . '</label>
-                            <input class="form-control" type="text" name="reference_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . '" />
+                            <label for="filter_reference_code" class="form-label">' . lang('Reference Code') . '</label>
+                            <input class="form-control" type="text" id="filter_reference_code" name="reference_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['reference_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Tracking Code') . '</label>
-                            <input class="form-control" type="text" name="tracking_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . '" />
+                            <label for="filter_tracking_code" class="form-label">' . lang('Tracking Code') . '</label>
+                            <input class="form-control" type="text" id="filter_tracking_code" name="tracking_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['tracking_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Referring URL') . '</label>
-                            <input class="form-control" type="text" name="http_referer" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . '" />
+                            <label for="filter_http_referer" class="form-label">' . lang('Referring URL') . '</label>
+                            <input class="form-control" type="text" id="filter_http_referer" name="http_referer" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['http_referer'] ?? '')) . '" />
                         </div>
                         ' . $output_currency_row . '
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Customer\'s IP Address') . '</label>
-                            <input class="form-control" type="text" name="ip_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . '" />
+                            <label for="filter_ip_address" class="form-label">' . lang('Customer\'s IP Address') . '</label>
+                            <input class="form-control" type="text" id="filter_ip_address" name="ip_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ip_address'] ?? '')) . '" />
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Product') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Product Name') . '</label>
-                            <input class="form-control" type="text" name="product_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . '" />
+                            <label for="filter_product_name" class="form-label">' . lang('Product Name') . '</label>
+                            <input class="form-control" type="text" id="filter_product_name" name="product_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['product_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Payment') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Payment Method') . '</label>
-                            <select class="form-control" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
+                            <label for="filter_payment_method" class="form-label">' . lang('Payment Method') . '</label>
+                            <select class="form-control" id="filter_payment_method" name="payment_method"><option value="any"' . $payment_method_any_selected . '>' . lang('Any') . '</option><option value=""' . $payment_method_none_selected . '>' . lang('None') . '</option><option value="Credit/Debit Card"' . $payment_method_credit_debit_card_selected . '>' . lang('Credit/Debit Card') . '</option><option value="PayPal Express Checkout"' . $payment_method_paypal_express_checkout_selected . '>' . lang('PayPal Express Checkout') . '</option><option value="Offline Payment"' . $payment_method_offline_selected . '>' . lang('Offline Payment') . '</option>' . $output_payment_method_driver_options . '</select>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Card Type') . '</label>
-                            <input class="form-control" type="text" name="card_type" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . '" />
+                            <label for="filter_card_type" class="form-label">' . lang('Card Type') . '</label>
+                            <input class="form-control" type="text" id="filter_card_type" name="card_type" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_type'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Cardholder') . '</label>
-                            <input class="form-control" type="text" name="cardholder" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . '" />
+                            <label for="filter_cardholder" class="form-label">' . lang('Cardholder') . '</label>
+                            <input class="form-control" type="text" id="filter_cardholder" name="cardholder" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['cardholder'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Card Number') . '</label>
-                            <input class="form-control" type="text" name="card_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . '" />
+                            <label for="filter_card_number" class="form-label">' . lang('Card Number') . '</label>
+                            <input class="form-control" type="text" id="filter_card_number" name="card_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['card_number'] ?? '')) . '" />
                         </div>
                         ' . $output_affiliate . '
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Billing') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Custom Field') . '  #1</label>
-                            <input class="form-control" type="text" name="custom_field_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . '" />
+                            <label for="filter_custom_field_1" class="form-label">' . lang('Custom Field') . '  #1</label>
+                            <input class="form-control" type="text" id="filter_custom_field_1" name="custom_field_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Custom Field') . '  #2</label>
-                            <input class="form-control" type="text" name="custom_field_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . '" />
+                            <label for="filter_custom_field_2" class="form-label">' . lang('Custom Field') . '  #2</label>
+                            <input class="form-control" type="text" id="filter_custom_field_2" name="custom_field_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['custom_field_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Salutation') . '</label>
-                            <input class="form-control" type="text" name="billing_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . '" />
+                            <label for="filter_billing_salutation" class="form-label">' . lang('Salutation') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_salutation" name="billing_salutation" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_salutation'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('First Name') . '</label>
-                            <input class="form-control" type="text" name="billing_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . '" />
+                            <label for="filter_billing_first_name" class="form-label">' . lang('First Name') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_first_name" name="billing_first_name" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Last Name') . '</label>
-                            <input class="form-control" type="text" name="billing_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . '" />
+                            <label for="filter_billing_last_name" class="form-label">' . lang('Last Name') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_last_name" name="billing_last_name" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Company') . '</label>
-                            <input class="form-control" type="text" name="billing_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . '" />
+                            <label for="filter_billing_company" class="form-label">' . lang('Company') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_company" name="billing_company" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Address') . ' 1</label>
-                            <input class="form-control" type="text" name="billing_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . '" />
+                            <label for="filter_billing_address_1" class="form-label">' . lang('Address') . ' 1</label>
+                            <input class="form-control" type="text" id="filter_billing_address_1" name="billing_address_1" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Address') . ' 2</label>
-                            <input class="form-control" type="text" name="billing_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . '" />
+                            <label for="filter_billing_address_2" class="form-label">' . lang('Address') . ' 2</label>
+                            <input class="form-control" type="text" id="filter_billing_address_2" name="billing_address_2" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_address_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('City') . '</label>
-                            <input class="form-control" type="text" name="billing_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . '" />
+                            <label for="filter_billing_city" class="form-label">' . lang('City') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_city" name="billing_city" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_city'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('State') . '</label>
-                            <input class="form-control" type="text" name="billing_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . '" />
+                            <label for="filter_billing_state" class="form-label">' . lang('State') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_state" name="billing_state" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_state'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Zip Code') . '</label>
-                            <input class="form-control" type="text" name="billing_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . '" />
+                            <label for="filter_billing_zip_code" class="form-label">' . lang('Zip Code') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_zip_code" name="billing_zip_code" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_zip_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Country') . '</label>
-                            <input class="form-control" type="text" name="billing_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . '" />
+                            <label for="filter_billing_country" class="form-label">' . lang('Country') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_country" name="billing_country" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_country'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Phone') . '</label>
-                            <input class="form-control" type="text" name="billing_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . '" />
+                            <label for="filter_billing_phone_number" class="form-label">' . lang('Phone') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_phone_number" name="billing_phone_number" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_phone_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Fax') . '</label>
-                            <input class="form-control" type="text" name="billing_fax_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . '" />
+                            <label for="filter_billing_fax_number" class="form-label">' . lang('Fax') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_fax_number" name="billing_fax_number" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_fax_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Email') . '</label>
-                            <input class="form-control" type="text" name="billing_email_address" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . '" />
+                            <label for="filter_billing_email_address" class="form-label">' . lang('Email') . '</label>
+                            <input class="form-control" type="text" id="filter_billing_email_address" name="billing_email_address" autocomplete="pg-no-autofill" inputmode="email" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['billing_email_address'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Opt-In Status') . '</label>
-                            <select class="form-control" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>
+                            <label for="filter_opt_in_status" class="form-label">' . lang('Opt-In Status') . '</label>
+                            <select class="form-control" id="filter_opt_in_status" name="opt_in_status"><option value="any"' . $opt_in_status_any_selected . '>' . lang('Any') . '</option><option value="opt_in"' . $opt_in_status_opt_in_selected . '>' . lang('Opt-In') . '</option><option value="opt_out"' . $opt_in_status_opt_out_selected . '>' . lang('Opt-Out') . '</option></select>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('PO Number') . '</label>
-                            <input class="form-control" type="text" name="po_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . '" />
+                            <label for="filter_po_number" class="form-label">' . lang('PO Number') . '</label>
+                            <input class="form-control" type="text" id="filter_po_number" name="po_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['po_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Tax Status') . '</label>
-                            <select class="form-control" name="tax_status"><option value="any"' . $tax_status_any_selected . '>' . lang('Any') . '</option><option value="tax_exempt"' . $tax_status_tax_exempt_selected . '>' . lang('Tax-Exempt') . '</option><option value="not_tax_exempt"' . $tax_status_not_tax_exempt_selected . '>' . lang('Not Tax-Exempt') . '</option></select>
+                            <label for="filter_tax_status" class="form-label">' . lang('Tax Status') . '</label>
+                            <select class="form-control" id="filter_tax_status" name="tax_status"><option value="any"' . $tax_status_any_selected . '>' . lang('Any') . '</option><option value="tax_exempt"' . $tax_status_tax_exempt_selected . '>' . lang('Tax-Exempt') . '</option><option value="not_tax_exempt"' . $tax_status_not_tax_exempt_selected . '>' . lang('Not Tax-Exempt') . '</option></select>
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Shipping') . '</h5></div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Salutation') . '</label>
-                            <input class="form-control" type="text" name="shipping_salutation" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . '" />
+                            <label for="filter_shipping_salutation" class="form-label">' . lang('Salutation') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_salutation" name="shipping_salutation" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_salutation'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('First Name') . '</label>
-                            <input class="form-control" type="text" name="shipping_first_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . '" />
+                            <label for="filter_shipping_first_name" class="form-label">' . lang('First Name') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_first_name" name="shipping_first_name" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_first_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Last Name') . '</label>
-                            <input class="form-control" type="text" name="shipping_last_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . '" />
+                            <label for="filter_shipping_last_name" class="form-label">' . lang('Last Name') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_last_name" name="shipping_last_name" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_last_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Company') . '</label>
-                            <input class="form-control" type="text" name="shipping_company" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . '" />
+                            <label for="filter_shipping_company" class="form-label">' . lang('Company') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_company" name="shipping_company" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_company'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Address') . ' 1</label>
-                            <input class="form-control" type="text" name="shipping_address_1" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . '" />
+                            <label for="filter_shipping_address_1" class="form-label">' . lang('Address') . ' 1</label>
+                            <input class="form-control" type="text" id="filter_shipping_address_1" name="shipping_address_1" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_1'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Address') . ' 2</label>
-                            <input class="form-control" type="text" name="shipping_address_2" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . '" />
+                            <label for="filter_shipping_address_2" class="form-label">' . lang('Address') . ' 2</label>
+                            <input class="form-control" type="text" id="filter_shipping_address_2" name="shipping_address_2" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_address_2'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('City') . '</label>
-                            <input class="form-control" type="text" name="shipping_city" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . '" />
+                            <label for="filter_shipping_city" class="form-label">' . lang('City') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_city" name="shipping_city" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_city'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('State') . '</label>
-                            <input class="form-control" type="text" name="shipping_state" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . '" />
+                            <label for="filter_shipping_state" class="form-label">' . lang('State') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_state" name="shipping_state" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_state'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Zip Code') . '</label>
-                            <input class="form-control" type="text" name="shipping_zip_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . '" />
+                            <label for="filter_shipping_zip_code" class="form-label">' . lang('Zip Code') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_zip_code" name="shipping_zip_code" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_zip_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Country') . '</label>
-                            <input class="form-control" type="text" name="shipping_country" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . '" />
+                            <label for="filter_shipping_country" class="form-label">' . lang('Country') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_country" name="shipping_country" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_country'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Address Type') . '</label>
-                            <select class="form-control" name="address_type"><option value="any"' . $address_type_any_selected . '>' . lang('Any') . '</option><option value=""' . $address_type_none_selected . '>' . lang('None') . '</option><option value="residential"' . $address_type_residential_selected . '>' . lang('Residential') . '</option><option value="business"' . $address_type_business_selected . '>' . lang('Business') . '</option></select>
+                            <label for="filter_address_type" class="form-label">' . lang('Address Type') . '</label>
+                            <select class="form-control" id="filter_address_type" name="address_type"><option value="any"' . $address_type_any_selected . '>' . lang('Any') . '</option><option value=""' . $address_type_none_selected . '>' . lang('None') . '</option><option value="residential"' . $address_type_residential_selected . '>' . lang('Residential') . '</option><option value="business"' . $address_type_business_selected . '>' . lang('Business') . '</option></select>
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Phone') . '</label>
-                            <input class="form-control" type="text" name="shipping_phone_number" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . '" />
+                            <label for="filter_shipping_phone_number" class="form-label">' . lang('Phone') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_phone_number" name="shipping_phone_number" autocomplete="pg-no-autofill" inputmode="tel" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_phone_number'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Ship to Name') . '</label>
-                            <input class="form-control" type="text" name="ship_to_name" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . '" />
+                            <label for="filter_ship_to_name" class="form-label">' . lang('Ship to Name') . '</label>
+                            <input class="form-control" type="text" id="filter_ship_to_name" name="ship_to_name" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['ship_to_name'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Arrival Date Code') . '</label>
-                            <input class="form-control" type="text" name="arrival_date_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . '" />
+                            <label for="filter_arrival_date_code" class="form-label">' . lang('Arrival Date Code') . '</label>
+                            <input class="form-control" type="text" id="filter_arrival_date_code" name="arrival_date_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['arrival_date_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Shipping Method Code') . '</label>
-                            <input class="form-control" type="text" name="shipping_method_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . '" />
+                            <label for="filter_shipping_method_code" class="form-label">' . lang('Shipping Method Code') . '</label>
+                            <input class="form-control" type="text" id="filter_shipping_method_code" name="shipping_method_code" value="' . h(($_SESSION['software']['ecommerce']['view_orders']['shipping_method_code'] ?? '')) . '" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
-                            <label class="form-label">' . lang('Shipping Status') . '</label>
-                            <select class="form-control" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
+                            <label for="filter_shipping_status" class="form-label">' . lang('Shipping Status') . '</label>
+                            <select class="form-control" id="filter_shipping_status" name="shipping_status"><option value="any"' . $shipping_status_any_selected . '>' . lang('Any') . '</option><option value="unshipped"' . $shipping_status_unshipped_selected . '>' . lang('Unshipped') . '</option><option value="shipped"' . $shipping_status_shipped_selected . '>' . lang('Shipped') . '</option></select>
                         </div>
                         <div class="col-12"><h5 class="fg-success fw-bold mt-7 mb-3">' . lang('Date Range') . '</h5></div>
                         <div class="col-12">' . $output_date_type_field . '</div>

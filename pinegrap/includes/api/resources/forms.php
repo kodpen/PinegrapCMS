@@ -669,6 +669,10 @@ function api_form_submission_update($params) {
 
 	api_dry_run_stop('updated', 'form_submission', array('id' => $id, 'values' => count($writes)));
 
+	// The item as it was, for its revision (collection items only;
+	// includes/fn/record_revisions.php).
+	$revision_before = pg_record_revision_before($id);
+
 	foreach ($writes as $field_id => $write) {
 
 		$kept = (int)api_value("SELECT id FROM form_data
@@ -709,6 +713,8 @@ function api_form_submission_update($params) {
 		update_submitted_form_address_name($id);
 
 	}
+
+	pg_record_revision_after($id, $revision_before, 'api', (int)$app['owner']['id']);
 
 	log_activity(lang(array(
 		'string' => 'The submitted form ({var:1}) was changed through the API by the application {var:2} (key {var:3}).',

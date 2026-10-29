@@ -5325,6 +5325,10 @@ function ws_change_write_form($viewer, $action, $record, $values)
     $id = (int) $record['id'];
     $set = array();
 
+    // The item as it was, for its revision (collection items only;
+    // includes/fn/record_revisions.php).
+    $revision_before = pg_record_revision_before($id);
+
     if (array_key_exists('complete', $values)) {
         $set[] = "complete = '" . ($values['complete'] ? '1' : '0') . "'";
     }
@@ -5356,6 +5360,8 @@ function ws_change_write_form($viewer, $action, $record, $values)
     if (!empty($values['answers']) && check_if_pretty_urls_are_enabled((int) db_value("SELECT page_id FROM forms WHERE id = '" . $id . "' LIMIT 1"))) {
         update_submitted_form_address_name($id);
     }
+
+    pg_record_revision_after($id, $revision_before, 'workspace', (int) $viewer['id']);
 
     ws_change_log(lang(array('string' => 'The submitted form ({var:1}) was changed in the Workspace, on Claude\'s proposal.', 'vars' => (string) $record['reference_code'])));
 

@@ -68,7 +68,32 @@ function pg_payment_paytr_fields()
             'options' => array('live' => lang('Live'), 'test' => lang('Test')),
             'default' => 'live',
         ),
+        array(
+            'name'    => 'max_installment',
+            'type'    => 'select',
+            'label'   => lang('Most Installments'),
+            'help'    => lang('Above a single payment, PayTR offers the card\'s installments up to this number. The order records what PayTR took: an installment difference the customer pays becomes the order\'s installment charge and raises its total.'),
+            'options' => pg_payment_paytr_installment_options(),
+            'default' => '1',
+        ),
     );
+}
+
+/**
+ * The choices of the most-instalments setting: a single payment, or up to
+ * 2 to 12 instalments (PayTR's range).
+ *
+ * @return array value => label
+ */
+function pg_payment_paytr_installment_options()
+{
+    $options = array('1' => lang('Single payment'));
+
+    for ($count = 2; $count <= 12; $count++) {
+        $options[(string) $count] = (string) $count;
+    }
+
+    return $options;
 }
 
 function pg_payment_paytr_authorize($order, $amount, $payment)
@@ -94,20 +119,36 @@ function pg_payment_paytr_notify($headers, $body)
  * The store's PayTR settings.
  *
  * @return array merchant_id, merchant_key, merchant_salt, test_mode ('1' or
- *               '0'), currency (uppercase ISO code), lang ('tr' or 'en')
+ *               '0'), currency (uppercase ISO code), lang ('tr' or 'en'),
+ *               max_installment (pg_payment_paytr_max_installment())
  */
 function pg_payment_paytr_settings()
 {
     $locale = strtolower(trim((string) lang(array('info' => ''))));
 
     return array(
-        'merchant_id'   => trim(pg_payment_setting('paytr', 'merchant_id')),
-        'merchant_key'  => trim(pg_payment_setting('paytr', 'merchant_key')),
-        'merchant_salt' => trim(pg_payment_setting('paytr', 'merchant_salt')),
-        'test_mode'     => (pg_payment_setting('paytr', 'mode') === 'test') ? '1' : '0',
-        'currency'      => strtoupper(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
-        'lang'          => ($locale === 'tr') ? 'tr' : 'en',
+        'merchant_id'     => trim(pg_payment_setting('paytr', 'merchant_id')),
+        'merchant_key'    => trim(pg_payment_setting('paytr', 'merchant_key')),
+        'merchant_salt'   => trim(pg_payment_setting('paytr', 'merchant_salt')),
+        'test_mode'       => (pg_payment_setting('paytr', 'mode') === 'test') ? '1' : '0',
+        'currency'        => strtoupper(defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : ''),
+        'lang'            => ($locale === 'tr') ? 'tr' : 'en',
+        'max_installment' => pg_payment_paytr_max_installment(pg_payment_setting('paytr', 'max_installment')),
     );
+}
+
+/**
+ * The most instalments PayTR may offer: 2 to 12, or 0 for a single payment
+ * (no value, 0, 1 or anything outside PayTR's range).
+ *
+ * @param mixed $value the stored setting
+ * @return int
+ */
+function pg_payment_paytr_max_installment($value)
+{
+    $count = (is_scalar($value) && (preg_match('/^[0-9]{1,2}$/', trim((string) $value)) === 1)) ? (int) trim((string) $value) : 0;
+
+    return (($count >= 2) && ($count <= 12)) ? $count : 0;
 }
 
 /**
@@ -327,6 +368,7 @@ function pg_payment_paytr_token_fields($order, $amount, $payment, $settings, $oi
     $value = function ($name) use ($order) {
         return (is_array($order) && isset($order[$name]) && is_scalar($order[$name])) ? trim((string) $order[$name]) : '';
     };
+    $installments = pg_payment_paytr_max_installment($settings['max_installment'] ?? 0);
 
     $fields = array(
         'merchant_id'       => $settings['merchant_id'],
@@ -335,9 +377,10 @@ function pg_payment_paytr_token_fields($order, $amount, $payment, $settings, $oi
         'email'             => $value('billing_email_address'),
         'payment_amount'    => pg_payment_paytr_amount($amount),
         'user_basket'       => pg_payment_paytr_basket(is_array($payment) && isset($payment['lines']) ? $payment['lines'] : array()),
-        // One payment, no instalments: the amount PayTR takes is the total.
-        'no_installment'    => '1',
-        'max_installment'   => '0',
+        // A single payment unless the store allows instalments; the token
+        // hash covers both fields.
+        'no_installment'    => ($installments > 0) ? '0' : '1',
+        'max_installment'   => (string) $installments,
         'currency'          => pg_payment_paytr_currency($settings['currency']),
         'test_mode'         => $settings['test_mode'],
         'debug_on'          => '0',
@@ -511,16 +554,36 @@ function pg_payment_paytr_notify_with($body, $settings)
         return array('success' => false, 'error' => lang('This message is not used.'), 'reply' => 'OK', 'raw' => array('ignored' => true) + $raw);
     }
 
+    // total_amount is what the card was charged: the order's total, plus
+    // the installment difference when the PayTR Merchant Panel bills it to
+    // the customer.
+    $installments = pg_payment_paytr_installment_count($post);
+
     return array(
         'success'         => true,
         'status'          => 'paid',
         'transaction_id'  => $oid,
         'order_reference' => $oid,
         'amount'          => (int) $post['total_amount'],
+        'installments'    => $installments,
         'reply'           => 'OK',
-        'log'             => array('PayTR reports that payment ' . $oid . ' of ' . pg_payment_decimal((int) $post['total_amount']) . ' ' . $currency . ' was taken' . $test),
+        'log'             => array('PayTR reports that payment ' . $oid . ' of ' . pg_payment_decimal((int) $post['total_amount']) . ' ' . $currency . (($installments > 1) ? ' in ' . $installments . ' installments' : '') . ' was taken' . $test),
         'raw'             => $raw,
     );
+}
+
+/**
+ * The number of installments a PayTR notification reports
+ * (installment_count): 1 to 99, 0 when it carries none or another value.
+ *
+ * @param array $post the notification's fields
+ * @return int
+ */
+function pg_payment_paytr_installment_count($post)
+{
+    $count = (isset($post['installment_count']) && is_string($post['installment_count'])) ? $post['installment_count'] : '';
+
+    return (preg_match('/^[1-9][0-9]?$/', $count) === 1) ? (int) $count : 0;
 }
 
 /**

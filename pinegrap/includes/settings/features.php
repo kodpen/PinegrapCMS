@@ -361,9 +361,10 @@ if ($output_image_settings_card !== '') {
 
 // ── Page Revisions ──
 //
-// How long the published revisions of visual-designer pages are kept
-// (includes/fn/page_revisions.php): the last N of each page whatever their
-// age, and every one younger than D days. Shown once the 2026.11.0 columns
+// How long the published revisions of visual-designer pages and the
+// revisions of collection items are kept (includes/fn/page_revisions.php,
+// includes/fn/record_revisions.php): the last N of each page or item
+// whatever their age, and every one younger than D days. Shown once the 2026.11.0 columns
 // exist; the defaults (30 and 90) apply meanwhile.
 if (function_exists('pg_page_revisions_retention') && array_key_exists('page_revisions_keep', $row) && array_key_exists('page_revisions_days', $row)) {
 
@@ -378,10 +379,10 @@ if (function_exists('pg_page_revisions_retention') && array_key_exists('page_rev
                                 <div class="card-body">
                                     <div class="row gy-5">
                                         <div class="col-12">
-                                            <div class="form-text mt-0">' . lang('Every publish of a visual designer page is kept as a revision, which the History panel of the editor compares and loads back. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
+                                            <div class="form-text mt-0">' . lang('Every publish of a visual designer page is kept as a revision, which the History panel of the editor compares and loads back; so is every save that changes an item of a collection. A revision is removed only when both limits below let it go; the general job does that once a day.') . '</div>
                                         </div>
                                         <div class="pg-f-xs">
-                                            <label for="page_revisions_keep" class="form-label">' . lang('Revisions Kept per Page') . '</label>
+                                            <label for="page_revisions_keep" class="form-label">' . lang('Revisions Kept per Page or Item') . '</label>
                                             <input type="text" name="page_revisions_keep" id="page_revisions_keep" maxlength="3" inputmode="numeric" class="form-control text-end" value="' . h($page_revisions_retention['keep']) . '" />
                                             <div class="form-text">' . lang(array('string' => 'The newest ones, however old they are. 1 to {var:1}.', 'vars' => array(PG_PAGE_REVISIONS_KEEP_MAX))) . '</div>
                                         </div>

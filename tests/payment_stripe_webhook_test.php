@@ -453,7 +453,7 @@ function test_payment_stripe_webhook_receiver_completes_once()
 	$receive = substr($receive, strpos($receive, 'function pg_payment_callback_receive('));
 
 	pg_assert_contains("pg_payment_notify_outcome(\$key, \$answer, \$order, defined('BASE_CURRENCY_CODE') ? (string) BASE_CURRENCY_CODE : '')", $receive, 'the store\'s currency');
-	pg_assert_contains("pg_order_complete_from_payment((int) \$order['id'], (string) \$answer['status'])", $receive, 'completes through the order completion');
+	pg_assert_contains("pg_order_complete_from_payment((int) \$order['id'], (string) \$answer['status'], array('amount' => \$answer['amount'], 'installments' => \$answer['installments']))", $receive, 'completes through the order completion');
 	pg_assert_true(strpos($receive, 'pg_order_complete_from_payment(') < strpos($receive, "log_activity(\$line, 'SYSTEM')"), 'before the log line names its result');
 
 	// Another request completed it first (the lock in pg_order_complete()):

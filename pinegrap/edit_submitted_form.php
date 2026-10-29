@@ -734,6 +734,10 @@ if (!$_POST) {
                 $new_complete = 1;
             }
 
+            // The item as it was, for its revision (collection items only;
+            // includes/fn/record_revisions.php).
+            $revision_before = pg_record_revision_before($_POST['id'] ?? 0);
+
             // update form
             $query = "UPDATE forms
                      SET
@@ -879,6 +883,8 @@ if (!$_POST) {
             if ($pretty_urls == true) {
                 $new_address_name = update_submitted_form_address_name($_POST['id']);
             }
+
+            pg_record_revision_after($_POST['id'] ?? 0, $revision_before, 'edit', $user['id']);
 
             // If the form was incomplete before and has now been completed,
             // then check if custom form actions should be completed (e.g. email alerts).

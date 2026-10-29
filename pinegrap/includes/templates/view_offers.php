@@ -233,9 +233,18 @@ if (!defined('PG_INIT_LOADED')) {
                 tr.find('.pg-offer-status').attr('class', 'badge rounded-pill pg-offer-status fw-normal ' + cls).text(res.label);
                 tr.attr('data-status', res.offer_status);
                 relabel(btn, res.enabled ? labels.disable : labels.enable);
+                // A narrowing chip can filter the row out on the redraw, and
+                // focus would go with it: it moves to the toggle of the row now
+                // at that place, else to the active chip.
+                var body = tr.closest('tbody'), at = body.children('tr[data-status]').index(tr);
+                var focused = document.activeElement === btn[0] || !document.activeElement || document.activeElement === document.body;
                 var dt = table();
                 if (dt) { dt.draw(false); }
                 recount();
+                if (focused && !$.contains(document.documentElement, btn[0])) {
+                    var next = body.children('tr[data-status]').eq(at).find('.pg-offer-toggle');
+                    (next.length ? next : $('#pg-offers-toolbar [data-filter].active')).first().trigger('focus');
+                }
             }).catch(function () { btn.prop('disabled', false); toast(labels.request_failed, 'danger'); });
         });
 
