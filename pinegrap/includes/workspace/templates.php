@@ -1267,6 +1267,8 @@ function ws_templates_js_strings()
         'tpl_remove_task'     => lang('Remove the task'),
         'tpl_remove_note'     => lang('Remove the note'),
         'tpl_drag'            => lang('Drag to change the order'),
+        'tpl_reorder_hint'    => lang('Use the arrow keys to change the order.'),
+        'tpl_position'        => lang('Position {position} of {total}'),
         'tpl_start_in'        => lang('Starts after (days)'),
         'tpl_due_in'          => lang('Due after (days)'),
         'tpl_estimate'        => lang('Estimate (minutes)'),

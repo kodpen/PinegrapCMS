@@ -3162,8 +3162,14 @@
                 tool.setAttribute('aria-pressed', active ? 'true' : 'false');
             }
 
-            // mousedown, so the selection stays where it is.
+            // mousedown is prevented, so the selection stays where it is;
+            // the tool acts on click, so a press can still be slid off and
+            // a click-only activation (a screen reader's) works.
             tool.addEventListener('mousedown', function (event) {
+                event.preventDefault();
+            });
+
+            tool.addEventListener('click', function (event) {
                 event.preventDefault();
 
                 // A new link over the selection, even where it starts in one.
