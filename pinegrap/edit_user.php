@@ -1059,11 +1059,11 @@ if (!$_POST) {
                     <div class="flex-grow-1">
                         <p class="small mb-0">' . h(lang(array('string' => 'The connection is tied to the {var:1} account itself, not to the email address - changing the email here does not remove it.', 'vars' => $identity_label))) . '</p>
                     </div>
-                    <form method="post" action="edit_user.php" style="margin:0">' . get_token_field()
+                    <form method="post" action="edit_user.php" class="disable_shortcut" style="margin:0">' . get_token_field()
                         . '<input type="hidden" name="pg_unlink_identity" value="' . h($identity_provider) . '"/>'
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button>'
+                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h(lang(array('string' => 'Disconnect {var:2} from {var:1}? {var:1} can no longer sign in with {var:2} until they connect it again themselves.', 'vars' => array($username, $identity_label)))) . '">' . h(lang(array('string' => 'Disconnect {var:1}', 'vars' => $identity_label))) . '</button>'
                     . '</form>
                 </div>
             </div>';
@@ -1098,7 +1098,9 @@ if (!$_POST) {
                         . '<input type="hidden" name="pg_mfa_reset" value="1"/>'
                         . '<input type="hidden" name="id" value="' . h($_GET['id']) . '"/>'
                         . '<input type="hidden" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '"/>'
-                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger">' . h(lang('Turn off two-step verification')) . '</button>'
+                        . '<button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h($edit_user_mfa_self
+                            ? lang('Turn off two-step verification for your account? Your authenticator key, passkeys and recovery codes are deleted and your other devices are signed out. This cannot be undone.')
+                            : lang(array('string' => 'Turn off two-step verification for {var:1}? Their authenticator key, passkeys and recovery codes are deleted and they are signed out everywhere. This cannot be undone.', 'vars' => $username))) . '">' . h(lang('Turn off two-step verification')) . '</button>'
                     . '</form>
                 </div>
             </div>';
@@ -1108,11 +1110,13 @@ if (!$_POST) {
         ? '<div class="pg-perm-block">
                 <div class="pg-perm-block-title">' . h(lang(array('string' => '{var:1} active session{suffix:1}', 'vars' => $edit_user_sessions_count, 'suffix' => (($edit_user_sessions_count == 1) ? '' : 's')))) . '</div>
                 <div class="card"><div class="card-body p-0">' . $edit_user_session_rows . '</div></div>
-                <form method="post" action="view_sessions.php" class="mt-3">' . get_token_field()
+                <form method="post" action="view_sessions.php" class="mt-3 disable_shortcut">' . get_token_field()
                     . '<input type="hidden" name="pg_session_action" value="revoke_user"/>'
                     . '<input type="hidden" name="pg_user_id" value="' . (int) $_GET['id'] . '"/>'
                     . '<input type="hidden" name="send_back" value="' . h($edit_user_sessions_back) . '"/>'
-                    . '<button type="submit" class="btn btn-sm btn-outline theme-danger"><i class="bi bi-box-arrow-right me-1"></i>' . h(lang('Sign out all sessions')) . '</button>'
+                    . '<button type="submit" class="btn btn-sm btn-outline theme-danger" data-confirm-content="' . h($edit_user_mfa_self
+                        ? lang(array('string' => 'Sign out all {var:1} sessions of your account? This browser is signed out too.', 'vars' => $edit_user_sessions_count))
+                        : lang(array('string' => 'Sign out all {var:1} sessions of {var:2}? They have to sign in again everywhere.', 'vars' => array($edit_user_sessions_count, $username)))) . '"><i class="bi bi-box-arrow-right me-1"></i>' . h(lang('Sign out all sessions')) . '</button>'
                 . '</form>
             </div>'
         : '<p class="small fg-secondary">' . h(lang('No active sessions.')) . '</p>';

@@ -54,7 +54,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                         <input type="number" min="1" value="1"  placeholder="' . lang('Quantity') . '" class="form-ghost text-center md:text-start" id="scanner_quantity_input" aria-label="' . h(lang('Quantity')) . '" ></input>
                                     </label>
                                     <div class="text-center">
-                                        <button type="button" onclick="read_manual()" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
+                                        <button type="button" id="barcode_read_button" class="btn btn-sm btn-white border my-1">' . lang('Read') . '</button>
+                                        <div id="barcode_status" class="visually-hidden" role="status" aria-live="polite"></div>
                                     </div>
                                 </div>
                             </div>
@@ -118,19 +119,26 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                     } // main callback function	
                 });
                 
-                function read_manual(){
+                // The Read button is disabled while its own request runs, so a
+                // double click does not move the stock twice; a scan is never
+                // held back, as a repeated scan is a real second unit.
+                var read_button = document.getElementById("barcode_read_button");
+                read_button.addEventListener("click", function(){
                     var barcode = $("input#scanner_input").val();
                     var quantity = $("input#scanner_quantity_input").val();
-                    request_barcode(barcode,quantity);
-                }
+                    request_barcode(barcode,quantity,read_button);
+                });
 
-                function request_barcode(barcode,quantity){
+                function request_barcode(barcode,quantity,button){
                     //we reset quantity to 1 if its not.
                     if($("input#scanner_quantity_input") != 1){
                         $("input#scanner_quantity_input").val(1);
                     }
                     
                     if(barcode != "" && quantity != "" && quantity >= 1){
+                        if(button){
+                            read_button.disabled = true;
+                        }
                         $.ajax({
                             contentType: "application/json",
                             url: "barcode_decrease_inventory.php?request=action",
@@ -154,6 +162,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                         <td class=\'align-middle text-center h5 fw-bolder \'>" + response.data.new_inventory_quantity + "</td>\
                                         <td class=\'align-middle \'>" + response.data.scanned_at + "</td>\
                                     </tr>");
+                                    // Said to screen readers too: the table row is not announced.
+                                    document.getElementById("barcode_status").textContent = "' . escape_javascript(lang('{var:1}: the inventory quantity is now {var:2}.')) . '".replace("{var:1}", function(){ return String(response.data.name); }).replace("{var:2}", function(){ return String(response.data.new_inventory_quantity); });
                                 }
                                 if(response.status == "error"){
                                     alert(response.message);
@@ -161,6 +171,11 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                             },
                             error: function() {
                                 alert("' . escape_javascript(lang('Please try again.')) . '");
+                            },
+                            complete: function() {
+                                if(button){
+                                    read_button.disabled = false;
+                                }
                             }
                         });
                     }

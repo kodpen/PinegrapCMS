@@ -278,11 +278,7 @@ function get_order_form($properties) {
                                 '<tr>
                                     <td>' . lang('Start Date') . '*:</td>
                                     <td>
-                                        ' . $form->output_field(array('type'=>'text', 'id'=>'recurring_start_date_' . $product['id'], 'name'=>'recurring_start_date_' . $product['id'], 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text')) . '
-                                        ' . get_date_picker_format() . '
-                                        <script>
-                                            software_$("#recurring_start_date_' . $product['id'] . '").datepicker(datetimepicker_options);
-                                        </script>
+                                        ' . $form->output_field(array('type'=>'text', 'id'=>'recurring_start_date_' . $product['id'], 'name'=>'recurring_start_date_' . $product['id'], 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'data-pg-date' => '')) . '
                                     </td>
                                 </tr>';
                         }
@@ -597,6 +593,9 @@ function get_order_form($properties) {
         $start_date = false;
         $quantity = false;
         $system = '';
+        // The start date boxes of the layout, by id, for the date-and-time
+        // control (pg_site_datetime_bind()).
+        $start_date_fields = array();
         // Set below only for the list layout, but always handed to the layout
         // renderer, so they have to exist for grid and default too.
         $checkbox_selections = false;
@@ -801,17 +800,7 @@ function get_order_form($properties) {
                     // If we need to deal with the start date, then do that.
                     if ($start_date) {
                         $form->set('recurring_start_date_' . $product['id'], 'maxlength', 10);
-
-                        // If this is the first start date that we are dealing with,
-                        // then prepare date picker format.
-                        if ($system == '') {
-                            $system .= get_date_picker_format();
-                        }
-
-                        $system .=
-                            '<script>
-                                software_$("#recurring_start_date_' . $product['id'] . '").datepicker(datetimepicker_options);
-                            </script>';
+                        $start_date_fields[] = 'recurring_start_date_' . $product['id'];
                     }
                     
                 }
@@ -983,6 +972,11 @@ function get_order_form($properties) {
                 <input type="hidden" name="page_id" value="' . h($page_id) . '">
                 <input type="hidden" name="require_cookies" value="true">';
         }
+
+        // The start date boxes are drawn by the date-and-time control, found
+        // by their ids: a custom layout's markup carries no hook. The marker
+        // brings the control's scripts (pg_site_datetime_inject()).
+        $system .= pg_site_datetime_bind(array('date' => $start_date_fields));
 
         $skip_button_url = '';
 

@@ -54,6 +54,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - css-bundles.md: The panel stylesheet served minified (pg_css_bundles(), tools/build_css.php, tools/css_minify.php): what the minifier removes and keeps, src mode, the CI and pre-push check, how it was proved equal
 - csv-escape-argument.md: Every fgetcsv(), fputcsv() and str_getcsv() call passes enclosure '"' and escape '\\': PHP 8.4 deprecates leaving the escape out; why '\\' and not '', and the test that holds it
 - csv-line-endings.md: The CSV importers open the upload with pg_csv_open(), which turns a classic Mac (CR-only) file into LF lines instead of the auto_detect_line_endings setting deprecated in PHP 8.1 (PR #1757)
+- db-legacy-and-magic-quotes.md: PHP 5 remnants removed (PR #3149): the DB_LEGACY second connection through mysql_* in db_connect() and router.php, init.php's magic quotes strip; a config that still sets DB_LEGACY
 - deprecated-resource-free-calls.md: Handles are freed with unset(), not curl_close()/finfo_close()/openssl_x509_free(); db_connect() checks a reused connection with SELECT 1, not mysqli_ping() (PR #1744)
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test

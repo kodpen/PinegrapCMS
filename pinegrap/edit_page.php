@@ -274,11 +274,109 @@ if (!$_POST) {
             $output_subnav_skip_page = '';
         }
     }
-    
+
+    // A refused save (a name in use, a custom form that cannot run, ...)
+    // comes back with what was typed in place of the stored page. The
+    // heading, the sub-navigation and the button bar keep describing the
+    // stored page.
+    $posted = pg_page_form_posted($liveform, $page_id);
+
+    $form_check_boxes = array(
+        'sitemap', 'search', 'comments', 'comments_rating', 'comments_allow_new_comments',
+        'comments_automatic_publish', 'comments_allow_user_to_select_name', 'comments_require_login_to_comment',
+        'comments_allow_file_attachments', 'comments_show_submitted_date_and_time',
+        'comments_administrator_email_conditional_administrators', 'comments_watchers_managed_by_submitter',
+    );
+
+    if ($user['role'] < 3) {
+        $form_check_boxes[] = 'home';
+    }
+
+    if (pg_page_noindex_ready()) {
+        $form_check_boxes[] = 'noindex';
+        $form_check_boxes[] = 'nofollow';
+    }
+
+    if (pg_page_seo_extras_ready()) {
+        $form_check_boxes[] = 'noarchive';
+    }
+
+    $form_values = pg_page_form_redraw_fields(
+        array(
+            'name' => $page_name,
+            'folder' => $page_folder,
+            'style' => $page_style,
+            'mobile_style_id' => $mobile_style_id,
+            'layout_type' => $layout_type,
+            'title' => $page_title,
+            'meta_description' => $page_meta_description,
+            'search_keywords' => $page_search_keywords,
+            'search' => $page_search,
+            'home' => ($page_home == 'yes') ? 'yes' : '0',
+            'sitemap' => $sitemap,
+            'noindex' => $noindex,
+            'nofollow' => $nofollow,
+            'canonical_url' => $page_canonical_url,
+            'noarchive' => $page_noarchive,
+            'max_snippet' => $page_max_snippet,
+            'comments' => $comments,
+            'comments_label' => $comments_label,
+            'comments_message' => $comments_message,
+            'comments_rating' => $comments_rating,
+            'comments_allow_new_comments' => $comments_allow_new_comments,
+            'comments_disallow_new_comment_message' => $comments_disallow_new_comment_message,
+            'comments_automatic_publish' => $comments_automatic_publish,
+            'comments_allow_user_to_select_name' => $comments_allow_user_to_select_name,
+            'comments_require_login_to_comment' => $comments_require_login_to_comment,
+            'comments_allow_file_attachments' => $comments_allow_file_attachments,
+            'comments_show_submitted_date_and_time' => $comments_show_submitted_date_and_time,
+            'comments_administrator_email_to_email_address' => $comments_administrator_email_to_email_address,
+            'comments_administrator_email_subject' => $comments_administrator_email_subject,
+            'comments_administrator_email_conditional_administrators' => $comments_administrator_email_conditional_administrators,
+            'comments_submitter_email_page_id' => $comments_submitter_email_page_id,
+            'comments_submitter_email_subject' => $comments_submitter_email_subject,
+            'comments_watcher_email_page_id' => $comments_watcher_email_page_id,
+            'comments_watcher_email_subject' => $comments_watcher_email_subject,
+            'comments_watchers_managed_by_submitter' => $comments_watchers_managed_by_submitter,
+        ),
+        $posted,
+        $form_check_boxes);
+
+    $page_title = $form_values['title'];
+    $page_meta_description = $form_values['meta_description'];
+    $page_search_keywords = $form_values['search_keywords'];
+    $page_search = $form_values['search'];
+    $page_home = $form_values['home'];
+    $sitemap = $form_values['sitemap'];
+    $noindex = (int) $form_values['noindex'];
+    $nofollow = (int) $form_values['nofollow'];
+    $page_canonical_url = (string) $form_values['canonical_url'];
+    $page_noarchive = (int) $form_values['noarchive'];
+    $page_max_snippet = (string) $form_values['max_snippet'];
+    $comments = $form_values['comments'];
+    $comments_label = $form_values['comments_label'];
+    $comments_message = $form_values['comments_message'];
+    $comments_rating = $form_values['comments_rating'];
+    $comments_allow_new_comments = $form_values['comments_allow_new_comments'];
+    $comments_disallow_new_comment_message = $form_values['comments_disallow_new_comment_message'];
+    $comments_automatic_publish = $form_values['comments_automatic_publish'];
+    $comments_allow_user_to_select_name = $form_values['comments_allow_user_to_select_name'];
+    $comments_require_login_to_comment = $form_values['comments_require_login_to_comment'];
+    $comments_allow_file_attachments = $form_values['comments_allow_file_attachments'];
+    $comments_show_submitted_date_and_time = $form_values['comments_show_submitted_date_and_time'];
+    $comments_administrator_email_to_email_address = $form_values['comments_administrator_email_to_email_address'];
+    $comments_administrator_email_subject = $form_values['comments_administrator_email_subject'];
+    $comments_administrator_email_conditional_administrators = $form_values['comments_administrator_email_conditional_administrators'];
+    $comments_submitter_email_page_id = $form_values['comments_submitter_email_page_id'];
+    $comments_submitter_email_subject = $form_values['comments_submitter_email_subject'];
+    $comments_watcher_email_page_id = $form_values['comments_watcher_email_page_id'];
+    $comments_watcher_email_subject = $form_values['comments_watcher_email_subject'];
+    $comments_watchers_managed_by_submitter = $form_values['comments_watchers_managed_by_submitter'];
+
     // if user is above a user role, then prepare to output style and mobile style pick list, because user has access to select style
     if ($user['role'] < 3) {
-        $output_style = '<select class="form-control" id="style" name="style">' . select_style($page_style) . '</select>';
-        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($mobile_style_id) . '</select>';
+        $output_style = '<select class="form-control" id="style" name="style">' . select_style($form_values['style']) . '</select>';
+        $output_mobile_style = '<select class="form-control" id="mobile_style_id" name="mobile_style_id">' . get_mobile_style_options($form_values['mobile_style_id']) . '</select>';
         
     // else user has a user role, so prepare to just output style and mobile style name
     } else {
@@ -421,7 +519,16 @@ if (!$_POST) {
                 </nav>';
         }
 
-        $page_type_fields = pg_page_form_type_fields($page_type, $layout_type, $page_type_properties, $user, $page_id);
+        // A refused save opens on the type chosen, with its settings as typed.
+        $form_page_type = pg_page_form_redraw_type($posted, $page_type, $user);
+        $form_layout_type = ($form_values['layout_type'] == 'custom') ? 'custom' : 'system';
+
+        $page_type_fields = pg_page_form_type_fields(
+            $form_page_type,
+            $form_layout_type,
+            pg_page_form_redraw_type_properties($page_type_properties, $form_page_type, $posted),
+            $user,
+            $page_id);
 
         $output_page_type_selector = $page_type_fields['selector'];
         $output_page_type_properties = $page_type_fields['properties'];
@@ -754,7 +861,7 @@ if (!$_POST) {
                                                     <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
                                                         <span class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</span>
-                                                        <input name="name" id="name" type="text" value="' . h($page_name) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
+                                                        <input name="name" id="name" type="text" value="' . h($form_values['name']) . '" placeholder="' . lang('Page Name') . '" maxlength="100" class="form-control" required="required" />
                                                     </div>
                                                 </div>
                                                 ' . $output_name_redirect_row . '
@@ -772,7 +879,7 @@ if (!$_POST) {
                                             <div class="row">
                                                 <div class="col-12 md:col-6 my-3">
                                                     <label for="folder" class="form-label">' . lang('Folder') . '</label>
-                                                    <select class="form-control" id="folder" name="folder">' . select_folder($page_folder) . '</select>
+                                                    <select class="form-control" id="folder" name="folder">' . select_folder($form_values['folder']) . '</select>
                                                     <div class="form-text">' . lang('Page Access Control, Design &amp; Common Content') . '</div>
                                                 </div>
                                             </div>
@@ -1300,6 +1407,7 @@ if (!$_POST) {
         
         // If the page name field is blank.
         if ($name == '') {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('name', lang('The page must have a name. Please type in a name for the page.'));
             header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_page.php?id=' . $_POST['id'] . '&send_to=' . urlencode($_POST['send_to']));
             exit();
@@ -1319,6 +1427,11 @@ if (!$_POST) {
 
             $canonical_check = pg_page_canonical_url_check($canonical_raw);
             $max_snippet_check = pg_page_max_snippet_check($max_snippet_raw);
+
+            // Everything typed comes back; the refused value as a string.
+            if (!$canonical_check['ok'] || !$max_snippet_check['ok']) {
+                $liveform->add_fields_to_session();
+            }
 
             if (!$canonical_check['ok']) {
                 $liveform->mark_error('canonical_url', pg_page_canonical_url_message($canonical_check['error'], h($current_page_name)));
@@ -1368,6 +1481,7 @@ if (!$_POST) {
         $name = $clean_name['name'];
 
         if (check_name_availability(array('name' => $name, 'ignore_item_id' => $_POST['id'], 'ignore_item_type' => 'page', 'ignore_redirects_to_page' => $_POST['id'])) == false) {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('name', lang('The page name that you entered is already in use. Please enter a different page name.'));
             header('Location: ' . $form_url);
             exit();

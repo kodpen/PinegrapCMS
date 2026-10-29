@@ -18519,6 +18519,37 @@
 
             body.appendChild(talk);
 
+            // The notes that tag the record and the table rows that link to
+            // it: the server lists only those the reader reaches.
+            [['notes', t('notes'), 'bi-journal-text'], ['rows', t('wtables'), 'bi-table']].forEach(function (group) {
+                if (!data[group[0]] || !data[group[0]].length) {
+                    return;
+                }
+
+                var section = el('div', 'ws-record-section');
+                section.appendChild(el('div', 'ws-record-title', group[1]));
+
+                data[group[0]].forEach(function (item) {
+                    var link = el('a', 'ws-record-item');
+                    link.href = item.url;
+                    var head = el('div', 'd-flex gap-3 align-items-center');
+                    var name = el('b');
+                    name.appendChild(icon(group[2], 'me-1'));
+                    name.appendChild(document.createTextNode(item.name || item.table));
+                    head.appendChild(name);
+
+                    if (item.time) {
+                        head.appendChild(el('span', 'fg-secondary', item.owner + ' · ' + item.time));
+                    }
+
+                    link.appendChild(head);
+                    link.appendChild(el('small', '', item.excerpt || item.title || ''));
+                    section.appendChild(link);
+                });
+
+                body.appendChild(section);
+            });
+
             // Share the record in a channel, with a line of text.
             if (data.post_channels.length) {
                 var share = el('div', 'ws-record-section');

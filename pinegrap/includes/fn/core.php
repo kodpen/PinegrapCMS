@@ -173,25 +173,6 @@ function db_connect()
     if (db::$con) {
         @mysqli_query(db::$con, "SET SESSION sql_mode = 'NO_ENGINE_SUBSTITUTION'");
     }
-
-    // Legacy mysql extension support (only if explicitly enabled and functions exist).
-    if (defined('DB_LEGACY') && DB_LEGACY === true && function_exists('mysql_connect')) {
-        $link = @mysql_connect(DB_HOST, DB_USERNAME, DB_PASSWORD);
-        if ($link && @mysql_select_db(DB_DATABASE)) {
-            $mysql_version = preg_replace('#[^0-9\.]#', '', mysql_get_server_info());
-            if (version_compare($mysql_version, '5.5.3', '>=') === true) {
-                $mysql_character_set = 'utf8mb4';
-            } else {
-                $mysql_character_set = 'utf8';
-            }
-            if (function_exists('mysql_set_charset')) {
-                @mysql_set_charset($mysql_character_set);
-            }
-            if (function_exists('mysql_query')) {
-                @mysql_query("SET NAMES '" . $mysql_character_set . "' COLLATE '" . $mysql_character_set . "_unicode_ci'");
-            }
-        }
-    }
 }
 
 function init_mysql_charset()

@@ -463,6 +463,22 @@ function pg_cron_jobs()
             'dispatch'    => true,
             'lane'        => 'light',
         ),
+        // Parcels a carrier label service opened: each open one is asked
+        // where it stands and the answer written back, its arrival
+        // announced once (includes/fn/shipment_tracking.php). Hourly; a run
+        // asks a hundred parcels at most and starts nothing after ninety
+        // seconds, so the light lane is not held, and more open parcels than
+        // that are asked in turns over the next runs. Saving a service that
+        // can track puts it in the dispatch list; with none on a run records
+        // itself and reads nothing.
+        'shipment_tracking_job' => array(
+            'label'       => lang('Shipment Tracking'),
+            'script'      => 'shipment_tracking_job.php',
+            'interval'    => 3600,
+            'stale_after' => 172800,
+            'dispatch'    => true,
+            'lane'        => 'light',
+        ),
     );
 }
 

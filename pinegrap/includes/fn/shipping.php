@@ -41,6 +41,19 @@ function pg_shipment_statuses()
 }
 
 /**
+ * A status a carrier's service reported that pg_shipment_record() writes on
+ * a parcel: any of pg_shipment_statuses() but delivered, which only
+ * pg_shipment_delivered() records, since an arrival is announced.
+ *
+ * @param  mixed $status
+ * @return string '' when it is none of them
+ */
+function pg_shipment_status_reported($status)
+{
+    return (is_string($status) && ($status !== 'delivered') && in_array($status, pg_shipment_statuses(), true)) ? $status : '';
+}
+
+/**
  * Who wrote a row: the order screen (and the Workspace, which saves through
  * it), the external API, a marketplace import, a carrier's own API, a CSV
  * upload.
@@ -367,6 +380,14 @@ function pg_shipment_rows_ready()
  * leaves the spelling alone: it hands the same number back on every poll and
  * would undo a correction made on the order screen.
  *
+ * A carrier's service that follows a parcel (the shipment tracking job)
+ * passes where it stands now ($opts['status'], pg_shipment_status_reported(),
+ * at $opts['status_at']). It is written on a row that is there, only when it
+ * changes, so status_at is when it last changed, and never over an arrival:
+ * delivered is recorded by pg_shipment_delivered() alone, which announces it.
+ * With $opts['existing_only'] no row is added, so a parcel removed from its
+ * address since the caller read it stays removed.
+ *
  * $ship_to_id 0 is an order imported with no address at all: the parcel
  * hangs off the order, as the import always wrote it.
  *
@@ -375,7 +396,9 @@ function pg_shipment_rows_ready()
  * @param string $number
  * @param array  $opts carrier, carrier_chosen (bool), tracking_url (the
  *                     carrier's own page), source (pg_shipment_sources()),
- *                     shipped_at (unix time)
+ *                     shipped_at (unix time), status (a carrier's, see
+ *                     above), status_at (unix time; 0 is now),
+ *                     existing_only (bool)
  * @return array ok, id, created (the row did not exist), number (as stored),
  *               carrier (as stored), format_warning
  */
@@ -387,6 +410,9 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         'tracking_url'   => '',
         'source'         => 'panel',
         'shipped_at'     => 0,
+        'status'         => '',
+        'status_at'      => 0,
+        'existing_only'  => false,
     );
 
     $order_id = (int) $order_id;
@@ -437,6 +463,10 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         }
 
         if ($id <= 0) {
+            if (!empty($opts['existing_only'])) {
+                return $out;
+            }
+
             db("INSERT INTO shipping_tracking_numbers (order_id, ship_to_id, number)
                 VALUES ('" . $order_id . "', '" . $ship_to_id . "', '" . e($number) . "')");
 
@@ -468,6 +498,10 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         FROM shipping_tracking_numbers
         WHERE " . $same_parcel . "
         LIMIT 1");
+
+    if (!$existing && !empty($opts['existing_only'])) {
+        return $out;
+    }
 
     // A carrier someone chose (the order screen's select, the API's carrier)
     // is kept as typed when the store does not know it; a carrier another
@@ -529,6 +563,18 @@ function pg_shipment_record($order_id, $ship_to_id, $number, $opts = array())
         }
 
         db("UPDATE shipping_tracking_numbers SET " . $set . " WHERE id = '" . (int) $existing['id'] . "'");
+
+        // A status of its own statement, so its guard holds against a
+        // delivery pg_shipment_delivered() recorded since the row was read.
+        $status = pg_shipment_status_reported($opts['status']);
+
+        if ($status !== '') {
+            $status_at = ((int) $opts['status_at'] > 0) ? min((int) $opts['status_at'], $now) : $now;
+
+            db("UPDATE shipping_tracking_numbers
+                SET status = '" . e($status) . "', status_at = '" . $status_at . "'
+                WHERE (id = '" . (int) $existing['id'] . "') AND (delivered_at = 0) AND (status != '" . e($status) . "')");
+        }
 
         $out['ok'] = true;
         $out['id'] = (int) $existing['id'];

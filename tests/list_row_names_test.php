@@ -119,6 +119,6 @@ function test_list_row_names_folder_access_mark()
 	pg_assert_same('', pg_folder_access_mark('nonsense'));
 
 	foreach (array('view_pages.php' => '$page', 'view_files.php' => '$file') as $path => $var) {
-		pg_assert_contains('style="width: 100px;max-width:100%;">\' . pg_folder_access_mark(' . $var . '[\'folder_access_control_type\']) . \'<span class="material-icons d-inline" aria-hidden="true">folder</span>', list_row_names_source($path), $path);
+		pg_assert_contains('pg_folder_list_name(' . $var . '[\'folder_name\'], ' . $var . '[\'folder_access_control_type\'])', list_row_names_source($path), $path);
 	}
 }

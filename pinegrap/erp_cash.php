@@ -61,7 +61,7 @@ foreach ($cash_accounts as $till) {
             <td class="text-nowrap align-middle chart_label' . $name_class . '">' . h($till['name']) . '</td>
             <td class="align-middle">' . h($kind_labels[$till['kind']] ?? $till['kind']) . '</td>
             <td class="align-middle">' . h($till['bank_name']) . '</td>
-            <td style="max-width:220px" class="text-nowrap text-truncate align-middle">' . h($till['iban']) . '</td>
+            <td style="max-width:220px" class="text-wrap text-break align-middle">' . h($till['iban']) . '</td>
             <td class="align-middle">' . h($till['currency']) . '</td>
             <td class="align-middle text-end" data-order="' . $movements . '">' . pg_format_number($movements, 0) . '</td>
             <td class="align-middle text-end fw-bold ' . (($balance < 0) ? 'fg-danger' : '') . '" data-order="' . $balance . '">' . h(erp_fx_enabled() ? erp_money_out_currency($balance, $till_currency) : erp_money_out($balance)) . '</td>

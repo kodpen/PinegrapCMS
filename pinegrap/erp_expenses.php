@@ -233,11 +233,11 @@ if ($ready && erp_expense_recurring_ready()) {
         $output_recurring .= '
             <li class="list-group-item px-5 py-3">
                 <div class="d-flex justify-content-between gap-3">
-                    <a class="pg-link-body-emphasis text-decoration-none text-truncate" href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . h($label) . '</a>
+                    <a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . h($label) . '</a>
                     <span class="text-nowrap fw-semibold">' . h(erp_money_out_currency((int) $recurrence['amount'], (string) $recurrence['currency'])) . '</span>
                 </div>
                 <div class="small fg-secondary d-flex justify-content-between gap-3">
-                    <span class="text-truncate">' . h(($periods[(int) $recurrence['every_months']] ?? '') . ' · ' . (string) $recurrence['category_name']) . '</span>
+                    <span class="text-break">' . h(($periods[(int) $recurrence['every_months']] ?? '') . ' · ' . (string) $recurrence['category_name']) . '</span>
                     <span class="text-nowrap">' . h(prepare_form_data_for_output((string) $recurrence['next_date'], 'date', false)) . '</span>
                 </div>'
                 . (((string) $recurrence['last_error'] !== '') ? '<div class="small fg-emphasis-warning text-break"><i class="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>' . h((string) $recurrence['last_error']) . '</div>' : '') . '

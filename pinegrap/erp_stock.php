@@ -61,7 +61,7 @@ foreach ($products as $row) {
             <td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('Stock movements') . '" onclick="window.location.href=\'erp_stock.php?product_id=' . (int) $row['product_id'] . '#erp_stock_moves\'"><i class="bi bi-list-ul"></i></button>
             </td>
-            <td style="max-width:280px" class="text-truncate align-middle">' . h($name)
+            <td style="max-width:280px" class="text-wrap text-break align-middle">' . h($name)
                 . ((trim((string) $row['product_sku']) !== '') ? '<div class="small fg-secondary font-monospace">' . h($row['product_sku']) . '</div>' : '') . '</td>
             <td class="align-middle text-end" data-order="' . ($tracked ? (int) $row['inventory_quantity'] : -1) . '">'
                 . ($tracked ? h(erp_quantity_text($row['inventory_quantity'])) : '<span class="fg-secondary">' . lang('Stock not tracked') . '</span>') . '</td>

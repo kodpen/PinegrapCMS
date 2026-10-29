@@ -45,7 +45,7 @@ foreach ($rows as $row) {
         <tr>
             <td class="text-nowrap"><a class="pg-link-body-emphasis fw-semibold" href="edit_erp_quote.php?id=' . (int) $row['id'] . '">' . h((string) $row['full_number']) . '</a></td>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['issue_date'])) . '">' . h(prepare_form_data_for_output((string) $row['issue_date'], 'date')) . '</td>
-            <td style="max-width:280px" class="text-truncate">' . h((string) $row['account_title']) . '</td>
+            <td style="max-width:280px" class="text-break">' . h((string) $row['account_title']) . '</td>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['valid_until'])) . '">' . h(prepare_form_data_for_output((string) $row['valid_until'], 'date')) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['grand_total'] . '">' . h(erp_money_out_currency((int) $row['grand_total'], (string) $row['currency'])) . '</td>
             <td><span class="badge theme-' . h($status[1]) . '">' . h($status[0]) . '</span>'

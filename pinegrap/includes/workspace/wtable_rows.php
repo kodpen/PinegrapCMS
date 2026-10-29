@@ -16,7 +16,9 @@
  *
  * Person and record-link cells are read in the rows' JSON by the privacy
  * export and erasure (pg_privacy_wtable_rows()): a cell naming a person is
- * handed over with their pack and emptied when they are erased.
+ * handed over with their pack and emptied when they are erased. The records
+ * a row's link cells point at are kept in ws_refs with every add, change and
+ * delete (ws_ref_source_write()), so a record's screen finds the row.
  *
  * A formula column names other columns of its table by name (Price *
  * Quantity) and is worked out from the row's cells on every read, by
@@ -474,6 +476,7 @@ function ws_wtable_row_create($viewer, $table, $input)
         return ws_wtable_refusal('not_saved', '', 500) + array('row_id' => 0, 'revision' => 0);
     }
 
+    ws_ref_source_write('wtable_row', array($row_id => ws_wtable_row_ref_tokens($columns, $cells)));
     ws_wtable_row_announce('created', $table, $row_id, (int) $viewer['id']);
 
     return array('ok' => true, 'error' => '', 'field' => '', 'status' => 201, 'row_id' => $row_id, 'revision' => 1);
@@ -539,7 +542,8 @@ function ws_wtable_row_update($viewer, $table, $row, $input)
 
     $table_id = (int) $table['id'];
     $revision = (int) $row['revision'];
-    $cells = ws_wtable_cells_merge(ws_wtable_columns($table_id), ws_wtable_cells_decode($row['cells']), $check['cells']);
+    $columns = ws_wtable_columns($table_id);
+    $cells = ws_wtable_cells_merge($columns, ws_wtable_cells_decode($row['cells']), $check['cells']);
 
     db("UPDATE ws_wtable_rows SET cells = '" . e(ws_wtable_cells_encode($cells)) . "', revision = revision + 1,
             updated_by = '" . (int) $viewer['id'] . "', updated_at = '" . time() . "'
@@ -555,6 +559,7 @@ function ws_wtable_row_update($viewer, $table, $row, $input)
         return ws_wtable_refusal('changed_meanwhile', 'revision', 409) + array('revision' => (int) $now['revision']);
     }
 
+    ws_ref_source_write('wtable_row', array((int) $row['id'] => ws_wtable_row_ref_tokens($columns, $cells)));
     ws_wtable_touch($table_id);
     ws_wtable_row_announce('updated', $table, (int) $row['id'], (int) $viewer['id'], array_keys($check['cells']));
 
@@ -621,6 +626,7 @@ function ws_wtable_row_delete($viewer, $table, $row, $input = array())
 
     db("UPDATE ws_wtable_rows SET position = position - 1 WHERE table_id = '" . $table_id . "' AND position > '" . (int) $row['position'] . "'");
     db("UPDATE ws_wtables SET row_count = IF(row_count > 0, row_count - 1, 0), updated_at = '" . time() . "' WHERE id = '" . $table_id . "'");
+    ws_ref_source_write('wtable_row', array((int) $row['id'] => array()));
     ws_wtable_row_announce('deleted', $table, $row, (int) $viewer['id']);
 
     return $check;

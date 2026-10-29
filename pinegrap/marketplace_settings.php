@@ -1752,13 +1752,14 @@ if ($selected) {
 						: '')
 				: h(lang('No product is matched yet. Nothing is sent until at least one is.')))
 			. ($map_counts['stale'] ? '
-			<form method="post" action="marketplace_settings.php" class="d-flex flex-wrap align-items-center gap-3 mt-3">
+			<form method="post" action="marketplace_settings.php" class="d-flex flex-wrap align-items-center gap-3 mt-3 disable_shortcut">
 				' . get_token_field() . '
 				<input type="hidden" name="mp_action" value="clear_stale_matches">
 				<input type="hidden" name="account_id" value="' . $selected_id . '">
 				<span class="fg-warning">' . h(lang(array('string' => '{var:1} match(es) belong to products deleted since or in the Recycle Bin. They hold their codes, and no list shows them.',
 					'vars' => array(pg_format_number($map_counts['stale'], 0))))) . '</span>
-				<button type="submit" class="btn btn-sm btn-outline theme-warning"><i class="bi bi-trash me-1"></i>' . h(lang('Remove them')) . '</button>
+				<button type="submit" id="mp_clear_stale" class="btn btn-sm btn-outline theme-warning" data-confirm-content="' . h(lang(array('string' => 'Remove {var:1} stale match(es) of {var:2}? Their codes are freed; a product restored from the Recycle Bin afterwards comes back unmatched.',
+					'vars' => array(pg_format_number($map_counts['stale'], 0), $selected['name'])))) . '"><i class="bi bi-trash me-1"></i>' . h(lang('Remove them')) . '</button>
 			</form>' : '') . '
 		</div>
 	</div>';
@@ -2211,11 +2212,11 @@ if ($selected) {
 					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
 						<i class="bi bi-arrow-clockwise me-1"></i>' . lang('Try again') . '</button>
 				</form>
-				<form method="post" action="marketplace_settings.php" class="d-inline">
+				<form method="post" action="marketplace_settings.php" class="d-inline disable_shortcut">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="clear_queue">
 					<input type="hidden" name="account_id" value="' . $selected_id . '">
-					<button type="submit" class="btn btn-sm btn-outline theme-secondary">
+					<button type="submit" id="mp_clear_failed" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => 'Delete the failed updates of {var:1}? The stock and price changes in them are not sent again.', 'vars' => $selected['name']))) . '">
 						<i class="bi bi-trash me-1"></i>' . lang('Clear') . '</button>
 				</form>';
 

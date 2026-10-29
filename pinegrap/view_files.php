@@ -489,8 +489,8 @@ if ($files) {
             <td class="align-middle ' . $output_design_class . '">' . h($file['type']) . '</td>
             <td class="align-middle ' . $output_design_class . '">' . h($file['size']) . '</td>
             <td class="align-middle text-center ' . $output_design_class . '" style="text-align: center">' . $optimized . '</td>
-            <td class="align-middle text-start ' . $file['folder_access_control_type'] . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;">' . pg_folder_access_mark($file['folder_access_control_type']) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
-            <td class="align-middle ' . $output_design_class . '" title="' . nl2br(h($file['description'])) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . nl2br(h($file['description'])) . '</span></td>
+            <td class="align-middle text-start text-wrap ' . $file['folder_access_control_type'] . '">' . pg_folder_list_name($file['folder_name'], $file['folder_access_control_type']) . '</td>
+            <td class="align-middle text-wrap ' . $output_design_class . '"><div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div></td>
             <td class="align-middle ' . $output_design_class . '">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username'] ?? '') ) ) ) . '</td>
         </tr>';
     }

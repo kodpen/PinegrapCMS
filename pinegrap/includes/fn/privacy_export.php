@@ -622,10 +622,11 @@ function pg_privacy_export_summary_html(array $document)
  * remote fetching and embedded PHP off, rooted at the software directory,
  * font caches under data/cache (see erp_invoice_pdf()).
  *
- * @param string $html
+ * @param string       $html
+ * @param string|array $paper a dompdf paper name, or array(0, 0, width, height) in points
  * @return string|false  false when the library is not installed
  */
-function pg_privacy_export_pdf($html)
+function pg_privacy_export_pdf($html, $paper = 'A4')
 {
     $autoload = PG_FUNCTIONS_DIR . '/includes/dompdf/autoload.inc.php';
 
@@ -661,7 +662,7 @@ function pg_privacy_export_pdf($html)
 
     $dompdf = new \Dompdf\Dompdf($options);
     $dompdf->loadHtml((string) $html, 'UTF-8');
-    $dompdf->setPaper('A4', 'portrait');
+    $dompdf->setPaper($paper, 'portrait');
     $dompdf->render();
 
     return $dompdf->output();

@@ -2848,6 +2848,14 @@ function pg_folder_access_mark($access_control_type)
 
     return '<i class="bi ' . $icons[$access_control_type] . ' me-1" aria-hidden="true"></i><span class="visually-hidden">' . h(get_access_control_type_name($access_control_type)) . '</span>';
 }
+
+// The folder cell of the files, pages, design files and themes lists: the
+// access mark, the folder ligature and the name in a badge that wraps, so a
+// long name is read in full rather than cut in a fixed-width box.
+function pg_folder_list_name($folder_name, $access_control_type = '')
+{
+    return pg_folder_access_mark($access_control_type) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline text-wrap text-break">' . h($folder_name) . '</span>';
+}
 // You can pass the access control type in order to limit the folders to those with that type of access control.
 function select_folder($folder_id = 0, $parent_folder_id = 0, $excluded_folder_id = 0, $level = 0, $folders = array(), $folders_that_user_has_access_to = array(), $access_control_type = '')
 {

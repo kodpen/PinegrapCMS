@@ -76,7 +76,7 @@ foreach ($folded['accounts'] as $account) {
             <td class="align-middle text-start">
                 <button type="button" class="m-1 btn-data-control btn btn-outline theme-primary border-2" title="' . lang('View') . '" onclick="window.location.href=\'edit_erp_account.php?id=' . $account_id . '\'"><i class="bi bi-eye"></i></button>
             </td>
-            <td style="max-width:280px" class="text-nowrap text-truncate align-middle chart_label">' . h($account['title'])
+            <td style="max-width:280px" class="text-wrap text-break align-middle chart_label">' . h($account['title'])
                 . '<div class="small fg-secondary">' . h(lang(array('string' => '{var:1} document(s)', 'vars' => (int) $account['count']))) . '</div></td>
             ' . $output_cells . '
             <td class="align-middle text-end fw-bold" data-order="' . (int) $account['total'] . '"><a href="erp_invoices.php?' . h($account_query . '&filter=open') . '" class="pg-link-body-emphasis">' . h(erp_money_out((int) $account['total'])) . '</a></td>
