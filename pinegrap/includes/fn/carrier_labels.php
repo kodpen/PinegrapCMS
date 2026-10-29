@@ -966,7 +966,9 @@ function pg_label_settings_store($key, $values, $secrets, $enabled, $user_id)
 
 /**
  * Writes what pg_label_settings_check() decided, then runs the connection
- * test that was asked for, with the settings as now stored.
+ * test that was asked for, with the settings as now stored. A service that
+ * is on and can say where its parcels are puts the hourly shipment tracking
+ * job in the general job's list (includes/fn/shipment_tracking.php).
  *
  * @param array    $decisions pg_label_settings_check()
  * @param int      $user_id
@@ -974,6 +976,8 @@ function pg_label_settings_store($key, $values, $secrets, $enabled, $user_id)
  */
 function pg_label_settings_save($decisions, $user_id, $liveform)
 {
+    $tracking = false;
+
     foreach ($decisions as $key => $decision) {
         if (empty($decision['posted'])) {
             continue;
@@ -986,6 +990,13 @@ function pg_label_settings_save($decisions, $user_id, $liveform)
         if ($decision['test']) {
             pg_label_settings_test($key, $liveform);
         }
+
+        $tracking = $tracking || ($decision['enabled'] && pg_label_can($key, 'track'));
+    }
+
+    if ($tracking) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/fn/shipment_tracking.php');
+        pg_shipment_tracking_job_switch_on();
     }
 }
 

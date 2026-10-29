@@ -17,7 +17,7 @@ description: Geliver label driver (2026.11.0, #3096): two-step flow, offer choic
 ## What do the other operations do?
 - `test`: `GET /addresses/{sender}` or the first sender address; `account` = its short name.
 - `label`: pdf only (Geliver reports ZPL in `labelFileType` but the reference has no way to ask for it). `cancel`: `DELETE /shipments/{id}`. `track`: `GET /shipments/{id}`; trackingStatusCode PRE_TRANSIT created, TRANSIT in_transit (sub `out_for_delivery` out_for_delivery), DELIVERED, RETURNED, FAILURE/CANCELED exception; without one the shipment `statusCode`; UNKNOWN is a plain failure.
-- The `TRACK_UPDATED` webhook is not built yet (plan step 4 or later).
+- `track` is asked hourly by the tracking job (`shipment-tracking.md`); the `TRACK_UPDATED` webhook is not built yet.
 
 ## How is it tested?
 - `tests/carrier_label_geliver_test.php` through `pg_label_call()` with `pg_label_geliver_transport()` set to a stand-in (no waiting while one is set) and answers in `tests/fixtures/geliver/` built from the reference's examples.

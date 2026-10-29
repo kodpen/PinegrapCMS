@@ -1650,6 +1650,25 @@ function pg_payment_refund_driver($method, $gateway = null)
 }
 
 /**
+ * The name of the lock the order screen's refund runs under, so a second
+ * request for one order cannot read the refunded total before the first one
+ * has written it. GET_LOCK names belong to the whole database server, so the
+ * name carries the database.
+ *
+ * @param int         $order_id
+ * @param string|null $database database@host; null = the connection's
+ * @return string
+ */
+function pg_payment_refund_lock_name($order_id, $database = null)
+{
+    if ($database === null) {
+        $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+    }
+
+    return 'pg_refund_' . md5((string) $database) . '_' . (int) $order_id;
+}
+
+/**
  * The driver that voids an order's payment when the order is cancelled. A
  * gateway that is not driver-based leaves the refund to the operator.
  *

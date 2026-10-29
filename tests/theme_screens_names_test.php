@@ -56,7 +56,8 @@ function test_theme_screens_list_marks_named()
 
 	pg_assert_false(strpos($source, '<span class="material-icons">task_alt</span>') !== false, 'no bare task_alt');
 	pg_assert_same(2, substr_count($source, '<span class="material-icons" role="img" aria-label="\' . h(lang(\'Yes\')) . \'">task_alt</span>'), 'both marks read Yes');
-	pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', $source, 'folder ligature silent');
+	pg_assert_contains('pg_folder_list_name($file[\'folder_name\'])', $source, 'folder cell');
+	pg_assert_contains('<span class="material-icons d-inline" aria-hidden="true">folder</span>', pg_folder_list_name('Docs'), 'folder ligature silent');
 }
 
 function test_theme_screens_private_label_cards_and_labels()

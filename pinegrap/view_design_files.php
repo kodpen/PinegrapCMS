@@ -201,8 +201,8 @@ if ($files) {
                 <td class="align-middle">' . h($file['type']) . '</td>
                 <td class="align-middle">' . h($file['size']) . '</td>
                 <td class="align-middle text-center">' . $optimized . '</td>
-                <td class="align-middle text-start " title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span></td>
-                <td class="align-middle" title="' . nl2br(h($file['description'])) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . nl2br(h($file['description'])) . '</span></td>
+                <td class="align-middle text-start text-wrap">' . pg_folder_list_name($file['folder_name']) . '</td>
+                <td class="align-middle text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div></td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $last_modified_username . '</td>
             </tr>';
     }

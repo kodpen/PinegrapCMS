@@ -387,10 +387,14 @@ while ($row = mysqli_fetch_assoc($result)) {
     
     // The information text is rich text and is shown as markup; a label is
     // the plain text the field editor accepted and is escaped.
+    // Information text can run to paragraphs and keeps its cut preview; a
+    // label wraps so it is read in full.
     if ($row['type'] == 'information') {
         $label_or_information = pg_sanitize_rich_text($row['information'], 'staff');
+        $output_label_cell = '<td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>';
     } else {
         $label_or_information = h($row['label']);
+        $output_label_cell = '<td class="text-wrap"><div class="text-wrap text-break" style="max-width:20rem;">' . $label_or_information . '</div></td>';
     }
     
     if ($row['required'] == 1) {
@@ -441,7 +445,7 @@ while ($row = mysqli_fetch_assoc($result)) {
                 <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
             </td>
             <td class="chart_label">' . $output_name_cell . '</td>
-            <td title="' . h(strip_tags($label_or_information)) . '"><span class="text-truncate overflow-hidden d-block" style="width:200px;max-width:100%;">' . $label_or_information . '</span></td>
+            ' . $output_label_cell . '
             ' . $output_rss_field_cell . '
             <td>' . h($type) . '</td>
             <td class="align-middle text-center">' . $required . '</td>

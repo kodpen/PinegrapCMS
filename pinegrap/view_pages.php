@@ -1270,7 +1270,7 @@ if ($pages) {
                 <td class="align-middle chart_label position-relative">' . $output_home_icon . h($page['page_name']) . '<a href="javascript:void(0)" class="pg-seo-open d-block text-decoration-none" aria-label="' . h(pg_seo_link_name($page)) . '" title="' . lang('SEO Detail') . '" data-seo-url="get_seo_analysis.php?type=page&amp;id=' . $page['page_id'] . get_token_query_string_field() . '">' . pg_seo_render_bar($page) . '</a></td>
                 ' . $output_form_name_row . '
                 ' . $output_form_enabled_row . '
-                <td class="align-middle text-start ' . $page['folder_access_control_type'] . '" title="' . h($page['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;">' . pg_folder_access_mark($page['folder_access_control_type']) . '<span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($page['folder_name']) . '</span></span></td>
+                <td class="align-middle text-start text-wrap ' . $page['folder_access_control_type'] . '">' . pg_folder_list_name($page['folder_name'], $page['folder_access_control_type']) . '</td>
                 <td class="align-middle ' . $output_no_mobile_style_warning_class . '">' . $output_style_name . '</td>
                 <td class="align-middle">' . h(get_page_type_name($page['page_type'])) . '</td>
                 <td class="align-middle text-center">' . $output_search_check_mark . '</td>
