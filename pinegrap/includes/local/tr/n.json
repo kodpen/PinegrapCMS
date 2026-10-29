@@ -914,6 +914,8 @@
     "No secret issued yet": "Henüz gizli anahtar üretilmedi",
     "No secret saved yet.": "Henüz gizli anahtar kaydedilmedi.",
     "No selection": "Seçim yok",
+    "No server chosen": "Sunucu seçilmedi",
+    "No server is turned on with a tool that reads and an account you may call it with.": "Okuyan bir aracı ve onu çağırabileceğiniz bir hesabı olan açık bir sunucu yok.",
     "No shippable items": "Kargolanabilir ürün yok",
     "No shipping method can ship to this recipient": "Hiçbir nakliye yöntemi bu alıcıya gönderemiyor",
     "No shipping method serves this address yet, so the order cannot be completed. Check the country and the address, or contact us.": "Bu adrese gönderim yapan bir kargo yöntemi henüz yok, bu yüzden sipariş tamamlanamıyor. Ülkeyi ve adresi kontrol edin ya da bizimle iletişime geçin.",

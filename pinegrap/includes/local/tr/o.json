@@ -590,6 +590,7 @@
     "Only the site staff and the users given access to the private folder see these pages. To let someone in, open their account under Users and tick the folder in Private Content Access.": "Bu sayfaları yalnızca site personeli ve private klasörüne erişim verilen kullanıcılar görür. Birine erişim vermek için Kullanıcılar altında hesabını açın ve Özel İçerik Erişimi bölümünde klasörü işaretleyin.",
     "Only the table's owner may do that.": "Bunu yalnızca tablonun sahibi yapabilir.",
     "Only the templates made from a design can be deleted.": "Yalnız bir tasarımdan oluşturulan şablonlar silinebilir.",
+    "Only the tools that read and run without an approval.": "Yalnızca okuyan ve onay beklemeden çalışan araçlar.",
     "Only the translations of the texts on the page you are editing can be changed here.": "Burada yalnız düzenlediğiniz sayfadaki metinlerin çevirisi değiştirilebilir.",
     "Only the words of a text file (Markdown, plain text, CSV and the like) are changed from here.": "Buradan yalnız metin dosyalarının (Markdown, düz metin, CSV vb.) içeriği değiştirilir.",
     "Only the writer of the message, or staff, can ask for read receipts.": "Okundu onayını yalnız mesajı yazan ya da yöneticiler isteyebilir.",
