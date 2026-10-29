@@ -342,7 +342,25 @@ function pg_tr_path_is_file($rest)
  */
 function pg_tr_prefix_path($path, $prefix)
 {
-    $base = (string) PATH;
+    return pg_tr_prefix_path_rule($path, $prefix, (string) PATH, pg_tr_prefix_map(), pg_tr_page_names(), 'pg_tr_path_is_file');
+}
+
+/**
+ * The rule of pg_tr_prefix_path() with what it looks up handed in: the
+ * site's path, the language prefixes (prefix => code), the page names
+ * (lower-cased name => page id) and the file check (pg_tr_path_is_file()).
+ *
+ * @param string   $path     decoded path, starting with /
+ * @param string   $prefix   the language prefix
+ * @param string   $base     the site's path (PATH)
+ * @param array    $prefixes prefix => code of the enabled languages
+ * @param array    $names    lower-cased page name => page id
+ * @param callable $is_file  path below $base => whether it is a file
+ * @return string
+ */
+function pg_tr_prefix_path_rule($path, $prefix, $base, array $prefixes, array $names, $is_file)
+{
+    $base = (string) $base;
 
     if (strpos($path, $base) !== 0) {
         return $path;
@@ -361,15 +379,13 @@ function pg_tr_prefix_path($path, $prefix)
     }
 
     // Another language's directory, or this one's: leave it.
-    if (isset(pg_tr_prefix_map()[$first])) {
+    if (isset($prefixes[$first])) {
         return $path;
     }
 
-    if (pg_tr_path_is_file($rest)) {
+    if (call_user_func($is_file, $rest)) {
         return $path;
     }
-
-    $names = pg_tr_page_names();
 
     if (!isset($names[mb_strtolower($first, 'UTF-8')])) {
         return $path;

@@ -14,9 +14,11 @@
  * before </head>. Left out: addresses with a query string, off-site and
  * relative links, files and the software directory (the panel, downloads,
  * sign-out), and every page that is not a public content page (sign-in, cart,
- * checkout, account pages: pg_speculation_page_type_kept()). No block while
- * the Settings > Features switch is off (SPECULATION_PREFETCH), for a visitor
- * who is signed in, on a page drawn in another language, in edit mode or in
+ * checkout, account pages: pg_speculation_page_type_kept()). On a page drawn
+ * in another language the addresses get its prefix by the translation
+ * module's own rule (pg_tr_prefix_path()), as its links get it on the way
+ * out. No block while the Settings > Features switch is off
+ * (SPECULATION_PREFETCH), for a visitor who is signed in, in edit mode or in
  * an e-mail. A followed prefetch makes no second request, so the prefetch is
  * counted once as the page view, as any request is.
  *
@@ -116,15 +118,19 @@ function pg_speculation_nav_hrefs($html)
  * A link address as a same-site page path the block may list, or '' when it
  * may not: an anchor, another scheme, another host, a relative path, a query
  * string, an address outside the site's path, the software directory (panel,
- * file downloads, sign-out) or a file with an extension.
+ * file downloads, sign-out) or a file with an extension. On a page in another
+ * language a link that already carries that language's prefix is taken
+ * without it, so the page is found by its name and prefixed once later.
  *
  * @param string $href
  * @param array  $hosts         host names of this site, lower case
  * @param string $base          the site's path (PATH), ending in /
  * @param string $software_dir  the software directory's name
+ * @param string $prefix        the language prefix of the page shown, '' in
+ *                              the site's own language
  * @return string  the path, without its fragment
  */
-function pg_speculation_path($href, array $hosts, $base, $software_dir)
+function pg_speculation_path($href, array $hosts, $base, $software_dir, $prefix = '')
 {
     $href = trim((string) $href);
 
@@ -164,6 +170,16 @@ function pg_speculation_path($href, array $hosts, $base, $software_dir)
 
     $rest = (string) substr($path, strlen($base));
     $segments = explode('/', $rest);
+
+    if ($prefix !== '' && strtolower($segments[0]) === strtolower((string) $prefix)) {
+        array_shift($segments);
+        $rest = implode('/', $segments);
+        $path = $base . $rest;
+
+        if (!$segments) {
+            $segments = array('');
+        }
+    }
 
     if ($software_dir !== '' && strtolower($segments[0]) === strtolower((string) $software_dir)) {
         return '';
@@ -282,19 +298,44 @@ function pg_speculation_pick(array $paths, $base, array $pages, $current, $curre
 }
 
 /**
- * Whether a page gets the block at all: the Features switch on, nobody
- * signed in (a member's or staff's pages are personal and their menus may
- * hold acting links), and the page drawn in the site's own language (the
- * language prefix is added to its links only on the way out).
+ * The picked paths as the page in another language links them: each passed
+ * through the language prefix rule (pg_tr_prefix_path()) decoded and written
+ * back encoded. Unchanged in the site's own language.
  *
- * @param bool $enabled     the Settings > Features switch
- * @param bool $signed_in   a member or staff is signed in (or unknown)
- * @param bool $translated  the page is drawn in another language
+ * @param array    $paths        same-site page paths, encoded
+ * @param string   $prefix       the language prefix, '' for the own language
+ * @param callable $prefix_path  decoded path, prefix => decoded path
+ * @return array
+ */
+function pg_speculation_localize(array $paths, $prefix, $prefix_path)
+{
+    if ((string) $prefix === '') {
+        return $paths;
+    }
+
+    $out = array();
+
+    foreach ($paths as $path) {
+        $decoded = rawurldecode((string) $path);
+        $new = call_user_func($prefix_path, $decoded, (string) $prefix);
+        $out[] = ($new === $decoded) ? $path : pg_tr_encode_path($new);
+    }
+
+    return array_values(array_unique($out));
+}
+
+/**
+ * Whether a page gets the block at all: the Features switch on and nobody
+ * signed in (a member's or staff's pages are personal and their menus may
+ * hold acting links).
+ *
+ * @param bool $enabled    the Settings > Features switch
+ * @param bool $signed_in  a member or staff is signed in (or unknown)
  * @return bool
  */
-function pg_speculation_rules_wanted($enabled, $signed_in, $translated)
+function pg_speculation_rules_wanted($enabled, $signed_in)
 {
-    return $enabled && !$signed_in && !$translated;
+    return $enabled && !$signed_in;
 }
 
 /**
@@ -311,8 +352,7 @@ function pg_speculation_rules_inject($content, $page_name, $home)
 
     if (!pg_speculation_rules_wanted(
             defined('SPECULATION_PREFETCH') && SPECULATION_PREFETCH,
-            !defined('USER_LOGGED_IN') || USER_LOGGED_IN,
-            defined('FRONTEND_LANGUAGE'))
+            !defined('USER_LOGGED_IN') || USER_LOGGED_IN)
         || stripos($content, '</head>') === false
         || stripos($content, 'speculationrules') !== false) {
         return $content;
@@ -331,11 +371,19 @@ function pg_speculation_rules_inject($content, $page_name, $home)
     $base = defined('PATH') ? (string) PATH : '/';
     $software_dir = defined('SOFTWARE_DIRECTORY') ? (string) SOFTWARE_DIRECTORY : '';
 
+    // The language whose prefix pg_tr_finalize() adds to the page's links.
+    $prefix = '';
+
+    if (function_exists('pg_tr_active') && pg_tr_active()) {
+        pg_tr_load();
+        $prefix = pg_tr_prefix(pg_tr_language());
+    }
+
     $paths = array();
     $names = array();
 
     foreach (array_merge($noted, pg_speculation_nav_hrefs($content)) as $href) {
-        $path = pg_speculation_path($href, $hosts, $base, $software_dir);
+        $path = pg_speculation_path($href, $hosts, $base, $software_dir, $prefix);
 
         if ($path !== '' && !isset($paths[$path])) {
             $paths[$path] = true;
@@ -379,7 +427,10 @@ function pg_speculation_rules_inject($content, $page_name, $home)
         }
     }
 
-    $block = pg_speculation_rules_html(pg_speculation_pick(array_keys($paths), $base, $pages, mb_strtolower((string) $page_name), (bool) $home));
+    $block = pg_speculation_rules_html(pg_speculation_localize(
+        pg_speculation_pick(array_keys($paths), $base, $pages, mb_strtolower((string) $page_name), (bool) $home),
+        $prefix,
+        'pg_tr_prefix_path'));
 
     if ($block === '') {
         return $content;
