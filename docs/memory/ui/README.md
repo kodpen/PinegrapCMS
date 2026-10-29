@@ -117,7 +117,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-week.md: List screens' period navigator: the week starts on Monday in Turkish, Sunday otherwise; the five screens read pg_list_period_week_steps() (#2039)
-- list-row-names.md: Names in the orders, products, submitted forms, pages and files lists: row boxes, SEO score links, the No Image picture, the folder access level shown by icon and word, not colour alone
+- list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
 - liveform-field-names.md: Accessible names of liveform fields and hand-built pagers: aria-label and file id, required import pickers, new-password on outside sign-in and secret boxes, ERP fields
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
