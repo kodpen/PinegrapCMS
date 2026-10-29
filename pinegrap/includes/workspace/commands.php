@@ -401,7 +401,7 @@ function ws_commands($viewer = null)
         ),
         array(
             'key' => 'create', 'tr' => 'oluştur', 'en' => 'create', 'label' => '/create · /oluştur',
-            'description' => lang('Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created.'),
+            'description' => lang('Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created. Several product lines, one per line, make one card of drafts for you to apply.'),
             'example'     => lang('/create product Blue mug 149,90'),
             'args'        => array(
                 $arg('kind', 'record_kind', lang('kind'), false, 'kinds'),
@@ -413,7 +413,7 @@ function ws_commands($viewer = null)
         ),
         array(
             'key' => 'product', 'tr' => 'ürün', 'en' => 'product', 'label' => '/product · /ürün',
-            'description' => lang('Creates a product, off sale: its name, then a price and a #group if you like. Shown to you before it is created.'),
+            'description' => lang('Creates a product, off sale: its name, then a price and a #group if you like. Shown to you before it is created. Several lines, one product per line, make one card of drafts for you to apply.'),
             'example'     => lang('/product Blue mug 149,90'),
             'args'        => array(
                 $arg('name', 'text', lang('product name'), false),
@@ -1415,11 +1415,13 @@ function ws_command_run($viewer, $channel, $body, $options = array())
         case 'stock':
             return ws_command_record_change($viewer, $channel, $split['command'], $rest, $options);
 
+        // The text as typed goes along: several lines become the message
+        // a bulk card hangs under.
         case 'create':
-            return ws_command_create($viewer, $channel, $rest, $options);
+            return ws_command_create($viewer, $channel, $rest, $options + array('typed' => (string) $body));
 
         case 'product':
-            return ws_command_product($viewer, $channel, $rest, $options);
+            return ws_command_product($viewer, $channel, $rest, $options + array('typed' => (string) $body));
 
         case 'poll':
             $parts = array_values(array_filter(array_map('trim', explode('|', $rest)), 'strlen'));
@@ -2720,16 +2722,21 @@ function ws_command_group($viewer, $channel, $text, $options)
  * /product (and /create product): a new product, shown back with every
  * value it will be created with, made on confirmation
  * (ws_command_create_card()). Off sale unless the card's "On sale" is
- * ticked.
+ * ticked. Several lines make one bulk card of product drafts instead
+ * (ws_command_product_bulk()).
  *
  * @param array  $viewer
  * @param array  $channel
  * @param string $text    what follows the command
- * @param array  $options confirm, decision, on_sale
+ * @param array  $options confirm, decision, on_sale, typed (the whole text)
  * @return array
  */
 function ws_command_product($viewer, $channel, $text, $options)
 {
+    if (function_exists('ws_bulk_text_is_list') && ws_bulk_text_is_list($text)) {
+        return ws_command_product_bulk($viewer, $channel, $text, $options);
+    }
+
     $parsed = ws_command_parse_product($text);
 
     if ($parsed['name'] === '') {
@@ -2743,6 +2750,42 @@ function ws_command_product($viewer, $channel, $text, $options)
     }
 
     return ws_command_create_card($viewer, $channel, 'product', ws_command_product_fields($parsed), $options);
+}
+
+/**
+ * /product (and /create product) with several lines: a product per line,
+ * read as a list (ws_bulk_text_table(), ws_bulk_table_rows(): the name, then
+ * its price; or a first line of column names), made into one bulk card of
+ * drafts under the command's own message (ws_bulk_create_card()). The
+ * person applies the card; nothing is written before. More rows than one
+ * card takes are refused with the product import named.
+ *
+ * @param array  $viewer
+ * @param array  $channel
+ * @param string $text    what follows the command
+ * @param array  $options typed (the whole text, posted as the message)
+ * @return array
+ */
+function ws_command_product_bulk($viewer, $channel, $text, $options)
+{
+    // Laid out before the database is asked anything.
+    $laid = ws_bulk_table_rows(ws_bulk_text_table($text));
+
+    if (!$laid['ok']) {
+        return array('type' => 'error', 'error' => $laid['error']);
+    }
+
+    $made = ws_bulk_create_card($viewer, (int) $channel['id'], $laid, (string) ($options['typed'] ?? $text));
+
+    if (!$made['ok']) {
+        return array('type' => 'error', 'error' => $made['error']);
+    }
+
+    return array(
+        'type'       => 'done',
+        'message_id' => $made['message_id'],
+        'bulk'       => array('count' => $made['count'], 'ignored' => $made['ignored']),
+    );
 }
 
 /**

@@ -63,7 +63,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-assistant-discussions.md: An assistant asked in a discussion: what it reads about it (Claude's context thread, PR #1121; Pinegrap AI's first message), where it may be asked, what is planned
 - workspace-assistant-keys.md: Create on the Claude and Pinegrap AI cards, Claude's "Reset secret": the row made, scopes, config link, who sees it, one-time window, a key never given a secret
 - workspace-assistant-reach.md: Claude and Pinegrap AI read and answer a discussion or allowed private channel their app owner is not in through the person who asked (PR #1085)
-- workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, pasted list and channel file sources
+- workspace-bulk-create.md: Bulk product drafts (bulk.php action create, PR #2266): one 'bulk' card of up to 200 rows, checks, row place saved before the write, events, card, where a person's own rows come from
+- workspace-bulk-sources.md: A person's own bulk product drafts (bulk_sources.php): several lines under /create product, a channel's spreadsheet, the table reader, ws_bulk_create_card()
 - workspace-change-proposal-display.md: How an application's proposal is shown: its name on cards, bells, push, Site Log (every bulk slice) and decisions, the task drawer's "Proposed for" line, the agent GET /workspace/decisions gives
 - workspace-change-proposals.md: Record changes an application proposes as cards (proposals.php, api_proposals.php): routes, agents oauth:/app:, checks, role-3 contacts, the hourly limit and its lock, who applies, what is written
 - workspace-change-text-limits.md: Workspace change catalogue text limits must fit their columns (non-strict cuts in silence): the six once over, the channel summary kept, longer values, line breaks in one-line drawer fields, the test
@@ -143,6 +144,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-value-picker.md: "Add value" in a Flows box's side panel (data-passing D6): the text boxes with value chips, what the list offers, "empty if skipped", how a chip is kept and edited
 - workspace-flows-versions.md: A paused flow resumed on its live version, and a flow's published versions listed, read and brought back into the draft (flow_versions.php, API routes, no schema)
 - workspace-flows-wait-timeout.md: The timeout of a flow task box (F5d): hours to wait, the timeout outcome, counted from the claim, next look capped at the deadline, the task end first, why approvals have none
+- workspace-flows-webhook-body.md: The webhook box's answer as its body output (D9a, PR #2985, decision #2414-2): 16 KB UTF-8 cut, the run row's result budget, held back from readers who may not change the flow
 - workspace-followups.md: Workspace follow-ups (followups.php, #1790): ws_followup_task_open() opens a tagged, reminded task; "Remind me" on the customer card; quote expiry and overdue receivable jobs
 - workspace-mcp-agent-identity.md: One avatar and icon per MCP server asked by its alias ('mcp:<id>'), drawn the same by every server-side place (ws_mcp_agent_identity()); the catalogue entry found by URL; the name kept '@alias'
 - workspace-mcp-servers-api.md: The site's MCP servers in the Workspace API (api_mcp.php, PR #1800): list with state, add, probe, refresh, tool rules; administrators only, no MCP tool; checks and writes shared with the settings card

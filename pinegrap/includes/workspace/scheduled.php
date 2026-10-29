@@ -112,6 +112,12 @@ define('WS_SCHEDULED_MIN_MINUTES', 5);
 define('WS_SCHEDULED_LEAD_HOURLY', 20);
 
 /**
+ * The most of a webhook's answer a flow's box keeps for the boxes after it
+ * ({{node.<id>.body}}), in bytes.
+ */
+define('WS_SCHEDULED_WEBHOOK_BODY_BYTES', 16384);
+
+/**
  * Are the tables there (2026.4.5, 5.81)?
  *
  * @return bool
@@ -4499,13 +4505,18 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
     $answer = api_http_request('POST', (string) $action['url'], array(
         'body'    => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         'headers' => $headers,
-        'timeout' => 10,
-        'agent'   => 'workspace',
+        'timeout'  => 10,
+        'agent'    => 'workspace',
+        'max_body' => ws_scheduled_webhook_body_fetch(),
     ));
 
     $host = ws_scheduled_host($action['url']);
-    // No status when nothing answered.
-    $data = array('status_code' => ($answer['status'] > 0) ? (int) $answer['status'] : null, 'duration_ms' => (int) $answer['duration_ms']);
+    // No status and no answer when nothing answered.
+    $data = array(
+        'status_code' => ($answer['status'] > 0) ? (int) $answer['status'] : null,
+        'duration_ms' => (int) $answer['duration_ms'],
+        'body' => ws_scheduled_webhook_body(($answer['status'] > 0) ? ($answer['body'] ?? '') : null),
+    );
 
     if (!$answer['ok']) {
         return array('ok' => false, 'text' => lang(array('string' => 'the webhook {var:1} did not take it: {var:2}', 'vars' => array(
@@ -4513,6 +4524,38 @@ function ws_scheduled_webhook($viewer, $row, $action, $context)
     }
 
     return array('ok' => true, 'text' => lang(array('string' => 'webhook {var:1} called (HTTP {var:2}, {var:3} ms)', 'vars' => array($host, $answer['status'], $answer['duration_ms']))), 'message_id' => 0, 'data' => $data);
+}
+
+/**
+ * How many bytes of a webhook's answer to read: the kept part and enough
+ * beyond it that a character the limit cuts is read whole.
+ *
+ * @return int
+ */
+function ws_scheduled_webhook_body_fetch()
+{
+    return WS_SCHEDULED_WEBHOOK_BODY_BYTES + 3;
+}
+
+/**
+ * A webhook's answer as a box keeps it: up to WS_SCHEDULED_WEBHOOK_BODY_BYTES,
+ * cut at a character, and only as UTF-8 text (an image or another charset
+ * would break the result's JSON and the texts it is filled into). Pure.
+ *
+ * @param mixed $raw the body read, null when nothing answered
+ * @return string|null
+ */
+function ws_scheduled_webhook_body($raw)
+{
+    if (!is_string($raw)) {
+        return null;
+    }
+
+    if (strlen($raw) > WS_SCHEDULED_WEBHOOK_BODY_BYTES) {
+        $raw = mb_strcut($raw, 0, WS_SCHEDULED_WEBHOOK_BODY_BYTES, 'UTF-8');
+    }
+
+    return mb_check_encoding($raw, 'UTF-8') ? $raw : null;
 }
 
 /**

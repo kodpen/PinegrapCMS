@@ -33,6 +33,16 @@ function test_ws_bulk_text_table_splits_lines_and_cells()
 	pg_assert_same(array(), ws_bulk_text_table(" \n\t\n"), 'nothing');
 }
 
+// Several lines (empty ones not counted) make a list; one line does not.
+function test_ws_bulk_text_is_list()
+{
+	pg_assert_true(ws_bulk_text_is_list("Mavi kupa 129,90\nKırmızı kupa 99"), 'two lines');
+	pg_assert_true(ws_bulk_text_is_list("Ürün adı;Fiyat\nMavi kupa;129,90"), 'a header and a row');
+	pg_assert_false(ws_bulk_text_is_list('Mavi kupa 129,90'), 'one line');
+	pg_assert_false(ws_bulk_text_is_list("\nMavi kupa 129,90\n\n  \n"), 'one line among empty ones');
+	pg_assert_false(ws_bulk_text_is_list(''), 'nothing');
+}
+
 // With no header, the first cell is the name (written as the short
 // description too, as /product does) and an amount after it the price.
 function test_ws_bulk_table_rows_without_a_header()
@@ -106,9 +116,9 @@ function test_ws_bulk_file_table_reads_csv()
 	pg_assert_false(ws_bulk_file_table(__FILE__, 'notlar.txt')['ok'], 'not a table file');
 }
 
-// The window and the file button send through a ws_ action with the token
-// checked; a card the person made names them, not an assistant, when it is
-// applied.
+// The file button sends through a ws_ action with the token checked; a card
+// the person made names them, not an assistant, when it is applied. The
+// pasted-list window is gone: several lines go under /create product.
 function test_ws_bulk_create_propose_action_and_own_card()
 {
 	$row = pg_panel_action('ws_bulk_create_propose');
@@ -128,4 +138,10 @@ function test_ws_bulk_create_propose_action_and_own_card()
 	$sources = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/bulk_sources.php');
 	pg_assert_contains('ws_bulk_create_input($viewer, \'product\', $laid[\'rows\'])', $sources, 'the rows are checked as an assistant\'s would be');
 	pg_assert_contains('ws_can_read_channel($viewer, $channel)', $sources, 'a file is read only from a channel the person may read');
+	pg_assert_false(strpos($sources, "\$source['text']") !== false, 'no pasted text is read by the action');
+	pg_assert_false(strpos(substr($actions, strpos($actions, "case 'ws_bulk_create_propose':"), 600), "\$request['text']") !== false, 'nor sent to it');
+
+	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+	pg_assert_false(strpos($script, 'bulk_make_intro') !== false, 'the window is gone from the screen');
+	pg_assert_contains('result.command.bulk', $script, 'a bulk card from a command is told');
 }

@@ -9794,38 +9794,25 @@
             });
         },
 
-        // Product drafts as one bulk card (bulk_sources.php): from a file of
-        // the channel, or from a list pasted into the question window. The
-        // card waits under a message of the person's own until they apply it.
+        // Product drafts as one bulk card (bulk_sources.php) from a file of
+        // the channel. The card waits under a message of the person's own
+        // until they apply it.
         bulkMakeProducts: function (source) {
             var self = this;
-            var channel = self.channel;
-            var text = null;
-            var asked = Promise.resolve(true);
 
-            if (!source.message_id) {
-                text = el('textarea', 'form-control form-control-sm');
-                text.rows = 8;
-                text.placeholder = t('bulk_make_placeholder');
-                text.setAttribute('aria-label', t('bulk_make_products'));
-                asked = ask(t('bulk_make_intro'), t('bulk_make_go'), false, text);
-                window.setTimeout(function () { text.focus(); }, 200);
-            }
+            api('ws_bulk_create_propose', {
+                channel_id: self.channel.id,
+                message_id: source.message_id
+            }).then(function (data) {
+                self.bulkMade(data);
+                self.sync(true);
+            }).catch(fail);
+        },
 
-            asked.then(function (yes) {
-                if (!yes || (text && !text.value.trim())) {
-                    return;
-                }
-
-                api('ws_bulk_create_propose', {
-                    channel_id: channel.id,
-                    message_id: source.message_id || 0,
-                    text: text ? text.value : ''
-                }).then(function (data) {
-                    toast(t('bulk_make_done', data.count) + ((data.ignored && data.ignored.length) ? ' ' + t('bulk_make_ignored', data.ignored.join(', ')) : ''), 'success');
-                    self.sync(true);
-                }).catch(fail);
-            });
+        // A bulk card was made: how many drafts wait, and the columns of a
+        // header that were not read.
+        bulkMade: function (data) {
+            toast(t('bulk_make_done', data.count) + ((data.ignored && data.ignored.length) ? ' ' + t('bulk_make_ignored', data.ignored.join(', ')) : ''), 'success');
         },
 
         // Record changes an answer proposes: what each field holds and would
@@ -12467,6 +12454,11 @@
 
                 if (result.command && result.command.type === 'done' && result.command.saved) {
                     toast(t(result.command.created ? 'qc_created' : 'qe_saved'), 'success');
+                }
+
+                // Several lines under /create product: one card of drafts.
+                if (result.command && result.command.type === 'done' && result.command.bulk) {
+                    self.bulkMade(result.command.bulk);
                 }
 
                 // A card's button names the text it sends; a different one in

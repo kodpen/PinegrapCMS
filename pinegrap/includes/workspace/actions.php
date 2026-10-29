@@ -2937,12 +2937,11 @@ function ws_handle_action($action, $request)
                 'decision_id' => $created['decision_id'],
             ));
 
-        // Product drafts from a pasted list or a file posted in a channel
-        // (bulk_sources.php): one bulk create card under a message of the
-        // person's own, which they apply.
+        // Product drafts from a file posted in a channel (bulk_sources.php):
+        // one bulk create card under a message of the person's own, which
+        // they apply.
         case 'ws_bulk_create_propose':
             $proposed = ws_bulk_create_propose($viewer, (int) ($request['channel_id'] ?? 0), array(
-                'text'       => (string) ($request['text'] ?? ''),
                 'message_id' => (int) ($request['message_id'] ?? 0),
             ));
 
