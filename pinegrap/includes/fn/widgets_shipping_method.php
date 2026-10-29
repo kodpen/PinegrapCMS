@@ -71,10 +71,11 @@ function pg_sm_chosen_method($method_ids, $posted, $stored)
  * @param bool $has_recipient   a recipient of the visitor's order is shown
  * @param bool $multi_recipient the shop ships to several recipients per order
  * @param int  $methods         number of methods offered
- * @param bool $has_arrival     the recipient asked for an arrival date
+ * @param bool  $has_arrival     the recipient asked for an arrival date
+ * @param array $currencies      pg_sw_currency_rows()
  * @return array
  */
-function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival)
+function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival, $currencies = array())
 {
     $sm_flags = array(
         'has_recipient'        => (bool)$has_recipient,
@@ -83,6 +84,7 @@ function pg_sm_flags($has_recipient, $multi_recipient, $methods, $has_arrival)
         'has_shipping_methods' => $has_recipient && $methods > 0,
         'no_shipping_methods'  => $has_recipient && $methods === 0,
         'has_arrival_date'     => $has_recipient && $has_arrival,
+        'has_currency_choice'  => count((array)$currencies) > 1,
     );
     return $sm_flags;
 }
@@ -141,6 +143,8 @@ function _pg_sm_items_html($ship_to_id, $order_id, $country, $state)
 // ^^__cart_url^^.
 // Section: recipient_items (the recipient's items; a product that cannot go
 // to the address carries the link that removes it).
+// Currency picker: the currency_id select and the currency_update button
+// (pg_sw_currency_picker()), shown by has_currency_choice.
 // Flags: pg_sm_flags(). Errors: liveform 'shipping_method'.
 // cfg: next_page_id (else the classic page's own, else the handler's).
 function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = array(), $mode = 'preview')
@@ -229,8 +233,10 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
     _pg_member_drop_empty_links($tree, array('__change_address_url' => $change_url, '__cart_url' => $cart_url));
 
     // A method row's own flag is decided per row, below.
-    $sm_flags = pg_sm_flags($has_recipient, $multi, count($methods), $arrival !== '');
+    $currencies = pg_sw_currency_rows();
+    $sm_flags = pg_sm_flags($has_recipient, $multi, count($methods), $arrival !== '', $currencies);
     _eo_apply_visibility_bindings($tree, $sm_flags + array('shipping_method_discounted' => true));
+    pg_sw_currency_picker($tree, $widget_id, $currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
     pg_cf_apply_section_bindings($tree, array('recipient_items' => $items_html));
     pg_cf_link_labels($tree);
     _pg_inject_messages_node($tree, 'shipping_method');
@@ -279,7 +285,9 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
         '__no_shipping_methods_message' => h($none_message),
         '__cart_url'                   => h($cart_url),
     );
-    if (!$has_recipient || !$methods) return _pg_member_apply_tokens($rendered, $tokens);
+    // The picker's own form follows the widget's: forms cannot nest.
+    $currency_form = pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());
+    if (!$has_recipient || !$methods) return _pg_member_apply_tokens($rendered, $tokens) . $currency_form;
 
     $rendered = _pg_member_form_wrap($rendered, _pg_acct_software_path() . '/shipping_method.php', array(
         'page_id'      => $page_id,
@@ -287,5 +295,5 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
         'ship_to_id'   => $ship_to_id,
     ), 'pg-shipping-method-form');
 
-    return _pg_member_apply_tokens($rendered, $tokens);
+    return _pg_member_apply_tokens($rendered, $tokens) . $currency_form;
 }

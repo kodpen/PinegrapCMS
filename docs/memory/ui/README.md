@@ -119,7 +119,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-period-week.md: List screens' period navigator: the week starts on Monday in Turkish, Sunday otherwise; the five screens read pg_list_period_week_steps() (#2039)
 - list-row-names.md: Names in the orders, products, submitted forms, pages and files lists: row boxes, SEO score links, the No Image picture, the folder access level shown by icon and word, not colour alone
 - list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
-- liveform-field-names.md: Accessible names of liveform fields and hand-built pagers: aria-label and file id, required import pickers, new-password on outside sign-in and secret boxes, ERP fields
+- liveform-field-names.md: Liveform field names and pagers: aria-label, file id, required import pickers, new-password on outside secret boxes, the Set Password username field, ERP fields
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens

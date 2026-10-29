@@ -141,7 +141,7 @@ function api_console_page($params) {
 							</div>
 							<div class="md:col-5">
 								<label class="form-label small mb-1" for="con_secret">' . lang('Secret key') . '</label>
-								<input type="password" class="form-control form-control-sm" id="con_secret" autocomplete="off">
+								<input type="password" class="form-control form-control-sm" id="con_secret" autocomplete="new-password">
 							</div>
 							<div class="md:col-2 d-flex gap-3">
 								<button type="submit" class="btn btn-sm btn-solid theme-primary flex-grow-1" id="con_connect"><i class="bi bi-plug me-1"></i>' . lang('Connect') . '</button>
