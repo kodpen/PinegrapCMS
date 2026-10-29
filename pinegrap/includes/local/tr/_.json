@@ -347,6 +347,7 @@
     "{var:1} - series and number; never restarts": "{var:1} - seri ve numara; hiç baştan başlamaz",
     "{var:1} - series, year and nine digits; restarts every year (the GİB shape)": "{var:1} - seri, yıl ve dokuz hane; her yıl baştan başlar (GİB biçimi)",
     "{var:1} - series, year and number; restarts every year": "{var:1} - seri, yıl ve numara; her yıl baştan başlar",
+    "{var:1} / Q{var:2}": "{var:1} / {var:2}. Çeyrek",
     "{var:1} / {var:2} bytes": "{var:1} / {var:2} bayt",
     "{var:1} / {var:2} bytes, {var:3} of {var:4} columns inline; {var:5}": "{var:1} / {var:2} bayt, {var:4} sütunun {var:3} tanesi satır içinde; {var:5}",
     "{var:1} / {var:2} read": "{var:1} / {var:2} okudu",
