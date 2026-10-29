@@ -107,6 +107,10 @@ jobs:
         if: ${{ hashFiles('tools/build_js.php') != '' }}
         run: php tools/build_js.php --check
 
+      - name: Minified stylesheets match their sources (tools/build_css.php --check)
+        if: ${{ hashFiles('tools/build_css.php') != '' }}
+        run: php tools/build_css.php --check
+
       - name: Code editor bundle matches its sources (tools/build_code_editor.php --check)
         if: ${{ hashFiles('tools/build_code_editor.php') != '' }}
         run: php tools/build_code_editor.php --check

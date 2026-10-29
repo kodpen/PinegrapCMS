@@ -20,7 +20,8 @@
 #   any change outside the      php -l of the changed PHP files, translation
 #   documentation (docs/,       keys, designer bindings, external API schema,
 #   .github/, .claude/, the     get_file.php copies, Bootstrap 6 panel
-#                               markup (check_bs6.php --strict), unit tests
+#                               markup (check_bs6.php --strict), minified
+#                               stylesheets (build_css.php --check), unit tests
 #   root *.md files)
 #   a change to a panel script  node --check of the panel scripts CI checks,
 #   or to how they are built    minified scripts against their sources
@@ -291,6 +292,7 @@ check_commit() {
 		run_tool 'external API schema' check_api_schema.php
 		run_tool 'get_file.php copies' check_copies.php
 		run_tool 'Bootstrap 6 panel markup' check_bs6.php --strict
+		run_tool 'minified stylesheets' build_css.php --check
 		run_tool 'unit tests' test.php
 
 	fi
