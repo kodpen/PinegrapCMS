@@ -2278,14 +2278,19 @@ echo '
 		if (current) { renderLog(current.log, this.checked); }
 	});
 
+	// Each step of the delete confirm focuses the button that replaces the
+	// one it hid, so focus does not fall to the page top.
 	document.getElementById("d_delete_ask").addEventListener("click", function () {
 		this.classList.add("d-none");
 		document.getElementById("d_delete_confirm").classList.remove("d-none");
+		document.querySelector("#d_delete_confirm .theme-danger").focus();
 	});
 
 	document.getElementById("d_delete_no").addEventListener("click", function () {
+		var ask = document.getElementById("d_delete_ask");
 		document.getElementById("d_delete_confirm").classList.add("d-none");
-		document.getElementById("d_delete_ask").classList.remove("d-none");
+		ask.classList.remove("d-none");
+		ask.focus();
 	});
 
 	// Filter
@@ -2358,9 +2363,31 @@ echo '
 		}
 		closeButton.addEventListener("click", function () {
 			if (this.classList.contains("disabled")) { return; }
+			inerted.forEach(function (node) { node.inert = false; });
 			document.getElementById("api_secret_sheet").remove();
+			var newButton = document.querySelector("[data-bs-target=\"#api_new\"]");
+			if (newButton) { newButton.focus(); }
 		});
 	}
+
+	// The sheet is a dialog shown open over a fixed, dimmed layer. Once the
+	// page is parsed, everything beside the sheet is made inert, so Tab
+	// stays inside it until Close, and the sheet takes focus.
+	var inerted = [];
+	document.addEventListener("DOMContentLoaded", function () {
+		var sheet = document.getElementById("api_secret_sheet");
+		if (!sheet) { return; }
+		for (var level = sheet; level.parentNode && level !== document.body; level = level.parentNode) {
+			Array.prototype.forEach.call(level.parentNode.children, function (node) {
+				if ((node !== level) && !node.inert && (node.tagName !== "SCRIPT")) {
+					node.inert = true;
+					inerted.push(node);
+				}
+			});
+		}
+		var first = sheet.querySelector("button:not(.disabled), input, a[href]");
+		if (first) { first.focus(); }
+	});
 
 })();
 </script>' . output_footer();

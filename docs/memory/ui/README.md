@@ -101,6 +101,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
+- focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API applications sheet and delete confirm, Modify Selected price method)
 - folder-shared-form.md: The folder create and edit screens share includes/forms/folder_form.php: what it holds, the inputs that differ, what stays in the screens
 - form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places

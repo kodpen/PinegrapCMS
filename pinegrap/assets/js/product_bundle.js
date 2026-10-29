@@ -132,7 +132,12 @@
         var button = event.target.closest('.pg-pb-bundle-remove');
 
         if (button) {
-            button.closest('tr').remove();
+            // Focus goes to the next row's quantity, else the search box, so
+            // it does not fall to the page top with the row.
+            var row = button.closest('tr');
+            var next = row.nextElementSibling ? row.nextElementSibling.querySelector('input[name="bundle_item_quantity[]"]') : null;
+            row.remove();
+            (next || search).focus();
         }
     });
 }());
