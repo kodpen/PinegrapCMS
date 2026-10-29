@@ -116,32 +116,37 @@ function test_ws_bulk_file_table_reads_csv()
 	pg_assert_false(ws_bulk_file_table(__FILE__, 'notlar.txt')['ok'], 'not a table file');
 }
 
-// The file button sends through a ws_ action with the token checked; a card
-// the person made names them, not an assistant, when it is applied. The
-// pasted-list window is gone: several lines go under /create product.
-function test_ws_bulk_create_propose_action_and_own_card()
+// A file is made into drafts by /create product answering it or sent with
+// it; the file's button, its action and the channel's flag are gone. A card
+// the person made names them, not an assistant, when it is applied.
+function test_ws_bulk_file_source_and_own_card()
 {
-	$row = pg_panel_action('ws_bulk_create_propose');
+	pg_assert_true(ws_bulk_file_is_table('Liste.CSV'), 'a CSV');
+	pg_assert_true(ws_bulk_file_is_table('urunler.xlsx') && ws_bulk_file_is_table('a.xlsm') && ws_bulk_file_is_table('a.xls') && ws_bulk_file_is_table('a.ods'), 'the spreadsheets the import reads');
+	pg_assert_false(ws_bulk_file_is_table('notlar.txt') || ws_bulk_file_is_table('csv') || ws_bulk_file_is_table('a.xlsx.pdf'), 'nothing else');
 
-	pg_assert_true(is_array($row), 'ws_bulk_create_propose is in the table');
-	pg_assert_same('pg_panel_ws', $row['handler'] ?? '', 'answered by the workspace');
-	pg_assert_true(!empty($row['token']), 'with the token checked');
+	pg_assert_false(is_array(pg_panel_action('ws_bulk_create_propose')), 'the button\'s action is gone from the table');
 
 	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
-	pg_assert_contains("case 'ws_bulk_create_propose':", $actions, 'the action is answered');
+	pg_assert_false(strpos($actions, "case 'ws_bulk_create_propose':") !== false, 'and from the workspace actions');
+
+	$channels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/channels.php');
+	pg_assert_false(strpos($channels, 'bulk_products') !== false, 'the channel carries no flag for it');
 
 	$bulk = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/bulk.php');
 	pg_assert_contains("\$own = ((int) \$change['request_id'] === 0);", $bulk, 'the step knows a card of the person\'s own');
 	pg_assert_contains("ws_change_source(array('kind' => 'person'", $bulk, 'and names the person in the records\' sentences');
 	pg_assert_contains("'Bulk change by {var:1}:", $bulk, 'and in the decision');
+	pg_assert_false(strpos($bulk, "'bulk_make_products'") !== false, 'the button\'s label is gone');
 
 	$sources = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/bulk_sources.php');
 	pg_assert_contains('ws_bulk_create_input($viewer, \'product\', $laid[\'rows\'])', $sources, 'the rows are checked as an assistant\'s would be');
 	pg_assert_contains('ws_can_read_channel($viewer, $channel)', $sources, 'a file is read only from a channel the person may read');
-	pg_assert_false(strpos($sources, "\$source['text']") !== false, 'no pasted text is read by the action');
-	pg_assert_false(strpos(substr($actions, strpos($actions, "case 'ws_bulk_create_propose':"), 600), "\$request['text']") !== false, 'nor sent to it');
+	pg_assert_contains('!ws_can_post_channel($viewer, $channel)', $sources, 'the card only where they may post');
+	pg_assert_contains("!ws_change_allowed(\$viewer, 'product', 0)", $sources, 'and only with the product right');
 
 	$script = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
 	pg_assert_false(strpos($script, 'bulk_make_intro') !== false, 'the window is gone from the screen');
+	pg_assert_false(strpos($script, 'bulkMakeProducts') !== false || strpos($script, 'bulk_products') !== false || strpos($script, 'ws_bulk_create_propose') !== false, 'and the file\'s button');
 	pg_assert_contains('result.command.bulk', $script, 'a bulk card from a command is told');
 }

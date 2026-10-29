@@ -432,6 +432,52 @@ function test_workspace_command_product_several_lines()
 	pg_assert_contains('ws_bulk_create_card($viewer, (int) $channel[\'id\'], $laid, (string) ($options[\'typed\'] ?? $text))', $source, 'the card hangs under the command\'s own message');
 }
 
+// /create product (or /product) with nothing after it answers a file:
+// replying to a CSV or spreadsheet, or sent with one. The answered message
+// must be of this channel; the rights are the card's own (read the file,
+// post here, make products). Text after the command stays a product.
+function test_workspace_command_product_from_a_file()
+{
+	pg_assert_true(ws_command_is_product_file('/oluştur ürün'), '/oluştur ürün');
+	pg_assert_true(ws_command_is_product_file(' /create Product '), '/create product');
+	pg_assert_true(ws_command_is_product_file('/ürün') && ws_command_is_product_file('/product'), 'the alias');
+	pg_assert_false(ws_command_is_product_file('/oluştur ürün Mavi kupa'), 'a product named after it');
+	pg_assert_false(ws_command_is_product_file('/oluştur grup') || ws_command_is_product_file('/oluştur'), 'another kind, or none');
+	pg_assert_false(ws_command_is_product_file('ürün') || ws_command_is_product_file('//ürün') || ws_command_is_product_file(''), 'no command');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+	$product = substr($source, strpos($source, 'function ws_command_product('));
+	$product = substr($product, 0, strpos($product, "\n}\n"));
+	pg_assert_true(strpos($product, "(trim((string) \$text) === '') && ((int) (\$options['parent_id'] ?? 0) > 0)") < strpos($product, 'ws_command_parse_product('), 'an empty answer reads the file before a name is asked for');
+
+	$file = substr($source, strpos($source, 'function ws_command_product_file('));
+	pg_assert_contains("((int) \$message['channel_id'] !== (int) \$channel['id'])", $file, 'a file of this channel only');
+	pg_assert_contains('ws_bulk_create_propose($viewer, (int) $channel[\'id\']', $file, 'through the file\'s card');
+
+	$actions = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/actions.php');
+	$send = substr($actions, strpos($actions, "case 'ws_send':"), 2000);
+	pg_assert_contains("'parent_id' => (int) (\$request['parent_id'] ?? 0),", substr($send, strpos($send, 'ws_command_run('), 600), 'the reply reaches the command');
+
+	$attach = substr($actions, strpos($actions, "case 'ws_attach':"), 3500);
+	pg_assert_true(strpos($attach, '!ws_bulk_file_is_table(') < strpos($attach, 'ws_message_send_file('), 'a file that is no table is refused before it is posted');
+	pg_assert_true(strpos($attach, "!ws_change_allowed(\$viewer, 'product', 0)") < strpos($attach, 'ws_message_send_file('), 'and so is a person without the product right');
+	pg_assert_contains("ws_command_product_file(\$viewer, \$channel, (int) \$result['message_id'])", $attach, 'the posted file is the source');
+}
+
+// /create group makes one group: several lines are refused with an error,
+// not read as several groups nor as one name.
+function test_workspace_command_group_one_line()
+{
+	$answer = ws_command_create(null, array('id' => 1), "grup Kupalar\nBardaklar", array());
+	pg_assert_same(array('type' => 'error', 'error' => '/create group makes one group: write its name on one line.'), $answer, 'several lines');
+
+	pg_assert_false(ws_bulk_text_is_list("Kupalar\n\n"), 'one line and empty ones is a single name');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
+	$group = substr($source, strpos($source, 'function ws_command_group('));
+	pg_assert_true(strpos($group, 'ws_bulk_text_is_list($text)') < strpos($group, 'ws_command_group_fields($text)'), 'told before the lines are joined into a name');
+}
+
 // The words after /product: the name, then a price as the last word (with
 // its currency beside it, or not) and a product group's tag anywhere.
 function test_workspace_command_parse_product()
