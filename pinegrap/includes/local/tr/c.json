@@ -1886,6 +1886,7 @@
     "Created {var:1}": "Oluşturuldu: {var:1}",
     "Created {var:1} by {var:2}.": "<strong>{var:2}</strong> tarafından oluşturuldu ({var:1}).",
     "Created.": "Oluşturuldu.",
+    "Creates a product or a product group, off sale: the kind, then its name; a product takes a price and a #group if you like. Shown to you before it is created.": "Satışa kapalı bir ürün ya da ürün grubu oluşturur: önce türü, sonra adı; ürüne istersen bir fiyat ve bir #grup da yazılır. Oluşturulmadan önce sana gösterilir.",
     "Creates a product, off sale: its name, then a price and a #group if you like. Shown to you before it is created.": "Satışa kapalı bir ürün oluşturur: önce adı, isterseniz ardından fiyatı ve #grubu. Oluşturulmadan önce size gösterilir.",
     "Creates a task: people with @, a day, an estimate after ~, a priority after !. Shown to you before it is created.": "Görev oluşturur: @ ile kişiler, bir gün, ~ ile tahmini süre, ! ile öncelik. Oluşturulmadan önce size gösterilir.",
     "Creating": "Oluşturuluyor",

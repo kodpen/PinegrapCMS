@@ -171,12 +171,13 @@ function ws_quick_edit_js_strings()
         // The card /price and /stock answer with (commands.php).
         'qe_command_title' => lang('The change that will be written'),
         'qe_record'        => lang('Record'),
-        // The drawer's new mode and the card /product answers with.
+        // The drawer's new mode and the card /product and /create answer with.
         'qc_new_product'   => lang('New product'),
         'qc_new_group'     => lang('New product group'),
         'qc_create'        => lang('Create'),
         'qc_created'       => lang('Created.'),
         'qc_command_title' => lang('The product that will be created'),
+        'qc_command_title_group' => lang('The product group that will be created'),
         'qc_all_fields'    => lang('All fields'),
         'qc_unticked'      => lang('Left unticked, nobody sees it in the store yet.'),
         'qc_name_help'     => lang('The product\'s own code (SKU): no two products share one.'),
