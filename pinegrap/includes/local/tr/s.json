@@ -1855,6 +1855,7 @@
     "Sorry, the backup folder could not be found.": "Üzgünüz, yedek klasörü bulunamadı.",
     "Sorry, the date & time you entered is in the past. Please enter a future date & time.": "Üzgünüz, girdiğiniz tarih ve saat geçmişte kaldı. Lütfen gelecekteki bir tarih ve saat girin.",
     "Sorry, the expiration year ({var:1}) is too far in the future. Please check that you have entered the correct year. We allow a maximum of 20 years in the future.": "Üzgünüz, son kullanma yılı ({var:1}) çok uzak bir tarihte. Lütfen doğru yılı girdiğinizden emin olun. En fazla 20 yıl ileriye izin veriyoruz.",
+    "Sorry, the file could not be added. Please try again.": "Üzgünüz, dosya eklenemedi. Lütfen tekrar deneyin.",
     "Sorry, the file could not be found.": "Üzgünüz, dosya bulunamadı.",
     "Sorry, the file could not be saved.": "Üzgünüz, dosya kaydedilemedi.",
     "Sorry, the file could not be uploaded, because it appears that your session expired. We recommend that you refresh the page and try again.": "Maalesef, oturumunuzun süresi dolmuş gibi göründüğü için dosya yüklenemedi. Sayfayı yenileyip tekrar denemenizi öneririz.",
