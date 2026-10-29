@@ -19,7 +19,7 @@ module: subscriptions
 
 ## How are dates and retries computed?
 - `pg_subscription_next_charge_at($from, $period, $anchor_day)`: month periods keep the first charge's day and clamp to the month's end (Jan 31 → Feb 28/29 → Mar 31); day periods add calendar days (time of day kept across DST). `pg_subscription_periods()` (twice_monthly = 15 days, as the legacy gateways); `pg_subscription_period_from_legacy()` maps `recurring_payment_period` names.
-- Ladder `pg_subscription_retry_delay_days()`: after failure 1, 2, 3 → 1, 3, 7 days; then 0 (ladder over; what follows is the dunning slice's).
+- Ladder `pg_subscription_retry_delay_days()`: after failure 1, 2, 3 → 1, 3, 7 days; then 0: the row is ended (`subscriptions-renewal.md`).
 
 ## How are card tokens and events kept?
 - `pg_subscription_card_ref_seal()` = `encrypt_string_with_iv()` "<ciphertext>:<iv>"; '' without `ENCRYPTION_KEY`. `pg_subscription_row_from_order_line()` refuses a value that is not in the sealed shape, so a plain token is never written.

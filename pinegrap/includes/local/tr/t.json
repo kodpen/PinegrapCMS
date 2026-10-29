@@ -3482,6 +3482,7 @@
     "The subscription to {var:1} was removed.": "{var:1} aboneliği kaldırıldı.",
     "The subscription was ended and the address no longer works. Remove the calendar from your calendar applications too.": "Abonelik sonlandırıldı ve adres artık çalışmıyor. Takvimi takvim uygulamalarınızdan da kaldırın.",
     "The subscription will be removed and the application will stop being told.": "Abonelik kaldırılacak ve uygulamaya artık haber verilmeyecek.",
+    "The subscription's first order or its line is missing.": "Aboneliğin ilk siparişi ya da sipariş satırı bulunamadı.",
     "The sum of the products in it": "İçindeki ürünlerin toplamı",
     "The summary could not be made in this browser.": "Özet bu tarayıcıda hazırlanamadı.",
     "The summary is written": "Özet yazılmış",

@@ -21,6 +21,12 @@ require('init.php');
 // A job also when a signed-in manager opens it: its contact lines name no one.
 pg_audit_as_job(true);
 
+// Subscriptions run by the store through a payment driver (iyzico, Stripe):
+// the due ones are charged and each paid renewal becomes an order
+// (includes/fn/subscription_renewal.php). First, so a legacy gateway that
+// stops the job below never holds them up.
+pg_subscription_renewals_run(time());
+
 // if credit/debit card payment method is enabled and payment gateway is PayPal Payments Pro, then check status of recurring profiles
 if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayPal Payments Pro')) {
     // if cURL is not installed, then output error

@@ -15,11 +15,11 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - Express-order totals: the first charge is a normal line; renewal orders reuse the stored line price. Nothing in the totals code changes.
 
 ## What remains?
-- Design note: #3183 (store-run first; no proration, period end only).
+- Design note: #3183 (store-run; no proration, period end only).
 - Slice 1 done (#3236): tables, the `recurring` mode and the store-mode operations in the contract, `includes/fn/subscriptions.php` (`commerce/subscriptions.md`).
 - Slice 2 done (#3249): iyzico store mode behind the stored-card renewals switch, `card_ref`, `charge_renewal`, `update_card`, `subscription_cancel`, the row from checkout (`commerce/subscriptions-iyzico.md`). Future-start lines get no row yet.
 - Slice 3 done (#3270): Stripe store mode (`commerce/subscriptions-stripe.md`).
-- Next: 4a renewal writer + ladder (no schema); 4b the three e-mails + Stripe's confirmation link mail (`email_campaigns.action` widening asked in #3288); account widget + API (M).
+- Slice 4a (#3290): renewal writer + ladder (`commerce/subscriptions-renewal.md`). 4b: the three e-mails + Stripe's confirmation link mail (`email_campaigns.action`: #3288); then account widget + API (M).
 
 ## Open questions?
 - Price changes on existing subscriptions: apply at the next period only, with a notice e-mail 14 days before.

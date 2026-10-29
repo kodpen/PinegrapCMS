@@ -2578,6 +2578,8 @@
     "Subscription details could not be loaded.": "Abonelik bilgileri yüklenemedi.",
     "Subscription number of payments": "Abonelik ödeme sayısı",
     "Subscription payment period": "Abonelik ödeme dönemi",
+    "Subscription renewals: {var:1} paid, {var:2} failed, {var:3} waiting for the customer, {var:4} waiting for the payment service.": "Abonelik yenilemeleri: {var:1} ödendi, {var:2} başarısız, {var:3} müşterinin onayını bekliyor, {var:4} ödeme hizmetinin yanıtını bekliyor.",
+    "Subscription {var:1} was renewed and paid, but its order could not be written. Payment: {var:2}": "{var:1} numaralı abonelik yenilendi ve ödendi, ancak siparişi yazılamadı. Ödeme: {var:2}",
     "Subscriptions": "Abonelikler",
     "Subscriptions renew by charging the card stored at the first payment, without 3D Secure. iyzico allows this only after it has approved it for your merchant account: ask iyzico first, then switch this on. While it is off, iyzico takes no subscriptions.": "Abonelikler, ilk ödemede kaydedilen karttan 3D Secure olmadan çekim yapılarak yenilenir. iyzico buna yalnızca üye iş yeri hesabınız için onay verdikten sonra izin verir: önce iyzico'ya başvurun, sonra bunu açın. Kapalıyken iyzico abonelik almaz.",
     "Subtitle": "Alt başlık",

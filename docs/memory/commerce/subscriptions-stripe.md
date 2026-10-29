@@ -23,7 +23,7 @@ module: subscriptions
 - `subscription_cancel($row)`: detaches every card of the Customer (the stored one when the list cannot be read). Lines of one order share the Customer: the cancel slice calls it only when no other live subscription of that order uses it.
 
 ## What is left?
-- The confirmation page's `payment_intent.succeeded` carries `subscription_id`, not `order_id`, so `notify()` ignores it: the renewal writer slice must take it (or re-read the intent).
+- The confirmation page's `payment_intent.succeeded` carries `subscription_id`, not `order_id`, so `notify()` ignores it: slice 4b takes it (or re-reads the intent); until then the row stays held (`subscriptions-renewal.md`).
 
 ## How was it verified?
 - `tests/payment_stripe_test.php` (stand-in HTTP caller). No Stripe test-mode run: the off-session and confirmation flows follow Stripe's documentation.
