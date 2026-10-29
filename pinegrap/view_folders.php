@@ -245,6 +245,8 @@ $explorer_lang = array(
     'duplicate' => lang('Duplicate'),
     'delete' => lang('Delete'),
     'new_folder' => lang('New Folder'),
+    'expand' => lang('Expand'),
+    'collapse' => lang('Collapse'),
     'upload_file' => lang('Upload Files or Folders'),
     'create_file' => lang('Create File'),
     'new_page' => lang('New Page'),
@@ -1002,6 +1004,7 @@ echo
 #explorer_tree_pane .tree-toggle { width: .95rem; height: .95rem; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--pg-fg-2); font-size: .58rem; border-radius: .3rem; transition: transform .12s ease; }
 #explorer_tree_pane .tree-toggle.bi-chevron-right:hover { background: var(--pg-bg-1); }
 #explorer_tree_pane .tree-toggle.open { transform: rotate(90deg); }
+#explorer_tree_pane .tree-row:focus-visible, #explorer_tree_pane .tree-toggle:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: -2px; }
 #explorer_tree_pane .tree-row > .bi-folder-fill, #explorer_tree_pane .tree-row > .bi-file-earmark-image { font-size: .92rem; line-height: 1; }
 #explorer_tree_pane .tree-label { overflow: hidden; text-overflow: ellipsis; }
 #explorer_tree_pane .tree-section-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-fg-3); padding: .55rem .45rem .2rem; user-select: none; }
@@ -1501,7 +1504,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 <li><button type="button" class="menu-item" data-scope="private"><span class="bi bi-check2 me-3" data-role="check" aria-hidden="true"></span><?php echo lang('Private'); ?></button></li>
             </ul>
         </div>
-        <div class="btn-group btn-group-sm" id="explorer_view_group" role="group">
+        <div class="btn-group btn-group-sm" id="explorer_view_group" role="group" aria-label="<?php echo lang('View'); ?>">
             <button type="button" id="view_grid_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('Grid view'); ?>"><span class="bi bi-grid-3x3-gap"></span></button>
             <button type="button" id="view_list_button" class="btn btn-text theme-secondary no-popover" aria-pressed="false" title="<?php echo lang('List view'); ?>"><span class="bi bi-list-ul"></span></button>
         </div>
@@ -1582,17 +1585,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  for these rows by id on every load, and a missing one would be a
                  null. The store rows lead to the other screen; the operator stays
                  in the same interface either way. -->
-            <div class="tree-row area-files" id="all_files_quick"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image fg-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
-            <div class="tree-row area-files" id="all_images_quick"><span class="tree-toggle"></span><span class="bi bi-images fg-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
-            <div class="tree-row area-files" id="all_pages_quick"><span class="tree-toggle"></span><span class="bi bi-window-stack fg-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
+            <div class="tree-row area-files" id="all_files_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-file-earmark-image fg-primary"></span><span class="tree-label"><?php echo lang('Files'); ?></span></div>
+            <div class="tree-row area-files" id="all_images_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-images fg-primary"></span><span class="tree-label"><?php echo lang('Pictures'); ?></span></div>
+            <div class="tree-row area-files" id="all_pages_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-window-stack fg-primary"></span><span class="tree-label"><?php echo lang('Pages'); ?></span></div>
             <?php if ($user['role'] <= 2) { ?>
-            <div class="tree-row area-files" id="short_links_quick"><span class="tree-toggle"></span><span class="bi bi-link-45deg fg-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
+            <div class="tree-row area-files" id="short_links_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-link-45deg fg-primary"></span><span class="tree-label"><?php echo lang('Short Links'); ?></span></div>
             <?php } ?>
-            <div class="tree-row area-catalog" id="all_products_quick"><span class="tree-toggle"></span><span class="bi bi-box2-heart fg-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
+            <div class="tree-row area-catalog" id="all_products_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-box2-heart fg-primary"></span><span class="tree-label"><?php echo lang('All Products'); ?></span><span class="tree-count" id="all_products_count"></span></div>
             <!-- A variant set is a group whose display type is 'select': one
                  product in several forms rather than a category. view_products.php
                  lists them on their own screen, so the store does too. -->
-            <div class="tree-row area-catalog" id="all_variant_sets_quick"><span class="tree-toggle"></span><span class="bi bi-collection-fill fg-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
+            <div class="tree-row area-catalog" id="all_variant_sets_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-collection-fill fg-primary"></span><span class="tree-label"><?php echo lang('All Variant Sets'); ?></span><span class="tree-count" id="all_variant_sets_count"></span></div>
 
             <!-- Two short lists above the tree: the ones marked to keep, and
                  the ones just visited. Both are drawn only when they hold
@@ -1613,8 +1616,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
             <?php if ($user['role'] <= 2) { ?>
             <div class="tree-section-label area-files" id="shared_section_label"><?php echo lang('Shared Items'); ?></div>
-            <div class="tree-row area-files" id="shared_quick"><span class="tree-toggle"></span><span class="bi bi-shield-lock fg-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
-            <div class="tree-row area-files" id="backups_quick"><span class="tree-toggle"></span><span class="bi bi-database fg-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
+            <div class="tree-row area-files" id="shared_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-shield-lock fg-primary"></span><span class="tree-label"><?php echo lang('Shared Folders'); ?></span></div>
+            <div class="tree-row area-files" id="backups_quick" role="link" tabindex="0"><span class="tree-toggle"></span><span class="bi bi-database fg-primary"></span><span class="tree-label"><?php echo lang('Backups'); ?></span></div>
             <?php } ?>
 
             <?php if ($explorer_erp) { ?>
@@ -1625,7 +1628,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                  menu or its drop targets take them for folders. -->
             <div class="tree-section-label area-files" id="erp_section_label"><?php echo lang('ERP'); ?></div>
             <div class="area-files" id="erp_tree_wrap">
-                <div class="tree-row" id="erp_quick"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle"></span><i class="bi bi-safe2 fg-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
+                <div class="tree-row" id="erp_quick" role="link" tabindex="0" aria-label="<?php echo lang('ERP Files'); ?>"><span class="tree-toggle bi bi-chevron-right" data-role="erp-toggle" role="button" tabindex="0" aria-expanded="false" aria-label="<?php echo lang('Expand'); ?>"></span><i class="bi bi-safe2 fg-primary" aria-hidden="true"></i><span class="tree-label"><?php echo lang('ERP Files'); ?></span></div>
                 <ul id="erp_tree" style="display:none"></ul>
             </div>
             <?php } ?>
@@ -2803,7 +2806,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var html = '';
 
         (state.erpTree || []).forEach(function (node) {
-            html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
+            html += '<li><div class="tree-row erp-tree-row' + ((node.count > 0) ? '' : ' is-empty') + '" role="link" tabindex="0" data-erp-folder="' + esc(node.key) + '" title="' + esc(node.note || node.label) + '">' +
                 '<span class="tree-toggle"></span><i class="bi ' + esc(node.icon || 'bi-folder') + ' fg-primary" aria-hidden="true"></i>' +
                 '<span class="tree-label">' + esc(node.label) + '</span><span class="tree-count">' + (parseInt(node.count, 10) || 0) + '</span></div></li>';
         });
@@ -2817,10 +2820,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!root) { return; }
 
-        root.classList.toggle('active', insideErp() && (state.erpFolder === ''));
+        markTreeRow(root, insideErp() && (state.erpFolder === ''));
 
         document.querySelectorAll('#erp_tree [data-erp-folder]').forEach(function (row) {
-            row.classList.toggle('active', insideErp() && (row.getAttribute('data-erp-folder') === state.erpFolder));
+            markTreeRow(row, insideErp() && (row.getAttribute('data-erp-folder') === state.erpFolder));
         });
     }
 
@@ -2835,7 +2838,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (!root || !list) { return; }
 
-        root.querySelector('.tree-toggle').classList.toggle('open', open);
+        syncTreeToggle(root.querySelector('.tree-toggle'), open);
         list.style.display = open ? 'block' : 'none';
         storageSet('pg_explorer_erp_open', open ? '1' : '0');
 
@@ -12083,6 +12086,38 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     function saveTreeExpanded() { storageSet(TREE_KEY, JSON.stringify(treeExpanded)); }
 
+    // A branch arrow is a toggle a keyboard can reach and a screen reader
+    // hears as Expand or Collapse; a row without children keeps an empty
+    // spacer so the labels line up.
+    function treeToggleMarkup(hasChildren, open) {
+        if (!hasChildren) { return '<span class="tree-toggle bi"></span>'; }
+
+        return '<span class="tree-toggle bi bi-chevron-right' + (open ? ' open' : '') + '" role="button" tabindex="0"' +
+            ' aria-expanded="' + (open ? 'true' : 'false') + '" aria-label="' + esc(open ? L.collapse : L.expand) + '"></span>';
+    }
+
+    // Every place that opens or closes a branch goes through here, including
+    // the create-in-tree paths that turn a childless row into a branch.
+    function syncTreeToggle(toggle, open) {
+        if (!toggle) { return; }
+
+        toggle.classList.add('bi', 'bi-chevron-right');
+        toggle.classList.toggle('open', open);
+        toggle.setAttribute('role', 'button');
+        toggle.setAttribute('tabindex', '0');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        toggle.setAttribute('aria-label', open ? L.collapse : L.expand);
+    }
+
+    // The row showing in the listing: its fill and aria-current move together.
+    function markTreeRow(row, on) {
+        if (!row) { return; }
+
+        row.classList.toggle('active', on);
+
+        if (on) { row.setAttribute('aria-current', 'page'); } else { row.removeAttribute('aria-current'); }
+    }
+
     function loadTreeChildren(listElement, nodeId, done) {
 
         if (insideCatalog()) { loadCatalogTreeChildren(listElement, nodeId, done); return; }
@@ -12097,9 +12132,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var expanded = !!treeExpanded[node.id];
 
                 li.innerHTML =
-                    '<div class="tree-row' + ((state.mode !== 'all' && node.id === state.folderId) ? ' active' : '') + '" data-folder-id="' + node.id + '"' +
+                    '<div class="tree-row' + ((state.mode !== 'all' && node.id === state.folderId) ? ' active" aria-current="page' : '') + '" role="link" tabindex="0" data-folder-id="' + node.id + '" aria-label="' + esc(node.name) + '"' +
                     ' data-name="' + esc(node.name) + '" data-parent-id="' + node.parent_id + '" data-can-edit="' + (node.can_edit ? '1' : '0') + '" data-is-root="' + (node.is_root ? '1' : '0') + '" data-empty="' + (node.empty ? '1' : '0') + '">' +
-                    '<span class="tree-toggle bi ' + (node.has_children ? ('bi-chevron-right' + (expanded ? ' open' : '')) : '') + '"></span>' +
+                    treeToggleMarkup(node.has_children, expanded) +
                     '<span class="bi bi-folder-fill ' + node.access_control_type + '"></span>' +
                     '<span class="tree-label' + (node.archived ? ' archived' : '') + '" data-role="tree-name" title="' + esc(node.name) + '">' + esc(node.name) + '</span>' +
                     '</div><ul style="display:' + (expanded ? 'block' : 'none') + '"></ul>';
@@ -12133,9 +12168,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var icon = (node.catalog_role === 'variant_set') ? 'bi-collection-fill' : 'bi-boxes';
 
                 li.innerHTML =
-                    '<div class="tree-row' + ((node.id === state.groupId) ? ' active' : '') + (node.enabled ? '' : ' catalog-off') + '" data-folder-id="' + node.id + '"' +
+                    '<div class="tree-row' + (node.enabled ? '' : ' catalog-off') + ((node.id === state.groupId) ? ' active" aria-current="page' : '') + '" role="link" tabindex="0" data-folder-id="' + node.id + '" aria-label="' + esc(node.name) + '"' +
                     ' data-name="' + esc(node.name) + '" data-parent-id="' + node.parent_id + '" data-can-edit="0" data-is-root="' + (node.is_root ? '1' : '0') + '" data-empty="' + (node.empty ? '1' : '0') + '" data-has-children="' + (node.has_children ? '1' : '0') + '" data-enabled="' + (node.enabled ? '1' : '0') + '">' +
-                    '<span class="tree-toggle bi ' + (node.has_children ? ('bi-chevron-right' + (expanded ? ' open' : '')) : '') + '"></span>' +
+                    treeToggleMarkup(node.has_children, expanded) +
                     '<span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label' + (node.enabled ? '' : ' archived') + '" data-role="tree-name" title="' + esc(node.name) + '">' + esc(node.name) + '</span>' +
                     ((node.count > 0) ? ('<span class="tree-count">' + node.count + '</span>') : '') +
@@ -12322,8 +12357,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
                 if (!shortcutsChecked || !(id > 0) || !shortcutNames[id]) { return; }
 
-                html += '<div class="tree-row' + ((live && (String(id) === String(here))) ? ' active' : '') +
-                    '" data-shortcut-id="' + id + '" title="' + esc(shortcutNames[id]) + '">' +
+                html += '<div class="tree-row' + ((live && (String(id) === String(here))) ? ' active" aria-current="page' : '') +
+                    '" role="link" tabindex="0" data-shortcut-id="' + id + '" title="' + esc(shortcutNames[id]) + '">' +
                     '<span class="tree-toggle"></span><span class="bi ' + icon + ' fg-primary"></span>' +
                     '<span class="tree-label">' + esc(shortcutNames[id]) + '</span></div>';
                 drawn++;
@@ -12341,26 +12376,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var treeLive = insideCatalog() ? (state.allFilter === '') : ((state.mode !== 'all') && (state.mode !== 'erp'));
 
         document.querySelectorAll('#explorer_tree_pane .tree-row[data-folder-id]').forEach(function (element) {
-            element.classList.toggle('active', treeLive && String(element.getAttribute('data-folder-id')) === String(activeId));
+            markTreeRow(element, treeLive && String(element.getAttribute('data-folder-id')) === String(activeId));
         });
 
         var productsRow = document.getElementById('all_products_quick');
-        if (productsRow) { productsRow.classList.toggle('active', insideCatalog() && (state.allFilter === 'products')); }
+        if (productsRow) { markTreeRow(productsRow, insideCatalog() && (state.allFilter === 'products')); }
 
         var variantsRow = document.getElementById('all_variant_sets_quick');
-        if (variantsRow) { variantsRow.classList.toggle('active', insideCatalog() && (state.allFilter === 'variants')); }
+        if (variantsRow) { markTreeRow(variantsRow, insideCatalog() && (state.allFilter === 'variants')); }
 
-        document.getElementById('all_files_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === ''));
-        document.getElementById('all_images_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'images'));
-        document.getElementById('all_pages_quick').classList.toggle('active', (state.mode === 'all') && (state.allFilter === 'pages'));
+        markTreeRow(document.getElementById('all_files_quick'), (state.mode === 'all') && (state.allFilter === ''));
+        markTreeRow(document.getElementById('all_images_quick'), (state.mode === 'all') && (state.allFilter === 'images'));
+        markTreeRow(document.getElementById('all_pages_quick'), (state.mode === 'all') && (state.allFilter === 'pages'));
         var shortLinksRow = document.getElementById('short_links_quick');
-        if (shortLinksRow) { shortLinksRow.classList.toggle('active', state.mode === 'short_links'); }
+        if (shortLinksRow) { markTreeRow(shortLinksRow, state.mode === 'short_links'); }
 
         var sharedRow = document.getElementById('shared_quick');
-        if (sharedRow) { sharedRow.classList.toggle('active', state.mode === 'shared'); }
+        if (sharedRow) { markTreeRow(sharedRow, state.mode === 'shared'); }
 
         var backupsRow = document.getElementById('backups_quick');
-        if (backupsRow) { backupsRow.classList.toggle('active', state.mode === 'backups'); }
+        if (backupsRow) { markTreeRow(backupsRow, state.mode === 'backups'); }
 
         highlightErpTree();
 
@@ -12480,9 +12515,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             saveTreeExpanded();
 
             var childList = node.row.parentElement.querySelector('ul');
-            var toggle = node.row.querySelector('.tree-toggle');
 
-            toggle.classList.add('bi-chevron-right', 'open');
+            syncTreeToggle(node.row.querySelector('.tree-toggle'), true);
             childList.style.display = 'block';
 
             loadCatalogTreeChildren(childList, node.id, function () {
@@ -12508,8 +12542,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             saveTreeExpanded();
 
             var childList = node.row.parentElement.querySelector('ul');
-            var toggle = node.row.querySelector('.tree-toggle');
-            toggle.classList.add('bi-chevron-right', 'open');
+            syncTreeToggle(node.row.querySelector('.tree-toggle'), true);
             childList.style.display = 'block';
 
             loadTreeChildren(childList, node.id, function () {
@@ -12537,7 +12570,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         var childList = row.parentElement.querySelector('ul');
 
         if (toggle && toggle.classList.contains('bi-chevron-right') && !toggle.classList.contains('open')) {
-            toggle.classList.add('open');
+            syncTreeToggle(toggle, true);
             childList.style.display = 'block';
             treeExpanded[nodeId] = true;
             saveTreeExpanded();
@@ -12546,7 +12579,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         if (toggle && toggle.classList.contains('open')) {
-            toggle.classList.remove('open');
+            syncTreeToggle(toggle, false);
             childList.style.display = 'none';
             delete treeExpanded[nodeId];
             saveTreeExpanded();
@@ -12563,6 +12596,21 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         }
 
         exitAllFiles(nodeId);
+    });
+
+    // Rows and arrows are focusable; Enter and Space press the focused one
+    // through the same click handlers a pointer uses. An inline rename's
+    // input keeps its own keys.
+    document.getElementById('explorer_tree_pane').addEventListener('keydown', function (event) {
+        if ((event.key !== 'Enter') && (event.key !== ' ')) { return; }
+        if (event.target.closest('input, textarea')) { return; }
+
+        var target = event.target.closest('.tree-row[tabindex], .tree-toggle[role="button"]');
+
+        if (!target || (target !== event.target)) { return; }
+
+        event.preventDefault();
+        target.click();
     });
 
     // In the main menu a click on a row changes the listing in place: the

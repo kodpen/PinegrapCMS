@@ -1,0 +1,24 @@
+{
+    "data": [
+        {
+            "id": 1,
+            "name": "ADANA"
+        },
+        {
+            "id": 6,
+            "name": "ANKARA"
+        },
+        {
+            "id": 34,
+            "name": "İSTANBUL"
+        },
+        {
+            "id": 35,
+            "name": "İZMİR"
+        },
+        {
+            "id": 66,
+            "name": "YOZGAT"
+        }
+    ]
+}
