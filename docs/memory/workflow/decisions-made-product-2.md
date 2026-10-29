@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-2
-description: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; the layout editor of a page not on a visual design
+description: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 ---
 
 ## What happens to a guest order the payment service's message completes? (#2984)
@@ -12,5 +12,8 @@ description: Decisions list, product part 2 (2026-10-29 on): guest account and r
 
 ## Where does a page not on a visual design edit its layout file? (#3071)
 - Decided (architect, 2026-10-29; plan `legacy-page-designer-retirement.md` L5a): a small layout-only editor screen for pages whose style is not a visual design (a classic style not yet converted, a `style_file` style, an older cell-based style): the code editor bundle on `pg_layout_read()` / `pg_layout_save()` through the designer's style-independent `layout_code` action, roles 0-1, read-only on a hosted site, as the designer's layout tab; `pg_layout_edit_url()` points the classic case at it, so L5 drops `get_layout` / `update_layout` with `page_designer.php`. Reason: the layout file does not depend on the style, so its editor must not wait for the style's conversion (#2437 keeps every site's editors while a classic style exists); `edit_custom_style.php` edits `style_code`, not the layout. A conversion hint may be added later.
+
+## Which carrier integrations come, and in which order? (#3073)
+- Owner (2026-10-29, "ilk önce açık entegrasyonu olanlarla başlayalım … sonunda hepsi olacak … yurt dışı için de seçenekler olacak"): the order is the architect's; start with the services whose integration is open (public reference and test mode); every aggregator and direct carrier follows in time; international shipping drivers come too, the US and Europe first, because the product is global. Architect: Geliver is the first label driver (`plans/shipping-carrier-labels.md` step 2); Basit Kargo and Kargonomi when their references open, Yurtiçi and Aras direct, then a global aggregator or carrier with a public API for US and Europe, chosen by the same rule.
 
 Related: docs/memory/workflow/decisions-made-product.md (part 1), docs/memory/workflow/decisions-made.md

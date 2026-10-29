@@ -33,7 +33,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-marketplace.md: Decisions list, marketplace part: n11 orders of products shipped from the n11 warehouse are not imported.
 - decisions-made-messages.md: Decisions list, messages part: which text messages are transactional (no İYS consent), the back-in-stock SMS, the cash-on-delivery code's orders, the member's SMS sign-in code.
 - decisions-made-panel.md: Decisions list, panel part: Bootstrap 6 breakpoints kept on purpose; the one date-and-time picker; the main menu in category headings; navigator screens; the front-end editor strip
-- decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; the layout editor of a page not on a visual design
+- decisions-made-product-2.md: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; layout editor of a page not on a visual design; carrier drivers
 - decisions-made-product.md: Decisions list, product part: express order and order preview totals, cookie window as the only translated UI text, publish-only editing, robots.txt vs noindex, ERP limits, erasure.
 - decisions-made-schema-2.md: Decisions list, schema part 2, approved on 2026-10-28: e-mail tables, workflow tables, MCP preamble, secret widths, prompt version, discussion follow; rules in part 1, 2026-10-29 on in part 3
 - decisions-made-schema-3.md: Decisions list, schema part 3, approved from 2026-10-29 on: checkout page and legal acceptance on the order, record_revisions, cart_quotes, ws_saved_replies; rules in part 1
