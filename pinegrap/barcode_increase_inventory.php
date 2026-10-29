@@ -173,7 +173,9 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                                 }
                             },
                             error: function() {
-                                alert("' . escape_javascript(lang('Please try again.')) . '");
+                                // A dropped connection or a failed page can come after the
+                                // stock was written, so scanning again blindly may count twice.
+                                alert("' . escape_javascript(lang('No answer came, so the inventory quantity may or may not have changed. Check the inventory of the product before scanning again.')) . '");
                             },
                             complete: function() {
                                 if(button){
@@ -228,7 +230,7 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
         ) {
             respond(array(
                 'status' => 'error',
-                'message' => lang('Invalid token.')));
+                'message' => lang('Your session expired. Reload the page and try again.')));
         }
     }
 
@@ -238,7 +240,8 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
     if (!USER_LOGGED_IN) {
         respond(array(
             'status' => 'error',
-            'message' => lang('Invalid login.')));
+            'code' => 'session',
+            'message' => lang('Your session has expired. Reload the page and sign in again.')));
     }
     // User Must be logged in.
     $user = validate_user();
