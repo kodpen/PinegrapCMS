@@ -84,7 +84,7 @@ function test_designer_panel_names_styles_inspector_translated()
 {
 	$source = designer_panel_names_source('assets/js/style_designer.js');
 
-	foreach (array('placeholder="property"', 'placeholder="value"', 'placeholder="selector"', '>inline</span>', '>overlay</span>') as $raw) {
+	foreach (array('placeholder="property"', 'placeholder="value"', 'placeholder="selector"', 'margin-left:auto">inline</span>', '#6e7681">overlay</span>') as $raw) {
 		pg_assert_true(strpos($source, $raw) === false, $raw . ' is translated');
 	}
 	pg_assert_contains("esc(_sdT('Inline'))", $source, 'inline header');

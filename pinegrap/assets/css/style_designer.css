@@ -6351,3 +6351,7 @@ body.design:has(#pg-chat-root) .sd-toast-container { bottom: 106px; }
 .sd-inner-acts .btn { text-align: left; white-space: normal; }
 
 }
+
+/* Section headers of the options panel are role=button and take focus. */
+.sd-sect-hdr:focus-visible { outline: 1px solid var(--sd-accent, #58a6ff); outline-offset: -1px; }
+.sd-sp-toggle:focus-visible { outline: 1px solid var(--sd-accent, #58a6ff); outline-offset: 1px; }
