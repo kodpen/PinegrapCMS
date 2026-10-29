@@ -74,7 +74,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - waf-legit-traffic-auto-ban-questions.md: Questions of plans/waf-legit-traffic-auto-ban.md with the owner's answers: Q1-Q6 answered (attachments, banned address, 2026.4.x patch, thresholds, global limit, address lock release)
 - waf-legit-traffic-auto-ban.md: Plan (2026-10-26, issue #1989): legitimate traffic must not end in an auto-ban: sub-resource fetches, refusals feeding the ban, staff lockout, the shield's page, visibility, self-rescue
 - widget-designability.md: Plan (done: W1-W15, W19, W23, W24, W25): legacy-layout power in widgets
-- workspace-agent-discussion-follow.md: Plan (2026-10-21, step 1 done #1121, answers open): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
+- workspace-agent-discussion-follow.md: Plan (2026-10-21; steps 1 #1121, 2 and 3 #2924 done; step 4 left): an assistant a discussion is about, or was asked in it, answers each later message there without its @name; channels unchanged
 - workspace-agent-handles.md: Plan (2026-10-21, step 1 done, answers open): each askable agent gets its own @handle, name, avatar and channel permission: outside apps, MCP agents, own-key model assistants such as @chatgpt
 - workspace-assistant-key-setup.md: Plan (2026-10-23; steps 1-3 (#1462, #1523, #1726) and question 6 done): Create on the Claude and Pinegrap AI cards makes the linked key; Claude's shows key, secret, prompt once, with a reset
 - workspace-canvas-workflow-tables.md: Plan (2026-10-23, S1-S2b #1708 #1858 #1987, T1a-T1d #2745-#2890): workflow tables, board view, the scheduled-actions API; canvas, automations, workflow mode moved to plans/workspace-flows.md

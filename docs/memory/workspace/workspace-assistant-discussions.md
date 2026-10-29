@@ -14,8 +14,8 @@ description: An assistant asked in a discussion: what it reads about it (Claude'
 - Wherever it may be asked in the discussion's channel (`ws_claude_channel_allowed()`, `ws_ai_channel_allowed()`). Where its app owner is not in the discussion it reads and answers through the person who asked: workspace-assistant-reach.md.
 - Being asked there is kept in `ws_threads.assistants` for the line under the channel message (`ws_thread_assistant_asked()`).
 
-## What is planned?
-- Answering every later message there without its @name: plans/workspace-agent-discussion-follow.md.
+## Does it answer without its @name?
+- Yes, in a discussion that follows it (PR #2924): workspace-discussion-follow.md. The screen's Stop / Follow again is step 4 of plans/workspace-agent-discussion-follow.md.
 
 ## Where are the tests?
 - tests/workspace_discussion_context_test.php (presenter, declaration, the prompt's sentence). Checked in the sandbox: a discussion's context named its channel and message, a channel's had `thread` null, the OpenAPI document declares both objects as nullable references.

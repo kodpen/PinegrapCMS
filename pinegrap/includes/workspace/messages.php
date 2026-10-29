@@ -762,7 +762,10 @@ function ws_message_send($viewer, $channel, $body, $options = array())
  * on its own (mcp_agent.php), otherwise Pinegrap AI (ai.php), which also
  * answers an alias with that server's tools. Each one checks whether it may
  * be asked in the channel and leaves a line saying why not when it may not.
- * Nothing is started here; the caller carries the queue on.
+ * In a discussion the last agent asked by name is followed, and a person's
+ * message that asks nobody and mentions nobody asks it (threads.php,
+ * ws_thread_follow_ask()). Nothing is started here; the caller carries the
+ * queue on.
  *
  * @param array  $viewer
  * @param array  $channel
@@ -773,11 +776,32 @@ function ws_message_send($viewer, $channel, $body, $options = array())
 function ws_message_ask_assistants($viewer, $channel, $message_id, $body)
 {
     $body = ws_tokens_normalise(trim((string) $body));
+    $follows = ws_channel_is_thread($channel) && function_exists('ws_thread_follow_ready') && ws_thread_follow_ready();
+
+    // The agents it asks by name, or by answering one of their answers:
+    // the last of them is followed from now on.
+    $named = $follows ? ws_thread_agents_asked($body, $message_id) : array();
+
     $claude = function_exists('ws_claude_after_send') && ws_claude_after_send($viewer, $channel, $message_id, $body);
     $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $message_id, $body) : null;
 
     // A message written to an agent's alias is the agent's alone.
     $ai = ($agent === null) && function_exists('ws_ai_after_send') && ws_ai_after_send($viewer, $channel, $message_id, $body);
+
+    if ($follows) {
+        $followed = ws_thread_follow_agent($channel['id']);
+        $message = ws_message($message_id);
+        $decision = ws_thread_follow_decide($followed, $named, $message && ((string) $message['sender_kind'] === 'user'), ws_thread_body_mentions($body));
+
+        if ($decision['follow'] !== $followed) {
+            ws_thread_follow_set($channel['id'], $decision['follow']);
+        }
+
+        $kind = ($decision['ask'] !== '') ? ws_thread_follow_ask($viewer, $channel, $message_id, $body, $decision['ask']) : '';
+        $claude = $claude || ($kind === 'claude');
+        $ai = $ai || ($kind === 'ai');
+        $agent = ($kind === 'agent') ? true : $agent;
+    }
 
     // Asked in a discussion: its channel's message says so.
     if (($claude || $ai) && ws_channel_is_thread($channel)) {

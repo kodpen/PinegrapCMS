@@ -343,20 +343,9 @@ function ws_scheduled_message_run($row, $by_hand = false)
         return 'failed';
     }
 
-    // Asked an assistant: queued as if it had been written now.
-    $body = ws_tokens_normalise(trim((string) ($action['body'] ?? '')));
-
-    if (function_exists('ws_claude_after_send')) {
-        ws_claude_after_send($viewer, $channel, $sent['message_id'], $body);
-    }
-
-    // An MCP server that is an agent itself answers its alias on its own
-    // (mcp_agent.php); then Pinegrap AI is not asked.
-    $agent = function_exists('ws_mcp_agent_after_send') ? ws_mcp_agent_after_send($viewer, $channel, $sent['message_id'], $body) : null;
-
-    if (($agent === null) && function_exists('ws_ai_after_send')) {
-        ws_ai_after_send($viewer, $channel, $sent['message_id'], $body);
-    }
+    // Asked an assistant, or written in a discussion one follows: queued as
+    // if it had been written now, as the writing box does it.
+    ws_message_ask_assistants($viewer, $channel, $sent['message_id'], (string) ($action['body'] ?? ''));
 
     log_activity(lang(array('string' => 'a scheduled workspace message of {var:1} was posted in #{var:2}', 'vars' => array(ws_person_name($row['created_by']), (string) $channel['name']))), ws_person_name($row['created_by']));
 
