@@ -113,7 +113,8 @@ function test_content_edit_names_code_fields_named()
 function test_content_edit_names_code_editor_takes_the_name()
 {
 	$source = content_edit_names_source('assets/js/pg_code_editor.js');
-	pg_assert_contains("window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': name })", $source, 'attach() names the content element');
+	pg_assert_contains("if (name) attrs['aria-label'] = name;", $source, 'attach() names the content element');
+	pg_assert_contains('window.PgCM.view.EditorView.contentAttributes.of(attrs)', $source, 'through its content attributes');
 	pg_assert_contains('function pgCeTextareaName(textarea)', $source, 'name reader');
 	pg_assert_contains("getAttribute('aria-labelledby')", $source, 'aria-labelledby is read');
 	pg_assert_contains('textarea.labels', $source, 'the label is read');

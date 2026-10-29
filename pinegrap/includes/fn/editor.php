@@ -779,7 +779,23 @@ function pg_code_editor_attach($properties)
     // follows setLanguage()).
     $format = '';
 
+    // An editable field also says, at the row's left, that Tab indents and
+    // how to make it move to the next field instead (Ctrl+M, bound in the
+    // facade); the editor's content names this line in aria-describedby.
+    // Tab already moves on from a read-only field.
+    $hint = '';
+
     if (empty($properties['readonly'])) {
+        $options['describedBy'] = $id . '_keys_hint';
+
+        $hint = '
+                    var hint = document.createElement("span");
+                    hint.id = options.describedBy;
+                    hint.className = "form-text me-auto align-self-center";
+                    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || "";
+                    hint.textContent = ' . pg_code_editor_json(lang('Tab indents. {var} makes Tab move to the next field.')) . '.replace("{var}", /mac|iphone|ipad|ipod/i.test(platform) ? "Shift+Alt+M" : "Ctrl+M");
+                    tools.insertBefore(hint, tools.firstChild);';
+
         $format = '
                     var formats = ["css","javascript","json"];
                     var format = document.createElement("button");
@@ -849,7 +865,7 @@ function pg_code_editor_attach($properties)
                         editor.focus();
                     });
                     syncMinimap();
-                    tools.appendChild(minimap);' . $format . '
+                    tools.appendChild(minimap);' . $format . $hint . '
                     var destroy = editor.destroy;
                     editor.destroy = function () {
                         if (tools.parentNode) tools.parentNode.removeChild(tools);

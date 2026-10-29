@@ -882,7 +882,14 @@
         };
 
         function keymapExtensions() {
-            var own = [{ key: 'Shift-Alt-f', run: function () { return inst.format(); } }];
+            // Tab indents, so Ctrl+M (Shift+Alt+M on a Mac) switches it to
+            // moving focus and back. The engine binds that key only in its
+            // default keymap, not in the vscode one; without it the only way
+            // out is Escape then Tab, which a dialog takes as its own Escape.
+            var own = [
+                { key: 'Shift-Alt-f', run: function () { return inst.format(); } },
+                { key: 'Ctrl-m', mac: 'Shift-Alt-m', run: C.toggleTabFocusMode }
+            ];
             if (_emmetOn(opts)) own.push({ key: 'Mod-e', run: function () { return inst.expandAbbreviation(); } });
             var list = [V.keymap.of(own)];
             if (useVscode) {
@@ -1334,8 +1341,9 @@
     // Each write raises an input event on the textarea, as typing into it
     // would, so a screen that watches its form for changes hears this one.
     // Besides create()'s options: `height` and `width` size the host,
-    // `className` is added to it, `isolate` builds the editor in a shadow
-    // root (below). The instance carries `textarea` and `container`, the
+    // `className` is added to it, `describedBy` is the id of the element
+    // that describes the field (its content's aria-describedby), `isolate`
+    // builds the editor in a shadow root (below). The instance carries `textarea` and `container`, the
     // host element in the page.
     function attach(textarea, opts) {
         opts = opts || {};
@@ -1373,8 +1381,11 @@
             // A screen reader lands on the editor's content element, not on the
             // hidden textarea, so that element carries the textarea's name.
             var name = pgCeTextareaName(textarea);
-            if (name) {
-                var named = window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': name });
+            var attrs = {};
+            if (name) attrs['aria-label'] = name;
+            if (opts.describedBy) attrs['aria-describedby'] = opts.describedBy;
+            if (name || opts.describedBy) {
+                var named = window.PgCM.view.EditorView.contentAttributes.of(attrs);
                 merged.extensions = merged.extensions ? [merged.extensions, named] : named;
             }
             return pgCeCreate(mount, merged);
