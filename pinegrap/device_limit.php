@@ -39,6 +39,16 @@ $pending_valid = is_array($pending)
 // confirm - send the visitor to sign in.
 if (!$pending_valid) {
     unset($_SESSION['software']['device_limit_pending']);
+
+    // Ran out while the question waited: say so on the sign-in screen, with
+    // the account name kept. Not for a browser already signed in, which that
+    // screen would otherwise hold on the message.
+    if ((pg_sign_in_step_state($pending, 600, time()) === 'expired') && !pg_session_signed_in()) {
+        $expired_liveform = new liveform('login');
+        $expired_liveform->mark_error('', lang('Your sign-in waited more than 10 minutes for your answer. Please sign in again.'));
+        $expired_liveform->assign_field_value('email', (string) ($pending['username'] ?? ''));
+    }
+
     header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/registration_entrance.php');
     exit();
 }
