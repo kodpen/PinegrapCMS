@@ -24,7 +24,7 @@ description: Plan (2026-10-24): scheduled actions move into Flows, no feature lo
   - R2. Done (#2803). Doors closed: Edit of an unconverted row retries `ws_scheduled_convert()`: canvas, or its problems and Duplicate (#2753 answer 1a); `scheduledGraph()` Edit, the list's New, `showAction()` edit (workspace.js, workspace_flow.js, scheduled_convert.php).
   - R3a. Done (#2823). `scheduledForm()`, `saSentenceBox()`, `saTemplates()`, `saFollowRow()`, workspace_events.js `whenBox()`/`templates()`; parity readers `templates`, `entry_points`, the form's `request` keys.
   - R3b. Done (#2905). `saActionEditor()`, its helpers, the two `scheduledEditor()`.
-  - R4. Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; memory. After R3b.
+  - R4. Routes save/preview/targets/draft, `ws_scheduled_save()`, `ws_scheduled_draft_saved()`, form config keys, strings, styles; memory; the `saMetricPicker()` comment of workspace_flow.js. After R3b.
 
 ## Which questions are answered? (owner: 1 no, 3 a on 2026-10-24; 2 b, 7 and 8 on 2026-10-27)
 1. Scheduled messages too? → no, staff's actions only; messages stay in the composer and their list.
