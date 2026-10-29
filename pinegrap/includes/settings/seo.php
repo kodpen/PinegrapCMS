@@ -345,7 +345,7 @@ $pg_settings_cards[] = '
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
                                                         <div class="pg-f-xs">
-                                                            <label for="tracking_code_duration" class="form-label">*' . lang('Tracking Code Duration') . '</label>
+                                                            <label for="tracking_code_duration" class="form-label">' . lang('Tracking Code Duration') . '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span></label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('day(s)') . '</span>
                                                                 <input type="text" required name="tracking_code_duration" id="tracking_code_duration" class="form-ghost" value="' . h($tracking_code_duration) . '" size="7" maxlength="7" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="1" style="text-align: right;" min="1" max="365" />

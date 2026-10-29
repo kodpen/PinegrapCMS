@@ -495,7 +495,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
 
             if (is_array($erp_edoc_row) && ((int) $erp_edoc_row['checked_at'] > 0)) {
                 $erp_edoc_status = '<div class="small mt-1 ' . (($erp_edoc_row['check_status'] === 'ok') ? 'fg-success' : 'fg-secondary') . '"><i class="bi ' . (($erp_edoc_row['check_status'] === 'ok') ? 'bi-check-circle' : 'bi-info-circle') . ' me-1"></i>'
-                    . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(date('d.m.Y H:i', (int) $erp_edoc_row['checked_at']), (string) $erp_edoc_row['check_message'])))) . '</div>';
+                    . h(lang(array('string' => 'Last checked {var:1}: {var:2}', 'vars' => array(get_absolute_time(array('timestamp' => (int) $erp_edoc_row['checked_at'], 'format' => 'plain_text')), (string) $erp_edoc_row['check_message'])))) . '</div>';
             }
 
             $erp_edoc_fields = '';
@@ -504,11 +504,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                 $erp_edoc_name = 'edoc_' . $erp_edoc_code . '_' . $erp_edoc_field['name'];
                 $erp_edoc_value = (string) ($erp_edoc_stored[$erp_edoc_field['name']] ?? '');
                 $erp_edoc_secret = ($erp_edoc_field['type'] === 'password');
+                // Required is only announced: a required attribute in this
+                // collapsed block would make the browser refuse the whole save.
+                $erp_edoc_required = !empty($erp_edoc_field['required']) ? ' aria-required="true"' : '';
 
                 // A choice (test or live, say) is a select; everything else
                 // is a box, and a password box is drawn empty with a hint.
                 if (($erp_edoc_field['type'] === 'select') && !empty($erp_edoc_field['options'])) {
-                    $erp_edoc_control = '<select class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '">';
+                    $erp_edoc_control = '<select class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '"' . $erp_edoc_required . '>';
 
                     foreach ((array) $erp_edoc_field['options'] as $erp_edoc_option => $erp_edoc_option_label) {
                         $erp_edoc_control .= '<option value="' . h((string) $erp_edoc_option) . '"' . (((string) $erp_edoc_option === $erp_edoc_value) ? ' selected="selected"' : '') . '>' . h((string) $erp_edoc_option_label) . '</option>';
@@ -520,12 +523,12 @@ if (!defined('PG_SETTINGS_ENTRY')) {
                     // left from before the secret-storage rule, not a pattern
                     // to copy. The payment gateways' secrets are sealed and
                     // drawn as a mask (pg_gateway_secret_fields()).
-                    $erp_edoc_control = '<input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '" />';
+                    $erp_edoc_control = '<input type="' . ($erp_edoc_secret ? 'password' : 'text') . '" class="form-control" id="' . h($erp_edoc_name) . '" name="' . h($erp_edoc_name) . '" value="' . h($erp_edoc_value) . '" autocomplete="' . ($erp_edoc_secret ? 'new-password' : 'off') . '"' . $erp_edoc_required . ' />';
                 }
 
                 $erp_edoc_fields .= '
                                                                 <div class="pg-f-md">
-                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . (!empty($erp_edoc_field['required']) ? ' <span class="fg-danger">*</span>' : '') . '</label>
+                                                                    <label class="form-label" for="' . h($erp_edoc_name) . '">' . h($erp_edoc_field['label']) . ($erp_edoc_required !== '' ? '<span class="pg-required-marker fg-danger ms-1" aria-hidden="true">*</span>' : '') . '</label>
                                                                     ' . $erp_edoc_control
                     . (($erp_edoc_field['help'] !== '') ? '<div class="form-text">' . h($erp_edoc_field['help']) . '</div>' : '') . '
                                                                 </div>';

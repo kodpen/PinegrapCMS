@@ -60,12 +60,12 @@ function test_settings_card_radio_groups_have_a_legend()
 function test_settings_card_social_setup_legend_heads_only_its_radios()
 {
 	$src = settings_card_names_source('features.php');
-	$start = strpos($src, 'lang(\'Setup\')');
+	$start = strpos($src, 'lang(\'Setup\') . \'</legend>');
 	pg_assert_true($start !== false, 'the Setup heading is there');
 
 	$block = substr($src, $start, (int) strpos($src, '</fieldset>', $start) - $start);
 	pg_assert_contains('id="social_networking_type_advanced"', $block, 'both Setup radios sit in its fieldset');
-	pg_assert_false(strpos($block, 'social_networking_services_row') !== false, 'the services block that follows is outside the fieldset');
+	pg_assert_false(strpos($block, 'id="social_networking_services_row"') !== false, 'the services block that follows is outside the fieldset');
 }
 
 function test_settings_card_code_fields_are_named()

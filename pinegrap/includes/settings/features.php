@@ -33,7 +33,7 @@ $pg_settings_cards[] = '
                                             <input type="text" name="badge_label" id="badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
                                         <div class="col-12 ">
-                                            <label class="form-label">'. lang('Site Search Type') . '</label>
+                                            <fieldset><legend class="form-label fs-md">'. lang('Site Search Type') . '</legend>
                                             <div class="form-field">
                                                 <input value="simple" class="radio" type="radio" id="search_type_simple" name="search_type" ' . $search_type_simple_checked . '>
                                                 <label class="" for="search_type_simple">'. lang('Simple') . '</label>
@@ -43,6 +43,7 @@ $pg_settings_cards[] = '
                                                 <label class="" for="search_type_advanced">'. lang('Advanced') . '</label>
                                             </div>
                                             <div class="form-text">' . lang('Advanced searches the search index, which the search index job rebuilds once a day: pages, linked files and the records of public form lists. Simple searches the text of pages as it is now and finds no form records.') . '</div>
+                                            </fieldset>
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-field">
@@ -72,8 +73,8 @@ $pg_settings_cards[] = '
                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                                                 <div class="popover-body">
                                                    <div class="row gy-5">
-                                                        <label class="form-label">'. lang('Setup') . '</label>
                                                         <div class="col-12 ">
+                                                            <fieldset><legend class="form-label fs-md">'. lang('Setup') . '</legend>
                                                             <div class="form-field d-inline-grid me-5">
                                                                 <input value="simple" class="radio collapse-switcher" type="radio" id="social_networking_type_simple" name="social_networking_type" ' . $social_networking_type_simple_checked . ' data-bs-target="#social_networking_services_row">
                                                                 <label class="" for="social_networking_type_simple">'. lang('Simple') . '</label>
@@ -82,6 +83,7 @@ $pg_settings_cards[] = '
                                                                 <input value="advanced" class="radio collapse-switcher" type="radio" id="social_networking_type_advanced" name="social_networking_type" ' . $social_networking_type_advanced_checked . ' data-bs-target="#social_networking_code_row">
                                                                 <label class="" for="social_networking_type_advanced">'. lang('Advanced') . '</label>
                                                             </div>
+                                                            </fieldset>
                                                             <div class="collapse popover fade bs-popover-bottom p-0 " id="social_networking_services_row">
                                                                 <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(15px, 0px);"></div>
                                                                 <div class="popover-body">
@@ -458,7 +460,7 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="pg-f-lg">
                                             <label for="signature_tsa_url" class="form-label">' . lang('Time Stamp Authority Address') . '</label>
-                                            <input type="text" name="signature_tsa_url" id="signature_tsa_url" maxlength="255" class="form-control" value="' . h($signature_tsa_url) . '" placeholder="https://sunucu.example/tsr" />
+                                            <input type="text" name="signature_tsa_url" id="signature_tsa_url" maxlength="255" class="form-control" value="' . h($signature_tsa_url) . '" placeholder="https://tsa.example/tsr" />
                                             <div class="form-text">' . lang('Leave empty to take no time stamp; signatures are stored exactly as they are today. Free authorities produce a real, verifiable token but are not licensed providers, so their stamp is not a "qualified time stamp" in the sense Turkish law gives that term.') . '</div>
                                         </div>
                                         <div class="pg-f-md">

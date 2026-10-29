@@ -36,7 +36,7 @@ $pg_settings_cards[] = '
                                             </div>
                                         </div>
                                         <div class="col-12 ">
-                                            <label class="form-label">' . lang('Custom CSS') . '</label>
+                                            <label class="form-label" for="custom_css">' . lang('Custom CSS') . '</label>
                                             <div id="edit_custom">
                                                 <textarea name="custom_css" id="custom_css" rows="25" cols="60" wrap="off">' . $custom_css . '</textarea>
                                                 ' . pg_code_editor_attach(array('id' => 'custom_css', 'code_type' => 'css')) . '
@@ -167,7 +167,7 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="col-12 ">
-                                            <label class="form-label">'. lang('Editor Version') . '</label>
+                                            <fieldset><legend class="form-label fs-md">'. lang('Editor Version') . '</legend>
                                             <div class="form-field">
                                                 <input value="latest" class="radio" type="radio" id="page_editor_version_latest" name="page_editor_version" ' . $page_editor_version_latest_checked . '>
                                                 <label class="" for="page_editor_version_latest">'. lang('Latest') . '</label>
@@ -176,6 +176,7 @@ $pg_settings_cards[] = '
                                                 <input value="previous" class="radio" type="radio" id="page_editor_version_previous" name="page_editor_version" ' . $page_editor_version_previous_checked . '>
                                                 <label class="" for="page_editor_version_previous">'. lang('Previous') . '</label>
                                             </div>
+                                            </fieldset>
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-field">
