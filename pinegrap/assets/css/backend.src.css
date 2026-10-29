@@ -20281,6 +20281,125 @@ html[data-bs-theme="dark"] .wsf-flag-failed { --wsf-flag-bg: #2a1d21; --wsf-flag
   text-align: left;
 }
 
+/* Windows High Contrast (forced colours). The browser paints every author
+   background as Canvas and drops box-shadow, so a state drawn only by a fill,
+   a ::before background or mask, or a shadow ring disappears. These rules
+   draw those states in system colours; outside this query nothing changes. */
+@media (forced-colors: active) {
+  /* The tick, the radio dot and the switch knob are ::before backgrounds or
+     masks; a checked switch fills its track. */
+  .check::before,
+  .radio::before,
+  .switch::before {
+    forced-color-adjust: none;
+    background-color: CanvasText;
+  }
+  .switch:has(input:checked) {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    border-color: Highlight;
+  }
+  .switch:has(input:checked)::before {
+    background-color: HighlightText;
+  }
+  /* The X is a mask over currentcolor. */
+  .btn-close {
+    forced-color-adjust: none;
+    background-color: ButtonText;
+  }
+
+  /* The current or pressed item, shown elsewhere only by a fill, a tint or a
+     shadow. :is() takes its most specific selector, so this beats every
+     screen rule it repeats. */
+  :is(
+    .nav-link.active,
+    .page-link.active,
+    .active > .page-link,
+    .list-group-item.active,
+    .menu-item.active,
+    input.btn-check:checked + .btn,
+    .btn-text.theme-secondary.active,
+    .btn-ghost.active,
+    #header .pg-um-themebtn.active,
+    .pg-filter[aria-pressed="true"],
+    button.pg-vs-cell.is-active,
+    .pg-sale-switch .btn.active,
+    .pg-sale-switch .btn[aria-pressed="true"],
+    .pg-sale-method[aria-pressed="true"],
+    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-format-tool.active,
+    .btn-check:checked + .pg-role-card,
+    .btn-check:checked + .ws-status-choice
+  ) {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  /* Labels and icons inside take the item's text colour, not their own. */
+  :is(
+    .nav-link.active,
+    .page-link.active,
+    .active > .page-link,
+    .list-group-item.active,
+    .menu-item.active,
+    input.btn-check:checked + .btn,
+    .btn-text.theme-secondary.active,
+    .btn-ghost.active,
+    #header .pg-um-themebtn.active,
+    .pg-filter[aria-pressed="true"],
+    button.pg-vs-cell.is-active,
+    .pg-sale-switch .btn.active,
+    .pg-sale-switch .btn[aria-pressed="true"],
+    .pg-sale-method[aria-pressed="true"],
+    .ws-rich-tools .btn-text.theme-secondary[aria-pressed="true"],
+    .ws-format-tool.active,
+    .btn-check:checked + .pg-role-card,
+    .btn-check:checked + .ws-status-choice
+  ) * {
+    color: inherit;
+    background-color: transparent;
+    border-color: currentcolor;
+  }
+
+  /* Progress bars: the track gets a frame, the bar a fill. */
+  .progress,
+  .progress-stacked {
+    border: 1px solid CanvasText;
+  }
+  .progress-bar {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+  }
+
+  /* Stepper: every disc gets a frame, a reached step a fill, the current step
+     a ring as well. */
+  .stepper-item::before {
+    border: 1px solid CanvasText;
+  }
+  .stepper-item.active::before {
+    forced-color-adjust: none;
+    background-color: Highlight;
+    color: HighlightText;
+    border-color: Highlight;
+  }
+  .stepper-item.active::after {
+    forced-color-adjust: none;
+    background-color: Highlight;
+  }
+  .stepper-item[aria-current="step"]::before {
+    outline: 2px solid CanvasText;
+    outline-offset: 2px;
+  }
+
+  /* Focus drawn only as a shadow ring: the role card and the chips field. */
+  .btn-check:focus-visible + .pg-role-card,
+  .pg-chips:focus-within {
+    outline: 2px solid Highlight;
+    outline-offset: 2px;
+  }
+}
 }
 
 /* Unlayered: Bootstrap 6 gives .fixed-top 1020 in its helpers layer, which
