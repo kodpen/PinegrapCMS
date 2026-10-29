@@ -424,16 +424,9 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
         return $out;
     }
 
-    $message_ids = array();
-    $task_ids = array();
-
-    foreach ((array) db_items("SELECT source_type, source_id FROM ws_refs WHERE " . implode(' OR ', $where) . " ORDER BY id DESC LIMIT 500") as $row) {
-        if ($row['source_type'] === 'message') {
-            $message_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        } else {
-            $task_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        }
-    }
+    $sources = ws_ref_sources(db_items("SELECT source_type, source_id FROM ws_refs WHERE " . implode(' OR ', $where) . " ORDER BY id DESC LIMIT 500"));
+    $message_ids = $sources['message'];
+    $task_ids = $sources['task'];
 
     $after = ($before > 0) ? " AND created_at < '" . (int) $before . "'" : '';
     $claude = !empty($viewer['history_claude']);

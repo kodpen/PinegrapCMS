@@ -432,6 +432,43 @@ function ws_refs_store($source_type, $source_id, $channel_id, $tokens)
 }
 
 /**
+ * The texts whose tags ws_refs keeps, as its source_type names them.
+ *
+ * @return string[]
+ */
+function ws_ref_source_types()
+{
+    return array('message', 'task');
+}
+
+/**
+ * The ids of ws_refs rows grouped by the text each tag was written in, per
+ * source of ws_ref_source_types(), each id once, in the order read. A row of
+ * any other source is left out rather than read as a message or a task: its
+ * id belongs to another table, and who may see it is that source's own
+ * check. That includes the '' an ENUM column keeps, under the site's
+ * non-strict sql_mode, for a value it does not list.
+ *
+ * @param array[] $rows source_type, source_id
+ * @return array source type => int[] (id => id)
+ */
+function ws_ref_sources($rows)
+{
+    $out = array_fill_keys(ws_ref_source_types(), array());
+
+    foreach ((array) $rows as $row) {
+        $type = (string) ($row['source_type'] ?? '');
+        $id = (int) ($row['source_id'] ?? 0);
+
+        if (isset($out[$type]) && ($id > 0)) {
+            $out[$type][$id] = $id;
+        }
+    }
+
+    return $out;
+}
+
+/**
  * A money amount in minor units, as the panel prints prices.
  *
  * @param int $minor
@@ -1320,22 +1357,14 @@ function ws_record_refs($viewer, $type, $id, $limit = 20)
         return $out;
     }
 
-    $rows = (array) db_items("SELECT r.source_type, r.source_id, r.channel_id
+    $sources = ws_ref_sources(db_items("SELECT r.source_type, r.source_id, r.channel_id
         FROM ws_refs r
         WHERE r.ref_type = '" . e($type) . "' AND r.ref_id = '" . $id . "'
         ORDER BY r.id DESC
-        LIMIT 200");
+        LIMIT 200"));
 
-    $message_ids = array();
-    $task_ids = array();
-
-    foreach ($rows as $row) {
-        if ($row['source_type'] === 'message') {
-            $message_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        } else {
-            $task_ids[(int) $row['source_id']] = (int) $row['source_id'];
-        }
-    }
+    $message_ids = $sources['message'];
+    $task_ids = $sources['task'];
 
     if (!empty($message_ids)) {
         $messages = (array) db_items("SELECT m.id, m.channel_id, m.sender_id, m.body, m.kind, m.created_at, m.task_id
