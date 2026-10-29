@@ -105,6 +105,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_order_legal_acceptance(); // 11.0.121
 	upgrade_2026_11_0_paytr();                  // 11.0.122
 	upgrade_2026_11_0_record_revisions();       // 11.0.123
+	upgrade_2026_11_0_shipment_labels();        // 11.0.125
 
 }
 
@@ -3334,5 +3335,43 @@ function upgrade_2026_11_0_record_revisions() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Collections: every save that changes an item of a collection form is kept as a revision, with who saved it and when; the page revision settings (how many and for how many days) apply to items too.');
+
+}
+
+// Shipment labels (includes/fn/shipment_labels.php).
+//
+// One row for every label a carrier label service opened: the service's
+// reference (its own id of the shipment, unique per driver), the barcode,
+// the parcel it belongs to by (ship_to_id, number), which stays when the
+// parcel row is pruned, the state (active, cancelled; the values live in the
+// code) and the document's file name under data/shipping_labels/.
+// label_removed_at is set once the daily sweep or an erasure removed the
+// file; the row stays with the order.
+function upgrade_2026_11_0_shipment_labels() {
+
+	install_create_table('shipment_labels', "CREATE TABLE shipment_labels (
+		id                INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		order_id          INT UNSIGNED NOT NULL DEFAULT 0,
+		ship_to_id        INT UNSIGNED NOT NULL DEFAULT 0,
+		number            VARCHAR(40) NOT NULL DEFAULT '',
+		driver            VARCHAR(32) NOT NULL DEFAULT '',
+		reference         VARCHAR(100) NOT NULL DEFAULT '',
+		barcode           VARCHAR(100) NOT NULL DEFAULT '',
+		label_format      VARCHAR(8) NOT NULL DEFAULT '',
+		label_file        VARCHAR(100) NOT NULL DEFAULT '',
+		state             VARCHAR(16) NOT NULL DEFAULT 'active',
+		is_return         TINYINT(1) NOT NULL DEFAULT 0,
+		user_id           INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at        INT UNSIGNED NOT NULL DEFAULT 0,
+		cancelled_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		label_removed_at  INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uk_shipment_label_reference (driver, reference),
+		KEY idx_shipment_label_order (order_id),
+		KEY idx_shipment_label_parcel (ship_to_id, number),
+		KEY idx_shipment_label_state (state, driver)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Shipping labels: an order\'s address can get a label from a carrier label service switched on in the Shipping settings, printed again from the order; a label document is kept for 30 days after delivery or cancellation and 90 days at most.');
 
 }

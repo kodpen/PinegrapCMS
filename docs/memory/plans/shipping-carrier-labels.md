@@ -1,6 +1,6 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; steps 1-2 done, 3a #PRNUM): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
@@ -19,7 +19,7 @@ description: Plan (approved 2026-10-19; steps 1-2 done, 3a #PRNUM): carrier APIs
 1. Driver interface, settings card (credentials encrypted), connection test (S). Done in PR #2378 (`commerce/carrier-label-drivers.md`).
 2. Geliver driver (#3073). Done in PR #3096 (`commerce/carrier-label-geliver.md`); the `TRACK_UPDATED` webhook later (M).
 3. Panel actions single + bulk; `shipment_labels` and `data/shipping_labels/`, retention 30/90 days (#3108, `workflow/decisions-made-schema-3.md`) (M).
-   - 3a. Done in PR #PRNUM (`commerce/shipment-labels.md`): table, files, Create Label and reprint on the order, sweep, erasure, order delete.
+   - 3a. Done in PR #3117 (`commerce/shipment-labels.md`): table, files, Create Label and reprint on the order, sweep, erasure, order delete.
    - 3b. Next: bulk labels for selected orders merged on the fly into one PDF (none kept); cancel through `cancel()`, then `state` and the parcel pruned through the write path; return labels (`is_return`).
 4. Status polling job in the dispatcher, write-back through the single path (S).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).

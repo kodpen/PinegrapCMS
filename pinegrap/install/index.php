@@ -9089,6 +9089,7 @@ function get_tables() {
 		'page_drafts',
 		'page_revisions',
 		'record_revisions',
+		'shipment_labels',
 		'prototype_links',
 	);
 
