@@ -5,7 +5,7 @@ description: Incoming e-mail into Workspace channels (G1-G3, G5-G7 done, owner 2
 
 ## What is it and where does it stand?
 - Mail to `support@company.com` becomes a card in a Workspace channel; the team discusses, opens tasks and replies by e-mail from there. Research note `notes/workspace-arastirma.md` §4, item 2.3.
-- Done: G1 core #2586, #2676, #2710, #2738; G2 IMAP read #2764, #2788, #2806, #2828; G3 reply #2846, #2872, #2885; G6 routing #2904; G5a status and auto-reply #2923; G5b holder, notices, first-response target, event, E-mails list #2942; G7 API and MCP (branch `feature/incoming-email-g7`, `workspace/mail-api.md`). Each has its `workspace/mail-*.md` file (workspace README). Next: G4 (connected Microsoft 365 account, answer 2); G8 needs an AI key; G9 only for push transports.
+- Done: G1 core #2586, #2676, #2710, #2738; G2 IMAP read #2764, #2788, #2806, #2828; G3 reply #2846, #2872, #2885; G6 routing #2904; G5a status and auto-reply #2923; G5b holder, notices, first-response target, event, E-mails list #2942; G7 API and MCP #2952 (`workspace/mail-api.md`). Each has its `workspace/mail-*.md` file (workspace README). Next: G4 (connected Microsoft 365 account, answer 2); G8 needs an AI key; G9 only for push transports.
 - Naming: "gelen kutusu" / `ws_inbox` / `GET /workspace/inbox` already means notifications. This feature is "Gelen e-posta" / "E-posta kutuları" in the UI, `ws_mail_*` in code, `/workspace/mail/*` in the API; never "inbox".
 - Out of scope: own mail server or piping, POP3, IMAP IDLE (holds a PHP worker), HTML rendering, customer portal, knowledge base, WhatsApp.
 - Design details: docs/memory/plans/incoming-email-design.md
