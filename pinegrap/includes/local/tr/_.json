@@ -952,6 +952,7 @@
     "{var:1} of the ticked products are not matched, or their match was refused, and were not queued.": "İşaretlenen ürünlerden {var:1} tanesi eşleşmemiş ya da eşleşmesi reddedilmiş; bunlar kuyruğa alınmadı.",
     "{var:1} of the {var:2} open tasks here are past their due date.": "Buradaki {var:2} açık görevin {var:1} tanesinin tarihi geçti.",
     "{var:1} of them are of a type that cannot be uploaded and will not be sent": "{var:1} tanesi yüklenemeyen türde ve gönderilmeyecek",
+    "{var:1} of them are older than {var:2} days. The general job removes them a little at a time; \"Clean up visitor records now\" starts on them at once.": "Bunların {var:1} tanesi {var:2} günden eski. Genel görev onları azar azar siler; \"Ziyaretçi kayıtlarını şimdi temizle\" düğmesi hemen başlatır.",
     "{var:1} of them are older than {var:2} days. The general job removes them a little at a time; the button below starts on them now.": "Bunların {var:1} tanesi {var:2} günden eski. Genel görev onları azar azar siler; aşağıdaki düğme hemen başlatır.",
     "{var:1} of them are over the limit and will not be sent": "{var:1} tanesi sınırın üzerinde, gönderilmeyecek",
     "{var:1} of them cannot be read and will not be sent": "{var:1} tanesi okunamıyor, gönderilmeyecek",

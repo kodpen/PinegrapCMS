@@ -49,7 +49,7 @@ if (isset($_GET['recalculate_seo']) && (USER_ROLE < 3)) {
 
     if ($seo_run['remaining'] > 0) {
         $liveform->add_notice(lang(array(
-            'string' => 'SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click the button again to continue.',
+            'string' => 'SEO scores were updated for {var:1} page{suffix:1}. {var:2} page{suffix:2} still need to be calculated - click Refresh SEO Scores again to continue.',
             'vars' => array($seo_run['processed'], $seo_run['remaining']),
             'suffix' => array((($seo_run['processed'] == 1) ? '' : 's'), (($seo_run['remaining'] == 1) ? '' : 's')))));
     } else {
@@ -104,7 +104,7 @@ if (isset($_GET['analyze_seo']) && (USER_ROLE < 3)) {
 
     if ($analyze_run['remaining'] > 0) {
         $liveform->add_notice(lang(array(
-            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click the button again to continue.',
+            'string' => 'The HTML structure of {var:1} record{suffix:1} was analyzed. {var:2} record{suffix:2} still need to be analyzed - click Analyze HTML Structure again to continue.',
             'vars' => array($analyze_run['analyzed'], $analyze_run['remaining']),
             'suffix' => array((($analyze_run['analyzed'] == 1) ? '' : 's'), (($analyze_run['remaining'] == 1) ? '' : 's')))));
     } elseif ($analyze_run['analyzed'] > 0) {
