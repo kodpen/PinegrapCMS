@@ -568,3 +568,106 @@ function ws_wtables_reached($viewer, $scope = 'all')
 
     return $rows;
 }
+
+/* ---------------------------------------------------------------------------
+   Webhook events of a table shared in a public channel
+   --------------------------------------------------------------------------- */
+
+/**
+ * The public channels a table is shared in, oldest share first: its rows'
+ * events go out only for these, since every reader of the site's public
+ * channels may read them. A table shared only with people or in private
+ * channels is never announced.
+ *
+ * @param int $table_id
+ * @return int[]
+ */
+function ws_wtable_event_channels($table_id)
+{
+    if (!ws_wtables_ready() || ((int) $table_id <= 0)) {
+        return array();
+    }
+
+    $ids = array();
+
+    foreach ((array) db_items("SELECT s.target_id FROM ws_wtable_shares s JOIN ws_channels c ON c.id = s.target_id
+        WHERE s.table_id = '" . (int) $table_id . "' AND s.target_type = 'channel' AND c.kind = 'public' AND c.archived_at = 0
+        ORDER BY s.id") as $share) {
+        $ids[] = (int) $share['target_id'];
+    }
+
+    return $ids;
+}
+
+/**
+ * The body of a row event: the table, the row (ws_wtable_row_present(), or
+ * id and position for a deleted one), who did it, the column ids written by
+ * a change, and the public channels the table is shared in. channel_id is
+ * the first of them, the one a subscription narrowed to a channel group is
+ * matched by: one event per change, however many channels show the table.
+ *
+ * @param array $table       ws_wtables row
+ * @param array $row         the row as presented
+ * @param int[] $channel_ids ws_wtable_event_channels(), not empty
+ * @param int   $actor_id
+ * @param array $changed     column ids written (a change only)
+ * @return array
+ */
+function ws_wtable_row_event_body($table, $row, $channel_ids, $actor_id, $changed = array())
+{
+    $body = array(
+        'channel_id'  => (int) reset($channel_ids),
+        'channel_ids' => array_map('intval', array_values($channel_ids)),
+        'table'       => array('id' => (int) $table['id'], 'name' => (string) $table['name']),
+        'row'         => $row,
+        'by'          => (int) $actor_id,
+    );
+
+    if (!empty($changed)) {
+        $body['changed'] = array_map('intval', array_values($changed));
+    }
+
+    return $body;
+}
+
+/**
+ * Announce a row written or deleted, when the table is shared in a public
+ * channel.
+ *
+ * @param string    $what     created | updated | deleted
+ * @param array     $table
+ * @param int|array $row      the row id, or the stored row of a deleted one
+ * @param int       $actor_id
+ * @param array     $changed  column ids written (a change)
+ */
+function ws_wtable_row_announce($what, $table, $row, $actor_id, $changed = array())
+{
+    $channel_ids = ws_wtable_event_channels((int) $table['id']);
+
+    if (empty($channel_ids) || !function_exists('pg_announce')) {
+        return;
+    }
+
+    if ($what === 'deleted') {
+        $body = ws_wtable_row_event_body($table, array('id' => (int) $row['id'], 'position' => (int) $row['position']), $channel_ids, $actor_id);
+        pg_announce('workspace.wtable.row.deleted', array('channel_id' => $body['channel_id']) + $body);
+
+        return;
+    }
+
+    $stored = ws_wtable_row((int) $table['id'], (int) $row);
+
+    if (!$stored) {
+        return;
+    }
+
+    $body = ws_wtable_row_event_body($table, ws_wtable_row_present(ws_wtable_row_out($stored, ws_wtable_columns((int) $table['id']))), $channel_ids, $actor_id, $changed);
+
+    // Each event named in full, with channel_id in the call itself, as the
+    // check that every workspace event names its channel reads it.
+    if ($what === 'created') {
+        pg_announce('workspace.wtable.row.created', array('channel_id' => $body['channel_id']) + $body);
+    } else {
+        pg_announce('workspace.wtable.row.updated', array('channel_id' => $body['channel_id']) + $body);
+    }
+}

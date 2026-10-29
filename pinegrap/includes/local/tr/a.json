@@ -2139,6 +2139,7 @@
     "An assistant does not hand tasks to assistants or take them back.": "Bir asistan görevleri asistanlara veremez ve geri alamaz.",
     "An assistant does not manage the MCP servers of the site; an administrator does.": "Bir asistan sitenin MCP sunucularını yönetmez; bunu bir yönetici yapar.",
     "An assistant does not share a flow; the person does.": "Bir asistan akış paylaşmaz; paylaşımı kişinin kendisi yapar.",
+    "An assistant does not share a table; the person does.": "Bir tabloyu asistan paylaşmaz; kişinin kendisi paylaşır.",
     "An assistant does not start or cancel the runs of a flow; the person does.": "Bir asistan bir akışın çalıştırmalarını başlatmaz ya da iptal etmez; bunu kişi yapar.",
     "An assistant does not try again or skip the boxes of a flow's run; the person does.": "Bir asistan bir akış çalışmasının kutularını yeniden denemez veya atlamaz; bunu kişi yapar.",
     "An assistant does not try the boxes of a flow; the person does.": "Bir asistan akışın kutularını denemez; bunu kişinin kendisi yapar.",
