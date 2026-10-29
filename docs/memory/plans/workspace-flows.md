@@ -22,11 +22,11 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 
 ## Slices (one PR each; phase 1 = F1-F3, a process drawn and run)
 1. Done #1503: F1 store: four tables (11.0.80), `flow_id`, graph check, API (workspace/workspace-flows-store.md).
-2. Done #1529: F2 canvas: draw, save, publish; manual, task, end boxes, "after" arrows. Left: workspace/workspace-flows-canvas.md.
-3. F3 runner: Run, tasks wait for done, run view, cancel. F3a engine, API: PR #1551 (workspace/workspace-flows-runner.md); F3b run view: PR #1555.
+2. Done #1529: F2 canvas: draw, save, publish (workspace/workspace-flows-canvas.md).
+3. Done: F3 runner #1551 (workspace/workspace-flows-runner.md), run view #1555.
 4. F4 rules: anchor triggers, condition, steps.php boxes, `{{node.*}}`, dry-run a box.
 5. F5 approval, delay, wait with timeout, retry or skip.
-6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes; F6c workflow mode (#3122): F6c-a done #3145 (workspace/workspace-flows-from-table.md).
+6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes: F6b-1 server, F6b-2 canvas form (after plans/workspace-flows-look.md); F6c workflow mode (#3122): F6c-a done #3145 (workspace/workspace-flows-from-table.md).
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md).
 8. F8 MCP box (answer 5): F8a read tool #3000; F8b canvas form #3028; F8c writes propose and wait: F8c-1 server done #3144, F8c-2 canvas form.
 
