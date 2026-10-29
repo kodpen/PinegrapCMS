@@ -32,8 +32,8 @@ $liveform = new liveform('erp_cashflow');
 // forecast, includes/erp/cash_forecast.php), side by side in the toolbar.
 $output_view_pills = function ($active) {
     return '<ul class="nav nav-pills nav-sm mb-0 me-3">
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'flow') ? ' active' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
-                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'forecast') ? ' active' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
+                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'flow') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php">' . lang('What happened') . '</a></li>
+                    <li class="nav-item"><a class="nav-link py-1 px-3' . (($active === 'forecast') ? ' active" aria-current="page' : '') . '" href="erp_cashflow.php?view=forecast">' . lang('What is ahead') . '</a></li>
                 </ul>';
 };
 

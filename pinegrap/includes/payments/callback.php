@@ -113,7 +113,9 @@ function pg_payment_notify_order($answer)
  * Whether a payment a notify() answer reports is the incomplete order's own,
  * whole: the order keeps that payment id as its transaction id (written when
  * the visitor was sent to the service), the amount equals orders.total in
- * integer hundredths, and the currency is the store's. Pure.
+ * integer hundredths, or exceeds it by the installment difference of a
+ * payment in two or more installments (pg_payment_paid_totals()), and the
+ * currency is the store's. Pure.
  *
  * @param array  $answer         pg_payment_answer() of notify()
  * @param array  $order          pg_payment_notify_order()
@@ -127,9 +129,7 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
 
     return ($transaction_id !== '')
         && ((string) ($order['transaction_id'] ?? '') === $transaction_id)
-        && isset($answer['amount']) && is_int($answer['amount'])
-        && isset($order['total']) && is_numeric($order['total'])
-        && ($answer['amount'] === (int) round((float) $order['total']))
+        && (pg_payment_paid_totals($answer['amount'] ?? null, $answer['installments'] ?? 0, $order['total'] ?? null) !== null)
         && ($currency !== '')
         && ($currency === strtoupper((string) $store_currency));
 }
@@ -329,7 +329,7 @@ function pg_payment_callback_receive()
     // order's number, another request completing it first (nothing), or a
     // refusal, which alerts like any payment that does not match its order.
     if ($outcome['complete']) {
-        $completion = pg_order_complete_from_payment((int) $order['id'], (string) $answer['status']);
+        $completion = pg_order_complete_from_payment((int) $order['id'], (string) $answer['status'], array('amount' => $answer['amount'], 'installments' => $answer['installments']));
 
         if ($completion['status'] === 'completed') {
             $outcome['status'] = 'completed';

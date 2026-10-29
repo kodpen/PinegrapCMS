@@ -91,6 +91,25 @@
         }
     }
 
+    // A message shown right before the screen reloads is gone with the
+    // reload; it is stored here and shown once more on the next load.
+    function afterReload(message, kind) {
+        try {
+            window.sessionStorage.setItem('pg-tr-toast', JSON.stringify({ m: message, k: kind }));
+        } catch (e) { }
+    }
+
+    try {
+        var pending = window.sessionStorage.getItem('pg-tr-toast');
+        if (pending) {
+            window.sessionStorage.removeItem('pg-tr-toast');
+            pending = JSON.parse(pending);
+            if (pending && pending.m) {
+                toast(pending.m, pending.k);
+            }
+        }
+    } catch (e) { }
+
     function showProgress(message, done, total) {
         if (!progress) {
             return;
@@ -111,9 +130,15 @@
         }
     }
 
-    function finish(done, failed) {
+    // A job's own error, or any text that failed, comes back as an error.
+    function finish(done, failed, error) {
         showProgress(text('finished', done, failed), 1, 1);
         running = null;
+        if (error) {
+            afterReload(error, 'error');
+        } else {
+            afterReload(text('finished', done, failed), (failed > 0) ? 'error' : 'success');
+        }
         window.setTimeout(function () {
             window.location.reload();
         }, 1200);
@@ -576,10 +601,7 @@
                 showProgress(text('progress', running.done, running.total), running.done, running.total);
 
                 if (data.finished || ['done', 'failed', 'cancelled'].indexOf(current.status) !== -1) {
-                    if (current.error) {
-                        toast(current.error, 'error');
-                    }
-                    finish(running.done, running.failed);
+                    finish(running.done, running.failed, current.error);
                     return;
                 }
 
@@ -626,10 +648,7 @@
                 running.failed = parseInt(current.failed_count, 10) || 0;
 
                 if (['done', 'failed', 'cancelled'].indexOf(current.status) !== -1) {
-                    if (current.error) {
-                        toast(current.error, 'error');
-                    }
-                    finish(running.done, running.failed);
+                    finish(running.done, running.failed, current.error);
                     return;
                 }
 
@@ -702,6 +721,7 @@
                     if (!data.pending) {
                         hideProgress();
                         toast(text('nothing_pending'), 'info');
+                        afterReload(text('nothing_pending'), 'info');
                         window.setTimeout(function () { window.location.reload(); }, 800);
                         return;
                     }
@@ -709,6 +729,7 @@
                     if (!data.job_id) {
                         hideProgress();
                         toast(text('pending_by_hand', data.pending), 'info');
+                        afterReload(text('pending_by_hand', data.pending), 'info');
                         window.setTimeout(function () { window.location.reload(); }, 800);
                         return;
                     }
@@ -829,6 +850,7 @@
 
             call({ action: 'review_all', scope: config.scope, suspicious: reviewAllFlagged.checked ? 1 : 0 }).then(function (data) {
                 toast(data.message, 'success');
+                afterReload(data.message, 'success');
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
                 reviewAllGo.disabled = false;
@@ -869,6 +891,7 @@
 
             call({ action: 'clear', scope: config.scope, reviewed: clearReviewed.checked ? 1 : 0 }).then(function (data) {
                 toast(data.message, 'success');
+                afterReload(data.message, 'success');
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
                 clearButton.disabled = false;
@@ -945,6 +968,7 @@
 
             call({ action: 'accept_source', string_ids: ids }).then(function (data) {
                 toast(data.message, 'success');
+                afterReload(data.message, 'success');
                 window.setTimeout(function () { window.location.reload(); }, 800);
             }).catch(function (error) {
                 acceptGo.disabled = false;

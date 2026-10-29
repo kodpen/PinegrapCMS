@@ -160,6 +160,64 @@ function test_payment_paytr_token_hash()
 	pg_assert_same('t0lmI2Kq84zDwiknGfMiixihjklqeFxRafq0SUMtl+0=', pg_payment_paytr_token_hash($fields, 'KEYkey', 'SALTsalt'));
 }
 
+// With instalments allowed: no_installment 0 and the most instalments go
+// into the same hash.
+function test_payment_paytr_token_hash_with_installments()
+{
+	$fields = array(
+		'merchant_id'     => '123456',
+		'user_ip'         => '88.230.1.2',
+		'merchant_oid'    => 'PG42T1761730000',
+		'email'           => 'ayse@example.com',
+		'payment_amount'  => '12350',
+		'user_basket'     => 'BASKET',
+		'no_installment'  => '0',
+		'max_installment' => '6',
+		'currency'        => 'TL',
+		'test_mode'       => '0',
+	);
+
+	pg_assert_same('ctJc5iaGVh7bqlicHij9ADagMdnaH71vAub4W5IU7QE=', pg_payment_paytr_token_hash($fields, 'KEYkey', 'SALTsalt'));
+}
+
+function test_payment_paytr_max_installment()
+{
+	foreach (array('' => 0, '0' => 0, '1' => 0, '2' => 2, '12' => 12, '13' => 0, ' 6 ' => 6, '6x' => 0, '-3' => 0) as $value => $count) {
+		pg_assert_same($count, pg_payment_paytr_max_installment((string) $value), 'setting "' . $value . '"');
+	}
+
+	pg_assert_same(0, pg_payment_paytr_max_installment(null));
+	pg_assert_same(range(1, 12), array_keys(pg_payment_paytr_installment_options()), 'a single payment, then 2 to 12');
+
+	$field = null;
+
+	foreach (pg_payment_paytr_fields() as $candidate) {
+		if ($candidate['name'] === 'max_installment') {
+			$field = $candidate;
+		}
+	}
+
+	pg_assert_same('select', $field['type']);
+	pg_assert_same('1', $field['default'], 'a single payment until the store chooses');
+}
+
+// The store allows up to 6 instalments: PayTR is told so and the token
+// covers it; the amount sent stays the order's total.
+function test_payment_paytr_authorize_offers_installments()
+{
+	foreach (array('6' => array('0', '6'), '1' => array('1', '0'), '0' => array('1', '0')) as $setting => $expected) {
+		$http = payment_paytr_test_http(200, array('status' => 'success', 'token' => 'abc123TOKEN'));
+		$answer = pg_payment_answer('authorize', pg_payment_paytr_authorize_with(payment_paytr_test_order(), 12350, payment_paytr_test_payment(), payment_paytr_test_settings(array('max_installment' => pg_payment_paytr_max_installment($setting))), $http));
+		$sent = $GLOBALS['payment_paytr_test_sent'];
+
+		pg_assert_true($answer['success']);
+		pg_assert_same(12350, $answer['amount']);
+		pg_assert_same($expected, array($sent['no_installment'], $sent['max_installment']), 'setting ' . $setting);
+		pg_assert_same('12350', $sent['payment_amount']);
+		pg_assert_same(pg_payment_paytr_token_hash($sent, 'KEYkey', 'SALTsalt'), $sent['paytr_token']);
+	}
+}
+
 function test_payment_paytr_callback_hash()
 {
 	$post = array('merchant_oid' => 'PG42T1761730000', 'status' => 'success', 'total_amount' => '12350');
@@ -252,6 +310,40 @@ function test_payment_paytr_notify_completes_the_incomplete_order()
 
 	$outcome = pg_payment_notify_outcome('paytr', $answer, array('status' => 'shipped') + $order, 'TRY');
 	pg_assert_same('nothing', $outcome['status']);
+}
+
+// PayTR's notification of a payment in installments: total_amount carries
+// the difference the customer paid; the order completes for it only with
+// two or more installments.
+function test_payment_paytr_notify_installments()
+{
+	$order = array('id' => '42', 'status' => 'incomplete', 'transaction_id' => 'PG42T1761730000', 'payment_method' => 'PayTR', 'total' => '12350', 'paid_at' => 0);
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105', 'installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same(array(13105, 6), array($answer['amount'], $answer['installments']));
+	pg_assert_contains('of 131.05 TRY in 6 installments was taken', $answer['log'][0]);
+	$outcome = pg_payment_notify_outcome('paytr', $answer, $order, 'TRY');
+	pg_assert_same('complete', $outcome['status'], 'the customer paid the difference');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same('complete', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'the store paid the difference');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105', 'installment_count' => '1')), payment_paytr_test_settings()));
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'more in a single payment');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '13105')), payment_paytr_test_settings()));
+	pg_assert_same(0, $answer['installments']);
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'more, no installment count');
+
+	$answer = pg_payment_answer('notify', pg_payment_paytr_notify_with(payment_paytr_test_callback(array('total_amount' => '12000', 'installment_count' => '6')), payment_paytr_test_settings()));
+	pg_assert_same('alerted', pg_payment_notify_outcome('paytr', $answer, $order, 'TRY')['status'], 'less than the total');
+
+	foreach (array('' => 0, '0' => 0, '1' => 1, '12' => 12, '06' => 0, 'x' => 0) as $value => $count) {
+		pg_assert_same($count, pg_payment_paytr_installment_count(array('installment_count' => (string) $value)), 'installment_count "' . $value . '"');
+	}
+
+	$receive = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+	pg_assert_contains("array('amount' => \$answer['amount'], 'installments' => \$answer['installments'])", $receive, 'the completion gets what was paid');
 }
 
 function test_payment_paytr_notify_failed_payment_is_ignored()

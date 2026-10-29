@@ -260,8 +260,12 @@ if (!$_POST) {
     }
 
     
+    // Whether the form is filled from the stored item (no posted values
+    // waiting from a save that came back with errors).
+    $prefill = (isset($_SESSION['software']['liveforms']['edit_submitted_form'][$_GET['id']]) == false);
+
     // if edit submitted form screen has not been submitted already, pre-populate fields with form data
-    if (isset($_SESSION['software']['liveforms']['edit_submitted_form'][$_GET['id']]) == false) {
+    if ($prefill) {
         $query = "SELECT
                     form_data.form_field_id,
                     form_data.data,
@@ -316,6 +320,21 @@ if (!$_POST) {
         }
     }
     
+    // The History section of a collection item: Compare shows one revision
+    // beside the current values, Load fills the form with one; saving a
+    // loaded revision records it with source 'restore'.
+    $history_enabled = pg_record_revision_history_enabled($page_id);
+    $history_revision = null;
+    $history_notes = array();
+
+    if ($history_enabled && !empty($_GET['revision']) && is_scalar($_GET['revision'])) {
+        $history_revision = pg_record_revision_get($_GET['id'], (int) $_GET['revision']);
+
+        if ($history_revision) {
+            $history_notes = pg_record_revision_load($liveform, $_GET['id'], $page_id, $history_revision, $prefill);
+        }
+    }
+
     // Office use only fields are shown to a manager and above, and to a user who
     // manages forms and may edit the custom form's folder.
     $office_use_only_access = (
@@ -389,6 +408,7 @@ if (!$_POST) {
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                         ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
+                        ' . ($history_revision ? '<input type="hidden" name="restore_revision" value="' . (int) $history_revision['revision_no'] . '" />' : '') . '
                         <div class="row">
                             <div class="col-12">
                                 <div class="card my-7 ">
@@ -454,6 +474,7 @@ if (!$_POST) {
                                         ' . lang('Form Data') . '
                                     </div>
                                     <div class="card-body">
+                                        ' . ($history_revision ? pg_record_revision_loaded_notice($history_revision, $history_notes) : '') . '
                                         <div class="row">
                                             ' . $form_markup['fields'] . '
                                         </div>
@@ -470,6 +491,7 @@ if (!$_POST) {
                             </div>
                         </nav>
                     </form>
+                    ' . ($history_enabled ? '<div class="col-12">' . pg_record_revision_history_markup($_GET['id'], $page_id, (is_scalar($_GET['compare'] ?? null) ? (int) $_GET['compare'] : 0), $send_to) . '</div>' : '') . '
                 </div>
             </div>
         </div>
@@ -734,6 +756,22 @@ if (!$_POST) {
                 $new_complete = 1;
             }
 
+            // The item as it was, for its revision (collection items only;
+            // includes/fn/record_revisions.php).
+            $revision_before = pg_record_revision_before($_POST['id'] ?? 0);
+
+            // A revision loaded from the History section: only the panel's
+            // own users load one, and only a revision of this item counts.
+            $restore_revision = null;
+
+            if ($submitted_forms_manager && $revision_before && !empty($_POST['restore_revision']) && is_scalar($_POST['restore_revision'])) {
+                $restore_revision = pg_record_revision_get($_POST['id'] ?? 0, (int) $_POST['restore_revision']);
+            }
+
+            // File fields this save uploaded to or emptied itself: a restore
+            // leaves them as this save made them.
+            $files_changed = array();
+
             // update form
             $query = "UPDATE forms
                      SET
@@ -759,6 +797,8 @@ if (!$_POST) {
                         if (isset($_FILES[$field['id']]) == true) {
                             // If a new file was uploaded, then deal with that.
                             if ($_FILES[$field['id']]['name'] != '') {
+                                $files_changed[] = $field['id'];
+
                                 // Check if there is an existing file.
                                 $file = db_item(
                                     "SELECT
@@ -815,6 +855,8 @@ if (!$_POST) {
                                 ($field['required'] == 0)
                                 && ($liveform->get_field_value($field['id'] . '_delete_file') == 1)
                             ) {
+                                $files_changed[] = $field['id'];
+
                                 // Check if there is an existing file.
                                 $file = db_item(
                                     "SELECT
@@ -875,10 +917,16 @@ if (!$_POST) {
                 }
             }
 
+            if ($restore_revision) {
+                pg_record_revision_restore_files($_POST['id'] ?? 0, $page_id, $restore_revision, $files_changed);
+            }
+
             // If pretty URLs are enabled, then update address name.
             if ($pretty_urls == true) {
                 $new_address_name = update_submitted_form_address_name($_POST['id']);
             }
+
+            pg_record_revision_after($_POST['id'] ?? 0, $revision_before, $restore_revision ? 'restore' : 'edit', $user['id']);
 
             // If the form was incomplete before and has now been completed,
             // then check if custom form actions should be completed (e.g. email alerts).
@@ -969,7 +1017,9 @@ if (!$_POST) {
             } else {
                 $send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
                 if ($send_to === '/__none__') $send_to = '';
-                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int) $_POST['id'] . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : ''));
+                // A loaded revision stays loaded, so its save is still a restore.
+                $restore_no = (is_scalar($_POST['restore_revision'] ?? null) && (int) $_POST['restore_revision'] > 0) ? (int) $_POST['restore_revision'] : 0;
+                header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . (int) $_POST['id'] . (($send_to !== '') ? '&send_to=' . urlencode($send_to) : '') . (($restore_no > 0) ? '&revision=' . $restore_no : ''));
             }
         }
     }

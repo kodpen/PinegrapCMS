@@ -46,9 +46,11 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - classic-style-to-design.md: A classic style opened in the visual designer (L2, #2370): the style list button, the frame as one shared component, page trees placing it, what Save writes and what stays
 - code-view-tab-search.md: Search in all tabs of the designer's code view (page and file tabs): the bar, PgCodeEditor.findAll(), why it searches only and does not replace
 - collection-fields.md: Collection forms and field kinds (11.0.43, C2): the three columns, where the kind is written and read, which kinds each field type takes, templates that opt in (C6a), the slug kind (C5b)
+- collection-history.md: History section of a collection item (C7b, #3099): list, compare with the current values, Load, the save with source restore, what happens to files and signatures
 - collection-inputs.md: Inputs of a collection's fields by kind (C3, C3b, C3c): number, image, reference, product and page controls on the site form and the panel, radios and boxes, image preview, server checks
 - collection-lists.md: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
+- collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
@@ -221,6 +223,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - inline-drop-links-buttons.md: Designer drops: links and buttons go back into headings and paragraphs, never into a link or button; a label holds one control; a palette block is judged by what it holds.
 - language-switcher-component.md: The Language Switcher Button component (COMPONENTS.language_switcher, 2026.4.7): a placeholder in the saved body, drawn per request after the language pass; the pattern for request-bound output.
 - layout-code-tab.md: A classic page's custom layout (data/layouts/<id>.php) as a code tab of the visual designer: who may edit it, the layout_code endpoint, regenerate, unmodified on save, Ctrl+G, hosted sites
+- layout-editor-classic.md: The layout editor screen edit_page_layout.php (L5a, #3084) for a page not on a visual design: who reaches it, the layout_code action, hosted sites, where Edit Layout goes
 - layout-form-converter-editor.md: W22b "Convert to design elements" on a custom form page's system region: the button, the layout_code convert action, the widget placed after the region, toasts, rows the sync keeps
 - layout-form-converter.md: W22 classic custom form layout -> custom_form widget tree (pg_layout_form_convert): what each PHP piece becomes, choice fieldsets, CAPTCHA, ids, what is dropped or reported missing
 - layout-widget-offer.md: Y5 widget offer beside a custom layout: page type to widget kind, carried settings, the panel buttons that place it and remove the region, why no 301
@@ -342,6 +345,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - widget-lists-product.md: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together and bundle contents; where rows are read, group cards, the cross-sell block, what is left
 - widget-lists.md: Lists inside a widget record (#1680): loop_area + props.source, sources and tokens, span and published rows, pass stage 2, empty lists, escaping, nesting, edit pencil, get_file
 - widget-loop-position.md: Row position tokens of widget lists (#1597; __loop_index, __loop_count, first/last/odd/even): row marks only when used, filled by the finish pass per printed page, what counts as a row.
+- widget-parts-anywhere.md: W17 parts anywhere (#3074, #3085): a read-only part of the page's record placed outside its detail widget, drawn by that widget's renderer in the same request
 - widget-placement-settings.md: W21 per-placement content of a system widget (#2326 #2345): what a placement may narrow, props.placement, the pg-placement marker, narrowing rules, the panel section, records filter.
 - wishlist-widget.md: Favourites system widget (kind wishlist, widgets_wishlist.php): whose list it shows, tokens, flags, the two row actions and their hidden forms, page cache, My Account link, shop templates
 - wysiwyg-text-binding.md: Rich text in widgets: a short block-wrapped field is reduced to inline (_pg_rich_text_to_inline()), a long description binds to a div, img-responsive gets img-fluid at render; no extra .alert box.

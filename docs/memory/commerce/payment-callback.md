@@ -21,8 +21,8 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 - An `alerted` line goes to `log_activity(…, 'SYSTEM')` and to `pg_ops_alert('payment_notice', …)`; the alert keeps its once-a-day rule, the log line is written every time.
 
 ## Why complete here? (A3, #3021)
-- Decided (#2382): a payment the service confirms after the visitor left completes the order (`order-completion-from-payment.md`). Before #3021 the message only alerted.
-- The match: the order keeps the payment id in `transaction_id` (since #2199, written when the visitor is sent away), the answer's `amount` (integer hundredths) equals `orders.total`, its `raw['currency']` (Stripe and PayPal answers carry it since #3021) equals `BASE_CURRENCY_CODE`, any case. iyzico's 3-D Secure page names no payment: its orders still only alert.
+- Decided (#2382): a payment the service confirms after the visitor left completes the order (`order-completion-from-payment.md`).
+- The match: the order keeps the payment id in `transaction_id` (since #2199), the answer's `amount` (integer hundredths) equals `orders.total`, or exceeds it with `installments` ≥ 2 (PayTR, `pg_payment_paid_totals()`, #3070), its `raw['currency']` (Stripe and PayPal answers carry it since #3021) equals `BASE_CURRENCY_CODE`, any case. iyzico's 3-D Secure page names no payment: its orders still only alert.
 
 ## What does the order keep for a later completion? (A3a, #2998; #3021)
 - Before the visitor is sent away, `pg_order_payment_started_query()` (pure) writes on the incomplete order: the payment id, `total`, `payment_method`, `subtotal`, `discount`, `tax`, `shipping`, `gift_card_discount`, `surcharge` (minor units, `round()`) and, behind `pg_schema_has()`, `checkout_page_id` (11.0.120) and `legal_acceptance` (11.0.121; JSON from `pg_order_legal_acceptance_json()` while the documents are on, else NULL).
@@ -33,4 +33,4 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 ## How was it verified?
 - `tests/payment_stripe_webhook_test.php`, `tests/payment_paypal_webhook_test.php`. No real Stripe or PayPal delivery.
 
-Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-driver-stripe.md, docs/memory/platform/ops-alerts.md
+Related: commerce/payment-drivers.md, commerce/payment-driver-stripe.md, platform/ops-alerts.md

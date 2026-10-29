@@ -713,6 +713,9 @@ function pg_privacy_erase_tables()
         'audit_log' => array('find' => array('id' => 'audit_ids'), 'action' => 'anonymise', 'fields' => array(
             'label' => '',
         )),
+        // The revisions of every item the erasure deletes or blanks: an old
+        // copy would still hold what the record no longer does.
+        'record_revisions'             => array('find' => array('form_id' => 'revision_form_ids'), 'action' => 'delete', 'fields' => array()),
         'files'                        => array('find' => array('id' => 'file_ids'), 'action' => 'delete', 'fields' => array()),
         // A field of somebody else's record that holds the person's address
         // (a colleague's e-mail, a gift recipient) loses only that value.
@@ -773,6 +776,31 @@ function pg_privacy_erase_tables()
 }
 
 /**
+ * The records whose revisions an erasure removes: those it deletes and
+ * those whose field holding the person's address it blanks. Pure.
+ *
+ * @param array $form_ids      forms deleted
+ * @param array $cell_form_ids forms of the fields blanked
+ * @return array<int,int>
+ */
+function pg_privacy_erase_revision_form_ids(array $form_ids, array $cell_form_ids)
+{
+    $out = array();
+
+    foreach (array_merge($form_ids, $cell_form_ids) as $id) {
+        $id = (int) $id;
+
+        if ($id > 0) {
+            $out[$id] = $id;
+        }
+    }
+
+    sort($out);
+
+    return $out;
+}
+
+/**
  * The name each table of pg_privacy_erase_tables() is shown under.
  *
  * @return array  table => label
@@ -793,6 +821,7 @@ function pg_privacy_erase_labels()
         'ws_approval_guests'           => lang('Workspace approvals'),
         'cart_quotes'                  => lang('Cart quotes'),
         'audit_log'                    => lang('Audit trail'),
+        'record_revisions'             => lang('Item revisions'),
         'files'                        => lang('Uploaded files'),
         'form_data_cells'              => lang('Form answers holding the address'),
         'form_data'                    => lang('Form answers'),
@@ -895,7 +924,8 @@ function pg_privacy_erase_set(array $fields, $name, $token)
  * @param array $found  see pg_privacy_export_find()
  * @return array  user_ids, contact_ids, emails, tokens, phones, order_ids,
  *                form_ids, account_ids, conversation_ids, file_ids,
- *                return_ids, audit_ids, cell_ids, wtable_row_ids
+ *                return_ids, audit_ids, cell_ids, revision_form_ids,
+ *                wtable_row_ids
  */
 function pg_privacy_erase_scope(array $found)
 {
@@ -915,6 +945,7 @@ function pg_privacy_erase_scope(array $found)
         'return_ids'       => array(),
         'audit_ids'        => array(),
         'cell_ids'         => array(),
+        'revision_form_ids' => array(),
         'wtable_row_ids'   => array(),
     );
 
@@ -958,6 +989,13 @@ function pg_privacy_erase_scope(array $found)
 
         $scope['cell_ids'] = _pg_privacy_export_ids(db_values("SELECT id FROM form_data WHERE " . _pg_privacy_export_in('data', $scope['emails']) . $not_own));
     }
+
+    // Revisions go with the records deleted and with those that lose a
+    // field (pg_privacy_erase_revision_form_ids()).
+    $cell_form_ids = $scope['cell_ids']
+        ? db_values("SELECT DISTINCT form_id FROM form_data WHERE " . _pg_privacy_export_in('id', $scope['cell_ids']))
+        : array();
+    $scope['revision_form_ids'] = pg_privacy_erase_revision_form_ids($scope['form_ids'], $cell_form_ids);
 
     // ERP accounts: the contacts', the person's orders' (not a counter sale
     // rung up by them), and those naming the contact or the address; never

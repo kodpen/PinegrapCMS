@@ -1,0 +1,35 @@
+{
+  "result": true,
+  "additionalMessage": "Success",
+  "data": {
+    "id": "4aaaf0b4-d071-4edc-a941-cea2f6a78453",
+    "createdAt": "2025-03-08T14:59:36.460431984Z",
+    "test": true,
+    "length": "10",
+    "width": "10",
+    "height": "10",
+    "desi": "1",
+    "distanceUnit": "cm",
+    "weight": "1",
+    "massUnit": "kg",
+    "trackingStatus": {
+      "trackingStatusCode": "PRE_TRANSIT",
+      "trackingSubStatusCode": "information_received",
+      "statusDetails": "",
+      "statusDate": "2025-03-08T14:59:36.463215679Z"
+    },
+    "labelFileType": "PROVIDER_PDF",
+    "statusCode": "CREATED",
+    "offers": {
+      "cheapest": null,
+      "fastest": null,
+      "list": [],
+      "percentageCompleted": 0,
+      "totalOffersRequested": 2,
+      "totalOffersCompleted": 0
+    },
+    "acceptedOffer": null,
+    "hasError": false,
+    "isReturn": false
+  }
+}

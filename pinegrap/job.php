@@ -534,6 +534,25 @@ if (function_exists('pg_page_revisions_sweep_due') && pg_page_revisions_sweep_du
     }
 }
 
+// Collection item revisions (includes/fn/record_revisions.php): once a day
+// the rows of deleted items and forms go, and every item holding more
+// revisions than the count rule keeps is trimmed by the age rule. A tick
+// with nothing due reads one small file.
+if (function_exists('pg_record_revisions_sweep_due') && pg_record_revisions_sweep_due()) {
+
+    $record_revision_sweep = pg_record_revisions_sweep();
+
+    if (($record_revision_sweep['orphans'] + $record_revision_sweep['trimmed']) > 0) {
+        log_activity(lang(array(
+            'string' => 'general job removed {var:1} item revision(s): {var:2} of deleted items, {var:3} past the retention period',
+            'vars'   => array(
+                pg_format_number($record_revision_sweep['orphans'] + $record_revision_sweep['trimmed'], 0),
+                pg_format_number($record_revision_sweep['orphans'], 0),
+                pg_format_number($record_revision_sweep['trimmed'], 0)),
+        )), 'UNKNOWN');
+    }
+}
+
 // The 404 log (includes/fn/not_found_log.php): once a day the addresses not
 // asked for in 90 days go, then the row cap. A tick with nothing due reads
 // one small file.

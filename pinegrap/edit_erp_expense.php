@@ -211,7 +211,8 @@ if ($status === 'paid') {
     $output_badge = '<span class="badge theme-secondary">' . h($statuses['cancelled']) . '</span>';
 } else {
     $overdue = ((string) $expense['due_date'] > '0000-00-00') && ((string) $expense['due_date'] < date('Y-m-d'));
-    $output_badge = '<span class="badge ' . ($overdue ? 'theme-danger' : 'theme-warning') . '">' . h($statuses['unpaid']) . '</span>';
+    $output_badge = '<span class="badge ' . ($overdue ? 'theme-danger' : 'theme-warning') . '">' . h($statuses['unpaid']) . '</span>'
+        . ($overdue ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '');
 }
 
 $output_details = '

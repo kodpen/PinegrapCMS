@@ -1504,6 +1504,43 @@ function pg_payment_checkout_totals($answer, $total)
 }
 
 /**
+ * What an incomplete order records from a payment a service's message
+ * confirms: the order's total, or more by an installment difference the
+ * customer paid (a payment in two or more installments), recorded as the
+ * checkout records iyzico's (pg_payment_checkout_totals()). Any other amount
+ * is not the order's payment. Pure.
+ *
+ * @param mixed $amount       hundredths the service took
+ * @param mixed $installments the number of installments, 0 when not known
+ * @param mixed $total        hundredths: orders.total when the visitor was
+ *                            sent to pay
+ * @return array|null total, installment_charges, payment_installment; null
+ *                    for an amount below the total, or above it without
+ *                    installments
+ */
+function pg_payment_paid_totals($amount, $installments, $total)
+{
+    if (!is_int($amount) || !is_numeric($total)) {
+        return null;
+    }
+
+    $total = (int) round((float) $total);
+    $installments = is_int($installments) ? $installments : 0;
+
+    if (($amount < $total) || (($amount > $total) && ($installments < 2))) {
+        return null;
+    }
+
+    $totals = pg_payment_checkout_totals(array('amount' => $amount, 'installments' => $installments), $total);
+
+    return array(
+        'total'               => $totals['total'],
+        'installment_charges' => $totals['installment_charge'],
+        'payment_installment' => $totals['payment_installment'],
+    );
+}
+
+/**
  * What an order records from an iyzico 3-D Secure payment the bank confirmed:
  * the totals of the iyzipay_3ds_state row written when the payment started
  * (pg_payment_iyzico_threeds_keep()), whose instalment charge is the one the

@@ -191,6 +191,7 @@ function get_help_url($properties = array())
         'view_visitor_report'  => 'visitors#create-edit-visitor-report',
         'view_visitor'         => 'visitors#visit-details',
         'search_console'       => 'visitors#google-search-console',
+        'view_accessibility'   => 'seo#accessibility-check',
 
         // Contacts
         'view_contacts' => array(
@@ -216,6 +217,8 @@ function get_help_url($properties = array())
         'edit_contact_group'      => 'contacts#create-edit-contact-group',
         'view_orders_for_contact' => 'contacts#orders-for-contact',
         'approve_affiliate'       => 'contacts#affiliates',
+        'privacy_export'          => 'contacts#personal-data-export',
+        'privacy_erase'           => 'contacts#personal-data-erasure',
 
         // Users
         'view_users' => array(
@@ -254,6 +257,7 @@ function get_help_url($properties = array())
         'view_orders'                        => 'commerce#orders',
         'view_order'                         => 'commerce#view-order',
         'print_order'                        => 'commerce#view-order',
+        'import_shipments'                   => 'commerce#import-tracking-numbers',
         'add_order'                          => 'commerce#add-local-order',
         'view_parasut_inbox'                 => 'commerce#parasut-inbox',
         'view_returns'                       => 'commerce#returns',
@@ -346,6 +350,7 @@ function get_help_url($properties = array())
         'generate_layout'          => 'design#create-edit-custom-style',
         'view_system_style_source' => 'design#view-system-style-source',
         'page_designer'            => 'design#page_designer',
+        'edit_page_layout'         => 'design#page_designer',
         'view_menus'               => 'design#menus',
         'add_menu'                 => 'design#create-edit-menu',
         'edit_menu'                => 'design#create-edit-menu',
@@ -452,14 +457,19 @@ function get_help_url($properties = array())
         'erp_settings'           => 'erp-cont#erp-settings',
 
         // Workspace
-        'workspace'          => 'workspace#channels',
-        'workspace_board'    => 'workspace#planning-board',
-        'workspace_calendar' => 'workspace#work-calendar',
-        'workspace_tasks'    => 'workspace#my-tasks',
-        'workspace_timeline' => 'workspace#decision-timeline',
-        'workspace_settings' => 'workspace#workspace-settings',
-        'workspace_notes'    => 'workspace-cont#notes',
-        'workspace_template' => 'workspace-cont#channel-templates',
+        'workspace'               => 'workspace#channels',
+        'workspace_board'         => 'workspace#planning-board',
+        'workspace_calendar'      => 'workspace#work-calendar',
+        'workspace_tasks'         => 'workspace#my-tasks',
+        'workspace_timeline'      => 'workspace#decision-timeline',
+        'workspace_settings'      => 'workspace#workspace-settings',
+        'workspace_notes'         => 'workspace-cont#notes',
+        'workspace_template'      => 'workspace-cont#channel-templates',
+        'workspace_flows'         => 'workspace-cont#flows',
+        'workspace_wtables'       => 'workspace-cont#workflow-tables',
+        'workspace_mail'          => 'workspace-cont#e-mails',
+        'workspace_calendar_feed' => 'workspace#calendar-subscription',
+        'workspace_mcp'           => 'api#mcp',
 
         // API and integrations
         'api_settings'         => 'api#api-keys',
@@ -467,6 +477,7 @@ function get_help_url($properties = array())
         'connected_apps'       => 'api#mcp',
         'connections'          => 'api#connected-accounts',
         'marketplace_settings' => 'api#marketplaces',
+        'marketplace_products' => 'api#marketplace-products',
 
         // System tools
         'software_update'      => 'system#software-update',
@@ -477,8 +488,10 @@ function get_help_url($properties = array())
 
         // Security
         'view_waf_log'   => 'security#waf-log',
+        'view_audit_log' => 'security#audit-trail',
         'developer_lock' => 'security#developer-lock',
         'device_limit'   => 'security#devices',
+        'device_pairing' => 'security#devices',
         'mfa'            => 'security#two-step-verification',
     );
 

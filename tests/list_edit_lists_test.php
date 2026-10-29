@@ -131,7 +131,7 @@ function test_list_edit_key_code_cells_follow_the_enabled_flag()
 
 	pg_assert_contains('status_enabled fg-success', $cells['code']['class'], 'a working code is green');
 	pg_assert_contains('chart_label', $cells['code']['class'], 'the code stays the row label');
-	pg_assert_false(isset($cells['code']['html']), 'the code itself is not redrawn');
+	pg_assert_false(strpos($cells['code']['html'], 'fg-secondary') !== false, 'a working code carries no reason line');
 	pg_assert_contains('task_alt', $cells['enabled']['html'], 'enabled is marked');
 	pg_assert_contains('&lt;b&gt;ayse&lt;/b&gt;', $cells['last_modified']['html'], 'the username escaped');
 

@@ -465,7 +465,7 @@ if ($rules_turkish && erp_efatura_threshold_ready()) {
 $output_document_pills = '';
 foreach ($documents as $key => $item) {
     $output_document_pills .= '
-                            <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
+                            <li class="nav-item"><a class="nav-link py-1 px-3' . (($key === $doc) ? ' active" aria-current="page' : '') . '" href="' . h($self_url . (($key === 'invoice') ? '' : '?doc=' . $key)) . '">' . h($item['label']) . '</a></li>';
 }
 
 echo pg_page_shell(array(

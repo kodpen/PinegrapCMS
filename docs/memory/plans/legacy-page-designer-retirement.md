@@ -13,6 +13,7 @@ description: Plan (2026-10-19, waits for its prerequisites) to open classic page
 - L2 entry point: done (#2370, `designer/classic-style-to-design.md`): style list button, frame as one shared component, page trees placing it, Save makes the row a visual design (framework custom); pages taking the style from their folder are converted on Save unless the box is cleared (#2704). Left: older cell-based system styles (not offered).
 - L3 regions: done (`designer/classic-regions-in-designer.md`); wired into the conversion in #2429 (`designer/classic-style-to-design.md`): a converted common region is placed as its component; nothing converts on its own. Left: page regions inside the frame component cannot be moved into the page tree (R5 refuses them inside a component).
 - L4 parity list: decided (#2484), all dropped but P7, built in #2532 (`legacy-page-designer-parity.md`, `designer/classic-style-design-files.md`); the folder-pages Save option (#2411): done (#2704, `designer/classic-style-folder-pages.md`). Page-type fields, layouts: Y2-Y3.
+- L5a: done (#3084, `designer/layout-editor-classic.md`).
 - L5 retire: remove the three files, the `page_designer_button` branch in `includes/fn/output.php` (Ctrl+G), the help-table row, the session key `software.page_designer`; `clean_up.php` lists the files; changelog `[NEW]` line; the rest in `legacy-page-designer-l5-list.md`. Gated by Y6.
 
 ## Which rules apply?

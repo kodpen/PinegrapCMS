@@ -1404,6 +1404,20 @@ function pg_list_edit_reply($data, $status = 200)
 
 
 /**
+ * A short line under a list cell's coloured text that names the state the
+ * colour stands for (Disabled, Expired …), so the state is not told by the
+ * green or red alone.
+ *
+ * @param string $text translated, not escaped
+ * @return string
+ */
+function pg_list_status_word($text)
+{
+    return '<div class="small fg-secondary">' . h($text) . '</div>';
+}
+
+
+/**
  * Where to send a browser that has finished with a tool and wants the settings.
  *
  * There is no settings screen to redirect TO any more, so the address names a
@@ -6498,6 +6512,9 @@ function pg_js_bundles()
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // "Convert to text" under a voice message, loaded before
+        // workspace.min.js and beside the chat window's script.
+        'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),
         // The panel's own script, on every panel screen. Loaded without
         // defer: the inline scripts of the screens call it as they run.
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),

@@ -1391,7 +1391,7 @@ function mp_settings_credential_field($prefix, $field, $meta, $current, $editing
 
 	$out .= '
 				<input type="' . (!empty($meta['secret']) ? 'password' : 'text') . '" class="form-control"
-					id="' . h($id) . '" name="' . h($field) . '" autocomplete="off"'
+					id="' . h($id) . '" name="' . h($field) . '" autocomplete="' . (!empty($meta['secret']) ? 'new-password' : 'off') . '"'
 					. ($editing ? ' placeholder="' . h(mp_credential_hint($current)) . '"' : '')
 					. ($disabled ? ' disabled' : '') . '>'
 				. ($editing ? '

@@ -6,7 +6,8 @@
  * designer is gone: the toolbar's style designer button (Ctrl+G) asks the
  * visual designer to open on the page's layout tab, for the layout editor's
  * role and never on a hosted site, and the designer opens that tab only for
- * the page it lands on when that page draws a custom layout.
+ * the page it lands on when that page draws a custom layout; a page not on
+ * a visual design opens the layout editor screen instead.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -34,17 +35,17 @@ function test_layout_retirement_tab_param()
 
 // "Edit Layout" on the form screen: a page whose own style is a visual
 // design opens the designer on that page, on its layout tab where the role
-// and site allow it; a page on a classic style keeps the page designer.
+// and site allow it; a page not on a visual design opens the layout-only
+// editor screen.
 function test_layout_retirement_edit_layout_url()
 {
-	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url(7, '/about', 4, true, 1, false));
-	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url('7', '/about', '4', true, 0, false), 'ids as strings');
-	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 1, true), 'hosted: the canvas');
-	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, '/about', 4, true, 2, false), 'a manager: the canvas');
-	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 4, false, 1, false), 'classic style');
-	pg_assert_same('page_designer.php?url=%2Fabout&type=layout&id=7', pg_layout_edit_url(7, '/about', 0, true, 1, false), 'no own style');
-	// edit_page.php passes the path with its ?from= query; it travels encoded in url=.
-	pg_assert_same('page_designer.php?url=%2Fcart%3Ffrom%3Dcontrol_panel&type=layout&id=7', pg_layout_edit_url(7, '/cart?from=control_panel', 4, false, 1, false), 'query string in the path');
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url(7, 4, true, 1, false));
+	pg_assert_same('edit_system_style.php?id=4&page=7&layout=1', pg_layout_edit_url('7', '4', true, 0, false), 'ids as strings');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, 4, true, 1, true), 'hosted: the canvas');
+	pg_assert_same('edit_system_style.php?id=4&page=7', pg_layout_edit_url(7, 4, true, 2, false), 'a manager: the canvas');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url(7, 4, false, 1, false), 'classic style');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url(7, 0, true, 1, false), 'no own style');
+	pg_assert_same('edit_page_layout.php?id=7', pg_layout_edit_url('7', 4, false, 1, true), 'classic style, hosted: read only there');
 }
 
 // The designer opens the tab only for the page it lands on.
@@ -78,4 +79,24 @@ function test_layout_retirement_wiring()
 
 	$js = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
 	pg_assert_true(strpos($js, 'design.openLayout') !== false, 'the editor opens the tab');
+}
+
+// The layout editor screen of a page not on a visual design: the designer's
+// gate, a page with a custom layout only, a designed page sent on to the
+// designer, the text read and saved through layout_code, read only on a
+// hosted site.
+function test_layout_retirement_editor_screen()
+{
+	$src = file_get_contents(PG_FUNCTIONS_DIR . '/edit_page_layout.php');
+	pg_assert_true(strpos($src, "validate_area_access(\$user, 'designer');") !== false, 'roles 0-1');
+	pg_assert_true(strpos($src, "\$page['layout_type'] !== 'custom'") !== false, 'a custom layout only');
+	pg_assert_true(strpos($src, 'check_if_page_type_supports_layout(') !== false, 'a page type with a layout only');
+	pg_assert_true(strpos($src, 'pg_layout_edit_url(') !== false, 'a designed page goes to the designer');
+	pg_assert_true(strpos($src, 'action: "layout_code"') !== false, 'the designer\'s action');
+	pg_assert_true(strpos($src, "\$read_only = pg_hosted();") !== false, 'read only on a hosted site');
+	pg_assert_true(strpos($src, 'pg_code_editor_attach(') !== false, 'the code editor bundle');
+	pg_assert_true(strpos($src, 'pg_layout_save(') === false, 'no save path of its own');
+
+	$help = file_get_contents(PG_FUNCTIONS_DIR . '/get_help_url.php');
+	pg_assert_true(strpos($help, "'edit_page_layout'") !== false, 'help row');
 }

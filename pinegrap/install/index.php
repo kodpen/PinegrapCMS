@@ -9064,6 +9064,7 @@ function get_tables() {
 		'ws_mail_boxes',
 		'ws_mail_conversations',
 		'ws_mail_items',
+		'ws_saved_replies',
 		'cron_runs',
 		'recycle_bin',
 		'seo_issue',
@@ -9089,6 +9090,7 @@ function get_tables() {
 		'page_translations',
 		'page_drafts',
 		'page_revisions',
+		'record_revisions',
 		'prototype_links',
 	);
 

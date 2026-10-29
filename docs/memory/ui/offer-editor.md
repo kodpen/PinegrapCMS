@@ -19,4 +19,8 @@ description: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON s
 ## How is a percentage written?
 - Through the `'{var:1}%'` key (Turkish `%{var:1}`): `_pg_offer_percent_text()` on the server, `percentText()` with the `L.percent` template (`{n}`) in `offer_editor.js`. The tier and shipping texts take the formatted figure as a var. A `'%'` glued in code read "%10 off the order" on an English panel (#3030).
 
+## How does focus survive a redraw?
+- Typing goes through `soft()`, which rebuilds nothing. Every structural change calls `render(keys)`: it rebuilds the rows and both Add menus, then focuses the first of `keys` found (`data-on` + `data-index` + `data-tier`/`data-id`/`data-unit`/`data-target`/`data-mode`/`data-type`; a combobox select through its toggle). Without `keys` it keys on the focused control and moves focus only if the redraw took it.
+- Removed row: the row now in its place, the one before, the Add button. Removed tag: the next tag's x, the row's picker. Added row, tier or template: its first field. Key codes deleted: Generate. On `view_offers.php` a toggle filtered out by a chip hands focus to the next row's toggle, else the active chip.
+
 Related: docs/memory/ui/step-rail.md

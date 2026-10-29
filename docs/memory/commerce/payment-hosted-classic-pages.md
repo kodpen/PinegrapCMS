@@ -20,4 +20,4 @@ description: Hosted card box (Stripe Payment Element, PR #2556) on the classic o
 ## How is it tested?
 - `tests/payment_hosted_classic_test.php`: the four places read from the source; `payment_hosted.min.js` run under Node on a small DOM stand-in and a fake Stripe.js (built-in, template row, table, card inputs among billing fields).
 
-Related: docs/memory/commerce/payment-driver-stripe.md, docs/memory/commerce/card-surcharge-rounding.md, docs/memory/plans/payment-driver-layer.md
+Related: docs/memory/commerce/payment-driver-stripe.md, docs/memory/commerce/card-surcharge-rounding.md, docs/memory/commerce/payment-driver-layer-decisions.md

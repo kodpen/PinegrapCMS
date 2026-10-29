@@ -221,7 +221,7 @@ if (!$_POST) {
                     <!--<button type="button" class="m-1 btn-data-control btn btn-outline theme-danger border-2 " title="' . lang('Delete') . '" ><i class="material-icons">delete</i></button>-->
                 </td>
                 ' . $output_image_column . '
-                <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . '</td>
+                <td class="chart_label  align-middle ' . $status_class . '">' . h($item['name']) . (($item['enabled'] == 1) ? '' : pg_list_status_word(lang('Disabled'))) . '</td>
                 <td class="align-middle ' . $status_class . '">' . h($item['short_description']) . '</td>
                 <td class="align-middle text-end">' . $price . '</td>
                 <td class="align-middle "><input class="form-control text-end" type="text" name="sort_order_' . $item['type'] . '_' . $item['id'] . '" size="5" value="' . $item['sort_order'] . '" maxlength="4" inputmode="numeric" data-inputmask-alias="decimal" data-inputmask-placeholder="0" aria-label="' . h(lang('Sort Order') . ': ' . $item['name']) . '" style="text-align: right;width:60px;" /></td>

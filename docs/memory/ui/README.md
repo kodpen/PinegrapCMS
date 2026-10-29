@@ -74,6 +74,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - country-shared-form.md: add_country.php and edit_country.php draw the country options card and read its posted values through includes/forms/country_form.php; what each screen keeps
 - currency-exchange-rate-box.md: Exchange rate box on add/edit currency: five decimals like currencies.exchange_rate and the rate updater, filled and stored with five; 0,0285 no longer saved as 0,03 (#1335, PR #1341)
 - currency-shared-form.md: The currency create and edit screens share includes/forms/currency_form.php: what it holds, what stays in the screens
+- current-and-pressed-state.md: The current link or menu item carries aria-current beside .active; a segmented toggle button carries aria-pressed beside its fill (.active or btn-solid)
 - custom-style-shared-form.md: The custom page style create and edit screens share includes/forms/custom_style_form.php: what it holds, the defaults, what stays in the screens
 - dark-theme-fixed-fills.md: Inline light colours in panel markup and scripts (label designer, dashboard tracks, Chart.js ink, SEO orange band, chat dot ring) moved onto --pg-* tokens; what stays white and what is left
 - dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
@@ -101,6 +102,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
+- focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API applications sheet and delete confirm, Modify Selected price method)
 - folder-shared-form.md: The folder create and edit screens share includes/forms/folder_form.php: what it holds, the inputs that differ, what stays in the screens
 - form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
@@ -116,7 +118,8 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-week.md: List screens' period navigator: the week starts on Monday in Turkish, Sunday otherwise; the five screens read pg_list_period_week_steps() (#2039)
 - list-row-names.md: Names in the orders, products, submitted forms, pages and files lists: row boxes, SEO score links, the No Image picture, the folder access level shown by icon and word, not colour alone
-- liveform-field-names.md: How a liveform field and a hand-built pager get their accessible names: the aria-label output_field() prints, the ERP fields named through it, disabled pager arrows as spans
+- list-status-words.md: A word beside a list row's green or red state (pg_list_status_word()): product groups, key codes, arrival dates, gift cards, ERP expenses
+- liveform-field-names.md: Accessible names of liveform fields and hand-built pagers: aria-label and file id, required import pickers, new-password on outside sign-in and secret boxes, ERP fields
 - liveform-notices-trap.md: Pitfalls: notices and warnings stay in the session until remove_form(), screens must print them, and a request run twice stacks the same notice.
 - loading-curtain.md: Loading curtain printed by pg_preloader_markup() on every panel screen: structure, PRIVATE_LABEL, logo ids, Visual Editor hold, exit curtain, four ways out, exclusions.
 - login-region-shared-form.md: The login region create and edit screens share includes/forms/login_region_form.php: what it holds, the default, what stays in the screens
@@ -134,8 +137,9 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
 - money-field-input-mask.md: Panel money boxes with the currency input mask: panel-language separators (pg_money_mask_attributes()), filled with pg_format_input_amount(), read with pg_normalize_amount() (#728, #986)
-- notifications-menu.md: The header notifications panel (#notifications, bell #notification_toggle): one Bootstrap 6 Menu on the bell, Ctrl+Q clicks the bell, menu events and open state read on the toggle (#2578)
+- notifications-menu.md: Header notifications panel (#notifications, bell #notification_toggle): one Menu on the bell, Ctrl+Q, events on the toggle (#2578), poll redraws the open list only on a rise
 - offer-editor.md: Offer editor (edit_offer.php, offer_editor.js) rules: single JSON save, auto names, copy shared rows, two-sided type registry, write order, currency entity.
+- order-filter-names.md: Orders list Advanced Filters (view_orders.php): filter_ ids named by their labels, the Date Type select name, no address autofill, phone and e-mail keyboards
 - order-view-picker-links.md: Order view product name and image are real links to edit_product.php; the editor's Browse Server link picker rows hold a button; its type icons are aria-hidden
 - otp-fields.md: Code and PIN fields on the Bootstrap 6 OTP component (B9d, #2210): MFA app and recovery code modes, no auto-submit, developer lock masked slots and submit on complete
 - own-menu-dropdown-keydown.md: A right-click menu of a screen's own built on .menu: Bootstrap's capture-phase keydown handler acts on it, so its keys are taken on the window; closing on scroll and a long press
@@ -157,8 +161,10 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
+- panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks and the product screen (variant matrix, advanced row, image chip remove, attribute dialog), and the tests that pin them
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
+- panel-toast-timing.md: pgToast() timing: danger and warning toasts stay until closed and are not stacked twice; success and info keep their timer
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it
 - panel-validation-state.md: Invalid and valid fields in the panel on Bootstrap 6: why v6's own state was invisible, the panel rules on --pg-danger/--pg-success, focus ring, what stays on the bridge
 - panel-without-jquery-ui.md: The panel loads no jQuery UI (#2762): what is undefined on panel screens, what replaces each widget, the test that keeps it out, who still loads it
@@ -212,13 +218,14 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - site-page-toolbar-theme.md: The editor toolbar over a site page (toolbar.php in #software_toolbar): why its root stays light and its body takes the theme under Bootstrap 6, the unreadable dark toolbar it fixed (PR #2448)
 - sortable-init-pitfall.md: Drag-to-reorder in the panel: SortableJS set up per screen (welcome, product builder, menu tree), the arrow-key grips, no shared or jQuery UI sortable, the global-sortable trap
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province options card and read its posted values through includes/forms/state_form.php; what each screen keeps
+- status-chart-colour-words.md: System Status chips and detail rows, the orders Payment methods doughnut and the Search Console day chart tell states and series apart by words, dashes and shapes, not colour alone
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
-- translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope (all, group:catalog / forms / ui, page:ID) is labelled
+- translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope is labelled, where its error shows, and which messages survive the reload after a job or a bulk action
 - update-screens-steps.md: Software Updater, Repair Software and Backup Manager: the step loop with an error path, the status line below the bar, Return in Backup Name, labels kept while they work (PR #2987)
 - user-permission-rows.md: Permission rows in add_user/edit_user/import_users (includes/user_permissions.php): value rules, gate_field/gate_scope, drawer panels, top layer, multiselect pitfalls.
 - user-screens-names-and-dates.md: User and session screens: session and password dates through get_absolute_time(), the users list checkbox, yes mark and name-menu names, badge label and folder expiry names

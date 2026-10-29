@@ -1,0 +1,32 @@
+{
+  "result": true,
+  "message": "Success",
+  "data": {
+    "id": "b87sc5c3-9ddf-4e4c-8a41-b9461f81f895",
+    "currency": "TL",
+    "totalAmount": "1.5",
+    "offerID": "1f26245c-db36-4bce-ac57-6f443847ec4f",
+    "shipment": {
+      "id": "4aaaf0b4-d071-4edc-a941-cea2f6a78453",
+      "test": true,
+      "trackingStatus": null,
+      "barcode": "64124002705",
+      "labelFileType": "PDF",
+      "labelURL": "https://labels3.geliver.io/labels/4aaaf0b4-d071-4edc-a941-cea2f6a78453.pdf",
+      "responsiveLabelURL": "https://api.geliver.io/api/v1/responsivelabels/4aaaf0b4-d071-4edc-a941-cea2f6a78453/9536",
+      "statusCode": "TRACKING_CODE_CREATED",
+      "acceptedOfferID": "1f26245c-db36-4bce-ac57-6f443847ec4f",
+      "providerCode": "PTT",
+      "providerServiceCode": "PTT_STANDART",
+      "hasError": false,
+      "isReturn": false
+    },
+    "description": "Yeni gönderi ücretlendirilmesi",
+    "isPayed": true,
+    "payedVia": "BALANCE",
+    "transactionType": "CREATE_SHIPMENT",
+    "isCanceled": false,
+    "oldBalance": "2.59",
+    "newBalance": "1.09"
+  }
+}

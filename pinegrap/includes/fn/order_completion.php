@@ -430,18 +430,23 @@ function pg_order_auto_register($email_address, $contact_id)
  * acceptance the visitor gave; then pg_order_complete() and the ERP invoice of a paid order.
  *
  * The caller has checked that the message's payment is the order's own, for
- * its total, in the store's currency. Refused (nothing written) when the
- * order holds no kept values (sent away before they were kept) or its lines
+ * its total, in the store's currency. An installment difference the customer
+ * paid above the total is recorded as the order's installment charge and
+ * raises its total (pg_payment_paid_totals()); the commission stays on the
+ * total without it, as at checkout. Refused (nothing written) when the
+ * order holds no kept values (sent away before they were kept), its lines
  * no longer add up to the kept subtotal (the cart changed after the visitor
- * was sent away).
+ * was sent away), or the amount paid is no longer the order's.
  *
  * @param int    $order_id
  * @param string $status the service's answer: paid or authorized
+ * @param array  $paid   amount (hundredths taken) and installments (0 when
+ *                       not known); array() keeps the order's total
  * @return array status: completed (order_number), nothing (another request
  *               completed it, or it is no longer incomplete) or refused
  *               (reason, for the log)
  */
-function pg_order_complete_from_payment($order_id, $status)
+function pg_order_complete_from_payment($order_id, $status, array $paid = array())
 {
     $order_id = (int) $order_id;
     $page_column = pg_schema_has('orders', 'checkout_page_id');
@@ -469,6 +474,17 @@ function pg_order_complete_from_payment($order_id, $status)
 
     if ((string) $order['payment_method'] === '') {
         return array('status' => 'refused', 'reason' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)');
+    }
+
+    // The payment's amount against the total the order holds now.
+    $paid_totals = array();
+
+    if ($paid) {
+        $paid_totals = pg_payment_paid_totals($paid['amount'] ?? null, $paid['installments'] ?? 0, $order['total']);
+
+        if ($paid_totals === null) {
+            return array('status' => 'refused', 'reason' => 'the amount paid is not the order\'s total');
+        }
     }
 
     $result = db_q(pg_order_lines_sql(), array((string) $order_id)) or output_error('Query failed.');
@@ -532,7 +548,7 @@ function pg_order_complete_from_payment($order_id, $status)
 
     $order_number = pg_order_complete(
         $order_id,
-        pg_order_payment_completion_values($order, $status, $now, ($user_id > 0) ? $user_id : '', $commission, $key_code, $page_column),
+        array_merge(pg_order_payment_completion_values($order, $status, $now, ($user_id > 0) ? $user_id : '', $commission, $key_code, $page_column), $paid_totals),
         $legal['types'],
         array(
             'lines' => $lines,

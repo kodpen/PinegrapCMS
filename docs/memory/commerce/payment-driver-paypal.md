@@ -27,4 +27,4 @@ description: PayPal Checkout on Orders v2 (method 'PayPal Checkout', 11.0.50): r
 ## How was it verified?
 - `tests/payment_paypal_test.php` against `tests/fixtures/paypal/`, shaped from PayPal's Orders v2 / Payments v2 docs; `tests/order_payment_pending_test.php`. No live or sandbox account was called, no browser round trip ran.
 
-Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-method-lists.md, docs/memory/commerce/payment-refunds.md, docs/memory/plans/payment-driver-layer.md
+Related: docs/memory/commerce/payment-drivers.md, docs/memory/commerce/payment-method-lists.md, docs/memory/commerce/payment-refunds.md, docs/memory/commerce/payment-driver-layer-decisions.md

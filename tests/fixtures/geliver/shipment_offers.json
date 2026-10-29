@@ -1,0 +1,63 @@
+{
+  "result": true,
+  "additionalMessage": "Success",
+  "data": {
+    "id": "4aaaf0b4-d071-4edc-a941-cea2f6a78453",
+    "createdAt": "2025-03-08T14:59:36.460431984Z",
+    "test": true,
+    "length": "10",
+    "width": "10",
+    "height": "10",
+    "desi": "1",
+    "distanceUnit": "cm",
+    "weight": "1",
+    "massUnit": "kg",
+    "trackingStatus": {
+      "trackingStatusCode": "PRE_TRANSIT",
+      "trackingSubStatusCode": "information_received",
+      "statusDetails": "",
+      "statusDate": "2025-03-08T14:59:36.463215679Z"
+    },
+    "labelFileType": "PROVIDER_PDF",
+    "statusCode": "GOT_OFFERS",
+    "offers": {
+      "cheapest": {
+        "id": "16bc98bb-3d1f-4bc1-8acd-14d2422301e6",
+        "amount": "0",
+        "currency": "TL",
+        "totalAmount": "0",
+        "providerCode": "GELIVER",
+        "providerServiceCode": "GELIVER_STANDART"
+      },
+      "fastest": {
+        "id": "16bc98bb-3d1f-4bc1-8acd-14d2422301e6",
+        "providerCode": "GELIVER",
+        "providerServiceCode": "GELIVER_STANDART"
+      },
+      "list": [
+        {
+          "id": "16bc98bb-3d1f-4bc1-8acd-14d2422301e6",
+          "amount": "0",
+          "currency": "TL",
+          "totalAmount": "0",
+          "providerCode": "GELIVER",
+          "providerServiceCode": "GELIVER_STANDART"
+        },
+        {
+          "id": "1f26245c-db36-4bce-ac57-6f443847ec4f",
+          "amount": "1.25",
+          "currency": "TL",
+          "totalAmount": "1.5",
+          "providerCode": "PTT",
+          "providerServiceCode": "PTT_STANDART"
+        }
+      ],
+      "percentageCompleted": 100,
+      "totalOffersRequested": 2,
+      "totalOffersCompleted": 2
+    },
+    "acceptedOffer": null,
+    "hasError": false,
+    "isReturn": false
+  }
+}

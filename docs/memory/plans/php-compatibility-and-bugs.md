@@ -17,7 +17,7 @@ description: Open items of the 2026-10-19 static analysis: undefined variables, 
 - Done (#1757): `auto_detect_line_endings` in the six `import_*.php` (`core/csv-line-endings.md`); `curl_close()` in `import_design.php` and `install/index.php`.
 - Done (#1831, #1852): `curl_close()` in `submit_order.php` (17) and `includes/fn/output.php` (1); none is left in the product tree.
 - Dead remnants to remove once the owner agrees: `mysql_*` behind `DB_LEGACY` (`core.php` 177-194, `router.php` 176-188; gone since PHP 7.0), `get_magic_quotes_gpc()` (`init.php:897`, `install/index.php:394`). `mcrypt` (`_pg_decrypt_legacy_credit_card_number()`, `ecommerce.php` 866-885) is a guarded PHP <= 7.1 path: keep while 7.1 is supported.
-- `pfpro_process()` (`submit_order.php` 1683/2483/5282, extension removed in PHP 5.1) stays: Payflow Pro is frozen in `submit_order.php` (owner, 2026-10-19, `plans/payment-driver-layer.md`).
+- `pfpro_process()` (`submit_order.php` 1683/2483/5282, extension removed in PHP 5.1) stays: Payflow Pro is frozen in `submit_order.php` (owner, 2026-10-19, `commerce/payment-driver-layer-decisions.md`).
 - PHP 7.2+ APIs (`JSON_INVALID_UTF8_SUBSTITUTE`, `PHP_OS_FAMILY`, `imagebmp`, `imagecreatefrombmp`, `imageavif`, the `idn_to_ascii()` variant) are guarded everywhere. `custom_form.php:1793` "break outside loop" is a false positive (a brace-less `foreach`).
 - Done (#2090): those guarded lines carry `phpcs:ignore` markers naming the guard and left `tools/phpcs-baseline.json`, so a guard removed later fails CI.
 

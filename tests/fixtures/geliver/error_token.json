@@ -1,0 +1,5 @@
+{
+  "result": false,
+  "code": "E1055",
+  "message": "Bu işlemi yapmaya yetkiniz yok. token gl-test-token-123456"
+}

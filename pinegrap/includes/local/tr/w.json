@@ -1070,6 +1070,7 @@
     "Written into the channel's summary when it has none yet.": "Kanalın henüz özeti yoksa özetine yazılır.",
     "Written into the task when it opens.": "Görev açıldığında içine yazılır.",
     "Written once the order is complete.": "Sipariş tamamlandığında kesilir.",
+    "Written out by this browser's built-in AI, for you only": "Bu tarayıcının yerleşik yapay zekâsı yazdı, yalnızca sizin için",
     "Written to pay, due {var:1} days later.": "Ödenecek olarak yazılır, vadesi {var:1} gün sonra.",
     "Written to pay.": "Ödenecek olarak yazılır.",
     "Written to you": "Size yazılanlar",

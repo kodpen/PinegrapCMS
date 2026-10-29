@@ -32,6 +32,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/channel_icons.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/app_handles.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/app_commands.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/saved_replies.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/calc.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/messages.php');

@@ -108,9 +108,9 @@ $end_date_val   = h($_GET['end_date']   ?? '');
 // ------------------------------------------------------------------
 // Build tab nav
 // ------------------------------------------------------------------
-$tab_incoming_active = ($tab === 'incoming') ? ' active' : '';
-$tab_outgoing_active = ($tab === 'outgoing') ? ' active' : '';
-$tab_vkn_active      = ($tab === 'vkn')      ? ' active' : '';
+$tab_incoming_active = ($tab === 'incoming') ? ' active" aria-current="page' : '';
+$tab_outgoing_active = ($tab === 'outgoing') ? ' active" aria-current="page' : '';
+$tab_vkn_active      = ($tab === 'vkn')      ? ' active" aria-current="page' : '';
 
 $output_tab_nav = '
 <ul class="nav nav-tabs mb-5" id="parasutTabs">

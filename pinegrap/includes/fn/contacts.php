@@ -35,6 +35,9 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *         one      as move, but a group of duplicates with more than one
  *                  contact holding a row is not merged (a contact has one
  *                  ERP account);
+ *         cells    the column is JSON whose contact links are re-pointed
+ *                  value by value (workflow table rows,
+ *                  pg_contact_wtable_cells_moved());
  *         groups   merge_contacts()'s own contact group and opt-in step;
  *         keep     left as it is: the consent log is proof of what that
  *                  record answered;
@@ -64,6 +67,7 @@ function pg_contact_holders()
         'ws_approvals'                 => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
         'ws_ai_changes'                => array('column' => 'record_id', 'type' => array('record_type' => 'contact'), 'merge' => 'move', 'erase' => 'none'),
         'ws_mail_conversations'        => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'none'),
+        'ws_wtable_cells'              => array('table' => 'ws_wtable_rows', 'column' => 'cells', 'merge' => 'cells', 'erase' => 'scope'),
         'cart_quotes'                  => array('column' => 'contact_id', 'merge' => 'move', 'erase' => 'find'),
     );
 }
@@ -121,7 +125,12 @@ function pg_contact_holders_move($merged_ids, $keep_id)
     foreach (pg_contact_holders() as $key => $holder) {
         $table = isset($holder['table']) ? $holder['table'] : $key;
 
-        if (!in_array($holder['merge'], array('move', 'one'), true) || !pg_schema_has($table, $holder['column'])) {
+        if (!in_array($holder['merge'], array('move', 'one', 'cells'), true) || !pg_schema_has($table, $holder['column'])) {
+            continue;
+        }
+
+        if ($holder['merge'] === 'cells') {
+            pg_contact_holders_move_wtable_cells($merged_ids, $keep_id);
             continue;
         }
 
@@ -140,6 +149,132 @@ function pg_contact_holders_move($merged_ids, $keep_id)
 
             if ($row_id > 0) {
                 db_q("UPDATE contacts SET " . $holder['mirror'] . " = ? WHERE id = ?", array((string) $row_id, (string) $keep_id)) or output_error(lang('Query failed.'));
+            }
+        }
+    }
+}
+
+/**
+ * A workflow table row's cells with every record link to a merged contact
+ * pointed at the contact that stays. Person cells and links to user or ERP
+ * accounts name accounts, not contacts, and stay. A cell of a column the
+ * table no longer has stays in the JSON until the row's next write, so it is
+ * read as a link (as pg_privacy_wtable_cell_hits() does). Pure.
+ *
+ * @param array $types       column id => type, every column the table has
+ * @param array $cells       column id => value, as stored
+ * @param array $merged_ids  the contacts merged away
+ * @param int   $keep_id     the contact that stays
+ * @return array|null  the cells, or null when none changed
+ */
+function pg_contact_wtable_cells_moved(array $types, array $cells, array $merged_ids, $keep_id)
+{
+    $merged_ids = array_map('intval', $merged_ids);
+    $changed = false;
+
+    foreach ($cells as $id => $value) {
+        $type = isset($types[(string) $id]) ? (string) $types[(string) $id] : 'gone';
+
+        if ((($type !== 'link') && ($type !== 'gone')) || !is_array($value) || !isset($value['kind'], $value['id']) || ($value['kind'] !== 'contact')) {
+            continue;
+        }
+
+        $linked = (is_int($value['id']) || (is_string($value['id']) && ctype_digit($value['id']))) ? (int) $value['id'] : 0;
+
+        if (($linked > 0) && in_array($linked, $merged_ids, true)) {
+            $cells[$id]['id'] = (int) $keep_id;
+            $changed = true;
+        }
+    }
+
+    return $changed ? $cells : null;
+}
+
+/**
+ * Re-points the contact links in workflow table cells. The rows are narrowed
+ * by the text JSON writes for an id (after a colon, before a comma or the
+ * closing brace), then decided in PHP; each row is written against the
+ * revision it was read at and read again, up to three times, when it changed
+ * meanwhile. The bumped revision tells an open screen to reload the row.
+ *
+ * @param int[] $merged_ids  the contacts merged away, none of them the one that stays
+ * @param int   $keep_id     the contact that stays
+ * @return void
+ */
+function pg_contact_holders_move_wtable_cells(array $merged_ids, $keep_id)
+{
+    if (!pg_schema_has('ws_wtable_columns', 'type')) {
+        return;
+    }
+
+    $where = array();
+    $values = array();
+
+    foreach ($merged_ids as $merged_id) {
+        $where[] = "cells LIKE ?";
+        $where[] = "cells LIKE ?";
+        $values[] = '%:' . (int) $merged_id . ',%';
+        $values[] = '%:' . (int) $merged_id . '}%';
+    }
+
+    $condition = "(" . implode(" OR ", $where) . ")";
+    $pending = null;
+    $types = array();
+
+    for ($attempt = 0; $attempt < 3; $attempt++) {
+        if ($pending === array()) {
+            break;
+        }
+
+        $sql = "SELECT id, table_id, revision, cells FROM ws_wtable_rows WHERE " . $condition;
+        $row_values = $values;
+
+        if ($pending !== null) {
+            $sql .= " AND id IN (" . implode(',', array_fill(0, count($pending), '?')) . ")";
+            $row_values = array_merge($row_values, array_map('strval', $pending));
+        }
+
+        $result = db_q($sql, $row_values) or output_error(lang('Query failed.'));
+        $rows = array();
+
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rows[] = $row;
+        }
+
+        $pending = array();
+
+        foreach ($rows as $row) {
+            $table_id = (int) $row['table_id'];
+
+            if (!isset($types[$table_id])) {
+                $types[$table_id] = array();
+                $columns = db_q("SELECT id, type FROM ws_wtable_columns WHERE table_id = ?", array((string) $table_id)) or output_error(lang('Query failed.'));
+
+                while ($column = mysqli_fetch_assoc($columns)) {
+                    $types[$table_id][(string) $column['id']] = (string) $column['type'];
+                }
+            }
+
+            $cells = is_string($row['cells']) ? json_decode($row['cells'], true) : null;
+            $cells = is_array($cells) ? pg_contact_wtable_cells_moved($types[$table_id], $cells, $merged_ids, $keep_id) : null;
+
+            if ($cells === null) {
+                continue;
+            }
+
+            $json = json_encode((object) $cells, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION);
+
+            if ($json === false) {
+                continue;
+            }
+
+            db_q(
+                "UPDATE ws_wtable_rows SET cells = ?, revision = revision + 1, updated_at = ? WHERE id = ? AND revision = ?",
+                array($json, (string) time(), (string) $row['id'], (string) $row['revision'])
+            ) or output_error(lang('Query failed.'));
+
+            if ((int) mysqli_affected_rows(db::$con) !== 1) {
+                $pending[] = (int) $row['id'];
             }
         }
     }
