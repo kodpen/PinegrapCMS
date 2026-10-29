@@ -214,15 +214,16 @@ function pg_shipment_tracking_queue($lists)
  *
  * @param array         $lists    driver => list of pg_shipment_tracking_open() rows
  * @param callable      $ask      row => pg_label_answer() of track()
- * @param callable      $apply    (row, pg_shipment_tracking_decide()) => writes it
+ * @param callable      $apply    (row, pg_shipment_tracking_decide()) => writes
+ *                                it; false when nothing was written
  * @param int           $deadline unix time from which nothing more is asked
  * @param int           $limit    parcels asked about at most
  * @param callable      $clock    () => unix time
  * @param callable|null $progress (driver, label id) after each parcel asked about
  * @return array last (driver => the last label id asked about), asked,
- *               changed, delivered, failed, errors (driver => its last
- *               failure's words), stopped (driver => true: its failures in a
- *               row stopped it), timed_out (bool)
+ *               changed and delivered (parcels written), failed, errors
+ *               (driver => its last failure's words), stopped (driver =>
+ *               true: its failures in a row stopped it), timed_out (bool)
  */
 function pg_shipment_tracking_pass($lists, $ask, $apply, $deadline, $limit, $clock = 'time', $progress = null)
 {
@@ -271,10 +272,9 @@ function pg_shipment_tracking_pass($lists, $ask, $apply, $deadline, $limit, $clo
         } else {
             $failures[$driver] = 0;
 
-            if ($decision['write'] || $decision['delivered']) {
+            if (($decision['write'] || $decision['delivered']) && (call_user_func($apply, $row, $decision) !== false)) {
                 $out['changed']++;
                 $out['delivered'] += $decision['delivered'] ? 1 : 0;
-                call_user_func($apply, $row, $decision);
             }
         }
 
@@ -371,11 +371,12 @@ function pg_shipment_tracking_state_save($state)
  *
  * @param array $row      pg_shipment_tracking_open() row
  * @param array $decision pg_shipment_tracking_decide()
+ * @return bool false when nothing was written
  */
 function pg_shipment_tracking_apply($row, $decision)
 {
     if (!$decision['write'] && !$decision['delivered']) {
-        return;
+        return false;
     }
 
     $recorded = pg_shipment_record((int) $row['order_id'], (int) $row['ship_to_id'], (string) $row['number'], array(
@@ -385,8 +386,12 @@ function pg_shipment_tracking_apply($row, $decision)
         'existing_only' => true,
     ) + $decision['options']);
 
-    if (!$recorded['ok'] || !$decision['delivered']) {
-        return;
+    if (!$recorded['ok']) {
+        return false;
+    }
+
+    if (!$decision['delivered']) {
+        return true;
     }
 
     pg_shipment_delivered((int) $row['ship_to_id'], $decision['at']);
@@ -396,6 +401,8 @@ function pg_shipment_tracking_apply($row, $decision)
         'vars'   => array(lang('Shipment Tracking'), lang(array(
             'string' => '{var:1} was delivered',
             'vars'   => array(lang('Order') . ' ' . $row['order_number'] . ' (' . $row['number'] . ')')))))), 'UNKNOWN');
+
+    return true;
 }
 
 /**

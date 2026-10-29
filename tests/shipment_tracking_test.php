@@ -255,6 +255,24 @@ function test_shipment_tracking_pass_writes_and_counts()
 	pg_assert_same(array('geliver' => 8), $pass['last']);
 	pg_assert_same(array('geliver' => 'The carrier label service could not be reached.'), $pass['errors']);
 	pg_assert_false($pass['timed_out']);
+
+	// A parcel the write path no longer has (removed since the run read it)
+	// is asked about but not counted as written.
+	$pass = pg_shipment_tracking_pass(
+		shipment_tracking_test_lists(array('geliver' => array(3, 5))),
+		shipment_tracking_test_asker(array('geliver' => array('delivered', 'ok'))),
+		function ($row) {
+			return $row['id'] !== 3;
+		},
+		1800000100,
+		100,
+		function () {
+			return 1800000000;
+		});
+
+	pg_assert_same(2, $pass['asked']);
+	pg_assert_same(1, $pass['changed'], 'only the parcel written');
+	pg_assert_same(0, $pass['delivered'], 'no arrival recorded');
 }
 
 function test_shipment_tracking_pass_keeps_its_budgets()
@@ -356,21 +374,25 @@ function test_shipment_tracking_state_read()
 
 function test_shipment_tracking_writes_through_the_write_path()
 {
-	pg_assert_same('in_transit', pg_shipment_status_reported('in_transit'));
-	pg_assert_same('exception', pg_shipment_status_reported('exception'));
+	foreach (array('created', 'in_transit', 'out_for_delivery', 'returned', 'exception') as $status) {
+		pg_assert_same($status, pg_shipment_status_reported($status));
+	}
+
 	pg_assert_same('', pg_shipment_status_reported('delivered'), 'an arrival only through pg_shipment_delivered()');
 	pg_assert_same('', pg_shipment_status_reported('lost'));
+	pg_assert_same('', pg_shipment_status_reported('In_Transit'), 'as stored, never reworded');
 	pg_assert_same('', pg_shipment_status_reported(null));
 
 	$record = pg_test_function_source('pg_shipment_record');
 	pg_assert_contains("pg_shipment_status_reported(\$opts['status'])", $record);
 	pg_assert_contains('AND (delivered_at = 0) AND (status !=', $record, 'never over an arrival, only a change');
-	pg_assert_contains("if (!empty(\$opts['existing_only'])) {", $record, 'a poll adds no row');
+	pg_assert_contains("if (!\$existing && !empty(\$opts['existing_only'])) {", $record, 'a poll adds no row');
+	pg_assert_contains("if (!empty(\$opts['existing_only'])) {", $record, 'nor before the 11.0.20 columns');
 
 	$apply = pg_test_function_source('pg_shipment_tracking_apply');
 	pg_assert_contains("'existing_only' => true", $apply);
 	pg_assert_true(strpos($apply, 'pg_shipment_record(') < strpos($apply, 'pg_shipment_delivered('), 'the tracking page before the arrival');
-	pg_assert_contains("if (!\$recorded['ok'] || !\$decision['delivered'])", $apply, 'no arrival for a parcel removed meanwhile');
+	pg_assert_true(strpos($apply, "if (!\$recorded['ok']) {") < strpos($apply, 'pg_shipment_delivered('), 'no arrival for a parcel removed meanwhile');
 
 	$open = pg_test_function_source('pg_shipment_tracking_open');
 
