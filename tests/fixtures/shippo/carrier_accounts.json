@@ -1,0 +1,9 @@
+{
+  "next": null,
+  "previous": null,
+  "results": [
+    {"object_id": "b741b99f95e841639b54272834bc478c", "carrier": "usps", "account_id": "shippo_usps_account", "active": true, "is_shippo_account": true, "test": true},
+    {"object_id": "078870331023437cb917f5187429b093", "carrier": "dhl_express", "account_id": "shippo_dhlexpress_account", "active": true, "is_shippo_account": true, "test": true},
+    {"object_id": "1a2b3c4d5e6f40718293a4b5c6d7e8f9", "carrier": "dpd_de", "account_id": "shippo_dpd_de_account", "active": false, "is_shippo_account": true, "test": true}
+  ]
+}

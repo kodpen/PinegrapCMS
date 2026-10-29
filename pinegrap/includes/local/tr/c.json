@@ -1934,6 +1934,7 @@
     "Created by {var:1}, {var:2}": "{var:1} oluşturdu, {var:2}",
     "Created in the Basit Kargo panel under Settings. Basit Kargo has no test mode: every label created is a real, charged shipment.": "Basit Kargo panelinde Ayarlar altında oluşturulur. Basit Kargo'nun test modu yoktur: oluşturulan her etiket gerçek, ücretli bir gönderidir.",
     "Created in the Geliver panel under Settings, API Tokens; it is shown only once there.": "Geliver panelinde Ayarlar, API Tokenları altında oluşturulur; orada yalnızca bir kez gösterilir.",
+    "Created in the Shippo portal under API. A token that starts with shippo_test_ makes free sample labels that cannot be shipped.": "Shippo portalında API bölümünde oluşturulur. shippo_test_ ile başlayan bir anahtar, gönderilemeyen ücretsiz örnek etiketler üretir.",
     "Created the administrator account": "Yönetici hesabı oluşturuldu",
     "Created when opened, then kept": "Açıldığında oluşturulur ve saklanır",
     "Created {var:1}": "Oluşturuldu: {var:1}",

@@ -538,6 +538,7 @@ function ws_customer_js_strings()
         'cust_balance'    => lang('Balance'),
         'cust_quotes'     => lang('Open sales quotes'),
         'cust_cart_quotes' => lang('Open cart quotes'),
+        'cust_cart_quote_new' => lang('New cart quote'),
         'cust_forms'      => lang('Form submissions'),
         'cust_empty'      => lang('Nothing to show for this customer yet.'),
         'cust_history'       => lang('History'),
@@ -970,11 +971,14 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
 /**
  * The customer card on a channel's Summary tab: who the customer is and where
  * they stand, read for the reader exactly as the API's summary is (the same
- * names, sections and rights), laid out for the panel.
+ * names, sections and rights), laid out for the panel; and the address of
+ * "New cart quote" for a reader who may make one for this customer.
  *
  * @param array $viewer
  * @param array $channel a ws_channels row the reader may read
- * @return array|null see ws_customer_card_build(); null for a channel about
+ * @return array|null see ws_customer_card_build(), with cart_quote_url
+ *                    (ws_customer_cart_quote_url(), '' before the cart
+ *                    quote tables are there); null for a channel about
  *                    nobody, or a customer gone since
  */
 function ws_customer_card($viewer, $channel)
@@ -985,7 +989,49 @@ function ws_customer_card($viewer, $channel)
         return null;
     }
 
-    return ws_customer_card_build($identity, ws_customer_summary($viewer, $channel, $identity), OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/');
+    $base = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/';
+    $card = ws_customer_card_build($identity, ws_customer_summary($viewer, $channel, $identity), $base);
+    $url = ws_customer_cart_quote_url($viewer, $identity, $base);
+
+    // add_cart_quote.php refuses to open before the tables are there.
+    $card['cart_quote_url'] = (($url !== '') && pg_cart_quotes_ready()) ? $url : '';
+
+    return $card;
+}
+
+/**
+ * Where "New cart quote" on a channel's customer card leads: the new cart
+ * quote screen with the contact the customer stands for filled in
+ * (add_cart_quote.php?contact_id=, the screen's own prefill; saving checks
+ * the contact again). Only for a reader with the ecommerce right, the right
+ * that screen asks for (validate_ecommerce_access(), e-commerce on), and
+ * only for a contact the reader may see: the customer itself or one of the
+ * ties shown to them. A contact outside a user role's contact groups, which
+ * the card names "Contact" alone (ws_customer_refs_narrow()), is not opened
+ * on a screen that names it. The right is asked first, so a reader without
+ * it is told nothing about the customer's contact. Pure: the quote is made,
+ * and its link shown once, on that screen.
+ *
+ * @param array  $viewer   ws_viewer()
+ * @param array  $identity ws_customer_identity()
+ * @param string $base     the panel's address, ending in /
+ * @return string '' when nothing is offered
+ */
+function ws_customer_cart_quote_url($viewer, $identity, $base)
+{
+    if (empty($viewer['ecommerce'])) {
+        return '';
+    }
+
+    $contact_id = (int) $identity['contact_id'];
+
+    foreach (array_merge(array($identity['customer']), $identity['links']) as $item) {
+        if (($contact_id > 0) && ($item['type'] === 'contact') && ((int) $item['id'] === $contact_id) && $item['known']) {
+            return $base . 'add_cart_quote.php?contact_id=' . $contact_id;
+        }
+    }
+
+    return '';
 }
 
 /**

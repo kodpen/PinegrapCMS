@@ -6,7 +6,7 @@
  * extension (removed from PHP in 7.0) and no DB_LEGACY setting that opened
  * a second connection through it; no magic quotes strip
  * (get_magic_quotes_gpc() always answered false from PHP 5.4, is deprecated
- * in 7.4 and removed in 8.0) outside the installer's own copy.
+ * in 7.4 and removed in 8.0), the installer included.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -145,15 +145,9 @@ function test_php_dead_remnants_no_db_legacy_setting()
 	pg_assert_same(array(), $found['db_legacy']);
 }
 
-function test_php_dead_remnants_magic_quotes_only_in_installer()
+function test_php_dead_remnants_no_magic_quotes()
 {
-	$files = array();
+	$found = php_dead_remnants_test_found();
 
-	foreach (php_dead_remnants_test_found()['magic_quotes'] as $finding) {
-		$files[substr($finding, 0, strpos($finding, ':'))] = true;
-	}
-
-	// The installer does not load init.php and keeps its own copy of the
-	// strip; it is the one place left.
-	pg_assert_same(array('install/index.php'), array_keys($files));
+	pg_assert_same(array(), $found['magic_quotes']);
 }

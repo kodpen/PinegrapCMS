@@ -389,14 +389,6 @@ if (
 
 }
 
-// PHP+8 depricated//..
-// if magic quotes is on, remove slashes from data so our data is clean
-if ((function_exists("get_magic_quotes_gpc") && get_magic_quotes_gpc()) || (ini_get('magic_quotes_sybase') && (strtolower(ini_get('magic_quotes_sybase')) != "off"))) {
-    $_GET = array_stripslashes($_GET);
-    $_POST = array_stripslashes($_POST);
-    $_COOKIE = array_stripslashes($_COOKIE);
-}
-
 // if this server is on Windows, then path delimiter is a backslash
 if (mb_strtoupper(mb_substr(PHP_OS, 0, 3)) == 'WIN') {
 

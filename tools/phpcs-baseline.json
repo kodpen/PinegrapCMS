@@ -13,10 +13,6 @@
     "pinegrap/includes/fn/office.php": {
         "PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated": 1
     },
-    "pinegrap/install/index.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.get_magic_quotes_gpcDeprecatedRemoved": 1,
-        "PHPCompatibility.IniDirectives.RemovedIniDirectives.magic_quotes_sybaseDeprecatedRemoved": 2
-    },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
         "PHPCompatibility.FunctionUse.RemovedFunctions.pfpro_processRemoved": 2

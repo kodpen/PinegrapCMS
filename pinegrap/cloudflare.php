@@ -261,7 +261,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // PRG pattern: redirect after POST so a refresh does not repeat the action.
-    header("Location: ".$_SERVER['PHP_SELF']);
+    // A toggled switch gets focus back on the new page, and a custom period
+    // keeps its dates.
+    $redirect_query = [];
+    $switch_ids = ['toggle_dev' => 'cf_dev', 'toggle_uam' => 'cf_uam', 'toggle_always_https' => 'cf_https', 'toggle_brotli' => 'cf_brotli', 'toggle_rocket' => 'cf_rocket'];
+    if (isset($switch_ids[$action])) {
+        $redirect_query['focus'] = $switch_ids[$action];
+    }
+    foreach (['start_date', 'end_date'] as $date_key) {
+        if (isset($_POST[$date_key]) && is_string($_POST[$date_key]) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $_POST[$date_key])) {
+            $redirect_query[$date_key] = $_POST[$date_key];
+        }
+    }
+    header("Location: ".$_SERVER['PHP_SELF'].($redirect_query ? '?'.http_build_query($redirect_query) : ''));
     exit;
 }
 
@@ -654,6 +666,17 @@ switch ($period) {
     default:      $days = 30;  break;
 }
 
+// The switches and Clear Cache post their own form: a custom period sends its
+// dates along so the redirect keeps them, and the switch toggled last gets
+// focus back after the redirect.
+$period_fields = ($start_date !== null)
+    ? '<input type="hidden" name="start_date" value="' . h($start_date) . '"><input type="hidden" name="end_date" value="' . h($end_date) . '">'
+    : '';
+$focus_switch = (isset($_GET['focus']) && is_string($_GET['focus'])) ? $_GET['focus'] : '';
+$switch_focus = function ($id) use ($focus_switch) {
+    return ($id === $focus_switch) ? ' autofocus' : '';
+};
+
 
 // -------------------- DNS TABLE --------------------
 $table_rows = '';
@@ -794,52 +817,52 @@ print pg_page_shell([
       </div>
       <div class="card-body">
         <!-- Development Mode -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_dev">
           <input type="hidden" name="value" value="'.($dev_mode==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()" '.($dev_mode==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_dev" onchange="this.form.submit()"'.$switch_focus('cf_dev').' '.($dev_mode==="on"?"checked":"").'></div>
             <label class="" for="cf_dev">' . lang('Development Mode') . '</label>
           </div>
         </form>
         <!-- Under Attack Mode -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_uam">
           <input type="hidden" name="value" value="'.($uam_mode==="under_attack"?"medium":"under_attack").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()" '.($uam_mode==="under_attack"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_uam" onchange="this.form.submit()"'.$switch_focus('cf_uam').' '.($uam_mode==="under_attack"?"checked":"").'></div>
             <label class="" for="cf_uam">' . lang('Under Attack Mode') . '</label>
           </div>
         </form>
         <!-- Always Use HTTPS -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_always_https">
           <input type="hidden" name="value" value="'.($always_https==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()" '.($always_https==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_https" onchange="this.form.submit()"'.$switch_focus('cf_https').' '.($always_https==="on"?"checked":"").'></div>
             <label class="" for="cf_https">' . lang('Always Use HTTPS') . '</label>
           </div>
         </form>
         <!-- Brotli -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_brotli">
           <input type="hidden" name="value" value="'.($brotli==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()" '.($brotli==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_brotli" onchange="this.form.submit()"'.$switch_focus('cf_brotli').' '.($brotli==="on"?"checked":"").'></div>
             <label class="" for="cf_brotli">' . lang('Brotli') . '</label>
           </div>
         </form>
         <!-- Rocket Loader -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="toggle_rocket">
           <input type="hidden" name="value" value="'.($rocket==="on"?"off":"on").'">
           <div class="form-field">
-            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()" '.($rocket==="on"?"checked":"").'></div>
+            <div class="switch"><input class="" type="checkbox" id="cf_rocket" onchange="this.form.submit()"'.$switch_focus('cf_rocket').' '.($rocket==="on"?"checked":"").'></div>
             <label class="" for="cf_rocket">' . lang('Rocket Loader') . '</label>
           </div>
         </form>
         <!-- Clear Cache -->
-        <form method="post" class=" mx-5 my-12">'.get_token_field().'
+        <form method="post" class="disable_shortcut mx-5 my-12">'.get_token_field().$period_fields.'
           <input type="hidden" name="action" value="clear_cache">
           <button type="submit" class="btn btn-solid theme-danger"><i class="bi bi-trash"></i> ' . lang('Clear Cache') . '</button>
         </form>

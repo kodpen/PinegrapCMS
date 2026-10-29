@@ -9,7 +9,7 @@ description: A flow run's flag (C1, #2903): state, duration, one-line result fol
 
 ## Where is it shown?
 - Above the flow's last box on the canvas (the `end` box farthest right, else the rightmost non-value box), only while no run is open on the canvas; its link opens the run with the runs list behind it, Stop asks as "Cancel the run" does.
-- Under each flow's entry in the flow list; its link opens the flow, then the run.
+- In the flow list's Last run column (`workspace-flows-list.md`); its link opens the flow, then the run.
 - The run's card in a channel and the Add › Start a flow drawer (C2, #3048, workspace-flows-channel-run-card.md).
 - `runFlag()` lives in `assets/js/workspace_flow_flag.js` (`window.PGWsFlowFlag`, in the workspace.min.js bundle before workspace.js, so the channel screen has it without the canvas); `workspace_flow.js` calls it and still offers `window.PGWsFlow.runFlag()`. It needs only `window.PGWsKit` and the `fl_flag_*` and `fl_run_*` texts of `ws_flow_js_strings()`, which every workspace screen carries.
 
