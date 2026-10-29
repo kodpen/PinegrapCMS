@@ -26,4 +26,4 @@ module: order_completion
 - Origin from the order row (`pg_order_form_origin()`): `tracking_code`, `affiliate_code`, `http_referer`, `ip_address` (the INET_ATON number, written as is; `pg_order_form_insert_query()`, pure). Before, the request's; the completion writes the same into the order just before, except a tracking code the visit lost (the order keeps the cart's).
 - `pg_order_complete_line_watcher($line, $watcher, $submitted_form_id)`: after each unit, the watcher watches the unit's form on the add comment page, once.
 - `tests/form_mail_links_test.php` pins its e-mail path.
-Related: commerce/order-completion.md, commerce/order-completion-stock-and-spots.md, commerce/order-cancel-gift-cards.md
+Related: commerce/order-completion.md, commerce/order-completion-line-comments.md, commerce/order-completion-stock-and-spots.md, commerce/order-cancel-gift-cards.md
