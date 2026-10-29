@@ -445,7 +445,7 @@ if (defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
 
 echo
 pg_page_shell([
-    'title' => (string) $quote['full_number'],
+    'title' => h((string) $quote['full_number']),
     'extra classes' => 'erp erp_invoices',
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>' . $output_signature_icon,

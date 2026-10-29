@@ -642,6 +642,7 @@
     "Renders this record and examines the resulting HTML. Slower than the score.": "Bu kaydı oluşturup ortaya çıkan HTML'i inceler. Skor hesaplamaktan yavaştır.",
     "Rent": "Kira",
     "Reorder": "Siparişi Yinele",
+    "Reorder Buttons": "Sıralama Düğmeleri",
     "Reorder/Retrieve Order Next Page": "Siparişi Yinele/Kurtar Sonraki Sayfası",
     "Repair": "Onar",
     "Repair Software": "Yazılımı Onar",
