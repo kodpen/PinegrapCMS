@@ -22,6 +22,14 @@
  * iyzipay_threedsecure_return), which hands it to the card driver's
  * complete(): the row is claimed, the payment confirmed and checked against it.
  *
+ * Store-run subscriptions: while the Ecommerce card's "Stored-card renewals
+ * allowed by iyzico" switch is on (the driver's one field, kept in
+ * connect_apps), the card driver declares 'recurring' => 'store'. The first
+ * payment of an order with a recurring line registers the card and answers
+ * it as card_ref ("<card user key>|<card token>"); charge_renewal() charges
+ * it without 3-D Secure, update_card() opens iyzico's card page and
+ * subscription_cancel() deletes it at iyzico.
+ *
  * Each operation is a thin wrapper around a *_with() function that takes the
  * settings (and, for the 3-D Secure row, the functions that write, read and
  * claim it) as arguments, so the whole flow can run against a stand-in for
@@ -43,7 +51,35 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 
 function pg_payment_iyzico_capabilities()
 {
-    return array('installments', 'partial_refund', 'threeds');
+    return pg_payment_iyzico_capabilities_with(pg_payment_iyzico_stored_card_renewals());
+}
+
+function pg_payment_iyzico_fields()
+{
+    return array(
+        array(
+            'name'    => 'stored_card_renewals',
+            'type'    => 'switch',
+            'label'   => lang('Stored-card renewals allowed by iyzico'),
+            'help'    => lang('Subscriptions renew by charging the card stored at the first payment, without 3D Secure. iyzico allows this only after it has approved it for your merchant account: ask iyzico first, then switch this on. While it is off, iyzico takes no subscriptions.'),
+            'default' => '',
+        ),
+    );
+}
+
+function pg_payment_iyzico_charge_renewal($subscription)
+{
+    return pg_payment_iyzico_charge_renewal_with($subscription, pg_payment_iyzico_settings(true));
+}
+
+function pg_payment_iyzico_update_card($subscription)
+{
+    return pg_payment_iyzico_update_card_with($subscription, pg_payment_iyzico_settings());
+}
+
+function pg_payment_iyzico_subscription_cancel($subscription)
+{
+    return pg_payment_iyzico_subscription_cancel_with($subscription, pg_payment_iyzico_settings());
 }
 
 function pg_payment_iyzico_authorize($order, $amount, $payment)
@@ -585,6 +621,8 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
         'amount'         => $total,
         'installments'   => $installment,
         'card_brand'     => (string) $paid->getCardAssociation(),
+        'card_last4'     => (string) $paid->getLastFourDigits(),
+        'card_ref'       => pg_payment_iyzico_card_ref($paid->getCardUserKey(), $paid->getCardToken()),
         'log'            => $log,
     );
 }
@@ -812,6 +850,8 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
         'amount'         => $expected_paid,
         'installments'   => (int) $paid->getInstallment(),
         'card_brand'     => (string) $paid->getCardAssociation(),
+        'card_last4'     => (string) $paid->getLastFourDigits(),
+        'card_ref'       => pg_payment_iyzico_card_ref($paid->getCardUserKey(), $paid->getCardToken()),
         'log'            => $log,
     );
 }
@@ -1246,4 +1286,405 @@ function pg_payment_iyzico_cancel_with($order, $transaction_id, $settings)
         'status'           => 'cancelled',
         'refund_reference' => ($reference !== '') ? $reference : (string) $transaction_id,
     );
+}
+
+/* ---------------------------------------------------------------------------
+   Stored-card renewals (store-run subscriptions)
+   --------------------------------------------------------------------------- */
+
+/**
+ * The card driver's capabilities. Renewals are charged from the stored card
+ * without 3-D Secure, which iyzico allows only for a merchant it has
+ * approved for it, so the driver runs subscriptions only while the store
+ * says it has that approval.
+ *
+ * @param bool $renewals the stored-card renewals setting is on
+ * @return array
+ */
+function pg_payment_iyzico_capabilities_with($renewals)
+{
+    $capabilities = array('installments', 'partial_refund', 'threeds');
+
+    if ($renewals) {
+        $capabilities['recurring'] = 'store';
+    }
+
+    return $capabilities;
+}
+
+/**
+ * Whether the store says iyzico allows its stored-card renewals.
+ *
+ * @return bool
+ */
+function pg_payment_iyzico_stored_card_renewals()
+{
+    return pg_payment_setting('iyzico', 'stored_card_renewals') === '1';
+}
+
+/**
+ * The stored card as one card_ref: iyzico names a stored card by the card
+ * user key (the customer's card wallet) and the card token, and needs both
+ * to charge or delete it.
+ *
+ * @param mixed $card_user_key
+ * @param mixed $card_token
+ * @return string "<card user key>|<card token>", '' when either is missing
+ *                or the pair would not fit pg_payment_answer()'s card_ref
+ */
+function pg_payment_iyzico_card_ref($card_user_key, $card_token)
+{
+    $card_user_key = is_scalar($card_user_key) ? trim((string) $card_user_key) : '';
+    $card_token = is_scalar($card_token) ? trim((string) $card_token) : '';
+    $pattern = '/^[\x21-\x7B\x7D\x7E]+$/';
+
+    if ((preg_match($pattern, $card_user_key) !== 1) || (preg_match($pattern, $card_token) !== 1)) {
+        return '';
+    }
+
+    $card_ref = $card_user_key . '|' . $card_token;
+
+    return (strlen($card_ref) <= 150) ? $card_ref : '';
+}
+
+/**
+ * The card user key and card token of a card_ref.
+ *
+ * @param mixed $card_ref
+ * @return array|null array(card user key, card token), null when it is not one
+ */
+function pg_payment_iyzico_card_ref_parts($card_ref)
+{
+    $parts = explode('|', is_scalar($card_ref) ? (string) $card_ref : '', 2);
+
+    if ((count($parts) !== 2) || (pg_payment_iyzico_card_ref($parts[0], $parts[1]) !== (string) $card_ref)) {
+        return null;
+    }
+
+    return $parts;
+}
+
+/**
+ * Reads iyzico's answer to a request that moves no money back: success, a
+ * refusal in iyzico's words, or unclear when the body is not iyzico's or
+ * cURL lost the request after it may have gone out
+ * (pg_payment_iyzico_curl_unsent_codes() are the failures before it left).
+ *
+ * @param string $status        iyzico's status, '' when the body had none
+ * @param string $error_code
+ * @param string $error_message
+ * @return array|null null on success, else an answer for pg_payment_answer()
+ */
+function pg_payment_iyzico_refusal($status, $error_code, $error_message)
+{
+    $status = (string) $status;
+    $error_code = (string) $error_code;
+    $error_message = (string) $error_message;
+
+    if ($status === 'success') {
+        return null;
+    }
+
+    $raw = array('message' => $error_message, 'code' => $error_code);
+    $curl_errno = preg_match('/^curl_(\d{1,4})$/', $error_code, $match) ? (int) $match[1] : 0;
+
+    if (($curl_errno === 0) && ($status !== '')) {
+        return array(
+            'success' => false,
+            'error'   => ($error_message !== '') ? $error_message : lang('The payment was not accepted.'),
+            'raw'     => $raw,
+        );
+    }
+
+    if (in_array($curl_errno, pg_payment_iyzico_curl_unsent_codes(), true)) {
+        return array('success' => false, 'error' => lang('The payment service could not be reached.'), 'raw' => $raw);
+    }
+
+    return array(
+        'success' => false,
+        'unclear' => true,
+        'error'   => lang(array(
+            'string' => 'No clear answer came from the payment service ({var:1}). Check the payment on the service\'s own screen before trying again.',
+            'vars'   => array(($error_message !== '') ? $error_message : lang('no answer')))),
+        'raw'     => $raw,
+    );
+}
+
+/**
+ * Charges one period of a subscription to the stored card, without 3-D
+ * Secure. The card is looked up in the customer's iyzico card wallet first:
+ * after the customer replaced it on iyzico's card page
+ * (pg_payment_iyzico_update_card_with()) the stored token is gone, and the
+ * one card left in the wallet is charged instead and answered as the new
+ * card_ref, for the caller to keep.
+ *
+ * $subscription is the subscriptions row with card_ref opened
+ * (pg_subscription_driver_row()) and, under order, the orders row of the
+ * first order: iyzico asks for the buyer and the billing address on every
+ * payment.
+ *
+ * @param array $subscription
+ * @param array $settings pg_payment_iyzico_settings(true)
+ * @return array an answer: paid, a refusal in iyzico's words, or unclear
+ */
+function pg_payment_iyzico_charge_renewal_with($subscription, $settings)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $order = (isset($subscription['order']) && is_array($subscription['order'])) ? $subscription['order'] : array();
+    $card = pg_payment_iyzico_card_ref_parts($subscription['card_ref'] ?? '');
+    $amount = (int) ($subscription['amount'] ?? 0);
+    $currency = strtoupper((string) ($subscription['currency'] ?? ''));
+    $id = (int) ($subscription['id'] ?? 0);
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    if (($amount <= 0) || ($currency === '') || ((int) pg_payment_iyzico_order_value($order, 'id') <= 0)) {
+        return pg_payment_failure(lang('The subscription cannot be charged: its amount or its first order is missing.'));
+    }
+
+    // A store that takes payments in iyzico's protected currency charges the
+    // renewal in it too, at today's rate, as the checkout charged the first.
+    if (($settings['protected_currency'] !== '') && ($currency === $settings['currency'])) {
+        if ($settings['protected_rate'] <= 0) {
+            return pg_payment_failure(lang('The exchange rate of the protected currency is missing.'));
+        }
+
+        $amount = (int) round(($amount / 100.0) * $settings['protected_rate'] * 100);
+        $currency = $settings['protected_currency'];
+    }
+
+    pg_payment_iyzico_sdk();
+
+    $options = pg_payment_iyzico_options($settings);
+    $conversation_id = pg_payment_iyzico_conversation_id();
+
+    $list_request = new \Iyzipay\Request\RetrieveCardListRequest();
+    $list_request->setLocale($settings['locale']);
+    $list_request->setConversationId($conversation_id);
+    $list_request->setCardUserKey($card[0]);
+
+    $list = \Iyzipay\Model\CardList::retrieve($list_request, $options);
+
+    if ($list->getStatus() !== 'success') {
+        // Nothing was charged: a failed lookup is never unclear.
+        $message = (string) $list->getErrorMessage();
+
+        return pg_payment_failure(($message !== '') ? $message : lang('The stored card could not be read at the payment service.'),
+            array('message' => $message, 'code' => (string) $list->getErrorCode()));
+    }
+
+    $tokens = array();
+    $last4 = array();
+
+    foreach ((array) $list->getCardDetails() as $detail) {
+        if (is_object($detail) && ((string) $detail->getCardToken() !== '')) {
+            $tokens[] = (string) $detail->getCardToken();
+            $last4[(string) $detail->getCardToken()] = (string) $detail->getLastFourDigits();
+        }
+    }
+
+    $token = $card[1];
+
+    if (!in_array($token, $tokens, true)) {
+        if (count($tokens) !== 1) {
+            return pg_payment_failure(lang('The stored card is no longer at the payment service. The customer needs to enter a card again.'));
+        }
+
+        $token = $tokens[0];
+    }
+
+    $payment = array(
+        'customer_id' => ((int) ($subscription['user_id'] ?? 0) > 0) ? (string) (int) $subscription['user_id'] : '',
+        'ip'          => pg_payment_iyzico_request_ip(),
+    );
+
+    $request = new \Iyzipay\Request\CreatePaymentRequest();
+    $request->setConversationId($conversation_id);
+    $request->setLocale($settings['locale']);
+    $request->setPrice(pg_payment_decimal($amount));
+    $request->setPaidPrice(pg_payment_decimal($amount));
+    $request->setCurrency($currency);
+    $request->setInstallment(1);
+    $request->setBasketId('subscription-' . $id);
+    $request->setPaymentChannel(\Iyzipay\Model\PaymentChannel::WEB);
+    $request->setPaymentGroup(\Iyzipay\Model\PaymentGroup::SUBSCRIPTION);
+
+    $stored = new \Iyzipay\Model\PaymentCard();
+    $stored->setCardUserKey($card[0]);
+    $stored->setCardToken($token);
+    $request->setPaymentCard($stored);
+
+    $buyer = pg_payment_iyzico_buyer($order, $payment);
+    $request->setBuyer($buyer['buyer']);
+    $request->setShippingAddress($buyer['billing']);
+    $request->setBillingAddress($buyer['billing']);
+
+    $item = new \Iyzipay\Model\BasketItem();
+    $item->setId((string) (int) ($subscription['product_id'] ?? 0));
+    $item->setName('Subscription ' . $id);
+    $item->setCategory1('Subscription');
+    $item->setItemType(\Iyzipay\Model\BasketItemType::VIRTUAL);
+    $item->setPrice(pg_payment_decimal($amount));
+    $request->setBasketItems(array($item));
+
+    $paid = \Iyzipay\Model\Payment::create($request, $options);
+    $payment_id = (string) $paid->getPaymentId();
+    $refusal = pg_payment_iyzico_refusal((string) $paid->getStatus(), (string) $paid->getErrorCode(), (string) $paid->getErrorMessage());
+
+    if ($refusal !== null) {
+        $refusal['log'] = array('Iyzipay renewal error: subscription=' . $id . ', code=' . $paid->getErrorCode() . ', message=' . $paid->getErrorMessage());
+
+        return $refusal;
+    }
+
+    if ($paid->getFraudStatus() === -1) {
+        return pg_payment_failure_logged(lang('Payment was found to be risky and rejected.'), array("Iyzipay renewal fraud rejected: subscription=$id, paymentId=$payment_id"));
+    }
+
+    $answer = array(
+        'success'        => true,
+        'status'         => 'paid',
+        'transaction_id' => $payment_id,
+        // The row's amount: what the store records, whatever currency iyzico
+        // was asked in.
+        'amount'         => (int) ($subscription['amount'] ?? 0),
+        'installments'   => 1,
+        'card_brand'     => (string) $paid->getCardAssociation(),
+        'card_last4'     => (string) $paid->getLastFourDigits(),
+        'log'            => ($paid->getFraudStatus() === 0) ? array("Iyzipay renewal fraud pending review: subscription=$id, paymentId=$payment_id") : array(),
+    );
+
+    if ($token !== $card[1]) {
+        $answer['card_ref'] = pg_payment_iyzico_card_ref($card[0], $token);
+
+        if ($answer['card_last4'] === '') {
+            $answer['card_last4'] = $last4[$token];
+        }
+    }
+
+    return $answer;
+}
+
+/**
+ * iyzico's card page, where the customer adds a new card to the wallet the
+ * subscription charges and removes the old one. iyzico sends the customer
+ * back to $subscription['return_url'] (the site's home without one).
+ *
+ * The bundled SDK has no class for this page, so the request is signed and
+ * posted here the way the SDK posts its own (IYZWSv2 over the path and body).
+ *
+ * @param array $subscription pg_subscription_driver_row(), order as for
+ *                            pg_payment_iyzico_charge_renewal_with()
+ * @param array $settings     pg_payment_iyzico_settings()
+ * @return array an answer: redirect to iyzico's page
+ */
+function pg_payment_iyzico_update_card_with($subscription, $settings)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $card = pg_payment_iyzico_card_ref_parts($subscription['card_ref'] ?? '');
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    $return_url = (string) ($subscription['return_url'] ?? '');
+
+    if (($return_url === '') && defined('URL_SCHEME') && defined('HOSTNAME_SETTING') && defined('PATH')) {
+        $return_url = URL_SCHEME . HOSTNAME_SETTING . PATH;
+    }
+
+    pg_payment_iyzico_sdk();
+
+    $path = '/v1/card-management/pages';
+    $fields = array(
+        'locale'            => $settings['locale'],
+        'conversationId'    => (string) pg_payment_iyzico_conversation_id(),
+        'externalId'        => 'subscription-' . (int) ($subscription['id'] ?? 0),
+        'email'             => (string) pg_payment_iyzico_order_value($subscription['order'] ?? array(), 'billing_email_address'),
+        'cardUserKey'       => $card[0],
+        'callbackUrl'       => $return_url,
+        'addNewCardEnabled' => true,
+        'validateNewCard'   => true,
+        'debitCardAllowed'  => true,
+    );
+
+    $request = new class($fields) extends \Iyzipay\Request {
+        private $fields;
+
+        public function __construct($fields)
+        {
+            $this->fields = $fields;
+        }
+
+        public function getJsonObject()
+        {
+            return $this->fields;
+        }
+    };
+
+    $random = uniqid();
+    $headers = array(
+        'Accept: application/json',
+        'Content-type: application/json',
+        'Authorization: IYZWSv2 ' . \Iyzipay\IyziAuthV2Generator::generateAuthContent($path, $settings['api_key'], $settings['secret_key'], $random, $request),
+        'x-iyzi-rnd: ' . $random,
+        'x-iyzi-client-version: iyzipay-php-2.0.59',
+    );
+
+    $raw = (string) \Iyzipay\ApiResource::httpClient()->post($settings['base_url'] . $path, $headers, $request->toJsonString());
+    $body = json_decode($raw, true);
+    $body = is_array($body) ? $body : array();
+    $data = (isset($body['data']) && is_array($body['data'])) ? $body['data'] : $body;
+
+    $refusal = pg_payment_iyzico_refusal((string) ($body['status'] ?? ''), (string) ($body['errorCode'] ?? ''), (string) ($body['errorMessage'] ?? ''));
+
+    if ($refusal !== null) {
+        // Asking for a page changes nothing at iyzico: never unclear.
+        unset($refusal['unclear']);
+
+        return $refusal;
+    }
+
+    return array(
+        'success'      => true,
+        'status'       => 'redirect',
+        'redirect_url' => (string) ($data['cardPageUrl'] ?? ''),
+    );
+}
+
+/**
+ * Deletes the subscription's stored card at iyzico; the subscription itself
+ * ends store-side.
+ *
+ * @param array $subscription pg_subscription_driver_row()
+ * @param array $settings     pg_payment_iyzico_settings()
+ * @return array an answer: cancelled
+ */
+function pg_payment_iyzico_subscription_cancel_with($subscription, $settings)
+{
+    $subscription = is_array($subscription) ? $subscription : array();
+    $card = pg_payment_iyzico_card_ref_parts($subscription['card_ref'] ?? '');
+
+    if ($card === null) {
+        return pg_payment_failure(lang('The subscription has no stored card.'));
+    }
+
+    pg_payment_iyzico_sdk();
+
+    $request = new \Iyzipay\Request\DeleteCardRequest();
+    $request->setLocale($settings['locale']);
+    $request->setConversationId((string) pg_payment_iyzico_conversation_id());
+    $request->setCardUserKey($card[0]);
+    $request->setCardToken($card[1]);
+
+    $deleted = \Iyzipay\Model\Card::delete($request, pg_payment_iyzico_options($settings));
+    $refusal = pg_payment_iyzico_refusal((string) $deleted->getStatus(), (string) $deleted->getErrorCode(), (string) $deleted->getErrorMessage());
+
+    if ($refusal !== null) {
+        return $refusal;
+    }
+
+    return array('success' => true, 'status' => 'cancelled');
 }

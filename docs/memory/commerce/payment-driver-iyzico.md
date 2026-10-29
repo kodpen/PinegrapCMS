@@ -4,8 +4,8 @@ description: iyzico drivers (Iyzipay card, Pay With Iyzico redirect), their subm
 ---
 
 ## Which drivers are there?
-- `iyzico` (card, gateway `Iyzipay`) and `pay_with_iyzico` (redirect, method `Pay With Iyzico`), one file, two prefixes, both `'settings' => 'config'`: the Ecommerce card's config columns (keys, mode, 3DS, instalment limit, protected currency, PWI switch); no `_fields()`.
-- Card: `authorize` (direct payment or 3-D Secure start), `complete` (the 3-D Secure return), `refund`, `cancel`; capabilities installments, partial_refund, threeds. PWI: `authorize`, `complete`, `refund`, `cancel`; installments, partial_refund.
+- `iyzico` (card, gateway `Iyzipay`) and `pay_with_iyzico` (redirect, method `Pay With Iyzico`), one file, two prefixes, both `'settings' => 'config'`: the Ecommerce card's config columns (keys, mode, 3DS, instalment limit, protected currency, PWI switch); the card's only `_fields()` entry is the stored-card renewals switch.
+- Card: `authorize` (direct payment or 3-D Secure start), `complete` (the 3-D Secure return), `refund`, `cancel`, and the store-run subscription operations (`subscriptions-iyzico.md`); capabilities installments, partial_refund, threeds, and `recurring` store while its one field (stored-card renewals) is on. PWI: `authorize`, `complete`, `refund`, `cancel`; installments, partial_refund.
 - Requests carry the gateway code's values: CreatePaymentRequest (instalment price from RetrieveInstallmentInfo at the BIN; protected currency converts every amount at today's rate), CreateThreedsPaymentRequest, PWI initialize (base currency), AmountBaseRefund (view_order.php, fn/returns.php), Cancel (process_order_cancellation(), the amount check's void). Same visitor sentences and log lines.
 
 ## Why is a card refund refused with a protected currency?

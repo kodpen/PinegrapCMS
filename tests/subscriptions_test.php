@@ -222,3 +222,44 @@ function test_subscription_driver_operations_declared_not_supported_by_default()
 	pg_assert_same('tok_9', pg_payment_answer('authorize', array('success' => true, 'status' => 'paid', 'card_ref' => ' tok_9 '))['card_ref'], 'the stored card\'s token comes back as card_ref');
 	pg_assert_same('', pg_payment_answer('authorize', array('success' => true, 'status' => 'paid', 'card_ref' => str_repeat('t', 200)))['card_ref'], 'a token too long to seal is not kept');
 }
+
+function subscriptions_test_checkout_lines()
+{
+	return array(
+		array('order_item_id' => '9001', 'product_id' => '44', 'recurring' => '1', 'price' => '14990', 'quantity' => '1', 'tax_total' => '2698', 'recurring_payment_period' => 'Monthly', 'recurring_start_date' => '2027-01-31'),
+		array('order_item_id' => '9002', 'product_id' => '45', 'recurring' => '0', 'price' => '5000', 'quantity' => '1', 'tax_total' => '0', 'recurring_payment_period' => '', 'recurring_start_date' => '0000-00-00'),
+		array('order_item_id' => '9003', 'product_id' => '46', 'recurring' => '1', 'price' => '9900', 'quantity' => '2', 'tax_total' => '0', 'recurring_payment_period' => 'Yearly', 'recurring_start_date' => '0000-00-00'),
+		array('order_item_id' => '9004', 'product_id' => '47', 'recurring' => '1', 'price' => '0', 'quantity' => '1', 'tax_total' => '0', 'recurring_payment_period' => 'Monthly', 'recurring_start_date' => '2027-01-31'),
+		array('order_item_id' => '9005', 'product_id' => '48', 'recurring' => '1', 'price' => '1000', 'quantity' => '1', 'tax_total' => '0', 'recurring_payment_period' => 'Monthly', 'recurring_start_date' => '2027-03-01'),
+		array('order_item_id' => '9001', 'product_id' => '44', 'recurring' => '1', 'price' => '14990', 'quantity' => '1', 'tax_total' => '2698', 'recurring_payment_period' => 'Monthly', 'recurring_start_date' => '2027-01-31'),
+	);
+}
+
+function test_subscription_checkout_lines_one_per_paid_recurring_line()
+{
+	$planned = pg_subscription_checkout_lines(subscriptions_test_checkout_lines(), 'store', 'ukey-1|ctok-1', '2027-01-31');
+
+	pg_assert_same(array(9001, 9003), array_map(function ($line) {
+		return $line['item']['id'];
+	}, $planned), 'recurring, priced, charged today; each line once');
+	pg_assert_same(array('monthly', 'yearly'), array_column($planned, 'period'));
+	pg_assert_same(array('id' => 9003, 'product_id' => 46, 'price' => '9900', 'quantity' => '2', 'tax_total' => '0'), $planned[1]['item']);
+
+	$line = subscriptions_test_line();
+	pg_assert_same(17688, pg_subscription_row_from_order_line($line['order'], $planned[0]['item'], 'iyzico', $planned[0]['period'], 'TRY', subscriptions_test_sealed(), '0008', time())['amount'], 'the row takes the line as planned');
+}
+
+function test_subscription_checkout_lines_none_for_other_drivers()
+{
+	$lines = subscriptions_test_checkout_lines();
+
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, '', 'ukey-1|ctok-1', '2027-01-31'), 'a driver without a recurring mode');
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'psp', 'ukey-1|ctok-1', '2027-01-31'), 'the service runs its own');
+	pg_assert_same(array(), pg_subscription_checkout_lines($lines, 'store', '', '2027-01-31'), 'no stored card');
+	pg_assert_same(array(), pg_subscription_checkout_lines(null, 'store', 'ukey-1|ctok-1', '2027-01-31'));
+
+	// No database in the runner: the writer makes nothing and never throws.
+	pg_assert_same(array(), pg_subscription_checkout_create(501, 'iyzico', array('card_ref' => 'ukey-1|ctok-1'), $lines));
+	pg_assert_same(array(), pg_subscription_checkout_create(501, '', array(), $lines), 'a legacy gateway has no driver');
+}
+
