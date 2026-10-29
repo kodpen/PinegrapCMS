@@ -37,6 +37,73 @@ function pg_order_complete_columns()
         'payment_installment', 'installment_charges', 'commission', 'order_date', 'user_id', 'special_offer_code',
         'last_modified_timestamp', 'transaction_id', 'paid_at', 'authorization_code', 'tracking_code',
         'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content', 'affiliate_code', 'ip_address',
+        'checkout_page_id',
+    );
+}
+
+/**
+ * The checkout page id an order records: the page's id when the posted value
+ * names one by digits only, else 0 (no page). Pure.
+ *
+ * @param mixed $page_id the posted page_id
+ * @return int
+ */
+function pg_order_checkout_page_id($page_id)
+{
+    if (!is_scalar($page_id) || (preg_match('/^[1-9][0-9]{0,9}$/', (string) $page_id) !== 1)) {
+        return 0;
+    }
+
+    $page_id = (int) $page_id;
+
+    return ($page_id <= 4294967295) ? $page_id : 0;
+}
+
+/**
+ * The UPDATE for db_q() that keeps, on an order still incomplete, what the
+ * checkout settled when the visitor is sent to the payment service: the
+ * payment's id, the amount it was started for, the payment method, the
+ * figures the total is made of and, once step 11.0.120 has run, the
+ * checkout page. A payment service's message that completes the order
+ * after the visitor left reads them back instead of the visitor's request.
+ * Figures are integer minor units. Pure.
+ *
+ * @param int   $order_id
+ * @param array $started          pg_payment_started_order_values()
+ * @param array $settled          payment_method, subtotal, discount, tax,
+ *                                shipping, gift_card_discount, surcharge,
+ *                                checkout_page_id
+ * @param bool  $has_page_column  orders.checkout_page_id exists
+ * @return array|null array('sql' => string, 'params' => array); null for
+ *                    no order or no payment id
+ */
+function pg_order_payment_started_query($order_id, array $started, array $settled, $has_page_column)
+{
+    $order_id = (int) $order_id;
+    $transaction_id = (string) ($started['transaction_id'] ?? '');
+
+    if (($order_id <= 0) || ($transaction_id === '')) {
+        return null;
+    }
+
+    $set = array('transaction_id = ?', 'total = ?', 'payment_method = ?');
+    $params = array($transaction_id, (string) (int) round((float) ($started['total'] ?? 0)), (string) ($settled['payment_method'] ?? ''));
+
+    foreach (array('subtotal', 'discount', 'tax', 'shipping', 'gift_card_discount', 'surcharge') as $column) {
+        $set[] = $column . ' = ?';
+        $params[] = (string) (int) round((float) ($settled[$column] ?? 0));
+    }
+
+    if ($has_page_column) {
+        $set[] = 'checkout_page_id = ?';
+        $params[] = (string) pg_order_checkout_page_id($settled['checkout_page_id'] ?? 0);
+    }
+
+    $params[] = (string) $order_id;
+
+    return array(
+        'sql' => 'UPDATE orders SET ' . implode(', ', $set) . " WHERE id = ? AND status = 'incomplete'",
+        'params' => $params,
     );
 }
 

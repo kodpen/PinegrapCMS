@@ -368,7 +368,8 @@ function test_payment_stripe_webhook_started_payment_kept_on_order()
 	$at = strpos($source, 'pg_payment_started_order_values(');
 	pg_assert_true($at !== false, 'submit_order.php keeps the started payment');
 	pg_assert_true($at < strpos($source, "if (\$payment_answer['html'] !== '')"), 'before the redirect');
-	pg_assert_contains("AND (status = 'incomplete')", substr($source, $at, 900), 'only an incomplete order');
+	pg_assert_contains('pg_order_payment_started_query(', substr($source, $at, 900), 'through the started-payment query');
+	pg_assert_contains("AND status = 'incomplete'", pg_order_payment_started_query(42, array('transaction_id' => 'pi_3abc', 'total' => 12345), array(), false)['sql'], 'only an incomplete order');
 
 	// The callback now finds the order's own payment id and tells another
 	// payment apart.

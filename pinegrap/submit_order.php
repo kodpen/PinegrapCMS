@@ -1961,14 +1961,29 @@ function submit_order($type) {
             // The order keeps the payment the service now finishes, so the
             // service's own message about it finds the order even when the
             // visitor never returns.
+            // It also keeps the payment method, the figures the total is made
+            // of and the checkout page, which that message's completion reads.
             $payment_started = pg_payment_started_order_values($payment_answer, $total);
 
             if ($payment_started !== null) {
-                db("UPDATE orders
-                    SET
-                        transaction_id = '" . e($payment_started['transaction_id']) . "',
-                        total = '" . $payment_started['total'] . "'
-                    WHERE (id = '" . (int) ($_SESSION['ecommerce']['order_id'] ?? 0) . "') AND (status = 'incomplete')");
+                $payment_started_query = pg_order_payment_started_query(
+                    (int) ($_SESSION['ecommerce']['order_id'] ?? 0),
+                    $payment_started,
+                    array(
+                        'payment_method' => (string) $liveform->get_field_value('payment_method'),
+                        'subtotal' => $subtotal,
+                        'discount' => $discount,
+                        'tax' => $tax,
+                        'shipping' => $shipping,
+                        'gift_card_discount' => $gift_card_discount,
+                        'surcharge' => $surcharge,
+                        'checkout_page_id' => $page_id,
+                    ),
+                    pg_schema_has('orders', 'checkout_page_id'));
+
+                if ($payment_started_query !== null) {
+                    db_q($payment_started_query['sql'], $payment_started_query['params']) or output_error('Query failed.');
+                }
             }
 
             if ($payment_answer['html'] !== '') {
@@ -3518,7 +3533,9 @@ function submit_order($type) {
         + array(
             'affiliate_code' => $affiliate_code,
             'ip_address' => $_SERVER['REMOTE_ADDR'],
-        ),
+        )
+        // The checkout page, once step 11.0.120 has added its column.
+        + (pg_schema_has('orders', 'checkout_page_id') ? array('checkout_page_id' => pg_order_checkout_page_id($page_id)) : array()),
         array_keys(array_filter(array(
             'preinfo'  => ($liveform->get_field_value('legal_preinfo') == 1),
             'contract' => ($liveform->get_field_value('legal_contract') == 1),

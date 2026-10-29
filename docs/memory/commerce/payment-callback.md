@@ -23,6 +23,10 @@ description: payment_callback.php?driver=<key> (PR #2143): what reaches notify()
 - Decided (#2382): the webhook will complete an incomplete order, once the completion tail of `submit_order()` runs without a session (`plans/order-completion-function.md`, A2/A3). Until then an incomplete order is not changed; the only order write is the pending payment above.
 - Since #2199 a Stripe order sent to 3-D Secure already keeps the PaymentIntent in `transaction_id` and the started amount in `total` (`pg_payment_started_order_values()`), so the order is found by its own payment and another intent is `unknown_order`.
 
+## What does the order keep for a later completion? (A3a, #2998)
+- Before the visitor is sent away, `pg_order_payment_started_query()` (pure, `order_completion.php`) writes on the incomplete order: the payment id, the amount (`total`), `payment_method`, `subtotal`, `discount`, `tax`, `shipping`, `gift_card_discount`, `surcharge` (minor units, `round()`) and, behind `pg_schema_has()`, `checkout_page_id`. Before, only the id and the amount; an incomplete order held no figures, so a completion from the message could not write them.
+- The completion from the message itself (plan step A3) waits for #3001 (the legal documents of such an order). Until then the `incomplete` answer still only alerts.
+
 ## Firewall?
 - In `waf_is_api_request()` and `waf_country_api_scripts()` (service servers, any country). No offence on a bad signature: a wrong secret stored here would ban the service.
 
