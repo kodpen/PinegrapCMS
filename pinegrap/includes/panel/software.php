@@ -299,10 +299,7 @@ function pg_panel_software_update($request, $action)
     // software_update.php asks at its own door - a signed-in manager with
     // a valid token - before any step is looked at.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => lang('Invalid login.')
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     validate_area_access($user, 'manager');

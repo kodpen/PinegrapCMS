@@ -203,10 +203,7 @@ function pg_panel_push_config($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -249,10 +246,7 @@ function pg_panel_push_subscribe($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -295,10 +289,7 @@ function pg_panel_push_unsubscribe($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -324,10 +315,7 @@ function pg_panel_push_test($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     validate_token();
     $user = validate_user();
@@ -361,10 +349,7 @@ function pg_panel_push_pending($request, $action)
     // Exempt from the general gate, which answered a request without a
     // session this way; the same answer is kept.
     if (!USER_LOGGED_IN) {
-        respond(array(
-            'status' => 'error',
-            'message' => 'Invalid login.'
-        ));
+        respond(panel_login_refusal());
     }
     $user = validate_user();
     include_once(PG_FUNCTIONS_DIR . '/includes/notifications.php');
