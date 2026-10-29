@@ -73,6 +73,11 @@
     // the token ride on top of the draft.
     var KEEPALIVE_BYTES = 60000;
     var SVG_NS = 'http://www.w3.org/2000/svg';
+    // Undo goes back at most HISTORY_MAX steps; a change that is not
+    // structural made within HISTORY_FOLD ms of the one before it (typing,
+    // an arrow-key move) folds into that step.
+    var HISTORY_MAX = 50;
+    var HISTORY_FOLD = 1000;
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
@@ -220,6 +225,7 @@
         dotTap: null,       // the last tap on a value dot, for the second
         dirty: false,
         changes: 0,         // counts every change, to tell one made while a request ran
+        history: null,      // the open flow's steps for undo and redo (historyOf())
         saving: null,
         saveTimer: 0,
         arriving: 0,        // the timer that opens a placed template's setup panel
@@ -313,6 +319,53 @@
     function announce(text) {
         ui.live.textContent = '';
         window.setTimeout(function () { ui.live.textContent = text; }, 30);
+    }
+
+    // ── Undo and redo ──────────────────────────────────────────────────
+
+    // The steps of one flow as JSON text of its graph: before each change
+    // (past), those undone (future), and the graph as it is (now).
+    function historyOf(flow, graph) {
+        return { flow: flow, past: [], future: [], now: graph, at: 0, fold: false };
+    }
+
+    // The graph after a change; false when it is the same (the flow's name,
+    // its home). A change undone cannot be redone once another one is made.
+    function historyRecord(history, graph, fold, at) {
+        if (graph === history.now) {
+            return false;
+        }
+
+        if (!(fold && history.fold && ((at - history.at) < HISTORY_FOLD))) {
+            history.past.push(history.now);
+
+            if (history.past.length > HISTORY_MAX) {
+                history.past.shift();
+            }
+        }
+
+        history.future = [];
+        history.now = graph;
+        history.at = at;
+        history.fold = fold;
+
+        return true;
+    }
+
+    // One step back (or forward again): the graph to show, null when there
+    // is none. The change after it starts a step of its own.
+    function historyStep(history, back) {
+        var from = back ? history.past : history.future;
+
+        if (!from.length) {
+            return null;
+        }
+
+        (back ? history.future : history.past).push(history.now);
+        history.now = from.pop();
+        history.fold = false;
+
+        return history.now;
     }
 
     function typing(target) {
@@ -1635,6 +1688,15 @@
         state.marks = marksOf(flow);
         state.selected = null;
         state.binding = null;
+
+        // Shown again after Publish or Pause, the flow keeps its steps;
+        // another flow starts with none.
+        if (!same || !state.history) {
+            state.history = historyOf(flow.id, JSON.stringify(state.graph));
+        } else {
+            state.history.now = JSON.stringify(state.graph);
+        }
+
         state.dirty = false;
         state.saveError = '';
         state.conflict = '';
@@ -1855,6 +1917,15 @@
             return;
         }
 
+        ui.undo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-counterclockwise', t('fl_undo'));
+        ui.undo.setAttribute('data-refocus', 'undo redo');
+        ui.undo.addEventListener('click', function () { undo(true); });
+        ui.bar.appendChild(ui.undo);
+        ui.redo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-clockwise', t('fl_redo'));
+        ui.redo.setAttribute('data-refocus', 'redo undo');
+        ui.redo.addEventListener('click', function () { undo(false); });
+        ui.bar.appendChild(ui.redo);
+
         ui.problemButton = K.button('btn btn-sm', '', '');
         ui.problemButton.setAttribute('aria-controls', 'wsf-problems');
         ui.problemButton.setAttribute('aria-expanded', ui.problemBox.classList.contains('d-none') ? 'false' : 'true');
@@ -1928,6 +1999,9 @@
 
         var count = state.problems.length;
         var text = t('fl_saved');
+
+        ui.undo.disabled = !undoable(true);
+        ui.redo.disabled = !undoable(false);
 
         // A live or paused flow whose draft holds what its version does not.
         ui.unpublished.classList.toggle('d-none', !((state.flow.status !== 'draft') && (state.flow.changed || state.dirty)));
@@ -3735,7 +3809,7 @@
         var list = el('ul', 'mb-0 ps-5 fg-secondary');
 
         keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'arrows', 'connect', 'thread', 'delete', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
@@ -5687,14 +5761,20 @@
 
     // Something changed: drawn again when boxes or arrows came or went, and
     // saved a moment after the last change. The canvas hidden behind the
-    // outline is drawn when it is shown again (drawAll()).
-    function changed(structure) {
+    // outline is drawn when it is shown again (drawAll()). A change to the
+    // graph is a step to undo; one neither structural nor its own step (a
+    // box dropped) folds into a close one before it.
+    function changed(structure, step) {
         if (!state.edit) {
             return;
         }
 
         state.dirty = true;
         state.changes++;
+
+        if (state.history) {
+            historyRecord(state.history, JSON.stringify(state.graph), !structure && !step, Date.now());
+        }
 
         if (structure) {
             // The first box placed, or the last one removed, takes the
@@ -5715,6 +5795,39 @@
         drawState();
         window.clearTimeout(state.saveTimer);
         state.saveTimer = window.setTimeout(save, SAVE_DELAY);
+    }
+
+    // Undo (back) or redo may be pressed: the draft open for editing, no
+    // run shown, no box on its way and a step to go to.
+    function undoable(back) {
+        var history = state.history;
+
+        return !!(state.edit && state.flow && !state.run && !state.drag && history && (history.flow === state.flow.id) && (back ? history.past : history.future).length);
+    }
+
+    // The graph one step back or forward, saved as any change; a box
+    // selected stays selected while it is there, an arrow (selected by its
+    // place in the list) does not.
+    function undo(back) {
+        if (!undoable(back)) {
+            return;
+        }
+
+        var graph = graphOf(JSON.parse(historyStep(state.history, back)));
+        var selected = state.selected;
+        var pressed = (document.activeElement === ui.undo) || (document.activeElement === ui.redo);
+
+        state.graph = graph;
+        state.binding = null;
+        state.selected = (selected && (selected.type === 'node') && nodeById(selected.id)) ? selected : null;
+        changed(true);
+
+        // The button that went grey gives the focus to the other one.
+        if (pressed && document.activeElement && document.activeElement.disabled) {
+            (back ? ui.redo : ui.undo).focus();
+        }
+
+        announce(t(back ? 'fl_undone' : 'fl_redone'));
     }
 
     // A free place near the middle of what is shown, below any box there.
@@ -6064,6 +6177,9 @@
             state.saveError = '';
             state.conflict = '';
             state.refocus = 'name';
+            // The draft read again is the first step: undo never brings
+            // back what was written over on the other screen.
+            state.history = null;
             open(state.flow.id);
         });
         ui.conflictBox.appendChild(reload);
@@ -8357,7 +8473,7 @@
                 focusSelected();
             }
         } else if ((drag.kind === 'move') && drag.moved) {
-            changed(false);
+            changed(false, true);
         } else if (drag.item && !drag.moved) {
             // A second tap on the same box opens its settings (the captured
             // pointer sends no dblclick to the box itself).
@@ -8473,6 +8589,16 @@
             if ((event.ctrlKey || event.metaKey) && ((event.key === 's') || (event.key === 'S')) && drafting()) {
                 event.preventDefault();
                 save();
+            }
+
+            // Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z on the screen; a text field
+            // keeps the browser's own undo, a dialog over it its keys.
+            var redo = (event.key === 'y') || (event.key === 'Y') || (((event.key === 'z') || (event.key === 'Z')) && event.shiftKey);
+
+            if ((event.ctrlKey || event.metaKey) && !event.altKey && (redo || (event.key === 'z') || (event.key === 'Z')) && !typing(event.target)
+                && ((event.target === document.body) || ui.root.contains(event.target)) && !state.section && ui.gallery.classList.contains('d-none') && undoable(!redo)) {
+                event.preventDefault();
+                undo(!redo);
             }
         });
 

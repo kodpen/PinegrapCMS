@@ -1372,3 +1372,43 @@ JS
 	pg_assert_same('fl_run_values fl_title Post › Message: fl_run_value_pending fl_run_template_show', $result['task'], 'a box not reached: no filled field');
 	pg_assert_same(null, $result['nothing'], 'a box that reads nothing lists nothing');
 }
+
+// Undo and redo on the canvas keep the graph as JSON text before each
+// change: close changes that are not structural (typing, arrow-key moves)
+// fold into one step, a structural one is a step of its own, a new change
+// drops what was undone, and the oldest steps go past HISTORY_MAX.
+function test_workspace_flows_canvas_history_steps()
+{
+	$result = ws_flows_canvas_test_node(
+		array('historyOf', 'historyRecord', 'historyStep'),
+		<<<'JS'
+var HISTORY_MAX = 3, HISTORY_FOLD = 1000;
+var h = historyOf(7, 'a');
+var same = historyRecord(h, 'a', true, 100);
+historyRecord(h, 'b', false, 100);
+historyRecord(h, 'c', true, 200);
+historyRecord(h, 'd', true, 900);
+historyRecord(h, 'e', true, 2500);
+var folded = h.past.slice();
+var back = [historyStep(h, true), historyStep(h, true), historyStep(h, true), historyStep(h, true)];
+var forward = historyStep(h, false);
+historyRecord(h, 'x', true, 2600);
+var dropped = [h.future.length, historyStep(h, false)];
+historyRecord(h, 'y', false, 2700);
+historyRecord(h, 'z', false, 2700);
+console.log(JSON.stringify({ same: same, folded: folded, back: back, forward: forward, dropped: dropped, past: h.past, now: h.now }));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(false, $result['same'], 'the same graph is no step');
+	pg_assert_same(array('a', 'b', 'd'), $result['folded'], 'close typing folds, a pause or a structural change starts a step');
+	pg_assert_same(array('d', 'b', 'a', null), $result['back'], 'undo goes back step by step, then stops');
+	pg_assert_same('b', $result['forward'], 'redo comes forward again');
+	pg_assert_same(array(0, null), $result['dropped'], 'a new change drops what was undone');
+	pg_assert_same(array('b', 'x', 'y'), $result['past'], 'only the last steps are kept');
+	pg_assert_same('z', $result['now'], 'the graph as it is');
+}

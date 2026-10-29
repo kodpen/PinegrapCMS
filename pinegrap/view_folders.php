@@ -928,17 +928,15 @@ echo
    "disabled control" rather than "not on the site", so the name and the icon
    say it in the colour the rest of the screen already uses for that state --
    the status column and the tile's own flag are the same red. */
-.explorer-item.catalog-off .item-card,
-.explorer-item.catalog-off .list-name { opacity: .75; }
 .explorer-item.catalog-off .item-name,
 .explorer-item.catalog-off .list-name,
 .explorer-item.catalog-off .item-icon,
-.explorer-item.catalog-off .list-icon { color: var(--pg-danger) !important; }
+.explorer-item.catalog-off .list-icon { color: var(--pg-danger-fg-emphasis) !important; }
 .explorer-item.catalog-off .item-thumb { outline: 2px solid var(--pg-danger); outline-offset: -2px; }
 #explorer_tree_pane .tree-row.catalog-off .tree-label,
-#explorer_tree_pane .tree-row.catalog-off > .bi { color: var(--pg-danger) !important; }
+#explorer_tree_pane .tree-row.catalog-off > .bi { color: var(--pg-danger-fg-emphasis) !important; }
 
-.tree-count { margin-left: auto; font-size: .72rem; opacity: .55; padding-left: .4rem; }
+.tree-count { margin-left: auto; font-size: .72rem; color: var(--pg-fg-2); padding-left: .4rem; }
 
 .catalog-chip { display: inline-block; border: 1px solid var(--pg-border-color); border-radius: 2rem;
   padding: 0 .45rem; font-size: .68rem; line-height: 1.5; opacity: .85; }
@@ -1039,7 +1037,7 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 /* A short link is drawn as what it is: a link, an arrow, and the thing it
    lands on. A link straight to an address off the site has nothing to point
    at, so it keeps the link glyph alone. */
-.short-link-icon { display: inline-flex; align-items: center; justify-content: center; gap: .02em; line-height: 1; color: var(--pg-primary); }
+.short-link-icon { display: inline-flex; align-items: center; justify-content: center; gap: .02em; line-height: 1; color: var(--pg-primary-fg-emphasis); }
 .short-link-icon .sl-arrow { font-size: .68em; opacity: .55; margin: 0 -.08em; }
 .short-link-icon .sl-target { color: var(--pg-fg-body); opacity: .85; }
 .explorer-item .item-icon.short-link-icon { font-size: calc(var(--pg-tile-icon) * .67); height: var(--pg-tile-icon); }
@@ -1168,7 +1166,7 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
    grip on the edge. */
 #explorer_list_table th { position: relative; user-select: none; }
 #explorer_list_table th .th-label { display: inline-block; max-width: calc(100% - 1.4rem); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
-#explorer_list_table th .th-caret { margin-left: .25rem; font-size: .7em; color: var(--pg-primary); }
+#explorer_list_table th .th-caret { margin-left: .25rem; font-size: .7em; color: var(--pg-primary-fg-emphasis); }
 #explorer_list_table th.th-sortable { cursor: pointer; }
 #explorer_list_table th.th-sortable:hover { color: var(--pg-fg-body); }
 
@@ -1313,8 +1311,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 #upload_picked .upload-row + .upload-row { margin-top: .2rem; }
 #upload_picked .upload-path { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 #upload_picked .upload-size { flex: 0 0 auto; color: var(--pg-fg-2); font-variant-numeric: tabular-nums; }
-#upload_picked .upload-row.is-too-big .upload-size { color: var(--pg-danger); }
-#upload_picked .upload-row.is-blocked .upload-size { color: var(--pg-danger); }
+#upload_picked .upload-row.is-too-big .upload-size { color: var(--pg-danger-fg-emphasis); }
+#upload_picked .upload-row.is-blocked .upload-size { color: var(--pg-danger-fg-emphasis); }
 #upload_picked .upload-row.is-blocked .upload-path { text-decoration: line-through; opacity: .7; }
 
 /* The file window. The preview is a stage the media sits on rather than a box
@@ -1403,7 +1401,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
    cancelled document stays listed -- it keeps its number -- and reads as
    struck through. */
 #explorer_tree_pane .erp-tree-row.is-empty .tree-label,
-#explorer_tree_pane .erp-tree-row.is-empty > .bi { opacity: .55; }
+#explorer_tree_pane .erp-tree-row.is-empty > .bi { color: var(--pg-fg-2) !important; }
 .explorer-item.erp-cancelled .item-name,
 #explorer_list_table tr.erp-cancelled .list-name { text-decoration: line-through; opacity: .75; }
 .explorer-item .erp-amount { font-variant-numeric: tabular-nums; }
@@ -6871,7 +6869,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.kind !== 'page') { return ''; }
 
         function mark(icon, on, label) {
-            return '<span class="bi ' + icon + ' mx-1 ' + (on ? 'fg-success' : 'opacity-25') + '" title="' +
+            return '<span class="bi ' + icon + ' mx-1 ' + (on ? 'fg-success' : 'fg-3') + '" title="' +
                 esc(label + ': ' + (on ? L.yes : L.no)) + '"></span>';
         }
 
@@ -10011,10 +10009,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var note = row.clash ? L.rename_clash : (row.unchanged ? L.rename_unchanged : '');
 
             html += '<div class="d-flex align-items-baseline gap-3 py-1 border-bottom small' +
-                (row.unchanged ? ' opacity-50' : '') + '">' +
-                '<span class="text-truncate" style="flex:1 1 0;">' + esc(row.item.name) + '</span>' +
+                '">' +
+                '<span class="text-truncate' + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' + esc(row.item.name) + '</span>' +
                 '<i class="bi bi-arrow-right fg-secondary"></i>' +
-                '<span class="text-truncate' + (row.clash ? ' fg-danger' : '') + '" style="flex:1 1 0;">' +
+                '<span class="text-truncate' + (row.clash ? ' fg-danger' : '') + (row.unchanged ? ' fg-2' : '') + '" style="flex:1 1 0;">' +
                 esc(row.unchanged ? row.item.name : row.name) + '</span>' +
                 (note ? ('<span class="fg-secondary text-nowrap">' + esc(note) + '</span>') : '') +
                 '</div>';

@@ -24,6 +24,6 @@ description: Names screen readers get in the panel: translated aria-labels, labe
 - Waiting on files other work holds: the feed groups label (`settings/seo.php`), the Iyzipay protected currency select id (`settings/prep.php`), the dark-theme today number of the Work Calendar (`backend.src.css`), the close buttons of `get_page_content.php` and the installer; the products list filter select (`view_products.php`) and the SearchBox dialog of `includes/fn/output.php` (its `aria-labelledby` names no element).
 - About 55 fields with a `title` beside a `<label>` (`panel-hint-tooltip-or-popover.md`).
 
-Reports, date filters: `report-screen-controls.md`.
+Reports, date filters: `report-screen-controls.md`. Lists: `list-row-names.md`.
 
 Test: `tests/contrast_test.php` (`test_contrast_readable_ink_on`).
