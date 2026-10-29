@@ -238,6 +238,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - status-chart-colour-words.md: System Status chips and detail rows, the orders Payment methods doughnut and the Search Console day chart tell states and series apart by words, dashes and shapes, not colour alone
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
+- suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - toggle-and-mark-names.md: Toggle aria-labels follow state, icon marks carry visually-hidden text, radio groups get a legend or radiogroup name, reasons are printed not hovered (offers, key codes, ERP)

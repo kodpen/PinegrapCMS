@@ -562,8 +562,9 @@ function erp_account_form_contact_card($liveform, $contact)
             <div class="row">
                 <div class="col-12 lg:col-6 my-3 position-relative">
                     <label for="contact_search" class="form-label">' . lang('Find a contact') . '</label>
-                    <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
-                    <div class="menu shadow-sm w-100" data-erp-contact-results></div>
+                    <input type="text" id="contact_search" class="form-control" maxlength="100" autocomplete="off" role="combobox" aria-autocomplete="list" aria-controls="erp_contact_results" aria-expanded="false" placeholder="' . h(lang('Name, company or e-mail address')) . '" data-erp-contact-search />
+                    <div class="menu shadow-sm w-100" id="erp_contact_results" data-erp-contact-results></div>
+                    <div class="visually-hidden" role="status" aria-live="polite" aria-atomic="true" data-erp-contact-status></div>
                     <div class="form-text">' . lang('Orders placed by the linked contact are billed to this account, and the contact screen shows the balance. One contact links to one account.') . '</div>
                 </div>
                 <div class="col-12 lg:col-6 my-3">
@@ -585,6 +586,7 @@ function erp_account_form_contact_card($liveform, $contact)
             var menu = card.querySelector("[data-erp-contact-results]");
             var summary = card.querySelector("[data-erp-contact-summary]");
             var unlink = card.querySelector("[data-erp-contact-unlink]");
+            var status = card.querySelector("[data-erp-contact-status]");
             var texts = ' . json_encode(array(
                 'none' => lang('No contact is linked to this account.'),
                 'noResults' => lang('No contacts found.'),
@@ -592,12 +594,20 @@ function erp_account_form_contact_card($liveform, $contact)
                 'unlinkPending' => lang('The link is removed when the account is saved.'),
                 'taken' => lang('already linked to another account'),
             ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
-            var timer = 0, request = 0;
+            var timer = 0, request = 0, announceTimer = 0;
 
             function escapeHtml(text) {
                 return String(text).replace(/[&<>"]/g, function (c) { return {"&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;"}[c]; });
             }
-            function close() { menu.classList.remove("show"); menu.innerHTML = ""; }
+            function close() { menu.classList.remove("show"); menu.innerHTML = ""; input.setAttribute("aria-expanded", "false"); }
+            function items() { return Array.prototype.slice.call(menu.querySelectorAll("button:not([disabled])")); }
+            // Emptied first and filled a moment later, so the same sentence
+            // twice in a row is read again.
+            function announce(text) {
+                window.clearTimeout(announceTimer);
+                status.textContent = "";
+                announceTimer = window.setTimeout(function () { status.textContent = text; }, 150);
+            }
             function pick(contact) {
                 hidden.value = String(contact.id);
                 input.value = "";
@@ -609,7 +619,11 @@ function erp_account_form_contact_card($liveform, $contact)
                     + (lines.length ? "<div class=\"small fg-secondary\">" + lines.join("<br>") + "</div>" : "")
                     + "<div class=\"small fg-emphasis-warning mt-3\"><i class=\"bi bi-info-circle me-1\"></i>" + escapeHtml(texts.pending) + "</div>";
                 unlink.classList.remove("d-none");
+                // The picked result goes with the list: focus returns to the
+                // box instead of falling to the page.
                 close();
+                input.focus();
+                announce(contact.name + ". " + texts.pending);
             }
             function render(results) {
                 menu.innerHTML = "";
@@ -618,6 +632,7 @@ function erp_account_form_contact_card($liveform, $contact)
                     empty.className = "menu-text fg-secondary small";
                     empty.textContent = texts.noResults;
                     menu.appendChild(empty);
+                    announce(texts.noResults);
                 }
                 results.forEach(function (contact) {
                     var item = document.createElement("button");
@@ -633,6 +648,7 @@ function erp_account_form_contact_card($liveform, $contact)
                     menu.appendChild(item);
                 });
                 menu.classList.add("show");
+                input.setAttribute("aria-expanded", "true");
             }
             input.addEventListener("input", function () {
                 var query = input.value.trim();
@@ -651,7 +667,23 @@ function erp_account_form_contact_card($liveform, $contact)
             });
             input.addEventListener("keydown", function (event) {
                 if (event.key === "Enter") { event.preventDefault(); var first = menu.querySelector("button:not([disabled])"); if (first) { first.click(); } }
+                if (event.key === "ArrowDown") { event.preventDefault(); var first = items()[0]; if (first) { first.focus(); } }
                 if (event.key === "Escape") { close(); }
+            });
+            // The arrows move through the results; up from the first one and
+            // Escape go back to the box.
+            menu.addEventListener("keydown", function (event) {
+                var list = items();
+                var at = list.indexOf(document.activeElement);
+                if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+                    event.preventDefault();
+                    if (event.key === "ArrowUp" && at <= 0) {
+                        input.focus();
+                    } else if (list.length) {
+                        list[Math.min(list.length - 1, Math.max(0, at + (event.key === "ArrowDown" ? 1 : -1)))].focus();
+                    }
+                }
+                if (event.key === "Escape") { event.preventDefault(); close(); input.focus(); }
             });
             document.addEventListener("click", function (event) {
                 if (!card.contains(event.target)) { close(); }
