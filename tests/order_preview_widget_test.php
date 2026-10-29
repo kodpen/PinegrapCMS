@@ -144,3 +144,136 @@ function test_order_preview_widget_method_classes()
 	pg_op_stamp_method_classes($again, array('many_payment_methods' => true, 'has_surcharge' => true));
 	pg_assert_same($many, $again, 'a class is stamped once');
 }
+
+// A payment section as the starter tree draws it: one radio row per method
+// under its pays_by_* flag, then the card fields.
+function _test_op_payment_tree()
+{
+	$method = function ($value, $label, $flag, $token = '') {
+		$id = 'op_pm_' . trim(preg_replace('/[^a-z0-9]+/', '_', strtolower($value)), '_');
+		$lp = array('tag' => 'label', 'cssClass' => 'form-check-label', 'text' => $label, '_attrs' => array(array('name' => 'for', 'value' => $id)));
+		if ($token !== '') $lp['_bindings'] = array('text' => $token);
+		return array('type' => 'semantic', 'id' => 'n_' . $id, 'props' => array('tag' => 'div', 'cssClass' => 'form-check mb-2 my-look', '_bindings' => array('eo_visible_if' => $flag)),
+			'children' => array(
+				array('type' => 'semantic', 'props' => array('tag' => 'input', 'cssClass' => 'form-check-input', 'id' => $id,
+					'_attrs' => array(array('name' => 'type', 'value' => 'radio'), array('name' => 'name', 'value' => 'payment_method'),
+						array('name' => 'value', 'value' => $value), array('name' => 'required', 'value' => '')))),
+				array('type' => 'semantic', 'props' => $lp),
+			));
+	};
+	$input = function ($name) {
+		return array('type' => 'semantic', 'props' => array('tag' => 'input', 'cssClass' => 'form-control',
+			'_attrs' => array(array('name' => 'type', 'value' => 'text'), array('name' => 'name', 'value' => $name))));
+	};
+	return array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => ''), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'mb-3', '_bindings' => array('eo_visible_if' => 'many_payment_methods')), 'children' => array(
+			$method('Credit/Debit Card', 'Credit/Debit Card', 'pays_by_card'),
+			$method('PayPal Express Checkout', 'PayPal', 'pays_by_paypal'),
+			$method('Pay With Iyzico', 'Pay with iyzico', 'pays_by_iyzico'),
+			$method('Offline Payment', 'Offline Payment', 'pays_offline', '__offline_payment_label'),
+		)),
+		array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'border rounded', '_bindings' => array('eo_visible_if' => 'pays_by_card')),
+			'children' => array($input('card_number'), $input('expiration'))),
+	));
+}
+
+// value => array(row flag, input id, label for, label text, label binding,
+// row class) for each radio row of the payment section.
+function _test_op_method_rows($tree)
+{
+	$rows = array();
+	foreach ($tree['children'][0]['children'] as $row) {
+		$attrs = _pg_cf_node_attrs($row['children'][0]);
+		$label = $row['children'][1]['props'];
+		$rows[$attrs['value']] = array(
+			(string)($row['props']['_bindings']['eo_visible_if'] ?? ''), $attrs['id'] ?? '',
+			_pg_cf_node_attrs($row['children'][1])['for'] ?? '', (string)($label['text'] ?? ''),
+			(string)($label['_bindings']['text'] ?? ''), $row['props']['cssClass'],
+		);
+	}
+	return $rows;
+}
+
+function test_order_preview_widget_driver_and_on_account_rows()
+{
+	$d = array('payment' => true, 'recurring_transaction' => false, 'number_of_payment_methods' => 4,
+		'payment_driver_methods' => array('PayTR' => 'PayTR', 'PayPal Checkout' => 'PayPal'), 'system' => '');
+	$option = array('value' => 'On Account', 'label' => 'Put it on my account', 'note' => 'Available credit: 1.000,00');
+	pg_assert_true(pg_op_offer_on_account($d, $option), 'On Account offered');
+	pg_assert_same(5, $d['number_of_payment_methods'], 'and counted');
+	$tree = _test_op_payment_tree();
+	pg_op_add_method_rows($tree, pg_op_method_rows($d, $option));
+	$rows = _test_op_method_rows($tree);
+	pg_assert_same(array('Credit/Debit Card', 'PayPal Express Checkout', 'Pay With Iyzico', 'PayTR', 'PayPal Checkout', 'Offline Payment', 'On Account'),
+		array_keys($rows), 'one row per method, in the classic order');
+	pg_assert_same(array('', 'op_pm_paytr', 'op_pm_paytr', 'PayTR', '', 'form-check mb-2 my-look'), $rows['PayTR'], 'a driver row in the tree\'s own look');
+	pg_assert_same(array('', 'op_pm_paypal_checkout', 'op_pm_paypal_checkout', 'PayPal', '', 'form-check mb-2 my-look'), $rows['PayPal Checkout'], 'the driver\'s label');
+	pg_assert_same(array('', 'op_pm_on_account', 'op_pm_on_account', 'Put it on my account (Available credit: 1.000,00)', '', 'form-check mb-2 my-look'),
+		$rows['On Account'], 'On Account with its note');
+	pg_assert_same('pays_offline', $rows['Offline Payment'][0], 'the saved rows keep their flags');
+
+	// The visibility bindings then drop the methods the order is not offered;
+	// the added rows stay.
+	$flags = pg_op_flags($d + array('credit_debit_card' => true, 'offline_payment' => true));
+	_eo_apply_visibility_bindings($tree, $flags);
+	pg_assert_same(array('Credit/Debit Card', 'PayTR', 'PayPal Checkout', 'Offline Payment', 'On Account'), array_keys(_test_op_method_rows($tree)), 'after the visibility bindings');
+	pg_op_stamp_method_classes($tree, $flags);
+	pg_assert_same('border rounded credit_debit_card', $tree['children'][1]['props']['cssClass'], 'the card fields still follow the method');
+	foreach ($tree['children'][0]['children'] as $row) {
+		pg_assert_false(strpos($row['props']['cssClass'], 'credit_debit_card') !== false, 'no radio row hides with the card fields');
+	}
+
+	// Only the rows of the methods offered; none without a method row to copy.
+	$tree = _test_op_payment_tree();
+	pg_op_add_method_rows($tree, pg_op_method_rows(array('number_of_payment_methods' => 3, 'payment_driver_methods' => array()), null));
+	pg_assert_same(_test_op_payment_tree(), $tree, 'nothing to add, the tree is unchanged');
+	$bare = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array());
+	pg_op_add_method_rows($bare, pg_op_method_rows($d, $option));
+	pg_assert_same(array(), $bare['children'], 'no radio row to copy, nothing added');
+}
+
+function test_order_preview_widget_on_account_offer()
+{
+	$option = array('value' => 'On Account', 'label' => 'Put it on my account', 'note' => 'Available credit: 10');
+	$hidden = '<input type="hidden" name="payment_method">';
+
+	// One method before: the hidden field goes, the radios decide.
+	$d = array('payment' => true, 'recurring_transaction' => false, 'number_of_payment_methods' => 1, 'offline_payment' => true,
+		'system' => '<input type="hidden" name="x">' . $hidden . '<script>software.init_payment_method()</script>');
+	pg_assert_false(pg_op_flags($d)['many_payment_methods'], 'one method alone');
+	pg_assert_true(pg_op_offer_on_account($d, $option), 'offered beside the one method');
+	pg_assert_true(pg_op_flags($d)['many_payment_methods'], 'two methods now');
+	pg_assert_false(strpos($d['system'], $hidden) !== false, 'the single method\'s hidden field is dropped');
+	pg_assert_contains('<input type="hidden" name="x">', $d['system'], 'the other system fields stay');
+
+	// A recurring line: never on account (submit_order.php refuses it).
+	$d = array('payment' => true, 'recurring_transaction' => true, 'number_of_payment_methods' => 1, 'system' => $hidden);
+	pg_assert_false(pg_op_offer_on_account($d, $option), 'not for a recurring order');
+	pg_assert_same(1, $d['number_of_payment_methods'], 'not counted');
+	pg_assert_same($hidden, $d['system'], 'the hidden field stays');
+	pg_assert_same(array(), pg_op_method_rows(array('number_of_payment_methods' => 2, 'payment_driver_methods' => array()), null), 'no On Account row');
+
+	// No member account, no payment due, or no method at all: not offered.
+	$d = array('payment' => true, 'recurring_transaction' => false, 'number_of_payment_methods' => 2, 'system' => '');
+	pg_assert_false(pg_op_offer_on_account($d, null), 'no open account');
+	$d = array('payment' => false, 'recurring_transaction' => false, 'number_of_payment_methods' => 0, 'system' => '');
+	pg_assert_false(pg_op_offer_on_account($d, $option), 'nothing to pay');
+
+	// Two or more methods before: the hidden field was never printed.
+	$d = array('payment' => true, 'recurring_transaction' => false, 'number_of_payment_methods' => 2, 'system' => '<b></b>');
+	pg_assert_true(pg_op_offer_on_account($d, $option), 'a third method');
+	pg_assert_same(3, $d['number_of_payment_methods'], 'counted');
+	pg_assert_same('<b></b>', $d['system'], 'system untouched');
+}
+
+function test_order_preview_widget_single_method_no_rows()
+{
+	// One method: the branch's hidden field posts it, no radio is drawn.
+	$d = array('number_of_payment_methods' => 1, 'payment_driver_methods' => array('PayTR' => 'PayTR'));
+	pg_assert_same(array(), pg_op_method_rows($d, null), 'a single driver method gets no row');
+	$tree = _test_op_payment_tree();
+	pg_op_add_method_rows($tree, pg_op_method_rows($d, null));
+	pg_assert_same(_test_op_payment_tree(), $tree, 'the tree is unchanged');
+	$d['number_of_payment_methods'] = 2;
+	pg_assert_same(array(array('value' => 'PayTR', 'label' => 'PayTR', 'before_offline' => true)), pg_op_method_rows($d, null), 'beside another method it gets one');
+}
