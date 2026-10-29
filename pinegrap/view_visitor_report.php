@@ -1046,6 +1046,9 @@ if (!$_POST) {
         if ($export_name == '') {
             $export_name = 'visitor-report';
         }
+        // Letters with a mark become plain ones first, so a Turkish report
+        // name keeps its words instead of turning into a row of dashes.
+        $export_name = pg_transliterate_to_ascii($export_name);
         $export_name = preg_replace('/[^A-Za-z0-9_-]+/', '-', $export_name);
 
         header('Content-Type: text/csv; charset=utf-8');
@@ -1058,9 +1061,16 @@ if (!$_POST) {
         // guessing an ANSI code page and mangling Turkish characters.
         fwrite($out, "\xEF\xBB\xBF");
 
+        // A grouping column is named with the label the form offers for it;
+        // an option not offered now (currency or device switched off) keeps
+        // its stored value.
+        $summarize_by_labels = array_flip($summarize_by_options);
         $export_headers = array();
+        $export_summarize_bys = array();
         for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
-            $export_headers[] = $liveform->get_field_value('summarize_by_' . $i);
+            $summarize_by = $liveform->get_field_value('summarize_by_' . $i);
+            $export_summarize_bys[$i] = $summarize_by;
+            $export_headers[] = isset($summarize_by_labels[$summarize_by]) ? $summarize_by_labels[$summarize_by] : $summarize_by;
         }
         fputcsv($out, array_merge($export_headers, array(
             lang('Visitor Number'),
@@ -1100,8 +1110,14 @@ if (!$_POST) {
         while ($row = mysqli_fetch_assoc($result)) {
 
             $line = array();
+            // Same labels as the screen (month name, device, first or
+            // return visit, currency name); search terms on one line.
             for ($i = 1; $i <= $number_of_summarize_bys; $i++) {
-                $line[] = isset($row['sb' . $i]) ? $row['sb' . $i] : '';
+                $cell = update_summarize_by_name($row['sb' . $i] ?? '', $export_summarize_bys[$i]);
+                if ($export_summarize_bys[$i] == 'site_search_terms') {
+                    $cell = str_replace(",\n", ', ', $cell);
+                }
+                $line[] = $cell;
             }
 
             fputcsv($out, array_merge($line, array(
@@ -2029,6 +2045,15 @@ function update_summarize_by_name($summarize_by_name, $summarize_by) {
 
         case 'month':
             $summarize_by_name = get_month_name_from_number($summarize_by_name);
+            break;
+
+        // The grouping's SQL returns these two English literals.
+        case 'pay_per_click_organic':
+            if ($summarize_by_name == 'Pay Per Click') {
+                $summarize_by_name = lang('Pay Per Click');
+            } elseif ($summarize_by_name == 'Organic') {
+                $summarize_by_name = lang('Organic');
+            }
             break;
             
         case 'site_search_terms':
