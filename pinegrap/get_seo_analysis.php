@@ -24,9 +24,33 @@ include('init.php');
 require_once(dirname(__FILE__) . '/seo.php');
 require_once(dirname(__FILE__) . '/seo_structure.php');
 
+// The panel is fetched into a drawer, so a refusal is a short fragment with a
+// status the callers check. validate_user() would redirect to the sign-in page
+// and validate_token_field() would draw the site's designed error page with
+// its stylesheets; fetch() follows the one and both would land in the panel.
+function pg_seo_analysis_refuse($status)
+{
+    http_response_code($status);
+    header('Content-Type: text/html; charset=utf-8');
+    exit('<div class="alert theme-warning mb-0" role="alert">' . h(lang('Your session has expired. Please sign in again.')) . '</div>');
+}
+
+if (!isset($_SESSION['sessionuserid']) || ($_SESSION['sessionuserid'] === '')) {
+    pg_seo_analysis_refuse(401);
+}
+
 $user = validate_user();
 validate_area_access($user, 'user');
-validate_token_field();
+
+// A token sent as a list never matches.
+if (
+    !isset($_GET['token'])
+    || !is_string($_GET['token'])
+    || !isset($_SESSION['software']['token'])
+    || !hash_equals((string) $_SESSION['software']['token'], $_GET['token'])
+) {
+    pg_seo_analysis_refuse(403);
+}
 
 $type = $_GET['type'] ?? '';
 // An id sent as an array counts as not given (it would read as record 1).

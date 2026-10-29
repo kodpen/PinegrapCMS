@@ -62,13 +62,14 @@ function test_panel_load_failures_dashboard_failure_only_replaces_skeleton()
 function test_panel_load_failures_seo_endpoint_refuses_before_redirect()
 {
 	$source = panel_load_failures_source('get_seo_analysis.php');
-	$refusal = strpos($source, 'http_response_code(401)');
+	$refusal = strpos($source, 'pg_seo_analysis_refuse(401)');
 	$validate = strpos($source, '$user = validate_user();');
 	pg_assert_true($refusal !== false, 'a missing session answers 401');
 	pg_assert_true($validate !== false && $refusal < $validate, 'the 401 comes before validate_user()');
-	pg_assert_contains('http_response_code(403)', $source);
+	pg_assert_contains('http_response_code($status)', $source);
+	pg_assert_contains('pg_seo_analysis_refuse(403)', $source);
 	pg_assert_contains("hash_equals(", $source);
-	pg_assert_false(strpos($source, 'validate_token_field()') !== false, 'validate_token_field() draws the site error page');
+	pg_assert_false(strpos($source, "\nvalidate_token_field();") !== false, 'validate_token_field() draws the site error page');
 	pg_assert_contains("lang('Your session has expired. Please sign in again.')", $source);
 }
 
