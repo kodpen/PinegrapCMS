@@ -67,7 +67,8 @@ function pg_user_permission_row($group)
 		$output_button =
 			'<button type="button" class="btn btn-sm btn-text theme-secondary pg-perm-open"'
 			. ' data-bs-toggle="drawer" data-bs-target="#pgperm_panel_' . h($group['id']) . '"'
-			. ' aria-controls="pgperm_panel_' . h($group['id']) . '">'
+			. ' aria-controls="pgperm_panel_' . h($group['id']) . '"'
+			. ' id="pgperm_open_' . h($group['id']) . '" aria-labelledby="pgperm_open_' . h($group['id']) . ' pgperm_row_title_' . h($group['id']) . '">'
 			. h(lang('Select')) . '<i class="bi bi-chevron-right ms-1"></i></button>';
 	}
 
@@ -80,7 +81,7 @@ function pg_user_permission_row($group)
 				</div>
 				<span class="pg-perm-icon" style="--pg-perm-color:' . h($group['color']) . '"><i class="bi ' . h($group['icon']) . '"></i></span>
 				<div class="pg-perm-text">
-					<b>' . h($group['title']) . '</b>
+					<b id="pgperm_row_title_' . h($group['id']) . '">' . h($group['title']) . '</b>
 					<span>' . h($group['description']) . '</span>
 				</div>
 				<div class="pg-perm-summary">' . $output_summary . '</div>
@@ -117,8 +118,13 @@ function pg_user_permission_panel($group)
 // and its own "select all" switch. $scope names the counter this list feeds.
 function pg_user_permission_list($scope, $heading, $items, $checker_id)
 {
+	// Several lists share one drawer, so a Select All switch reads its own
+	// word followed by the list's heading.
 	$output_heading = ($heading !== '')
-		? '<div class="pg-perm-block-title">' . h($heading) . '</div>'
+		? '<div class="pg-perm-block-title" id="' . h($checker_id) . '_title">' . h($heading) . '</div>'
+		: '';
+	$output_checker_name = ($heading !== '')
+		? ' aria-labelledby="' . h($checker_id) . '_label ' . h($checker_id) . '_title"'
 		: '';
 
 	return '
@@ -127,8 +133,8 @@ function pg_user_permission_list($scope, $heading, $items, $checker_id)
 					<div class="card multiselect-checkbox-container pg-perm-list" data-pg-count="' . h($scope) . '">
 						<div class="card-header border-0 bg-reset">
 							<div class="form-field mb-0">
-								<div class="switch"><input id="' . h($checker_id) . '" class="multiselect-checkbox-checker" type="checkbox"></div>
-								<label for="' . h($checker_id) . '" class="">' . h(lang('Select All')) . '</label>
+								<div class="switch"><input id="' . h($checker_id) . '" class="multiselect-checkbox-checker" type="checkbox"' . $output_checker_name . '></div>
+								<label for="' . h($checker_id) . '" class="" id="' . h($checker_id) . '_label">' . h(lang('Select All')) . '</label>
 							</div>
 							<span class="pg-perm-list-count" data-pg-list-count="' . h(lang(array('string' => '{var:1} of {var:2} selected', 'vars' => array('{n}', '{m}')))) . '"></span>
 						</div>

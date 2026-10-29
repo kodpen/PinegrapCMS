@@ -89,10 +89,10 @@ foreach ($translation_languages as $translation_code => $translation_row) {
     }
 
     $output_translation_rows .= '
-                        <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '">
+                        <div class="pg-tr-language border rounded-4 p-5" data-code="' . h($translation_code) . '" role="group" aria-labelledby="tr_name_' . h($translation_code) . '">
                             <div class="d-flex flex-wrap align-items-center gap-3 mb-5">
                                 <span class="badge theme-secondary font-monospace">' . h($translation_code) . '</span>
-                                <strong class="me-auto">' . h($translation_label) . '</strong>
+                                <strong class="me-auto" id="tr_name_' . h($translation_code) . '">' . h($translation_label) . '</strong>
                                 <div class="form-field mb-0">
                                     <div class="switch"><input value="1"' . (((int) $translation_row['enabled'] === 1) ? ' checked="checked"' : '') . ' class="" type="checkbox" id="tr_enabled_' . h($translation_code) . '" name="' . $translation_name . '[enabled]"/></div>
                                     <label class="" for="tr_enabled_' . h($translation_code) . '">' . lang('Served') . '</label>
@@ -174,8 +174,8 @@ $output_translation_languages = '
                             <div class="form-text">' . lang('The language the pages are written in. It is separate from the panel language and starts out equal to it.') . '</div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">' . lang('Target languages') . '</label>
+                    <div class="col-12" role="group" aria-labelledby="translation_targets_title">
+                        <div class="form-label" id="translation_targets_title">' . lang('Target languages') . '</div>
                         <div class="d-flex flex-column gap-5">' . $output_translation_rows . '
                         </div>
                         <div class="form-text">' . lang('A served language is reachable under its address prefix (for example /en/about).') . '</div>' . ($translation_auto_column ? '

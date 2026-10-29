@@ -394,8 +394,8 @@ $pg_settings_cards[] = '
             </div>
             <div class="card-body">
                 <div class="row gy-5">' . (($output_erp_edoc_options !== '') ? '
-                    <div class="col-12">
-                        <div class="form-label">' . lang('e-Document Provider') . ' <span class="fg-secondary small">(' . lang('ERP') . ')</span></div>
+                    <div class="col-12" role="group" aria-labelledby="erp_edoc_provider_title">
+                        <div class="form-label" id="erp_edoc_provider_title">' . lang('e-Document Provider') . ' <span class="fg-secondary small">(' . lang('ERP') . ')</span></div>
                         <div class="form-text mb-3">' . lang('Where the ERP\'s invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.') . '</div>
                         ' . $output_erp_edoc_options . '
                         <button type="button" class="btn btn-sm btn-outline theme-secondary pg-edoc-test" data-pg-action="' . h(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY) . '/get_erp_edoc_test.php"><i class="bi bi-plug me-3"></i>' . lang('Test the connection') . '</button>
@@ -654,8 +654,8 @@ $pg_settings_cards[] = '
                             <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(30px, 0px);"></div>
                             <div class="popover-body">
                                 <div class="row gy-5">
-                                    <div class="col-12">
-                                        <div class="form-label">' . lang('Currencies allowed on documents') . '</div>
+                                    <div class="col-12" role="group" aria-labelledby="erp_fx_currencies_title">
+                                        <div class="form-label" id="erp_fx_currencies_title">' . lang('Currencies allowed on documents') . '</div>
                                         ' . $output_erp_fx_currencies . '
                                         <div class="form-text">' . lang('The base currency is always allowed. Daily rates for these come from the Exchange rates job; run Update Exchange Rates on the currencies screen to fetch today\'s.') . '</div>
                                     </div>
@@ -670,8 +670,8 @@ $pg_settings_cards[] = '
                             </div>
                         </div>
                     </div>
-                    <div class="col-12">
-                        <div class="form-label">' . lang('Overdue receivable reminders') . '</div>
+                    <div class="col-12" role="group" aria-labelledby="erp_overdue_notify_title">
+                        <div class="form-label" id="erp_overdue_notify_title">' . lang('Overdue receivable reminders') . '</div>
                         <div class="form-text mb-3">' . lang('Sales invoices that pass this many days overdue are announced in the panel bell, by e-mail and on a subscribed device, and once more if still open a month later. An account can carry a threshold of its own. 0 turns the reminders off.') . '</div>
                         <div class="row gy-5">
                             <div class="col-12 md:col-4">
