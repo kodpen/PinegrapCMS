@@ -12,8 +12,8 @@ description: The current link or menu item carries aria-current beside .active; 
 - A button that toggles a choice without leaving the page: `aria-pressed`, `"true"` on the chosen one and `"false"` on the others, kept in step wherever script moves the fill.
 
 ## Where is it done?
-- `aria-current`: Translations (language menu, chips, page and group lists, pager), ERP Cash flow view pills, ERP Settings document pills, ERP invoices e-Document filter menu, Cloudflare Tools period tabs, Paraşüt inbox tabs, the Site Settings category switcher, the image picker sort menu (`editor_select_image.php`).
-- `aria-pressed`: the offer editor's Validity and Scope buttons (`edit_offer.php` prints `"false"`, `pressed()` in `offer_editor.js` sets class and attribute in `renderOptions()`); the per-result unit, target and tier-mode buttons through `choiceButton(on)`; the Site Log Type filter (`view_log.php` prints it and the click handler moves it).
+- `aria-current`: the File and Catalog Manager tree rows (`markTreeRow()`, `explorer-tree-keyboard.md`) and its Files scope menu, Translations (language menu, chips, page and group lists, pager), ERP Cash flow view pills, ERP Settings document pills, ERP invoices e-Document filter menu, Cloudflare Tools period tabs, Paraşüt inbox tabs, the Site Settings category switcher, the image picker sort menu (`editor_select_image.php`).
+- `aria-pressed`: the offer editor's Validity and Scope buttons (`edit_offer.php` prints `"false"`, `pressed()` in `offer_editor.js` sets class and attribute in `renderOptions()`); the per-result unit, target and tier-mode buttons through `choiceButton(on)`; the Site Log Type filter (`view_log.php` prints it and the click handler moves it). The File and Catalog Manager's Grid/List pair (its group named View), Filters, Preview panel and right-click View/Sort/Size/column choices: `explorer-picker-state.md`.
 
 ## What changed in the offer editor's target choice?
 - The Product button was filled whenever the result did not target a group, so with Cheapest chosen two buttons were filled. Product is now chosen only when neither Group nor Cheapest is.

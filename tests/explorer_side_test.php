@@ -232,7 +232,7 @@ function test_explorer_side_pinned_and_recent_are_checked_by_the_server()
 	pg_assert_contains("if (!shortcutsChecked || !(id > 0) || !shortcutNames[id]) { return; }", $explorer, 'and draws only what it confirmed');
 	pg_assert_contains("json.shortcuts.forEach(function (entry) { shortcutNames[entry.id] = String(entry.name); });", $explorer, 'adding to what the page itself showed');
 	pg_assert_contains("        shortcutNames[here.id] = here.name;\n", $explorer, 'a folder visited before the answer stays in Recent');
-	pg_assert_contains("'\" data-shortcut-id=\"' + id + '\"", $explorer, 'with the checked whole number as its id');
+	pg_assert_contains("'\" role=\"link\" tabindex=\"0\" data-shortcut-id=\"' + id + '\"", $explorer, 'with the checked whole number as its id');
 	pg_assert_contains('    verifyShortcuts();', $explorer, 'asked at boot');
 }
 
