@@ -6,7 +6,8 @@
  * heading: the e-document provider radios, the document currencies, the
  * overdue reminder channels, the country restriction exemptions, each target
  * language block and every SMS text in the Site Settings cards, and the
- * permission rows' Select buttons and Select All switches on the user screens.
+ * permission rows' Select buttons and Select All switches on the user screens,
+ * Organize Contacts and the calendar event form.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -99,4 +100,17 @@ function test_settings_group_names_select_all_names_its_list()
 
 	$bare = pg_user_permission_list('menus', '', '', 'checker-x');
 	pg_assert_false(strpos($bare, 'aria-labelledby') !== false, 'a list with no heading keeps its plain label');
+}
+
+function test_settings_group_names_organize_contacts_select_all_names_its_list()
+{
+	$source = settings_group_names_source('organize_contacts.php');
+
+	foreach (array('0' => 'Add to Contact Groups', '1' => 'Remove from Contact Groups') as $n => $heading) {
+		$id = 'multiselect-checkbox-checker-' . $n;
+
+		pg_assert_contains('id="' . $id . '_title">\' . lang(array(\'string\'=>\'' . $heading . '\') ) . \'</div>', $source, $heading . ' heading has an id');
+		pg_assert_contains('<input id="' . $id . '" class="multiselect-checkbox-checker" type="checkbox" aria-labelledby="' . $id . '_label ' . $id . '_title">', $source, $heading . ' Select All reads its list');
+		pg_assert_contains('<label for="' . $id . '" class="" id="' . $id . '_label">', $source, $heading . ' Select All label has an id');
+	}
 }

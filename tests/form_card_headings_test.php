@@ -81,7 +81,7 @@ function test_form_group_titles_are_h3_inside_cards()
 		'menu_item_form.php' => '<h3 class="h5">\' . lang(\'Link Menu Item To\') . \'</h3>',
 		'arrival_date_form.php' => '<h3 class="h4 fw-bold fg-secondary">\' . lang(\'Shipping Cut-offs\') . \'</h3>',
 		'field_form.php' => '<h3 class="h6 fg-secondary">\' . lang(\'Amount of Rows and Columns to Display\') . \'</h3>',
-		'calendar_event_form.php' => '<h3 class="h5">\' . lang(\'Post to any of my Calendars\') . \'</h3>',
+		'calendar_event_form.php' => '<h3 class="h5" id="multiselect-checkbox-checker-1_title">\' . lang(\'Post to any of my Calendars\') . \'</h3>',
 		'shipping_method_form.php' => '<h3 class="h5 fg-secondary mt-5">\' . lang(\'Available on\') . \'</h3>',
 		'page_form.php' => '<h3 class="h5">\' . lang(\'Form List Views\') . \'</h3>',
 	);
