@@ -10,7 +10,7 @@ description: The link tip's Text field (linkText()), the Ctrl+/ shortcut sheet (
 - Ctrl/Cmd+B, I, Shift+X, Shift+H, E, K, the selection bar, the browser's `formatBold/Italic/StrikeThrough` and table and checklist cells go through `formatSurface()`.
 
 ## When does a tool on the selection bar act?
-- On click (`showBar()` in `workspace_editor.js`); its mousedown is only prevented, so the selection stays where it is, as on the row under the box. Before, the mark or link tip ran inside mousedown: a press could not be slid off and a click-only activation (a screen reader's) did nothing (#PR).
+- On click (`showBar()` in `workspace_editor.js`); its mousedown is only prevented, so the selection stays where it is, as on the row under the box. Before, the mark or link tip ran inside mousedown: a press could not be slid off and a click-only activation (a screen reader's) did nothing (#3297).
 
 ## How was it checked?
 - `tests/workspace_editor_link_keys_test.php` runs `linkText()`, `keyLabel()`, `shortcutRows()` under Node and holds the wiring. Headless Chromium on `workspace_editor.js` alone: a caret link takes the address, a selection prefills and is replaced by new words, an edited link's words revert with one undo, the sheet takes the focus and Escape gives it back. Not Safari, Firefox or a phone.
