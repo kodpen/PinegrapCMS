@@ -73,6 +73,11 @@
     // the token ride on top of the draft.
     var KEEPALIVE_BYTES = 60000;
     var SVG_NS = 'http://www.w3.org/2000/svg';
+    // Undo goes back at most HISTORY_MAX steps; a change that is not
+    // structural made within HISTORY_FOLD ms of the one before it (typing,
+    // an arrow-key move) folds into that step.
+    var HISTORY_MAX = 50;
+    var HISTORY_FOLD = 1000;
 
     // An open run is read again after POLL_FIRST ms, then each look that
     // finds nothing new waits POLL_GROW times longer, up to POLL_MAX; a
@@ -313,6 +318,53 @@
     function announce(text) {
         ui.live.textContent = '';
         window.setTimeout(function () { ui.live.textContent = text; }, 30);
+    }
+
+    // ── Undo and redo ──────────────────────────────────────────────────
+
+    // The steps of one flow as JSON text of its graph: before each change
+    // (past), those undone (future), and the graph as it is (now).
+    function historyOf(flow, graph) {
+        return { flow: flow, past: [], future: [], now: graph, at: 0, fold: false };
+    }
+
+    // The graph after a change; false when it is the same (the flow's name,
+    // its home). A change undone cannot be redone once another one is made.
+    function historyRecord(history, graph, fold, at) {
+        if (graph === history.now) {
+            return false;
+        }
+
+        if (!(fold && history.fold && ((at - history.at) < HISTORY_FOLD))) {
+            history.past.push(history.now);
+
+            if (history.past.length > HISTORY_MAX) {
+                history.past.shift();
+            }
+        }
+
+        history.future = [];
+        history.now = graph;
+        history.at = at;
+        history.fold = fold;
+
+        return true;
+    }
+
+    // One step back (or forward again): the graph to show, null when there
+    // is none. The change after it starts a step of its own.
+    function historyStep(history, back) {
+        var from = back ? history.past : history.future;
+
+        if (!from.length) {
+            return null;
+        }
+
+        (back ? history.future : history.past).push(history.now);
+        history.now = from.pop();
+        history.fold = false;
+
+        return history.now;
     }
 
     function typing(target) {
