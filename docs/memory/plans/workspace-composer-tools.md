@@ -28,7 +28,7 @@ description: Plan (2026-10-23; 1-9, 10a and 11 done, 10b left): one toolbar for 
 8. Small aids, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
 9. Objects, done. 9a lone tag as a card: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task: #2158 (workspace/workspace-checklist-to-task.md).
 10. Saved replies with `{customer}`, `{order}`, schema decided in #3075 (b); team ones later need a right column only (five ladder files, `pg_user_has_ws_columns()`).
-   - 10a: table, store, API/MCP. Done: #PR10A (workspace/workspace-saved-replies.md).
+   - 10a: table, store, API/MCP. Done: #3090 (workspace/workspace-saved-replies.md).
    - 10b: composer `;` picker (fills `{customer}`/`{order}` via `ws_customer_summary()`), panel list to manage replies.
 11. Rewrite with AI, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
