@@ -716,6 +716,7 @@
     "Download the statement (PDF)": "Ekstreyi indir (PDF)",
     "Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank's title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.": "Ekstreyi internet bankacılığından Excel (.xlsx ya da .xls), OpenDocument (.ods) veya CSV olarak indirip olduğu gibi yükleyin; ilk sayfa okunur, bankanın hareketlerin üstündeki başlık satırları atlanır. Sütunları sonraki ekranda seçersiniz; bu banka hesabı için hatırlanır. Daha önce alınmış bir satır ikinci kez eklenmez.",
     "Download token": "Damgayı indir",
+    "Download {var:1}": "{var:1} indir",
     "Downloading": "İndiriliyor",
     "Downloading the AI model: {var:1}%": "Yapay zekâ modeli indiriliyor: %{var:1}",
     "Downloading the language model… {var}%": "Dil modeli indiriliyor… %{var}",

@@ -216,7 +216,7 @@ if (!$rollback_backups) {
         $rollback_rows .= '
                         <li class="list-group-item d-flex flex-wrap gap-3 align-items-center">
                             <div class="flex-grow-1">
-                                <div class="fw-semibold">' . h(lang(array('string' => 'Version {var:1}', 'vars' => array($rollback_backup['version'])))) . ' <span class="fg-secondary fw-normal small">· ' . h(date('d.m.Y H:i', (int) $rollback_backup['created'])) . ' · ' . h(convert_bytes_to_string($rollback_backup['size'], 1)) . '</span></div>
+                                <div class="fw-semibold">' . h(lang(array('string' => 'Version {var:1}', 'vars' => array($rollback_backup['version'])))) . ' <span class="fg-secondary fw-normal small">· ' . h(get_absolute_time(array('timestamp' => (int) $rollback_backup['created'], 'format' => 'plain_text'))) . ' · ' . h(convert_bytes_to_string($rollback_backup['size'], 1)) . '</span></div>
                                 <div class="small fg-secondary text-break">' . h($rollback_backup['name']) . ($rollback_backup['recorded'] ? '' : ' · ' . h(lang('not made by an update on this site'))) . '</div>
                             </div>
                             <button type="button" class="btn btn-sm btn-outline theme-warning pg-rollback" data-name="' . h($rollback_backup['name']) . '" data-version="' . h($rollback_backup['version']) . '"' . ($rollback_backup['recorded'] ? '' : ' disabled data-unrecorded="1"') . '>
@@ -255,11 +255,12 @@ echo '
                         <div class="card-body">' . $repair_warning . '
                             <ul class="list-group mb-5">' . $repair_rows . '
                             </ul>
-                            <div class="progress mb-5">
-                                <div class="progress-bar progress-bar-striped text-start" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"><span class="logbox ms-1"></span></div>
+                            <div class="progress">
+                                <div class="progress-bar progress-bar-striped" role="progressbar" aria-label="' . h(lang('Repair Software')) . '" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
                             </div>
+                            <div class="logbox form-text mb-5" role="status"></div>
                             <button type="button" id="repair" class="btn btn-outline theme-warning"' . ($repair_blocked ? ' disabled' : '') . '>
-                                <i class="bi bi-bandaid me-1" aria-hidden="true"></i><span id="repair_label">' . h(lang('Repair Software')) . '</span>
+                                <i class="bi bi-bandaid me-1" aria-hidden="true"></i>' . h(lang('Repair Software')) . '
                             </button>
                         </div>
                     </div>
@@ -302,7 +303,6 @@ echo '
 <script>
     $(function(){
         var repair_button = $("#repair");
-        var repair_label = $("#repair_label");
         var progress = $(".progress .progress-bar");
         var log_box = $(".logbox");
 
@@ -311,16 +311,20 @@ echo '
         // the package replaces and the database to a pre-update archive, or
         // answers at once when that is switched off.
         var steps = [
-            { step: "check", width: "30%" },
-            { step: "download", width: "55%" },
-            { step: "backup", width: "80%" },
-            { step: "replace", width: "100%" }
+            { step: "check", width: 30 },
+            { step: "download", width: 55 },
+            { step: "backup", width: 80 },
+            { step: "replace", width: 100 }
         ];
 
+        function set_width(width) {
+            progress.css("width", width + "%").attr("aria-valuenow", width);
+        }
+
         function fail(message) {
-            progress.addClass("bg-danger").removeClass("progress-bar-animated").attr("style", "width:100%");
-            log_box.text(message || "");
-            repair_label.text("' . escape_javascript(lang('Retry')) . '");
+            progress.addClass("bg-danger").removeClass("progress-bar-animated");
+            set_width(100);
+            log_box.text(message || "' . escape_javascript(lang('An error occurred.')) . '");
             repair_button.prop("disabled", false);
         }
 
@@ -340,7 +344,7 @@ echo '
                         fail(response ? response.message : "");
                         return;
                     }
-                    progress.attr("style", "width:" + steps[index].width);
+                    set_width(steps[index].width);
                     log_box.text(response.message);
                     if (index + 1 < steps.length) {
                         run(index + 1);
@@ -364,8 +368,8 @@ echo '
                 return;
             }
             repair_button.prop("disabled", true);
-            repair_label.text("' . escape_javascript(lang('Repairing')) . '...");
-            progress.addClass("progress-bar-animated").removeClass("bg-danger").attr("style", "width:20%");
+            progress.addClass("progress-bar-animated").removeClass("bg-danger");
+            set_width(20);
             log_box.text("' . escape_javascript(lang('Starting')) . '...");
             run(0);
         });
