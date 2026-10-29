@@ -1635,6 +1635,16 @@ $(document).ready(function () {
                 checkedKeyDataAttributeName: "jquery-multi-select-checkbox-checked-key"
             });
         });
+
+        // The plugin sets the "Select All" switch to all or nothing and fires
+        // change only for that switch, so the mixed state is read back from
+        // the boxes on every change in a list, and once for lists that load
+        // half-ticked (a saved event or filter).
+        $(document).on('change', '.multiselect-checkbox-container', function () {
+            pgSyncCheckboxList(this);
+        });
+
+        pgSyncCheckboxLists();
     }
 
 
@@ -2846,18 +2856,27 @@ function pgListServerFailed(callback, draw, $table, message) {
 }
 
 function chart_checkbox_state_change() {
+    // The multiselect plugin only ever sets the select-all box to all or
+    // nothing, so a part-ticked list read as "not checked". The count is taken
+    // over the enabled boxes of the rows the plugin itself selects.
+    var $boxes = $('tr:not(.unselectable) .select-all input').not(':disabled');
+    var ticked = $boxes.filter(':checked').length;
+
+    $('#select_all')
+        .prop('indeterminate', (ticked > 0) && (ticked < $boxes.length))
+        .prop('checked', (ticked > 0) && (ticked === $boxes.length));
+
+    // The property as well as the class: .btn.disabled only stops the pointer,
+    // so a bulk button outside the bottom bar stayed focusable and pressable
+    // with nothing ticked.
     if ($('.select-all input[type=checkbox]').is(':checked')) {
-        $('.enable-on-selected button').each(function () {
-            $(this).removeClass('disabled');
-        });
+        $('.enable-on-selected button').removeClass('disabled').prop('disabled', false);
         $('.dataTable .action-buttons *').each(function () {
             $(this).attr('style', 'visibility:hidden !important;');
         });
 
     } else {
-        $('.enable-on-selected button').each(function () {
-            $(this).addClass('disabled');
-        });
+        $('.enable-on-selected button').addClass('disabled').prop('disabled', true);
         $('.dataTable .action-buttons *').each(function () {
             $(this).attr('style', '');
         });
@@ -5168,9 +5187,9 @@ function pgCloseAclExpiry(container) {
 }
 
 /* The "select all" switch of one checkbox list: three states rather than two,
-   plus the count beside it. The plugin that drives the list only ever sets
-   checked/unchecked, so a half-selected list used to show the switch off - the
-   one state it could not be. */
+   plus the count beside it where the list has one. The plugin that drives the
+   list only ever sets checked/unchecked, so a half-selected list used to show
+   the switch off - the one state it could not be. */
 function pgSyncCheckboxList(list) {
 
     var boxes = Array.prototype.filter.call(
@@ -5195,7 +5214,7 @@ function pgSyncCheckboxList(list) {
 }
 
 function pgSyncCheckboxLists(scope) {
-    Array.prototype.forEach.call((scope || document).querySelectorAll('.pg-perm-list'), pgSyncCheckboxList);
+    Array.prototype.forEach.call((scope || document).querySelectorAll('.multiselect-checkbox-container'), pgSyncCheckboxList);
 }
 
 function change_user_role(user_role) {
