@@ -25,30 +25,6 @@ parameters:
 			path: ../pinegrap/get_catalog.php
 
 		-
-			message: '#^Function mysql_get_server_info not found\.$#'
-			identifier: function.notFound
-			count: 1
-			path: ../pinegrap/includes/fn/core.php
-
-		-
-			message: '#^Function mysql_select_db not found\.$#'
-			identifier: function.notFound
-			count: 1
-			path: ../pinegrap/includes/fn/core.php
-
-		-
-			message: '#^Function mysql_query not found\.$#'
-			identifier: function.notFound
-			count: 1
-			path: ../pinegrap/router.php
-
-		-
-			message: '#^Function mysql_select_db not found\.$#'
-			identifier: function.notFound
-			count: 1
-			path: ../pinegrap/router.php
-
-		-
 			message: '#^Function pfpro_process not found\.$#'
 			identifier: function.notFound
 			count: 2

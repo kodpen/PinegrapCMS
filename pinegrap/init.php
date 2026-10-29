@@ -901,20 +901,6 @@ if (!defined('CONTROL_PANEL_STYLESHEET_URL')) {
     define('CONTROL_PANEL_STYLESHEET_URL', pg_default_control_panel_stylesheet_url());
 }
 
-
-// PHP+8 depricated//..
-// if magic quotes is on, remove slashes from data so our data is clean
-if (
-    (function_exists("get_magic_quotes_gpc") && get_magic_quotes_gpc())
-    || (ini_get('magic_quotes_sybase') && (strtolower(ini_get('magic_quotes_sybase')) != "off"))
-) {
-
-    $_REQUEST = array_stripslashes($_REQUEST);
-    $_GET = array_stripslashes($_GET);
-    $_POST = array_stripslashes($_POST);
-    $_COOKIE = array_stripslashes($_COOKIE);
-}
-
 // Where a form goes once it is saved (send_to) and the screen it was opened
 // from (from) are single values that every screen reads from the request
 // itself (174 files), so an array is turned away here, once, before any of
