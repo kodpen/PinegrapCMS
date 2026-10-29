@@ -159,6 +159,8 @@ function test_workspace_flow_outputs_answered()
 		'lead'        => array('ws_scheduled_lead'),
 		'approval'    => array('ws_scheduled_do'),
 		'mcp'         => array('ws_step_mcp_do'),
+		'row_add'     => array('ws_step_row_do'),
+		'row_set'     => array('ws_step_row_do'),
 	);
 
 	$kinds = array_keys(ws_step_kinds());

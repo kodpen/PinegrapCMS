@@ -199,7 +199,7 @@ function test_workspace_flow_steps_types()
 	$steps = array_keys(ws_scheduled_outcomes()) ? ws_step_kinds() : array();
 
 	foreach ($steps as $kind => $info) {
-		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp'), true), $kind);
+		pg_assert_true(in_array($info['type'], array('post', 'email', 'notify', 'task', 'webhook', 'web_check', 'task_digest', 'report', 'checkin', 'trigger', 'change', 'lead', 'approval', 'mcp', 'row_add', 'row_set'), true), $kind);
 		pg_assert_same(array(), array_diff($info['lines'], $info['texts']), $kind . ': one-line texts are texts');
 	}
 
@@ -645,9 +645,9 @@ function test_workspace_flow_steps_scheduled_texts()
 	pg_assert_false((bool) preg_match('~ws_scheduled_fill\([^;]*\$action\[\'question\'\]~', $source));
 
 	foreach ($kinds as $kind => $info) {
-		// An MCP box's arguments go to the tool as filled, in no scheduled
-		// action's step.
-		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp'), true)) {
+		// An MCP box's arguments go to the tool as filled, and a table box's
+		// cells and row to the table's store, in no scheduled action's step.
+		if (($info['texts'] !== array()) && !in_array($kind, array('checkin', 'mcp', 'row_add', 'row_set'), true)) {
 			pg_assert_true(isset($map[$kind]), $kind . ' has its line');
 		}
 	}
