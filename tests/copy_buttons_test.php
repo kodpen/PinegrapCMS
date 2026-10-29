@@ -35,6 +35,8 @@ function copy_buttons_screens()
 		array('view_log.php', 'includes/fn/site_log_list.php'),
 		array('connections.php', 'connections.php'),
 		array('workspace_calendar_feed.php', 'workspace_calendar_feed.php'),
+		array('api_settings.php', 'api_settings.php'),
+		array('mfa.php', 'mfa.php'),
 	);
 }
 
@@ -80,4 +82,29 @@ function test_copy_buttons_status_beside_button()
 	// or open sheet that makes the rest of the page inert still hears it.
 	pg_assert_contains("aria-label=\"' . h(lang('Copy')) . '\"><i class=\"bi bi-clipboard\" aria-hidden=\"true\"></i></button>'\n            . '<span class=\"visually-hidden\" role=\"status\" aria-live=\"polite\"", copy_buttons_source('includes/workspace/claude.php'));
 	pg_assert_contains('trigger.parentNode.querySelector(\\\'[role="status"]\\\')', copy_buttons_source('includes/workspace/claude.php'));
+}
+
+function test_copy_buttons_api_settings_names()
+{
+	$source = copy_buttons_source('api_settings.php');
+
+	// Every Copy button reads its own caption: "Copy Key", "Copy Secret".
+	pg_assert_true(strpos($source, 'button.innerHTML') === false, 'the API copy button keeps its label');
+	pg_assert_true(preg_match_all('/class="btn[^"]*api-copy"/', $source) === 1, 'API copy buttons come from one helper');
+	pg_assert_contains('aria-labelledby="\' . $id . \'_copy \' . $caption_id . \'"', $source);
+	pg_assert_contains('<label class="form-label small" id="d_key_label">', $source);
+	pg_assert_contains('<label class="form-label small text-uppercase opacity-75" id="nc_secret_label">', $source);
+	pg_assert_contains('<summary id="\' . $id_prefix . \'_c_\' . $key . \'_label">', $source);
+
+	// A modal drawer or an open sheet makes the rest of the page inert, so
+	// the status sits beside the button inside it.
+	pg_assert_contains('button.parentNode.querySelector("[role=status]")', $source);
+}
+
+function test_copy_buttons_mfa_selects_and_says()
+{
+	$source = copy_buttons_source('mfa.php');
+
+	pg_assert_true(strpos($source, '.catch(function () { field.select(); })') === false, 'a refused write is announced, not only selected');
+	pg_assert_contains('id="mfa_copy_status"', $source);
 }

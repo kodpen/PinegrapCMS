@@ -12,9 +12,11 @@ description: Hand-written panel Copy buttons: label kept, icon swapped, polite s
 
 ## Which screens follow it?
 - ERP accountant link (`erp_accountant.php`), Workspace Settings › Claude in channels and its one-time secret sheet (`$copy` in `includes/workspace/claude.php`, also used by the setup guide), the Chrome browser pages on Site Settings › Languages and Translations (`pg_tr_browser_pages_html()`, one delegated listener bound once per page because the list also arrives over Ajax), Site Log error rows (`view_log.php` handler, status printed by `pg_site_log_list_description()` in `includes/fn/site_log_list.php`), Connections' Redirect address, the Workspace calendar feed address.
-- Not yet on it: API applications (`api_settings.php`) and two-step setup (`mfa.php`). Already correct before: File Manager, Workspace editor, form item view, designer home.
+- API applications (`api_settings.php`): every button comes from `api_settings_copy_button($id, $caption_id, $class)`, which prints the button and its status inside the `.api-secret-box` (the drawer is a modal `<dialog>`, the one-time sheet inerts the page). The button is named `aria-labelledby="<id>_copy <caption id>"` ("Copy Key", "Copy Secret"); captions are the `<label>` or the client `<summary>` with an `_label` id. The source is a `<code>`, so the fallback uses `selectAllChildren()`.
+- Two-step setup (`mfa.php`): status `#mfa_copy_status` right after the input group (inside it, it would take the button's rounded end).
+- Already correct before: File Manager, Workspace editor, form item view, designer home.
 
 ## What fixed what?
-- Before: over http Site Log returned silently; the Claude card and calendar feed said Copied after a failed `execCommand`; the Chrome pages flipped the icon before the write settled and never back; Connections said nothing; the calendar feed replaced its label for good; the accountant link ignored a refusal.
+- Before: over http Site Log returned silently; the Claude card and calendar feed said Copied after a failed `execCommand`; the Chrome pages flipped the icon before the write settled and never back; Connections said nothing; the calendar feed replaced its label for good; the accountant link ignored a refusal; API applications threw over http, replaced the focused button with a bare icon and gave keyboard users no way to copy the one-time secret; two-step setup said nothing.
 
 Test: `tests/copy_buttons_test.php` (source pins of each handler and status region), `tests/erp_marks_names_test.php` (accountant status span).
