@@ -1856,7 +1856,21 @@ function email($properties)
         // so the timeout is short.
         $smtp = (isset($properties['smtp']) && is_array($properties['smtp']) && !empty($properties['smtp']['host'])) ? $properties['smtp'] : null;
 
-        $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
+        // 'connection' names a connected account of the message's own (a
+        // Workspace mailbox's, purpose mail_read): it comes before the one
+        // SMTP Settings chose, and a gone one fails the message rather than
+        // sending it from another address.
+        if (!$smtp && !empty($properties['connection'])) {
+            $connection = pg_connect_account((int) $properties['connection']);
+
+            if (!is_array($connection) || !in_array('mail_read', (array) $connection['purposes'], true)) {
+                $permanent = true;
+
+                throw new Exception(lang('The connected account answers are sent through is gone or must be connected again.'));
+            }
+        } else {
+            $connection = (!$smtp && (($type === 'system') || ($type === 'campaign'))) ? pg_mail_connection($type) : null;
+        }
 
         // SMTP config
         if ($smtp) {

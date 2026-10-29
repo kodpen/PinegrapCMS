@@ -1357,6 +1357,7 @@
     "Sign in with a passkey": "Geçiş anahtarıyla oturum aç",
     "Sign in with a passkey alone": "Yalnızca geçiş anahtarıyla oturum açma",
     "Sign in with the account you ordered with to review this product.": "Bu ürünü değerlendirmek için sipariş verdiğiniz hesapla giriş yapın.",
+    "Sign in with the mailbox's own account; the site's Microsoft application must be set up in Settings › Connections first.": "Posta kutusunun kendi hesabıyla oturum açın; sitenin Microsoft uygulaması önce Ayarlar › Bağlantılar'da kurulmuş olmalıdır.",
     "Sign in with your email address or username.": "E-posta adresiniz ya da kullanıcı adınızla giriş yapın.",
     "Sign in with {var:1}": "{var:1} ile Giriş",
     "Sign in with {var:1} is not turned on on this site. Please sign in with your account details.": "{var:1} ile giriş bu sitede açık değil. Lütfen hesap bilgilerinizle giriş yapın.",
