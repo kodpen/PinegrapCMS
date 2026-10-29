@@ -577,7 +577,7 @@ function init_page_designer(properties) {
 
     var output_dynamic_region_button = '';
     if (dynamic_regions && dynamic_regions === 1) {
-        output_dynamic_region_button = '<button type="button" id="dregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_dynamic_region"><span class="bi fg-emphasis-warning bi-filetype-php me-3"></span> ' + labels['Create Dynamic Region'] + '</button>';
+        output_dynamic_region_button = '<a type="button" id="dregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_dynamic_region"><span class="bi fg-emphasis-warning bi-filetype-php me-3"></span> ' + labels['Create Dynamic Region'] + '</a>';
     }
     $('body').append(`
         <main>
@@ -622,13 +622,11 @@ function init_page_designer(properties) {
                             <ul class="listtree related_items"></ul>
                         </div>
                         <div id="console_errors" class="flex-shrink-0 border-top" style="display:none">
-                            <div class="pd-console-header d-flex align-items-center px-3 py-1 gap-1" style="user-select:none">
-                                <button type="button" id="pd_console_toggle" class="btn btn-sm d-flex align-items-center gap-1 p-0 border-0 flex-grow-1 text-start" aria-expanded="false" aria-controls="pd_console_body" onclick="pdConsoleToggle()">
-                                    <span class="bi bi-terminal" style="font-size:.75rem" aria-hidden="true"></span>
-                                    <span style="font-size:.7rem;font-family:monospace;font-weight:600">${h(labels['Console'])}</span>
-                                    <span id="pd_console_badge" class="badge rounded-pill theme-danger ms-1" style="font-size:.6rem;display:none"></span>
-                                </button>
-                                <button type="button" class="btn btn-sm p-0 px-1 ms-auto border-0" style="font-size:.65rem" title="${h(labels['Clear'])}" aria-label="${h(labels['Clear'])}" onclick="pdConsoleClear()"><span class="bi bi-x-lg" aria-hidden="true"></span></button>
+                            <div class="pd-console-header d-flex align-items-center px-3 py-1 gap-1" onclick="pdConsoleToggle()" style="cursor:pointer;user-select:none">
+                                <span class="bi bi-terminal" style="font-size:.75rem"></span>
+                                <span style="font-size:.7rem;font-family:monospace;font-weight:600">${h(labels['Console'])}</span>
+                                <span id="pd_console_badge" class="badge rounded-pill theme-danger ms-1" style="font-size:.6rem;display:none"></span>
+                                <button class="btn btn-sm p-0 px-1 ms-auto border-0" style="font-size:.65rem" title="${h(labels['Clear'])}" onclick="event.stopPropagation();pdConsoleClear()"><span class="bi bi-x-lg"></span></button>
                             </div>
                             <div id="pd_console_body" class="overflow-auto" style="display:none;max-height:200px"></div>
                         </div>
@@ -643,8 +641,8 @@ function init_page_designer(properties) {
                       <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="${h(labels['Close'])}"></button>
                     </div>
                     <div class="dialog-body d-flex flex-wrap flex-column">
-                          <button type="button" id="pregionButton" class="btn text-start my-1"><span class="bi fg-emphasis-primary bi-window me-3"></span> ${labels["Create Page Region"]}</button>
-                          <button type="button" id="cregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_designer_region"><span class="bi fg-emphasis-danger fs-smaller bi-window-dock me-3"></span> ${labels["Create Designer Region"]}</button>
+                          <a type="button" id="pregionButton" class="btn text-start my-1"><span class="bi fg-emphasis-primary bi-window me-3"></span> ${labels["Create Page Region"]}</a>
+                          <a type="button" id="cregionButton" class="btn text-start my-1" data-bs-toggle="dialog" data-bs-target="#editor_modal_add_designer_region"><span class="bi fg-emphasis-danger fs-smaller bi-window-dock me-3"></span> ${labels["Create Designer Region"]}</a>
                           ${output_dynamic_region_button}
                     </div>
               </dialog>
@@ -1476,10 +1474,8 @@ function init_page_designer(properties) {
     function _pdConsoleSetExpanded(open) {
         var panel = document.getElementById('console_errors');
         var body = document.getElementById('pd_console_body');
-        var toggle = document.getElementById('pd_console_toggle');
         if (!panel || !body) { return; }
         _pdConsoleOpen = open;
-        if (toggle) { toggle.setAttribute('aria-expanded', open ? 'true' : 'false'); }
         body.style.display = open ? '' : 'none';
         panel.style.flexGrow = open ? '1' : '0';
         panel.style.flexShrink = open ? '1' : '0';

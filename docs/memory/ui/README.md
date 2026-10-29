@@ -114,7 +114,6 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - icon-ligature-button-names.md: Buttons whose content is a Material Icons ligature (north, south, delete, living) are named by that word; how the product attribute and product group screens name them (#2893)
 - inline-feedback-placement.md: Where a panel field's error message goes on Bootstrap 6 (pgPlaceInlineFeedback(), #2578) and how script-set marks get aria-invalid and their message (pgFieldInvalid(), class observer, #3026)
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
-- keyboard-reach-menu-designer-print.md: Update Search Index menu entry, the Page Designer's region type choices and console header, and the order print view's product links take keyboard focus
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
 - list-period-week.md: List screens' period navigator: the week starts on Monday in Turkish, Sunday otherwise; the five screens read pg_list_period_week_steps() (#2039)
@@ -179,6 +178,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-field-wrappers.md: pgChips, pgCombobox, pgDatePicker, pgDateTimeField (pg_fields.js): data-pg-* hooks, the posted field as store, own date parse, change event, engines, screens
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width layout fixes (#3006): v6 .input-group does not wrap (Shipping Method base rate tiers), Login Region code fields without a fixed width
+- print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
 - print-views-light-paper.md: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
