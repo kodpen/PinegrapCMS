@@ -4049,10 +4049,10 @@
         });
         box.appendChild(field(t('fl_priority'), priority));
 
-        box.appendChild(field(t('fl_description'), textInput(config.description, 8000, function (value) {
+        box.appendChild(valueField(node, t('fl_description'), config.description, 8000, function (value) {
             config.description = value;
             refreshNode(node);
-        }, true), t('fl_description_help')));
+        }, true, t('fl_description_help')));
     }
 
     // A post box: the channel the owner writes in and the message. The store
