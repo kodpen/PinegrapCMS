@@ -546,6 +546,7 @@
     "Load as a Module": "Modül olarak yükle",
     "Load it again": "Yeniden yükle",
     "Load revision #{var}?": "{var} numaralı sürüm yüklensin mi?",
+    "Load revision {var:1}": "Sürüm {var:1} yükle",
     "Load the \"{var}\" starter template for this widget?": "Bu widget için \"{var}\" starter şablonu yüklensin mi?",
     "Load the Default Layout": "Varsayılan Düzeni Yükle",
     "Load their version": "Onun sürümünü yükle",
