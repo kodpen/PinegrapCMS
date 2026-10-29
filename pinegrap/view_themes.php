@@ -120,14 +120,14 @@ if ($files) {
 
         // if this theme is the activated desktop theme, then output check mark
         if ($file['activated_desktop_theme'] == 1) {
-            $output_activated_desktop_theme_check_mark = '<span class="material-icons">task_alt</span>';
+            $output_activated_desktop_theme_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
 
         $output_activated_mobile_theme_check_mark = '';
 
         // if this theme is the activated mobile theme, then output check mark
         if ($file['activated_mobile_theme'] == 1) {
-            $output_activated_mobile_theme_check_mark = '<span class="material-icons">task_alt</span>';
+            $output_activated_mobile_theme_check_mark = '<span class="material-icons" role="img" aria-label="' . h(lang('Yes')) . '">task_alt</span>';
         }
         
         // If the theme was upload by a user then display their name.
@@ -154,7 +154,7 @@ if ($files) {
                 </td>
                 <td class="align-middle chart_label">' . h($file['name']) . '</td>
                 <td class="align-middle">' . nl2br(h($file['description'])) . '</td>
-                <td class="align-middle text-start ' . $folder_access_control_type . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span><span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
+                <td class="align-middle text-start ' . $folder_access_control_type . '" title="' . h($file['folder_name']) . '"><span class="d-block overflow-hidden text-truncate" style="width: 100px;max-width:100%;"><span class="material-icons d-inline" aria-hidden="true">folder</span><span class="badge fw-light fg-reset d-inline">' . h($file['folder_name']) . '</span></span><span class="badge fw-light fg-reset d-inline">(' . $output_access_control . ')</span></td>
                 <td class="align-middle text-center">' . $output_activated_desktop_theme_check_mark . '</td>
                 <td class="align-middle text-center">' . $output_activated_mobile_theme_check_mark . '</td>
                 <td class="align-middle">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . $output_created_by_user . '</td>

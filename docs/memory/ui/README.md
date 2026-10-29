@@ -201,6 +201,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards, the workspace flow's own .pg-step rail
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
+- theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - toggle-and-mark-names.md: A state toggle's aria-label follows its state, icon-only badges and list marks carry visually-hidden text, a radio group's heading is a legend (offers and key codes lists)
 - translations-screen-noindex-reason.md: Translations screen: a page's search verdict in the page list, its own-noindex state, the "Why?" list of texts keeping it out (blocking filter) and "Keep as in the source and approve"
 - translations-screen-recent-jobs.md: Translations screen (translations.php), recent jobs list: how a job's scope (all, group:catalog / forms / ui, page:ID) is labelled

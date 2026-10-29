@@ -35,13 +35,9 @@ if (!$_POST) {
     
     $liveform->assign_field_value('private_label', $private_label);
     
-    // assume that the private label table should not be hidden by default until we find out otherwise
-    $private_label_table_style = '';
-    
-    // if private label is disabled, then hide private label table by default
-    if ($private_label == 0) {
-        $private_label_table_style = '; display: none';
-    }
+    // The fields behind the switch start open when the private label is on;
+    // the collapse switcher keeps them in step with the switch afterwards.
+    $private_label_fields_show = ($private_label == 0) ? '' : ' show';
     
     // If LOGO_URL global variable is not set to the default value, display it to the user
     if (LOGO_URL != PATH . SOFTWARE_DIRECTORY . '/assets/images/logo.png?v=' . @filemtime(dirname(__FILE__) . '/assets/images/logo.png')) {
@@ -103,6 +99,23 @@ if (!$_POST) {
         $liveform->assign_field_value('footer_link_5_url', FOOTER_LINK_5_URL);
     }
     
+    // The five footer links, each a label and a URL side by side.
+    $output_footer_link_rows = '';
+
+    for ($footer_link = 1; $footer_link <= 5; $footer_link++) {
+        $output_footer_link_rows .= '
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="footer_link_' . $footer_link . '_label" class="form-label">' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array((string) $footer_link))) . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_' . $footer_link . '_label', 'id'=>'footer_link_' . $footer_link . '_label', 'class'=>'form-control')) . '
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="footer_link_' . $footer_link . '_url" class="form-label">' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array((string) $footer_link))) . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_' . $footer_link . '_url', 'id'=>'footer_link_' . $footer_link . '_url', 'class'=>'form-control')) . '
+                                        </div>
+                                    </div>';
+    }
+
     print
         pg_page_shell([
             'title'=> lang('Private Label Branding'),
@@ -120,87 +133,42 @@ if (!$_POST) {
                             <p class="fg-secondary">' . lang('Update the branding for the control panel.') . '</p>
                         </div>
                     </div>
-            <form name="form" action="private_label.php" method="post" style="margin-bottom: 1em">
+            <form name="form" action="private_label.php" method="post">
                 ' . get_token_field() . '
-                <script type="text/javascript">
-                    function show_or_hide_private_label() {
-                        if (document.getElementById("private_label").checked == true) {
-                            document.getElementById("private_label_table").style.display = "";
-                        } else {
-                            document.getElementById("private_label_table").style.display = "none";
-                        }
-                    }
-                </script>
-                <div style="margin-bottom: 1em"><label for="private_label">' . lang('Enable Private Label') . ': </label>' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'checkbox check', 'onclick'=>'show_or_hide_private_label()')) . '</div>
-                <table id="private_label_table" style="margin-bottom: 1em; margin-left: 1em' . $private_label_table_style . '">
-                    <tr>
-                        <td>' . lang('Logo URL') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'logo_url', 'size'=>'80')) . ' (' . lang('leave blank to use the default product logo') . ')</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang('Control Panel Stylesheet URL') . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'control_panel_stylesheet_url', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('1'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_1_label', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('1'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_1_url', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('2'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_2_label', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('2'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_2_url', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('3'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_3_label', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('3'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_3_url', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('4'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_4_label', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('4'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_4_url', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td colspan="2">&nbsp;</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} Label', 'vars' => array('5'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_5_label', 'size'=>'80')) . '</td>
-                    </tr>
-                    <tr>
-                        <td>' . lang(array('string' => 'Footer Link {var:1} URL', 'vars' => array('5'))) . ':</td>
-                        <td>' . $liveform->output_field(array('type'=>'text', 'name'=>'footer_link_5_url', 'size'=>'80')) . '</td>
-                    </tr>
-                </table>
+                <div class="row">
+                    <div class="col-12">
+                        <div class="card my-7">
+                            <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                ' . lang('Branding') . '
+                            </div>
+                            <div class="card-body">
+                                <div class="form-field my-3">
+                                    <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'private_label', 'id'=>'private_label', 'value'=>'1', 'class'=>'collapse-switcher no-bs', 'data-bs-target'=>'#private_label_fields')) . '</div>
+                                    <label for="private_label">' . lang('Enable Private Label') . '</label>
+                                </div>
+                                <div class="collapse' . $private_label_fields_show . '" id="private_label_fields">
+                                    <div class="row">
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="logo_url" class="form-label">' . lang('Logo URL') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'logo_url', 'id'=>'logo_url', 'class'=>'form-control')) . '
+                                            <div class="form-text">' . lang('leave blank to use the default product logo') . '</div>
+                                        </div>
+                                        <div class="col-12 md:col-6 my-3">
+                                            <label for="control_panel_stylesheet_url" class="form-label">' . lang('Control Panel Stylesheet URL') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'control_panel_stylesheet_url', 'id'=>'control_panel_stylesheet_url', 'class'=>'form-control')) . '
+                                        </div>
+                                    </div>
+                                    <h3 class="h6 fw-bold mt-5">' . lang('Footer Links') . '</h3>
+                                    ' . $output_footer_link_rows . '
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
                         <div class="btn-group flex-wrap justify-content-center">
-                            <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
+                            <button type="submit" name="submit_save" value="Save" class="btn my-1 btn-solid theme-success"><span class="material-icons me-3" aria-hidden="true">save</span><span class="pg-btn-label">' . lang('Save') . '</span></button>
                         </div>
                     </div>
                 </nav>
