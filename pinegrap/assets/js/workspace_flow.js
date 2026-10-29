@@ -8937,10 +8937,103 @@
         return 'canvas.' + Array.prototype.map.call(random, function (value) { return ('0' + value.toString(16)).slice(-2); }).join('');
     }
 
+    // The optional customer of a run, asked under Run's question: a search
+    // among the contacts the person reads (ws_ref_search), one picked at a
+    // time. The server checks the pick again (ws_flow_run_contact_check()).
+    function customerPicker() {
+        var picked = { id: 0 };
+        var wrap = el('div', 'wsf-run-customer');
+        var id = 'wsf-run-customer-' + Date.now();
+        var label = el('label', 'form-label small fw-semibold mb-1', t('fl_run_customer'));
+        var input = el('input', 'form-control form-control-sm');
+        var help = el('div', 'form-text', t('fl_run_customer_help'));
+        var list = el('div', 'list-group mt-1 d-none');
+        var chip = el('div', 'd-flex align-items-center gap-2 mt-1 d-none');
+        var serial = 0;
+
+        label.htmlFor = id;
+        input.id = id;
+        input.type = 'search';
+        input.autocomplete = 'off';
+        help.id = id + '-help';
+        input.setAttribute('aria-describedby', help.id);
+
+        function pick(found) {
+            picked.id = found ? found.id : 0;
+            K.clear(chip);
+            list.classList.add('d-none');
+            input.value = '';
+            input.classList.toggle('d-none', !!found);
+            chip.classList.toggle('d-none', !found);
+
+            if (!found) {
+                input.focus();
+                return;
+            }
+
+            var clear = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg');
+
+            clear.setAttribute('aria-label', t('fl_run_customer_clear'));
+            clear.title = t('fl_run_customer_clear');
+            clear.addEventListener('click', function () {
+                pick(null);
+            });
+            chip.appendChild(el('span', 'bi bi-person-vcard'));
+            chip.appendChild(el('span', 'fw-semibold', found.label));
+            chip.appendChild(clear);
+            clear.focus();
+        }
+
+        input.addEventListener('input', K.debounce(function () {
+            var mine = ++serial;
+            var query = input.value.trim();
+
+            if (query === '') {
+                list.classList.add('d-none');
+                return;
+            }
+
+            K.api('ws_ref_search', { type: 'contact', q: query }).then(function (data) {
+                if (mine !== serial) {
+                    return;
+                }
+
+                K.clear(list);
+                (data.items || []).forEach(function (found) {
+                    var item = K.button('list-group-item list-group-item-action small text-start', found.label + (found.meta ? ' · ' + found.meta : ''));
+
+                    item.addEventListener('click', function () {
+                        pick(found);
+                    });
+                    list.appendChild(item);
+                });
+
+                if (!list.firstChild) {
+                    list.appendChild(el('div', 'list-group-item small fg-secondary', t('fl_run_customer_none')));
+                }
+
+                list.classList.remove('d-none');
+            }).catch(K.fail);
+        }, 250));
+        input.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape') {
+                list.classList.add('d-none');
+            }
+        });
+
+        [label, input, chip, list, help].forEach(function (node) {
+            wrap.appendChild(node);
+        });
+
+        return { node: wrap, picked: picked };
+    }
+
     // Run: asked first, then started once. A second click while it is asked
     // or sent does nothing; the token goes with the request and is kept
     // until the server answers it, so a start sent again after an answer was
-    // lost gets the run the first one started instead of a second run.
+    // lost gets the run the first one started instead of a second run. A
+    // customer picked makes the run about them: a run for them still open
+    // is answered instead of a second one.
     function startRun() {
         var flow = state.flow;
 
@@ -8950,7 +9043,9 @@
 
         state.starting = 'ask';
 
-        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do')).then(function (yes) {
+        var customer = FL.run_customer ? customerPicker() : null;
+
+        K.ask(t('fl_run_ask', flow.name, flow.version), t('fl_run_do'), false, customer ? customer.node : null).then(function (yes) {
             if (!yes || (state.flow !== flow)) {
                 state.starting = false;
                 state.refocus = 'run';
@@ -8970,7 +9065,8 @@
 
             // start_token, not token: K.api() sends the CSRF token as token,
             // and a data key of that name would replace it.
-            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value }).then(function (data) {
+            // contact_id 0: a run about nobody.
+            return K.api('ws_flow_run_start', { flow_id: flow.id, start_token: state.startToken.value, contact_id: customer ? customer.picked.id : 0 }).then(function (data) {
                 state.startToken = null;
                 state.starting = false;
                 K.toast(data.started ? t('fl_run_started') : t('fl_run_again'), 'success');

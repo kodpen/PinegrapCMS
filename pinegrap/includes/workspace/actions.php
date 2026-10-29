@@ -249,6 +249,11 @@ function ws_action_flow_run_fields($request)
         $fields['channel_id'] = (int) $request['channel_id'];
     }
 
+    // Run's optional customer: the run is about that contact.
+    if ((int) ($request['contact_id'] ?? 0) > 0) {
+        $fields['contact_id'] = (int) $request['contact_id'];
+    }
+
     return $fields;
 }
 
