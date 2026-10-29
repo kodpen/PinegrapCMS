@@ -466,3 +466,50 @@ function test_shipment_carrier_options_typed()
 
 	pg_assert_same(count(pg_shipping_carriers()) + 1, count(pg_shipment_carrier_options('', 'aras')), 'a key adds nothing');
 }
+
+// A Turkish postcode whose first two digits are the province's plate number
+// raises no note.
+function test_shipping_postcode_province_match()
+{
+	pg_assert_same('', pg_shipping_postcode_province('TR', 'İstanbul', '34710'));
+	pg_assert_same('', pg_shipping_postcode_province('tr', 'Düzce', '81000'));
+}
+
+// A postcode of another province names the province it points to.
+function test_shipping_postcode_province_mismatch()
+{
+	pg_assert_same('Ankara', pg_shipping_postcode_province('TR', 'İzmir', '06100'));
+	pg_assert_same('Adana', pg_shipping_postcode_province('TR', 'Mersin', ' 01120 '));
+}
+
+// The old spellings of a province are recognised (Afyon, İçel, Maraş, Urfa).
+function test_shipping_postcode_province_alias()
+{
+	pg_assert_same('', pg_shipping_postcode_province('TR', 'İçel', '33000'));
+	pg_assert_same('', pg_shipping_postcode_province('TR', 'Afyon', '03200'));
+	pg_assert_same('İstanbul', pg_shipping_postcode_province('TR', 'Urfa', '34000'));
+}
+
+// Only Turkish addresses are checked.
+function test_shipping_postcode_province_other_country()
+{
+	pg_assert_same('', pg_shipping_postcode_province('DE', 'Bayern', '06100'));
+	pg_assert_same('', pg_shipping_postcode_province('', 'İzmir', '06100'));
+}
+
+// An empty, short, long or non-numeric postcode, or one whose first two
+// digits are no plate number, is not checked.
+function test_shipping_postcode_province_bad_postcode()
+{
+	foreach (array('', '3471', '347100', '34A10', '00100', '82000', '99999') as $postcode) {
+		pg_assert_same('', pg_shipping_postcode_province('TR', 'İzmir', $postcode), $postcode);
+	}
+}
+
+// A state that is no province (older n11 imports kept the district there)
+// is not checked.
+function test_shipping_postcode_province_unknown_state()
+{
+	pg_assert_same('', pg_shipping_postcode_province('TR', 'Kadıköy', '06100'));
+	pg_assert_same('', pg_shipping_postcode_province('TR', '', '06100'));
+}

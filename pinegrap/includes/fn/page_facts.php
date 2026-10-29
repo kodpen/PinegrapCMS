@@ -67,6 +67,14 @@ function pg_page_record_tokens()
     return array_values(array_unique($out));
 }
 
+// Whether $token names a form record's field by name
+// (__record__field_<name>, pg_sw_entity_field_values()). Fields are the
+// form's own, so the token is matched by its shape, not by a list.
+function pg_page_record_field_token($token)
+{
+    return is_string($token) && (bool)preg_match('/^__record__field_[a-z0-9_]+$/', $token);
+}
+
 // The record slot of the page being drawn: null while no widget published
 // one, else array('entity' => ..., 'values' => token => value, or null for
 // a record the address named and the widget did not find).
@@ -103,7 +111,8 @@ function pg_page_record_end($prev)
 }
 
 // The record tokens with the published record's values: every token is
-// there, '' when there is no record or it does not have the value.
+// there, '' when there is no record or it does not have the value; a form
+// record's fields by name besides.
 function pg_page_record_values()
 {
     $slot = _pg_page_record_slot();
@@ -113,6 +122,11 @@ function pg_page_record_values()
         foreach (array_keys(pg_sw_entity_fields($slot['entity'])) as $token) {
             if (isset($slot['values'][$token]) && is_scalar($slot['values'][$token])) {
                 $out['__record' . $token] = (string)$slot['values'][$token];
+            }
+        }
+        if ($slot['entity'] === 'form_record') {
+            foreach ($slot['values'] as $token => $value) {
+                if (is_scalar($value) && pg_page_record_field_token('__record' . $token)) $out['__record' . $token] = (string)$value;
             }
         }
     }
@@ -145,7 +159,7 @@ function pg_page_record_bind_props($props, $rich = false)
         if (!isset($slots[$prop]) || !is_string($token) || strpos($token, '__record__') !== 0) continue;
         if ($tokens === null) $tokens = pg_page_record_value_tokens();
         $token = strtolower($token);
-        if (!in_array($token, $tokens, true)) continue;
+        if (!in_array($token, $tokens, true) && !pg_page_record_field_token($token)) continue;
         $slot = '{pg-' . $slots[$prop] . ':' . $token . '}';
         $props[$prop] = ($rich && $prop === 'text' && isset($props['text'])) ? pg_binding_text_slot($props['text'], $slot) : $slot;
         unset($props['_bindings'][$prop]);
@@ -183,7 +197,8 @@ function pg_page_fact_spec($cond)
     if (!is_array($cond) || empty($cond['conds'])) return false;
     $facts = array_merge(pg_page_fact_tokens(), pg_page_record_tokens());
     foreach ($cond['conds'] as $c) {
-        if (!in_array(strtolower((string)$c['token']), $facts, true)) return false;
+        $token = strtolower((string)$c['token']);
+        if (!in_array($token, $facts, true) && !pg_page_record_field_token($token)) return false;
     }
     return true;
 }
@@ -205,6 +220,7 @@ function pg_page_fact_wrap($html, $cond)
 
 // Whether the span's SPEC holds for $values (token => value): false when it
 // cannot be read, names another value or an operator that does not exist.
+// A form record field the record does not have reads as ''.
 function pg_page_fact_holds($spec, $values)
 {
     $b64 = strtr((string)$spec, '-_', '+/');
@@ -219,6 +235,7 @@ function pg_page_fact_holds($spec, $values)
     foreach ($data['c'] as $t) {
         if (!is_array($t) || count($t) !== 3) return false;
         list($token, $op, $operand) = array_map('strval', $t);
+        if (!array_key_exists($token, $values) && pg_page_record_field_token($token)) $values[$token] = '';
         if (!array_key_exists($token, $values) || !isset($ops[$op])) return false;
         if ($ops[$op]['operand'] && trim($operand) === '') return false;
         $tests[] = array($op, (string)$values[$token], $operand);

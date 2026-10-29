@@ -77,6 +77,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - offer-gift-lines.md: An offer's gift line ('add product' result): the price it is charged at (never below zero), which recipient it goes to with one or several recipients, the unshipped group 0
 - offer-order-discount-ladder.md: Tiered order discount (ladder) and how the order discount is chosen: rungs, nothing below the first rung, every valid order discount weighed against the final subtotal
 - offer-percent-rounding.md: An offer's percentage as a figure (order discount, product, gift, shipping): the exact product rounded half away from zero, pg_percent_of() / pg_percent_off(), on every PHP version (PR #1367)
+- order-address-postcode-note.md: The order screen's warning-only note when a Turkish postcode belongs to another province than the address's state (pg_shipping_postcode_province())
 - order-auto-registration-set-password-link.md: An account an order's auto-registration opens has no password and gets the set password link; the receipt e-mail is split so the store's BCC copy never carries the link (PR #1220).
 - order-cancel-gift-cards.md: Gift cards on cancel and restore: issued cards keep their old date in the note and restore reads it from that line only; cards that paid the order raise REFUND ACTION REQUIRED, a gateway refund stays
 - order-cancel-refunded-payment.md: Cancelling an order whose payment was refunded in full or in part: no void, the rest flagged, one helper for the cancel window and the cancellation (PR #1222, #974)
@@ -110,7 +111,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - order-returns-staff-request.md: Staff record a return request on the panel (add_return.php, source panel, PR #1616): entry points, form, timing warnings, what follows (audit, log, opt-in mail, no bell), repeat, refusals
 - order-returns-stale-moves.md: A staff move posts the status its page showed (status_was) and is refused under the return lock if it moved (PR #1612): the refused-refund close, why the lock alone failed, who passes it
 - order-returns.md: Customer return model (includes/fn/returns.php; order_returns, order_return_items, step 11.0.11): statuses and moves, held quantities, withdrawal window, refund deadline, what callers check
-- order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning, and how Save writes them
+- order-screen-shipments.md: The panel order screen's shipping cards (view_order.php): one card per address, the parcel list with per-number carrier select, status badge and format warning and how Save writes them
 - order-status-moves.md: pg_order_status_move(), the one order status rule the API and the Workspace follow; cancel only through process_order_cancellation(), restore only through its helper; full refund cancels (PR #1500)
 - order-view-legal-documents.md: Order view links to the legal documents and KVKK copy kept with the order: __legal_*_url tokens, has_legal_* flags, starter card, cards added after older layouts, none in the e-mail
 - order-view-screen-rows.md: The panel order screen's card rows (includes/fn/order_view.php): empty rows hidden, address type, country, arrival date and contact named, the provider panel link (#2051, #2050)

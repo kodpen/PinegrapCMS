@@ -495,3 +495,52 @@ function test_widget_entity_fields_editor_twin()
 		pg_assert_same($yesno, $cond, $name . ' conditions');
 	}
 }
+
+// A form record's text, number, date and pick-list fields by name, under
+// __field_: files, rich text, information, e-mail addresses and office-use
+// fields stay out.
+function test_widget_entity_fields_field_values()
+{
+	$row = function ($name, $type, $data, $more = array()) {
+		return $more + array('field_name' => $name, 'field_type' => $type, 'data' => $data, 'file_name' => '', 'field_wysiwyg' => '0', 'field_office_use' => '0');
+	};
+	$rows = array(
+		$row('Title', 'text box', 'Stored'),
+		$row('price-2', 'text box', '12.50'),
+		$row('notes', 'text area', 'Line'),
+		$row('body', 'text area', '<p>Rich</p>', array('field_wysiwyg' => '1')),
+		$row('colour', 'pick list', 'Blue'),
+		$row('size', 'radio button', 'L'),
+		$row('extras', 'check box', 'A'),
+		$row('extras', 'check box', 'B'),
+		$row('day', 'date', '2026-10-27'),
+		$row('opens', 'time', '09:30:00'),
+		$row('cv', 'file upload', '', array('file_name' => 'cv.pdf')),
+		$row('mail', 'email address', 'a@b.c'),
+		$row('intro', 'information', '<p>Hi</p>'),
+		$row('internal', 'text box', 'Secret', array('field_office_use' => '1')),
+		$row('Başlık', 'text box', 'First'),
+		$row('BALK', 'text box', 'Second'),
+		$row('???', 'text box', 'Nameless'),
+	);
+	$custom = array('title' => array('data' => 'Translated'), 'extras' => array('data' => 'A, B'));
+	$v = pg_sw_entity_field_values($rows, $custom, function ($type) { return ($type === 'date') ? 'Y-m-d' : ''; });
+
+	pg_assert_same('Translated', $v['__field_title'], 'by its lowercased name, in the page language');
+	pg_assert_same('12.50', $v['__field_price2'], 'stripped to [a-z0-9_]');
+	pg_assert_same('Line', $v['__field_notes']);
+	pg_assert_same('Blue', $v['__field_colour']);
+	pg_assert_same('L', $v['__field_size']);
+	pg_assert_same('A, B', $v['__field_extras'], 'several answers joined');
+	pg_assert_same('2026-10-27', $v['__field_day'], 'the widget date format');
+	pg_assert_true(isset($v['__field_opens']) && $v['__field_opens'] !== '', 'a time');
+	foreach (array('body', 'cv', 'mail', 'intro', 'internal') as $out) {
+		pg_assert_false(isset($v['__field_' . $out]), $out . ' stays out');
+	}
+	pg_assert_same('First', $v['__field_balk'], 'two names stripped alike: the first one');
+	pg_assert_false(in_array('Nameless', $v, true), 'a name stripped to nothing');
+	foreach (array_keys(pg_sw_entity_fields('form_record')) as $token) {
+		pg_assert_false(strpos($token, '__field_') === 0, 'no allow-listed token under the prefix');
+	}
+	pg_assert_same(array(), pg_sw_entity_field_values(null, array()));
+}

@@ -410,6 +410,38 @@ function pg_sw_entity_post_image($data_row)
     return '';
 }
 
+// A form record's fields by name, for the page's record (page_facts.php):
+// '__field_<name>' => plain text, the name lowercased and stripped to
+// [a-z0-9_] as pg_sw_index_form_data() strips it. The prefix keeps them
+// apart from the allow-listed tokens (__post_title). Text box, plain text
+// area, pick list, radio button, check box, date, date and time and time
+// only: files, rich text, information and e-mail addresses (private) and
+// office-use fields stay out. $data_rows and $custom as for
+// pg_sw_entity_post_values(); a field with several answers reads them
+// joined. A date takes $date_format($type) (the widget's format). Two
+// names stripped alike: the first field counts.
+function pg_sw_entity_field_values($data_rows, $custom, $date_format = 'pg_sw_default_date_format')
+{
+    static $types = array('text box', 'text area', 'pick list', 'radio button', 'check box', 'date', 'date and time', 'time');
+    $out = array();
+    foreach (is_array($data_rows) ? $data_rows : array() as $data_row) {
+        $type = isset($data_row['field_type']) ? (string)$data_row['field_type'] : '';
+        if (!in_array($type, $types, true) || !empty($data_row['field_office_use'])) continue;
+        if ($type === 'text area' && !empty($data_row['field_wysiwyg'])) continue;
+        $key = mb_strtolower((string)(isset($data_row['field_name']) ? $data_row['field_name'] : ''), 'UTF-8');
+        $name = preg_replace('/[^a-z0-9_]/', '', $key);
+        if ($name === '' || isset($out['__field_' . $name])) continue;
+        $text = (isset($custom[$key]['data']) && $key !== '') ? (string)$custom[$key]['data'] : (string)$data_row['data'];
+        if ($text !== '' && ($type === 'date' || $type === 'date and time' || $type === 'time')) {
+            $format = ($type === 'time') ? '' : (string)call_user_func($date_format, $type);
+            $text = prepare_form_data_for_output($text, $type, false, $format);
+        }
+        $out['__field_' . $name] = $text;
+    }
+
+    return $out;
+}
+
 // The calendar event columns get_calendar_event() leaves out, for the
 // events $ids: id => array(last_modified_timestamp, product_price). One query.
 function pg_sw_entity_event_read($ids)
