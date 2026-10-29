@@ -159,8 +159,8 @@ if ($action != 'import') {
                             <div class="card-body">
                                 <div class="row">
                                     <div class="col-12 my-3">
-                                        <label for="url" class="form-label">' . lang('Website URL') . ' <span class="fg-danger">*</span></label>
-                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','placeholder'=>'https://www.example.com')) . '
+                                        <label for="url" class="form-label">' . lang('Website URL') . '</label>
+                                        ' . $liveform->output_field(array('type'=>'text','name'=>'url','id'=>'url','class'=>'form-control','required'=>'required','inputmode'=>'url','placeholder'=>'https://www.example.com')) . '
                                         <div class="form-text fg-secondary">' . lang('Enter the full address of the website to import pages and files from.') . '</div>
                                     </div>
                                     <div class="col-12 md:col-6 my-3">

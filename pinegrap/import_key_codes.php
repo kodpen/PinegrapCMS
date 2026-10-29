@@ -48,7 +48,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12  my-3">
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
-                                            <input type="file" id="file" name="file" class="form-control w-auto"/>
+                                            <input type="file" id="file" name="file" class="form-control w-auto" required />
                                         </div>
                                     </div>
                                 </div>       

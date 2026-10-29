@@ -56,21 +56,21 @@ if (!$_POST) {
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-8 my-3">
-                                            <label for="address_name" class="form-label">' . lang('API URL') . '</label>
+                                            <label for="url" class="form-label">' . lang('API URL') . '</label>
                                             <div class="input-group ">
-                                                <label for="address_name" class="input-group-text material-icons" title="' . lang('API URL') . '" data-bs-content="' . lang('Example') . ': https://www.example.com/software_directory/api.php">public</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'value' => 'https://', 'class'=>'form-control')) . '
+                                                <label class="input-group-text material-icons" title="' . lang('API URL') . '" data-bs-content="' . lang('Example') . ': https://www.example.com/software_directory/api.php">public</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'value' => 'https://', 'class'=>'form-control', 'required'=>'required')) . '
                                             </div>
                                             <div class="form-text text-end">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
                                         </div>
                                         <div class="col-12"></div>
                                         <div class="col-12 sm:col-6 lg:col-4 my-1">
                                             <label class="form-label" for="username">' . lang('Email') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'username', 'id'=>'username', 'class'=>'form-control', 'size'=>'30')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'username', 'id'=>'username', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password')) . '
                                         </div>
                                         <div class="col-12 sm:col-6 lg:col-4 my-1">
-                                            <label class="form-label" for="username">' . lang('Password') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'password', 'name'=>'password', 'id'=>'password', 'class'=>'form-control', 'size'=>'30')) . '
+                                            <label class="form-label" for="password">' . lang('Password') . '</label>
+                                            ' . $liveform->output_field(array('type'=>'password', 'name'=>'password', 'id'=>'password', 'class'=>'form-control', 'size'=>'30', 'required'=>'required', 'autocomplete'=>'new-password')) . '
                                         </div>
                                     </div>
                                 </div>
