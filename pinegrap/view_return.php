@@ -688,7 +688,7 @@ echo
             ' . $output_forms . '
         </div>
         <div class="col-12 lg:col-4 2xl:col-3 order-2">
-            <div class="position-sticky" style="top:1rem;">
+            <div class="position-sticky" style="top:3.3rem;">
                 <div class="card mb-7">
                     <div class="card-body">
                         <div class="d-flex justify-content-between align-items-center mb-5">

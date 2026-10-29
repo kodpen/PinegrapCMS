@@ -266,7 +266,7 @@ echo '
                     </div>
                 </div>
                 <div class="col-12 xl:col-6">
-                    <div class="card h-100" id="rerun" style="scroll-margin-top: 5rem;">
+                    <div class="card h-100" id="rerun" style="scroll-margin-top: 1.5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Run the database upgrade steps again')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>
@@ -282,7 +282,7 @@ echo '
 
             <div class="row g-5 mb-5">
                 <div class="col-12">
-                    <div class="card" id="rollback" style="scroll-margin-top: 5rem;">
+                    <div class="card" id="rollback" style="scroll-margin-top: 1.5rem;">
                         <div class="card-header d-flex justify-content-between align-items-center">
                             <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . h(lang('Roll back an update')) . '</span>
                             <a class="btn btn-sm btn-outline theme-secondary" href="backups.php"><i class="bi bi-archive me-1" aria-hidden="true"></i>' . h(lang('Backup Manager')) . '</a>

@@ -398,7 +398,7 @@ if ($order_id <= 0) {
                 </div>
             </div>
             <div class="col-12 lg:col-4 2xl:col-3 order-2">
-                <div class="position-sticky" style="top:1rem;">
+                <div class="position-sticky" style="top:3.3rem;">
                     <div class="card mb-7">
                         <div class="card-header text-uppercase h6 fg-primary fw-bold mb-0">' . h(lang('Order')) . '</div>
                         <div class="card-body small">
