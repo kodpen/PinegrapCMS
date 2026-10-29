@@ -151,7 +151,8 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-format.md: Flow templates (G1 #2161, flow_templates.php): format, the scheduled templates that came over or wait, the gallery
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
-- workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, T2): read from the fields, chips and dots under a box, tones, dimming, the toggle, the outline lines, drawing a thread into a field
+- workspace-flows-thread-binding.md: Drawing a data thread into a field on the Flows canvas (T2, PR #2540): live dots, drag, two taps or Fork, the lit fields, bindValue(), the keyboard's Pass to a field
+- workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, V6): read from the fields, the row under a box within its width, thread paths around boxes, tones, dimming, the toggle, the outline lines
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
 - workspace-flows-undo.md: Undo and redo on the flow canvas (workspace_flow.js): the toolbar buttons, Ctrl+Z / Ctrl+Y / Ctrl+Shift+Z, the history of graph snapshots, which changes fold into one step, when it resets
 - workspace-flows-value-boxes.md: Value boxes of a flow (T3, decision #2415 1a): the constants box's rows, no arrows and no run row, how value boxes are read in a run, the check, the canvas form
