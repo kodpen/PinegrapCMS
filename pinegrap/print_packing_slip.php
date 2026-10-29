@@ -50,7 +50,7 @@ $result = db_q($query, array((string) ($_GET['ship_to_id'] ?? ''))) or output_er
 
 // If the ship to does not exist, then output error.
 if (mysqli_num_rows($result) == 0) {
-    output_error('The recipient could not be found. <a href="javascript:history.go(-1)">Go back</a>.');
+    output_error(lang('The recipient could not be found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 
 // Otherwise the ship to exists, so store info.
 } else {
