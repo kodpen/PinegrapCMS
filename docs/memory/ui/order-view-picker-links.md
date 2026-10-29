@@ -4,7 +4,7 @@ description: Order view product name and image are real links to edit_product.ph
 ---
 
 ## How does the order view link a product?
-- In both item blocks of `view_order.php` (shippable and not), the "Product ID / SKU: …" heading is `<a href="edit_product.php?id=N">` and the product image sits inside the same link. Both were `onclick` on a span and an img, out of the keyboard's reach.
+- In both item blocks of `view_order.php` (shippable and not), the "Product ID / SKU: …" heading is `<a href="edit_product.php?id=N">` and the product image sits inside the same link. Both were `onclick` on a span and an img, out of the keyboard's reach (#2960).
 - The image link has `tabindex="-1" aria-hidden="true"` and the image `alt=""`: the heading link already names the target, so the image adds no second, unnamed tab stop. The sticky style moved from the img to the link.
 
 ## How is a link chosen from the keyboard in the link picker?
