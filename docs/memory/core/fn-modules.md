@@ -49,6 +49,7 @@ description: Generated from the module field of the memory files: each includes/
 - `mail_parse`: [[mail-parse]]
 - `mail_queue`: [[fn-module-errors-mail-backup-consent]], [[mail-failure-reason]]
 - `merchant_center`: [[merchant-center]]
+- `mfa`: [[two-step-sign-in-expiry]]
 - `order_completion`: [[order-completion]], [[order-completion-account]], [[order-completion-after-lines]], [[order-completion-before-lock]], [[order-completion-context]], [[order-completion-from-payment]], [[order-completion-line-comments]], [[order-completion-lines]]
 - `order_list`: [[orders-list-amount-column]]
 - `order_view`: [[order-view-screen-rows]]
