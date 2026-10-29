@@ -1,10 +1,10 @@
 ---
 name: shipping-carrier-labels
-description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
+description: Plan (approved 2026-10-19; steps 1, 2, 4 done, 3a #3117): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 ---
 
 ## Why?
-- No label is created today and no Turkish carrier API exists (live rates only for UPS/FedEx/USPS); competitors ship 10–26 carrier integrations with thermal labels and tracking write-back.
+- No Turkish carrier API existed (live rates only for UPS/FedEx/USPS); competitors ship 10–26 carrier integrations, thermal labels and tracking write-back.
 
 ## What is decided?
 - This plan starts only after `shipping-management.md` steps 1–3 exist: the shipment row (`shipping_tracking_numbers` with `carrier`, `status`, `source='carrier'`) and the single write path `pg_shipment_record()` are the base; this plan never writes tracking numbers another way.
@@ -21,7 +21,7 @@ description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs 
 3. Panel actions single + bulk; `shipment_labels` and `data/shipping_labels/`, retention 30/90 days (#3108, `workflow/decisions-made-schema-3.md`) (M).
    - 3a. Done in PR #3117 (`commerce/shipment-labels.md`): table, files, Create Label and reprint on the order, sweep, erasure, order delete.
    - 3b. Next: bulk labels for selected orders merged on the fly into one PDF (none kept); cancel through `cancel()`, then `state` and the parcel pruned through the write path; return labels (`is_return`).
-4. Status polling job in the dispatcher, write-back through the single path (S).
+4. Status polling job in the dispatcher, write-back through the single path. Done in PR #3147 (`commerce/shipment-tracking.md`).
 5. Yurtiçi and Aras direct drivers (M each); API `POST /orders/{id}/shipments/label` and payload fields (S).
 6. Further aggregators as their references open: Basit Kargo (SVG labels, no test mode, 600 requests a minute; #3123), Kargonomi; MNG ApiZone a candidate (M each).
 7. International: Shippo first (#3124, `workflow/decisions-made-product-3.md`), then Sendcloud for the rest of Europe (M each).
@@ -31,4 +31,4 @@ description: Plan (approved 2026-10-19; steps 1-2 done, 3a #3117): carrier APIs 
 - Formats (#3123): PDF, ZPL and SVG as the service gives them; SVG into the bulk PDF where dompdf renders it; ZPL never sent to an external converter.
 
 ## Where to start?
-- Step 3b: helpers in `includes/fn/shipment_labels.php`; the bulk action on `edit_orders.php`. Live check of the Geliver driver with the owner's test key.
+- Step 3b: helpers in `includes/fn/shipment_labels.php`; the bulk action on `edit_orders.php`. Then step 5. Live check of the Geliver driver with the owner's test key.
