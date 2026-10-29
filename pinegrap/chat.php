@@ -596,7 +596,7 @@ function pg_chat_last_seen_label($timestamp)
         return lang(array('string' => '{var:1} days ago', 'vars' => (int) floor($ago / 86400)));
     }
 
-    return date('d.m.Y', $timestamp);
+    return get_absolute_time(array('timestamp' => $timestamp, 'type' => 'date'));
 }
 
 // Exact "last seen" timestamp for tooltips (empty when never logged in).
@@ -604,7 +604,7 @@ function pg_chat_last_seen_exact($timestamp)
 {
     $timestamp = (int) $timestamp;
 
-    return ($timestamp > 0) ? date('d.m.Y H:i', $timestamp) : '';
+    return ($timestamp > 0) ? get_absolute_time(array('timestamp' => $timestamp)) : '';
 }
 
 function pg_chat_role_label($role)
@@ -1755,6 +1755,11 @@ function pg_chat_render_backend_launcher()
         'urls' => array(
             'edit_user' => PATH . SOFTWARE_DIRECTORY . '/edit_user.php?id=',
             'edit_contact' => PATH . SOFTWARE_DIRECTORY . '/edit_contact.php?id='
+        ),
+        // The site's date order and clock for the times the window draws.
+        'clock' => array(
+            'date_order' => (DATE_FORMAT == 'month_day') ? 'month_day' : 'day_month',
+            'twelve_hours' => (TIME_FORMAT == 'twelve_hours')
         ),
         'strings' => pg_chat_panel_strings()
     );

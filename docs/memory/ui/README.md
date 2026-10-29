@@ -146,6 +146,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-code-fields.md: Code fields on panel screens: pg_code_editor_attach(), loading through pgCodeEditorUse(), the settings dialog, releasing editors, the rich text source mode, the colour scheme
 - panel-content-contrast.md: Panel and visual editor text and icon contrast (#2530): secondary states on a solid colour not opacity, tones pulled toward the text colour, the editor's --sd-* mixes
 - panel-css-tokens.md: The panel's --pg-* CSS token layer (Bootstrap 6 step B3): names rules read, the alias block on :root and [data-bs-theme], color-mix() instead of -rgb, what is converted
+- panel-dates-site-order.md: Application Access, Connected applications, Connections, the chat window and the barcode scan logs show dates in the site's date order and 12/24-hour clock
 - panel-field-title-override.md: A labelled panel field carries no title: Bootstrap 6 copies a popover title into aria-label, replacing the label as its name; what replaces the title, the scan test, what is left
 - panel-focus-ring.md: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k): the --pg-focus-ring-* tokens, why the colour is not an alias, what was checked, which ring sizes wait for B10
 - panel-help-links.md: Where a panel screen's help goes: get_help_url.php maps script names (and list filters) to page#anchor on pinegrap.com; the 'help' property, language prefix, private label, F1, adding a new screen.
