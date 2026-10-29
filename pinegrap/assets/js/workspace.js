@@ -17564,7 +17564,11 @@
         body.appendChild(skeleton(2, 'ws-skeleton-sm'));
         showOffcanvas(node);
 
-        quickEditLoad(fieldsBox, type, id, !!(options && options.edit), reopen);
+        // A kind the drawer cannot edit (a page, an invoice) has no fields
+        // section; asking would print the refusal under an empty title.
+        if (!BOOT || !BOOT.quick_edit || BOOT.quick_edit.indexOf(type) !== -1) {
+            quickEditLoad(fieldsBox, type, id, !!(options && options.edit), reopen);
+        }
 
         var newTask = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-check2-square');
         newTask.addEventListener('click', function () {

@@ -1078,3 +1078,28 @@ function ws_record_button($user, $type, $id, $label = '', $class = 'btn btn-sm b
         . (($count > 0) ? ' <span class="badge rounded-pill theme-secondary ms-1">' . (int) $count . '</span>' : '')
         . '</a>' . ws_screen_assets($viewer, 'record');
 }
+
+/**
+ * The drawer of ws_record_button() without the button, for a screen that
+ * opens it on records it learns only in the browser: the visual designer's
+ * tabs, whose "Workspace tasks" item makes its own data-ws-record click.
+ * The same gates as the button; empty when the reader may not see the kind.
+ *
+ * @param array  $user validate_user()
+ * @param string $type one of ws_record_type_keys()
+ * @return string
+ */
+function ws_record_drawer_assets($user, $type)
+{
+    if (!ws_ready() || !ws_enabled()) {
+        return '';
+    }
+
+    $viewer = ws_viewer($user);
+
+    if (!$viewer['member'] || !isset(ws_ref_types($viewer)[$type])) {
+        return '';
+    }
+
+    return ws_screen_assets($viewer, 'record');
+}

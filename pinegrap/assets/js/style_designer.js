@@ -68111,6 +68111,9 @@ const StyleDesigner = (function () {
         // (_design.prototypeShare); a saved draft tab is offered as the
         // link's start page.
         var protoShare = _pgPrototypeShareReady();
+        // The Workspace tasks tied to this page (ws_refs page:<id>), for a
+        // page saved here and a person on the team (_design.workspaceTasks).
+        var wsTasks = !!(_design && _design.workspaceTasks) && saved && p.page_id > 0 && !p.pickedPending;
         // A saved page of this design can go to another one; the chooser is
         // on the screen for designers only (pg_designer_target_modal()).
         var sendable = saved && !p.pickedPending && !!window.pgDesignTarget && !!(_design && _design.styleId > 0);
@@ -68145,6 +68148,7 @@ const StyleDesigner = (function () {
             (protoShare ? item('share-prototype', 'bi-share', _sdT('Share prototype')) : '') +
             item('rename',   'bi-pencil',   _sdT('Rename')) +
             item('settings', 'bi-sliders',  _sdT('Page Settings')) +
+            (wsTasks ? item('ws-tasks', 'bi-clipboard2-check', _sdT('Workspace tasks')) : '') +
             item('dup',      'bi-files',    _sdT('Duplicate')) +
             (sendable ? item('copy-to', 'bi-copy', _sdT('Copy to another design')) +
                         item('move-to', 'bi-box-arrow-right', _sdT('Move to another design')) : '') +
@@ -68196,7 +68200,7 @@ const StyleDesigner = (function () {
             var act = b.dataset.act;
             _pgTabsCloseMenu();
             if (key !== _activeKey && act !== 'discard' && act !== 'unpick' && act !== 'delete' && act !== 'detach' && act !== 'view' && act !== 'prototype'
-                && act !== 'share-prototype' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
+                && act !== 'share-prototype' && act !== 'ws-tasks' && act !== 'draft' && act !== 'publish' && act !== 'copy-to' && act !== 'move-to' && act.indexOf('group-') !== 0) _pgTabsSwitch(key);
             switch (act) {
                 case 'view':     if (viewUrl) window.open(viewUrl, '_blank', 'noopener'); break;
                 case 'prototype': if (protoUrl) window.open(protoUrl, '_blank', 'noopener'); break;
@@ -68205,6 +68209,7 @@ const StyleDesigner = (function () {
                 case 'publish':  _pgSetDraft([key], false); break;
                 case 'rename':   _pgTabsRename(); break;
                 case 'settings': _pgTabsOpenPageSettings(); break;
+                case 'ws-tasks': _pgTabsOpenWorkspaceTasks(p); break;
                 case 'dup':      _pgTabsDuplicateActive(); break;
                 case 'copy-to':  _pgTabsSendTo(key, 'copy'); break;
                 case 'move-to':  _pgTabsSendTo(key, 'move'); break;
@@ -68284,6 +68289,23 @@ const StyleDesigner = (function () {
     // Settings modal, opened straight on the "Only this page" panes.
     function _pgTabsOpenPageSettings() {
         _sdOpenSettingsPane('page');
+    }
+
+    // The Workspace drawer of the page (assets/js/workspace.js openRecord()):
+    // its tasks, opening one, a new task tagged with the page, and where it
+    // was talked about. The drawer listens for clicks on [data-ws-record]
+    // (ws_record_loader() fetches the script on the first one), so a
+    // detached link carries the click; the rights are the task screens'.
+    function _pgTabsOpenWorkspaceTasks(p) {
+        if (!p || !(p.page_id > 0)) return;
+        var a = document.createElement('a');
+        a.href = '#';
+        a.hidden = true;
+        a.setAttribute('data-ws-record', 'page:' + p.page_id);
+        a.setAttribute('data-ws-label', p.page_name || '');
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
     }
 
     // Delete = the recycle bin, through the same server path the file

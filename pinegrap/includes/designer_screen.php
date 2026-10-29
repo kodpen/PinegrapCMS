@@ -245,6 +245,15 @@ function pg_designer_screen_render($ctx)
     foreach ($js_pages as $jp) { if ($jp['key'] === $active_key) { $found_active = true; break; } }
     if (!$found_active) $active_key = $js_pages[0]['key'];
 
+    // The Workspace tasks of a saved page: the record drawer of the other
+    // screens (ws_record_drawer_assets()), opened from the tab menu with the
+    // task screens' own rights. Not for a shared component opened alone.
+    $sd_ws_tasks = '';
+    if (!$sd_component && defined('WORKSPACE_ENABLED') && WORKSPACE_ENABLED) {
+        require_once(PG_FUNCTIONS_DIR . '/includes/workspace/bootstrap.php');
+        $sd_ws_tasks = ws_record_drawer_assets($user, 'page');
+    }
+
     require_once(PG_FUNCTIONS_DIR . '/includes/designer_ai.php');
     $sd_ai = pg_design_ai_editor_config($user);
 
@@ -283,6 +292,9 @@ function pg_designer_screen_render($ctx)
         // made, listed and revoked by administrators and designers, once
         // the schema has them. False hides the "Share prototype" item.
         'prototypeShare' => ((int)$user['role'] <= 1) && $sd_proto_share,
+        // The tab menu's "Workspace tasks" item, on saved pages; false when
+        // the Workspace is off or the person is not on the team.
+        'workspaceTasks' => ($sd_ws_tasks !== ''),
         // A dynamic region's PHP code opens as a code-view tab for the role
         // the classic Dynamic Region screen admits (administrators); the
         // endpoint (dynamic_region_code) checks the same.
@@ -595,6 +607,7 @@ function pg_designer_screen_render($ctx)
         </main>
         ' . ($access === PG_DESIGNER_ACCESS_FULL ? pg_designer_target_modal() : '') . '
         ' . get_image_editor_includes() . '
+        ' . $sd_ws_tasks . '
         <!-- The designer\'s data, and its translation map, are declared BEFORE
              the editor script. style_designer.js resolves _sdT() at module
              init for the palette registries (COMPONENTS, CONTENT, the form

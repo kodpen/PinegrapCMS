@@ -17,7 +17,7 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
 3. PR #1666 (workspace/workspace-customer-card.md): a customer card on the channel's Summary tab, the summary through `ws_channel_customer`.
 4. PR #1681 (workspace/workspace-customer-history.md): `ws_customer_history()`, union read; route; History on the card. Cart quotes join with quotes slice 5.
-5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (plans/workspace-phase3-leftovers.md 4).
+5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (erp/erp-overdue-reminders.md).
 6. PR #2092 (workspace/workspace-crm-lead-intake.md): lead step `ws_scheduled_lead()` and box `lead` on `form.submitted`: contact by `forms.contact_id`, else e-mail; reuses a channel from `ws_customer_channels()` or opens one with `builtin:new_customer`; `WS_SCHEDULED_LEAD_HOURLY`; duplicates left to view_contacts.php, `merge_contacts()`.
 7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.
 8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #2246; storefront, merge #2620; membership and recurring jobs, checkout tax fill #2643; designed forms (`custom_form.php`) #2768. Done.

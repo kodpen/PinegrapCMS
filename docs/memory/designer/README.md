@@ -176,6 +176,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - designer-overview-follows-selection.md: The designer's Overview tree follows the selection from every panel: one place opens and scrolls to the row (_sdTreeRevealSelection), identity lookup, instant scroll, when it must not move.
 - designer-page-names.md: Which names a visual-editor page may take: other pages, files, short links, site root entries, sitemap.xml/robots.txt, site language codes; why check_name_availability() is not used on the save path.
 - designer-page-pickers.md: How widget page pickers are built (_swPageOptions/_swPageVal, tab:<key>, tabs without the widget), how unsaved-tab references resolve on save, and why a page may reach the save without its tree.
+- designer-page-workspace-tasks.md: The visual designer tab menu's "Workspace tasks" item: the Workspace record drawer of page:<id> (tasks, open one, new task tagged with the page), its gates and wiring
 - designer-palette-tabs-and-blocks.md: Designer palette has two tabs (Bileşenler building blocks, Bloklar ready sections): adding a block, shared list plumbing, recents strip, tab strip width.
 - designer-panel-element-identity.md: Designer panel must identify the selected element correctly: propsSemantic() tag groups, HTML defaults, attribute rows, panel refresh, canvas selection.
 - designer-panel-popover-and-rows.md: Bootstrap popover vs dropdown toggles with [title], and the options panel row()/sect()/as() layout rules in the designer.
