@@ -1,6 +1,6 @@
 ---
 name: workspace-composer-tools
-description: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
+description: Plan (2026-10-23; 1-9 and 11 done, 10 approved in #3075): one toolbar for Workspace text boxes; lists, quotes, headings, highlight, slash inserts, smart paste, saved replies
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -27,7 +27,7 @@ description: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): 
 7. Smart paste, no schema, done: #2018 (workspace/workspace-editor-smart-paste.md).
 8. Small aids, no schema, done: unsent draft #2034 (workspace/workspace-unsent-draft.md), meter near `WS_MESSAGE_MAX` #2073 (workspace/workspace-message-meter.md), `:` emoji #2115 (workspace/workspace-colon-emoji.md).
 9. Objects, no schema, done. 9a lone tag as a card: #2150 (workspace/workspace-tag-card.md). 9b checklist item to task: #2158 (workspace/workspace-checklist-to-task.md).
-10. Saved replies with `{customer}`, `{order}`, schema, ask first: `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
+10. Saved replies with `{customer}`, `{order}`: `ws_saved_replies` approved (#3075, `workflow/decisions-made-schema-3.md`); `;` picker, API with dry run; team ones need a right column (five ladder files, `pg_user_has_ws_columns()`).
 11. Rewrite with AI, no schema, done: #2141, target `ws_message` (workspace/workspace-ai-rewrite.md).
 12. Later: callouts, toggles, dictation, mermaid, find/replace; no GIF, video.
 
@@ -39,4 +39,4 @@ description: Plan (2026-10-23; 1-9 and 11 done, 10 waits on the owner: schema): 
 5. Dictation: not now (b); recordings and transcripts are built (workspace/workspace-voice-recording.md).
 
 ## Where to start?
-- Steps 1-9 and 11 are done. Left: 10 (saved replies; question 4 answered, but it needs a schema step: ask the owner first, Fixed rules 5); 12 is "later".
+- Steps 1-9 and 11 are done. Left: 10 (saved replies, schema approved in #3075); 12 is "later".

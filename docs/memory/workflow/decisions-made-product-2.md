@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-2
-description: Decisions list, product part 2 (2026-10-29 on): the guest account and receipt of an order the payment service's message completes; PayTR instalments and who pays their difference
+description: Decisions list, product part 2 (2026-10-29 on): guest account and receipt of a webhook-completed order; PayTR instalments; the layout editor of a page not on a visual design
 ---
 
 ## What happens to a guest order the payment service's message completes? (#2984)
@@ -9,5 +9,8 @@ description: Decisions list, product part 2 (2026-10-29 on): the guest account a
 
 ## Who pays a PayTR instalment's difference? (#3057)
 - Decided (architect, 2026-10-29; plan `payment-driver-layer.md` 4c2): PayTR instalments are offered by a driver setting (the most instalments, a `connect_apps` option, 0 or 1 = single payment as today). Who pays the difference is set in PayTR's own panel: the store, and PayTR charges the cart total (4c2a); or the customer, and PayTR's notification carries a `total_amount` above the started amount with `installment_count` ≥ 2, which the completion records as `orders.surcharge`, `installment_charges` and `payment_installment` and adds to `orders.total`, as the checkout does from `pg_payment_checkout_totals()` for iyzico (4c2b). Any other amount still alerts and completes nothing. Reason: the product's rule since iyzico is that the customer pays the instalment difference and the order records it; what PayTR charged is what the order shows, whichever way the panel is set.
+
+## Where does a page not on a visual design edit its layout file? (#3071)
+- Decided (architect, 2026-10-29; plan `legacy-page-designer-retirement.md` L5a): a small layout-only editor screen for pages whose style is not a visual design (a classic style not yet converted, a `style_file` style, an older cell-based style): the code editor bundle on `pg_layout_read()` / `pg_layout_save()` through the designer's style-independent `layout_code` action, roles 0-1, read-only on a hosted site, as the designer's layout tab; `pg_layout_edit_url()` points the classic case at it, so L5 drops `get_layout` / `update_layout` with `page_designer.php`. Reason: the layout file does not depend on the style, so its editor must not wait for the style's conversion (#2437 keeps every site's editors while a classic style exists); `edit_custom_style.php` edits `style_code`, not the layout. A conversion hint may be added later.
 
 Related: docs/memory/workflow/decisions-made-product.md (part 1), docs/memory/workflow/decisions-made.md
