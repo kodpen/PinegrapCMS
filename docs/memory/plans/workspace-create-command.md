@@ -25,4 +25,5 @@ description: Plan (owner, 2026-10-29): "Make products" leaves the channel menu; 
 - The reply form of S4 when the file is someone else's message: allowed for anyone who may read it, or the poster only?
 
 ## Where to start?
+- S3 is being built on branch feature/create-command-s3; S4 after it lands.
 - S3. Read `workspace/README.md` key rules, workspace-bulk-create.md, workspace-quick-create.md, workspace-command-registry.md.
