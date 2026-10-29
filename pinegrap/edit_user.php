@@ -822,11 +822,11 @@ if (!$_POST) {
             . '<span><b>' . h(lang('Sign-in is locked.')) . '</b> ' . h(lang(array(
                 'string' => 'Too many failed attempts. Clears on its own in {var:1} minutes.',
                 'vars'   => $sign_in_lock_minutes))) . '</span>'
-            . '<a class="btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto" href="#" onclick="event.preventDefault(); document.unlock_sign_in_form.submit(); return false;"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</a>'
+            . '<button type="submit" form="unlock_sign_in_form" class="btn btn-sm btn-outline theme-danger rounded-pill px-5 ms-auto"><i class="bi bi-unlock me-1"></i>' . h(lang('Unlock Sign-in')) . '</button>'
             . '</div>';
 
         $output_sign_in_unlock_form =
-            '<form name="unlock_sign_in_form" action="edit_user.php" method="post">'
+            '<form id="unlock_sign_in_form" name="unlock_sign_in_form" action="edit_user.php" method="post">'
             . get_token_field()
             . '<input type="hidden" name="unlock_sign_in" value="1">'
             . '<input type="hidden" name="id" value="' . h($_GET['id']) . '">'

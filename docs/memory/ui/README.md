@@ -159,6 +159,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-hint-tooltip-or-popover.md: Panel hover hints: why a bare title turns into a large header-only popover, when to use a compact tooltip (no-popover + data-bs-toggle="tooltip") and how to keep a details popover short
 - panel-icon-marks-and-filter-rows.md: Ligature status marks with a hidden text, filter-link rows as nav not tablist, list-cell text visible instead of a title, payment method shown through pg_payment_method_label() on return screens
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
+- panel-link-roles.md: Links turned into buttons (report Edit, Add Filter, Unlock Sign-in), real Create an User link, Optimize/Shipment Tracking/Print names, edit-file previews and Download names
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()

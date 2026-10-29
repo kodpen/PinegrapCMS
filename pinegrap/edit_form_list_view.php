@@ -827,7 +827,7 @@ if (!$_POST) {
                                             <h4 class="fw-bold fg-secondary">' . lang('Filters') . '</h4>
                                         </div>
                                         <div>
-                                            <a href="javascript:void(0)" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</a>' . get_date_picker_format() . pg_fields_script() . '
+                                            <button type="button" onclick="create_filter()" class="button btn btn-solid theme-primary">' . lang('Add Filter') . '</button>' . get_date_picker_format() . pg_fields_script() . '
                                         </div>
                                         <div class="table-responsive">
                                             <table id="filter_table" class="chart_no_hover table">
