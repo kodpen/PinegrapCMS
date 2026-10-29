@@ -447,7 +447,7 @@ pg_page_shell([
                 ' . $output_bulk_buttons . '
                 <div class="pg-toolbar-grow"></div>
                 ' . $output_edoc_menu . '
-                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php')) . '
+                ' . pg_filter_select('filter', array('' => lang('All')) + $filter_names, $filter, array('label' => lang('Due date'), 'icon' => 'calendar-week', 'action' => 'erp_invoices.php', 'keep' => array('edoc'))) . '
             </nav>
             ' . $output_filter_note . '
             ' . ($edoc_bulk ? '<form id="erp_edoc_bulk" method="post" action="' . h($self_url) . '">' . get_token_field() : '') . '
