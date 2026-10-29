@@ -722,7 +722,7 @@ function test_workspace_flow_steps_mcp_kind()
 	pg_assert_same(array('result', 'duration_ms'), array_column(ws_step_outputs('mcp', ws_step_config_normalize('mcp', array())), 'key'));
 	pg_assert_same(array('text', 'number'), array_column($kinds['mcp']['outputs'], 'type'));
 	pg_assert_true(ws_flow_kinds()['mcp']['step'], 'a step box');
-	pg_assert_same(array('done', 'failed'), ws_flow_kinds()['mcp']['outcomes']);
+	pg_assert_same(array('done', 'failed', 'rejected', 'expired', 'withdrawn'), ws_flow_kinds()['mcp']['outcomes'], 'a call that asks first leaves on how its request ended');
 	pg_assert_same(array('duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), false));
 	pg_assert_same(array('result' => 'secret', 'duration_ms' => 40), ws_step_outputs_shown('mcp', array('result' => 'secret', 'duration_ms' => 40), true));
 
@@ -743,13 +743,14 @@ function ws_flow_kind_catalogue_for_test()
 }
 
 // Its settings: the arguments kept as JSON text, an object given as one
-// written as its JSON; a box without server, tool or an object is named.
+// written as its JSON, the channel and deadline of a call that asks first;
+// a box without server, tool or an object is named.
 function test_workspace_flow_steps_mcp_config()
 {
-	pg_assert_same(array('server_id' => 7, 'tool' => 'search', 'arguments' => '{"q":"x"}'), ws_step_config_normalize('mcp', array('server_id' => '7', 'tool' => " search\n", 'arguments' => '{"q":"x"}', 'other' => 1)));
+	pg_assert_same(array('server_id' => 7, 'tool' => 'search', 'arguments' => '{"q":"x"}', 'channel_id' => 0, 'closes_in' => ''), ws_step_config_normalize('mcp', array('server_id' => '7', 'tool' => " search\n", 'arguments' => '{"q":"x"}', 'other' => 1)));
 	pg_assert_same('{"q":"a/b","n":2}', ws_step_config_normalize('mcp', array('arguments' => array('q' => 'a/b', 'n' => 2)))['arguments']);
 	pg_assert_same('{}', ws_step_config_normalize('mcp', array('arguments' => array()))['arguments']);
-	pg_assert_same(array('server_id' => 0, 'tool' => '', 'arguments' => ''), ws_step_config_normalize('mcp', array('arguments' => null)));
+	pg_assert_same(array('server_id' => 0, 'tool' => '', 'arguments' => '', 'channel_id' => 0, 'closes_in' => ''), ws_step_config_normalize('mcp', array('arguments' => null)));
 
 	pg_assert_same(array(), ws_step_mcp_arguments(''));
 	pg_assert_same(array('q' => ''), ws_step_mcp_arguments('{"q": "{{node.a.text}}"}'), 'a value inside quotes');
@@ -764,9 +765,11 @@ function test_workspace_flow_steps_mcp_config()
 	pg_assert_same(2, count(ws_step_config_problems('mcp', ws_step_config_normalize('mcp', array('tool' => 'search', 'arguments' => '[1]')), 'B')));
 }
 
-// Only a tool that runs without an approval: one the server says reads, or
-// the administrator declared; one that asks first, or is off, is refused.
-function test_workspace_flow_steps_mcp_refuses_write_tools()
+// A tool that is turned on: one the server says reads, one the
+// administrator declared, and one that asks first (each call then waits for
+// the owner's approval, tests/workspace_flow_mcp_asks_test.php); one that is
+// off is refused.
+function test_workspace_flow_steps_mcp_tools_turned_on()
 {
 	require_once(PG_FUNCTIONS_DIR . '/includes/workspace/mcp.php');
 
@@ -774,7 +777,7 @@ function test_workspace_flow_steps_mcp_refuses_write_tools()
 
 	pg_assert_same('', ws_step_mcp_tool_problem($server, 'search'));
 	pg_assert_same('', ws_step_mcp_tool_problem($server, 'fetch'));
-	pg_assert_contains('asks before each call', ws_step_mcp_tool_problem($server, 'create_page'));
+	pg_assert_same('', ws_step_mcp_tool_problem($server, 'create_page'));
 	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'delete_page'));
 	pg_assert_contains('is not turned on', ws_step_mcp_tool_problem($server, 'missing'));
 

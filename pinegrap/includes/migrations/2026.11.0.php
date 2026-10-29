@@ -107,6 +107,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_record_revisions();       // 11.0.123
 	upgrade_2026_11_0_cart_quotes();            // 11.0.124
 	upgrade_2026_11_0_shipment_labels();        // 11.0.125
+	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
 	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
 
 }
@@ -3416,6 +3417,41 @@ function upgrade_2026_11_0_cart_quotes() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('Cart quotes: the tables for cart quote links are in place. Nothing changes on the site until a cart quote is made.');
+
+}
+
+// Flow templates saved on the site (2026.11.0, 11.0.115;
+// includes/workspace/flow_templates_saved.php). A person saves a flow's draft as a
+// template; the gallery lists it beside the built-in ones under "Saved on this
+// site". template_key is 'site_<id>', so it never meets a built-in key. graph
+// is the normalized draft graph with the secrets of its boxes dropped;
+// settings is the JSON list of the values the setup panel asks on Use, in the
+// built-ins' shape. Box, thread and motion counts are computed on read, never
+// stored. created_by, updated_by and binned_at follow ws_flows. Nothing is
+// read until somebody saves a template.
+function upgrade_2026_11_0_workspace_flow_templates() {
+
+	install_create_table('ws_flow_templates', "CREATE TABLE ws_flow_templates (
+		id              INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		template_key    VARCHAR(40) NOT NULL DEFAULT '',
+		category        VARCHAR(16) NOT NULL DEFAULT '',
+		title           VARCHAR(160) NOT NULL DEFAULT '',
+		help            VARCHAR(255) NOT NULL DEFAULT '',
+		icon            VARCHAR(40) NOT NULL DEFAULT '',
+		graph           MEDIUMTEXT NULL,
+		settings        TEXT NULL,
+		source_flow_id  INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_by      INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at      INT UNSIGNED NOT NULL DEFAULT 0,
+		binned_at       INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY uq_template_key (template_key),
+		KEY idx_created_by (created_by)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('Workspace: the table for flow templates saved on the site is added. It stays empty until somebody saves a flow as a template.');
 
 }
 
