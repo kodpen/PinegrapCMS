@@ -3185,7 +3185,7 @@ function pg_designer_target_modal()
                         if (c) c.focus();
                     })
                     .catch(function () {
-                        list.innerHTML = "<div class=\"list-group-item small text-danger\">" + esc(T.failed) + "</div>";
+                        list.innerHTML = "<div class=\"list-group-item small fg-danger\">" + esc(T.failed) + "</div>";
                     });
                 }
             };
