@@ -1,6 +1,6 @@
 ---
 name: collection-lists
-description: Collection fields in form lists (C4a, C4b2): numeric sort, reference filters by address name or code printing the label, records referencing the shown record, image output
+description: Collection fields in lists and feeds (C4a, C4b2, C5a): numeric sort, reference filters printing the label, records referencing the shown record, feed categories by label, images
 ---
 
 ## How does a number field sort?
@@ -20,7 +20,10 @@ description: Collection fields in form lists (C4a, C4b2): numeric sort, referenc
 - Not an address filter of the page: no `params`, no label, no noindex or canonical change. No shown record: left out (like `url parameter`); `$request` null: counted in `address`, a record view closes. `pg_record_file_filter_sql()` treats it as an address value.
 - The editor's dynamic value option is C4b2b (`style_designer.js`); until then only a hand-set or template config uses it.
 
+## What does a feed print as a reference's category?
+- The RSS `<category>` of a reference, product or page field prints the label, not the stored code (C5a, #2910): `pg_sw_feed_category_xml()` in `pg_sw_form_feed_parts()` and in the legacy form list `?rss=true` (`get_page.php`). `pg_sw_feed_categories()` splits each row at `||` and then as `pg_coll_ref_codes()`; labels from `pg_coll_reference_lookup()` (Title, else code) or `pg_coll_kind_options()` for a product or page, read-only, cached per request. A code that names nothing prints the code; each category once. Other fields print their text as before. JSON-LD prints no category.
+
 ## Image output?
 - Every system widget's output already passes `pg_img_responsive_html()` (`pg_designer_render_system_widgets` in `designer.php`), so a bound image field gets its `srcset` without a step of its own.
 
-Tests: `tests/collections_lists_test.php`.
+Tests: `tests/collections_lists_test.php`, `tests/collections_feeds_test.php`.

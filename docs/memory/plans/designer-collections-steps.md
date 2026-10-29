@@ -25,7 +25,7 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - **C4b2 — "records that reference this one". Done, #2897:** server half, the list filter's dynamic value `shown record` (`designer/collection-lists.md`).
 - **C4b2b — the editor side.** Offer "Shown record" in the filter rows' dynamic values (`style_designer.js`, beside `url parameter`, lists only; `_sdT` key via `tr_add.php`); needs that file free.
 
-- **C5a — feeds print a reference's label.** In progress: an RSS `<category>` of a reference, product or page field prints the label, not the code. JSON-LD prints no category.
+- **C5a — feeds print a reference's label. Done, #2910:** an RSS `<category>` of a reference, product or page field prints the label, not the code. JSON-LD prints no category.
 - **C5b — slug field.** A `slug` kind (text box) feeds `update_submitted_form_address_name()` before the Title field; `pg_coll_kinds()` and its twin `_CF_KINDS` in `style_designer.js` (a test compares them), the Form Field "Kind" option.
 
 - **C6 — templates opt in.** Blog, menu, events, staff templates add the flag and kinds (`design-templates-file-format.md`); a categories collection for blog. Installed sites change nothing.
@@ -39,4 +39,4 @@ description: Plan (collections half of designer-interactions-collections, steps 
 - Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C4b2 are done, C5a is in progress. Next is C4b2b (the editor's "Shown record" dynamic value) or C5b (the slug kind); both edit `style_designer.js`, so they run one after the other.
+- C1–C4b2 and C5a are done. Next is C4b2b (the editor's "Shown record" dynamic value) or C5b (the slug kind); both edit `style_designer.js`, so they run one after the other.

@@ -1251,30 +1251,11 @@ else if (isset($_GET['rss']) && $_GET['rss'] == 'true')
 					// loop through submitted forms, in order to prepare output
 					foreach ($submitted_forms as $submitted_form)
 					{
-						$output_rss_categories = '';
-						// If there is at least one category, then output it.
-						if (($submitted_form['category'] ?? '') != '')
-						{
-							// If there are multiple categories, then output all of them.
-							if (mb_strpos($submitted_form['category'], '||') !== false)
-							{
-								$categories = explode('||', $submitted_form['category']);
-								// Loop through categories in order to output them.
-								foreach ($categories as $category)
-								{
-									$output_rss_categories .= '<category>' . h($category) . '</category>';
-								}
-								// Otherwise there is just one category, so output it.
-								
-							}
-							else
-							{
-								$output_rss_categories = '<category>' . h($submitted_form['category']) . '</category>';
-							}
-							// Otherwise there is not a category, so output notice.
-							
-						}
-						else
+						// The category field's values, a reference's printed by its label.
+						$output_rss_categories = isset($category_field['id'])
+							? pg_sw_feed_category_xml($custom_form_page_id, $category_field['id'], array($submitted_form['category'] ?? ''))
+							: '';
+						if ($output_rss_categories == '')
 						{
 							$output_rss_categories = '<category>' . lang('There is not an RSS category specified in the form.') . '</category>';
 						}
