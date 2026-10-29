@@ -32,7 +32,9 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ad-shared-form.md: The ad create and edit screens share includes/forms/ad_form.php: what it holds, what stays in the screens
 - admin-screen-toolbar-rules.md: Button recipes, menu colour rule, shared toolbar CSS classes, card header pattern and narrow-screen behaviour for admin screen toolbars.
 - admin-screen-toolbar.md: Panel screen basics (frame, notices, fields, width, icons, help) and the single-toolbar design principle for every admin screen, with view_folders.php as reference: slot order and classes.
+- ai-write-alt-text.md: "Write with AI" for an image's alt text in the visual designer: the image_alt target, the browser's model only, the image read in the browser, where the button sits and when it shows
 - ai-write-browser.md: "Write with AI" on the browser's built-in AI (Prompt API) for a site without Pinegrap AI: when, the two server steps, languages and the translation bridge, gesture, long data
+- ai-write-decisions.md: Why "Write with AI" is built the way it is (decided 2026-10-19/20): one endpoint, the models, daily cap, brand voice, the panel, labelling and the marks, translation, alt text on the browser's model
 - ai-write-marks-designer.md: The AI mark on the visual designer's page settings (Page Title, Meta Description): page aiText/ai_fields in style_designer.js, pg_ai_fields_page_save() on the save
 - ai-write-marks.md: Mark on texts written with AI (products.ai_fields, page.ai_fields, 11.0.23): what is stored, the fingerprint, when a field gets or loses it (a hand edit removes it), the marker, pg:ai-write-used
 - ai-write-note.md: The site note ^^__ai_generated^^ (product detail widget): when it prints, which columns it speaks for, pg_ai_fields_note(), a page's own marks still open

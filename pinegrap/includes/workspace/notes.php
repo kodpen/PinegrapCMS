@@ -2439,6 +2439,7 @@ function ws_notes_js_strings()
         'notes_share_channel_help' => lang('A card goes into the channel; its members can read the note as it is now, not change it.'),
         'notes_can_view'        => lang('Can read'),
         'notes_can_edit'        => lang('Can edit'),
+        'notes_share_right'     => lang('Access'),
         'notes_shared_ok'       => ws_js_template('Shared with {var:1} colleague(s).', 1),
         'notes_shared_channel_ok' => lang('The note was shared in the channel.'),
         'notes_shares'          => lang('Who can see it'),

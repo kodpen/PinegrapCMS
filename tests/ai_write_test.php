@@ -719,3 +719,69 @@ function test_ai_write_message_tidy_keeps_marks()
 	pg_assert_same("**Hi** <@user:12>,\n\n_please_ send ~~it~~ ==today==:\n- one\n    `code`", pg_ai_write_tidy('message', $text, 4000));
 	pg_assert_same(10, mb_strlen(pg_ai_write_tidy('message', str_repeat('a', 30), 10)), 'cut');
 }
+
+// An image's alt text: a page field the browser's model writes from the
+// image, its button hidden until the browser says the model reads images,
+// carrying the element that holds the image's address.
+function test_ai_write_image_alt_target()
+{
+	$row = pg_ai_write_target('image_alt');
+
+	pg_assert_true(!empty($row['image']), 'image target');
+	pg_assert_same(array('page' => 'image_alt'), $row['records'], 'page record');
+	pg_assert_same('line', $row['format'], 'one line');
+	pg_assert_same(125, $row['max'], 'length');
+
+	foreach (pg_ai_write_targets() as $target => $other) {
+		if ($target !== 'image_alt') {
+			pg_assert_true(empty($other['image']), $target . ' reads no image');
+		}
+	}
+
+	$config = pg_ai_write_button_config(array(
+		'target' => 'image_alt', 'record' => 'page', 'record_id' => 3, 'field' => 'sd-prop-img-alt', 'image' => 'sd-prop-img-src',
+	));
+	pg_assert_same('sd-prop-img-src', $config['image'], 'image element');
+	pg_assert_false(isset(pg_ai_write_button_config(array('target' => 'seo_title', 'record' => 'page', 'image' => 'x'))['image']), 'text target');
+	pg_assert_same(null, pg_ai_write_button_config(array('target' => 'image_alt', 'record' => 'product')), 'pages only');
+}
+
+// The rules say the image comes with the message and the current alt text
+// travels as current_text.
+function test_ai_write_image_alt_messages()
+{
+	$messages = pg_ai_write_messages(array(
+		'target'   => 'image_alt',
+		'record'   => 'page',
+		'context'  => pg_ai_write_context('page', array('page_title' => 'Our bakery', 'image' => '/files/bread.jpg', 'image_alt' => 'bread')),
+		'language' => 'English',
+	));
+	$payload = json_decode($messages[1]['content'], true);
+
+	pg_assert_contains('the alt text of an image on a web page', $messages[0]['content'], 'field');
+	pg_assert_contains('At most 125 characters.', $messages[0]['content'], 'length');
+	pg_assert_contains('The image comes with this message', $messages[0]['content'], 'image line');
+	pg_assert_same('bread', $payload['current_text'], 'current alt');
+	pg_assert_same('/files/bread.jpg', $payload['data']['Image address'], 'address');
+	pg_assert_same('Alt text', pg_ai_write_target_label('image_alt'), 'label');
+
+	$plain = pg_ai_write_messages(array('target' => 'seo_title', 'record' => 'page', 'context' => array('page_title' => 'A')));
+	pg_assert_false(strpos($plain[0]['content'], 'The image comes') !== false, 'no image line for text');
+}
+
+// The script reads the image through the browser's model only, and the
+// designer offers the button from the server's template.
+function test_ai_write_image_alt_script()
+{
+	$script = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/pg_ai_write.js');
+	$designer = file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.js');
+
+	pg_assert_contains("inputs.push({ type: 'image' })", $script, 'image input');
+	pg_assert_contains("{ type: 'image', value: picture }", $script, 'image prompt');
+	pg_assert_contains('cfg.imageReady = imageReady', $script, 'image check');
+	pg_assert_contains("return (engine === 'browser') || !!settings.image;", $script, 'browser only');
+	pg_assert_contains("document.getElementById('sd-ai-alt-button')", $designer, 'template');
+	pg_assert_contains('id="sd-prop-img-alt"', $designer, 'alt field');
+	pg_assert_contains('id="sd-prop-img-src"', $designer, 'src field');
+	pg_assert_contains('ai.imageReady()', $designer, 'shown when the model reads images');
+}
