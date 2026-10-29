@@ -29497,8 +29497,17 @@ const StyleDesigner = (function () {
         return true;
     }
 
-    // The strip: one button per tab, the active file's address field and
-    // save button on the right.
+    // A file tab offers "Format code" (ed.format()) once its text is loaded,
+    // while it can be edited and its language has a formatter: CSS,
+    // JavaScript, JSON. The page tab is HTML printed by the emitter and a
+    // PHP tab has no formatter; Shift+Alt+F stays the key in every tab.
+    function _sdCodeFormats(tab) {
+        if (!tab || tab.key === 'page' || !tab.ed || !tab.loaded || !tab.spec || tab.spec.readOnly) return false;
+        return ['css', 'javascript', 'json'].indexOf(tab.ed.getLanguage()) !== -1;
+    }
+
+    // The strip: one button per tab, the active file's address field,
+    // format and save buttons on the right.
     function _sdCodeTabsRender() {
         var strip = document.getElementById('sd-code-tabs');
         if (!strip) return;
@@ -29518,6 +29527,9 @@ const StyleDesigner = (function () {
             if (active.spec.url) {
                 html += '<input type="text" class="sd-code-url" id="sd-code-url" value="' + esc(active.spec.url.value || '') + '" placeholder="https://" title="' + esc(_sdT('External URL:')) + '">';
             }
+            if (_sdCodeFormats(active)) {
+                html += '<button type="button" class="sd-code-tab" id="sd-code-format" title="' + esc(_sdT('Format code')) + ' (Shift+Alt+F)"><span class="bi bi-text-indent-left"></span>' + esc(_sdT('Format code')) + '</button>';
+            }
             if (!active.spec.readOnly) {
                 html += '<button type="button" class="sd-styles-tool sd-styles-create" id="sd-code-file-save" title="' + esc(_sdT('Save the file (Ctrl+S)')) + '"><span class="bi bi-check-lg me-1"></span>' + esc(_sdT('Save')) + '</button>';
             }
@@ -29534,6 +29546,8 @@ const StyleDesigner = (function () {
             });
         });
         strip.querySelector('#sd-code-find-toggle').addEventListener('click', function () { _sdCodeFindShow(!_sdCodeFind.open); });
+        var format = strip.querySelector('#sd-code-format');
+        if (format) format.addEventListener('click', function () { active.ed.format(); active.ed.focus(); });
         var save = strip.querySelector('#sd-code-file-save');
         if (save) save.addEventListener('click', function () { _sdCodeTabSave(active.key); });
         var url = strip.querySelector('#sd-code-url');

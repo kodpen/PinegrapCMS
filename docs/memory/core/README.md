@@ -37,7 +37,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - code-editor-completion.md: Code editor completion (pg_code_editor.js): css/js sources inside an HTML editor, addCompletionRanker, colour swatches, the slot sources and the lezer lookup-cache reset
 - code-editor-emmet.md: The code editor's Emmet: the MIT emmet core in the lazy bundle, ed.expandAbbreviation() on Mod+E (why not Tab), the context from the syntax tree, tab-stops, locks, the `emmet` option (PR #2909)
 - code-editor-facade-and-bundle.md: The code editor facade window.PgCodeEditor (assets/js/pg_code_editor.js): lazy CodeMirror 6 bundle, opening an editor, locks and islands, tracked ranges, registries, format, Emmet, build
-- code-editor-format.md: The code editor's format command: ed.format(), Shift+Alt+F and the Format code buttons for CSS, JavaScript and JSON through the bundled js-beautify, what refuses it (PRs #1909, #2072)
+- code-editor-format.md: The code editor's format command: ed.format(), Shift+Alt+F and the Format code buttons (dialog, panel fields, designer code view) via js-beautify, what refuses it (PRs #1909, #2072, #2993)
 - code-editor-minimap.md: The code editor's minimap: @replit/codemirror-minimap in the lazy bundle, the opt-in `minimap` option and page default, setMinimap()/hasMinimap(), the toggle buttons (PR #2125), on in the designer
 - code-editor-syntax-lint.md: The code editor's syntax lint (_syntaxLinter): what is marked, empty documents, the whole document parsed in slices first (files over 100 KB), what stops a running parse, the 200-mark cap
 - concurrent-agents.md: Several agents or threads on the repo at once: own branch and area, rebase before push, migration sub-step numbers that do not collide
