@@ -28,5 +28,5 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - Template placement: boxes appear one by one (420 ms each, 150 ms apart, rising and scaling up from 92 %), arrows grow (200 ms), threads draw (650 ms, 200 ms apart), then the setup panel slides in. With prefers-reduced-motion it is placed at once.
 
 ## Where are the rules behind it?
-- workspace-flows-data-threads.md, workspace-flows-channels.md, workspace-flows-templates.md, workspace-flows-data-passing.md (D8).
+- workspace-flows-data-threads.md, workspace-flows-channels.md, workspace/workspace-flows-template-format.md, workspace-flows-data-passing.md (D8).
 - The steps that bring the boxes, arrows, icons, palette and flow list to it: workspace-flows-look.md.

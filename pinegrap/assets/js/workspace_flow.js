@@ -280,7 +280,10 @@
         // A patch of Pinegrap AI opened onto the flow (ws_flow_ai_marks()):
         // { change, boxes: { id: 'added' | 'changed' }, order: [id] }, null
         // when none or the viewer hid its marks.
-        marks: null
+        marks: null,
+        // A flow Pinegrap AI just drafted from a sentence (sketchCard()):
+        // { flow, notes }, null once hidden or another flow is shown.
+        sketch: null
     };
 
     var ui = {};
@@ -767,6 +770,11 @@
         ui.marksBox = el('div', 'wsf-ai-marks d-none');
         ui.marksBox.setAttribute('role', 'region');
         ui.marksBox.setAttribute('aria-label', t('fl_ai_title'));
+        // A flow Pinegrap AI drafted from a sentence: check it before
+        // publishing, and the model's notes.
+        ui.sketchBox = el('div', 'wsf-ai-marks wsf-ai-sketch d-none');
+        ui.sketchBox.setAttribute('role', 'region');
+        ui.sketchBox.setAttribute('aria-label', t('fl_ai_sketch_region'));
         ui.conflictBox = el('div', 'alert theme-warning d-flex flex-wrap align-items-center gap-3 py-3 d-none');
         // While a run is shown: which, and the way back to the flow.
         ui.runBox = el('div', 'wsf-run-bar d-none');
@@ -862,6 +870,7 @@
         root.appendChild(ui.runBox);
         root.appendChild(ui.problemBox);
         root.appendChild(ui.marksBox);
+        root.appendChild(ui.sketchBox);
         root.appendChild(ui.flows);
         root.appendChild(ui.app);
         root.appendChild(ui.live);
@@ -1302,6 +1311,7 @@
         ui.scheduled.classList.add('d-none');
         ui.gallery.classList.add('d-none');
         ui.problemBox.classList.add('d-none');
+        ui.sketchBox.classList.add('d-none');
         ui.app.classList.add('wsf-nothing');
         ui.app.classList.add('wsf-no-palette');
         K.clear(ui.side);
@@ -1385,6 +1395,11 @@
                 empty.appendChild(el('span', 'wsf-start-help', t('fl_tpl_empty_help')));
                 empty.addEventListener('click', createFlow);
                 starts.appendChild(empty);
+
+                if (FL.ai_sketch) {
+                    starts.appendChild(sketchCard());
+                }
+
                 ui.gallery.appendChild(starts);
             }
 
@@ -1408,6 +1423,95 @@
 
             refocus();
         }).catch(K.fail);
+    }
+
+    // "Describe it to AI": one sentence, and Pinegrap AI drafts a new flow
+    // of the person (ws_flow_ai_sketch) that opens on the canvas with what
+    // is left to fix and the model's notes. Never published here: that
+    // stays the person's, on the canvas.
+    function sketchCard() {
+        var card = el('form', 'wsf-start-card wsf-start-ai');
+        var id = 'wsf-f' + (++uid);
+        var label = el('label', 'wsf-start-title', t('fl_ai_sketch'));
+        var help = el('span', 'wsf-start-help', t('fl_ai_sketch_help'));
+        var input = el('input', 'form-control form-control-sm');
+        var go = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5 align-self-start', t('fl_ai_sketch_go'), 'bi-stars');
+        var status = el('div', 'wsf-start-help');
+
+        card.noValidate = true;
+        card.appendChild(K.icon('bi-stars'));
+        label.htmlFor = id;
+        input.id = id;
+        input.type = 'text';
+        input.maxLength = FL.ai_sketch_max || 600;
+        input.placeholder = t('fl_ai_sketch_example');
+        input.autocomplete = 'off';
+        input.setAttribute('data-refocus', 'tpl-ai');
+        help.id = id + '-help';
+        status.id = id + '-status';
+        status.setAttribute('role', 'status');
+        input.setAttribute('aria-describedby', help.id + ' ' + status.id);
+        go.type = 'submit';
+
+        var say = function (text, wrong) {
+            status.className = 'wsf-start-help' + (wrong ? ' fg-danger' : '');
+            status.textContent = text;
+
+            if (wrong) {
+                input.setAttribute('aria-invalid', 'true');
+            } else {
+                input.removeAttribute('aria-invalid');
+            }
+        };
+
+        card.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            var sentence = input.value.trim();
+
+            if (go.disabled) {
+                return;
+            }
+
+            if (!sentence) {
+                say(t('fl_ai_sketch_empty'), true);
+                input.focus();
+                return;
+            }
+
+            go.disabled = true;
+            input.readOnly = true;
+            card.setAttribute('aria-busy', 'true');
+            say(t('fl_ai_sketch_working'), false);
+
+            K.api('ws_flow_ai_sketch', { sentence: sentence }).then(function (data) {
+                state.sketch = { flow: data.flow.id, notes: data.notes || [] };
+                state.refocus = 'ai-sketch';
+                show(data.flow);
+
+                // What is left to fix is in sight at once.
+                if (state.problems.length || state.warnings.length) {
+                    ui.problemBox.classList.remove('d-none');
+                    ui.problemButton.setAttribute('aria-expanded', 'true');
+                }
+
+                refocus();
+            }).catch(function (error) {
+                go.disabled = false;
+                input.readOnly = false;
+                card.removeAttribute('aria-busy');
+                say((error && error.message) || t('error_generic'), true);
+                input.focus();
+            });
+        });
+
+        card.appendChild(label);
+        card.appendChild(help);
+        card.appendChild(input);
+        card.appendChild(go);
+        card.appendChild(status);
+
+        return card;
     }
 
     function templateCard(template, into) {
@@ -2220,6 +2324,11 @@
         state.flow = flow;
         state.edit = (flow.access === 'edit');
 
+        // The notes of a drafted flow go with that flow only.
+        if (state.sketch && (state.sketch.flow !== flow.id)) {
+            state.sketch = null;
+        }
+
         // Somebody who only reaches the flow reads its live graph, or the
         // draft, read-only, of a flow never published.
         state.graph = graphOf(state.edit ? flow.draft : (flow.graph || flow.draft));
@@ -2290,8 +2399,9 @@
 
         create.setAttribute('data-refocus', 'new');
         create.addEventListener('click', function () {
-            // With templates to offer, the ways to start come first.
-            if ((FL.templates || []).length) {
+            // With templates or Pinegrap AI to offer, the ways to start
+            // come first.
+            if ((FL.templates || []).length || FL.ai_sketch) {
                 showGallery(null);
             } else {
                 createFlow();
@@ -2613,6 +2723,7 @@
         drawOutline();
         drawProblems();
         drawMarks();
+        drawSketch();
         drawState();
     }
 
@@ -3733,6 +3844,45 @@
 
         hide.addEventListener('click', hideMarks);
         ui.marksBox.appendChild(hide);
+    }
+
+    function drawSketch() {
+        K.clear(ui.sketchBox);
+
+        var shown = !!(state.sketch && state.flow && state.edit && (state.sketch.flow === state.flow.id));
+
+        ui.sketchBox.classList.toggle('d-none', !shown);
+
+        if (!shown) {
+            return;
+        }
+
+        var text = el('p', 'wsf-ai-marks-text mb-0');
+        var hide = K.button('btn btn-sm btn-link ms-auto', t('fl_ai_sketch_hide'));
+
+        text.tabIndex = -1;
+        text.setAttribute('data-refocus', 'ai-sketch');
+        text.appendChild(K.icon('bi-stars', 'me-1'));
+        text.appendChild(document.createTextNode(t('fl_ai_sketch_drafted')));
+        ui.sketchBox.appendChild(text);
+        hide.addEventListener('click', function () {
+            state.sketch = null;
+            drawSketch();
+
+            if (ui.name) {
+                ui.name.focus();
+            }
+        });
+        ui.sketchBox.appendChild(hide);
+
+        if (state.sketch.notes.length) {
+            var notes = el('ul', 'wsf-ai-sketch-notes mb-0');
+
+            state.sketch.notes.forEach(function (note) {
+                notes.appendChild(el('li', '', note));
+            });
+            ui.sketchBox.appendChild(notes);
+        }
     }
 
     function markSelected() {
