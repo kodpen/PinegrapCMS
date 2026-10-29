@@ -3024,7 +3024,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (item.picture && item.kept && item.url) {
             media = '<img src="' + esc(item.url) + '" alt="" class="img-fluid rounded-4 border" style="max-height:24rem;" />';
         } else if (viewable && item.kept) {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>';
         } else if (viewable) {
             media = '<div class="erp-preview-wait text-center">' +
                 '<span class="bi bi-filetype-pdf pg-display-5 d-block mb-3 private"></span>' +
@@ -3099,7 +3099,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (previewButton) {
             previewButton.addEventListener('click', function () {
                 var wait = pane.querySelector('.erp-preview-wait');
-                if (wait) { wait.outerHTML = '<iframe src="' + esc(item.url) + '"></iframe>'; }
+                if (wait) { wait.outerHTML = '<iframe src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>'; }
             });
         }
 
@@ -6417,11 +6417,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 : ('<div class="text-center empty-note"><i class="bi ' + ((item.kind === 'group') ? 'bi-boxes' : 'bi-box2-heart') + ' pg-display-1 d-block mb-3"></i>' + esc(L.no_preview) + '</div>');
         }
 
-        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>'; }
+        if (item.kind === 'page') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>'; }
         // An ERP picture has no thumbnail sizes; the kept file is shown as is.
         if (item.erp && item.picture) { return '<img draggable="false" src="' + esc(item.url) + '" alt="" />'; }
         if (item.is_image) { return '<img draggable="false" src="' + esc(imageUrl(item)) + '" alt="" />'; }
-        if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>'; }
+        if (item.type === 'pdf') { return '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>'; }
         if (isOfficeType(item.type) && !item.erp) { return '<div class="office-view" id="quicklook_office"></div>'; }
         if (PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) { return '<video controls autoplay preload="metadata" src="' + esc(item.url) + '"></video>'; }
         if (PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) { return '<audio controls autoplay preload="metadata" src="' + esc(item.url) + '" style="width:min(32rem,80vw);"></audio>'; }
@@ -6719,11 +6719,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     '<a class="btn btn-sm btn-outline theme-primary" href="' + esc(backupDownloadUrl(item.path)) + '"><span class="bi bi-download me-1"></span>' + esc(L.download) + '</a></div>');
 
         } else if (item.kind === 'page') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '" referrerpolicy="no-referrer"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '" referrerpolicy="no-referrer"></iframe>';
         } else if (item.kind === 'file' && item.is_image) {
-            media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
+            media = '<a href="' + esc(imageUrl(item)) + '" target="_blank" draggable="false" aria-label="' + esc(L.open_in_new_tab + ': ' + item.name) + '"><img class="preview-media" draggable="false" src="' + esc(imageUrl(item)) + '" alt="" /></a>';
         } else if (item.kind === 'file' && item.type === 'pdf') {
-            media = '<iframe loading="lazy" src="' + esc(item.url) + '"></iframe>';
+            media = '<iframe loading="lazy" src="' + esc(item.url) + '" title="' + esc(item.name) + '"></iframe>';
         } else if (item.kind === 'file' && PREVIEW_VIDEO_TYPES.indexOf(item.type) !== -1) {
             media = '<video controls preload="metadata" style="width:100%;border-radius:.6rem;" src="' + esc(item.url) + '"></video>';
         } else if (item.kind === 'file' && PREVIEW_AUDIO_TYPES.indexOf(item.type) !== -1) {
@@ -13865,7 +13865,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'audio':
                 return '<audio controls preload="metadata" src="' + esc(file.url) + '"></audio>';
             case 'pdf':
-                return '<iframe loading="lazy" src="' + esc(file.url) + '"></iframe>';
+                return '<iframe loading="lazy" src="' + esc(file.url) + '" title="' + esc(file.name) + '"></iframe>';
             case 'office':
                 // Filled by loadOfficePreview() once the window stands.
                 return '<div class="office-view" id="file_edit_office"></div>';
