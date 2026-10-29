@@ -64,6 +64,16 @@ function pg_shipment_labels_ready()
 }
 
 /**
+ * Whether a label can name the return request it was made for (11.0.126).
+ *
+ * @return bool
+ */
+function pg_shipment_labels_link_returns()
+{
+    return pg_schema_has('shipment_labels', 'order_return_id');
+}
+
+/**
  * The folder the documents are kept in.
  *
  * @return string
@@ -300,13 +310,16 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
  * @param int    $user_id
  * @param int    $now
  * @param bool   $return
+ * @param int    $order_return_id the return request a return label was made
+ *                                for; 0 writes no such column, so a label of
+ *                                the order screen is saved before 11.0.126
  * @return array column => value
  */
-function pg_shipment_label_row($order_id, $ship_to_id, $driver, $answer, $file, $user_id, $now, $return = false)
+function pg_shipment_label_row($order_id, $ship_to_id, $driver, $answer, $file, $user_id, $now, $return = false, $order_return_id = 0)
 {
     $format = (isset($answer['label_format']) && in_array($answer['label_format'], pg_label_formats(), true)) ? $answer['label_format'] : '';
 
-    return array(
+    $row = array(
         'order_id'         => (int) $order_id,
         'ship_to_id'       => (int) $ship_to_id,
         'number'           => mb_substr(pg_shipment_number_clean(isset($answer['tracking_number']) ? $answer['tracking_number'] : ''), 0, 40),
@@ -322,6 +335,39 @@ function pg_shipment_label_row($order_id, $ship_to_id, $driver, $answer, $file, 
         'cancelled_at'     => 0,
         'label_removed_at' => 0,
     );
+
+    if ($return && ((int) $order_return_id > 0)) {
+        $row['order_return_id'] = (int) $order_return_id;
+    }
+
+    return $row;
+}
+
+/**
+ * Whether a label's number becomes one of its address's parcels. A return
+ * label's never does: the parcel comes back to the store, and its delivery
+ * would announce the order delivered. Pure.
+ *
+ * @param array $row pg_shipment_label_row()
+ * @return bool
+ */
+function pg_shipment_label_records_parcel($row)
+{
+    return empty($row['is_return']);
+}
+
+/**
+ * The code a customer gives the carrier for a return label: its barcode,
+ * else its tracking number. Pure.
+ *
+ * @param array $row a shipment_labels row
+ * @return string
+ */
+function pg_shipment_label_return_code($row)
+{
+    $barcode = isset($row['barcode']) ? trim((string) $row['barcode']) : '';
+
+    return ($barcode !== '') ? $barcode : (isset($row['number']) ? trim((string) $row['number']) : '');
 }
 
 /**
@@ -371,7 +417,9 @@ function pg_shipment_label_rows($ship_to_id)
  * address through the shipment write path.
  *
  * An address that already has an active label of the kind asked for gets no
- * second one: a second create() would buy a second shipment. An unclear
+ * second one: a second create() would buy a second shipment. A label made
+ * from a return request is that request's (pg_shipment_label_create_for_return())
+ * and is not counted here. An unclear
  * answer is reported as such, so the operator looks at the service before
  * trying again. A return label (collected from the recipient, delivered to
  * the store) is kept as a row only: its number is not one of the address's
@@ -416,7 +464,8 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
 
     $active = (int) db_value(
         "SELECT COUNT(*) FROM shipment_labels
-        WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '" . ($return ? 1 : 0) . "')");
+        WHERE (ship_to_id = '" . (int) $ship_to['id'] . "') AND (state = 'active') AND (is_return = '" . ($return ? 1 : 0) . "')"
+        . (pg_shipment_labels_link_returns() ? " AND (order_return_id = '0')" : ""));
 
     if ($active > 0) {
         $out['error'] = $return
@@ -457,7 +506,29 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
     }
 
     $order['currency'] = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
-    $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return);
+
+    return pg_shipment_label_open($driver, $order, $ship_to, pg_shipment_label_shipment($order, $ship_to, $items, $state_code, $return), $user_id, $return);
+}
+
+/**
+ * Open the shipment with the driver, keep the document and the row, and for
+ * an outbound label record the tracking number on the address through the
+ * shipment write path. The caller has checked that no active label of the
+ * same kind exists.
+ *
+ * @param string $driver
+ * @param array  $order    id, order_number
+ * @param array  $ship_to  id
+ * @param array  $shipment pg_shipment_label_shipment()
+ * @param int    $user_id
+ * @param bool   $return
+ * @param int    $order_return_id the return request, 0 for the order screen
+ * @return array ok, error, id (the label row), number, row, carrier (the
+ *               service's carrier key, or '')
+ */
+function pg_shipment_label_open($driver, $order, $ship_to, $shipment, $user_id, $return = false, $order_return_id = 0)
+{
+    $out = array('ok' => false, 'error' => '', 'id' => 0, 'number' => '', 'row' => array(), 'carrier' => '');
     $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
     $answer = pg_label_call($driver, 'create', array($shipment, $account));
     $driver_name = pg_label_driver($driver)['label'];
@@ -498,7 +569,7 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
     }
 
     $answer['label_format'] = $format;
-    $row = pg_shipment_label_row($order['id'], $ship_to['id'], $driver, $answer, $file, $user_id, time(), $return);
+    $row = pg_shipment_label_row($order['id'], $ship_to['id'], $driver, $answer, $file, $user_id, time(), $return, $order_return_id);
     $values = array();
 
     foreach ($row as $column => $value) {
@@ -510,8 +581,10 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
 
     $out['ok'] = true;
     $out['number'] = $row['number'];
+    $out['row'] = $row;
+    $out['carrier'] = isset($answer['carrier']) ? (string) $answer['carrier'] : '';
 
-    if (!$return) {
+    if (pg_shipment_label_records_parcel($row)) {
         $recorded = pg_shipment_record($order['id'], $ship_to['id'], $answer['tracking_number'], pg_label_shipment_options($answer));
         $out['number'] = $recorded['ok'] ? $recorded['number'] : $row['number'];
     }
@@ -519,6 +592,206 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
     log_activity(lang(array('string' => 'A shipping label was created with {var:1} for order {var:2}: {var:3}', 'vars' => array($driver_name, $order['order_number'], $out['number']))));
 
     return $out;
+}
+
+/**
+ * What "Create Return Label" on a return request may do. Only an approved
+ * request gets a label, and only one active label: a second press, a form
+ * sent again or a page left open finds it and the service is not called
+ * again. A label of another request on the same address, or one made on the
+ * order screen, does not count. The driver is the one that ships with the
+ * approval's carrier (pg_shipment_label_driver_pick()); when none does, the
+ * approval goes on with the carrier and code given by hand. Pure.
+ *
+ * @param array $return  id, status, carrier of the order_returns row
+ * @param array $labels  shipment_labels rows of the request's address
+ * @param array $drivers pg_shipment_label_drivers()
+ * @return array driver ('' when no label is to be made), error, label_id
+ *               (the request's active label, when it has one)
+ */
+function pg_shipment_label_return_plan($return, $labels, $drivers)
+{
+    $out = array('driver' => '', 'error' => '', 'label_id' => 0);
+
+    if ((string) $return['status'] !== 'approved') {
+        $out['error'] = lang('A return label is created only for an approved request.');
+        return $out;
+    }
+
+    foreach ((array) $labels as $label) {
+        if (((int) $label['order_return_id'] === (int) $return['id']) && !empty($label['is_return']) && ((string) $label['state'] === 'active')) {
+            $out['label_id'] = (int) $label['id'];
+            $out['error'] = lang('This request already has a return label. Print it again, or cancel it on the order before creating another.');
+            return $out;
+        }
+    }
+
+    $carrier = (string) $return['carrier'];
+    $out['driver'] = pg_shipment_label_driver_pick($carrier, $drivers);
+
+    if ($out['driver'] !== '') {
+        return $out;
+    }
+
+    $out['error'] = ($carrier === '' || empty($drivers))
+        ? lang('No carrier label service is switched on. Give the customer the return carrier and code by hand.')
+        : lang(array('string' => 'No carrier label service that ships with {var:1} is switched on. Give the customer the return code by hand.', 'vars' => array(pg_return_carrier_label($carrier))));
+
+    return $out;
+}
+
+/**
+ * The name of the lock that lets one return label be made for a request at
+ * a time.
+ *
+ * @param int $return_id
+ * @return string
+ */
+function pg_shipment_label_return_lock_name($return_id)
+{
+    $database = defined('DB_DATABASE') ? DB_DATABASE . '@' . (defined('DB_HOST') ? DB_HOST : '') : (string) db_value("SELECT DATABASE()");
+
+    return 'pg_label_return_' . md5($database) . '_' . (int) $return_id;
+}
+
+/**
+ * Open the return label of a return request: the shipment carries the
+ * request's lines, is collected from the delivery's address and comes back
+ * to the store. Its row names the request (order_return_id); its number is
+ * never recorded as one of the address's parcels.
+ *
+ * The check for the request's active label and the service call run under a
+ * lock of the request, so two presses at once never buy two labels; a press
+ * while another runs is told to wait.
+ *
+ * @param array $return  pg_return_load()
+ * @param int   $user_id
+ * @return array ok, error, id (the label row), code (what the customer gives
+ *               the carrier), carrier (the service's carrier key, or '')
+ */
+function pg_shipment_label_create_for_return($return, $user_id)
+{
+    $out = array('ok' => false, 'error' => '', 'id' => 0, 'code' => '', 'carrier' => '');
+
+    if (!pg_shipment_labels_ready() || !pg_shipment_labels_link_returns()) {
+        $out['error'] = lang('Run the software update first: the table for shipping labels is missing.');
+        return $out;
+    }
+
+    $lock = pg_shipment_label_return_lock_name($return['id']);
+
+    if ((int) db_value("SELECT GET_LOCK('" . e($lock) . "', 0)") !== 1) {
+        $out['error'] = lang('A return label is being created for this request. Wait a moment, then open the request again.');
+        return $out;
+    }
+
+    $result = pg_shipment_label_return_open($return, $user_id);
+
+    db_value("SELECT RELEASE_LOCK('" . e($lock) . "')");
+
+    return $result;
+}
+
+/**
+ * pg_shipment_label_create_for_return() under the request's lock.
+ *
+ * @param array $return
+ * @param int   $user_id
+ * @return array as pg_shipment_label_create_for_return()
+ */
+function pg_shipment_label_return_open($return, $user_id)
+{
+    $out = array('ok' => false, 'error' => '', 'id' => 0, 'code' => '', 'carrier' => '');
+    $ship_to_id = (int) $return['ship_to_id'];
+
+    // Read again: the status may have moved since the page was drawn.
+    $current = db_item("SELECT id, status, carrier FROM order_returns WHERE id = '" . (int) $return['id'] . "'");
+
+    if (!$current) {
+        $out['error'] = lang('The return could not be found.');
+        return $out;
+    }
+
+    $plan = pg_shipment_label_return_plan($current, pg_shipment_label_rows($ship_to_id), pg_shipment_label_drivers());
+
+    if ($plan['driver'] === '') {
+        $out['error'] = $plan['error'];
+        return $out;
+    }
+
+    $ship_to = db_item("SELECT * FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+    $order = $ship_to ? db_item(
+        "SELECT id, order_number, status, billing_email_address
+        FROM orders
+        WHERE id = '" . (int) $ship_to['order_id'] . "'") : null;
+
+    if (!$order || ((int) $order['id'] !== (int) $return['order_id'])) {
+        $out['error'] = lang('The order could not be found.');
+        return $out;
+    }
+
+    // The request's lines, each with the quantity coming back.
+    $items = db_items(
+        "SELECT
+            order_items.product_name,
+            order_return_items.quantity,
+            order_items.price,
+            products.weight,
+            products.length,
+            products.width,
+            products.height
+        FROM order_return_items
+        LEFT JOIN order_items ON order_items.id = order_return_items.order_item_id
+        LEFT JOIN products ON products.id = order_items.product_id
+        WHERE order_return_items.return_id = '" . (int) $return['id'] . "'");
+
+    $ship_to['total'] = 0;
+
+    foreach ($items as $item) {
+        $ship_to['total'] += (int) $item['price'] * (int) $item['quantity'];
+    }
+
+    $state_code = '';
+
+    if (strtoupper(trim((string) $ship_to['country'])) === 'TR') {
+        require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+        $state_code = pg_sales_map_match_region('TR', (string) $ship_to['state']);
+    }
+
+    $order['currency'] = defined('BASE_CURRENCY_CODE') ? BASE_CURRENCY_CODE : '';
+    $shipment = pg_shipment_label_shipment($order, $ship_to, $items, $state_code, true);
+
+    $opened = pg_shipment_label_open($plan['driver'], $order, $ship_to, $shipment, $user_id, true, (int) $return['id']);
+
+    if (!$opened['ok']) {
+        $out['error'] = $opened['error'];
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['id'] = $opened['id'];
+    $out['code'] = pg_shipment_label_return_code($opened['row']);
+    $out['carrier'] = isset($opened['carrier']) ? (string) $opened['carrier'] : '';
+
+    return $out;
+}
+
+/**
+ * The return labels made for one return request, newest first.
+ *
+ * @param int $return_id
+ * @return array
+ */
+function pg_shipment_label_return_rows($return_id)
+{
+    if (!pg_shipment_labels_ready() || !pg_shipment_labels_link_returns()) {
+        return array();
+    }
+
+    return db_items(
+        "SELECT * FROM shipment_labels
+        WHERE order_return_id = '" . (int) $return_id . "'
+        ORDER BY created_at DESC, id DESC");
 }
 
 /**

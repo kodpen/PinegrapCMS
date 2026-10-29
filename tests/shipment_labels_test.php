@@ -294,3 +294,76 @@ function test_shipment_label_svg_fonts_name_the_unicode_files()
 	pg_assert_contains('font-size:9px;font-family:/f/DejaVuSans"', $svg);
 	pg_assert_same('<svg font-family="/f/DejaVuSans"></svg>', pg_shipment_label_svg_fonts('<svg font-family="sans-serif"></svg>', '/f'), 'the root keeps its own');
 }
+
+// A request's return label: only on an approved request, one active label
+// per request (a second press finds it and never calls the service again),
+// a label of another request on the same address does not stop it, and the
+// driver is the one that ships with the approval's carrier.
+function test_shipment_label_return_plan_one_label_per_request()
+{
+	$drivers = array('first' => array('yurtici'), 'second' => array('aras'));
+	$return = array('id' => 12, 'status' => 'approved', 'carrier' => 'aras');
+
+	pg_assert_same(array('driver' => 'second', 'error' => '', 'label_id' => 0), pg_shipment_label_return_plan($return, array(), $drivers), 'the driver of the carrier');
+
+	$own = array('id' => 40, 'order_return_id' => 12, 'is_return' => 1, 'state' => 'active');
+	$plan = pg_shipment_label_return_plan($return, array($own), $drivers);
+
+	pg_assert_same('', $plan['driver'], 'no second paid call');
+	pg_assert_same(40, $plan['label_id'], 'the active label is named');
+	pg_assert_true($plan['error'] !== '', 'said why');
+
+	$others = array(
+		array('id' => 41, 'order_return_id' => 13, 'is_return' => 1, 'state' => 'active'),
+		array('id' => 42, 'order_return_id' => 0, 'is_return' => 1, 'state' => 'active'),
+		array('id' => 43, 'order_return_id' => 12, 'is_return' => 1, 'state' => 'cancelled'),
+		array('id' => 44, 'order_return_id' => 0, 'is_return' => 0, 'state' => 'active'),
+	);
+
+	pg_assert_same('second', pg_shipment_label_return_plan($return, $others, $drivers)['driver'], 'another request, an order-screen label or a cancelled one does not stop it');
+
+	$requested = pg_shipment_label_return_plan(array('id' => 12, 'status' => 'requested', 'carrier' => 'aras'), array(), $drivers);
+	pg_assert_same('', $requested['driver'], 'not before approval');
+	pg_assert_true($requested['error'] !== '', 'said why before approval');
+}
+
+// No driver reaches the carrier: no call, and staff are told why.
+function test_shipment_label_return_plan_without_a_driver()
+{
+	$return = array('id' => 12, 'status' => 'approved', 'carrier' => 'ups');
+	$plan = pg_shipment_label_return_plan($return, array(), array('first' => array('yurtici')));
+
+	pg_assert_same('', $plan['driver'], 'never another carrier');
+	pg_assert_contains('by hand', $plan['error'], 'the approval goes on by hand');
+
+	$none = pg_shipment_label_return_plan(array('id' => 12, 'status' => 'approved', 'carrier' => ''), array(), array());
+	pg_assert_same('', $none['driver'], 'no driver on');
+	pg_assert_true($none['error'] !== '', 'said why without a driver');
+
+	pg_assert_same('first', pg_shipment_label_return_plan(array('id' => 12, 'status' => 'approved', 'carrier' => ''), array(), array('first' => array('yurtici')))['driver'], 'no carrier named: the service picks');
+}
+
+// The code the customer gives the carrier: the barcode, else the number.
+function test_shipment_label_return_code()
+{
+	pg_assert_same('BC1', pg_shipment_label_return_code(array('barcode' => 'BC1', 'number' => 'N1')), 'barcode');
+	pg_assert_same('N1', pg_shipment_label_return_code(array('barcode' => '', 'number' => 'N1')), 'number');
+}
+
+// A return label never becomes one of the address's parcels, whose delivery
+// would announce the order delivered; a request's row carries its id.
+function test_shipment_label_return_is_never_a_delivery_parcel()
+{
+	shipment_labels_test_register();
+	$answer = pg_label_call('pgtestlabel', 'create', array(array('order_number' => '1003', 'return' => true), array()));
+
+	$outbound = pg_shipment_label_row(7, 9, 'pgtestlabel', $answer, '', 3, 1700000000);
+	$order_screen = pg_shipment_label_row(7, 9, 'pgtestlabel', $answer, '', 3, 1700000000, true);
+	$request = pg_shipment_label_row(7, 9, 'pgtestlabel', $answer, '', 3, 1700000000, true, 12);
+
+	pg_assert_true(pg_shipment_label_records_parcel($outbound), 'an outbound label is a parcel');
+	pg_assert_false(pg_shipment_label_records_parcel($order_screen), 'a return label is not');
+	pg_assert_false(pg_shipment_label_records_parcel($request), 'a request label is not');
+	pg_assert_same(12, $request['order_return_id'], 'the request is named');
+	pg_assert_false(array_key_exists('order_return_id', $order_screen), 'an order-screen row writes no request');
+}

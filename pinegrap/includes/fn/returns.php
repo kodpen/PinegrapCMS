@@ -2896,6 +2896,157 @@ function pg_return_send_decision_mail($return_id)
 }
 
 /**
+ * What a return label writes into its request: the label's code as the
+ * return code, and the service's carrier only when the approval named none
+ * and the carrier is a known one. Pure.
+ *
+ * @param array  $return  carrier, carrier_code of the order_returns row
+ * @param string $code    pg_shipment_label_return_code()
+ * @param string $carrier the carrier key the service gave, or ''
+ * @return array column => value
+ */
+function pg_return_label_code_change($return, $code, $carrier)
+{
+    $change = array('carrier_code' => pg_return_text($code, 64));
+    $carrier = pg_return_carrier($carrier);
+
+    if (((string) (isset($return['carrier']) ? $return['carrier'] : '') === '') && ($carrier !== '') && function_exists('pg_shipping_carrier_exists') && pg_shipping_carrier_exists($carrier)) {
+        $change['carrier'] = $carrier;
+    }
+
+    return $change;
+}
+
+/**
+ * The body of the short mail that gives the customer the code of a return
+ * label made after the approval mail went out.
+ *
+ * @param array $data customer, order_number, carrier (its name), carrier_code,
+ *                    from_name
+ * @return string HTML
+ */
+function pg_return_label_mail_body($data)
+{
+    $customer = isset($data['customer']) ? (string) $data['customer'] : '';
+    $carrier = isset($data['carrier']) ? (string) $data['carrier'] : '';
+    $code = isset($data['carrier_code']) ? (string) $data['carrier_code'] : '';
+
+    $how = ($carrier !== '')
+        ? h(lang(array('string' => 'Send the parcel with {var:1} and give them this return code:', 'vars' => array($carrier))))
+        : h(lang('Give the carrier this return code:'));
+
+    return '<!doctype html><html><body style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:#222;background:#f7f7f7;padding:20px;">'
+        . '<div style="max-width:560px;margin:0 auto;background:#fff;padding:24px;border-radius:6px;border:1px solid #e5e5e5;">'
+        . '<h2 style="margin:0 0 16px;font-size:18px;">' . h(lang('Your return code')) . '</h2>'
+        . '<p style="margin:0 0 12px;">' . h(lang('Hello')) . (($customer !== '') ? ' ' . h($customer) : '') . ',</p>'
+        . '<p style="margin:0 0 12px;">' . h(lang(array('string' => 'Here is the return code for your return from order #{var:1}.', 'vars' => array(isset($data['order_number']) ? (string) $data['order_number'] : '')))) . '</p>'
+        . '<p style="margin:0 0 12px;padding:12px;background:#eef6fb;border-radius:4px;">' . $how . ' <strong>' . h($code) . '</strong></p>'
+        . '<p style="margin:16px 0 0;color:#666;font-size:12px;">' . h(isset($data['from_name']) ? (string) $data['from_name'] : '') . '</p>'
+        . '</div></body></html>';
+}
+
+/**
+ * Sends the customer the return code of a label made for their request, at
+ * the order's billing address, through the mail queue when the general job
+ * runs.
+ *
+ * @param int $return_id
+ * @return bool sent or queued
+ */
+function pg_return_send_label_mail($return_id)
+{
+    $context = pg_return_mail_context($return_id);
+
+    if (($context === null) || ((string) $context['return']['carrier_code'] === '')) {
+        return false;
+    }
+
+    $return = $context['return'];
+
+    return (bool) email(array(
+        'to'                 => $context['to'],
+        'to_name'            => $context['customer'],
+        'from_name'          => $context['from_name'],
+        'from_email_address' => EMAIL_ADDRESS,
+        'subject'            => lang(array('string' => 'The return code for order #{var:1}', 'vars' => array($context['order_number']))),
+        'format'             => 'html',
+        'body'               => pg_return_label_mail_body(array(
+            'customer'     => $context['customer'],
+            'order_number' => $context['order_number'],
+            'carrier'      => ((string) $return['carrier'] !== '') ? pg_return_carrier_label((string) $return['carrier']) : '',
+            'carrier_code' => (string) $return['carrier_code'],
+            'from_name'    => $context['from_name'],
+        )),
+        'type'               => 'system',
+        'queue'              => true,
+    ));
+}
+
+/**
+ * "Create Return Label" on an approved request: the label from the carrier
+ * label service that ships with the approval's carrier, its code written
+ * into the request's return code (in the audit trail) and mailed to the
+ * customer, who also reads it on their order page. The approval mail went
+ * out before, so this mail carries only the code. The label row and the
+ * paid call are guarded by pg_shipment_label_create_for_return(); a mail
+ * that cannot be sent leaves the label and the code in place.
+ *
+ * The caller has checked the person's commerce rights.
+ *
+ * @param int $return_id
+ * @param int $user_id
+ * @return array ok, error, code, mailed
+ */
+function pg_return_create_label($return_id, $user_id = 0)
+{
+    $out = array('ok' => false, 'error' => '', 'code' => '', 'mailed' => false);
+    $before = pg_return_load($return_id);
+
+    if (!$before) {
+        $out['error'] = lang('The return could not be found.');
+        return $out;
+    }
+
+    $label = pg_shipment_label_create_for_return($before, $user_id);
+
+    if (!$label['ok']) {
+        $out['error'] = $label['error'];
+        return $out;
+    }
+
+    $out['ok'] = true;
+    $out['code'] = $label['code'];
+
+    if ($label['code'] === '') {
+        return $out;
+    }
+
+    $set = array();
+
+    foreach (pg_return_label_code_change($before, $label['code'], $label['carrier']) as $column => $value) {
+        $set[] = "`" . $column . "` = '" . e($value) . "'";
+    }
+
+    db("UPDATE order_returns SET " . implode(', ', $set) . " WHERE id = '" . (int) $before['id'] . "'");
+
+    $after = pg_return_load($before['id']);
+    $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . (int) $before['order_id'] . "'");
+
+    if ($order_number === '') {
+        $order_number = (string) (int) $before['order_id'];
+    }
+
+    pg_audit('update', 'order_return', (int) $before['id'], pg_return_audit_fields($before), pg_return_audit_fields($after),
+        lang(array('string' => 'Return {var:1} of order {var:2}', 'vars' => array((int) $before['id'], $order_number))));
+
+    log_activity(lang(array('string' => 'A return label was created for return request {var:1} of order {var:2}: {var:3}', 'vars' => array((int) $before['id'], $order_number, $label['code']))));
+
+    $out['mailed'] = pg_return_send_label_mail($before['id']);
+
+    return $out;
+}
+
+/**
  * The user names of some people, by id.
  *
  * @param int[] $user_ids
