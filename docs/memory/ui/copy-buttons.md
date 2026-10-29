@@ -17,6 +17,6 @@ description: Hand-written panel Copy buttons: label kept, icon swapped, polite s
 - Already correct before: File Manager, Workspace editor, form item view, designer home.
 
 ## What fixed what?
-- Before: over http Site Log returned silently; the Claude card and calendar feed said Copied after a failed `execCommand`; the Chrome pages flipped the icon before the write settled and never back; Connections said nothing; the calendar feed replaced its label for good; the accountant link ignored a refusal; API applications threw over http, replaced the focused button with a bare icon and gave keyboard users no way to copy the one-time secret; two-step setup said nothing.
+- Before: over http Site Log returned silently; the Claude card and calendar feed said Copied after a failed `execCommand`; the Chrome pages flipped the icon before the write settled and never back; Connections said nothing; the calendar feed replaced its label for good; the accountant link ignored a refusal; API applications threw over http, replaced the focused button with a bare icon and gave keyboard users no way to copy the one-time secret; two-step setup said nothing (#3335).
 
 Test: `tests/copy_buttons_test.php` (source pins of each handler and status region), `tests/erp_marks_names_test.php` (accountant status span).
