@@ -41,6 +41,12 @@
         return String(s === null || s === undefined ? '' : s)
             .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
+    // A toggle button kept by renderOptions(): .active fills it, aria-pressed
+    // tells a screen reader the same.
+    function pressed(button, on) {
+        button.classList.toggle('active', on);
+        button.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
     function fmt(template, vars) {
         return String(template).replace(/\{var(?::(\d+))?\}/g, function (m, n) {
             var i = n ? parseInt(n, 10) - 1 : 0;
@@ -398,13 +404,18 @@
         }
         return '';
     }
+    // A choice in a segmented group: the chosen one is filled, and
+    // aria-pressed says so to a screen reader as well.
+    function choiceButton(on) {
+        return 'class="btn ' + (on ? 'btn-solid' : 'btn-outline') + ' theme-secondary" aria-pressed="' + (on ? 'true' : 'false') + '"';
+    }
     function unitToggle(a, i) {
         var units = (ACTION_TYPES[a.type] && ACTION_TYPES[a.type].units) || ['percent'];
         if (units.length < 2) {
             return '<span class="input-group-text">%</span>';
         }
-        return '<button type="button" class="btn ' + (a.unit === 'percent' ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') + '" data-on="act-unit" data-index="' + i + '" data-unit="percent">%</button>' +
-            '<button type="button" class="btn ' + (a.unit === 'amount' ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') + '" data-on="act-unit" data-index="' + i + '" data-unit="amount">' + esc(C.currency) + '</button>';
+        return '<button type="button" ' + choiceButton(a.unit === 'percent') + ' data-on="act-unit" data-index="' + i + '" data-unit="percent">%</button>' +
+            '<button type="button" ' + choiceButton(a.unit === 'amount') + ' data-on="act-unit" data-index="' + i + '" data-unit="amount">' + esc(C.currency) + '</button>';
     }
     function valueInput(a, i) {
         var shown = a.unit === 'amount' ? centsToInput(a.value) : (a.value || '');
@@ -418,10 +429,10 @@
         if (!C.group_discount && !C.cheapest_target) { return ''; }
         var on = targetsGroup(a);
         return '<div class="col-auto"><div class="btn-group btn-group-sm" role="group">' +
-            '<button type="button" class="btn ' + (on ? 'btn-outline theme-secondary' : 'btn-solid theme-secondary') + '" data-on="act-target" data-index="' + i + '" data-target="product">' + esc(L.targetProduct) + '</button>' +
-            '<button type="button" class="btn ' + (on ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') + '" data-on="act-target" data-index="' + i + '" data-target="group">' + esc(L.targetGroup) + '</button>' +
+            '<button type="button" ' + choiceButton(!on && !targetsCheapest(a)) + ' data-on="act-target" data-index="' + i + '" data-target="product">' + esc(L.targetProduct) + '</button>' +
+            '<button type="button" ' + choiceButton(on) + ' data-on="act-target" data-index="' + i + '" data-target="group">' + esc(L.targetGroup) + '</button>' +
             (C.cheapest_target
-                ? '<button type="button" class="btn ' + (targetsCheapest(a) ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') + '" data-on="act-target" data-index="' + i + '" data-target="cheapest">' + esc(L.targetCheapest) + '</button>'
+                ? '<button type="button" ' + choiceButton(targetsCheapest(a)) + ' data-on="act-target" data-index="' + i + '" data-target="cheapest">' + esc(L.targetCheapest) + '</button>'
                 : '') +
             '</div></div>';
     }
@@ -437,8 +448,8 @@
         if (!tiersAllowed(a) && !hasTiers(a)) { return ''; }
         var on = hasTiers(a);
         return '<div class="col-auto"><div class="btn-group btn-group-sm" role="group">' +
-            '<button type="button" class="btn ' + (on ? 'btn-outline theme-secondary' : 'btn-solid theme-secondary') + '" data-on="act-tier-mode" data-index="' + i + '" data-mode="flat">' + esc(L.flatRate) + '</button>' +
-            '<button type="button" class="btn ' + (on ? 'btn-solid theme-secondary' : 'btn-outline theme-secondary') + '" data-on="act-tier-mode" data-index="' + i + '" data-mode="tiers">' + esc(L.tiered) + '</button>' +
+            '<button type="button" ' + choiceButton(!on) + ' data-on="act-tier-mode" data-index="' + i + '" data-mode="flat">' + esc(L.flatRate) + '</button>' +
+            '<button type="button" ' + choiceButton(on) + ' data-on="act-tier-mode" data-index="' + i + '" data-mode="tiers">' + esc(L.tiered) + '</button>' +
             '</div></div>';
     }
     function tierRows(a, i) {
@@ -600,8 +611,8 @@
         el.classList.toggle('theme-secondary', !done && !todo);
     }
     function renderOptions() {
-        $('#pg-if-period-open').classList.toggle('active', S.offer.period === 'open');
-        $('#pg-if-period-range').classList.toggle('active', S.offer.period === 'range');
+        pressed($('#pg-if-period-open'), S.offer.period === 'open');
+        pressed($('#pg-if-period-range'), S.offer.period === 'range');
         show($('#pg-if-dates'), S.offer.period === 'range');
         var startEl = $('#pg-if-start'), endEl = $('#pg-if-end');
         if (document.activeElement !== startEl) { startEl.value = isoToDisplay(S.offer.start_date); }
@@ -630,8 +641,8 @@
         $('#pg-if-best').checked = !!S.offer.only_apply_best_offer;
 
         show($('#pg-if-scope-row'), C.multi_recipient);
-        $('#pg-if-scope-order').classList.toggle('active', S.offer.scope !== 'recipient');
-        $('#pg-if-scope-recipient').classList.toggle('active', S.offer.scope === 'recipient');
+        pressed($('#pg-if-scope-order'), S.offer.scope !== 'recipient');
+        pressed($('#pg-if-scope-recipient'), S.offer.scope === 'recipient');
         show($('#pg-if-multiple-wrap'), S.offer.scope === 'recipient');
         $('#pg-if-multiple').checked = !!S.offer.multiple_recipients;
     }

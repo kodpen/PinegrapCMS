@@ -396,7 +396,7 @@ if (!empty($edoc_filters)) {
 
     foreach ($edoc_filters as $edoc_key => $edoc_item) {
         $output_edoc_items .= '
-                        <li><a class="menu-item d-flex align-items-center gap-3 pg-link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active' : '') . '" href="erp_invoices.php?edoc=' . $edoc_key . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill theme-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . pg_format_number($edoc_counts[$edoc_key], 0) . '</span></a></li>';
+                        <li><a class="menu-item d-flex align-items-center gap-3 pg-link-body-emphasis' . (($edoc_filter === $edoc_key) ? ' active" aria-current="page' : '') . '" href="erp_invoices.php?edoc=' . $edoc_key . '"><i class="bi ' . $edoc_item['icon'] . '" aria-hidden="true"></i><span class="me-auto">' . h($edoc_item['label']) . '</span><span class="badge rounded-pill theme-' . (($edoc_counts[$edoc_key] > 0) ? $edoc_item['tone'] : 'secondary') . '">' . pg_format_number($edoc_counts[$edoc_key], 0) . '</span></a></li>';
     }
 
     $output_edoc_menu = '

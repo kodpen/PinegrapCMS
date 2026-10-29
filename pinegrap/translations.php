@@ -308,7 +308,7 @@ $token = (string) ($_SESSION['software']['token'] ?? '');
 $output_language_menu = '';
 
 foreach ($targets as $code => $row) {
-    $output_language_menu .= '<li><a class="menu-item' . (($code === $language) ? ' active' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'p' => 0))) . '">'
+    $output_language_menu .= '<li><a class="menu-item' . (($code === $language) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('language' => $code, 'page_id' => 0, 'p' => 0))) . '">'
         . '<span class="badge theme-secondary font-monospace me-3">' . h($code) . '</span>' . h(pg_tr_language_label($code)) . '</a></li>';
 }
 
@@ -330,13 +330,13 @@ foreach (array(
         continue;
     }
 
-    $output_chips .= '<a class="chip' . (($key === $filter) ? ' active' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
+    $output_chips .= '<a class="chip' . (($key === $filter) ? ' active" aria-current="true' : '') . '" href="' . h($url(array('filter' => $key, 'p' => 0))) . '">' . h($chip[0])
         . (($chip[1] !== null) ? ' <span class="opacity-75">' . (int) $chip[1] . '</span>' : '') . '</a>';
 }
 
 // The page list.
 $output_pages = '';
-$output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($page_id === 0) ? ' active' : '') . '" href="' . h($url(array('page_id' => 0, 'p' => 0))) . '">'
+$output_pages .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($page_id === 0) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => 0, 'p' => 0))) . '">'
     . '<i class="bi bi-collection" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . lang('All pages') . '</span>'
     . '<span class="small opacity-75">' . (int) $site_stats['translated'] . '/' . (int) $site_stats['total'] . '</span></a>';
 
@@ -373,7 +373,7 @@ foreach ($pages as $row) {
         $output_verdict = '<i class="bi ' . $verdict_icon . ' small" title="' . h($verdict_label) . '" aria-hidden="true"></i><span class="visually-hidden">' . h($verdict_label) . '</span>';
     }
 
-    $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active' : '') . '" href="' . h($url(array('page_id' => $pid, 'p' => 0))) . '">'
+    $output_pages .= '<a class="list-group-item list-group-item-action' . (($pid === $page_id) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('page_id' => $pid, 'p' => 0))) . '">'
         . '<div class="d-flex align-items-center gap-3">'
         . '<span class="flex-grow-1 text-truncate" title="' . h($title) . '">' . (($row['page_home'] === 'yes') ? '<i class="bi bi-house-door me-1" aria-hidden="true"></i>' : '') . h($row['page_name']) . '</span>'
         . '<span class="small opacity-75">' . (($stat['total'] > 0) ? (int) $stat['translated'] . '/' . (int) $stat['total'] : lang('Not scanned')) . '</span>'
@@ -401,7 +401,7 @@ if ($language !== '') {
         $group_total = is_array($group_stat) ? (int) $group_stat['total'] : 0;
         $group_done = is_array($group_stat) ? (int) $group_stat['translated'] : 0;
 
-        $output_groups .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($group_key === $group) ? ' active' : '') . '" href="' . h($url(array('group' => $group_key, 'page_id' => 0, 'p' => 0))) . '">'
+        $output_groups .= '<a class="list-group-item list-group-item-action d-flex align-items-center gap-3' . (($group_key === $group) ? ' active" aria-current="page' : '') . '" href="' . h($url(array('group' => $group_key, 'page_id' => 0, 'p' => 0))) . '">'
             . '<i class="bi ' . h($group_spec['icon']) . '" aria-hidden="true"></i><span class="flex-grow-1 text-truncate">' . h($group_spec['label']) . '</span>'
             . '<span class="small opacity-75">' . (($group_total > 0) ? $group_done . '/' . $group_total : (($group_key === 'ui') ? lang('None yet') : lang('Not scanned'))) . '</span></a>';
     }
@@ -483,7 +483,7 @@ if ($total_pages > 1) {
             continue;
         }
 
-        $output_pagination .= '<li class="page-item' . (($i === $page_number) ? ' active' : '') . '"><a class="page-link" href="' . h($url(array('p' => $i))) . '">' . $i . '</a></li>';
+        $output_pagination .= '<li class="page-item' . (($i === $page_number) ? ' active' : '') . '"><a class="page-link"' . (($i === $page_number) ? ' aria-current="page"' : '') . ' href="' . h($url(array('p' => $i))) . '">' . $i . '</a></li>';
     }
 
     $output_pagination .= '</ul></nav>';
