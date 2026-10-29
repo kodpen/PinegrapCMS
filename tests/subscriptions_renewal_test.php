@@ -78,6 +78,21 @@ function subscriptions_renewal_test_io(array &$store, array &$calls, $answer, $l
 		},
 		'event' => function ($id, $kind, $order_id, $amount, $detail, $remote_event_id = '') use (&$calls) {
 			$calls[] = array('event', $kind, $order_id, $amount, $detail, $remote_event_id);
+			// A webhook id already there is not written again (INSERT IGNORE).
+			if ($remote_event_id === 'pi_dup') {
+				return 0;
+			}
+			return 900 + count($calls);
+		},
+		// Kept apart from $calls, so the order of the other steps reads as before.
+		'mail' => function ($id, $event_id, $event, $status_before, $status_after, $order_id = 0, $detail = '') {
+			$GLOBALS['subscriptions_renewal_test_mails'][] = array(
+				'event_id' => $event_id,
+				'action'   => ($event_id > 0) ? pg_subscription_mail_action($event, $status_before, $status_after) : '',
+				'event'    => $event,
+				'order_id' => $order_id,
+				'detail'   => $detail,
+			);
 		},
 	);
 }
@@ -354,4 +369,121 @@ function test_subscription_renewal_job_keeps_the_legacy_branch()
 	pg_assert_same(1, substr_count($source, 'pg_subscription_renewals_run('));
 	pg_assert_contains("'METHOD' => 'GetRecurringPaymentsProfileDetails'", $source);
 	pg_assert_contains("pg_cron_ran('recurring_payment_job');", $source);
+}
+
+// Which profile action each event mails through.
+function test_subscription_mail_action()
+{
+	pg_assert_same('subscription_renewed', pg_subscription_mail_action('renewed', 'past_due', 'active'));
+	pg_assert_same('subscription_failed', pg_subscription_mail_action('renewal_failed', 'active', 'past_due'));
+	pg_assert_same('subscription_failed', pg_subscription_mail_action('confirm_needed', 'active', 'past_due'), 'the confirmation link');
+	pg_assert_same('subscription_cancelled', pg_subscription_mail_action('renewal_failed', 'past_due', 'ended'), 'the ladder ran out');
+	pg_assert_same('subscription_cancelled', pg_subscription_mail_action('status_cancelled', 'active', 'cancelled'));
+	pg_assert_same('subscription_cancelled', pg_subscription_mail_action('status_ended', 'active', 'ended'));
+	pg_assert_same('', pg_subscription_mail_action('status_ended', 'cancelled', 'ended'), 'told once, at the cancel');
+
+	foreach (array('renewal_pending', 'renewal_unclear', 'status_past_due', 'status_active', 'created') as $event) {
+		pg_assert_same('', pg_subscription_mail_action($event, 'active', 'active'), $event);
+	}
+}
+
+// The tokens a profile's subject and body can hold, always all of them.
+function test_subscription_mail_fields()
+{
+	$row = subscriptions_renewal_test_row(array('next_charge_at' => (string) mktime(10, 0, 0, 4, 30, 2027)));
+	$fields = pg_subscription_mail_fields($row, array(
+		'product_name' => 'Coffee box', 'order_number' => '1042',
+		'confirm_url' => 'https://hooks.stripe.com/x', 'card_url' => 'https://example.com/c'));
+	$by_name = array();
+
+	foreach ($fields as $field) {
+		$by_name[$field['name']] = $field;
+	}
+
+	pg_assert_same(array('subscription_product', 'subscription_amount', 'subscription_next_date', 'subscription_card_url', 'subscription_confirm_url', 'order_number'), array_keys($by_name));
+	pg_assert_same('Coffee box', $by_name['subscription_product']['data']);
+	pg_assert_same(pg_format_number(176.88, 2) . ' TRY', $by_name['subscription_amount']['data']);
+	pg_assert_same('2027-04-30', $by_name['subscription_next_date']['data']);
+	pg_assert_same('date', $by_name['subscription_next_date']['type'], 'a %%format%% applies');
+	pg_assert_same('https://hooks.stripe.com/x', $by_name['subscription_confirm_url']['data']);
+	pg_assert_same('1042', $by_name['order_number']['data']);
+
+	$empty = pg_subscription_mail_fields(subscriptions_renewal_test_row(array('next_charge_at' => '0')), array());
+	pg_assert_same(6, count($empty), 'passed empty, so [[...||...]] takes its else part');
+	pg_assert_same('', $empty[2]['data'], 'held: no next date');
+	pg_assert_same('', $empty[3]['data']);
+
+	$filled = replace_variables(array('content' => '^^subscription_product^^[[ ^^subscription_confirm_url^^||-]]', 'fields' => $empty, 'format' => 'plain_text'));
+	pg_assert_same('-', $filled);
+}
+
+// The card update link: signed, for a running subscription, for 30 days.
+function test_subscription_card_link_state()
+{
+	$key = 'k';
+	$now = 1800000000;
+	$row = subscriptions_renewal_test_row(array('status' => 'past_due'));
+	$link = array('s' => '7', 't' => (string) $now, 'k' => pg_subscription_card_token(7, $now, $key));
+
+	pg_assert_same(64, strlen($link['k']));
+	pg_assert_same('', pg_subscription_card_token(7, $now, ''), 'no key, no link');
+	pg_assert_same('open', pg_subscription_card_link_state($link, $key, $row, $now + 86400));
+	pg_assert_same('expired', pg_subscription_card_link_state($link, $key, $row, $now + pg_subscription_card_link_ttl() + 1));
+	pg_assert_same('closed', pg_subscription_card_link_state($link, $key, subscriptions_renewal_test_row(array('status' => 'ended')), $now));
+	pg_assert_same('closed', pg_subscription_card_link_state($link, $key, null, $now), 'the row is gone');
+	pg_assert_same('invalid', pg_subscription_card_link_state(array('s' => '8') + $link, $key, $row, $now), 'another subscription');
+	pg_assert_same('invalid', pg_subscription_card_link_state($link, 'other', $row, $now), 'another key');
+	pg_assert_same('invalid', pg_subscription_card_link_state(array('t' => (string) ($now + 600)) + $link, $key, $row, $now), 'signature of another time');
+	pg_assert_same('invalid', pg_subscription_card_link_state(array('s' => '07') + $link, $key, $row, $now));
+	pg_assert_same('invalid', pg_subscription_card_link_state(array('k' => array('x')) + $link, $key, $row, $now));
+	pg_assert_same('invalid', pg_subscription_card_link_state(null, $key, $row, $now));
+}
+
+// Each outcome of a run mails once, through the action of its event.
+function test_subscription_renewal_mails_once_per_event()
+{
+	$now = mktime(10, 0, 0, 4, 1, 2027);
+	$cases = array(
+		array(array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_1'), array(), 'subscription_renewed', 880),
+		array(array('success' => false, 'error' => 'Declined'), array(), 'subscription_failed', 0),
+		array(array('success' => true, 'status' => 'redirect', 'redirect_url' => 'https://hooks.stripe.com/c'), array(), 'subscription_failed', 0),
+		array(array('success' => false, 'error' => 'Declined'), array('status' => 'past_due', 'retry_count' => '3'), 'subscription_cancelled', 0),
+		array(array('success' => true, 'status' => 'pending'), array(), '', 0),
+	);
+
+	foreach ($cases as $i => $case) {
+		$store = subscriptions_renewal_test_row($case[1]);
+		$calls = array();
+		$GLOBALS['subscriptions_renewal_test_mails'] = array();
+
+		pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_io($store, $calls, $case[0]));
+
+		$mails = $GLOBALS['subscriptions_renewal_test_mails'];
+
+		pg_assert_same(1, count($mails), 'case ' . $i . ': asked once');
+		pg_assert_same($case[2], $mails[0]['action'], 'case ' . $i);
+		pg_assert_same($case[3], $mails[0]['order_id'], 'case ' . $i . ': the renewal order');
+		pg_assert_same('unlock', end($calls), 'case ' . $i . ': after the lock is let go');
+	}
+
+	pg_assert_same('https://hooks.stripe.com/c', subscription_renewal_test_confirm_detail($now), 'the confirmation link reaches the mail');
+
+	// A second delivery of the service's paid report writes no event, so no mail.
+	$paid = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_dup', 'amount' => 17688);
+	$store = subscriptions_renewal_test_row(array('status' => 'past_due', 'next_charge_at' => '0'));
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	pg_subscription_renewal_confirmed('stripe', 7, $paid, $now, subscriptions_renewal_test_io($store, $calls, $paid));
+	pg_assert_same('', $GLOBALS['subscriptions_renewal_test_mails'][0]['action'], 'event not written: no mail');
+	pg_assert_false(pg_subscription_mail_send(7, 0, 'renewed', 'active', 'active'), 'nothing is read for an event not written');
+}
+
+function subscription_renewal_test_confirm_detail($now)
+{
+	$store = subscriptions_renewal_test_row();
+	$calls = array();
+	$GLOBALS['subscriptions_renewal_test_mails'] = array();
+	pg_subscription_renewal_run_row(7, $now, subscriptions_renewal_test_io($store, $calls, array('success' => true, 'status' => 'redirect', 'redirect_url' => 'https://hooks.stripe.com/c')));
+
+	return $GLOBALS['subscriptions_renewal_test_mails'][0]['detail'];
 }

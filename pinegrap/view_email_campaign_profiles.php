@@ -326,6 +326,21 @@ if (isset($_GET['export'])) {
                     $output_action_item = '';
                     break;
 
+                case 'subscription_renewed':
+                    $output_action = lang('Subscription Renewed');
+                    $output_action_item = '';
+                    break;
+
+                case 'subscription_failed':
+                    $output_action = lang('Subscription Payment Failed');
+                    $output_action_item = '';
+                    break;
+
+                case 'subscription_cancelled':
+                    $output_action = lang('Subscription Cancelled');
+                    $output_action_item = '';
+                    break;
+
                 case 'product_ordered':
                     $output_action = lang('Product Ordered');
 

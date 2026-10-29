@@ -33,6 +33,27 @@ function pg_email_campaign_profile_commerce_actions()
         'order_shipped',
         'order_delivered',
         'product_ordered',
+        'subscription_renewed',
+        'subscription_failed',
+        'subscription_cancelled',
+    );
+}
+
+/**
+ * The mail-merge fields the subscription actions fill in, as the form lists
+ * them (pg_subscription_mail_fields()).
+ *
+ * @return array field name => what it holds
+ */
+function pg_email_campaign_profile_subscription_fields()
+{
+    return array(
+        'subscription_product' => lang('the subscribed product'),
+        'subscription_amount' => lang('the amount of each charge'),
+        'subscription_next_date' => lang('the date of the next charge'),
+        'subscription_card_url' => lang('a link where the customer updates the card (failed charges)'),
+        'subscription_confirm_url' => lang('a link where the customer confirms the charge with the bank (failed charges)'),
+        'order_number' => lang('the number of the renewal order (renewed)'),
     );
 }
 
@@ -82,7 +103,12 @@ function pg_email_campaign_profile_action_rows($action)
         'product_id' => '',
         'calendar_schedule' => '',
         'standard_schedule' => 'show',
+        'subscription_fields' => '',
     );
+
+    if (strpos((string) $action, 'subscription_') === 0) {
+        $rows['subscription_fields'] = 'show';
+    }
 
     $item_field = pg_email_campaign_profile_action_item_field($action);
 
@@ -188,6 +214,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
         lang('Custom Form Submitted') => 'custom_form_submitted');
 
     $output_product_id_row = '';
+    $output_subscription_fields_row = '';
 
     // If commerce is enabled and the user has access to commerce,
     // then add commerce actions and product id row.
@@ -198,6 +225,21 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
         $action_options[lang('Order Delivered')] = 'order_delivered';
         $action_options[lang('Order Shipped')] = 'order_shipped';
         $action_options[lang('Product Ordered')] = 'product_ordered';
+        $action_options[lang('Subscription Renewed')] = 'subscription_renewed';
+        $action_options[lang('Subscription Payment Failed')] = 'subscription_failed';
+        $action_options[lang('Subscription Cancelled')] = 'subscription_cancelled';
+
+        $output_subscription_fields = '';
+
+        foreach (pg_email_campaign_profile_subscription_fields() as $name => $meaning) {
+            $output_subscription_fields .= '<li><code>^^' . h($name) . '^^</code> ' . h($meaning) . '</li>';
+        }
+
+        $output_subscription_fields_row =
+            '<div class="col-12 my-3 collapse ' . $rows['subscription_fields'] . '" id="subscription_fields_row">
+                <div class="form-text">' . h(lang('The subject and the body can use these fields:')) . '</div>
+                <ul class="form-text mb-0">' . $output_subscription_fields . '</ul>
+            </div>';
 
         $output_product_id_row =
             '<div class="col-12 md:col-6 lg:col-4 my-3 collapse ' . $rows['product_id'] . '" id="product_id_row">
@@ -248,6 +290,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         ' . $output_product_id_row . '
+                                        ' . $output_subscription_fields_row . '
                                     </div>
                                 </div>
                             </div>

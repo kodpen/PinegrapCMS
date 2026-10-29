@@ -76,7 +76,7 @@ description: Generated from the module field of the memory files: each includes/
 - `speculation`: [[speculation-prefetch]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
-- `subscription_renewal`: [[subscriptions-renewal]]
+- `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-renewal]]
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-stripe]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]

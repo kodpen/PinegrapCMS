@@ -2978,6 +2978,8 @@
     "a form": "bir form",
     "a form that is gone": "artık olmayan bir form",
     "a group that was removed": "kaldırılmış bir grup",
+    "a link where the customer confirms the charge with the bank (failed charges)": "müşterinin çekimi bankasıyla onayladığı bağlantı (başarısız çekimler)",
+    "a link where the customer updates the card (failed charges)": "müşterinin kartını güncellediği bağlantı (başarısız çekimler)",
     "a meeting": "bir toplantı",
     "a mention": "bir anılma",
     "a message was scheduled in #{var:1}": "#{var:1} kanalında bir mesaj zamanlandı",

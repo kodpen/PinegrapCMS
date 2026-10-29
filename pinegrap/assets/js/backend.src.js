@@ -5036,6 +5036,7 @@ function change_email_campaign_profile_action() {
     $('#schedule_period').removeClass('show');
     $('#schedule_base').removeClass('show');
     $('#standard_schedule_period_and_base').removeClass('show');
+    $('#subscription_fields_row').removeClass('show');
 
     schedule_period
     // Show certain rows based on which destination type was selected.
@@ -5062,6 +5063,13 @@ function change_email_campaign_profile_action() {
 
         case 'product_ordered':
             $('#product_id_row').addClass('show');
+            $('#standard_schedule_period_and_base').addClass('show');
+            break;
+
+        case 'subscription_renewed':
+        case 'subscription_failed':
+        case 'subscription_cancelled':
+            $('#subscription_fields_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;
 
