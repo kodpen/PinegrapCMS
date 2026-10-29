@@ -130,6 +130,15 @@ function get_set_password($properties) {
                 $output_email = '<p class="fg-secondary mb-5">' . h($user['email']) . '</p>';
             }
 
+            // Password managers take the account from a username field in
+            // the same form; without one they save the new password against
+            // no account. Hidden from view and from the keyboard, and with no
+            // name, so set_password.php receives nothing new.
+            $output_username = '';
+            if (is_array($user)) {
+                $output_username = '<input type="text" id="set_password_username" class="visually-hidden" value="' . h($user['email'] ?: $user['username']) . '" autocomplete="username" readonly tabindex="-1" aria-hidden="true">';
+            }
+
             $output_strong_password_help = '';
             if ($strong_password_help != '') {
                 $output_strong_password_help = '<div class="small fg-secondary mb-5">' . $strong_password_help . '</div>';
@@ -147,6 +156,7 @@ function get_set_password($properties) {
             $output = pg_secure_card('bi-key', lang('Set Password'),
                 $output_email . $form->get_messages() . '
                 <form ' . $attributes . '>
+                    ' . $output_username . '
                     ' . $output_strong_password_help . '
                     <div class="mb-5">
                         <label for="new_password" class="form-label">' . lang('Password') . '</label>
