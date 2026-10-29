@@ -1663,7 +1663,7 @@ if ($selected) {
 			<span class="small opacity-75">' . h(mp_provider_name($selected['provider'])) . '</span>'
 			. ((isset($selected['credentials']['environment']) && $selected['credentials']['environment'] === 'stage')
 				? ' <span class="mp-pill off">' . lang('Test environment') . '</span>' : '') . '
-			<div class="ms-auto d-flex gap-3">
+			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="test">
@@ -1717,7 +1717,7 @@ if ($selected) {
 	<div class="card mb-5" id="mp-map">
 		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-link-45deg me-1"></i><b>' . lang('Matched products') . '</b>
-			<div class="ms-auto d-flex gap-3">
+			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">
 				<form method="post" action="marketplace_settings.php" class="d-inline">
 					' . get_token_field() . '
 					<input type="hidden" name="mp_action" value="push_all">
@@ -2192,7 +2192,7 @@ if ($selected) {
 	<div class="card" id="mp-queue">
 		<div class="card-header d-flex align-items-center flex-wrap gap-3">
 			<i class="bi bi-hourglass-split me-1"></i><b>' . lang('What did not go through') . '</b>
-			<div class="ms-auto d-flex gap-3">';
+			<div class="ms-auto d-flex flex-wrap justify-content-end gap-3">';
 
 	if ($failures) {
 

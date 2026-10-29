@@ -67,5 +67,5 @@ function test_phone_width_unsplash_tile_is_a_button()
 	pg_assert_true(strpos($render[1], 'cursor-pointer') === false, 'no clickable div');
 	pg_assert_true(preg_match('/createElement\(\\\\\'button\\\\\'\)/', $render[1]) === 1, 'tile is a button');
 	pg_assert_true(strpos($render[1], '.type = \\\'button\\\'') !== false, 'button does not submit');
-	pg_assert_true(strpos($render[1], 'textContent = photo.user.name') !== false, 'photographer name as text');
+	pg_assert_true(strpos($render[1], 'a.textContent = text;') !== false && strpos($render[1], 'photo.user.name);') !== false, 'photographer name as text');
 }

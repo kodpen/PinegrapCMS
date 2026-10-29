@@ -714,6 +714,50 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
    leave most of the glass empty. */
 @media (min-width: 1600px) { .images > .col { flex: 0 0 auto; width: 12.5%; } }
 @media (min-width: 2200px) { .images > .col { flex: 0 0 auto; width: 10%; } }
+
+/* The Unsplash tile is a button for the keyboard; it keeps the look of the
+   plain picture it replaced. */
+.esi-unsplash-pick {
+    display: block;
+    width: 100%;
+    aspect-ratio: 5 / 4;
+    padding: 0;
+    border: 0;
+    background-color: transparent;
+    color: inherit;
+    cursor: pointer;
+}
+
+.esi-unsplash-pick:focus-visible {
+    outline: 2px solid var(--pg-logo-color-1);
+    outline-offset: 2px;
+}
+
+/* A phone ignores the window size the picker asks for and does not zoom, so
+   the bar splits into rows: title and buttons on the first, the filter pill
+   full width below, its fields sharing what is left. */
+@media (max-width: 767.98px) {
+    #esi_toolbar {
+        flex-wrap: wrap;
+        row-gap: .5rem;
+    }
+
+    #files_nav_controls {
+        order: 1;
+        flex-basis: 100%;
+        margin-left: 0 !important;
+    }
+
+    #files_nav_controls > .nav-item,
+    #files_nav_controls form { flex: 1 1 auto; min-width: 0; }
+
+    .esi-field,
+    .esi-search {
+        flex: 1 1 0;
+        width: auto;
+        min-width: 0;
+    }
+}
 }</style>
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid" id="esi_toolbar">
@@ -963,6 +1007,17 @@ function esiUnsplashSearch(loadMore) {
 function esiRenderUnsplash(photos) {
     var grid   = document.getElementById(\'unsplash_results\');
     var utm    = \'?utm_source=pinegrap&utm_medium=referral\';
+    // Built node by node: names and descriptions come from the remote API and
+    // are set as text, never parsed as markup.
+    var link = function(href, className, text) {
+        var a = document.createElement(\'a\');
+        a.href = href;
+        a.target = \'_blank\';
+        a.rel = \'noopener\';
+        a.className = className;
+        a.textContent = text;
+        return a;
+    };
     photos.forEach(function(photo) {
         var photographerUrl = (photo.user.links && photo.user.links.html)
             ? photo.user.links.html + utm : \'#\';
@@ -970,24 +1025,48 @@ function esiRenderUnsplash(photos) {
             ? photo.links.html + utm : \'https://unsplash.com\' + utm;
         var col = document.createElement(\'div\');
         col.className = \'col\';
-        col.innerHTML =
-            \'<div class="card border-0 shadow-none hoverable">\' +
-                \'<div class="overflow-hidden position-relative rounded-4 cursor-pointer" style="aspect-ratio: 5 / 4"\' +
-                    \' onclick="esiSelectUnsplash(\\\'\' + photo.urls.regular + \'\\\', \\\'\' + photo.links.download_location + \'\\\')">\' +
-                    \'<img src="\' + photo.urls.small + \'" class="object-fit-cover w-100 h-100" alt="\' + (photo.alt_description || \'\') + \'" loading="lazy">\' +
-                \'</div>\' +
-                /* Attribution — required by Unsplash API guidelines */
-                \'<div class="card-footer border-0 bg-transparent" style="font-size:10px;line-height:1.3">\' +
-                    \'<a href="\' + photographerUrl + \'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="fg-reset text-decoration-none fw-semibold">\' +
-                        photo.user.name +
-                    \'</a>\' +
-                    \' <span class="fg-secondary">on</span> \' +
-                    \'<a href="\' + photoPageUrl + \'" target="_blank" rel="noopener" onclick="event.stopPropagation()" class="fg-secondary text-decoration-none">Unsplash</a>\' +
-                \'</div>\' +
-            \'</div>\';
+        var card = document.createElement(\'div\');
+        card.className = \'card border-0 shadow-none hoverable\';
+
+        // A real button, so the tile is reached and picked from the keyboard.
+        var pick = document.createElement(\'button\');
+        pick.type = \'button\';
+        pick.className = \'esi-unsplash-pick overflow-hidden position-relative rounded-4\';
+        pick.addEventListener(\'click\', function() {
+            esiSelectUnsplash(photo.urls.regular, photo.links.download_location);
+        });
+        var img = document.createElement(\'img\');
+        img.src = photo.urls.small;
+        img.className = \'object-fit-cover w-100 h-100\';
+        img.alt = photo.alt_description || \'\';
+        img.loading = \'lazy\';
+        if (!img.alt) {
+            pick.setAttribute(\'aria-label\', \'' . lang('Select') . ': \' + photo.user.name);
+        }
+        pick.appendChild(img);
+
+        /* Attribution - required by Unsplash API guidelines */
+        var footer = document.createElement(\'div\');
+        footer.className = \'card-footer border-0 bg-transparent\';
+        footer.style.fontSize = \'10px\';
+        footer.style.lineHeight = \'1.3\';
+        var by = link(photographerUrl, \'fg-reset text-decoration-none fw-semibold\', photo.user.name);
+        var on = document.createElement(\'span\');
+        on.className = \'fg-secondary\';
+        on.textContent = \'on\';
+        footer.appendChild(by);
+        footer.appendChild(document.createTextNode(\' \'));
+        footer.appendChild(on);
+        footer.appendChild(document.createTextNode(\' \'));
+        footer.appendChild(link(photoPageUrl, \'fg-secondary text-decoration-none\', \'Unsplash\'));
+
+        card.appendChild(pick);
+        card.appendChild(footer);
+        col.appendChild(card);
         grid.appendChild(col);
     });
 }
+
 
 function esiSelectUnsplash(url, downloadLocation) {
     if (ESI_CK_FUNC_NUM && window.opener && window.opener.CKEDITOR) {
