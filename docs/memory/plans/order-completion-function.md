@@ -16,7 +16,7 @@ description: Plan (#2382; A1 #2199, A2 #2638–#2972, A3 #2998, #3021; A3b remai
 - #2984 (receipt from the recorded page, account linked not opened) and #3001 (legal acceptance column): recorded in `decisions-made-product-2.md`, `decisions-made-schema-2.md`; how it is built: `commerce/order-completion-from-payment.md`.
 
 ## What remains?
-- A3b (S): account creation moves out of `submit_order()` into a session-free function both paths call; the visitor's path keeps the sign-in and device cookie; `pg_order_complete_from_payment()` calls it when the page's switch is on and no account has the billing e-mail; `pg_order_new_account_email()` / `pg_order_new_account_link()` read `$context`, not `$_SESSION`, so the receipt carries the set-password link on both paths. Tests: the message's path signs nobody in; the e-mail carries the link.
+- A3b (S, in progress on `feature/order-completion-a3b`): account creation moves out of `submit_order()` into a session-free function both paths call; the visitor's path keeps the sign-in and device cookie; `pg_order_complete_from_payment()` calls it when the page's switch is on and no account has the billing e-mail; `pg_order_new_account_email()` / `pg_order_new_account_link()` read `$context`, not `$_SESSION`, so the receipt carries the set-password link on both paths. Tests: the message's path signs nobody in; the e-mail carries the link.
 
 ## Where to start?
 - A3b, then PayTR (4c of `commerce/payment-driver-layer.md`): its callback completes an incomplete order through `pg_order_complete_from_payment()` once `pg_payment_notify_outcome()` answers `complete` (the answer carries `raw['currency']`).
