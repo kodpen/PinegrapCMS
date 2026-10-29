@@ -641,6 +641,12 @@ function pg_privacy_erase_tables()
             'customer_note' => '',
             'requested_by'  => 0,
         )),
+        // A label's document holds the recipient's address: the files go
+        // (_pg_privacy_erase_apply_shipment_labels()), the rows stay with
+        // the order; their reference and barcode name nobody.
+        'shipment_labels' => array('find' => array('order_id' => 'order_ids'), 'action' => 'anonymise', 'fields' => array(
+            'label_file' => '',
+        )),
         // A card the person bought loses the sender's name and message, a
         // card sent to them the address (_pg_privacy_erase_apply_gift_cards()).
         'gift_cards' => array('find' => array('order_id' => 'order_ids', 'recipient_email_address' => 'emails'), 'action' => 'anonymise', 'fields' => array(
@@ -806,6 +812,7 @@ function pg_privacy_erase_labels()
         'ship_tos'                     => lang('Shipping addresses'),
         'order_documents'              => lang('Accepted documents'),
         'order_returns'                => lang('Returns'),
+        'shipment_labels'              => lang('Shipping labels'),
         'gift_cards'                   => lang('Gift cards'),
         'erp_accounts'                 => lang('Current accounts'),
         'erp_invoices'                 => lang('Invoices'),
@@ -1592,6 +1599,16 @@ function _pg_privacy_erase_apply_gift_cards($where, array $fields, array $scope,
             _pg_privacy_erase_write('gift_cards', $part_where, $part_fields, $name);
         }
     }
+}
+
+/**
+ * A label's document is removed from the disk before its row loses the file
+ * name; the row is marked as having lost it (pg_shipment_label_remove_files()).
+ */
+function _pg_privacy_erase_apply_shipment_labels($where, array $fields, array $scope, $name)
+{
+    pg_shipment_label_remove_files($where);
+    _pg_privacy_erase_write('shipment_labels', $where, $fields, $name);
 }
 
 /**

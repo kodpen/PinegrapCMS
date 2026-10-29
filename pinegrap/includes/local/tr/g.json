@@ -349,6 +349,7 @@
     "general job removed {var:1} audit trail line(s) and {var:2} consent log line(s) past their retention period": "genel iş saklama süresi dolan {var:1} denetim izi satırını ve {var:2} rıza kaydı satırını sildi",
     "general job removed {var:1} image derivative file(s) of deleted or changed files ({var:2})": "genel görev silinen ya da değişen dosyaların {var:1} görsel türevi dosyasını kaldırdı ({var:2})",
     "general job removed {var:1} item revision(s): {var:2} of deleted items, {var:3} past the retention period": "genel iş {var:1} kayıt sürümünü sildi: {var:2} tanesi silinmiş kayıtların, {var:3} tanesi saklama süresini geçmiş",
+    "general job removed {var:1} kept shipping label document(s)": "genel görev saklanan {var:1} kargo etiketi belgesini sildi",
     "general job removed {var:1} page cache file(s)": "genel görev {var:1} sayfa önbelleği dosyasını kaldırdı",
     "general job removed {var:1} page revision(s): {var:2} of deleted pages, {var:3} past the retention period": "genel iş {var:1} sayfa sürümünü sildi: {var:2} silinmiş sayfanın, {var:3} saklama süresi dolmuş",
     "general job removed {var:1} product price history row(s) older than {var:2} days": "genel görev {var:2} günden eski {var:1} ürün fiyat geçmişi satırını sildi",

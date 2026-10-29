@@ -588,6 +588,7 @@
     "No card at {var:1}": "{var:1} kartı yok",
     "No card at {var:1} carries this number (as of the last read).": "Son okumaya göre bu numarayı taşıyan bir {var:1} kartı yok.",
     "No card outline": "Kart çerçevesi yok",
+    "No carrier label service that ships with this address's carrier is switched on.": "Bu adresin kargo firmasıyla gönderen açık bir kargo etiketi servisi yok.",
     "No catalog name set, one is generated from the item name": "Katalog adı boş, öğe adından türetiliyor",
     "No catalog page or Catalog widget on a public page shows a product group.": "Herkese açık bir sayfadaki hiçbir katalog sayfası ya da Katalog widget'ı bir ürün grubu göstermiyor.",
     "No catalog shows a product group yet.": "Henüz hiçbir katalog bir ürün grubu göstermiyor.",

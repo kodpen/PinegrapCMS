@@ -47,6 +47,10 @@ function delete_order($request) {
         db("DELETE FROM order_documents WHERE order_id = '" . e($order['id']) . "'");
     }
 
+    // The order's shipping labels: the rows and the documents, which hold
+    // the recipient's address.
+    pg_shipment_labels_delete_for_order($order['id']);
+
     // The order's return requests and their lines name its order lines by id.
     pg_returns_delete_for_order($order['id']);
 

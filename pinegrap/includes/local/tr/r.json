@@ -1168,6 +1168,7 @@
     "Run the database upgrade steps again": "Veritabanı yükseltme adımlarını yeniden koş",
     "Run the installer and follow the steps on the screen.": "Kurulum dosyasını çalıştırın ve ekrandaki adımları izleyin.",
     "Run the live version of this flow": "Bu akışın yayındaki sürümünü çalıştır",
+    "Run the software update first: the table for shipping labels is missing.": "Önce yazılım güncellemesini çalıştırın: kargo etiketleri tablosu eksik.",
     "Run the software upgrade first.": "Önce yazılım güncellemesini çalıştırın.",
     "Run the software upgrade first: the account sync table is not there yet.": "Önce yazılım güncellemesini çalıştırın: cari eşitleme tablosu henüz yok.",
     "Run the software upgrade first: the incoming e-invoice table is not there yet.": "Önce yazılım güncellemesini çalıştırın: gelen e-fatura tablosu henüz yok.",

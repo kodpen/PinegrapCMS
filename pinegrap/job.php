@@ -155,6 +155,17 @@ pg_wishlist_trim_daily();
 
 pg_stock_notify_trim_daily();
 
+// Shipping label documents whose time is up (includes/fn/shipment_labels.php):
+// 30 days after delivery or cancellation, 90 days after creation at the
+// latest. Once a day; the rows stay with their orders.
+$shipment_labels_removed = pg_shipment_label_sweep_daily();
+
+if ($shipment_labels_removed > 0) {
+
+    log_activity(lang(array('string' => 'general job removed {var:1} kept shipping label document(s)', 'vars' => array(pg_format_number($shipment_labels_removed, 0)))), 'UNKNOWN');
+
+}
+
 // Card data of processed orders (includes/fn/ecommerce.php): an order that
 // left complete through any path loses its card number, and no security code
 // stays stored. Once an hour; a tick between passes reads one small file.

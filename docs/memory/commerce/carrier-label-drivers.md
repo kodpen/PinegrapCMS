@@ -15,7 +15,7 @@ module: carrier_labels
 - A success becomes an unclear failure when create() has no `reference` or no tracking number of a parcel's shape (5–40 of `[A-Za-z0-9 -]`), label() has no document of its format (PDF starts `%PDF-`, ZPL holds `^XA`), track() no `pg_shipment_statuses()` value.
 
 ## What reaches the shipment row?
-- Only `pg_label_shipment_options($answer)`: `source` carrier, plus `carrier` and `tracking_url` when given, for `pg_shipment_record()` (`shipment-write-path.md`). The service's `reference`, label and barcode never go into `shipping_tracking_numbers`; where they are kept is step 3 of `plans/shipping-carrier-labels.md`. This is how the aggregator choice stays out of the schema.
+- Only `pg_label_shipment_options($answer)`: `source` carrier, plus `carrier` and `tracking_url` when given, for `pg_shipment_record()` (`shipment-write-path.md`). The service's `reference`, label and barcode never go into `shipping_tracking_numbers`; they are kept in `shipment_labels` (`shipment-labels.md`). This is how the aggregator choice stays out of the schema.
 
 ## Where are the settings?
 - `connect_apps` row `label_<key>` as payment drivers: `client_id` empty, secrets sealed as one map (`pg_connect_seal()`), other fields in `options`, `enabled` = the driver's switch. No schema; several drivers may be on at once. `pg_label_ready()`: on, readable, every required field stored.

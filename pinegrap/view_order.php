@@ -1045,6 +1045,49 @@ if (!$_POST) {
                         $output_shipping_tracking_numbers = '<ul class="list-unstyled mb-3">' . $output_shipping_tracking_numbers . '</ul>';
                     }
 
+                    // The address's carrier labels (includes/fn/shipment_labels.php):
+                    // each printed through shipment_label.php, and "Create
+                    // Label" while a label service is on and the address has
+                    // no active label. The button posts the form outside the
+                    // order form ($output_shipment_label_form).
+                    if (!isset($shipment_label_drivers)) {
+                        $shipment_label_drivers = pg_shipment_labels_ready() ? pg_shipment_label_drivers() : array();
+                    }
+
+                    $output_shipment_labels = '';
+                    $shipment_label_active = false;
+
+                    foreach (pg_shipment_label_rows($ship_to_id) as $shipment_label) {
+                        $shipment_label_driver = pg_label_driver($shipment_label['driver']);
+                        $shipment_label_cancelled = ($shipment_label['state'] === 'cancelled');
+                        $shipment_label_active = $shipment_label_active || (!$shipment_label_cancelled && !(int) $shipment_label['is_return']);
+
+                        $output_shipment_labels .=
+                            '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
+                                <span class="fw-medium text-break">' . h($shipment_label['number']) . '</span>
+                                <span class="small fg-secondary">' . h($shipment_label_driver ? $shipment_label_driver['label'] : $shipment_label['driver']) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
+                                ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
+                                <a class="btn btn-link pg-link-secondary py-0 ms-auto pg-print-none" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
+                            </li>';
+                    }
+
+                    if ($output_shipment_labels !== '') {
+                        $output_shipment_labels = '<ul class="list-unstyled mb-3">' . $output_shipment_labels . '</ul>';
+                    }
+
+                    if ($shipment_label_drivers && !$shipment_label_active && !in_array($status, array('incomplete', 'cancelled'), true)) {
+                        $output_shipment_labels .=
+                            '<button type="submit" form="shipment-label-form" name="ship_to_id" value="' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary pg-print-none" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>';
+                    }
+
+                    if ($output_shipment_labels !== '') {
+                        $output_shipment_labels =
+                            '<div class="row mb-3">
+                                <span class="col-12 fg-secondary mt-3">' . lang('Shipping Labels') . ':</span>
+                                <div class="col-12 mt-2">' . $output_shipment_labels . '</div>
+                            </div>';
+                    }
+
                   // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
                   if ($liveform->field_in_session('id') == FALSE) {
                     $shipping_tracking_numbers_for_field = array();
@@ -1178,6 +1221,7 @@ if (!$_POST) {
                                             <span class="col-12 mt-3">' . $output_shipping_tracking_numbers . '
                                             ' . $output_shipping_tracking_numbers_field . '</span>
                                         </div>
+                                        ' . $output_shipment_labels . '
                                         <div class="row my-3">
                                             <span class="col fg-secondary">' . lang('Shipping Cost') . ':</span>
                                             <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
@@ -2910,7 +2954,11 @@ if (!$_POST) {
         $output_cancel_modal .
         $output_refund_modal .
         $output_parasut_forms .
-        '</main>' . output_footer();
+        '<form method="post" action="shipment_label.php" id="shipment-label-form" class="d-none">
+            ' . get_token_field() . '
+            <input type="hidden" name="action" value="create">
+        </form>
+        </main>' . output_footer();
         $liveform->remove_form();
 
 // else the form has been submitted
