@@ -2076,16 +2076,10 @@ $(document).ready(function () {
 
 
 
+    // Return in Backup Name is caught on keydown by backups.php itself.
     $("#backup").click(function () {
-        if ($(this).hasClass("ready")) {
+        if (!$(this).prop("disabled")) {
             software_backup_start();
-        }
-    });
-
-    $("#backup_folder_name").on("keyup", function (event) {
-        if (event.keyCode === 13) {
-            event.preventDefault();
-            $("#backup").click();
         }
     });
 
@@ -6392,9 +6386,7 @@ function generateIndexNowKey() {
 // Handle error state specifically for backup process
 function software_backup_handleError(response, backup_btn) {
     software_backup_updateProgress(0, response.message, true);
-    backup_btn.text(lang("Retry Backup"))
-        .removeClass("disabled")
-        .addClass("ready");
+    backup_btn.prop("disabled", false);
 }
 
 // Update progress bar and log messages for backup process
@@ -6403,7 +6395,7 @@ function software_backup_updateProgress(percent, message, isError = false) {
     const Progress_container = $(".progress");
     const LogBox = $(".logbox");
 
-    Progress.attr("style", "width: " + percent + "%");
+    Progress.attr("style", "width: " + percent + "%").attr("aria-valuenow", percent);
     Progress_container.removeClass("d-none");
     Progress.toggleClass("progress-bar-animated", percent < 100);
 
@@ -6450,7 +6442,7 @@ async function software_backup_runSteps(backup_name) {
                 return;
             }
         } catch (err) {
-            software_backup_handleError({ message: err.statusText || "Unexpected error" }, backup_btn);
+            software_backup_handleError({ message: lang("An error occurred.") }, backup_btn);
             return;
         }
     }
@@ -6464,9 +6456,7 @@ function software_backup_start() {
     const backup_btn = $("#backup");
     const backup_folder_name = $("#backup_folder_name").val();
 
-    backup_btn.text(lang("Backing up") + "...")
-        .addClass("disabled")
-        .removeClass("ready");
+    backup_btn.prop("disabled", true);
 
     software_backup_updateProgress(0, lang("Backup Builder Starting..."));
     software_backup_runSteps(backup_folder_name);

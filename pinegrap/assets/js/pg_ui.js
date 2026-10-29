@@ -333,6 +333,8 @@
      * {root, header, title, body, footer, close}; the caller fills body and
      * footer, appends root and shows it with pgUI.show('dialog', root).
      */
+    var dialogSeq = 0;
+
     function buildDialog(opts) {
         var o = opts || {}, k = KINDS.dialog, six = version() === 6, parts = {}, box, size;
         size = o.size ? (six ? 'dialog-' : 'modal-') + o.size : '';
@@ -360,7 +362,12 @@
 
         var prefix = six ? 'dialog' : 'modal';
         parts.header = make('div', prefix + '-header');
+        // The title names the dialog: without aria-labelledby a screen
+        // reader announces it as an unnamed dialog.
+        dialogSeq += 1;
         parts.title = make('h5', prefix + '-title');
+        parts.title.id = (o.id || 'pg-dialog-' + dialogSeq) + '-title';
+        parts.root.setAttribute('aria-labelledby', parts.title.id);
         if (o.title) {
             parts.title.textContent = o.title;
         }
