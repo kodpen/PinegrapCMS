@@ -4487,6 +4487,7 @@
     "This placement becomes the fixed comments block again; the comments, watchers and settings stay with the page.": "Bu yerleşim yeniden sabit yorum bloğu olur; yorumlar, izleyiciler ve ayarlar sayfada kalır.",
     "This post could not be found. It may have been removed.": "Bu yazı bulunamadı. Kaldırılmış olabilir.",
     "This post is general information, not advice for your own health. If you are worried, book an appointment.": "Bu yazı genel bilgi içindir, kendi sağlığınıza dair bir öneri değildir. Endişeleriniz varsa randevu alın.",
+    "This postcode belongs to {var:1}, not to the province given. Check the address before shipping.": "Bu posta kodu {var:1} iline ait, girilen ile değil. Kargolamadan önce adresi kontrol edin.",
     "This product already has the barcode {var:1}. A barcode is not replaced through the API, because labels may already carry it.": "Bu ürünün zaten {var:1} barkodu var. Etiketlere basılmış olabileceği için barkod API üzerinden değiştirilmez.",
     "This product does not track stock. Send op=set with a quantity to start tracking it.": "Bu ürün stok takibi yapmıyor. Takibi başlatmak için bir miktarla op=set gönderin.",
     "This product does not track stock. Turn stock tracking on in the product first.": "Bu ürün stok takibi yapmıyor. Önce üründe stok takibini açın.",

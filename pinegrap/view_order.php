@@ -275,6 +275,7 @@ if (!$_POST) {
     $billing_state = $row['billing_state'] ?? '';
     $billing_country = $row['billing_country'] ?? '';
     $billing_zip_code = $row['billing_zip_code'] ?? '';
+    $billing_postcode_province = pg_shipping_postcode_province($billing_country, $billing_state, $billing_zip_code);
     $billing_address_verified = $row['billing_address_verified'];
     $billing_phone_number = $row['billing_phone_number'] ?? '';
     $billing_fax_number = $row['billing_fax_number'] ?? '';
@@ -917,6 +918,14 @@ if (!$_POST) {
                     $address .= pg_order_view_country($ship_tos[$key]['country']);
                 }
 
+                // A postcode of another province is only noted, never blocked.
+                $output_postcode_province = '';
+                $postcode_province = pg_shipping_postcode_province($ship_tos[$key]['country'], $ship_tos[$key]['state'], $ship_tos[$key]['zip_code']);
+
+                if ($postcode_province !== '') {
+                    $output_postcode_province = '<span class="col-12 small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mt-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($postcode_province)) . '</span>';
+                }
+
                 $output_address_verified_check_mark = '';
                 
                 // if the address has been verified, then prepare to output check mark
@@ -1131,6 +1140,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
                                             <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
+                                            ' . $output_postcode_province . '
                                         </div>
                                         ' . pg_order_view_row(lang('Address Type'), pg_order_view_address_type($ship_tos[$key]['address_type'])) . '
                                         ' . pg_order_view_row(lang('Address Verified'), $output_address_verified_check_mark) . '
@@ -2826,6 +2836,9 @@ if (!$_POST) {
                                         <span class="translateable col fg-secondary">' . lang('Zip Code') . ':</span>
                                         <span class="col text-end">' . h($billing_zip_code) . '</span>
                                     </div>
+                                    ' . (($billing_postcode_province !== '')
+                                        ? '<span class="d-block small fg-emphasis-warning bg-subtle-warning rounded-4 px-3 py-1 mb-1"><i class="bi bi-exclamation-triangle-fill me-1" aria-hidden="true"></i>' . h(pg_shipping_postcode_province_text($billing_postcode_province)) . '</span>'
+                                        : '') . '
                                     <div class="row" >
                                         <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
                                         <span class="col text-end">' . $billing_address_verified . '</span>
