@@ -6515,6 +6515,14 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
         ));
     }
 
+    // ── Speculation Rules prefetch ───────────────────────────────────────
+    // The same-site page addresses of the page's menus and navbars, for
+    // Chromium browsers to fetch a moment before they are opened
+    // (includes/fn/speculation.php). Never in edit mode or an e-mail.
+    if (($mode != 'edit') && ($email == FALSE)) {
+        $content = pg_speculation_rules_inject($content, $page_name, ($page_home == 'yes'));
+    }
+
     // ── Live chat site bubble ────────────────────────────────────────────
     // Added to every front-end page from this one place. Not emitted in edit
     // mode (the same rule as JSON-LD and RSS) and never in e-mail output. When

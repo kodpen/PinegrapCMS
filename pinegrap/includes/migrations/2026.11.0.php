@@ -110,6 +110,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_flow_templates(); // 11.0.115
 	upgrade_2026_11_0_workspace_ref_sources();  // 11.0.116
 	upgrade_2026_11_0_shipment_label_returns(); // 11.0.126
+	upgrade_2026_11_0_speculation_prefetch();   // 11.0.127
 
 }
 
@@ -3496,5 +3497,20 @@ function upgrade_2026_11_0_shipment_label_returns() {
 	install_add_index('shipment_labels', 'idx_shipment_label_return', "KEY idx_shipment_label_return (order_return_id)");
 
 	install_note('Returns: an approved return request can get a return label from the carrier label service that ships with its return carrier; the label\'s code is given to the customer by e-mail and on their order page.');
+
+}
+
+// Speculation Rules prefetch (2026.11.0, 11.0.127; includes/fn/speculation.php).
+//
+// The Settings > Features switch of the menu-link prefetch: published pages
+// list the same-site page addresses of their menus in a speculationrules
+// block, so Chromium browsers fetch a page a moment before the visitor opens
+// it. On by default, so running sites get it with the upgrade and may switch
+// it off.
+function upgrade_2026_11_0_speculation_prefetch() {
+
+	install_add_column('config', 'speculation_prefetch', "TINYINT(1) UNSIGNED NOT NULL DEFAULT 1");
+
+	install_note('Pages now tell Chrome and Edge the addresses in their menus, so a menu page opens at once; visitors who are signed in are left out. It can be switched off under Settings, Features.');
 
 }
