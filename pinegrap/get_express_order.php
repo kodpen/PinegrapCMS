@@ -146,7 +146,6 @@ function get_express_order($properties) {
     $custom_shipping_form_fields = array();
     $edit_custom_shipping_form_start = '';
     $edit_custom_shipping_form_end = '';
-    $date_picker_format_added = false;
     $billing_same_as_shipping = false;
     $billing_same_as_shipping_id = 0;
     settype($custom_billing_form, 'bool');
@@ -154,8 +153,11 @@ function get_express_order($properties) {
     $custom_billing_form_title = '';
     $edit_custom_billing_form_start = '';
     $edit_custom_billing_form_end = '';
+    // The date, date and time, and time boxes of a custom layout, by id, for
+    // the date-and-time control (pg_site_datetime_bind()).
     $date_fields = array();
     $date_and_time_fields = array();
+    $time_fields = array();
     $wysiwyg_fields = array();
 
     // If there is at least one unshippable item, then add empty recipient.
@@ -271,11 +273,6 @@ function get_express_order($properties) {
             if ($arrival_date['custom']) {
                 $custom_arrival_dates[] = $arrival_date['id'];
             }
-        }
-
-        if ($custom_arrival_dates and !$date_picker_format_added) {
-            $system .= get_date_picker_format();
-            $date_picker_format_added = true;
         }
     }
 
@@ -442,6 +439,7 @@ function get_express_order($properties) {
             $custom_shipping_form_fields = $response['fields'];
             $date_fields = array_merge($date_fields, $response['date_fields']);
             $date_and_time_fields = array_merge($date_and_time_fields, $response['date_and_time_fields']);
+            $time_fields = array_merge($time_fields, $response['time_fields']);
             $wysiwyg_fields = array_merge($wysiwyg_fields, $response['wysiwyg_fields']);
             $edit_custom_shipping_form_start = $response['edit_start'];
             $edit_custom_shipping_form_end = $response['edit_end'];
@@ -453,6 +451,8 @@ function get_express_order($properties) {
         }
         
         foreach ($custom_arrival_dates as $custom_arrival_date) {
+            $date_fields[] = $prefix . 'custom_arrival_date_' . $custom_arrival_date;
+
             $system .=
                 '<script>
                     software.init_custom_arrival_date({
@@ -530,6 +530,7 @@ function get_express_order($properties) {
             $custom_billing_form_fields = $response['fields'];
             $date_fields = array_merge($date_fields, $response['date_fields']);
             $date_and_time_fields = array_merge($date_and_time_fields, $response['date_and_time_fields']);
+            $time_fields = array_merge($time_fields, $response['time_fields']);
             $wysiwyg_fields = array_merge($wysiwyg_fields, $response['wysiwyg_fields']);
             $edit_custom_billing_form_start = $response['edit_start'];
             $edit_custom_billing_form_end = $response['edit_end'];
@@ -1394,13 +1395,7 @@ function get_express_order($properties) {
                                 '<tr>
                                     <td>Start Date*:</td>
                                     <td>
-                                        ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true')) . '
-                                        ' . get_date_picker_format() . '
-                                        <script>
-                                            software_$("#recurring_start_date_' . $order_item_id . '").datepicker({
-                                                dateFormat: date_picker_format
-                                            });
-                                        </script>
+                                        ' . $form->output_field(array('type'=>'text', 'id' => 'recurring_start_date_' . $order_item_id, 'name'=>'recurring_start_date_' . $order_item_id, 'size'=>'10', 'maxlength'=>'10', 'class'=>'software_input_text', 'required' => 'true', 'data-pg-date' => '')) . '
                                     </td>
                                 </tr>';
                         }
@@ -1513,13 +1508,7 @@ function get_express_order($properties) {
                                         <tr>
                                             <td>Delivery Date:</td>
                                             <td>
-                                                ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text')) . '
-                                                ' . get_date_picker_format() . '
-                                                <script>
-                                                    software_$("#order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date").datepicker({
-                                                        dateFormat: date_picker_format
-                                                    });
-                                                </script>
+                                                ' . $form->output_field(array('type' => 'text', 'id' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'name' => 'order_item_' . $order_item_id . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', 'size' => '10', 'maxlength' => '10', 'class' => 'software_input_text', 'data-pg-date' => '')) . '
                                             </td>
                                         </tr>
                                     </table>
@@ -1965,7 +1954,7 @@ function get_express_order($properties) {
 
                                 if ($arrival_date['custom']) {
                                     $custom_field =
-                                        $form->output_field(array('type'=>'text', 'id' => $prefix . 'custom_arrival_date_' . $arrival_date['id'], 'name' => $prefix . 'custom_arrival_date_' . $arrival_date['id'], 'size'=>'10', 'class'=>'software_input_text')) . ' ';
+                                        $form->output_field(array('type'=>'text', 'id' => $prefix . 'custom_arrival_date_' . $arrival_date['id'], 'name' => $prefix . 'custom_arrival_date_' . $arrival_date['id'], 'size'=>'10', 'class'=>'software_input_text', 'data-pg-date' => '')) . ' ';
                                 }
 
                                 $output_arrival_dates .=
@@ -4526,20 +4515,7 @@ function get_express_order($properties) {
                         // If we need to deal with the start date, then do that.
                         if ($start_date) {
                             $form->set('recurring_start_date_' . $item['id'], 'maxlength', 10);
-
-                            // If we have not already added the date picker format code,
-                            // then add it.
-                            if (!$date_picker_format_added) {
-                                $system .= get_date_picker_format();
-                                $date_picker_format_added = true;
-                            }
-
-                            $system .=
-                                '<script>
-                                    software_$("#recurring_start_date_' . $item['id'] . '").datepicker({
-                                        dateFormat: date_picker_format
-                                    });
-                                </script>';
+                            $date_fields[] = 'recurring_start_date_' . $item['id'];
                         }
 
                     }
@@ -4707,19 +4683,7 @@ function get_express_order($properties) {
                                 $form->set('order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date', date($month_and_day_format . '/Y'));
                             }
 
-                            // If we have not already added the date picker format code,
-                            // then add it.
-                            if (!$date_picker_format_added) {
-                                $system .= get_date_picker_format();
-                                $date_picker_format_added = true;
-                            }
-
-                            $system .=
-                                '<script>
-                                    software_$("#order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date").datepicker({
-                                        dateFormat: date_picker_format
-                                    });
-                                </script>';
+                            $date_fields[] = 'order_item_' . $item['id'] . '_quantity_number_' . $quantity_number . '_gift_card_delivery_date';
 
                         }
 
@@ -5008,6 +4972,7 @@ function get_express_order($properties) {
 
                                     case 'time':
                                         $form->set($html_name, 'maxlength', 11);
+                                        $time_fields[] = $html_name;
 
                                         break;
 
@@ -6222,44 +6187,15 @@ function get_express_order($properties) {
                 $system .= get_wysiwyg_editor_code($wysiwyg_fields);
             }
 
-            // If there is a date or date and time field, then prepare system content,
-            // for the date/time picker.
-            if ($date_fields || $date_and_time_fields) {
-
-                // If we have not already added the date picker format code,
-                // then add it.
-                if (!$date_picker_format_added) {
-                    $system .= get_date_picker_format();
-                    $date_picker_format_added = true;
-                }
-
-                foreach ($date_fields as $date_field) {
-                    $system .=
-                        '<script>
-                            software_$("#' . escape_javascript($date_field) . '").datepicker({
-                                dateFormat: date_picker_format
-                            });
-                        </script>';
-                }
-
-                // If there is a date and time field, then prepare JS for those.
-                if ($date_and_time_fields) {
-                    // Include JS file for timepicker.
-                    $system .=
-                        '<script src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/lib/Jquery/jquery-ui-timepicker-addon-1.2.1.min.js"></script>';
-
-                    foreach ($date_and_time_fields as $date_and_time_field) {
-                        $system .=
-                            '<script>
-                                software_$("#' . escape_javascript($date_and_time_field) . '").datetimepicker({
-                                    dateFormat: date_picker_format,
-                                    timeFormat: "' . pg_picker_time_format() . '"
-                                });
-                            </script>';
-                    }
-                }
-
-            }
+            // Date, date and time, and time boxes are drawn by the
+            // date-and-time control, found by their ids: a custom layout's
+            // markup carries no hook. The marker brings the control's
+            // scripts (pg_site_datetime_inject()).
+            $system .= pg_site_datetime_bind(array(
+                'date' => $date_fields,
+                'datetime' => $date_and_time_fields,
+                'time' => $time_fields,
+            ));
 
             $retrieve_order_url = URL_SCHEME . $_SERVER['HTTP_HOST'] . PATH . get_page_name($page_id) . '?r=' . $reference_code;
 
