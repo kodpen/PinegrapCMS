@@ -871,6 +871,27 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
         );
     }
 
+    // The parts of a detail widget placed elsewhere on the page go to the
+    // end of its main loop, so its renderer draws them from its record; each
+    // is cut out of the widget's output and put where its marker stands
+    // (widgets_parts_anywhere.php). Keys are unique to this pass: a nested
+    // pass has its own.
+    static $away_pass = 0;
+    $away_prefix = 'p' . (++$away_pass) . '.';
+    $away = array();
+    foreach (pg_sw_away_collect($html) as $away_i => $away_part) {
+        $away_sid = $away_part['sid'];
+        if ($away_part['node'] === null || !isset($configs[$away_sid])
+            || !in_array(isset($configs[$away_sid]['regionType']) ? $configs[$away_sid]['regionType'] : '', pg_sw_away_kinds(), true)) {
+            continue;
+        }
+        $away[$away_sid][$away_prefix . $away_i] = $away_part['node'];
+    }
+    foreach ($away as $away_sid => $away_nodes) {
+        $configs[$away_sid]['_tree_json'] = pg_sw_away_inject($configs[$away_sid]['_tree_json'], $away_nodes);
+    }
+    $away_spans = array();
+
     // A widget's records show their pictures through bound ^^tokens^^, so
     // their srcset is written on each widget's finished output
     // (pg_img_responsive_html()). Not in an e-mail, which takes none. Rich
@@ -1209,9 +1230,9 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
     // Each render runs inside its widget's scope, in which a node with a
     // value condition is drawn between markers; the finish pass resolves
     // them on the widget's own output (widgets_finish.php).
-    return preg_replace_callback(
+    $html = preg_replace_callback(
         '/(?:<!--pg-placement:([A-Za-z0-9_-]*)-->)?<!--pg-system-widget:(\d+)-->/',
-        function ($m) use ($render, $email, $configs) {
+        function ($m) use ($render, $email, $configs, $away, &$away_spans) {
             $sid       = (int)$m[2];
             $placement = ($m[1] !== '') ? pg_sw_placement_decode($m[1]) : array();
             $m         = array($m[0], $sid);
@@ -1222,11 +1243,15 @@ function _expand_system_widgets($html, $mode = 'preview', $email = false)
             } finally {
                 pg_sw_finish_close();
             }
-            if ($email) return pg_sw_finish_widget_html($out, $scope);
-            return pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));
+            $out = $email ? pg_sw_finish_widget_html($out, $scope)
+                : pg_img_responsive_html(pg_img_fluid_alias(pg_sw_finish_widget_html($out, $scope)));
+            if (isset($away[$sid])) $away_spans += pg_sw_away_take($out, array_keys($away[$sid]));
+            return $out;
         },
         $html
     );
+    if (!$away) return $html;
+    return pg_sw_away_place($html, $away_spans, $away_prefix, array_keys($away));
 }
 
 /**
@@ -4713,6 +4738,17 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     if ($flag_alias !== null && !in_array($node['type'], array('root', 'loop_area', 'recipient_loop_area'), true)) {
         unset($node['props']['_bindings']['eo_visible_if']);
         return pg_sw_finish_wrap(_render_tree_node($node, $indent, $depth), $flag_alias);
+    }
+
+    // Outside a widget, a part of the page's detail widget (props.partOf)
+    // stands as a marker its widget draws on every request, from its record
+    // (widgets_parts_anywhere.php). Its conditions go with it and the widget
+    // decides them, unless every one reads a fact of the page: then the
+    // marker stands between the page condition's markers below.
+    if (!pg_sw_finish_active() && pg_sw_away_of($node) > 0
+        && !pg_page_fact_spec(pg_sw_cond_present($node['props']) ? pg_sw_cond_specs($node['props']) : null)) {
+        $marker = pg_sw_away_marker($node);
+        return ($marker === '') ? '' : str_repeat('    ', $indent) . $marker . "\n";
     }
 
     // Value conditions (_bindings.show_if and show_if_2, show_if_3, with
