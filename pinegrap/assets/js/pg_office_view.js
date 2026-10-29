@@ -430,6 +430,17 @@
             });
         }
 
+        // The column-letter row and the row-number column stick over the
+        // grid; the pane's scroll padding keeps a cell scrolled into view
+        // beside them, not under them. Measured again each time, since the
+        // row-number column widens with the sheet and a hidden pane reads 0.
+        function padHeadings() {
+            var corner = shown.table ? shown.table.querySelector('.office-corner') : null;
+
+            pane.style.scrollPaddingTop = corner ? corner.offsetHeight + 'px' : '';
+            pane.style.scrollPaddingLeft = corner ? corner.offsetWidth + 'px' : '';
+        }
+
         function select(td) {
             if (!td || td.tagName !== 'TD') {
                 return;
@@ -446,6 +457,7 @@
             td.setAttribute('aria-selected', 'true');
             td.tabIndex = 0;
             td.focus({ preventScroll: true });
+            padHeadings();
 
             if (td.scrollIntoView) {
                 td.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -717,6 +729,7 @@
                 pane.appendChild(el('div', 'office-note', strings.truncated || ''));
             }
 
+            padHeadings();
             drawStatus();
         }
 

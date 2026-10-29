@@ -1241,9 +1241,12 @@
         var title = byId('erp_drawer_title');
         var body = byId('erp_drawer_body');
         var open = byId('erp_drawer_open');
-        title.textContent = '';
+        // Named by its title while the account loads (see erp_lists.js).
+        title.textContent = t.loading;
+        panel.setAttribute('aria-busy', 'true');
         open.classList.add('d-none');
-        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
+        body.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span></div>';
+        body.querySelector('.visually-hidden').textContent = t.loading;
         pgUI.drawer.show(panel);
 
         fetch(cfg.drawerUrl + '?type=account&id=' + encodeURIComponent(button.getAttribute('data-sale-ledger')), {
@@ -1252,6 +1255,7 @@
         }).then(function (response) {
             return response.json();
         }).then(function (data) {
+            panel.removeAttribute('aria-busy');
             if (!data || data.error || !data.html) {
                 throw new Error('drawer');
             }
@@ -1260,6 +1264,7 @@
             open.classList.remove('d-none');
             body.innerHTML = data.html;
         }).catch(function () {
+            panel.removeAttribute('aria-busy');
             body.innerHTML = '<div class="alert theme-warning mb-0"></div>';
             body.firstChild.textContent = t.loadFailed;
         });
@@ -1421,7 +1426,8 @@
         });
         pgUI.drawer.on(el.recent, 'show', function () {
             document.body.classList.add('pg-side-panel-open');
-            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status" aria-hidden="true"></span></div>';
+            el.recentBody.innerHTML = '<div class="d-flex justify-content-center py-12"><span class="spinner-border fg-secondary" style="font-size:2rem" role="status"><span class="visually-hidden"></span></span></div>';
+            el.recentBody.querySelector('.visually-hidden').textContent = t.loading;
             getJson({ request: 'recent' }).then(function (data) {
                 el.recentBody.innerHTML = (data && data.html) ? data.html : '';
             }).catch(function () {

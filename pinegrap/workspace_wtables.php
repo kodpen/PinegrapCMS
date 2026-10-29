@@ -341,6 +341,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $back = $table ? $table_url : $self_url;
             break;
 
+        case 'flow_from_table':
+            // The rows compiled once into a new draft flow of the person's,
+            // opened on the canvas; what the rows could not give is told here.
+            $result = ws_wtable_flow_create($viewer, $table, (isset($_POST['flow_map']) && is_array($_POST['flow_map'])) ? $_POST['flow_map'] : array());
+
+            if (!$result['ok']) {
+                $liveform->add_error(h($result['error']));
+                break;
+            }
+
+            $flow_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/workspace_flows.php?flow=' . (int) $result['flow_id'];
+            $notes = ws_wtable_flow_notes($result['compiled']);
+
+            if (empty($notes)) {
+                $back = $flow_url;
+                break;
+            }
+
+            $liveform->add_notice(h(lang('A draft flow was made from the rows.')) . ' ' . h(implode(' ', $notes))
+                . ' <a href="' . h($flow_url) . '">' . h(lang('Open the draft flow')) . '</a>');
+            break;
+
         case 'row_status':
             // A card moved on the board: the status cell alone, on the
             // revision the card was drawn with, answered in JSON.
@@ -1226,13 +1248,70 @@ if (!$table) {
 
     }
 
+    // Run from table: the window that names the columns a draft flow is
+    // made of, pre-filled by type; nothing of it is kept on the table.
+    $flow_window = '';
+    $flow_button = '';
+
+    if (ws_flows_ready() && ws_can_schedule($viewer) && !empty($columns)) {
+        $prefill = ws_wtable_flow_prefill($columns);
+        $flow_fields = '';
+        $has_text = in_array('text', array_column($columns, 'type'), true);
+        $hint = array(
+            'step'   => lang('A text column: each row with a step becomes a task.'),
+            'person' => lang('The person the task is given to.'),
+            'days'   => lang('Days the task is due after it becomes ready.'),
+            'after'  => lang('The row number the step comes after; the row before when empty.'),
+        );
+
+        foreach (ws_wtable_flow_roles() as $role => $part) {
+            $options = $part['required'] ? '' : '<option value="0">' . h(lang('None')) . '</option>';
+
+            foreach ($columns as $column_id => $column) {
+                if ($column['type'] === $part['type']) {
+                    $options .= '<option value="' . (int) $column_id . '"' . (((int) $column_id === $prefill[$role]) ? ' selected' : '') . '>' . h($column['name']) . '</option>';
+                }
+            }
+
+            $flow_fields .= '
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="ws_wt_flow_' . $role . '">' . h($part['label']) . '</label>
+                            <select class="form-control form-control-sm" name="flow_map[' . $role . ']" id="ws_wt_flow_' . $role . '" aria-describedby="ws_wt_flow_' . $role . '_hint"' . ($part['required'] ? ' required' : '') . '>' . $options . '</select>
+                            <div class="form-text" id="ws_wt_flow_' . $role . '_hint">' . h($hint[$role]) . '</div>
+                        </div>';
+        }
+
+        $flow_button = '<button type="button" class="btn btn-sm btn-text theme-primary" data-bs-toggle="dialog" data-bs-target="#ws_wt_flow"><i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>' . h(lang('Run from table')) . '</button>';
+        $flow_window = '
+    <dialog class="dialog pg-dialog-centered" id="ws_wt_flow" aria-labelledby="ws_wt_flow_title">
+        <form method="post" action="' . h($self_url) . '" class="d-contents disable_shortcut">
+            ' . get_token_field() . '
+            <input type="hidden" name="wt_action" value="flow_from_table">
+            <input type="hidden" name="wt_table" value="' . $id . '">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="ws_wt_flow_title">' . h(lang('Run from table')) . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . h(lang('The rows become a draft flow of yours: a task for each step, in row order. Review it on the canvas and publish it to run it.')) . '</p>
+                ' . ($has_text ? $flow_fields : '<p class="small mb-0">' . h(lang('Add a text column that names each step first.')) . '</p>') . '
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog">' . h(lang('Cancel')) . '</button>
+                ' . ($has_text ? '<button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Make the draft flow')) . '</button>' : '') . '
+            </div>
+        </form>
+    </dialog>';
+    }
+
     $toolbar = '
     <nav id="button_bar" class="pg-toolbar navigation mb-5" aria-label="' . lang('Button Bar') . '">
         <a class="btn btn-sm btn-text theme-secondary" href="' . h($self_url) . '"><i class="bi bi-arrow-left me-1" aria-hidden="true"></i>' . h(lang('All tables')) . '</a>
+        ' . $flow_button . '
         ' . (($row_form !== '') ? '<a class="btn btn-sm btn-text theme-primary" href="' . h($table_url) . '#ws-wt-row-form"><i class="bi bi-plus-lg me-1" aria-hidden="true"></i>' . h(lang('New row')) . '</a>' : '') . '
         ' . ($can_manage ? '<button type="button" class="btn btn-sm btn-text theme-danger ws-wt-action ms-auto" data-action="table_delete" data-confirm="'
             . h(lang(array('string' => 'Delete the table {var:1} with its rows and shares? It cannot be brought back.', 'vars' => $table['name']))) . '"><i class="bi bi-trash me-1" aria-hidden="true"></i>' . h(lang('Delete table')) . '</button>' : '') . '
-    </nav>';
+    </nav>' . $flow_window;
 
     $title = (string) $table['name'];
     $description = lang('A workflow table of the Workspace.');

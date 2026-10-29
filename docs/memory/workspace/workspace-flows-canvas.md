@@ -21,7 +21,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Toolbar: "New flow" (slot 1, primary), name, status, save state, Outline, Flow runs, Run, Problems, Publish, Pause, ⋯; below: list | stage | side.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
 - Run/view access: the live graph (never published: its draft) read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
-- Box look: `workspace-flows-box-look.md`.
+- Box look, kind icons: `workspace-flows-box-look.md`.
 
 ## How is it saved?
 - 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, "New flow" save first.

@@ -1,6 +1,6 @@
 ---
 name: decisions-made-product-3
-description: Decisions list, product part 3 (2026-10-29 on): label formats beyond PDF (SVG, ZPL), the first international label driver, the dead top-item block of get_catalog.php
+description: Decisions list, product part 3 (2026-10-29 on): SVG and ZPL labels, the first international label driver, get_catalog.php's dead top-item block, the PHP 5 remnants, converted common regions' rows
 ---
 
 ## Which label formats does the label layer admit? (#3123)
@@ -11,5 +11,11 @@ description: Decisions list, product part 3 (2026-10-29 on): label formats beyon
 
 ## May the dead top-item block of get_catalog.php go? (#3125)
 - Decided (architect, 2026-10-29): yes, lines 561-576 (the `$output_featured_items` block built from four variables assigned only later) are removed with their four `phpstan-baseline.neon` entries, nothing else in the file; a test pins the top-item HTML before and after. The legacy custom style layer rule (`decisions-made-product.md`) protects the layer's output, and that output stays byte-identical: the block's text is reset to '' or never read, while it raises four "Undefined variable" warnings per catalog page on PHP 8.
+
+## May the PHP 5 remnants go: the DB_LEGACY mysql_* connection and the magic quotes strip? (#3150)
+- Decided (architect, 2026-10-29, plan `php-compatibility-and-bugs.md`): both go (PR #3149): the second connection through the mysql extension in `db_connect()` and `router.php` with the `DB_LEGACY` line of `data/config(default).php`, and the magic quotes strip of `init.php`; the installer's copy (`install/index.php`) follows once #3146 has freed the file. On PHP 7.1-8.5 neither block runs without the unmaintained PECL mysql extension, and no product code ever read the legacy link or the stripped values; a `define('DB_LEGACY', …)` left in a site's config.php is an unread constant. The one site that can notice (the PECL extension loaded, `DB_LEGACY` true, custom `mysql_*` code without its own link) opens its own link with the `DB_*` constants or moves to `db()` / `db_q()`. `array_stripslashes()` stays; the `mcrypt` path stays while 7.1 is supported. Record: `core/db-legacy-and-magic-quotes.md`.
+
+## Do converted common regions' cregion rows stay after the page designer retires? (#3156)
+- Decided (architect, 2026-10-29, inside the owner's R2 decision): yes, unchanged. The row links the `<cregion>` tag to the component (name, then category `common_region:<id>`); its content and grants are the undo the region screen promises. No data step clears or deletes them; a per-region cleanup button is built only if the owner asks (`designer/common-region-to-shared-component.md`).
 
 Related: docs/memory/workflow/decisions-made-product.md, docs/memory/workflow/decisions-made-product-2.md

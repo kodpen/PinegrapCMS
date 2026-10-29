@@ -1,6 +1,6 @@
 ---
 name: bootstrap-6-loader-metrics
-description: Bootstrap 6 changed .placeholder min-height (1em to 1.25em) and .spinner-border size (2rem to 1em); the dashboard skeleton and four drawer spinners keep their v5 size
+description: Bootstrap 6 changed .placeholder min-height (1em to 1.25em) and .spinner-border size (2rem to 1em); the dashboard skeleton and four drawer spinners keep their v5 size; loaders that screen readers hear
 ---
 
 ## What did Bootstrap 6 change?
@@ -15,6 +15,8 @@ description: Bootstrap 6 changed .placeholder min-height (1em to 1.25em) and .sp
 
 ## Why were drawer spinners half size?
 - A big loader in an empty drawer body drew at 16px with a 2px ring. Each has `style="font-size:2rem"`, which gives 32px with a 4px ring, v5's size, and sets no `--bs-*` variable: `add_order.js` (ERP account drawer, Recent Local Sales drawer), `erp_lists.js` (ERP list drawer), `seo.php` `pg_seo_render_detail_offcanvas()` (SEO Detail drawer; the markup is escaped PHP-in-JS).
+- A drawer spinner is `role="status"` with a `.visually-hidden` child filled with `lang('Loading...')` (the ERP drawer's `data-erp-drawer-loading`, add_order's `t.loading`), never `aria-hidden`, which took it out of the accessibility tree. The ERP drawer is named by its title, so the title reads that text and the dialog is `aria-busy` until the record arrives.
+- The Audit Trail changes fold shows `data-pg-audit-loading` with `aria-busy`, not `…`; `update_search_index.php` puts its sentence inside the `role="status"` span and writes the finish sentence into `#finish_status`, a status region printed in the header (`tests/loading_announced_test.php`).
 - The dialog loader in `backend.src.js` and a central `.spinner-border` rule in `backend.src.css` are still open.
 
 ## How is it checked?

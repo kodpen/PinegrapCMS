@@ -42592,7 +42592,8 @@ const StyleDesigner = (function () {
             ['has_custom_field_1',         _sdT('Custom field 1 has a label')],
             ['has_custom_field_2',         _sdT('Custom field 2 has a label')],
             ['has_po_number',              _sdT('A PO number was given')],
-            ['is_tax_exempt',              _sdT('The order is tax-exempt')]
+            ['is_tax_exempt',              _sdT('The order is tax-exempt')],
+            ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
         billing_information: [
             ['has_custom_field_1',   _sdT('Custom field 1 has a label')],
@@ -42616,7 +42617,8 @@ const StyleDesigner = (function () {
             ['order_form_quantity',    _sdT('Row: the product is ordered by quantity')],
             ['order_form_donation',    _sdT('Row: the product is a donation of the visitor\'s amount')],
             ['order_form_unavailable', _sdT('Row: the product is out of stock')],
-            ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')]
+            ['has_recurring_schedule', _sdT('Row: the visitor sets the payment schedule')],
+            ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
         shipping_method: [
             ['has_recipient',              _sdT('A recipient of the visitor\'s order is being shown')],
@@ -42625,7 +42627,8 @@ const StyleDesigner = (function () {
             ['has_shipping_methods',       _sdT('At least one shipping method can be chosen')],
             ['no_shipping_methods',        _sdT('No shipping method can ship to this recipient')],
             ['has_arrival_date',           _sdT('The recipient asked for an arrival date')],
-            ['shipping_method_discounted', _sdT('Row: an offer lowers the shipping cost')]
+            ['shipping_method_discounted', _sdT('Row: an offer lowers the shipping cost')],
+            ['has_currency_choice', _sdT('The site offers more than one currency')]
         ],
         shipping_address_and_arrival: [
             ['has_recipient',      _sdT('A recipient of the visitor\'s order is being edited')],
@@ -60282,6 +60285,27 @@ const StyleDesigner = (function () {
         return createNode('semantic', { tag: 'button', cssClass: 'btn btn-primary', text: text,
             customName: name || _sdT('Save Button'), _attrs: [{ name: 'type', value: 'submit' }] });
     }
+    // The currency picker of a checkout widget whose tree sits inside the
+    // widget's own form: the server points the select and the button at a
+    // separate update_currency.php form by their form attribute
+    // (pg_sw_currency_picker()). Shown only when the site offers more than
+    // one currency.
+    /* @pg-site-output */
+    function _swCurrencyPicker() {
+        var id = 'f_' + Math.random().toString(36).slice(2, 7) + '_currency';
+        return createNode('semantic', { tag: 'div', cssClass: 'd-flex flex-wrap align-items-center justify-content-end gap-2 mb-3', customName: _sdT('Currency Picker'),
+            _bindings: { eo_visible_if: 'has_currency_choice' } }, [
+            createNode('semantic', { tag: 'label', cssClass: 'form-label small mb-0', text: _sdT('Currency'), customName: _sdT('Label'),
+                _attrs: [{ name: 'for', value: id }] }),
+            createNode('semantic', { tag: 'select', cssClass: 'form-select form-select-sm w-auto', id: id,
+                _attrs: [{ name: 'name', value: 'currency_id' }] }, [
+                createNode('semantic', { tag: 'option', text: _sdT('Filled by the server'), customName: _sdT('Option'),
+                    _attrs: [{ name: 'value', value: '' }] })
+            ]),
+            createNode('semantic', { tag: 'button', cssClass: 'btn btn-sm btn-outline-secondary', text: _sdT('Update'), customName: _sdT('Update Button'),
+                _attrs: [{ name: 'type', value: 'submit' }, { name: 'name', value: 'currency_update' }] })
+        ]);
+    }
     /* @pg-site-output */
     function _swAcctLinks(children) {
         return createNode('semantic', { tag: 'div', cssClass: 'text-center mt-3 small', customName: _sdT('Links') }, children);
@@ -63078,6 +63102,7 @@ const StyleDesigner = (function () {
                 };
                 return _swAcctPage(_sdT('Order Preview Card'), '10', '8', [
                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Order Preview'), cssClass: 'card-title mb-3' }),
+                    _swCurrencyPicker(),
                     createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('Empty Cart'),
                         _bindings: { eo_visible_if: 'cart_empty' } }, [
                         opP(_sdT('Your cart is empty.'), 'text-muted mb-3'),
@@ -63537,6 +63562,7 @@ const StyleDesigner = (function () {
                 ofQty.props._bindings = { eo_visible_if: 'has_quantity' };
                 return _swAcctPage(_sdT('Order Form Card'), '10', '8', [
                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Order Form'), cssClass: 'card-title mb-3' }),
+                    _swCurrencyPicker(),
                     createNode('semantic', { tag: 'div', cssClass: 'alert alert-info', customName: _sdT('No Products'),
                         _bindings: { eo_visible_if: 'no_products' } }, [
                         createNode('content', { contentType: 'paragraph', text: _sdT('There are no products to order at the moment.'), cssClass: 'mb-0' })
@@ -63593,6 +63619,7 @@ const StyleDesigner = (function () {
                 ]);
                 return _swAcctPage(_sdT('Shipping Method Card'), '10', '8', [
                     createNode('content', { contentType: 'heading', tag: 'h4', text: _sdT('Shipping Method'), cssClass: 'card-title mb-3' }),
+                    _swCurrencyPicker(),
                     createNode('semantic', { tag: 'div', cssClass: '', customName: _sdT('No Recipient'),
                         _bindings: { eo_visible_if: 'no_recipient' } }, [
                         createNode('content', { contentType: 'paragraph', text: _sdT('Shipping information can only be gathered during the checkout process.'), cssClass: 'text-muted mb-3' }),
