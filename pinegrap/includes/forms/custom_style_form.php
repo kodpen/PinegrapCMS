@@ -111,9 +111,9 @@ function pg_custom_style_form_cards($style, $social_networking)
                     <div class="row">
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Page Style Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 md:col-8 lg:col-6 my-3">
@@ -135,13 +135,13 @@ function pg_custom_style_form_cards($style, $social_networking)
                         
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Options') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 mt-3">
-                                            <h5>'. lang('Collection') . '</h5>
+                                            <h3 class="h5">'. lang('Collection') . '</h3>
                                         </div>
                                         <div class="col-12 mb-3">
                                             <div class="form-field d-inline-grid me-5">

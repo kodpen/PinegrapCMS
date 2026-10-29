@@ -162,9 +162,9 @@ function pg_contact_form_name_row($values, $is_new, $image_html)
                     <div class="row justify-content-center">
                         <div class="col-12 sm:col sm:order-2 align-self-end">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Name') : lang('Contact\'s Name')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">' . $output_fields . '
                                     </div>
@@ -243,9 +243,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                     <div class="row">
                         <div class="col-12 ">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Work Information') : lang('Contact\'s Work Information')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body" >
                                     <div class="row">' . $output_work . '
                                     </div>
@@ -267,9 +267,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
 
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . ($is_new ? lang('New Contact\'s Home Information') : lang('Contact\'s Home Information')) . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">' . $output_home . '
                                     </div>
@@ -279,9 +279,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
 
                         <div class="col-12 md:col-6">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Membership Access') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -301,9 +301,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
                         </div>
                         <div class="col-12 md:col-6">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Additional Notes') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12 my-3">
@@ -323,9 +323,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
 
                         <div class="col-12">
                             <div class="card my-7">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Contact Groups & Subscriptions') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         ' . $groups_html . '
@@ -350,9 +350,9 @@ function pg_contact_form_affiliate_card($values)
 
     return '<div class="col-12">
             <div class="card my-7">
-                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                     ' . lang('Affiliate Information') . '
-                </div>
+                </h2>
                 <div class="card-body">
                     <div class="row">
 

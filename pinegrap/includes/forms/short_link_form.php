@@ -133,9 +133,9 @@ function pg_short_link_form_cards($liveform, $form)
                     <div class="row">
                         <div class="col-12 md:col-4 lg:col-3 xl:col-2">
                             <div class="card my-7 position-sticky" style="top:56px;">
-                                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                     ' . lang('Destination Type') . '
-                                </div>
+                                </h2>
                                 <div class="card-body">
                                     <div class="row">
                                         <div class="col-12">
@@ -156,9 +156,9 @@ function pg_short_link_form_cards($liveform, $form)
                             <div class="row">
                                 <div class="col-12">
                                     <div class="card my-7 position-sticky" style="top:56px;">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                         ' . lang('Main Informations') . '
-                                        </div>
+                                        </h2>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 md:col-8 lg:col-6 my-3" id="name_row">
@@ -179,9 +179,9 @@ function pg_short_link_form_cards($liveform, $form)
                                 ' . $form['after_main'] . '
                                 <div class="col-12 collapse" id="options_row">
                                     <div class="card my-7">
-                                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                        <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
                                             ' . lang('Function Options') . '
-                                        </div>
+                                        </h2>
                                         <div class="card-body">
                                             <div class="row">
                                                 <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $style['page_id'] . '>
