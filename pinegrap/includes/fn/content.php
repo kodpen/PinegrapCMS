@@ -500,9 +500,11 @@ function get_menu_content($menu_id, $parent_id = 0, $current_menu_item_id = 0, $
                 // if there is a link page name, then prepare link to page
                 if ($menu_item['link_page_name']) {
                     $output_link_href = OUTPUT_PATH . h($menu_item['link_page_name']);
+                    pg_speculation_note(array(PATH . $menu_item['link_page_name']));
                     // else there is not a link page name, so prepare link to URL
                 } else {
                     $output_link_href = h($menu_item['link_url']);
+                    pg_speculation_note(array($menu_item['link_url']));
                 }
                 // if link should open in a new window, then prepare target
                 if ($menu_item['link_target'] == 'New Window') {
