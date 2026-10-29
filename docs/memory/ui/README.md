@@ -79,6 +79,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
+- design-file-shared-form.md: add_design_file.php and edit_design_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - designer-region-shared-form.md: The designer region create and edit screens share includes/forms/designer_region_form.php: what it holds, the label fix, what stays in the screens
 - dynamic-region-shared-form.md: The dynamic region create and edit screens share includes/forms/dynamic_region_form.php: what it holds, the label fix, what stays in the screens
 - edit-screen-wide-layout.md: Owner decision for panel edit screens: a wide screen is not spent on one column of stacked cards; form column, sticky status column, sticky save bar, modeled on product_builder.php.
