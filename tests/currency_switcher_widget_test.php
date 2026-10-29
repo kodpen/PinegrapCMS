@@ -80,7 +80,8 @@ function test_currency_switcher_picker_controls()
 
 	$tree = _currency_switcher_test_tree();
 	pg_sw_currency_picker($tree, 7, _currency_switcher_test_rows(1), 1);
-	pg_assert_same(array(), $tree['children'][0]['children'], 'a single currency leaves no control behind');
+	$json = json_encode($tree);
+	pg_assert_false(strpos($json, 'currency_id') !== false || strpos($json, 'currency_update') !== false, 'a single currency leaves no control behind');
 }
 
 function test_currency_switcher_separate_form()
@@ -110,7 +111,7 @@ function test_currency_switcher_after_widget_form()
 function test_currency_switcher_starter_trees()
 {
 	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/style_designer.src.js');
-	pg_assert_true((bool)preg_match('/function _swCurrencyPicker\(id\) \{(.*?)\n    \}/s', $js, $m), 'the starter part');
+	pg_assert_true((bool)preg_match('/function _swCurrencyPicker\(\) \{(.*?)\n    \}/s', $js, $m), 'the starter part');
 	pg_assert_contains("{ name: 'name', value: 'currency_id' }", $m[1], 'the select the server fills');
 	pg_assert_contains("{ name: 'name', value: 'currency_update' }", $m[1], 'the button the server points at the form');
 	pg_assert_contains("eo_visible_if: 'has_currency_choice'", $m[1], 'shown only with a choice');

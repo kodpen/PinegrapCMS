@@ -32,10 +32,11 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * The widget's visibility flags, from the values get_order_preview()
  * computes for a custom layout.
  *
- * @param array $d the layout values ('layout_data_only')
+ * @param array $d          the layout values ('layout_data_only')
+ * @param array $currencies pg_sw_currency_rows()
  * @return array
  */
-function pg_op_flags($d)
+function pg_op_flags($d, $currencies = array())
 {
     $d = is_array($d) ? $d : array();
     $on = function ($k) use ($d) { return !empty($d[$k]); };
@@ -72,6 +73,7 @@ function pg_op_flags($d)
         'has_custom_field_2'        => $filled('custom_field_2_label'),
         'has_po_number'             => $filled('po_number'),
         'is_tax_exempt'             => $on('tax_exempt'),
+        'has_currency_choice'       => count((array)$currencies) > 1,
     );
     return $op_flags;
 }
@@ -486,6 +488,8 @@ function _pg_op_page_settings($page_id, $cfg)
 // card_number, expiration, card_verification_number, installment,
 // threedsecure, gift_card_code with the submit_apply_gift_card button, terms,
 // and the submit_purchase_now button. Flags: pg_op_flags().
+// Currency picker: the currency_id select and the currency_update button
+// (pg_sw_currency_picker()), shown by has_currency_choice.
 // Errors: liveform 'order_preview'.
 // cfg: next_page_id, terms_page_id, card_verification_number_page_id,
 // offline_payment_always_allowed, offline_payment_label,
@@ -514,7 +518,8 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     $on_account = (!empty($d['payment']) && empty($d['recurring_transaction']) && function_exists('pg_erp_open_account_option'))
         ? pg_erp_open_account_option() : null;
     if (!pg_op_offer_on_account($d, $on_account)) $on_account = null;
-    $op_flags = pg_op_flags($d);
+    $currencies = pg_sw_currency_rows();
+    $op_flags = pg_op_flags($d, $currencies);
     if ($op_flags['many_payment_methods']) pg_op_add_method_rows($tree, pg_op_method_rows($d, $on_account));
     _eo_apply_visibility_bindings($tree, $op_flags);
     if (!$op_flags['many_payment_methods']) _pg_member_drop_control($tree, 'payment_method');
@@ -529,6 +534,7 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
     if (!$op_flags['has_terms']) _pg_member_drop_control($tree, 'terms');
     if (!$op_flags['can_purchase']) _pg_member_drop_control($tree, 'submit_purchase_now');
     pg_op_stamp_method_classes($tree, $op_flags);
+    pg_sw_currency_picker($tree, $widget_id, $currencies, defined('VISITOR_CURRENCY_ID') ? (int)VISITOR_CURRENCY_ID : 0);
     if ($op_flags['threedsecure_required']) {
         // The gateway always asks for 3-D Secure: shown ticked, not changeable.
         _pg_member_edit_control($tree, 'threedsecure', function (&$node) {
@@ -625,5 +631,5 @@ function _render_system_widget_order_preview($tree_json, $widget_id, $cfg = arra
         $rendered = $form->prepare($rendered);
     }
     $form->remove();
-    return $rendered;
+    return $rendered . pg_sw_currency_form_html($widget_id, $currencies, get_request_uri());
 }
