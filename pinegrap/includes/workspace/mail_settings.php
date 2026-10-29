@@ -484,7 +484,18 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         return;
     }
 
+    $kept_channels = array_map(function ($route) {
+        return (int) $route['channel_id'];
+    }, ws_mail_routes($box));
+    $routes = ws_mail_routes_input((array) ($_POST['route_match'] ?? array()), (array) ($_POST['route_channel'] ?? array()), array_keys($channels), $kept_channels);
+
+    if (!$routes['ok']) {
+        $liveform->add_error($routes['error']);
+        return;
+    }
+
     $settings = ws_mail_box_settings($box);
+    $settings['routes'] = $routes['routes'];
 
     // A password typed now replaces the kept one; an empty box keeps it.
     if ($values['password'] !== '') {
@@ -581,6 +592,7 @@ function ws_mail_box_form($self_url, $box, $channels)
                     <input class="form-control form-control-sm font-monospace" type="text" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
                     <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
+                ' . ws_mail_route_fields($prefix, $box, $channels) . '
                 ' . ws_mail_box_server_fields($prefix, $box, $settings) . '
                 <div class="md:col-12">
                     <div class="form-field">

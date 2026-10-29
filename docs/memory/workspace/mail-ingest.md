@@ -22,7 +22,7 @@ description: ws_mail_ingest() (includes/workspace/mail.php): de-duplication, loo
 - `ws_mail_find_conversation()`: In-Reply-To, then References newest first (at most 30), hashed and looked up in the box's items, ours or the customer's; then a `[#T<id>]` subject tag, only when that conversation's `customer_email` is the sender. Never by subject. Outgoing answers are items too (`mail-reply.md`), so our own Message-IDs are found by hash.
 
 ## What is written in the channel?
-- Channel: the conversation's, else the box's; missing or archived is `refused` / `no_channel`.
+- Channel: the conversation's, else routed (`mail-routing.md`); missing or archived: `refused` / `no_channel`.
 - New conversation: a top-level message, `sender_kind 'mail'`, `sender_id` the item, kind `message`; its id goes into `ws_mail_conversations.message_id` (the card). An answer: a message with `parent_id` = the card (the card touched), or a new card when the old one was deleted. A new mail sets the conversation `open` again (`closed_at` 0).
 - Message body: the text (plain body, else HTML as text by `ws_mail_html_text()`), `<@user:1>`-style tags taken out of their brackets so they name and notify nobody, cut to `WS_MESSAGE_MAX` with `…`. The whole text (up to 1 MB) is `ws_mail_items.body_text`. Written by `ws_mail_message_write()`, not `ws_message_send()`: no mentions, webhooks or assistants. Drawn by `ws_mail_card_html()` (`mail-card.md`).
 - No Workspace event or bell yet: the "E-mail received" event and the assignee's notice come with G5.
