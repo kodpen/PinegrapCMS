@@ -1743,7 +1743,7 @@ if (!$_POST) {
                     'suffix' => array('', '', ($detail_total == 1 ? '' : 's')),
                 )))
                 . '</span>
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex flex-wrap align-items-center gap-3 row-gap-2">
                     <a class="btn btn-sm btn-outline theme-secondary" href="' . h($csv_url) . '">
                         <i class="bi bi-filetype-csv me-1"></i>' . lang('Export All to CSV') . '
                     </a>
