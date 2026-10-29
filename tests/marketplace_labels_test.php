@@ -168,3 +168,50 @@ function test_marketplace_labels_screen_asks_and_prints()
 	pg_assert_contains('add_warning(h($made[\'error\']))', $action, 'the marketplace\'s words are escaped');
 	pg_assert_false(strpos($action, 'last_error') !== false && strpos($action, 'SET last_error') !== false, 'a refusal is not kept on the map row');
 }
+
+// What a request answers before it says otherwise, and the read for a
+// reprint, which answers only for a marketplace's label.
+function test_marketplace_labels_result_and_reprint_scope()
+{
+	pg_assert_same(array('ok' => false, 'existing' => false, 'pending' => false, 'error' => '', 'label_id' => 0, 'number' => ''), mp_label_result());
+
+	pg_assert_same(null, mp_label_document(array('driver' => 'geliver', 'order_id' => 5, 'reference' => 'x')), 'a carrier label service\'s label');
+	pg_assert_same(null, mp_label_document(array('driver' => 'n11', 'order_id' => 5, 'reference' => 'x')), 'a marketplace that makes no labels');
+	pg_assert_same(null, mp_label_document(array('driver' => '', 'order_id' => 5, 'reference' => 'x')));
+
+	pg_assert_same('Trendyol', pg_shipment_label_driver_name('trendyol'), 'the order screen names the marketplace');
+}
+
+// Where the order screen, the bulk run, the create check and the reprint
+// meet the marketplace's label, pinned in their sources.
+function test_marketplace_labels_order_screen_bulk_and_reprint()
+{
+	$labels = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/shipment_labels.php');
+
+	$bulk = substr($labels, (int) strpos($labels, 'function pg_shipment_label_bulk_create('), 2500);
+	$routed = strpos($bulk, 'mp_label_create_for_ship_to((int) $ship_to_id, 1, $user_id, false)');
+	pg_assert_true($routed !== false, 'bulk: one box, no waiting');
+	pg_assert_true($routed < strpos($bulk, 'pg_shipment_label_create((int) $ship_to_id, $user_id)'), 'the marketplace before a carrier label service');
+
+	$document = substr($labels, (int) strpos($labels, 'function pg_shipment_label_document('), 2000);
+	pg_assert_true(strpos($document, 'mp_label_document($row)') < strpos($document, "pg_label_can(\$driver, 'label')"), 'a removed marketplace label is read from the marketplace');
+
+	$check = substr($labels, (int) strpos($labels, 'function pg_shipment_label_create_check('), 2800);
+	pg_assert_contains('$marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to[\'id\']);', $check, 'outbound labels only');
+	pg_assert_contains('pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name)', $check);
+
+	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipment_label.php');
+	pg_assert_contains("'/^(create|return|cancel|marketplace)-([1-9][0-9]*)\$/'", $endpoint);
+	pg_assert_contains("mp_label_create_for_ship_to((int) \$match[2], mp_label_boxes(\$boxes), USER_ID)", $endpoint);
+	pg_assert_contains("\$_POST['label_boxes_' . \$match[2]]", $endpoint);
+
+	$screen = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_order.php');
+	pg_assert_contains('$shipment_label_marketplace = pg_shipment_label_marketplace($ship_to_id);', $screen);
+	pg_assert_contains('name="label_request" value="marketplace-\' . $ship_to_id . \'"', $screen);
+	pg_assert_contains('<input type="number" form="shipment-label-form" id="label_boxes_\' . $ship_to_id . \'" name="label_boxes_\' . $ship_to_id . \'"', $screen);
+	pg_assert_contains("(\$shipment_label_by_marketplace\n", $screen, 'the marketplace\'s button in place of Create Label');
+	pg_assert_contains('h(pg_shipment_label_driver_name($shipment_label[\'driver\']))', $screen);
+
+	$own = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/labels.php');
+	pg_assert_contains('$tries = ($requested[\'ok\'] && $wait) ? 3 : 1;', $own);
+}

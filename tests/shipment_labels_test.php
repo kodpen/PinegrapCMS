@@ -439,3 +439,27 @@ function test_shipment_label_customer_headers()
 	pg_assert_contains('Content-Type: application/octet-stream', $zpl);
 	pg_assert_contains('Content-Disposition: attachment; filename="label-R1.zpl"', $zpl);
 }
+
+// A package whose marketplace makes its label for its own carrier now gets no
+// carrier label service's label: named after an active label, before a
+// missing driver.
+function test_shipment_label_create_refusal_marketplace_label()
+{
+	$order = array('status' => 'complete');
+	$refusal = pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, 'Trendyol');
+
+	pg_assert_same('marketplace_label', $refusal['code']);
+	pg_assert_contains('Trendyol', $refusal['error']);
+	pg_assert_same('label_exists', pg_shipment_label_create_refusal(true, $order, 1, 'geliver', false, 'Trendyol')['code'], 'the label kept first');
+	pg_assert_same('marketplace_label', pg_shipment_label_create_refusal(true, $order, 0, '', false, 'Trendyol')['code'], 'before a missing driver');
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, ''));
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver'), 'none named: as before');
+}
+
+// The name a label's maker is shown by.
+function test_shipment_label_driver_name()
+{
+	pg_assert_same('Geliver', pg_shipment_label_driver_name('geliver'));
+	pg_assert_same('no_such_maker', pg_shipment_label_driver_name('no_such_maker'));
+	pg_assert_same('../x', pg_shipment_label_driver_name('../x'), 'not a key: shown as it is, nothing loaded for it');
+}
