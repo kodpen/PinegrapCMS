@@ -184,7 +184,6 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
             // A page of a visual design opens the designer's layout tab.
             $edit_layout_url = pg_layout_edit_url(
                 $_GET['page_id'],
-                PATH . encode_url_path($page_name),
                 $row['page_style'],
                 pg_page_is_visual_design(array('page_style' => $row['page_style'])),
                 USER_ROLE,
@@ -192,7 +191,7 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
 
             $output_layout_buttons =
             '<div class=" btn-group btn-group-sm flex-wrap ">
-                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
+                <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h($edit_layout_url . ((strpos($edit_layout_url, 'edit_page_layout.php') === 0) ? '&send_to=' . urlencode(REQUEST_URL) : '')) . '"><span class="material-icons me-1">code</span>' . lang('Edit Layout') . '</a>
                 <a class="btn btn-link pg-link-secondary py-0 mb-3 " href="generate_layout.php?page_id=' . h($_GET['page_id']) . '"><span class="material-icons me-1">plagiarism</span>' . lang('Generate Layout') . '</a>
             </div>';
         }

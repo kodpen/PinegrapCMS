@@ -35,7 +35,7 @@ description: Generated from the module field of the memory files: each includes/
 - `imap_client`: [[mail-imap-client]]
 - `lang_files`: [[lang-files]]
 - `layout_convert`: [[layout-form-converter]]
-- `layouts`: [[layout-code-tab]]
+- `layouts`: [[layout-code-tab]], [[layout-editor-classic]]
 - `link_resolve`: [[designer-prototype-viewer]]
 - `list_paging`: [[server-paged-lists]]
 - `list_period`: [[list-period-navigator-and-clock]], [[list-period-week]]
