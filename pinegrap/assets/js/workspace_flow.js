@@ -118,6 +118,7 @@
         schedule: { icon: 'bi-clock', name: 'fl_kind_schedule', into: false, out: ['next'] },
         event: { icon: 'bi-lightning', name: 'fl_kind_event', into: false, out: ['next'] },
         join: { icon: 'bi-person-plus', name: 'fl_kind_join', into: false, out: ['next'] },
+        row: { icon: 'bi-table', name: 'fl_kind_row', into: false, out: ['next'] },
         task: { icon: 'bi-check2-square', name: 'fl_kind_task', into: true, out: ['done', 'cancelled', 'timeout'] },
         post: { icon: 'bi-chat-left-text', name: 'fl_kind_post', into: true, out: ['done', 'failed'] },
         email: { icon: 'bi-envelope', name: 'fl_kind_email', into: true, out: ['done', 'failed'] },
@@ -170,6 +171,7 @@
         ['schedule', 'bi-clock', 'fl_kind_schedule'],
         ['event', 'bi-lightning', 'fl_kind_event'],
         ['join', 'bi-person-plus', 'fl_kind_join'],
+        ['row', 'bi-table', 'fl_kind_row'],
         ['task', 'bi-check2-square', 'fl_add_task'],
         ['condition', 'bi-signpost-split', 'fl_kind_condition'],
         ['delay', 'bi-hourglass', 'fl_kind_delay'],
@@ -499,6 +501,7 @@
             counts: steps.counts || [],
             repeats: steps.repeats || {},
             events: steps.events || null,
+            tables: steps.tables || [],
             mcp: steps.mcp || []
         };
     }
@@ -617,6 +620,10 @@
 
         if (node.kind === 'lead') {
             return config.private ? t('fl_lead_meta_private') : t('fl_lead_meta');
+        }
+
+        if (node.kind === 'row') {
+            return rowMeta(config);
         }
 
         if (node.kind === 'join') {
@@ -2818,12 +2825,14 @@
     }
 
     // What the palette offers: an MCP box only while there is a server the
-    // person may call with a tool that reads (ws_step_mcp_form_servers()).
+    // person may call with a tool that reads (ws_step_mcp_form_servers()), a
+    // row box only while there is a table they read (ws_flow_row_tables()).
     function paletteItems() {
         var mcp = stepLists().mcp.length > 0;
+        var tables = stepLists().tables.length > 0;
 
         return PALETTE.filter(function (item) {
-            return (item[0] !== 'mcp') || mcp;
+            return ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables);
         });
     }
 
@@ -3321,6 +3330,10 @@
 
             if (node.kind === 'event') {
                 ((outputs.events || {})[node.config.event] || []).forEach(function (item) { add('trigger.', item); });
+            }
+
+            if (node.kind === 'row') {
+                rowCellValues(node.config).forEach(function (item) { add('trigger.', item); });
             }
 
             return list;
@@ -3953,6 +3966,10 @@
 
         if (node.kind === 'join') {
             channelField(box, node, t('fl_join_channel'), t('fl_join_any'));
+        }
+
+        if (node.kind === 'row') {
+            rowFields(box, node);
         }
 
         if (state.edit) {
@@ -5072,6 +5089,82 @@
         }
     }
 
+    // What happens to a row that starts a row box's flow (ws_flow_row_whats()).
+    var ROW_WHATS = { created: 'fl_row_created', updated: 'fl_row_updated', deleted: 'fl_row_deleted' };
+
+    // The table a row box waits on, of those the person reads; null for none.
+    function rowTable(config) {
+        return stepLists().tables.filter(function (table) { return table.id === config.table_id; })[0] || null;
+    }
+
+    // A row box in a few words: what happens, the table, the column a change
+    // has to write.
+    function rowMeta(config) {
+        var table = rowTable(config);
+
+        if (!config.table_id) {
+            return t('fl_row_none');
+        }
+
+        var column = table ? table.columns.filter(function (item) { return item.id === config.column_id; })[0] : null;
+
+        return t(ROW_WHATS[config.what] || 'fl_row_created') + ' · ' + (table ? table.name : '#' + config.table_id) + (column ? ' · ' + column.name : '');
+    }
+
+    // The values of a row's cells a row box gives beside the server's own
+    // (ws_flow_row_outputs()): one per column of its table, by the column's name.
+    function rowCellValues(config) {
+        var table = rowTable(config);
+
+        return table ? table.columns.map(function (column) {
+            return { key: 'cell_' + column.id, label: column.name, type: ((column.type === 'number') || (column.type === 'money')) ? 'number' : 'text' };
+        }) : [];
+    }
+
+    // A row box's table, what happens to the row, and for a change the
+    // column it has to write.
+    function rowFields(box, node) {
+        var config = node.config;
+        var tables = stepLists().tables;
+        var options = [[0, t('fl_row_table_pick')]].concat(tables.map(function (table) { return [table.id, table.name]; }));
+
+        if (config.table_id && !rowTable(config)) {
+            options.push([config.table_id, '#' + config.table_id]);
+        }
+
+        var pick = K.select(options, config.table_id || 0);
+        var what = K.select(Object.keys(ROW_WHATS).map(function (key) { return [key, t(ROW_WHATS[key])]; }), config.what || 'created');
+
+        pick.addEventListener('change', function () {
+            config.table_id = parseInt(pick.value, 10) || 0;
+            config.column_id = 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        what.addEventListener('change', function () {
+            config.what = what.value;
+            config.column_id = 0;
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_row_table'), pick, t('fl_row_table_help')));
+        box.appendChild(field(t('fl_row_what'), what));
+
+        var table = rowTable(config);
+
+        if ((config.what !== 'updated') || !table) {
+            return;
+        }
+
+        var column = K.select([[0, t('fl_row_any_column')]].concat(table.columns.map(function (item) { return [item.id, item.name]; })), config.column_id || 0);
+
+        column.addEventListener('change', function () {
+            config.column_id = parseInt(column.value, 10) || 0;
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_row_column'), column, t('fl_row_column_help')));
+    }
+
     // The days of the week by number, 1 Monday - 7 Sunday.
     var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
 
@@ -6077,6 +6170,11 @@
             config = { event: '', page_id: 0, status: '', channel_id: 0 };
         } else if (kind === 'join') {
             config = { channel_id: 0 };
+        } else if (kind === 'row') {
+            // The one table there is is taken; of several, none yet.
+            var tables = stepLists().tables;
+
+            config = { table_id: (tables.length === 1) ? tables[0].id : 0, what: 'created', column_id: 0 };
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

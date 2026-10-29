@@ -1034,6 +1034,7 @@
     "Posted by {var:1}, {var:2}": "{var:1} paylaştı, {var:2}",
     "Posted in the channel it is made from, the card shows in this discussion too.": "Açıldığı kanala basılan kart bu tartışmada da görünür.",
     "Posted in the channel.": "Kanalda paylaşıldı.",
+    "Posted in {var:1} in your name each time the flow starts.": "Akış her başladığında sizin adınıza {var:1} kanalına gönderilir.",
     "Posted:": "Gönderildi:",
     "Posters hanging at a print fair": "Bir baskı fuarında asılı afişler",
     "Posting and Replying": "Konu Açma ve Yanıtlama",
