@@ -51,7 +51,7 @@ function test_settings_pane_invalid_answer_names_fields()
 	$at = strpos($pane, "'status' => 'invalid'");
 
 	pg_assert_true($at !== false, 'invalid answer found');
-	pg_assert_contains("'fields' => \$fields", substr($pane, (int) $at, 300), 'invalid answer carries the marked fields');
+	pg_assert_contains('\'fields\' => $fields ? $fields : new stdClass()', substr($pane, (int) $at, 300), 'invalid answer carries the marked fields');
 	pg_assert_contains('pg_settings_marked_fields(', $pane);
 }
 

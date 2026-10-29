@@ -8879,6 +8879,106 @@ function pg_background_calls_allowed() {
         return !!(node && node.classList && node.classList.contains('invalid-feedback'));
     }
 
+    function pgIsControl(node) {
+        return !!(node && /^(INPUT|SELECT|TEXTAREA)$/.test(node.tagName));
+    }
+
+    // Right after the field, or after the row wrapper holding it (a switch
+    // inside a .form-field: at the end of the .form-field).
+    function pgPutFeedback(el, feedback) {
+        var wrapper = el.closest ? el.closest(PG_FEEDBACK_WRAPPERS) : null;
+        var field = (wrapper && wrapper.classList.contains('switch') && wrapper.closest) ? wrapper.closest('.form-field') : null;
+
+        if (field) {
+            field.appendChild(feedback);
+        } else if (wrapper) {
+            wrapper.insertAdjacentElement('afterend', feedback);
+        } else {
+            el.insertAdjacentElement('afterend', feedback);
+        }
+    }
+
+    // The message that belongs to a field: a later sibling before the next
+    // control (Bootstrap's .is-invalid ~ .invalid-feedback), else the one
+    // pgPutFeedback() places after its row wrapper.
+    function pgFieldFeedback(el) {
+        var wrapper = el.closest ? el.closest(PG_FEEDBACK_WRAPPERS) : null;
+        var field = (wrapper && wrapper.classList.contains('switch') && wrapper.closest) ? wrapper.closest('.form-field') : null;
+        var node;
+
+        for (node = el.nextElementSibling; node; node = node.nextElementSibling) {
+            if (pgIsFeedback(node)) return node;
+            if (pgIsControl(node) || (node.querySelector && node.querySelector('input, select, textarea'))) break;
+        }
+
+        node = field ? field.lastElementChild : (wrapper ? wrapper.nextElementSibling : null);
+
+        return pgIsFeedback(node) ? node : null;
+    }
+
+    // Adds or removes one id in aria-describedby, keeping the others.
+    function pgDescribedBy(el, id, on) {
+        var ids = (el.getAttribute('aria-describedby') || '').split(/\s+/).filter(Boolean);
+        var at = ids.indexOf(id);
+
+        if (on && at === -1) ids.push(id);
+        if (!on && at !== -1) ids.splice(at, 1);
+
+        if (ids.length) {
+            el.setAttribute('aria-describedby', ids.join(' '));
+        } else {
+            el.removeAttribute('aria-describedby');
+        }
+    }
+
+    // Mirrors .is-invalid into aria-invalid and links the field's message
+    // through aria-describedby while the field is invalid, so a screen reader
+    // hears the error and its reason; both go when the class does. A message
+    // hidden by CSS is still read through the link.
+    function pgFieldAria(el) {
+        var on = el.classList.contains('is-invalid');
+        var feedback = pgFieldFeedback(el);
+
+        if (on) {
+            el.setAttribute('aria-invalid', 'true');
+        } else if (el.getAttribute('aria-invalid') === 'true') {
+            el.removeAttribute('aria-invalid');
+        }
+
+        if (!feedback) return;
+
+        if (on && !feedback.id) {
+            feedback.id = (el.id || ('pg-field-' + Math.random().toString(36).slice(2, 8))) + '-feedback';
+        }
+
+        if (feedback.id) pgDescribedBy(el, feedback.id, on);
+    }
+
+    // Marks a field invalid or clears it, for a script that checks a field
+    // after the page was drawn. With a message and none on the page for the
+    // field, one is made where pgPutFeedback() puts it; clearing removes it.
+    function pgFieldInvalid(el, on, message) {
+        var feedback = pgFieldFeedback(el);
+        var made = !!(feedback && feedback.hasAttribute('data-pg-made'));
+
+        if (on && message) {
+            if (!feedback) {
+                feedback = document.createElement('div');
+                feedback.className = 'invalid-feedback d-block pg-inline-feedback';
+                feedback.setAttribute('data-pg-made', '');
+                pgPutFeedback(el, feedback);
+                made = true;
+            }
+
+            if (made) feedback.textContent = message;
+        }
+
+        el.classList.toggle('is-invalid', !!on);
+        pgFieldAria(el);
+
+        if (!on && made) feedback.remove();
+    }
+
     // Puts an invalid field's error message where it can be read: right after
     // the field, or after the row wrapper holding it (a switch inside a
     // .form-field: at the end of the .form-field). A message liveform printed
@@ -8896,13 +8996,7 @@ function pg_background_calls_allowed() {
         var placed = null;
 
         function put(feedback) {
-            if (field) {
-                field.appendChild(feedback);
-            } else if (wrapper) {
-                wrapper.insertAdjacentElement('afterend', feedback);
-            } else {
-                el.insertAdjacentElement('afterend', feedback);
-            }
+            pgPutFeedback(el, feedback);
         }
 
         if (wrapper) {
@@ -8957,6 +9051,8 @@ function pg_background_calls_allowed() {
             if (!el.hasAttribute('aria-invalid')) el.setAttribute('aria-invalid', 'true');
 
             pgPlaceInlineFeedback(el, window.__pgFieldErrors);
+
+            if (pgIsControl(el) && el.classList.contains('is-invalid')) pgFieldAria(el);
         });
 
         // Faz 4a: auto-bind <label> elements that have no `for` attribute to a
@@ -9026,8 +9122,27 @@ function pg_background_calls_allowed() {
         pgInjectAriaAndRequiredMarkers();
     }
 
+    // Scripts mark fields after the page is drawn (a product code already in
+    // use, a blank SKU on save, a quick-account field the server refused) and
+    // clear them again, mostly by the class alone: the observer keeps
+    // aria-invalid and the message link in step with it, whoever changes it.
+    if (window.MutationObserver) {
+        new MutationObserver(function (records) {
+            records.forEach(function (record) {
+                var el = record.target;
+
+                if (!pgIsControl(el)) return;
+
+                var was = /(^|\s)is-invalid(\s|$)/.test(record.oldValue || '');
+
+                if (was !== el.classList.contains('is-invalid')) pgFieldAria(el);
+            });
+        }).observe(document.documentElement, { subtree: true, attributes: true, attributeFilter: ['class'], attributeOldValue: true });
+    }
+
     // Expose for callers that render forms after initial load.
     window.pgInjectAriaAndRequiredMarkers = pgInjectAriaAndRequiredMarkers;
+    window.pgFieldInvalid = pgFieldInvalid;
 })(window);
 
 /* ── User permission rows (add_user.php, edit_user.php) ────────────────────
@@ -10097,6 +10212,12 @@ var pgSettingsModal = (function () {
         // question; a code field raises input on its textarea the same way.
         $('#pg_settings_modal_pane').on('change input', review);
 
+        // A field a refused save marked loses the mark once it is edited.
+        $('#pg_settings_modal_pane').on('change input', '[data-pg-sm-marked]', function () {
+            this.removeAttribute('data-pg-sm-marked');
+            window.pgFieldInvalid(this, false);
+        });
+
         // Return in a text field submits a form. There is nowhere for this one
         // to go, so it saves instead. Only a submit carries the card button
         // that started it: the button is taken here and handed over, so a
@@ -10535,6 +10656,83 @@ var pgSettingsModal = (function () {
 
 
     /**
+     * The control a refused save named: by its name, as a list field
+     * (name[]), or the first control of a nested list (languages[tr][prefix]
+     * for languages). A hidden twin of a checkbox is never the one marked.
+     */
+    function markable(name) {
+
+        var box = byId('pg_settings_modal_pane');
+
+        if (!box || !name) {
+            return null;
+        }
+
+        var esc = (window.CSS && CSS.escape) ? CSS.escape : function (text) { return String(text).replace(/["\\]/g, '\\$&'); };
+        var found = box.querySelectorAll('[name="' + esc(name) + '"], [name="' + esc(name + '[]') + '"], [name^="' + esc(name + '[') + '"]');
+
+        for (var i = 0; i < found.length; i++) {
+
+            if (found[i].type !== 'hidden') {
+                return found[i];
+            }
+        }
+
+        return null;
+    }
+
+
+    /**
+     * Takes back the marks of the last refused save.
+     */
+    function unmark() {
+
+        $('#pg_settings_modal_pane [data-pg-sm-marked]').each(function () {
+            this.removeAttribute('data-pg-sm-marked');
+            window.pgFieldInvalid(this, false);
+        });
+    }
+
+
+    /**
+     * A save the server refused names the fields it marked, each with its
+     * sentence. They are marked here with the sentence under them, the notice
+     * at the top of the scrolling form comes into view -- the footer Save is
+     * pressed from anywhere in the pane -- and the first marked field that
+     * can take focus gets it, so the operator lands on what to fix. Focus
+     * opens a latched field the way a click does.
+     */
+    function refused(fields) {
+
+        var first = null;
+
+        unmark();
+
+        Object.keys(fields).forEach(function (name) {
+
+            var control = markable(name);
+
+            if (!control) {
+                return;
+            }
+
+            control.setAttribute('data-pg-sm-marked', '');
+            window.pgFieldInvalid(control, true, fields[name]);
+
+            if (!first && !control.disabled && control.getClientRects().length) {
+                first = control;
+            }
+        });
+
+        form.scrollTop = 0;
+
+        if (first) {
+            first.focus();
+        }
+    }
+
+
+    /**
      * What went wrong, in the operator's language where the server said so.
      */
     function complaint(xhr) {
@@ -10968,6 +11166,8 @@ window.pgCodeEditorReady = function (markup, done) {
                 notice((response.errors && response.errors.length)
                     ? response.errors.join(' ')
                     : say('failed'), true);
+
+                refused(response.fields || {});
 
                 return;
             }
