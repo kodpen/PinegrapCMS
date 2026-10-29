@@ -349,6 +349,7 @@ function ws_js_strings()
         'workspace'              => lang('Workspace'),
         'workspace_settings'     => lang('Workspace Settings'),
         'all_types'              => lang('All'),
+        'ref_kind'               => lang('Kind of record'),
         'type_to_search'         => lang('Type to search every kind of record, or pick one.'),
         'busiest_channels'       => lang('Busiest channels'),
         'busiest_day'            => ws_js_template('Busiest day: {var:1} ({var:2} tasks, {var:3} messages)', 3),

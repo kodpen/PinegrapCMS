@@ -452,7 +452,8 @@
                 dialog = el('dialog', 'dialog ws-ask-modal pg-dialog-centered');
                 dialog.id = 'ws-ask';
                 dialog.tabIndex = -1;
-                dialog.innerHTML = '<div class="dialog-body"><p class="mb-3" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
+                dialog.setAttribute('aria-labelledby', 'ws-ask-text');
+                dialog.innerHTML = '<div class="dialog-body"><p class="mb-3" id="ws-ask-text" data-ws-ask-text></p><div data-ws-ask-details></div></div>'
                     + '<div class="dialog-footer"><button type="button" class="btn btn-sm btn-text theme-secondary" data-bs-dismiss="dialog" data-ws-ask-cancel></button>'
                     + '<button type="button" class="btn btn-sm btn-solid theme-primary rounded-pill px-5" data-ws-ask-ok></button></div>';
                 document.body.appendChild(dialog);
@@ -470,6 +471,15 @@
 
             if (details) {
                 detailBox.appendChild(details);
+
+                // A detail control without a name of its own (a rename box, a
+                // select) is named by the question it answers.
+                var first = (/^(INPUT|SELECT|TEXTAREA)$/.test(details.tagName) || details.getAttribute('role')) ? details
+                    : details.querySelector('input:not([type="hidden"]), select, textarea, [role="group"], [role="radiogroup"]');
+
+                if (first && !hasName(first)) {
+                    first.setAttribute('aria-labelledby', 'ws-ask-text');
+                }
             }
 
             var ok = dialog.querySelector('[data-ws-ask-ok]');
@@ -2767,12 +2777,55 @@
         };
     }
 
+    // The field a caption names: the control itself, or the first field
+    // inside a wrapper (an input group). None for a picker box (a role of
+    // its own), which its caption names as a group.
+    function labelTarget(control) {
+        if (/^(INPUT|SELECT|TEXTAREA)$/.test(control.tagName)) {
+            return control;
+        }
+
+        if (control.getAttribute('role')) {
+            return null;
+        }
+
+        return control.querySelector('input:not([type="hidden"]), select, textarea');
+    }
+
+    // Whether a control already has a name of its own. A form is built off
+    // the page, where .labels finds nothing, so a <label for> is looked up in
+    // the tree the control is in.
+    function hasName(control) {
+        if (control.hasAttribute('aria-label') || control.hasAttribute('aria-labelledby')
+            || (control.labels && control.labels.length) || control.closest('label')) {
+            return true;
+        }
+
+        var root = control;
+
+        while (root.parentNode) {
+            root = root.parentNode;
+        }
+
+        return !!(control.id && root.querySelector && root.querySelector('label[for="' + control.id + '"]'));
+    }
+
     function formRow(label, control, help) {
         var row = el('div', 'mb-5');
         var caption = el('label', 'form-label', label);
+        var field = labelTarget(control);
 
-        if (control.id) {
-            caption.htmlFor = control.id;
+        // A wrapper's field that is named already (a radio with its own
+        // label, a search box with an aria-label) keeps its name.
+        if (field && (field === control || !hasName(field))) {
+            if (!field.id) {
+                field.id = nextId('ws-field-');
+            }
+
+            caption.htmlFor = field.id;
+        } else if (!field && control.getAttribute('role') && !hasName(control)) {
+            caption.id = nextId('ws-caption-');
+            control.setAttribute('aria-labelledby', caption.id);
         }
 
         row.appendChild(caption);
@@ -3191,6 +3244,8 @@
         var box = el('div', 'ws-people-select');
         var chosen = {};
 
+        box.setAttribute('role', 'group');
+
         (selected || []).forEach(function (id) { chosen[id] = true; });
 
         ((BOOT && BOOT.people) || []).forEach(function (member) {
@@ -3228,6 +3283,7 @@
 
                 if (member) {
                     toggle.classList.toggle('active', !!chosen[member.id]);
+                    toggle.setAttribute('aria-pressed', chosen[member.id] ? 'true' : 'false');
                 }
             });
         };
@@ -3255,6 +3311,7 @@
         var list = null;
 
         typeSelect.style.maxWidth = '9rem';
+        typeSelect.setAttribute('aria-label', t('ref_kind'));
 
         if (Object.keys(types).length > 1) {
             var every = el('option', '', t('all_types'));
@@ -4362,6 +4419,7 @@
         var swatches = [];
 
         box.setAttribute('role', 'radiogroup');
+        box.setAttribute('aria-label', t('color'));
 
         [{ id: 0, hex: '', name: t('color_none') }].concat(CFG.palette || []).forEach(function (color) {
             var swatch = el('button', 'ws-swatch' + (color.id ? '' : ' ws-swatch-none'));
@@ -5970,6 +6028,7 @@
 
                 clear(slot);
                 picker = select(options, 0);
+                picker.setAttribute('aria-label', t('fwd_note_pick'));
                 slot.appendChild(picker);
             }).catch(function (error) {
                 clear(slot);
@@ -15330,7 +15389,18 @@
 
     function saLabelled(label, node, help) {
         var wrap = el('div', 'ws-sa-field');
-        wrap.appendChild(el('label', 'form-label small mb-1', label));
+        var caption = el('label', 'form-label small mb-1', label);
+        var field = labelTarget(node);
+
+        if (field && (field === node || !hasName(field))) {
+            if (!field.id) {
+                field.id = nextId('ws-sa-field-');
+            }
+
+            caption.htmlFor = field.id;
+        }
+
+        wrap.appendChild(caption);
         wrap.appendChild(node);
 
         if (help) {
@@ -21218,6 +21288,7 @@
             var right = select([[0, t('notes_can_view')], [1, t('notes_can_edit')]], 1);
 
             right.classList.add('w-auto', 'mt-3');
+            right.setAttribute('aria-label', t('notes_share_right'));
             details.appendChild(picker);
             details.appendChild(right);
             details.appendChild(el('div', 'form-text', t('notes_share_people_help')));
