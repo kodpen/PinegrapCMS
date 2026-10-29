@@ -1146,3 +1146,55 @@ function pg_shipment_warning_text($carrier_name)
 
     return lang(array('string' => 'This does not look like a {var:1} tracking number. It was saved anyway.', 'vars' => array($carrier_name)));
 }
+
+/**
+ * The province a Turkish postcode points to, when it is not the address's
+ * own province; '' when they agree or the address cannot be checked.
+ *
+ * A Turkish postcode starts with the province's plate number (34xxx is
+ * İstanbul, 06xxx Ankara), so the first two digits are compared with the
+ * plate number of the province in the state field (since #2004 an n11 import
+ * writes the province there too). Only a TR address with a five-digit postcode
+ * and a state the sales map recognises, old spellings included, is checked:
+ * older n11 imports kept the district in the state field, and those, other
+ * countries and empty or malformed postcodes give ''. The answer is only
+ * shown as a note; nothing is blocked or changed.
+ *
+ * @param  string $country  the stored country code
+ * @param  string $state    the stored state (province)
+ * @param  string $postcode the stored postcode
+ * @return string the province name the postcode belongs to, or ''
+ */
+function pg_shipping_postcode_province($country, $state, $postcode)
+{
+    $country = is_scalar($country) ? strtoupper(trim((string) $country)) : '';
+    $state = is_scalar($state) ? trim((string) $state) : '';
+    $postcode = is_scalar($postcode) ? trim((string) $postcode) : '';
+
+    if (($country !== 'TR') || ($state === '') || !preg_match('/^[0-9]{5}$/', $postcode)) {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $code = pg_sales_map_match_region('TR', $state);
+    $regions = pg_sales_map_tr_regions();
+    $postcode_code = 'TR-' . substr($postcode, 0, 2);
+
+    if (($code === '') || !isset($regions[$postcode_code]) || ($postcode_code === $code)) {
+        return '';
+    }
+
+    return $regions[$postcode_code];
+}
+
+/**
+ * The note under an address whose postcode belongs to another province.
+ *
+ * @param  string $province the province the postcode points to
+ * @return string
+ */
+function pg_shipping_postcode_province_text($province)
+{
+    return lang(array('string' => 'This postcode belongs to {var:1}, not to the province given. Check the address before shipping.', 'vars' => array($province)));
+}
