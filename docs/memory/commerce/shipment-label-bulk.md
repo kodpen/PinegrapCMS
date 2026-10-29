@@ -1,6 +1,6 @@
 ---
 name: shipment-label-bulk
-description: Bulk carrier labels from the orders list (create, one merged PDF), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #PRNUM)
+description: Bulk carrier labels from the orders list (create, one merged PDF), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #3137)
 module: pdf_merge
 ---
 

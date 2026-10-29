@@ -1067,7 +1067,7 @@ if (!$_POST) {
                             '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
                                 <span class="fw-medium text-break">' . h($shipment_label['number']) . '</span>
                                 <span class="small fg-secondary">' . h($shipment_label_driver ? $shipment_label_driver['label'] : $shipment_label['driver']) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
-                                ' . ($shipment_label_return ? '<span class="badge theme-info">' . lang('Return') . '</span>' : '') . '
+                                ' . ($shipment_label_return ? '<span class="badge theme-info">' . lang('Return Label') . '</span>' : '') . '
                                 ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
                                 <span class="ms-auto pg-print-none">
                                     <a class="btn btn-link pg-link-secondary py-0" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
