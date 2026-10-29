@@ -13,7 +13,7 @@ description: Generated from the module field of the memory files: each includes/
 - `audit_view`: [[audit-trail-screen]]
 - `auth`: [[sign-in-one-message]]
 - `backup`: [[fn-module-errors-mail-backup-consent]]
-- `bundles`: [[product-bundles]]
+- `bundles`: [[product-bundles]], [[product-bundles-storefront]]
 - `carrier_labels`: [[carrier-label-drivers]]
 - `classic_style_design`: [[classic-style-design-files]], [[classic-style-folder-pages]], [[classic-style-to-design]]
 - `collections`: [[collection-references]]

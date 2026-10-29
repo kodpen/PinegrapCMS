@@ -19,6 +19,7 @@
     "Quantity edit input (HTML)": "Adet düzenleme girdisi (HTML)",
     "Quantity for the next product": "Sonraki ürünün adedi",
     "Quantity in stock": "Stok adedi",
+    "Quantity in the bundle": "Paketteki adet",
     "Quantity is required.": "Miktar gerekli.",
     "Quantity of {var:1}": "{var:1} miktarı",
     "Quantity shipped (when the shop shows it)": "Gönderilen adet (mağaza gösteriyorsa)",

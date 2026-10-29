@@ -75,6 +75,7 @@ function test_widget_lists_product_descriptors()
 		'product.images'     => pg_sw_list_product_image_rows('a.jpg', array()),
 		'product.attributes' => pg_sw_list_product_attr_rows(array(array('name' => 'color', 'label' => 'Colour', 'option_label' => 'Red', 'no_value' => '0'))),
 		'product.related'    => pg_sw_list_product_related_rows(array(array('id' => 4, 'name' => 'Cup'))),
+		'product.bundle_items' => pg_sw_list_product_bundle_rows(array(array('product_id' => 4, 'quantity' => 2, 'enabled' => '1')), ''),
 	);
 	$sources = pg_sw_list_sources();
 	pg_assert_same(array_merge(array_keys($rows), array('catalog.crumbs')), array_keys(pg_sw_kind_lists('catalog_item_view')), 'the detail view offers the product sources and the crumbs');
@@ -92,7 +93,29 @@ function test_widget_lists_product_descriptors()
 	foreach (array('form_list_view', 'form_item_view') as $kind) {
 		foreach (pg_sw_kind_lists($kind) as $d) pg_assert_true(in_array($d['family'], array('form_record', 'paging'), true), $kind . ': no product list');
 	}
-	pg_assert_same(array('product.images', 'product.attributes', 'catalog.crumbs', 'catalog.active_filters', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
+	pg_assert_same(array('product.images', 'product.attributes', 'product.bundle_items', 'catalog.crumbs', 'catalog.active_filters', 'paging.pages'), array_keys(pg_sw_kind_lists('catalog_listing')), 'the listing: no products bought together');
+}
+
+// A bundle's contents: in its order, the quantity at least one, the
+// address on the detail page and the main image; a component switched off
+// is not shown.
+function test_widget_lists_product_bundle_rows()
+{
+	$rows = pg_sw_list_product_bundle_rows(array(
+		array('product_id' => 7, 'quantity' => '2', 'name' => 'MUG-1', 'short_description' => 'Mug', 'address_name' => 'big mug', 'image_name' => 'mug 1.jpg', 'enabled' => '1'),
+		array('product_id' => 8, 'quantity' => '1', 'name' => 'OFF', 'short_description' => 'Hidden', 'address_name' => 'off', 'image_name' => '', 'enabled' => '0'),
+		array('product_id' => 9, 'quantity' => '0', 'name' => 'TEA', 'short_description' => 'Tea', 'address_name' => '', 'image_name' => '', 'enabled' => '1'),
+		array('quantity' => 3),
+		'junk',
+	), '/shop/');
+	pg_assert_same(array(
+		array('__bundle_item_name' => 'MUG-1', '__bundle_item_short_description' => 'Mug', '__bundle_item_quantity' => '2',
+		      '__bundle_item_url' => '/shop/big%20mug', '__bundle_item_image_url' => _wlp_base() . 'mug%201.jpg'),
+		array('__bundle_item_name' => 'TEA', '__bundle_item_short_description' => 'Tea', '__bundle_item_quantity' => '1',
+		      '__bundle_item_url' => '#', '__bundle_item_image_url' => ''),
+	), $rows);
+	pg_assert_same('#', $rows ? pg_sw_list_product_bundle_rows(array(array('product_id' => 7, 'address_name' => 'mug')), '')[0]['__bundle_item_url'] : '', 'no detail page, no address');
+	pg_assert_same(array(), pg_sw_list_product_bundle_rows(null, '/shop/'), 'a plain product lists nothing');
 }
 
 function test_widget_lists_product_rows()

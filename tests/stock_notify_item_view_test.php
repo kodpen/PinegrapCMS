@@ -173,7 +173,7 @@ function test_stock_notify_item_view_renderer()
 {
 	$view = pg_test_function_source('_render_system_widget_catalog_item_view');
 
-	pg_assert_contains("_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating', 'can_notify'));", $view, 'can_notify is a flag of the product page');
+	pg_assert_contains("_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating', 'can_notify', 'is_bundle', 'has_bundle_saving'));", $view, 'can_notify is a flag of the product page');
 	pg_assert_contains("'can_notify' => (\$_civ_notify_form !== '') && \$p && pg_stock_notify_product_out(", $view, 'from the product, while the requests can be kept');
 	pg_assert_contains("_pg_catalog_stock_states_differ(\$variant_data['products'])", $view, 'switched only when the variants differ');
 	pg_assert_contains("\$_civ_switched[] = 'can_notify';", $view);

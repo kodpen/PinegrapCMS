@@ -8,10 +8,10 @@ module: bundles
 - `products.bundle`, `bundle_pricing` ('fixed'/'sum'), `bundle_discount_bp` (basis points). `product_bundle_items` (bundle_id, product_id, quantity, sort_order; UNIQUE (bundle_id, product_id)).
 - `order_item_components` and `erp_invoice_item_components` are created empty: the sale and ERP steps write them.
 - `erp_stock_moves`: `uniq_line_product (kind, line_id, product_id)` replaces `uniq_line (kind, line_id)`, added before the old one is dropped (rerun-safe, never without a unique key).
-- Before the step `pg_bundles_ready()` is false; every function answers empty.
+- Before the step `pg_bundles_ready()` is false: all answer empty.
 
 ## How are stock and price derived?
-- `pg_bundle_stock()`: least `floor(stock / quantity)` over tracked components, negative stock counts as none; no tracked component = untracked bundle; no contents = tracked with 0 (an empty bundle cannot be sold). Back order kept only while every tracked component takes it.
+- `pg_bundle_stock()`: least `floor(stock / quantity)` over tracked components, negative stock counts as none; no tracked component = untracked bundle; no contents = tracked with 0 (an empty bundle cannot sell). Back order kept only while every tracked component takes it.
 - `pg_bundle_price()`: 'fixed' keeps `products.price`; 'sum' = `round(sum(price × qty) × (10000 − bp) / 10000)`.
 - `pg_bundle_refresh($id)` writes what changed: stock through `pg_product_stock_changed(..., 'bundle')`, price with `pg_price_history_record()` and the marketplace queue.
 
@@ -26,8 +26,8 @@ module: bundles
 - Checkout (#2826): `pg_order_complete_line_stock()` routes a line through `pg_bundle_sale_takes_components()` (pure: a bundle with an order item id) to `pg_bundle_take_stock(..., 'checkout', $stock_left)` and returns before the plain decrement.
 - `check_inventory()`: a cart holding a bundle goes to `pg_bundle_check_inventory()`: every line against one stock pool (`pg_bundle_cart_allowance()`, lines in id order); other carts keep the old loop.
 
-## What does the ERP do with a bundle line?
-- One invoice line, one stock move per component: `erp/erp-bundle-lines.md`.
+## Where else is a bundle handled?
+- ERP: one invoice line, a stock move per component (`erp/erp-bundle-lines.md`). Storefront: [[product-bundles-storefront]].
 
 ## What does the product screen do?
 - Edit screen only: the Bundle card (`pg_pb_render_bundle_card()`, `assets/js/product_bundle.js`), search through `add_order.php?request=search_products`. Hidden `bundle_card` marks a save that carries it.

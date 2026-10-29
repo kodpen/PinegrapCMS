@@ -14,7 +14,7 @@
 // Loaded by functions.php through require_once, never on its own.
 //
 // A product list repeats what one product holds: its images, its attribute
-// values, the products bought with it. The catalog detail and listing
+// values, the products bought with it, the contents of a bundle. The catalog detail and listing
 // renderers read the rows of the sources their tree lists
 // (pg_sw_list_wanted()) for the products they show and publish them
 // (pg_sw_list_publish('product', …)); the finish pass draws each span from
@@ -71,6 +71,20 @@ function pg_sw_list_product_sources()
                 array('__related_image_url', lang('Image address')),
                 array('__related_price', lang('Price')),
                 array('__related_original_price', lang('Price before the discount')),
+            ),
+        ),
+        'product.bundle_items' => array(
+            'family'       => 'product',
+            'key'          => '__id',
+            'label'        => lang('Contents of the bundle'),
+            'arg'          => '',
+            'arg_required' => false,
+            'tokens'       => array(
+                array('__bundle_item_name', lang('Product name')),
+                array('__bundle_item_short_description', lang('Short Description')),
+                array('__bundle_item_quantity', lang('Quantity in the bundle')),
+                array('__bundle_item_url', lang('Product address')),
+                array('__bundle_item_image_url', lang('Image address')),
             ),
         ),
     );
@@ -140,13 +154,40 @@ function pg_sw_list_product_related_rows($items)
     return $out;
 }
 
+// The rows of a bundle contents list from the bundle's components
+// (pg_bundle_contents_of()), in the bundle's order: name, short
+// description, how many of it the bundle holds, its address on the detail
+// page ($url_prefix ending in '/', '' for none: '#') and its main image.
+// A component switched off is not shown, as nowhere else in the catalog.
+function pg_sw_list_product_bundle_rows($items, $url_prefix)
+{
+    $base = defined('OUTPUT_PATH') ? OUTPUT_PATH : '/';
+    $out  = array();
+    foreach (is_array($items) ? $items : array() as $it) {
+        if (!is_array($it) || empty($it['product_id']) || (isset($it['enabled']) && (string)$it['enabled'] !== '1')) continue;
+        $address = isset($it['address_name']) ? (string)$it['address_name'] : '';
+        $image   = isset($it['image_name']) ? (string)$it['image_name'] : '';
+        $out[] = array(
+            '__bundle_item_name'              => isset($it['name']) ? (string)$it['name'] : '',
+            '__bundle_item_short_description' => isset($it['short_description']) ? (string)$it['short_description'] : '',
+            '__bundle_item_quantity'          => (string)max(1, (int)(isset($it['quantity']) ? $it['quantity'] : 1)),
+            '__bundle_item_url'               => ((string)$url_prefix !== '' && $address !== '') ? $url_prefix . encode_url_path($address) : '#',
+            '__bundle_item_image_url'         => (trim($image) !== '') ? $base . encode_url_path($image) : '',
+        );
+    }
+    return $out;
+}
+
 // What a catalog renderer publishes for the products it shows ($products:
 // rows with their id and image_name): source => product id => rows, for
 // each source in $sources (source => true). One query per source for all
 // the products, but the products bought together: one cross-sell lookup
 // per product (only the detail view offers them). $detail_page_id is the
-// page a related product links to (0: none, as the cross-sell block).
-function pg_sw_list_product_read($products, $sources, $detail_page_id = 0)
+// page a related product links to (0: none, as the cross-sell block); a
+// bundle's component links to it too, else to the site's detail page.
+// $bundles (bundle id => contents, pg_bundle_contents_of()) is what the
+// renderer already read for the bundle tokens; null reads it here.
+function pg_sw_list_product_read($products, $sources, $detail_page_id = 0, $bundles = null)
 {
     $out  = array();
     $main = array();
@@ -187,6 +228,14 @@ function pg_sw_list_product_read($products, $sources, $detail_page_id = 0)
     if (isset($sources['product.related'])) {
         foreach (array_keys($main) as $pid) {
             $out['product.related'][$pid] = pg_sw_list_product_related_rows(_civ_get_cross_sell_items($pid, (int)$detail_page_id, 12));
+        }
+    }
+    if (isset($sources['product.bundle_items'])) {
+        if ($bundles === null) $bundles = pg_bundle_contents_of(array_keys(pg_bundle_ids_among(array_keys($main))));
+        $page   = $bundles ? pg_sw_catalog_detail_page_name((int)$detail_page_id) : '';
+        $prefix = ($page !== '') ? (defined('OUTPUT_PATH') ? OUTPUT_PATH : '/') . encode_url_path($page) . '/' : '';
+        foreach (array_keys($main) as $pid) {
+            $out['product.bundle_items'][$pid] = isset($bundles[$pid]) ? pg_sw_list_product_bundle_rows($bundles[$pid], $prefix) : array();
         }
     }
     return $out;

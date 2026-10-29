@@ -1,6 +1,6 @@
 ---
 name: widget-lists-product
-description: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together; where rows are read, group cards, the cross-sell block they replace, what is left
+description: Product lists in the catalog detail and listing widgets (W9): images, attributes, products bought together and bundle contents; where rows are read, group cards, the cross-sell block, what is left
 module: widgets_lists_product
 ---
 
@@ -9,6 +9,7 @@ module: widgets_lists_product
 - `product.images`: the main image first, then `products_images_xref` by file name, each address once. Token `__gallery_url`.
 - `product.attributes`: `products_attributes_xref` → attribute label (its name without one) and option label, by attribute id and option sort order; an option marked `no_value` or empty gives no row. Tokens `__attr_name`, `__attr_value`.
 - `product.related`: `_civ_get_cross_sell_items($pid, $detail_page, 12)` (ordered together, else the product's groups). Tokens `__related_name`, `__related_short_description`, `__related_url`, `__related_image_url`, `__related_price` (price paid), `__related_original_price` (sticker price, empty without a discount): plain text, a sign stored as an entity (`&#8378;`) decoded, as the list pass escapes once.
+- `product.bundle_items`: a bundle's contents, quantity and link per component ([[product-bundles-storefront]], #2902).
 - `catalog.crumbs` (family `crumbs`, key `__has_breadcrumb`) sits beside them in both kinds: [[widget-default-parts-breadcrumb]].
 - Other values in a row (the product's `__name`, `__short_description` …) come through carriers, as in every list.
 

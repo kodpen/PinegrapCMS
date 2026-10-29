@@ -110,6 +110,8 @@ function test_catalog_rating_card_templates()
 	pg_assert_false(strpos($group, 'Stars') !== false, 'a group card has no stars');
 	pg_assert_false(strpos($group, 'No reviews yet') !== false, 'a group card has no "no reviews" text');
 
+	pg_assert_contains('pg-vis', $templates['marked'], 'the marked card keeps its markers for a bundle\'s states');
+	unset($templates['marked']);
 	foreach ($templates as $state => $html) {
 		pg_assert_contains('<p>Always</p>', $html, $state . ': an element without a flag');
 		pg_assert_contains('<p>Pasted</p>', $html, $state . ': a flag of another widget');
@@ -255,9 +257,8 @@ function test_catalog_rating_listing_source()
 	pg_assert_contains("'__rating_avg'          => \$rating['__rating_avg'],", $listing);
 	pg_assert_contains("'__rating_count'        => \$rating['__rating_count'],", $listing);
 	pg_assert_contains("\$loop_template       = \$_pg_cards['unrated'];", $listing, 'the card without a rating');
-	pg_assert_contains("\$loop_template_rated = \$_pg_cards['rated'];", $listing, 'the card with a rating');
-	pg_assert_contains('$rendered = ($rating[\'__rating_count\'] !== \'\') ? $loop_template_rated : $loop_template;', $listing);
-	pg_assert_contains("if (\$loop_template === '' && \$loop_template_rated === '') {", $listing, 'a card shown only with a rating is still a card');
+	pg_assert_contains("\$rendered = _pg_catalog_card_for(\$_pg_cards, \$rating['__rating_count'] !== '', _pg_catalog_bundle_flags(\$bundle));", $listing, 'the card of the rating and bundle state');
+	pg_assert_contains("if (trim(\$_pg_cards['marked']) === '') {", $listing, 'a card shown only with a rating is still a card');
 	pg_assert_contains("\$loop_template_group = \$_pg_cards['group'];", $listing);
 	pg_assert_contains("if (\$group_navigation !== 'none' && \$loop_template_group !== '') {", $listing, 'child groups need a group card');
 	pg_assert_contains('$g_rendered = $loop_template_group;', $listing, 'a group row draws neither rating state');
@@ -299,7 +300,7 @@ function test_catalog_rating_item_view_source()
 	pg_assert_contains("'rating_count'    => \$_p_rating['__rating_count'],", $view);
 
 	// Marked before the tree is drawn, resolved once the product is read.
-	$mark = strpos($view, "_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating', 'can_notify'));");
+	$mark = strpos($view, "_pg_sw_mark_visibility(\$tree_decoded, array('has_rating', 'no_rating', 'can_notify', 'is_bundle', 'has_bundle_saving'));");
 	$split = strpos($view, '$split = _split_widget_tree($tree_decoded);');
 	$resolve = strpos($view, '$loop_template = _pg_sw_resolve_visibility($loop_template, $_civ_flags);');
 

@@ -8,6 +8,6 @@ description: The store's reply under a product review (comments.seller_reply, se
 - The page prints it under the review in both markups (`pg_review_reply_html()`: text escaped, the date as `get_relative_time()`'s `<time>` element). `view_comments.php` marks verified reviews.
 
 ## Why is it there?
-- Plan `storefront-conversion-pack` (a): the store answers in the review area rather than in a second comment, so the answer stays with the review it is about.
+- Decided with the storefront pack (`storefront-pack-decisions.md`): the store answers in the review area rather than in a second comment, so the answer stays with the review it is about.
 - The answer window of Ticari Reklam Yönetmeliği 28/C (48 hours since RG 33297) is not modelled: nothing holds a review back for the reply. Not checked with a lawyer.
 - Only product reviews get the field (`pg_review_gate_applies()`); a page or form-record comment does not. Who reviews: `commerce/product-reviews-verified.md`.
