@@ -5,7 +5,9 @@
  * the writing box (a red dot, the time, Stop to send it, Discard), and the
  * player every sound file in a conversation is drawn with (play and pause,
  * the time, the speed, the download link), and the assistants' answers read
- * aloud by the browser's own speech for a person who switched it on.
+ * aloud by the browser's own speech for a person who switched it on. A
+ * recording without a server transcript offers "Convert to text" by the
+ * browser's own model (assets/js/pg_voice_text.js).
  *
  * assets/js/workspace.js draws the writing box and the messages and calls in
  * here with its own helpers. A recording leaves as an ordinary file through
@@ -843,7 +845,13 @@
         setRate(rate);
         draw();
 
+        // The server's transcript, or one on its way; else "Convert to
+        // text" where the browser's own model hears audio (pg_voice_text.js).
         var under = voice ? transcript(voice, h) : null;
+
+        if (!under && window.PGVoiceText) {
+            under = window.PGVoiceText.control(file.url, t, locale);
+        }
 
         if (!under) {
             return box;

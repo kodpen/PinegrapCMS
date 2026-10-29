@@ -6483,6 +6483,7 @@ function pg_js_bundles()
             'assets/js/workspace_acks.js',
             'assets/js/workspace_mail.js',
             'assets/js/workspace_status.js',
+            'assets/js/pg_voice_text.js',
             'assets/js/workspace_voice.js',
             'assets/js/workspace_customer.js',
             'assets/js/workspace_flow_flag.js',
@@ -6498,6 +6499,9 @@ function pg_js_bundles()
         'assets/js/workspace_side.min.js'          => array('assets/js/workspace_side.js'),
         'assets/js/payment_hosted.min.js'          => array('assets/js/payment_hosted.js'),
         'assets/js/pg_fx.min.js'                   => array('assets/js/pg_fx.src.js'),
+        // "Convert to text" under the chat window's voice messages; the
+        // workspace carries the same file in its own set.
+        'assets/js/pg_voice_text.min.js'           => array('assets/js/pg_voice_text.js'),
         // The panel's own script, on every panel screen. Loaded without
         // defer: the inline scripts of the screens call it as they run.
         'assets/js/backend.min.js'                 => array('assets/js/backend.src.js'),

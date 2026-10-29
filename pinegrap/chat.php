@@ -1761,7 +1761,8 @@ function pg_chat_render_backend_launcher()
             'date_order' => (DATE_FORMAT == 'month_day') ? 'month_day' : 'day_month',
             'twelve_hours' => (TIME_FORMAT == 'twelve_hours')
         ),
-        'strings' => pg_chat_panel_strings()
+        // "Convert to text" under a voice message (pg_voice_text.js).
+        'strings' => pg_chat_panel_strings() + pg_voice_text_strings()
     );
 
     $js_file = 'assets/js/chat_backend.' . ENVIRONMENT_SUFFIX . '.js';
@@ -1878,7 +1879,8 @@ function pg_chat_render_backend_launcher()
                 body.pg-chat-no-scroll { overflow: hidden; }
             }
         </style>
-        <script type="application/json" id="pg-chat-config">' . encode_json($config) . '</script>
+        <script type="application/json" id="pg-chat-config">' . encode_json($config) . '</script>'
+        . pg_js_bundle_tags('assets/js/pg_voice_text.min.js') . '
         <script src="' . h($js_url) . '" defer></script>';
 
     return $output;
