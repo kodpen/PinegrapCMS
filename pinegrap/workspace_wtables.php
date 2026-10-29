@@ -187,6 +187,112 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $back .= '#ws-wt-shares';
             break;
 
+        case 'import_read':
+            // A file read and kept, its columns shown for confirmation.
+            $file = $_FILES['file'] ?? null;
+            $append = ($table !== null);
+            $back = $append ? $table_url . '&import=1#ws-wt-import' : $self_url . '?import=1#ws-wt-import';
+
+            if ($append && !ws_wtable_may(ws_wtable_access($viewer, $table), 'write')) {
+                $refused(ws_wtable_refusal('not_found', '', 404));
+                $back = $self_url;
+            } elseif (!is_array($file) || !is_string($file['tmp_name'] ?? null) || ((int) ($file['error'] ?? 1) !== UPLOAD_ERR_OK) || !is_uploaded_file($file['tmp_name'])) {
+                $liveform->add_error(h(lang('Choose a file to import.')));
+                $back = $append ? $table_url : $self_url;
+            } else {
+                $read = ws_wtable_import_file_table($file['tmp_name'], pg_basename((string) $file['name']), ws_wtable_limits()['rows'] + 1);
+
+                if (!$read['ok']) {
+                    $liveform->add_error(h($read['error']));
+                    $back = $append ? $table_url : $self_url;
+                } elseif (count($read['table']) < 2) {
+                    $liveform->add_error(h(lang('The file has a header row but no rows under it.')));
+                    $back = $append ? $table_url : $self_url;
+                } elseif (count($read['table'][0]) > ws_wtable_limits()['columns']) {
+                    $refused(ws_wtable_refusal('too_many_columns', '', 409));
+                    $back = $append ? $table_url : $self_url;
+                } elseif (!ws_wtable_import_keep($read, pg_basename((string) $file['name']), $append ? (int) $table['id'] : 0)) {
+                    $liveform->add_error(h(lang('The file could not be read.')));
+                    $back = $append ? $table_url : $self_url;
+                }
+            }
+
+            break;
+
+        case 'import_write':
+            $kept = ws_wtable_import_kept();
+            $chosen = function ($name) {
+                return (isset($_POST[$name]) && is_array($_POST[$name])) ? $_POST[$name] : array();
+            };
+
+            if (!$kept || ($kept['table'] !== ($table ? (int) $table['id'] : 0))) {
+                $liveform->add_error(h(lang('The file is no longer at hand: choose it again.')));
+                $back = $table ? $table_url : $self_url;
+                break;
+            }
+
+            @set_time_limit(300);
+
+            if ($table) {
+                // Rows added: each file column into the table column chosen.
+                $columns = ws_wtable_columns((int) $table['id']);
+                $map = array();
+
+                foreach ($chosen('col_map') as $index => $column_id) {
+                    $column_id = (int) (is_string($column_id) ? $column_id : 0);
+
+                    if (isset($kept['names'][(int) $index], $columns[$column_id]) && ws_wtable_type_stores($columns[$column_id]['type']) && !in_array($column_id, $map, true)) {
+                        $map[(int) $index] = $column_id;
+                    }
+                }
+
+                if (empty($map)) {
+                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                    $back = $table_url . '&import=1#ws-wt-import';
+                    break;
+                }
+
+                $result = array('ok' => true, 'table_id' => (int) $table['id'], 'report' => ws_wtable_import_rows($viewer, $table, $kept['rows'], $map));
+            } else {
+                // A new table: each kept file column in the type chosen.
+                $plan = array();
+                $names = $chosen('col_name');
+                $types = $chosen('col_type');
+
+                foreach ($chosen('col_keep') as $index => $keep) {
+                    if (($keep === '1') && isset($kept['names'][(int) $index])) {
+                        $name = (isset($names[$index]) && is_string($names[$index]) && (trim($names[$index]) !== '')) ? trim($names[$index]) : $kept['names'][(int) $index];
+                        $type = (isset($types[$index]) && is_string($types[$index])) ? $types[$index] : 'text';
+                        $plan[] = array('index' => (int) $index, 'name' => $name, 'type' => $type);
+                    }
+                }
+
+                if (empty($plan)) {
+                    $liveform->add_error(h(lang('Choose at least one column to fill.')));
+                    $back = $self_url . '?import=1#ws-wt-import';
+                    break;
+                }
+
+                $result = ws_wtable_import_create($viewer, $field('name'), $plan, $kept['rows']);
+
+                if (!$result['ok']) {
+                    $liveform->add_error(h((isset($result['column']) ? $result['column'] . ': ' : '') . ws_wtable_screen_error_text($result['error'])));
+                    $back = $self_url . '?import=1#ws-wt-import';
+                    break;
+                }
+            }
+
+            ws_wtable_import_drop();
+            $_SESSION['software']['ws_wtable_import_report'] = array('table' => (int) $result['table_id'], 'more' => $kept['more']) + $result['report'];
+            $liveform->add_notice(h(lang(array('string' => '{var:1} rows were imported.', 'vars' => (int) $result['report']['added']))));
+            $back = $self_url . '?id=' . (int) $result['table_id'] . '#ws-wt-import-report';
+            break;
+
+        case 'import_cancel':
+            ws_wtable_import_drop();
+            $back = $table ? $table_url : $self_url;
+            break;
+
         case 'row_status':
             // A card moved on the board: the status cell alone, on the
             // revision the card was drawn with, answered in JSON.
@@ -258,6 +364,135 @@ $board_script = '';
 $levels = ws_wtable_share_levels();
 $access_labels = array('owner' => lang('Yours'), 'edit' => lang('Can edit'), 'view' => lang('Can view'));
 
+// A file brought in: the form that uploads it, the confirmation of what
+// it becomes, and the report of the rows refused.
+$kept = ((($_GET['import'] ?? '') === '1') && ($table === null || ws_wtable_may($table['access'], 'write'))) ? ws_wtable_import_kept() : null;
+$kept = ($kept && ($kept['table'] === ($table ? (int) $table['id'] : 0))) ? $kept : null;
+$report = $_SESSION['software']['ws_wtable_import_report'] ?? null;
+$report = (is_array($report) && $table && ((int) $report['table'] === (int) $table['id'])) ? $report : null;
+
+if ($report) {
+    unset($_SESSION['software']['ws_wtable_import_report']);
+}
+
+$import_upload = function ($table_id, $intro) use ($self_url) {
+    return '
+                    <form method="post" action="' . h($self_url) . '" class="disable_shortcut" enctype="multipart/form-data">
+                        ' . get_token_field() . '
+                        <input type="hidden" name="wt_action" value="import_read">
+                        <input type="hidden" name="wt_table" value="' . (int) $table_id . '">
+                        <p class="small fg-secondary">' . h($intro) . '</p>
+                        <div class="mb-3">
+                            <label class="form-label small mb-1" for="ws_wt_import_file">' . h(lang('File')) . '</label>
+                            <input type="file" class="form-control form-control-sm" name="file" id="ws_wt_import_file" accept=".csv,.xlsx,.xlsm,.xls,.ods" required>
+                        </div>
+                        <button type="submit" class="btn btn-sm btn-outline theme-primary rounded-pill px-5">' . h(lang('Read the file')) . '</button>
+                    </form>';
+};
+
+$import_card = '';
+
+if ($kept) {
+    $columns_now = $table ? ws_wtable_columns((int) $table['id']) : array();
+    $match = ws_wtable_import_match($kept['names'], $columns_now);
+    $type_labels = ws_wtable_column_types();
+    $lines = '';
+
+    foreach ($kept['names'] as $index => $name) {
+        $values = array();
+
+        foreach ($kept['rows'] as $row) {
+            $values[] = (string) ($row[$index] ?? '');
+        }
+
+        $sample = array_slice(array_values(array_filter($values, 'strlen')), 0, 3);
+        $sample_text = implode(' · ', array_map(function ($value) {
+            return mb_strimwidth($value, 0, 40, '…');
+        }, $sample));
+
+        if ($table) {
+            $choices = '<option value="0">' . h(lang('(not imported)')) . '</option>';
+
+            foreach ($columns_now as $column_id => $column) {
+                if (ws_wtable_type_stores($column['type'])) {
+                    $choices .= '<option value="' . (int) $column_id . '"' . ((($match['map'][$index] ?? 0) === (int) $column_id) ? ' selected' : '') . '>' . h($column['name']) . '</option>';
+                }
+            }
+
+            $lines .= '<tr><td class="fw-semibold">' . h($name) . '</td>'
+                . '<td><select class="form-control form-control-sm" name="col_map[' . (int) $index . ']" aria-label="' . h(lang(array('string' => 'Column for {var:1}', 'vars' => $name))) . '">' . $choices . '</select></td>'
+                . '<td class="small fg-secondary">' . h($sample_text) . '</td></tr>';
+        } else {
+            $guess = ws_wtable_import_guess($values);
+            $types_list = '';
+
+            foreach (ws_wtable_import_types() as $type) {
+                $types_list .= '<option value="' . h($type) . '"' . (($type === $guess['type']) ? ' selected' : '') . '>' . h($type_labels[$type] ?? $type) . '</option>';
+            }
+
+            $lines .= '<tr><td><input class="check" type="checkbox" name="col_keep[' . (int) $index . ']" value="1" checked aria-label="' . h(lang(array('string' => 'Import {var:1}', 'vars' => $name))) . '"></td>'
+                . '<td><input type="text" class="form-control form-control-sm" name="col_name[' . (int) $index . ']" value="' . h($name) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" aria-label="' . h(lang('Name')) . '"></td>'
+                . '<td><select class="form-control form-control-sm" name="col_type[' . (int) $index . ']" aria-label="' . h(lang('Type')) . '">' . $types_list . '</select></td>'
+                . '<td class="small fg-secondary">' . h($sample_text) . '</td></tr>';
+        }
+    }
+
+    $head = $table
+        ? '<th scope="col">' . h(lang('In the file')) . '</th><th scope="col">' . h(lang('Into the column')) . '</th><th scope="col">' . h(lang('First values')) . '</th>'
+        : '<th scope="col"><span class="visually-hidden">' . h(lang('Import')) . '</span></th><th scope="col">' . h(lang('Column')) . '</th><th scope="col">' . h(lang('Type')) . '</th><th scope="col">' . h(lang('First values')) . '</th>';
+
+    $import_card = '
+    <div class="card mb-5 border-primary" id="ws-wt-import">
+        <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => '{var:1} rows from “{var:2}”', 'vars' => array(count($kept['rows']), $kept['file'])))) . '</h2></div>
+        <div class="card-body">
+            ' . ($kept['more'] ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'The file has more rows than a table holds: only the first {var:1} are read.', 'vars' => ws_wtable_limits()['rows']))) . '</div>' : '') . '
+            <p class="small fg-secondary">' . h($table
+                ? lang('Each file column fills the table column of its name; choose another, or leave it out. Rows the table refuses are listed afterwards.')
+                : lang('Each column of the file becomes a column of the new table, in the type its values suggest. Change a name or type, or leave a column out.')) . '</p>
+            <form method="post" action="' . h($self_url) . '" class="disable_shortcut">
+                ' . get_token_field() . '
+                <input type="hidden" name="wt_action" value="import_write">
+                <input type="hidden" name="wt_table" value="' . ($table ? (int) $table['id'] : 0) . '">
+                ' . ($table ? '' : '<div class="mb-3" style="max-width: 32rem;"><label class="form-label small mb-1" for="ws_wt_import_name">' . h(lang('Table name')) . '</label>
+                    <input type="text" class="form-control form-control-sm" name="name" id="ws_wt_import_name" value="' . h(mb_substr(pg_file_name_stem($kept['file']), 0, ws_wtable_limits()['name'])) . '" maxlength="' . (int) ws_wtable_limits()['name'] . '" required></div>') . '
+                <div class="table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr>' . $head . '</tr></thead><tbody>' . $lines . '</tbody></table></div>
+                <div class="d-flex gap-3 mt-5">
+                    <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Import')) . '</button>
+                    <button type="button" class="btn btn-sm btn-text theme-secondary ws-wt-action" data-action="import_cancel">' . h(lang('Cancel')) . '</button>
+                </div>
+            </form>
+        </div>
+    </div>';
+}
+
+if ($report) {
+    $lines = '';
+
+    foreach ((array) $report['refused'] as $refusal) {
+        $why = array();
+
+        foreach ((array) $refusal['errors'] as $column_name => $code) {
+            $why[] = $column_name . ': ' . ws_wtable_screen_error_text($code);
+        }
+
+        $lines .= '<li>' . h(lang(array('string' => 'Row {var:1}', 'vars' => (int) $refusal['line']))) . ' — '
+            . h(empty($why) ? ws_wtable_screen_error_text($refusal['error']) : implode('; ', $why)) . '</li>';
+    }
+
+    $import_card = '
+    <div class="card mb-5" id="ws-wt-import-report">
+        <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-check me-1" aria-hidden="true"></i>'
+            . h(lang(array('string' => '{var:1} rows were imported.', 'vars' => (int) $report['added']))) . '</h2></div>
+        <div class="card-body small">
+            ' . ((int) $report['refused_count'] > 0 ? '<p class="fg-danger mb-3">' . h(lang(array('string' => '{var:1} rows were refused (the header is row 1):', 'vars' => (int) $report['refused_count']))) . '</p><ul class="mb-0">' . $lines . '</ul>'
+                . ((int) $report['refused_count'] > count((array) $report['refused']) ? '<p class="fg-secondary mt-3 mb-0">' . h(lang('Only the first 100 are listed.')) . '</p>' : '')
+                : '<p class="mb-0">' . h(lang('No row was refused.')) . '</p>') . '
+            ' . (!empty($report['more']) ? '<p class="fg-warning mt-3 mb-0">' . h(lang(array('string' => 'The file has more rows than a table holds: only the first {var:1} are read.', 'vars' => ws_wtable_limits()['rows']))) . '</p>' : '') . '
+        </div>
+    </div>';
+}
+
 if (!$table) {
 
     /* -----------------------------------------------------------------------
@@ -294,7 +529,7 @@ if (!$table) {
             <tbody>' . $lines . '</tbody>
         </table></div>';
 
-    $body = '
+    $body = $import_card . '
     <div class="row g-5">
         <div class="col-12 xl:col-8">
             <div class="card mb-5">
@@ -320,6 +555,10 @@ if (!$table) {
                         <button type="submit" class="btn btn-sm btn-solid theme-primary rounded-pill px-5">' . h(lang('Create')) . '</button>
                     </form>
                 </div>
+            </div>
+            <div class="card mb-5" id="ws-wt-import-new">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Table from a file')) . '</h2></div>
+                <div class="card-body">' . $import_upload(0, lang('A CSV, Excel or OpenDocument file: its first row names the columns.')) . '</div>
             </div>
         </div>
     </div>';
@@ -664,6 +903,13 @@ if (!$table) {
                 </div>
             </div>';
 
+    // Rows from a file.
+    $import_rows_card = ($can_write && !empty($columns) && !$kept) ? '
+            <div class="card mb-5" id="ws-wt-import-rows">
+                <div class="card-header"><h2 class="h6 mb-0"><i class="bi bi-file-earmark-arrow-up me-1" aria-hidden="true"></i>' . h(lang('Rows from a file')) . '</h2></div>
+                <div class="card-body">' . $import_upload($id, lang('A CSV, Excel or OpenDocument file whose first row names the columns: each fills the column of its name.')) . '</div>
+            </div>' : '';
+
     // The name and description.
     $details_card = $can_write ? '
             <div class="card mb-5" id="ws-wt-details">
@@ -858,7 +1104,7 @@ if (!$table) {
 </script>';
     } else {
 
-        $body = '
+        $body = $import_card . '
         ' . $owner_note . (((string) $table['description'] !== '') ? '<p class="fg-secondary mb-5" style="white-space: pre-line;">' . h($table['description']) . '</p>' : '') . '
         <div class="row g-5">
             <div class="col-12 xl:col-8">
@@ -870,7 +1116,7 @@ if (!$table) {
                 ' . $row_form . '
             </div>
             <div class="col-12 xl:col-4">
-                ' . $columns_card . $details_card . $shares_card . '
+                ' . $columns_card . $import_rows_card . $details_card . $shares_card . '
             </div>
         </div>';
 

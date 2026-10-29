@@ -631,8 +631,26 @@ function ws_wtable_row_event_body($table, $row, $channel_ids, $actor_id, $change
 }
 
 /**
+ * Whether row writes announce nothing: set while a file is imported, since
+ * one listing tells a receiver more than an event per row.
+ *
+ * @param bool|null $quiet true or false to set it, null to ask
+ * @return bool
+ */
+function ws_wtable_row_announce_quiet($quiet = null)
+{
+    static $state = false;
+
+    if ($quiet !== null) {
+        $state = (bool) $quiet;
+    }
+
+    return $state;
+}
+
+/**
  * Announce a row written or deleted, when the table is shared in a public
- * channel.
+ * channel and no import is running (ws_wtable_row_announce_quiet()).
  *
  * @param string    $what     created | updated | deleted
  * @param array     $table
@@ -642,6 +660,10 @@ function ws_wtable_row_event_body($table, $row, $channel_ids, $actor_id, $change
  */
 function ws_wtable_row_announce($what, $table, $row, $actor_id, $changed = array())
 {
+    if (ws_wtable_row_announce_quiet()) {
+        return;
+    }
+
     $channel_ids = ws_wtable_event_channels((int) $table['id']);
 
     if (empty($channel_ids) || !function_exists('pg_announce')) {

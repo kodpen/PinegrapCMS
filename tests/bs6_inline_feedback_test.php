@@ -95,12 +95,26 @@ function El(tag, cls, attrs) {
     this.id = this.attributes.id || '';
     this.textContent = '';
     this.classList = {
-        contains: function (c) { return self.className.split(/\s+/).indexOf(c) !== -1; }
+        contains: function (c) { return self.className.split(/\s+/).indexOf(c) !== -1; },
+        add: function (c) { if (!this.contains(c)) { self.className = (self.className + ' ' + c).trim(); } },
+        remove: function (c) { self.className = self.className.split(/\s+/).filter(function (x) { return x !== c; }).join(' '); },
+        toggle: function (c, on) { if (on) { this.add(c); } else { this.remove(c); } return on; }
     };
 }
 El.prototype.getAttribute = function (k) { return Object.prototype.hasOwnProperty.call(this.attributes, k) ? this.attributes[k] : null; };
 El.prototype.hasAttribute = function (k) { return Object.prototype.hasOwnProperty.call(this.attributes, k); };
 El.prototype.setAttribute = function (k, v) { this.attributes[k] = String(v); };
+El.prototype.removeAttribute = function (k) { delete this.attributes[k]; };
+El.prototype.querySelector = function (sel) {
+    var tags = sel.split(',').map(function (t) { return t.trim().toUpperCase(); });
+    for (var i = 0; i < this.children.length; i++) {
+        var c = this.children[i];
+        if (tags.indexOf(c.tagName) !== -1) { return c; }
+        var deep = c.querySelector(sel);
+        if (deep) { return deep; }
+    }
+    return null;
+};
 El.prototype.remove = function () {
     if (this.parentNode) { var s = this.parentNode.children; s.splice(s.indexOf(this), 1); this.parentNode = null; }
 };
@@ -140,8 +154,8 @@ function server(text) { var m = new El('div', 'invalid-feedback d-block pg-inlin
 
 var document = { createElement: function (tag) { return new El(tag); } };
 var window = {};
-new Function('document', 'window', PG_SOURCE + '\nwindow.place = pgPlaceInlineFeedback;')(document, window);
-var place = window.place, out = {};
+new Function('document', 'window', PG_SOURCE + '\nwindow.place = pgPlaceInlineFeedback; window.mark = pgFieldInvalid; window.aria = pgFieldAria;')(document, window);
+var place = window.place, mark = window.mark, aria = window.aria, out = {};
 
 // Server message inside an input-group: moved after the group.
 var f1 = field('name'), box1 = tree(new El('div', 'col'), [tree(new El('div', 'input-group'), [new El('span', 'input-group-text'), f1, server('Required')])]);
@@ -179,6 +193,37 @@ var box6 = tree(new El('div', 'col'), [tree(new El('div', 'input-group'), [f6, s
 place(f6, { x: 'Other' });
 out.static_kept = shape(box6);
 
+// A script marks a field with a static message: aria-invalid, and the
+// message joins the hint in aria-describedby; clearing takes both back.
+var f7 = field('code'), stat7 = new El('div', 'invalid-feedback'); stat7.textContent = 'Taken';
+f7.className = 'form-control'; f7.id = 'code'; f7.attributes['aria-describedby'] = 'hint';
+var box7 = tree(new El('div', 'col'), [f7, stat7]);
+f7.classList.add('is-invalid'); aria(f7);
+out.script_on = [f7.getAttribute('aria-invalid'), f7.getAttribute('aria-describedby'), stat7.id];
+f7.classList.remove('is-invalid'); aria(f7);
+out.script_off = [f7.getAttribute('aria-invalid'), f7.getAttribute('aria-describedby')];
+
+// A field in an input-group: the message after the group is the one linked.
+var f8 = field('sku'), after8 = server('Empty SKU'); after8.id = 'sku-msg';
+tree(new El('div', 'col'), [tree(new El('div', 'input-group'), [f8, new El('button', 'btn')]), after8]);
+aria(f8);
+out.group_linked = f8.getAttribute('aria-describedby');
+
+// pgFieldInvalid() with a sentence and no message on the page makes one
+// after the wrapper, and takes it away again when the mark goes.
+var f9 = field('key'); f9.className = 'form-control';
+var box9 = tree(new El('div', 'col'), [tree(new El('label', 'form-control form-adorn'), [f9])]);
+mark(f9, true, 'Bad key');
+out.made_on = shape(box9).concat([f9.getAttribute('aria-invalid'), String(f9.getAttribute('aria-describedby') === box9.children[1].id)]);
+mark(f9, false);
+out.made_off = shape(box9).concat([String(f9.getAttribute('aria-invalid')), String(f9.getAttribute('aria-describedby')), String(f9.classList.contains('is-invalid'))]);
+
+// Another control's message is never borrowed.
+var fa = field('a'), fb = field('b'), msgb = server('B wrong'); msgb.id = 'b-msg';
+tree(new El('div', 'col'), [fa, fb, msgb]);
+aria(fa);
+out.not_borrowed = [fa.getAttribute('aria-invalid'), String(fa.getAttribute('aria-describedby'))];
+
 console.log(JSON.stringify(out));
 JS;
 }
@@ -205,6 +250,33 @@ function test_bs6_inline_feedback_placement()
 	pg_assert_same(array('chip-input[FIELD]', 'MSG:Too many'), $r['chips_no_double'], 'no second message');
 	pg_assert_same(array('FIELD', 'MSG:Empty'), $r['plain'], 'plain field: right after it');
 	pg_assert_same(array('input-group[FIELD MSG:Static]'), $r['static_kept'], 'a static message of the page stays');
+}
+
+// Marks a script sets or clears after the page is drawn keep aria-invalid and
+// the message link in step with the class.
+function test_bs6_inline_feedback_script_marks()
+{
+	$r = pg_inline_feedback_test_run();
+
+	if ($r === null) {
+		return;
+	}
+
+	if (isset($r['error'])) {
+		pg_assert_same('', $r['error'], 'mark code under Node');
+		return;
+	}
+
+	pg_assert_same(array('true', 'hint code-feedback', 'code-feedback'), $r['script_on'], 'marked: aria-invalid, message linked beside the hint');
+	pg_assert_same(array(null, 'hint'), $r['script_off'], 'cleared: aria-invalid and the link go, the hint stays');
+	pg_assert_same('sku-msg', $r['group_linked'], 'input-group: the message after the group');
+	pg_assert_same(array('form-control[FIELD]', 'MSG:Bad key', 'true', 'true'), $r['made_on'], 'sentence made after the form-adorn and linked');
+	pg_assert_same(array('form-control[FIELD]', 'null', 'null', 'false'), $r['made_off'], 'made message removed with the mark');
+	pg_assert_same(array('true', 'null'), $r['not_borrowed'], 'a later control\'s message is not borrowed');
+
+	$js = pg_inline_feedback_test_backend();
+	pg_assert_contains("attributeFilter: ['class']", $js, 'class observer');
+	pg_assert_contains('window.pgFieldInvalid = pgFieldInvalid;', $js);
 }
 
 function test_bs6_inline_feedback_forms()

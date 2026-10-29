@@ -24,4 +24,4 @@ description: Settings save outcomes: rejected input returns status invalid (no r
 - So do Application Access (`scope` 1), Marketplaces (`attribute` 1) and the Workspace settings (`workdays`, `members`, `leads`, `primary`, `mcp_tool` 1; `people` 3, each row again with `workdays` 1), before the action is read; the same test checks every list field they draw is named. Why (PR #490): arrays 500'd, `app_id[]`/`account_id[]`/`department_id[]` changed or deleted record 1, `name[]` saved a department "Array".
 - Why (PR #483): 389 fields posted as lists: 190 answered 500, 15 stored "Array" (host name, subscription key, firewall lists, Mailchimp keys, ERP tax names), others ticked a box or removed a language. SMTP: every field 500. Private Label logged "Undefined array key" on every save with the box off; with it on, every panel page warned about `$output_software_distributor_link` (`includes/fn/output.php`).
 
-Related: docs/memory/ui/settings-card-own-button.md
+Related: docs/memory/ui/settings-card-own-button.md, docs/memory/ui/settings-invalid-fields.md
