@@ -14,3 +14,7 @@ description: Panel search box (Ctrl+K): where the chips come from, how text is m
 ## How does a chip open a dialog instead of a screen?
 - A settings chip opens the settings after the search box has gone: the chip hides the search dialog and opens the settings in its `hidden` handler (`pgUI.dialog.on(…, 'hidden', …, {once: true})`, `settings-modal-navigation.md`).
 - The "Keyboard Shortcuts" chip (keys klavye, kısayol, keyboard, shortcut) has the address `#keyboard-shortcuts`; the chip handler opens `window.pgShowShortcuts()` in the same `hidden` way (`account-menu.md`).
+
+## Where does focus go on Load More?
+- Load More (the next 20 results) is removed while the page loads; if it held the focus, the result above it takes it first, so focus never falls to `<body>` (`focus-after-removal.md`). The spinner is `role="status"` with a `.visually-hidden` `t('Loading...')`. When the page arrives, focus moves to its first result (`appendResults()` returns it), or to the new Load More when the page brought none.
+- A later page that fails, or answers anything but success, goes to `loadMoreFailed()`: `currentOffset` goes back by 20, a `role="alert"` `t('An error occurred.')` line and a new Load More (focused) come back. Before, the spinner went and nothing replaced it, so the rest of the results could not be reached until the query changed. A click while a page loads is ignored. Pinned by `tests/list_page_state_test.php`.
