@@ -316,10 +316,15 @@
         return table;
     }
 
+    // Each rendered book gets its own pane id, so two previews on one page
+    // never share the id their sheet tabs point to.
+    var bookCount = 0;
+
     function renderBook(container, office, strings, options) {
         var book = el('div', 'office-book');
         var tabs = el('div', 'office-tabs');
         var pane = el('div', 'office-pane');
+        var paneId = 'office_pane_' + (++bookCount);
         var status = el('div', 'office-note office-status');
         var current = null;
         var editable = !!(options && options.editable);
@@ -426,7 +431,15 @@
             var list = changesNow();
 
             Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (tab, index) {
-                tab.classList.toggle('office-tab-edited', Object.keys(list[index]).length > 0);
+                var edited = Object.keys(list[index]).length > 0;
+                var mark = tab.querySelector('.office-tab-changed');
+
+                tab.classList.toggle('office-tab-edited', edited);
+
+                // The dot is drawn in CSS; a screen reader hears the word.
+                if (mark) {
+                    mark.hidden = !edited;
+                }
             });
         }
 
@@ -733,19 +746,41 @@
             drawStatus();
         }
 
+        tabs.setAttribute('role', 'tablist');
+        tabs.setAttribute('aria-label', strings.sheets || '');
+        pane.id = paneId;
+        pane.setAttribute('role', 'tabpanel');
+
         office.sheets.forEach(function (sheet, index) {
             var tab = el('button', 'office-tab' + (sheet.hidden ? ' office-tab-hidden' : ''), sheet.name || ('#' + (index + 1)));
             tab.type = 'button';
+            tab.id = paneId + '_tab_' + index;
+            tab.setAttribute('role', 'tab');
+            tab.setAttribute('aria-selected', 'false');
+            tab.setAttribute('aria-controls', paneId);
+            tab.tabIndex = -1;
 
+            // A hidden sheet shows only in italics and a changed one only by
+            // a dot, so both are said in words too.
             if (sheet.hidden) {
                 tab.title = strings.hidden || '';
+                tab.appendChild(el('span', 'visually-hidden', ', ' + (strings.hidden || '')));
             }
+
+            var changedMark = el('span', 'visually-hidden office-tab-changed', ', ' + (strings.changed_mark || ''));
+            changedMark.hidden = true;
+            tab.appendChild(changedMark);
 
             tab.addEventListener('click', function () {
                 Array.prototype.forEach.call(tabs.querySelectorAll('.office-tab'), function (other) {
                     other.classList.remove('active');
+                    other.setAttribute('aria-selected', 'false');
+                    other.tabIndex = -1;
                 });
                 tab.classList.add('active');
+                tab.setAttribute('aria-selected', 'true');
+                tab.tabIndex = 0;
+                pane.setAttribute('aria-labelledby', tab.id);
                 show(index);
             });
 
@@ -760,6 +795,34 @@
         if (current === null && tabs.firstChild) {
             current = tabs.firstChild;
         }
+
+        // Arrow keys, Home and End move between the sheet tabs and open the
+        // one they land on; only the open tab sits in the Tab order.
+        tabs.addEventListener('keydown', function (event) {
+            var list = Array.prototype.slice.call(tabs.querySelectorAll('.office-tab'));
+            var at = list.indexOf(event.target);
+            var next = null;
+
+            if (at < 0 || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            if (event.key === 'ArrowRight' || event.key === 'ArrowDown') {
+                next = list[(at + 1) % list.length];
+            } else if (event.key === 'ArrowLeft' || event.key === 'ArrowUp') {
+                next = list[(at - 1 + list.length) % list.length];
+            } else if (event.key === 'Home') {
+                next = list[0];
+            } else if (event.key === 'End') {
+                next = list[list.length - 1];
+            }
+
+            if (next) {
+                event.preventDefault();
+                next.focus();
+                next.click();
+            }
+        });
 
         book.appendChild(tabs);
         book.appendChild(pane);

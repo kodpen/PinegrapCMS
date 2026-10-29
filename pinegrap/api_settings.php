@@ -1742,13 +1742,13 @@ body.api-drawer-open .pg-chat-launcher { display: none !important; }
 		</div>
 
 		<ul class="nav nav-tabs px-5" role="tablist">
-			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button">' . lang('General') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button">' . lang('Permissions') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button">' . lang('Security') . '</button></li>
-			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label"
+			<li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#d_general" type="button" id="d_general_label" aria-controls="d_general">' . lang('General') . '</button></li>
+			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_perms" type="button" id="d_perms_label" aria-controls="d_perms">' . lang('Permissions') . '</button></li>
+			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_security" type="button" id="d_security_label" aria-controls="d_security">' . lang('Security') . '</button></li>
+			<li class="nav-item" id="d_devices_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_devices" type="button" id="d_devices_label" aria-controls="d_devices"
 				data-device="' . h(lang('Devices')) . '" data-oauth="' . h(lang('Connections')) . '">' . lang('Devices') . '</button></li>
-			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button">' . lang('Events') . '</button></li>
-			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button">' . lang('Log') . '</button></li>
+			<li class="nav-item" id="d_hooks_tab"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_hooks" type="button" id="d_hooks_label" aria-controls="d_hooks">' . lang('Events') . '</button></li>
+			<li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#d_log" type="button" id="d_log_label" aria-controls="d_log">' . lang('Log') . '</button></li>
 		</ul>
 
 		<div class="drawer-body tab-content flex-grow-1 overflow-auto">
@@ -2254,7 +2254,12 @@ echo '
 		document.getElementById("d_oauth_block").classList.toggle("d-none", !oauth);
 		document.getElementById("d_devices_tab").classList.toggle("d-none", !keyless);
 		document.getElementById("d_hooks_tab").classList.toggle("d-none", keyless);
+		// The arrow keys of the tab row skip only disabled tabs, so a hidden
+		// tab is disabled too; otherwise ArrowLeft/Right opens a tab nobody
+		// can see and focus falls out of the row.
 		var devicesLabel = document.getElementById("d_devices_label");
+		devicesLabel.disabled = !keyless;
+		document.getElementById("d_hooks_label").disabled = keyless;
 		devicesLabel.textContent = oauth ? devicesLabel.dataset.oauth : devicesLabel.dataset.device;
 		renderDevices(app.devices || []);
 		// A row whose owner outranks the editor is refused on the server; its
