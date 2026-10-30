@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-for-each
-description: Flows For each loop (D9, #3312; server #3323, canvas #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
+description: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
 ---
 
 ## Where is it?

@@ -133,7 +133,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-derived-box.md: The derived value box of a flow (kind value, T3, PR #2701): its allowlisted rules, inputs and value, how a run works it out, the transitive "comes before" check, the canvas form
 - workspace-flows-event-depth.md: The chain depth a flow run's events carry: ws_event_depth() said by a step box around its work, stamped as _depth by ws_event() and pg_event_record(), read by ws_events_start()
 - workspace-flows-for-each-canvas.md: The For each loop on the Flows canvas (D9 canvas, #3422): kinds, arrows, the body frame, the list and collect forms, which values a box inside or outside the loop is offered
-- workspace-flows-for-each.md: Flows For each loop (D9, #3312; server #3323, canvas #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, canvas frame
+- workspace-flows-for-each.md: Flows For each loop (D9, #3312, #3323, #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, size warning
 - workspace-flows-form-retirement.md: How the scheduled actions form was retired (R1-R4, done in #2970): what went in each slice, and what cards, scheduled messages, the draft card and the canvas still use
 - workspace-flows-from-scheduled.md: A scheduled action as a flow graph (ws_flow_graph_from_scheduled(), PR #2306): how each part maps to a box or arrow, self-retry, money, what is told in left
 - workspace-flows-from-table.md: Run from a workflow table (F6c-a #3145, F6c-b, decision #3122): rows compiled into a draft flow (ws_flow_from_wtable()), rights; Run's optional customer, one open run per flow and contact
@@ -153,7 +153,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-run-flag.md: A flow run's flag (C1, #2903): state, duration, one-line result folded behind ▾; ws_flow_run_result_pick(), result on run reads, last_run in the flow list, runFlag() for C2
 - workspace-flows-run-values.md: What GET /workspace/flow-runs/{id} gives per box beyond its status (A5, #2284): threads_in as the walk reads them, outputs from the result's data, what a reader without edit does not get
 - workspace-flows-run-view.md: The run view of the flow canvas (workspace_flow.js, PR #1555): Run, the runs list, a run shown box by box, the values each box received, how it is read again, what a failed read shows
-- workspace-flows-runner-rounds.md: Flow runner rounds (#3473, bug #3368): each run gets 3 boxes a round, new rounds until 30 a call or the budget; pending publish warning for loop items x body boxes
+- workspace-flows-runner-rounds.md: Flow runner rounds (#3473, bug #3368): each run gets 3 boxes a round, new rounds until 30 a call or the budget; publish warning for loop items x body boxes (#3515)
 - workspace-flows-runner.md: Workspace flow runs (flow_runs.php): start, run channel, walk, task boxes, wake-ups, recovery, drivers, limits, end, cancel, routes
 - workspace-flows-scheduled-merge.md: Scheduled actions moved into Flows (owner, 2026-10-24): what was decided, the two anchors, what stays a scheduled action, and the PRs of each slice
 - workspace-flows-scheduled-section.md: Staff's scheduled actions at the end of the Flows list (V5, #3222): converted rows with Run now and History, the Not converted cards, ?view=scheduled opens the list, Show on canvas
