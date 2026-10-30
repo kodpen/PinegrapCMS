@@ -17,6 +17,7 @@
  */
 
 include('init.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/email_campaign_schedule.php');
 $user = validate_user();
 validate_email_access($user);
 
@@ -353,60 +354,13 @@ if (isset($_GET['export'])) {
                 $output_page_name = h($email_campaign_profile['page_name']);
             }
 
-            $output_schedule = '';
-            $output_schedule_time_title = '';
+            $output_schedule_time = '';
 
-            // If the length is 0, then use "immediately" terminology.
-            if ($email_campaign_profile['schedule_length'] == 0) {
-                $output_schedule_time_title = ' ' . lang('immediately') .' ';
-
-            // Otherwise the length is greater than 0, so prepare content for that.
-            } else {
-                $output_schedule_time_title = $email_campaign_profile['schedule_length'] . ' ';
-
-                // If the unit is days then prepare to output unit is a certain way.
-                if ($email_campaign_profile['schedule_unit'] == 'days') {
-                    // If the length is 1 the use singular unit.
-                    if ($email_campaign_profile['schedule_length'] == 1) {
-                        $output_schedule_time_title .= ' ' . lang('day') .' ';
-
-                    // Otherwise the length is 0 or more than 1, so output plural unit.
-                    } else {
-                        $output_schedule_time_title .= ' ' . lang('days') .' ';
-                    }
-
-                // Otherwise the unit is hours, so prepare to output unit in a different way.
-                } else {
-                    // If the length is 1 the use singular unit.
-                    if ($email_campaign_profile['schedule_length'] == 1) {
-                        $output_schedule_time_title .= ' ' . lang('hour') .' ';
-
-                    // Otherwise the length is 0 or more than 1, so output plural unit.
-                    } else {
-                        $output_schedule_time_title .= ' ' . lang('hours') .' ';
-                    }
-                }
-            }
-
-            $output_schedule_after_before = lang($email_campaign_profile['schedule_period']) . ' ';
-
-            // If the base is action, then prepare to output that.
-            if ($email_campaign_profile['schedule_base'] == 'action') {
-                $output_schedule_action = ' ' . lang('from action') .' ';
-
-            // Otherwise the base is calendar event start time, so output that.
-            } else {
-                $output_schedule_action = ' ' . lang('from calendar event start time') .' '; 
-            }
-
-            // If there is a time, then add it to schedule.
             if ($email_campaign_profile['schedule_time'] != '00:00:00') {
-                $output_schedule_action .= ' (' . date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time'])) . ')';
+                $output_schedule_time = date(pg_time_format_code(), strtotime($email_campaign_profile['schedule_time']));
             }
 
-          
-
-            $output_schedule = lang(array('string'=>'Schedule: {var:1}{var:2}{var:3}','vars'=>array($output_schedule_time_title,$output_schedule_after_before,$output_schedule_action) ));
+            $output_schedule = h(pg_email_campaign_profile_schedule_label($email_campaign_profile['schedule_length'], $email_campaign_profile['schedule_unit'], $email_campaign_profile['schedule_period'], $email_campaign_profile['schedule_base'], $output_schedule_time));
             
 
 

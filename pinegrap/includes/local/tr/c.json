@@ -644,7 +644,7 @@
     "Checkbox group": "Onay grubu",
     "Checkbox list": "Checkbox listesi",
     "Checkbox row": "Checkbox satırı",
-    "Checked Out": "Kontrol etme",
+    "Checked Out": "Ödemeye geçildi",
     "Checked before every other rule, and enforced whether or not the firewall is enabled. Behind a CDN these are matched against the real visitor address, not the edge server — provided the edge is listed under Trusted Proxies above.": "Diğer tüm kurallardan önce denetlenir ve güvenlik duvarı açık olsun olmasın uygulanır. Bir CDN arkasındaysanız, uç sunucu yukarıda Güvenilen Vekil Sunucular'da listelendiği sürece, bunlar edge sunucusuyla değil gerçek ziyaretçi adresiyle eşleştirilir.",
     "Checked every hour; each open quote is announced once, and again after it is opened again or its date changes.": "Saatte bir bakılır; her açık teklif bir kez bildirilir, yeniden açılınca ya da tarihi değişince yeniden.",
     "Checked every hour; each product is announced once each time it drops.": "Saatte bir bakılır; her ürün, her düşüşünde bir kez bildirilir.",

@@ -61,6 +61,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - designer-i18n-audit-tool.md: The designer text audit tool docs/_tools/designer_i18n.php (not in the repository): check/extract/apply workflow, how Turkish is detected, and the three classes allowed in skip.
 - dom-node-html.md: pg_dom_html() instead of $document->saveHTML($node): one DOM node's HTML the same on every PHP version (7.1-7.2 pretty-printed it), its callers and its test
 - dompdf-embedding.md: How dompdf and its chain are embedded in includes/dompdf/: versions, custom autoloader, runtime write location, HTML/charset handling for PDFs.
+- email-campaign-schedule-label.md: The schedule label on My Campaign Profiles built from two whole keys, the send time as {var:4} at the end
 - error-path-missing-methods.md: liveform has add_error() for form-level messages vs mark_error() per field; never call a method that does not exist on error branches (PHP 8 gives a blank HTTP 500).
 - error-screen-language-and-status.md: The error screen output_error() draws leaves through pg_tr_finalize() like a page, so <html lang> is the site's or the address's language; which "not found" screens answer 404; what is still left
 - explorer-handler-files.md: pg_explorer_handle() after the split: the prelude and the dispatch, one handler per sub-action in includes/explorer/handle_*.php, where a new one goes, the tests
@@ -91,7 +92,8 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
 - panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
-- panel-turkish-terms.md: Turkish words the panel uses for terms translated in several ways (Manager role, password and its page addresses, Guide, short link, opt-in, ERP quotes, Anonymous), and which translations were wrong
+- panel-shared-keys.md: Short keys shared by many screens that were read in the wrong sense (SEO, Created, Given, the uptime note) and the separate keys used instead
+- panel-turkish-terms.md: Turkish words for panel terms translated in several ways (Manager role, password pages, Guide, short link, opt-in/opt-out, visitor order steps, ERP quotes, Anonymous)
 - passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; decisions in passkey-decisions
 - passkey-decisions.md: Lasting decisions of the passkeys work (approved 2026-10-19, built in 2026.11.0) and the memory file that holds each built piece
