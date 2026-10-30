@@ -17,6 +17,11 @@
  */
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
+
 include_once('liveform.class.php');
 $user = validate_user();
 validate_area_access($user, 'designer');
@@ -107,6 +112,7 @@ if (!$_POST) {
                                                                         <div class="col-12 my-1">
                                                                             <label class="form-label" for="system_theme_csv_file">' . lang('Local CSV Theme File') . '</label>
                                                                             <input name="system_theme_csv_file" id="system_theme_csv_file" type="file" class="form-control">
+                                                                            ' . pg_upload_limit_hint() . '
                                                                         </div>
                                                                     </div>
                                                                 </div>
@@ -123,6 +129,7 @@ if (!$_POST) {
                                                             <div class="col-12 my-1">
                                                                 <label class="form-label" for="custom_css_file">' . lang('Local CSS Theme File') . '</label>
                                                                 <input name="custom_css_file" id="custom_css_file" type="file" accept=".css,text/css" class="form-control" required>
+                                                                ' . pg_upload_limit_hint() . '
                                                             </div>
                                                         </div>
                                                     </div>
@@ -327,6 +334,13 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
             // if there is not a file name, then add an error to the liveform
             if ($file_name == '') {
                 $liveform->mark_error('system_theme_csv_file', lang(array('string'=>'{var:1} is required.','vars'=>lang('File'))) );
+            } else {
+                $upload_limits = pg_upload_limits();
+                $upload_refusal = pg_upload_file_refusal($_FILES['system_theme_csv_file'], $upload_limits['file_max']);
+
+                if ($upload_refusal !== '') {
+                    $liveform->mark_error('system_theme_csv_file', h($upload_refusal));
+                }
             }
             
             // if there are not any errors already, and if the file extension is not .csv, then output an error
@@ -545,7 +559,14 @@ article,aside,details,figcaption,figure,footer,header,hgroup,nav,section,summary
         
         // if there is not a file name, then add an error to the liveform
         if ($file_name == '') {
-            $liveform->mark_error('custom_css_file', 'File is required.');
+            $liveform->mark_error('custom_css_file', lang(array('string'=>'{var:1} is required.','vars'=>lang('File'))));
+        } else {
+            $upload_limits = pg_upload_limits();
+            $upload_refusal = pg_upload_file_refusal($_FILES['custom_css_file'], $upload_limits['file_max']);
+
+            if ($upload_refusal !== '') {
+                $liveform->mark_error('custom_css_file', h($upload_refusal));
+            }
         }
         
         // if there are not any errors, and if this is not a css file or if it is an htaccess file, then add an error to the liveform

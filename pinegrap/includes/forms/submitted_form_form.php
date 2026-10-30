@@ -574,6 +574,22 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
         $liveform->mark_error($field['id'], pg_upload_blocked_message(htmlspecialchars($_FILES[$field['id']]['name'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8')));
     }
 
+    // A file PHP did not take in whole (over upload_max_filesize, cut off)
+    // arrives with an error code and no temporary file: the field is marked
+    // with the file and the limit named, before any row is written.
+    if (
+        ($field['type'] == 'file upload')
+        && ($liveform->check_field_error($field['id']) == false)
+        && (isset($_FILES[$field['id']]) == true)
+        && is_array($_FILES[$field['id']])
+    ) {
+        $refusal = pg_submitted_form_upload_refusal($_FILES[$field['id']]);
+
+        if ($refusal !== '') {
+            $liveform->mark_error($field['id'], h($refusal));
+        }
+    }
+
     // if field has date type and there is not already an error for this field and user entered value for field and submitted date is invalid, prepare error
     if (($field['type'] == 'date') && ($liveform->check_field_error($field['id']) == false) && ($liveform->get_field_value($field['id']) != '') && (validate_date($liveform->get_field_value($field['id'])) == false)) {
         $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid date for {var:1}','vars'=>h($field['label']))) );
@@ -666,15 +682,80 @@ function pg_submitted_form_address_rows($liveform, $page_id, $kinds)
 }
 
 /**
+ * Why the file posted for a file upload field is refused, naming the file
+ * and, for an oversize one, the biggest single file the server accepts; ''
+ * for a file that arrived whole and for an empty box.
+ *
+ * @param array $upload  one entry of $_FILES
+ * @param int|null $file_max  bytes; null reads pg_upload_limits()
+ * @return string  Plain text
+ */
+function pg_submitted_form_upload_refusal($upload, $file_max = null)
+{
+    $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
+    $name = (string) ($upload['name'] ?? '');
+
+    if (($error === UPLOAD_ERR_OK) || ($error === UPLOAD_ERR_NO_FILE)) {
+        return '';
+    }
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        if ($file_max === null) {
+            $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+            $file_max = (int) ($limits['file_max'] ?? 0);
+        }
+
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars' => array($name, convert_bytes_to_string((int) $file_max, 1))));
+    }
+
+    return lang(array('string' => '{var:1} did not arrive whole. Please choose it again.', 'vars' => array($name)));
+}
+
+/**
+ * What Add and Edit Submitted Form say when PHP threw the request away for
+ * being over post_max_size (pg_post_body_discarded()): nothing typed
+ * arrived, so the screen names the size sent and the most one request may
+ * carry.
+ *
+ * @return string  Plain text
+ */
+function pg_submitted_form_discarded_message()
+{
+    $limits = function_exists('pg_upload_limits') ? pg_upload_limits() : array();
+
+    return lang(array(
+        'string' => 'Nothing was saved: the request was {var:1} and this server accepts at most {var:2} in one request. Choose a smaller file, or raise post_max_size and upload_max_filesize on the server.',
+        'vars' => array(convert_bytes_to_string((int) ($_SERVER['CONTENT_LENGTH'] ?? 0), 1), convert_bytes_to_string((int) ($limits['post_max'] ?? 0), 1))));
+}
+
+/**
  * Stores the file posted for a file upload field in the field's upload
  * folder under a free name and creates its files record.
  *
+ * A file that is not a whole upload, or that cannot be copied in, is not
+ * recorded: 0 comes back, which the screens write as a form_data row without
+ * a file, the same as an empty box. copy('') throws on PHP 8 and an ignored
+ * failed copy left a files row with nothing on the disk.
+ *
  * @param array $field  form_fields row: id, upload_folder_id
  * @param int|string $user_id  Stored as the file's owner
- * @return int  The new files.id
+ * @return int  The new files.id, or 0
  */
 function pg_submitted_form_store_upload($field, $user_id)
 {
+    $upload = $_FILES[$field['id']] ?? null;
+
+    if (
+        !is_array($upload)
+        || ((int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK)
+        || ((string) ($upload['tmp_name'] ?? '') === '')
+        || !is_uploaded_file((string) $upload['tmp_name'])
+    ) {
+        return 0;
+    }
+
     $file_name = prepare_file_name($_FILES[$field['id']]['name']);
 
     // Check if file name is already in use and change it if necessary.
@@ -696,7 +777,9 @@ function pg_submitted_form_store_upload($field, $user_id)
     }
 
     // create file
-    copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name);
+    if (!@copy($file_temp_name, FILE_DIRECTORY_PATH . '/' . $file_name)) {
+        return 0;
+    }
 
     // create file record in database
     $query = "INSERT INTO files (

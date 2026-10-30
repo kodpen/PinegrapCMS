@@ -52,6 +52,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
 - file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors, and pg_backup_folder_name()
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
+- form-upload-beside-fields.md: Forms that carry a file beside typed fields (ERP expense, bank statement, ERP accounts import, Add/Edit Submitted Form): discarded body, the record in the action, the stated limit, refused uploads.
 - gd-image-destroy.md: Freeing a GD image: pg_image_destroy() calls imagedestroy() only below PHP 8.0, since it does nothing from 8.0 on and PHP 8.5 deprecates it (#1669)
 - gd-webp-read.md: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on an animated or cut-short WebP, imagecreatefromstring() reads WebP from 7.3; pg_image_webp_gd_readable(), pg_image_from_string()
 - get-file-byte-ranges.md: Range/206 in get_file.php and the external API from one copy (includes/http_range.php): what is answered 206, 416 or 200, If-Range by Last-Modified, which send paths take no range
@@ -121,8 +122,8 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
-- upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
-- upload-refusal-answers.md: Upload Design Files (add_design_file.php) answers a Dropzone refusal in JSON with a 4xx status and shows it in a role=alert line; why an HTML 200 refusal looked like success
+- upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
+- upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line, base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
 - vendor-api-update-download.md: Download, backup and replace of a signed update behind PG_VENDOR_API_V1 (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282) behind PG_VENDOR_API_V1: how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts

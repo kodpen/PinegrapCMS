@@ -609,7 +609,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
         $output_number_of_remaining_spots_row = '
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_remaining_spots_row" style="display:block;">
                                                                             <label class="form-label" for="number_of_remaining_spots">' . lang('Remaining Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_remaining_spots', 'name'=>'number_of_remaining_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
                                                                         </div> ';
         $product_id = $liveform->get_field_value('product_id');
     }
@@ -874,7 +874,7 @@ function pg_calendar_event_form_cards($liveform, $user, $calendars, $calendar_ev
                                                                     <div class="row">
                                                                         <div class="col-12 sm:col-auto my-3" id="number_of_initial_spots_row" style="display:' . $number_of_initial_spots_row_display . ';">
                                                                             <label class="form-label" for="number_of_initial_spots">' . lang('Number Of Initial Spots') . '</label>
-                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'decimal')) . '
+                                                                            ' . $liveform->output_field(array('type'=>'text', 'id'=>'number_of_initial_spots', 'name'=>'number_of_initial_spots', 'size'=>'3', 'maxlength'=>'9', 'class' => 'form-control text-end', 'inputmode'=>'numeric', 'data-inputmask-alias'=>'integer')) . '
                                                                         </div> ' . $output_number_of_remaining_spots_row . '
                                                                         <div class="col-12 my-3">
                                                                             <label class="form-label" for="no_remaining_spots_message">' . lang('No Longer Available Message') . '</label>

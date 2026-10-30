@@ -1122,7 +1122,7 @@ if (!$_POST) {
 
             fputcsv($out, array_merge($line, array(
                 $row['id'],
-                get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site')),
+                get_absolute_time(array('timestamp' => $row['start_timestamp'], 'type' => 'date and time', 'timezone_type' => 'site', 'format' => 'plain_text')),
                 $row['page_views'],
                 $row['custom_form_submitted'],
                 $row['order_created'],

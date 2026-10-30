@@ -216,7 +216,7 @@ function _render_system_widget_shipping_method($tree_json, $widget_id, $cfg = ar
             ? db_item("SELECT name, custom FROM arrival_dates WHERE id = '" . (int)$recipient['arrival_date_id'] . "'") : null;
         if (is_array($date)) {
             $arrival = $date['custom']
-                ? get_absolute_time(array('timestamp' => strtotime((string)$recipient['arrival_date']), 'type' => 'date', 'size' => 'long'))
+                ? get_absolute_time(array('timestamp' => strtotime((string)$recipient['arrival_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))
                 : (string)$date['name'];
         }
         $country_name = (string)db_value("SELECT name FROM countries WHERE code = '" . e($recipient['country']) . "'");

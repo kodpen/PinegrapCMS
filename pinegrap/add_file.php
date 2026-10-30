@@ -34,6 +34,20 @@ $upload_wants_json =
     ((($_REQUEST['jsonreturn'] ?? '') === 'true')
      || (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest'));
 
+// Answers a JSON caller with a refusal and stops. A status other than 200
+// lets the caller tell it apart from an upload without reading the sentence
+// (Dropzone counts any 2xx answer as success); "error" repeats the sentence
+// because Dropzone writes that key into each file's bubble.
+$upload_refusal_answer = function ($status, $message) {
+    http_response_code($status);
+    header('Content-Type: application/json; charset=utf-8');
+    echo encode_json(array(
+        'status'  => 'error',
+        'message' => $message,
+        'error'   => $message));
+    exit();
+};
+
 // A POST whose body PHP threw away for being over post_max_size.
 //
 // Without this the script falls through to its "no POST yet" branch, renders
@@ -53,14 +67,7 @@ if (pg_post_body_discarded()) {
     log_activity($upload_message);
 
     if ($upload_wants_json) {
-        // 413 rather than 200: the caller has to be able to tell this apart
-        // from a successful upload without reading the sentence.
-        http_response_code(413);
-        header('Content-Type: application/json; charset=utf-8');
-        echo encode_json(array(
-            'status'  => 'error',
-            'message' => $upload_message));
-        exit();
+        $upload_refusal_answer(413, $upload_message);
     }
 
     output_error(h($upload_message) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
@@ -208,6 +215,7 @@ if (!$_POST) {
             dictCancelUploadConfirmation : "' . lang('Are you sure you want to cancel this upload?') . '",
             dictMaxFilesExceeded : "' . lang('You can not upload any more files.') . '",
             dictCancelUpload : "' . lang('Cancel upload') . '",
+            dictResponseError : ' . encode_json(lang(array('string' => 'The server answered {var:1} without a readable error message.', 'vars' => array('{{statusCode}}')))) . ',
 
             dictRemoveFile : "<span class=\'material-icons btn btn-sm fg-danger p-1 rounded-4 position-absolute top-0 end-0\' style=\'z-index:20;\'>delete</span>",
             // Had to set high value for parallelUploads in order for
@@ -266,6 +274,7 @@ if (!$_POST) {
                 });
 
                 this.on("sendingmultiple", function() {
+                    $("#pg_upload_error").prop("hidden", true).text("");
                     $("#submit").prop("disabled", true);
                     $("#submit").addClass("disabled");
                 });
@@ -275,10 +284,32 @@ if (!$_POST) {
                     window.location = ' . json_encode(pg_send_to_url('view_files.php'), JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) . ';
                     
                 });
-                this.on("errormultiple", function(files, response) {
+                this.on("errormultiple", function(files, response, xhr) {
                     $("#submit").prop("disabled", false);
                     $("#submit").removeClass("disabled");
-                    console.log("' . lang('Sorry, the files could not be uploaded.  Please refresh and try again.') . '");
+
+                    // A refusal answers JSON {status, message}; a timeout or an
+                    // answer with no body gives a string; any other answer is
+                    // the raw text of an error page, which is not shown as is.
+                    var message = "";
+                    if (response && typeof response === "object" && response.message) {
+                        message = String(response.message);
+                    } else if (typeof response === "string" && $.trim(response) !== "" && !/<[a-z!\/]/i.test(response)) {
+                        message = response;
+                    } else if (xhr && xhr.status) {
+                        message = ' . encode_json(lang('The server answered {var:1} without a readable error message.')) . '.replace("{var:1}", xhr.status);
+                    } else {
+                        message = ' . encode_json(lang('Sorry, the files could not be uploaded.  Please refresh and try again.')) . ';
+                    }
+
+                    $("#pg_upload_error").text(message).prop("hidden", false);
+
+                    // Dropzone wrote the raw answer into each file bubble.
+                    $.each(files, function(i, file) {
+                        if (file.previewElement) {
+                            $(file.previewElement).find("[data-dz-errormessage]").text(message);
+                        }
+                    });
                 });
             }
         }
@@ -292,6 +323,7 @@ if (!$_POST) {
                         ' . $output_upload_limits . '
                     </div>
                 </div>
+                <div id="pg_upload_error" class="alert theme-danger" role="alert" hidden></div>
                 <form enctype="multipart/form-data" action="add_file.php" method="post" id="dropzone" class="dropzone" style="border: none;background: unset;padding: unset;">
                     ' . get_token_field() . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />
@@ -371,10 +403,25 @@ if (!$_POST) {
         $_POST['jsonreturn'] = 'true';
 
     } else {
+        if ($upload_wants_json) {
+            // The same comparison validate_token_field() makes, answered in
+            // JSON: its HTML page answers 200, which Dropzone reads as success.
+            $session_token = (string) ($_SESSION['software']['token'] ?? '');
+            $post_token = (isset($_POST['token']) && is_string($_POST['token'])) ? $_POST['token'] : '';
+            $get_token = (isset($_GET['token']) && is_string($_GET['token'])) ? $_GET['token'] : '';
+            if (($session_token === '') || (!hash_equals($session_token, $post_token) && !hash_equals($session_token, $get_token))) {
+                $upload_refusal_answer(403, lang('Your session expired. Reload the page and try again.'));
+            }
+        }
+
         validate_token_field();
 
         // If the user didn't select a file then output error.
         if (empty($_FILES['file']['name'][0])) {
+            if ($upload_wants_json) {
+                $upload_refusal_answer(400, lang('Please select a file.'));
+            }
+
             output_error(lang('Please select a file.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
         }
     }
@@ -382,6 +429,11 @@ if (!$_POST) {
     // check that user has access to place file in selected folder
     if (check_edit_access($_POST['folder'] ?? '') == false) {
         log_activity(lang('access denied to upload file into folder'), $_SESSION['sessionusername']);
+
+        if ($upload_wants_json) {
+            $upload_refusal_answer(403, lang('Access denied.'));
+        }
+
         output_error(lang('Access denied.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
@@ -529,6 +581,16 @@ if (!$_POST) {
             // second copy of the limit.
             'minimum_dimension' => ($image_profile === 'product') ? (int) $image_settings['product_min_dimension'] : 0));
         exit();
+    }
+
+    // A Dropzone batch where nothing was written is refused here rather than
+    // sent on to the list, so the screen says why and keeps the queue.
+    if (!$uploaded_files && $upload_wants_json) {
+        $upload_failed_message = $failed_files
+            ? implode(' ', array_column($failed_files, 'message'))
+            : lang('Nothing was uploaded.');
+
+        $upload_refusal_answer(400, $upload_failed_message);
     }
 
     include_once('liveform.class.php');

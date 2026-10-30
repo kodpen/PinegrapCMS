@@ -815,12 +815,12 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="maximum_number_of_results" class="form-label">' . lang('Maximum Number of Results') . '</label>
-                                            <input value="' . $maximum_number_of_results . '" type="text" name="maximum_number_of_results" id="maximum_number_of_results" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                            <input value="' . $maximum_number_of_results . '" type="text" name="maximum_number_of_results" id="maximum_number_of_results" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
                                             <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="maximum_number_of_results_per_page" class="form-label">' . lang('Maximum Number of Results Per Page') . '</label>
-                                            <input value="' . $maximum_number_of_results_per_page . '" type="text" name="maximum_number_of_results_per_page" id="maximum_number_of_results_per_page" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="decimal"  style="text-align: right;" />
+                                            <input value="' . $maximum_number_of_results_per_page . '" type="text" name="maximum_number_of_results_per_page" id="maximum_number_of_results_per_page" class="form-control" size="7" maxlength="10" inputmode="numeric" data-inputmask-alias="integer"  style="text-align: right;" />
                                             <div class="text-end form-text">' . lang('leave blank for no limit') . '</div>
                                         </div>
                                         <div class="col-12 my-3">

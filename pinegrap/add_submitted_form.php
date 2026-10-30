@@ -92,6 +92,14 @@ if ($page_id != '') {
 // custom form to bleed into another custom form.
 $liveform = new liveform('add_submitted_form', $page_id);
 
+// An attachment over post_max_size makes PHP throw the whole request away.
+// The custom form rides in the form's address, so the screen comes back to
+// it and says what happened instead of drawing the pick list.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('', h(pg_submitted_form_discarded_message()));
+    go(PATH . SOFTWARE_DIRECTORY . '/add_submitted_form.php' . (($page_id != '') ? '?page_id=' . urlencode($page_id) : ''));
+}
+
 $pretty_urls = false;
 
 if ($page_id != '') {
@@ -238,7 +246,7 @@ if (!$_POST) {
                                 </div>
                             </div>
                         </div>
-                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php" method="post">
+                        <form' . $form_markup['enctype'] . ' name="form" action="add_submitted_form.php?page_id=' . h(urlencode($page_id)) . '" method="post">
                             ' . get_token_field() . '
                             <input type="hidden" name="page_id" value="' . h($page_id) . '" />
                             <div class="row">

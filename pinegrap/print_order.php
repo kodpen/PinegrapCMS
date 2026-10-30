@@ -706,7 +706,7 @@ if ($ship_to_exists == true) {
             $output_arrival_date = '';
 
             if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
-                $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
+                $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date', 'format' => 'plain_text'));
             }
 
             $output_ship_date = '';

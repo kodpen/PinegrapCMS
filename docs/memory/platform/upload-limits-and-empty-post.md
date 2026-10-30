@@ -1,6 +1,6 @@
 ---
 name: upload-limits-and-empty-post
-description: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
+description: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 ---
 
 ## Why is an empty $_POST an error?
@@ -29,5 +29,12 @@ description: Why an empty $_POST is an error (post_max_size), pg_post_body_disca
 ## Why must `$_FILES[...]['error']` be read before creating a record?
 - An over-limit file arrives with empty `tmp_name`; `copy()` fails, and if its return is ignored the `INSERT` still runs → a file row whose link 404s and whose optimize button says "diskte yok".
 - `UPLOAD_ERR_NO_FILE` is skipped silently (not an error, just the form's empty row); every other code is reported to the operator.
+- On PHP 8 `fopen('')` / `copy('')` throw `ValueError`, so an unchecked oversize CSV gave a bare 500.
+
+## What do the single-file import screens call?
+- `pg_upload_refuse_discarded_body()` right after `init.php`: a 413 page naming post_max_size (`pg_upload_body_discarded_message()`). `translations_action.php` calls it only for a multipart body, before its JSON branch.
+- `pg_upload_file_refusal($_FILES[x], $file_max)` before opening the file: `''` for OK or no file, else `pg_upload_error_message()` naming the file and limit.
+- `pg_upload_limit_hint($app_max)` under the box: the lower of the server's and the screen's own limit.
+- Used by the CSV imports (contacts, key codes, campaign profiles, submitted forms, users, products, shipments, short links, translations), Import Zip, Add Theme File and Workspace tables (#3664).
 
 Related: docs/memory/platform/browser-image-preshrink.md

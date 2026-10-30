@@ -757,6 +757,147 @@ function pg_post_body_discarded()
 }
 
 /**
+ * What to tell the person about a body PHP threw away for being over
+ * post_max_size, naming the most one request may carry.
+ *
+ * @param int $post_max bytes, post_max_size (0: not known)
+ * @return string
+ */
+function pg_upload_body_discarded_message($post_max)
+{
+    $sentence = lang('The request was too large for this server and arrived empty.');
+
+    if ((int) $post_max <= 0) {
+        return $sentence;
+    }
+
+    return $sentence . ' ' . lang(array(
+        'string' => 'The file can be at most {var:1}.',
+        'vars'   => array(convert_bytes_to_string((int) $post_max, 1))));
+}
+
+/**
+ * Ends a form-POST screen whose body PHP threw away (pg_post_body_discarded())
+ * with a 413 page that names the limit, instead of drawing the form again as
+ * if nothing had been sent. Called right after init.php; never from an
+ * endpoint whose body is JSON.
+ */
+function pg_upload_refuse_discarded_body()
+{
+    if (!pg_post_body_discarded()) {
+        return;
+    }
+
+    $limits = pg_upload_limits();
+
+    output_error(h(pg_upload_body_discarded_message($limits['post_max'])) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 413);
+}
+
+/**
+ * What to tell the person about a file PHP did not take in whole, naming the
+ * file and, for an oversize one, the limit.
+ *
+ * @param string $name     the file's name as it was sent
+ * @param int    $error    PHP's upload error code
+ * @param int    $file_max bytes, the largest single file the server takes
+ * @return string '' for UPLOAD_ERR_OK
+ */
+function pg_upload_error_message($name, $error, $file_max)
+{
+    $error = (int) $error;
+
+    if ($error === UPLOAD_ERR_OK) {
+        return '';
+    }
+
+    if (in_array($error, array(UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE), true)) {
+        return lang(array(
+            'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+            'vars'   => array($name, convert_bytes_to_string($file_max, 1))));
+    }
+
+    if ($error === UPLOAD_ERR_PARTIAL) {
+        return lang(array(
+            'string' => '{var:1} only arrived in part, so it was not saved. Please try again.',
+            'vars'   => array($name)));
+    }
+
+    return lang(array(
+        'string' => 'The server could not accept {var:1}. Please try again.',
+        'vars'   => array($name)));
+}
+
+/**
+ * The refusal for one $_FILES entry of a single-file box, read before the
+ * file is opened: an oversize file arrives with an empty tmp_name, which
+ * fopen() and copy() turn into an error page (PHP 8 throws on an empty path)
+ * or a misleading "empty" or "not a valid zip" answer.
+ *
+ * @param array|null $file     the $_FILES entry
+ * @param int        $file_max bytes, the largest single file the server takes
+ * @return string '' when the file arrived or none was chosen (the screen's
+ *                own "choose a file" answer covers that)
+ */
+function pg_upload_file_refusal($file, $file_max)
+{
+    if (!is_array($file) || !isset($file['error']) || is_array($file['error'])) {
+        return '';
+    }
+
+    $error = (int) $file['error'];
+
+    if ($error === UPLOAD_ERR_NO_FILE) {
+        return '';
+    }
+
+    return pg_upload_error_message(pg_basename((string) ($file['name'] ?? '')), $error, $file_max);
+}
+
+/**
+ * The sentence under a single-file box: the largest file it takes, the
+ * screen's own limit when that is lower than the server's.
+ *
+ * @param int      $app_max  bytes, the screen's own limit (0: none)
+ * @param int|null $file_max bytes, the server's limit (null: pg_upload_limits())
+ * @return string '' when neither limits the file
+ */
+function pg_upload_limit_sentence($app_max = 0, $file_max = null)
+{
+    if ($file_max === null) {
+        $limits = pg_upload_limits();
+        $file_max = $limits['file_max'];
+    }
+
+    $max = (int) $file_max;
+    $app_max = (int) $app_max;
+
+    if (($app_max > 0) && (($max <= 0) || ($app_max < $max))) {
+        $max = $app_max;
+    }
+
+    if ($max <= 0) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => 'The file can be at most {var:1}.',
+        'vars'   => array(convert_bytes_to_string($max, 1))));
+}
+
+/**
+ * pg_upload_limit_sentence() as the hint line under a file box.
+ *
+ * @param int $app_max bytes, the screen's own limit (0: none)
+ * @return string HTML, '' when there is no limit to state
+ */
+function pg_upload_limit_hint($app_max = 0)
+{
+    $sentence = pg_upload_limit_sentence($app_max);
+
+    return ($sentence === '') ? '' : '<div class="form-text">' . h($sentence) . '</div>';
+}
+
+/**
  * Stores one file that arrived for the file library: the rules every file
  * of the Upload File screen goes through (add_file.php), whether the browser
  * sent it or the server downloaded it from the person's cloud storage
