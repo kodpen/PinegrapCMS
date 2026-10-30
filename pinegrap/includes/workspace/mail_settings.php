@@ -563,11 +563,11 @@ function ws_mail_settings_post($viewer, $action, $liveform)
         db("UPDATE ws_mail_boxes SET " . $set . " WHERE id = '" . $box_id . "'");
 
         if (!$result['ok']) {
-            $liveform->add_error(ws_mail_error_text($result['error'], $result['detail'], (string) ($settings['host'] ?? '')));
+            $liveform->add_error(h(ws_mail_error_text($result['error'], $result['detail'], (string) ($settings['host'] ?? ''))));
             return;
         }
 
-        $liveform->add_notice(lang(array('string' => 'Connected: {var:1} e-mails in {var:2}.', 'vars' => array(pg_format_number($result['exists'], 0), (string) $box['folder']))));
+        $liveform->add_notice(lang(array('string' => 'Connected: {var:1} e-mails in {var:2}.', 'vars' => array(pg_format_number($result['exists'], 0), h((string) $box['folder'])))));
 
         if ($filled) {
             $liveform->add_notice(lang(array('string' => 'The checking server was set to {var:1}, the name the newest e-mail was checked under.', 'vars' => $result['auth_server'])));
