@@ -5,7 +5,7 @@ module: subscriptions
 ---
 
 ## When does Stripe run subscriptions?
-- Always: `pg_payment_stripe_capabilities()` declares `'recurring' => 'store'` with no switch, since Stripe charges a kept card off-session for any account (unlike iyzico, `subscriptions-iyzico.md`). The checkout hook of slice 2 (`pg_subscription_checkout_create()`) picks it up unchanged.
+- Always: `pg_payment_stripe_capabilities()` declares `'recurring' => 'store'` with no switch, since Stripe charges a kept card off-session for any account (unlike iyzico, `subscriptions-iyzico.md`). The checkout hook of slice 2 (`pg_subscription_checkout_create()`) picks it up unchanged, later lines included (`subscriptions-later-start.md`).
 
 ## How is the card kept on the first payment?
 - `authorize()` with `payment['recurring']` (the cart has a priced recurring line) first makes a Customer (`POST /v1/customers`: email, name, metadata order_id and user_id; key `pg-cus-` + order + token), then creates the intent with `customer` and `setup_future_usage: off_session`.
