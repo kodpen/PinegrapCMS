@@ -12,7 +12,11 @@
  * shipment and announces it to the carrier at once and answers with the
  * label (base64, PDF or ZPL), GET /parcels/{id}/documents/label gives it
  * again, POST /shipments/{id}/cancel cancels it, and GET
- * /parcels/tracking/{number} gives the carrier's events.
+ * /parcels/tracking/{number} gives the carrier's events. A customer return
+ * goes through the Returns API: POST /returns/announce-synchronously
+ * announces it from the customer to the sender address, GET /returns/{id}
+ * gives its tracking number, PATCH /returns/{id}/cancel asks the carrier to
+ * cancel it.
  *
  * Sendcloud has no sandbox: test mode ships with the free "Unstamped
  * letter" option (sendcloud:letter), which makes a real label no carrier
@@ -23,9 +27,11 @@
  * create() takes is the one includes/shipping/geliver.php describes
  * (service: a Sendcloud shipping option code such as postnl:standard). No
  * customs declaration is sent yet, so a parcel that would need one (leaving
- * the EU, or to or from Great Britain abroad) is refused before a call. The
- * Shipments API makes outgoing shipments only: a return is refused.
- * $reference is Sendcloud's shipment id.
+ * the EU, or to or from Great Britain abroad) is refused before a call, a
+ * return as well. A return is made in live mode only: the unstamped letter
+ * of test mode is an outgoing option.
+ * $reference is Sendcloud's shipment id, or r-<return id>-<parcel id> for a
+ * return.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -93,7 +99,8 @@ function pg_label_sendcloud_fields()
 
 /**
  * The HTTP transport: pg_curl_run() unless one is set in its place (the
- * tests).
+ * tests). While one is set, a wait is recorded (pg_label_sendcloud_waits())
+ * instead of slept.
  *
  * @param callable|null $replace function ($method, $url, $headers, $body)
  *                               answering status, body, error, sent
@@ -106,11 +113,46 @@ function pg_label_sendcloud_transport($replace = null, $reset = false)
 
     if ($reset) {
         $transport = null;
+        pg_label_sendcloud_waits(true);
     } elseif ($replace !== null) {
         $transport = $replace;
+        pg_label_sendcloud_waits(true);
     }
 
     return $transport;
+}
+
+/**
+ * The waits asked for while a stand-in transport is set, in seconds.
+ *
+ * @param bool     $reset
+ * @param int|null $add   a wait to record
+ * @return array
+ */
+function pg_label_sendcloud_waits($reset = false, $add = null)
+{
+    static $waits = array();
+
+    if ($reset) {
+        $waits = array();
+    } elseif ($add !== null) {
+        $waits[] = $add;
+    }
+
+    return $waits;
+}
+
+/**
+ * @param int $seconds
+ */
+function pg_label_sendcloud_sleep($seconds)
+{
+    if (pg_label_sendcloud_transport() !== null) {
+        pg_label_sendcloud_waits(false, $seconds);
+        return;
+    }
+
+    sleep($seconds);
 }
 
 /**
@@ -216,7 +258,8 @@ function pg_label_sendcloud_raw($data)
 
 /**
  * The words of a refused request: JSON:API errors (detail, with the field
- * the pointer names), or a detail sentence or list. Pure.
+ * the pointer names), a detail sentence or list, or the Returns API's
+ * error object or errors with a message. Pure.
  *
  * @param array $data
  * @return string[]
@@ -230,6 +273,10 @@ function pg_label_sendcloud_error_texts($data)
         $errors = array_merge($errors, is_array($data['detail']) ? $data['detail'] : array(array('detail' => $data['detail'])));
     }
 
+    if (isset($data['error']) && is_array($data['error'])) {
+        $errors[] = $data['error'];
+    }
+
     foreach ($errors as $error) {
         if (!is_array($error)) {
             continue;
@@ -237,6 +284,7 @@ function pg_label_sendcloud_error_texts($data)
 
         $words = pg_label_sendcloud_text($error, 'detail');
         $words = ($words !== '') ? $words : pg_label_sendcloud_text($error, 'msg');
+        $words = ($words !== '') ? $words : pg_label_sendcloud_text($error, 'message');
         $words = ($words !== '') ? $words : pg_label_sendcloud_text($error, 'title');
         $field = isset($error['source']) ? trim(pg_label_sendcloud_text($error['source'], 'pointer'), '/') : '';
 
@@ -306,31 +354,38 @@ function pg_label_sendcloud_eu_countries()
 
 /**
  * Why a parcel between two countries cannot be sent without customs, ''
- * when it can: Sendcloud's sender countries, then within the EU or within
- * Great Britain. Pure.
+ * when it can: Sendcloud's sender countries (the shop's side), then within
+ * the EU or within Great Britain. Pure.
  *
  * @param string $from
  * @param string $to
+ * @param bool   $return a return: $from is the customer, $to the shop
  * @return string
  */
-function pg_label_sendcloud_route_error($from, $to)
+function pg_label_sendcloud_route_error($from, $to, $return = false)
 {
     $from = strtoupper(trim((string) $from));
     $to = strtoupper(trim((string) $to));
+    $shop = $return ? $to : $from;
+    $customer = $return ? $from : $to;
     $senders = array('AT', 'BE', 'DE', 'ES', 'FR', 'GB', 'IT', 'NL');
 
-    if ($to === '') {
+    if ($customer === '') {
         return lang('Sendcloud needs the country of the shipping address.');
     }
 
-    if (!in_array($from, $senders, true)) {
-        return lang(array('string' => 'Sendcloud does not ship from {var:1}.', 'vars' => array(($from === '') ? '?' : $from)));
+    if (!in_array($shop, $senders, true)) {
+        return lang(array('string' => 'Sendcloud does not ship from {var:1}.', 'vars' => array(($shop === '') ? '?' : $shop)));
     }
 
     $eu = pg_label_sendcloud_eu_countries();
 
     if (($from === $to) || (in_array($from, $eu, true) && in_array($to, $eu, true))) {
         return '';
+    }
+
+    if ($return) {
+        return lang(array('string' => 'A return from {var:1} to {var:2} needs a customs declaration, which is not sent to Sendcloud yet.', 'vars' => array($from, $to)));
     }
 
     return lang(array('string' => 'A parcel from {var:1} to {var:2} needs a customs declaration, which is not sent to Sendcloud yet.', 'vars' => array($from, $to)));
@@ -384,6 +439,32 @@ function pg_label_sendcloud_parcel($parcel)
 }
 
 /**
+ * The shipment's recipient as a Sendcloud address. Pure.
+ *
+ * @param mixed $recipient see the header of this file
+ * @return array
+ */
+function pg_label_sendcloud_recipient_address($recipient)
+{
+    $text = 'pg_label_sendcloud_text';
+    $state = strtoupper($text($recipient, 'state_code'));
+
+    return array_filter(array(
+        'name'                => substr($text($recipient, 'name'), 0, 75),
+        'address_line_1'      => $text($recipient, 'address_1'),
+        'address_line_2'      => $text($recipient, 'address_2'),
+        'postal_code'         => $text($recipient, 'zip'),
+        'city'                => $text($recipient, 'city'),
+        'country_code'        => strtoupper($text($recipient, 'country')),
+        // An ISO 3166-2 code (IT-RM) only: a plate number or a name is
+        // refused by the countries that need one.
+        'state_province_code' => (preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', $state) === 1) ? $state : '',
+        'phone_number'        => $text($recipient, 'phone'),
+        'email'               => $text($recipient, 'email'),
+    ), 'strlen');
+}
+
+/**
  * The POST /shipments/announce body of a shipment. Pure.
  *
  * @param array  $shipment see the header of this file
@@ -398,24 +479,10 @@ function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option)
     $text = 'pg_label_sendcloud_text';
     $recipient = isset($shipment['recipient']) ? $shipment['recipient'] : array();
     $parcel = isset($shipment['parcel']) ? $shipment['parcel'] : array();
-    $country = strtoupper($text($recipient, 'country'));
-    $state = $text($recipient, 'state_code');
 
     $body = array(
         'label_details' => ($account['label_format'] === 'zpl') ? array('mime_type' => 'application/zpl', 'dpi' => 203) : array('mime_type' => 'application/pdf', 'dpi' => 72),
-        'to_address'    => array_filter(array(
-            'name'                => substr($text($recipient, 'name'), 0, 75),
-            'address_line_1'      => $text($recipient, 'address_1'),
-            'address_line_2'      => $text($recipient, 'address_2'),
-            'postal_code'         => $text($recipient, 'zip'),
-            'city'                => $text($recipient, 'city'),
-            'country_code'        => $country,
-            // An ISO 3166-2 code (IT-RM) only: a plate number or a name is
-            // refused by the countries that need one.
-            'state_province_code' => (preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', strtoupper($state)) === 1) ? strtoupper($state) : '',
-            'phone_number'        => $text($recipient, 'phone'),
-            'email'               => $text($recipient, 'email'),
-        ), 'strlen'),
+        'to_address'    => pg_label_sendcloud_recipient_address($recipient),
         'from_address'  => array('sender_address_id' => (int) $sender),
         'ship_with'     => array('type' => 'shipping_option_code', 'properties' => array('shipping_option_code' => (string) $option)),
         'parcels'       => array(pg_label_sendcloud_parcel($parcel)),
@@ -439,12 +506,14 @@ function pg_label_sendcloud_shipment_body($shipment, $account, $sender, $option)
 
 /**
  * The cheapest shipping option Sendcloud priced that needs no service point,
- * no export documents and is not the free test letter. Pure.
+ * no export documents and is not the free test letter; for a return also
+ * one marked for returns. Pure.
  *
  * @param mixed $options the data of POST /shipping-options
+ * @param bool  $return
  * @return string the option's code, '' when none
  */
-function pg_label_sendcloud_option_pick($options)
+function pg_label_sendcloud_option_pick($options, $return = false)
 {
     $cheapest = null;
 
@@ -454,7 +523,8 @@ function pg_label_sendcloud_option_pick($options)
         $total = isset($option['quotes'][0]['price']['total']) ? pg_label_sendcloud_text($option['quotes'][0]['price']['total'], 'value') : '';
 
         if (($code === '') || (strncmp($code, 'sendcloud:letter', 16) === 0) || !empty($option['quote_error'])
-            || !empty($needs['export_documents']) || !empty($needs['is_service_point_required']) || !is_numeric($total)) {
+            || !empty($needs['export_documents']) || !empty($needs['is_service_point_required']) || !is_numeric($total)
+            || ($return && empty($option['functionalities']['returns']))) {
             continue;
         }
 
@@ -598,6 +668,214 @@ function pg_label_sendcloud_download($parcel, $format, $account)
     return array('label' => $read['body'], 'log' => '');
 }
 
+/**
+ * The return id and the parcel id of a return reference
+ * (r-<return id>-<parcel id>), null for any other reference. Pure.
+ *
+ * @param mixed $reference
+ * @return array|null return, parcel
+ */
+function pg_label_sendcloud_return_ids($reference)
+{
+    $reference = is_scalar($reference) ? trim((string) $reference) : '';
+
+    if (preg_match('/^r-([1-9][0-9]{0,19})-([1-9][0-9]{0,19})$/', $reference, $match) !== 1) {
+        return null;
+    }
+
+    return array('return' => $match[1], 'parcel' => $match[2]);
+}
+
+/**
+ * The POST /returns/announce-synchronously body of a return: from the
+ * customer (the shipment's recipient) to the sender address. The Returns
+ * API takes the whole address, not its id, and numbers, not decimal text.
+ * Pure.
+ *
+ * @param array  $shipment see the header of this file
+ * @param array  $sender   a sender address of the account
+ * @param string $option   the shipping option code
+ * @return array
+ */
+function pg_label_sendcloud_return_body($shipment, $sender, $option)
+{
+    $text = 'pg_label_sendcloud_text';
+    $state = strtoupper($text($sender, 'state_province_code'));
+    $parcel = pg_label_sendcloud_parcel(isset($shipment['parcel']) ? $shipment['parcel'] : array());
+
+    $body = array(
+        'from_address' => pg_label_sendcloud_recipient_address(isset($shipment['recipient']) ? $shipment['recipient'] : array()),
+        'to_address'   => array_filter(array(
+            'name'                => substr($text($sender, 'name'), 0, 75),
+            'company_name'        => $text($sender, 'company_name'),
+            'address_line_1'      => $text($sender, 'address_line_1'),
+            'house_number'        => $text($sender, 'house_number'),
+            'address_line_2'      => $text($sender, 'address_line_2'),
+            'postal_code'         => $text($sender, 'postal_code'),
+            'city'                => $text($sender, 'city'),
+            'country_code'        => strtoupper($text($sender, 'country_code')),
+            'state_province_code' => (preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', $state) === 1) ? $state : '',
+            'phone_number'        => $text($sender, 'phone_number'),
+            'email'               => $text($sender, 'email'),
+        ), 'strlen'),
+        'ship_with'    => array('type' => 'shipping_option_code', 'shipping_option_code' => (string) $option),
+        'weight'       => array('value' => (float) $parcel['weight']['value'], 'unit' => 'kg'),
+    );
+
+    if (isset($parcel['dimensions'])) {
+        $sizes = $parcel['dimensions'];
+        $body['dimensions'] = array('length' => (float) $sizes['length'], 'width' => (float) $sizes['width'], 'height' => (float) $sizes['height'], 'unit' => 'cm');
+    }
+
+    // The customer prints the label and hands the parcel in.
+    $body['delivery_option'] = 'drop_off_point';
+    $order = substr($text($shipment, 'order_number'), 0, 35);
+
+    if ($order !== '') {
+        $body['order_number'] = $order;
+    }
+
+    return $body;
+}
+
+/**
+ * A return read by its id, asked again a few times while the carrier has not
+ * given its tracking number yet.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array pg_label_sendcloud_api(), with return: the return object
+ */
+function pg_label_sendcloud_return_read($id, $account)
+{
+    for ($round = 0; ; $round++) {
+        $read = pg_label_sendcloud_api('GET', '/returns/' . rawurlencode($id), $account);
+        $read['return'] = (isset($read['data']['data']) && is_array($read['data']['data'])) ? $read['data']['data'] : $read['data'];
+
+        if (!$read['ok'] || (pg_label_sendcloud_text($read['return'], 'tracking_number') !== '') || ($round >= 3)) {
+            return $read;
+        }
+
+        pg_label_sendcloud_sleep(2);
+    }
+}
+
+/**
+ * create() of a return: priced and announced from the customer to the
+ * sender address.
+ *
+ * @param array $shipment
+ * @param array $account
+ * @return array
+ */
+function pg_label_sendcloud_return_create($shipment, $account)
+{
+    // The free letter of test mode is an outgoing option and a return label
+    // is a paid one: none is bought in test mode.
+    if ($account['mode'] !== 'live') {
+        return array('success' => false, 'error' => lang('Sendcloud return labels are made in live mode only: test mode ships unstamped letters, which have no return.'));
+    }
+
+    $recipient = isset($shipment['recipient']) ? $shipment['recipient'] : array();
+    $customer = strtoupper(pg_label_sendcloud_text($recipient, 'country'));
+
+    if ($customer === '') {
+        return array('success' => false, 'error' => lang('Sendcloud needs the country of the shipping address.'));
+    }
+
+    $sender = pg_label_sendcloud_sender($account);
+
+    if (!$sender['read']['ok']) {
+        return pg_label_sendcloud_failure($sender['read'], false);
+    }
+
+    if ($sender['address'] === null) {
+        return array('success' => false, 'error' => lang('Sendcloud has no sender address of this id. Add one in the Sendcloud panel.'), 'raw' => $sender['read']['raw']);
+    }
+
+    $to = $sender['address'];
+    $refusal = pg_label_sendcloud_route_error($customer, pg_label_sendcloud_text($to, 'country_code'), true);
+
+    if ($refusal !== '') {
+        return array('success' => false, 'error' => $refusal);
+    }
+
+    // The account's option is an outgoing one: only an option asked for
+    // this shipment is taken as it is.
+    $option = pg_label_sendcloud_text($shipment, 'service');
+
+    if ($option === '') {
+        $read = pg_label_sendcloud_api('POST', '/shipping-options', $account, array(
+            'from_address'     => array_filter(array('country_code' => $customer, 'postal_code' => pg_label_sendcloud_text($recipient, 'zip')), 'strlen'),
+            'to_address'       => array_filter(array('country_code' => strtoupper(pg_label_sendcloud_text($to, 'country_code')), 'postal_code' => pg_label_sendcloud_text($to, 'postal_code')), 'strlen'),
+            'parcels'          => array(pg_label_sendcloud_parcel(isset($shipment['parcel']) ? $shipment['parcel'] : array())),
+            'functionalities'  => array('returns' => true),
+            'calculate_quotes' => true,
+        ));
+
+        if (!$read['ok']) {
+            return pg_label_sendcloud_failure($read, false);
+        }
+
+        $option = pg_label_sendcloud_option_pick(isset($read['data']['data']) ? $read['data']['data'] : array(), true);
+
+        if ($option === '') {
+            return array('success' => false, 'error' => lang('Sendcloud found no return option for this shipment.'), 'raw' => $read['raw']);
+        }
+    }
+
+    // The announcement is the charge: a lost answer or a server error
+    // leaves it unknown whether the label was made.
+    $read = pg_label_sendcloud_api('POST', '/returns/announce-synchronously', $account, pg_label_sendcloud_return_body($shipment, $to, $option));
+
+    if (!$read['ok']) {
+        return pg_label_sendcloud_failure($read, true);
+    }
+
+    $return_id = pg_label_sendcloud_text($read['data'], 'return_id');
+    $parcel_id = pg_label_sendcloud_text($read['data'], 'parcel_id');
+    $reference = pg_label_sendcloud_return_ids('r-' . $return_id . '-' . $parcel_id) ? 'r-' . $return_id . '-' . $parcel_id : '';
+
+    // Without a reference or number the label may be made all the same:
+    // pg_label_answer() makes this an unclear failure.
+    $answer = array(
+        'success'         => true,
+        'reference'       => $reference,
+        'tracking_number' => '',
+        'status'          => 'created',
+        'log'             => array('Sendcloud return ' . $return_id . ' made with ' . $option . '.'),
+        'raw'             => $read['raw'],
+    );
+
+    if ($reference === '') {
+        return $answer;
+    }
+
+    $details = pg_label_sendcloud_return_read($return_id, $account);
+
+    if ($details['ok']) {
+        $tracking = pg_label_sendcloud_text($details['return'], 'tracking_url');
+        $code = isset($details['return']['shipping_option']) ? pg_label_sendcloud_text($details['return']['shipping_option'], 'code') : '';
+        $answer['tracking_number'] = pg_label_sendcloud_text($details['return'], 'tracking_number');
+        $answer['carrier'] = pg_label_sendcloud_carrier(strtok(($code !== '') ? $code : $option, ':'));
+        $answer['tracking_url'] = (strncmp($tracking, 'https://', 8) === 0) ? $tracking : '';
+    } else {
+        $answer['log'][] = 'The Sendcloud return could not be read: ' . $details['message'] . '.';
+    }
+
+    $format = ($account['label_format'] === 'zpl') ? 'zpl' : 'pdf';
+    $download = pg_label_sendcloud_download($parcel_id, $format, $account);
+
+    if ($download['label'] !== '') {
+        $answer['label'] = $download['label'];
+        $answer['label_format'] = $format;
+    } else {
+        $answer['log'][] = $download['log'];
+    }
+
+    return $answer;
+}
+
 function pg_label_sendcloud_test($account)
 {
     $sender = pg_label_sendcloud_sender($account);
@@ -622,7 +900,7 @@ function pg_label_sendcloud_test($account)
 function pg_label_sendcloud_create($shipment, $account)
 {
     if (is_array($shipment) && !empty($shipment['return'])) {
-        return array('success' => false, 'error' => lang('Sendcloud return labels are not made from the store yet.'));
+        return pg_label_sendcloud_return_create($shipment, $account);
     }
 
     $recipient = (is_array($shipment) && isset($shipment['recipient'])) ? $shipment['recipient'] : array();
@@ -748,6 +1026,19 @@ function pg_label_sendcloud_create($shipment, $account)
 
 function pg_label_sendcloud_label($reference, $format, $account)
 {
+    $return = pg_label_sendcloud_return_ids($reference);
+
+    // A return's label is its own parcel's document.
+    if ($return !== null) {
+        $download = pg_label_sendcloud_download($return['parcel'], $format, $account);
+
+        if ($download['label'] === '') {
+            return array('success' => false, 'error' => lang('The label could not be read from Sendcloud.'), 'log' => array($download['log']));
+        }
+
+        return array('success' => true, 'reference' => trim((string) $reference), 'label' => $download['label'], 'label_format' => $format);
+    }
+
     $id = pg_label_sendcloud_id($reference);
 
     if ($id === '') {
@@ -778,9 +1069,16 @@ function pg_label_sendcloud_label($reference, $format, $account)
 
 function pg_label_sendcloud_cancel($reference, $account)
 {
+    $return = pg_label_sendcloud_return_ids($reference);
+
+    if ($return !== null) {
+        return pg_label_sendcloud_return_cancel($return['return'], trim((string) $reference), $account);
+    }
+
     $id = pg_label_sendcloud_id($reference);
 
-    if ($id === '') {
+    // A return reference that names no parcel is not one of the store's.
+    if (($id === '') || (strncmp($id, 'r-', 2) === 0)) {
         return array('success' => false, 'error' => lang('No shipment of the carrier label service is known for this parcel.'));
     }
 
@@ -796,6 +1094,29 @@ function pg_label_sendcloud_cancel($reference, $account)
     $status = isset($read['data']['data']) ? pg_label_sendcloud_text($read['data']['data'], 'status') : '';
 
     return array('success' => true, 'reference' => $id, 'log' => array('Sendcloud cancellation of shipment ' . $id . ' is ' . (($status !== '') ? $status : 'requested') . '.'));
+}
+
+/**
+ * cancel() of a return. Not every carrier cancels a return label: a 202 is
+ * a request Sendcloud passes on and counts as done; a 409 (the return
+ * cannot be cancelled) refuses with Sendcloud's reason.
+ *
+ * @param string $id        the return id
+ * @param string $reference
+ * @param array  $account
+ * @return array
+ */
+function pg_label_sendcloud_return_cancel($id, $reference, $account)
+{
+    $read = pg_label_sendcloud_api('PATCH', '/returns/' . rawurlencode($id) . '/cancel', $account);
+
+    if (!$read['ok']) {
+        return pg_label_sendcloud_failure($read, true);
+    }
+
+    $words = pg_label_sendcloud_text($read['data'], 'message');
+
+    return array('success' => true, 'reference' => $reference, 'log' => array('Sendcloud cancellation of return ' . $id . ': ' . (($words !== '') ? substr($words, 0, 200) : 'requested') . '.'));
 }
 
 function pg_label_sendcloud_track($reference, $account)

@@ -101,6 +101,37 @@ function test_explorer_quick_look_is_named_and_holds_focus()
 	pg_assert_contains("if ((event.key !== 'Escape') || !quickLookIsOpen()", $source, 'Escape closes Quick Look before the Close tooltip takes it');
 }
 
+function test_explorer_quick_look_previews_take_tab_and_scroll_keys()
+{
+	$source = explorer_keyboard_source();
+	$trap = explorer_keyboard_function('trapQuickLookTab');
+
+	pg_assert_contains('iframe, [tabindex]', $trap, 'the PDF and page frames and the Office preview join the Tab ring');
+	pg_assert_contains("(element.getAttribute('tabindex') !== '-1')", $trap, 'inactive sheet tabs stay out of the Tab ring');
+
+	$quickLook = strpos($source, 'if (quickLookIsOpen()) {');
+	$used = strpos($source, 'if (event.defaultPrevented) { return; }', (int) $quickLook);
+	$scroll = strpos($source, "event.target.closest('#explorer_quicklook .office-view')", (int) $quickLook);
+	$step = strpos($source, "if (key === 'ArrowRight') { event.preventDefault(); stepQuickLook(1); return; }", (int) $quickLook);
+
+	pg_assert_true(($used !== false) && ($step !== false) && ($used < $step), 'a key a sheet tab already used does not also step to the next file');
+	pg_assert_true(($scroll !== false) && ($scroll < $step), 'the arrow, page, Home and End keys scroll inside the Office preview');
+	pg_assert_contains("'PageUp', 'PageDown', 'Home', 'End'", $source, 'page keys reach the preview');
+
+	pg_assert_contains("if (quickLookIsOpen() && !document.getElementById('explorer_quicklook').contains(event.target)) {", $source, 'focus leaving a frame comes back into Quick Look');
+}
+
+function test_explorer_rename_preview_list_scrolls_and_wraps()
+{
+	$source = explorer_keyboard_source();
+
+	pg_assert_contains('id="rename_preview_list" class="mb-3" role="region" aria-labelledby="rename_preview_heading" tabindex="0"', $source, 'the rename preview list is a named Tab stop');
+	pg_assert_contains('<h6 id="rename_preview_heading"', $source, 'the heading names the list');
+	pg_assert_true(strpos($source, '<span class="text-truncate\' + (row.unchanged') === false, 'old names are not cut off');
+	pg_assert_true(strpos($source, '<span class="text-truncate\' + (row.clash') === false, 'new names are not cut off');
+	pg_assert_contains('<span class="text-break\' + (row.clash', $source, 'new names wrap');
+}
+
 function test_explorer_context_menu_opens_from_the_keyboard()
 {
 	$source = explorer_keyboard_source();

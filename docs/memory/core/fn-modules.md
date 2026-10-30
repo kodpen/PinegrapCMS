@@ -81,6 +81,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-renewal]]
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
+- `subscriptions_operator`: [[subscriptions-operator-screen]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
 - `vendor_api`: [[vendor-api-client]]

@@ -1,0 +1,40 @@
+{
+  "data": [
+    {
+      "code": "postnl:standard",
+      "name": "PostNL Standard",
+      "carrier": {"code": "postnl", "name": "PostNL"},
+      "functionalities": {"returns": false},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"weight": {"min": {"value": "0.001", "unit": "kg"}, "max": {"value": "23.001", "unit": "kg"}}, "price": {"breakdown": [], "total": {"value": "3.10", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "dhl:return/servicepoint",
+      "name": "DHL Return Service Point",
+      "carrier": {"code": "dhl", "name": "DHL"},
+      "functionalities": {"returns": true},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": true},
+      "quote_error": null,
+      "quotes": [{"weight": {"min": {"value": "0.001", "unit": "kg"}, "max": {"value": "23.001", "unit": "kg"}}, "price": {"breakdown": [], "total": {"value": "3.90", "currency": "EUR"}}, "lead_time": 48}]
+    },
+    {
+      "code": "dpd:return/return",
+      "name": "DPD Return",
+      "carrier": {"code": "dpd", "name": "DPD"},
+      "functionalities": {"returns": true},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"weight": {"min": {"value": "0.001", "unit": "kg"}, "max": {"value": "31.501", "unit": "kg"}}, "price": {"breakdown": [], "total": {"value": "6.45", "currency": "EUR"}}, "lead_time": 48}]
+    },
+    {
+      "code": "ups:standard/return",
+      "name": "UPS Standard Return",
+      "carrier": {"code": "ups", "name": "UPS"},
+      "functionalities": {"returns": true},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"weight": {"min": {"value": "0.001", "unit": "kg"}, "max": {"value": "70.001", "unit": "kg"}}, "price": {"breakdown": [], "total": {"value": "8.20", "currency": "EUR"}}, "lead_time": 24}]
+    }
+  ]
+}

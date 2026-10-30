@@ -1,0 +1,28 @@
+{
+  "event": "track_updated",
+  "test": true,
+  "data": {
+    "messages": [],
+    "carrier": "dpd_de",
+    "tracking_number": "01234567890123",
+    "address_from": {"city": "Berlin", "state": "", "zip": "10117", "country": "DE"},
+    "address_to": {"city": "München", "state": "", "zip": "80331", "country": "DE"},
+    "eta": "2026-11-02T00:00:00Z",
+    "original_eta": "2026-11-02T00:00:00Z",
+    "servicelevel": {"token": "dpd_de_classic", "name": "Classic"},
+    "metadata": "Order 10042",
+    "tracking_status": {
+      "object_created": "2026-10-30T14:05:12.408Z",
+      "object_updated": "2026-10-30T14:05:12.408Z",
+      "object_id": "7c4f3e9d2a1b4c5d8e6f0a1b2c3d4e5f",
+      "status": "TRANSIT",
+      "status_details": "The parcel is out for delivery.",
+      "status_date": "2026-10-30T14:02:00Z",
+      "substatus": {"code": "out_for_delivery", "text": "Package is out for delivery", "action_required": false},
+      "location": {"city": "München", "state": "", "zip": "80331", "country": "DE"}
+    },
+    "tracking_history": [],
+    "transaction": "915d94940ea54c3a80cbfa328722f5a1",
+    "test": true
+  }
+}
