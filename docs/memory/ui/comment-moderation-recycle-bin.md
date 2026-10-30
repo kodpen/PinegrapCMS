@@ -5,7 +5,7 @@ module: comments
 ---
 
 ## Which figures leave these comments out?
-- The Comment Moderation card (`widget_25.php`, list and count, every role), the dashboard greeting's comment count (`includes/dashboard/brief.php`) and the Workspace `comments_pending` counter (`includes/workspace/scheduled.php`).
+- The Comment Moderation card (`widget_25.php`, list and count, every role), the dashboard greeting's comment count (`includes/dashboard/brief.php`), the Workspace `comments_pending` counter (`includes/workspace/scheduled.php`) and the Activity card's Comments tile and list (`widget_7.php`).
 - Each query LEFT JOINs `page` and appends `pg_comment_live_page_sql(pg_recycle_bin_folder_ids())` (`includes/fn/comments.php`).
 
 ## Why leave them out?
@@ -22,7 +22,7 @@ module: comments
 ## What symptom did this fix?
 - #3612 (PR #3695): comments on a binned page showed as dashboard work under 'pgbin_1380_rehber-2', the greeting counted them as approve-and-it-shows, and Go To Comment opened /pgbin_….
 
-## What was left?
-- The activity card (`widget_7.php`) still lists comments on binned pages.
+## How does the Activity card leave them out?
+- `pg_dashboard_activity_kinds()` builds the fragment once; `pg_activity_daily()` gets `comments LEFT JOIN page ON …` as its table and the fragment as `$extra`, and the list query appends it after `WHERE 1 = 1`. Before, it counted and listed them as 'Awaiting approval' (PR for the Activity card counts).
 
 Test: `tests/comment_recycle_bin_test.php`.
