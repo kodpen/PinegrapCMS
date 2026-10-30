@@ -86,3 +86,142 @@ function test_tr_district_box_set_sql()
 	pg_assert_same(", district = ''", pg_ship_to_district_set_sql('', true));
 	pg_assert_contains("O\\'Hara", pg_ship_to_district_set_sql("O'Hara", true));
 }
+
+// A field column of the designer tree: a label and one control.
+function tr_district_box_test_column($name, $label_children = array())
+{
+	return array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col-sm-6 mb-3'), 'children' => array(
+		array('type' => 'semantic', 'props' => array('tag' => 'label', 'text' => $name), 'children' => $label_children),
+		array('type' => 'semantic', 'props' => array('tag' => 'input', '_attrs' => array(array('name' => 'name', 'value' => $name))), 'children' => array()),
+	));
+}
+
+function tr_district_box_test_named($name)
+{
+	return function ($node) use ($name) {
+		foreach ((array) ($node['props']['_attrs'] ?? array()) as $a) {
+			if (($a['name'] ?? '') === 'name' && ($a['value'] ?? '') === $name) {
+				return true;
+			}
+		}
+		return false;
+	};
+}
+
+function tr_district_box_test_names($tree)
+{
+	$names = array();
+	foreach ($tree['children'] as $column) {
+		$names[] = $column['children'][1]['props']['_attrs'][0]['value'] ?? '?';
+	}
+	return $names;
+}
+
+// A layout designed before the box gets it right after City's column (a
+// required City label with its star counts as a column); one that has it
+// keeps it where it is; while the column is missing the box and its column go.
+function test_tr_district_box_tree_fit()
+{
+	$star = array(array('type' => 'semantic', 'props' => array('tag' => 'span', 'text' => '*'), 'children' => array()));
+	$row = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+		tr_district_box_test_column('city', $star),
+		tr_district_box_test_column('country'),
+	));
+	$city = tr_district_box_test_named('city');
+	$district = tr_district_box_test_named('district');
+
+	$tree = $row;
+	pg_ship_to_district_tree_fit($tree, $city, $district, tr_district_box_test_column('district'), true);
+	pg_assert_same(array('city', 'district', 'country'), tr_district_box_test_names($tree), 'added after City');
+
+	$again = $tree;
+	pg_ship_to_district_tree_fit($again, $city, $district, tr_district_box_test_column('district'), true);
+	pg_assert_same(array('city', 'district', 'country'), tr_district_box_test_names($again), 'added once');
+
+	$moved = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(
+		tr_district_box_test_column('district'), tr_district_box_test_column('city'),
+	));
+	pg_ship_to_district_tree_fit($moved, $city, $district, tr_district_box_test_column('district'), true);
+	pg_assert_same(array('district', 'city'), tr_district_box_test_names($moved), 'kept where the designer put it');
+
+	pg_ship_to_district_tree_fit($tree, $city, $district, tr_district_box_test_column('district'), false);
+	pg_assert_same(array('city', 'country'), tr_district_box_test_names($tree), 'dropped with its column');
+
+	$plain = $row;
+	pg_ship_to_district_tree_fit($plain, $city, $district, tr_district_box_test_column('district'), false);
+	pg_assert_same(array('city', 'country'), tr_district_box_test_names($plain), 'nothing added without the column');
+}
+
+// The control carries what the script reads; its column is what is hidden.
+function test_tr_district_box_tree_mark()
+{
+	$tree = array('type' => 'semantic', 'props' => array('tag' => 'div'), 'children' => array(tr_district_box_test_column('district')));
+	pg_ship_to_district_tree_mark($tree, tr_district_box_test_named('district'), 'shipping_7_country', array('TR'), false);
+
+	$wrap = array();
+	foreach ($tree['children'][0]['props']['_attrs'] as $a) $wrap[$a['name']] = $a['value'];
+	$attrs = array();
+	foreach ($tree['children'][0]['children'][1]['props']['_attrs'] as $a) $attrs[$a['name']] = $a['value'];
+
+	pg_assert_true(isset($wrap['data-pg-district-wrap']), 'column marked');
+	pg_assert_same('shipping_7_country', $attrs['data-pg-district']);
+	pg_assert_same('TR', $attrs['data-pg-district-codes']);
+	pg_assert_same('50', $attrs['maxlength']);
+	pg_assert_false(isset($attrs['data-pg-district-asks']), 'the carrier does not ask');
+
+	pg_ship_to_district_tree_mark($tree, tr_district_box_test_named('district'), 'country', array('TR'), true);
+	$attrs = array();
+	foreach ($tree['children'][0]['children'][1]['props']['_attrs'] as $a) $attrs[$a['name']] = $a['value'];
+	pg_assert_same('1', $attrs['data-pg-district-asks']);
+	pg_assert_same('country', $attrs['data-pg-district']);
+}
+
+// The script follows the country control and hides the column.
+function test_tr_district_box_script()
+{
+	// Read from the source: the script is printed once per request, and an
+	// earlier test may have drawn it already.
+	$source = tr_district_box_test_source('includes/fn/shipping.php');
+	$start = strpos($source, "\nfunction pg_ship_to_district_script(");
+	$js = (string) substr($source, (int) $start, 1500);
+	pg_assert_contains('data-pg-district-wrap', $js);
+	pg_assert_contains('data-pg-district-asks', $js);
+	pg_assert_contains('w.hidden=!on', $js);
+}
+
+// Both twins of each widget draw the box: the express order's PHP default
+// tree and JS starter, the shipping address starter (its PHP side adds it to
+// a saved layout), the server's per-recipient form and the classic page.
+function test_tr_district_box_twins()
+{
+	$eo = tr_district_box_test_source('includes/fn/widgets_express_order.php');
+	$js = tr_district_box_test_source('assets/js/style_designer.src.js');
+
+	pg_assert_contains("lang('District'),    'shipping_district'", $eo, 'PHP default tree');
+	pg_assert_contains("_sdT('District'),     'shipping_district'", $js, 'JS starter tree');
+	pg_assert_contains("_sdT('District'), 'shipping_district'", $js, 'JS recipient loop starter');
+	pg_assert_contains("'district', { autocomplete: 'address-level3'", $js, 'shipping address starter');
+	pg_assert_contains("_eo_fit_district_field(\$wrap, \$rid);", $eo, 'per-recipient loop');
+	pg_assert_contains("_eo_fit_district_field(\$tree_decoded_for_eo", tr_district_box_test_source('includes/fn/widgets_cart.php'), 'single recipient');
+	pg_assert_contains("'shipping_' . \$rid . '_district'", $eo, 'server per-recipient form');
+	pg_assert_contains('pg_ship_to_district_tree_fit(', tr_district_box_test_source('includes/fn/widgets_shipping_address.php'));
+	pg_assert_contains('name="district"', tr_district_box_test_source('get_shipping_address_and_arrival.php'), 'classic page');
+	pg_assert_true(in_array('district', pg_sa_address_fields(), true), 'a shipping address control');
+	pg_assert_true(_eo_is_known_input_name('shipping_12_district'), 'a known express order field');
+}
+
+// Both checkouts save it through the helpers; the order screen shows it.
+function test_tr_district_box_saved_and_shown()
+{
+	$eo = tr_district_box_test_source('express_order.php');
+	pg_assert_contains("pg_ship_to_district_address_sql(\$liveform->get(\$prefix . 'district')", $eo);
+	pg_assert_contains("\$pg_prefix . 'district'", $eo, 'one value per post');
+
+	$sa = tr_district_box_test_source('shipping_address_and_arrival.php');
+	pg_assert_contains("pg_ship_to_district_save((int) (\$_POST['ship_to_id'] ?? 0), \$liveform->get_field_value('district')", $sa);
+	pg_assert_contains("'city', 'district', 'state'", $sa, 'one value per post');
+
+	$view = tr_district_box_test_source('view_order.php');
+	pg_assert_contains('(pg_ship_to_district_ready() ? "ship_tos.district," : "")', $view);
+	pg_assert_contains("\$ship_tos[\$key]['district'] . ', '", $view);
+}

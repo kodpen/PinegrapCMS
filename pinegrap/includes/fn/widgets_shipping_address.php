@@ -35,7 +35,29 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 function pg_sa_address_fields()
 {
     return array('salutation', 'first_name', 'last_name', 'company', 'address_1', 'address_2',
-        'city', 'state', 'zip_code', 'country', 'address_type', 'phone_number');
+        'city', 'district', 'state', 'zip_code', 'country', 'address_type', 'phone_number');
+}
+
+/**
+ * The district field a layout designed before the box gets after City: the
+ * starter's shape (_swAcctField() in style_designer.src.js).
+ *
+ * @param string $id id of the control, unique on the page
+ * @return array a designer tree node
+ */
+function pg_sa_district_node($id)
+{
+    return array('type' => 'semantic', 'props' => array('tag' => 'div', 'cssClass' => 'col-sm-6 mb-3', 'customName' => lang('District')), 'children' => array(
+        array('type' => 'semantic', 'props' => array('tag' => 'label', 'cssClass' => 'form-label', 'text' => lang('District'),
+            '_attrs' => array(array('name' => 'for', 'value' => (string)$id))), 'children' => array()),
+        array('type' => 'semantic', 'props' => array('tag' => 'input', 'cssClass' => 'form-control', 'id' => (string)$id,
+            '_attrs' => array(
+                array('name' => 'type', 'value' => 'text'),
+                array('name' => 'name', 'value' => 'district'),
+                array('name' => 'autocomplete', 'value' => 'address-level3'),
+                array('name' => 'maxlength', 'value' => '50'),
+            )), 'children' => array()),
+    ));
 }
 
 /**
@@ -430,6 +452,8 @@ function _pg_sa_start_values($lf, $recipient, $ship_to_id, $arrival_dates)
     }
     if (!is_array($row)) $row = is_array($recipient) ? $recipient : array();
     foreach (pg_sa_address_fields() as $f) $values[$f] = isset($row[$f]) ? (string)$row[$f] : '';
+    // The district is kept on the recipient only: the address book has none.
+    if ($values['district'] === '' && is_array($recipient) && isset($recipient['district'])) $values['district'] = (string)$recipient['district'];
     if ($values['country'] === '') $values['country'] = _pg_acct_default_country();
     $values['arrival_date'] = '';
     $values['custom_arrival_date'] = '';
@@ -627,6 +651,14 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $sa_flags = pg_sa_flags($has_recipient, $multi, count($arrival_dates) > 0, $custom_form, count($verified) > 0);
     _eo_apply_visibility_bindings($tree, $sa_flags + array('arrival_is_custom' => true));
 
+    // The optional district box: a layout designed before it gets one after
+    // City, none while ship_tos.district is missing.
+    $district_ready = pg_ship_to_district_ready();
+    $named = function ($name) {
+        return function ($node) use ($name) { return _pg_member_control_name($node) === $name; };
+    };
+    pg_ship_to_district_tree_fit($tree, $named('city'), $named('district'), pg_sa_district_node('pg-sa-district-w' . $widget_id), $district_ready);
+
     $states = array();
     $verified_states = array();
     $zip = array();
@@ -646,6 +678,10 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
             'salutation' => _pg_acct_pairs(get_salutation_options()),
             'country'    => $countries,
         ));
+        if ($district_ready) {
+            $district_asks = pg_ship_to_district_method_asks(is_array($recipient) ? (int)$recipient['shipping_method_id'] : 0);
+            pg_ship_to_district_tree_mark($tree, $named('district'), 'country', pg_ship_to_district_tr_codes(), $district_asks);
+        }
         _pg_sa_state_controls($tree, $values['state'], isset($states[$values['country']]) ? $states[$values['country']] : array());
         if ($type_on) {
             _pg_acct_check_value($tree, 'address_type', $values['address_type']);
@@ -712,6 +748,7 @@ function _render_system_widget_shipping_address_and_arrival($tree_json, $widget_
     $form_id = 'pg-sa-form-w' . $widget_id;
     $folder_id = $page_id > 0 ? (int)db_value("SELECT page_folder FROM page WHERE page_id = '" . (int)$page_id . "'") : 0;
     $scripts .= pg_sa_state_script($form_id, $states, $zip);
+    if ($district_ready) $scripts .= pg_ship_to_district_script();
     if ($verified) $scripts .= pg_sa_verified_script($form_id, $verified_id, $verified_states, $verified);
     $rendered = _pg_member_form_wrap($rendered . $scripts, _pg_acct_software_path() . '/shipping_address_and_arrival.php', array(
         'page_id'    => $page_id,

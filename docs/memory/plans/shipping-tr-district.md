@@ -8,6 +8,7 @@ description: Shipping plan step 8 (decision #3569): ship_tos.district and states
 - D1 - done (#3600): step 11.0.134 adds `ship_tos.district` and `states.plate_code` and fills the plate codes of the Turkish states; `pg_ship_to_district_ready()`; a subscription renewal copies the district. No UI (`commerce/tr-district-plate-code.md`).
 
 ## What does D2 do?
+- Done (#3641): `commerce/tr-district-plate-code.md`.
 - The optional district box on checkout (express order widget and the classic shipping address page) and on the order screens (`view_order.php`, the address edit), shown when the country is Turkey or the chosen method's driver asks for a district.
 - Saved only when `pg_ship_to_district_ready()`; free text, at most 50 characters, never required. Texts through `php tools/tr_add.php`.
 
@@ -17,4 +18,4 @@ description: Shipping plan step 8 (decision #3569): ship_tos.district and states
 - The API `ship_tos` address (`api_order_shipments()`, `includes/api/resources/orders.php`) gains `district` with its entry in `includes/api/schema.php`; left out of D1 because that file was held by draft #3298.
 
 ## Where to start?
-- D2: `includes/fn/widgets_express_order.php`, `includes/fn/widgets_shipping_address.php`, `shipping_address_and_arrival.php`, `view_order.php`; check open PRs on them first.
+- D3: the drivers in `includes/shipping/`, `mp_order_ship_to()`, `includes/api/outbound/orders.php`, `includes/api/resources/orders.php`, `includes/api/schema.php`; a driver that needs the district may define `pg_label_<key>_needs_district()`; check open PRs on them first.

@@ -2999,6 +2999,7 @@ function _render_system_widget_express_order($tree_json, $widget_id, $cfg = arra
             $eo_recipient_tmpl = $rl_split['template_children'];
         }
 
+        if ($_eo_lf) _eo_fit_district_field($tree_decoded_for_eo, $_eo_ship_rid);
         if ($_eo_lf) _eo_apply_field_bindings($tree_decoded_for_eo, $_eo_lf, $_eo_ship_rid);
         if ($_eo_lf) _eo_prefill_input_values_in_tree($tree_decoded_for_eo, $_eo_lf);
         _eo_apply_action_bindings($tree_decoded_for_eo);

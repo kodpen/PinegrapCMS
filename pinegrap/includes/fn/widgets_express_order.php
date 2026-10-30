@@ -654,6 +654,37 @@ function _eo_apply_visibility_bindings(&$tree, $context, $row = array())
     $tree['children'] = $kept;
 }
 
+// The optional district box of a recipient (ship_tos.district): dropped
+// while the column is missing; once it exists, a tree designed before the
+// box gets one right after City, and the box is marked for the script that
+// shows it only for Turkey or a carrier that asks (pg_ship_to_district_*).
+// Runs before _eo_apply_field_bindings(), which names the controls.
+function _eo_fit_district_field(&$tree, $ship_rid = 0)
+{
+    if (!is_array($tree)) return;
+    $ready = pg_ship_to_district_ready();
+    $bound = function ($field) {
+        return function ($node) use ($field) {
+            return isset($node['props']['_bindings']['eo_field']) && (string)$node['props']['_bindings']['eo_field'] === $field;
+        };
+    };
+    $node = _eo_sem('div', 'col-12 col-md-6 mb-3', array(
+        _eo_sem('label', 'form-label small fw-semibold', lang('District'),
+            array('attrs' => array(array('name' => 'for', 'value' => 'shipping_district')))),
+        _eo_sem('input', 'form-control', null, array(
+            'attrs'    => array(array('name' => 'type', 'value' => 'text'), array('name' => 'value', 'value' => '')),
+            'bindings' => array('eo_field' => 'shipping_district'),
+        )),
+    ));
+    pg_ship_to_district_tree_fit($tree, $bound('shipping_city'), $bound('shipping_district'), $node, $ready);
+    if (!$ready) return;
+    $asks = ($ship_rid > 0)
+        ? pg_ship_to_district_method_asks((int)db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . (int)$ship_rid . "'"))
+        : false;
+    $country = ($ship_rid > 0) ? 'shipping_' . (int)$ship_rid . '_country' : 'shipping_country';
+    pg_ship_to_district_tree_mark($tree, $bound('shipping_district'), $country, pg_ship_to_district_tr_codes(), $asks);
+}
+
 // ── Designer bindings: `_bindings.eo_field='X'` on input/select/textarea
 // ─────────────────────────────────────────────────────────────────────────
 // THE primary binding for express order form fields. Designer drops any
@@ -844,7 +875,7 @@ function _eo_is_known_input_name($name)
     if (preg_match('/^shipping_\d+_([a-z_0-9]+)$/', $name, $m)) {
         $valid_suffixes = array(
             'salutation','first_name','last_name','company',
-            'address_1','address_2','city','state','zip_code','country',
+            'address_1','address_2','city','district','state','zip_code','country',
             'phone_number','email_address','address_type','arrival_date','shipping_method',
         );
         return in_array($m[1], $valid_suffixes, true);
@@ -1407,6 +1438,8 @@ function _eo_default_designer_tree()
                                     $field('col-12 col-md-6 mb-3', lang('Address 1'),   'shipping_address_1',   'text', '', true),
                                     $field('col-12 col-md-6 mb-3', lang('Address 2'),   'shipping_address_2',   'text'),
                                     $field('col-12 col-md-6 mb-3', lang('City'),        'shipping_city',        'text', '', true),
+                                    // Optional; drawn for a Turkish address (_eo_fit_district_field()).
+                                    $field('col-12 col-md-6 mb-3', lang('District'),    'shipping_district',    'text'),
                                     $sem('div', 'col-12 col-md-6 mb-3', array(
                                         $label('shipping_country', lang('Country'), true),
                                         $sem('select', 'form-select', null, array(
@@ -3374,6 +3407,12 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
         if ($val !== '') $lf->assign_field_value($key, $val);
     }
 
+    // The district is kept on the recipient only: the address book has none.
+    if (!$lf->field_in_session($prefix . 'district') && pg_ship_to_district_ready()) {
+        $district = (string)db_value("SELECT district FROM ship_tos WHERE id = '" . $rid . "'");
+        if ($district !== '') $lf->assign_field_value($prefix . 'district', $district);
+    }
+
     // country fallback to site default
     if (!$lf->field_in_session($prefix . 'country')) {
         $cur = $lf->get_field_value($prefix . 'country');
@@ -3664,6 +3703,19 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
             $out .= $row(lang('Address 2'),  'address_2',  'text', false);
             $out .= $row(lang('City'),       'city',       'text', true);
 
+            // District: optional, shown by pg_ship_to_district_script() while
+            // the country is Turkey or the carrier asks for it.
+            if (pg_ship_to_district_ready()) {
+                $district_name = 'shipping_' . $rid . '_district';
+                $asks = pg_ship_to_district_method_asks(isset($r['shipping_method_id']) ? (int)$r['shipping_method_id'] : 0);
+                $out .= '<div class="col-12 col-md-6 mb-3" data-pg-district-wrap>'
+                      . '<label class="form-label small fw-semibold" for="' . h($district_name) . '">' . h(lang('District')) . '</label>'
+                      . '<input type="text" class="form-control" id="' . h($district_name) . '" name="' . h($district_name) . '" value="' . h($get('district')) . '" maxlength="50"'
+                      . ' data-pg-district="shipping_' . $rid . '_country" data-pg-district-codes="' . h(implode(',', pg_ship_to_district_tr_codes())) . '"'
+                      . ($asks ? ' data-pg-district-asks="1"' : '') . '>'
+                      . '</div>';
+            }
+
             // Country select
             $out .= '<div class="col-12 col-md-6 mb-3">'
                   . '<label class="form-label small fw-semibold" for="shipping_' . $rid . '_country">' . h(lang('Country')) . ' <span class="text-danger">*</span></label>'
@@ -3919,7 +3971,7 @@ function _eo_render_widget_js($widget_id, $form_id, $needs_shipping, $recipients
 
     // Inline script. Idempotent — multiple express_order widgets on the
     // same page register only one global init via window.__pgEoInit.
-    return <<<HTML
+    return pg_ship_to_district_script() . <<<HTML
 <script>
 (function(){
     var FORM_ID     = {$form_id_json};
@@ -4631,6 +4683,7 @@ function _eo_render_recipient_loop($template_children, $recipients, $lf)
         // Walker expects a tree node; wrap children in a synthetic root.
         $wrap = array('type' => 'root', 'props' => array(), 'children' => $clone);
         if ($lf) {
+            _eo_fit_district_field($wrap, $rid);
             _eo_apply_field_bindings($wrap, $lf, $rid);
             _eo_prefill_input_values_in_tree($wrap, $lf);
         }
