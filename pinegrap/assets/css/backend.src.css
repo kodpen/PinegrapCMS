@@ -8379,10 +8379,16 @@ button.no-popover:focus-visible {
   color: var(--pg-fg-body);
 }
 
-/* Narrow screens: the controls keep the first line, and the two elements that
-   actually need width - the location and the search box - each get a line of
-   their own. Without this the location gets about two hundred pixels to say
-   where you are, which is the one thing it cannot do in two hundred pixels. */
+/* Narrow screens: the two elements that actually need width - the location
+   and the search box - each get a line of their own. Without this the location
+   gets about two hundred pixels to say where you are, which is the one thing
+   it cannot do in two hundred pixels.
+
+   They take that line where they stand in the markup, not at the bottom of the
+   bar: moving them with `order` would draw them below controls that Tab and a
+   screen reader still reach after them, so focus would jump down and climb
+   back up. A grow left empty is only a spacer pushing the rest to the right;
+   on a full line it would split the bar in two, so it is hidden here. */
 @media (max-width: 767.98px) {
 
   .pg-toolbar,
@@ -8390,13 +8396,12 @@ button.no-popover:focus-visible {
 
   .pg-toolbar-grow,
   .pg-toolbar-search {
-    order: 9;
     flex: 1 1 100%;
     width: auto !important;
     min-width: 0;
   }
 
-  .pg-toolbar-search { order: 10; }
+  .pg-toolbar-grow:empty { display: none; }
 }
 
 /* The orders list's statistics strip (view_orders.php): a sparkline under a

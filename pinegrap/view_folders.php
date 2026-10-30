@@ -974,20 +974,11 @@ echo
    backend.src.css) -- this screen is where that pattern was first built, and it
    was the last one still carrying its own copy of it.
 
-   What stays here is the one thing the shared rules cannot know: the order this
-   screen's own controls take when the bar wraps. The shared block puts the path
-   on line two (order 9) and the search box on line three (order 10), so
-   everything below has to stay under nine. */
+   When the bar wraps, every control keeps its markup position, so Tab follows
+   the rows as drawn; the view switches still start the right-hand group. */
 @media (max-width: 767.98px) {
 
-    #new_menu_wrap { order: 1; }
-    #explorer_transfer_wrap { order: 2; }
-    #up_button { order: 3; }
-    #explorer_filter_wrap { order: 4; }
-    #file_scope_wrap { order: 5; }
-    #explorer_view_group { order: 6; margin-left: auto; }
-    #recycle_bin_button { order: 7; }
-    #explorer_more_wrap { order: 8; }
+    #explorer_view_group { margin-left: auto; }
 }
 #file_scope_menu .menu-item [data-role="check"] { opacity: 0; }
 #file_scope_menu .menu-item.active [data-role="check"] { opacity: 1; }

@@ -24,7 +24,7 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 ## Where do toolbar classes live?
 - In the shared file, not in the page: `assets/css/backend.src.css`, block *Admin screen toolbar*: `.pg-toolbar`, `.pg-toolbar-grow`, `.pg-toolbar-search`, `.btn-text.theme-secondary` (+ `.active`) and narrow-screen rules. Toolbar buttons are `btn btn-sm btn-text theme-secondary`; `.btn-ghost` is the old class, kept only for `workspace_flow.js`, never written in new code. `#button_bar` shares them (`page-button-bar.md`).
 - New screens use these classes; do not write new bar CSS on your own `#id`.
-- `view_folders.php` wears them too (`#explorer_toolbar.pg-toolbar`); it keeps only the order its own controls take when the bar wraps.
+- `view_folders.php` wears them too (`#explorer_toolbar.pg-toolbar`); its own phone rule only starts the view switches' group on the right (`#explorer_view_group { margin-left: auto }`).
 - `.btn-text.theme-secondary` sets only Bootstrap's own button variables, so light/dark theme needs no second rule.
 
 ## What is the card header pattern?
@@ -32,13 +32,12 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 - Never put a second heading with the same name as the card inside it.
 
 ## How does the toolbar behave on narrow screens?
-- It splits into rows: controls take the first row; breadcrumb and search drop to full-width lower rows (`order` + `flex-basis`).
-- Example: the `@media (max-width: 767.98px)` block in `view_folders.php`.
-- `editor_select_image.php` does the same: the picker opens as a 390 px tab on a phone (zoom off), so `#esi_toolbar` wraps and the filter pill takes a full row, its fields `flex: 1 1 0`.
+- Below 768 px `.pg-toolbar-grow` and `.pg-toolbar-search` take a full line each (`flex: 1 1 100%`) at their markup position, with no `order`, so Tab follows the rows as drawn (WCAG 2.4.3). An empty grow (a spacer) is hidden there (`:empty`), else it would split the bar.
+- Why: `order: 9`/`10` (and the File Manager's own `1-8`) drew them on lower lines but Tab reached them before line 1. Removed in PR #3513; pinned by `tests/toolbar_narrow_order_test.php`.
+- `editor_select_image.php`: the picker opens as a 390 px tab on a phone (zoom off), so `#esi_toolbar` wraps and the filter pill takes a full row, its fields `flex: 1 1 0`.
 - A card header's right-hand button cluster (`ms-auto d-flex`) carries `flex-wrap justify-content-end`: `.btn` is nowrap, and four of them pushed `marketplace_settings.php` sideways.
 
 ## Which screens keep their own phone toolbar rules?
-- `editor_select_image.php` (`#esi_toolbar`) and the prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) do not use the shared classes.
-- Their phone rules give the filter pill / page navigation a full-width line but no `order`: the bar wraps at markup position (title, filters or Prev/Pages/Next, then the buttons), so Tab and screen readers follow the rows as drawn (WCAG 2.4.3). Pinned by `tests/toolbar_local_order_test.php` (PR #3483).
+- `editor_select_image.php` (`#esi_toolbar`) and the prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) skip the shared classes; their filter pill / page navigation also take a full line with no `order` (PR #3483, `tests/toolbar_local_order_test.php`).
 
 Related: docs/memory/ui/admin-screen-toolbar.md
