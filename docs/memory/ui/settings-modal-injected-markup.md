@@ -18,7 +18,7 @@ description: Rules for settings pane markup injected by AJAX: jQuery .html(), pg
 ## Where does a card's script go?
 - Into that card's module (`$pg_settings_scripts`). A function called by `onclick` that stays in the page script drops out in the split and the button silently does nothing (happened once with `pgRobotsNoIndex`).
 ## Why must a card's ids be unique on every screen?
-- The dialog is printed in the header, ahead of the screen, and its pane stays in the document, hidden, after it closes. `getElementById`, jQuery `'#id'` and `<label for>` take the first match, so a card field with a screen's id takes that screen's lookups: with `title`/`meta_description`/`seo_c_*` on the SEO card, the product and page search preview read the site-wide values, their counters froze and Write with AI filled the hidden field (#PR).
+- The dialog is printed in the header, ahead of the screen, and its pane stays in the document, hidden, after it closes. `getElementById`, jQuery `'#id'` and `<label for>` take the first match, so a card field with a screen's id takes that screen's lookups: with `title`/`meta_description`/`seo_c_*` on the SEO card, the product and page search preview read the site-wide values, their counters froze and Write with AI filled the hidden field (#3466).
 - Card fields use a `setting_` id prefix (`setting_title`, `setting_email_address`, `setting_password_hint`, …); `name=` stays, the save modules and `markable()` go by name. Not `pgset-`/`pgsub-`: those are card anchors. `tests/settings_card_ids_test.php` scans the cards against root screens and `includes/forms/`, and keeps screen fields off the chrome ids `header`, `query`, `search_results`.
 
 Related: docs/memory/ui/settings-modal-dirty-tracking.md
