@@ -230,10 +230,37 @@ function pg_subscription_customer_action($user_id, $id, $action, $return_url, $i
         return array('result' => 'redirect', 'url' => $url);
     }
 
-    // The status the row was read with is the condition of the write: a
-    // renewal or a staff move made meanwhile wins and this one is refused.
-    if (!$io['set_status']((int) $row['id'], pg_subscription_customer_action_status($action), 'customer')) {
+    if (!pg_subscription_store_move($row, $action, 'customer', $io)) {
         return array('result' => 'refused', 'url' => '');
+    }
+
+    return array('result' => 'done', 'url' => '');
+}
+
+/**
+ * Makes a pause, resume or cancel on a row already checked against its
+ * status: the customer's own action and the operator's
+ * (includes/fn/subscriptions_operator.php) both end here, so both write the
+ * same status_<to> event and send the same mail.
+ *
+ * @param array  $row    the subscriptions row as read
+ * @param string $action pause, resume or cancel
+ * @param string $detail who moved it, for the history
+ * @param array  $io     pg_subscription_customer_io() or stand-ins
+ * @return bool false when the move was not written
+ */
+function pg_subscription_store_move($row, $action, $detail, $io)
+{
+    $to = pg_subscription_customer_action_status($action);
+
+    if (($to === null) || ($to === '')) {
+        return false;
+    }
+
+    // The status the row was read with is the condition of the write: a
+    // renewal or another move made meanwhile wins and this one is refused.
+    if (!$io['set_status']((int) $row['id'], $to, (string) $detail)) {
+        return false;
     }
 
     // Nothing is charged again: the stored card is forgotten at the service
@@ -247,7 +274,7 @@ function pg_subscription_customer_action($user_id, $id, $action, $return_url, $i
         }
     }
 
-    return array('result' => 'done', 'url' => '');
+    return true;
 }
 
 /**
