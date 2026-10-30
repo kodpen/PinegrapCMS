@@ -5,7 +5,7 @@ module: carrier_webhook
 ---
 
 ## What is it?
-- `POST carrier_webhook.php?driver=<key>&key=<secret>`, functions in `includes/fn/carrier_webhook.php` (loaded by the entry and the Shipping card). A driver joins with optional `pg_label_<key>_webhook_read($body)`, `_webhook_verify($raw, $headers, $account)`, `_webhook_register($url, $account)`, `_webhook_remove($id, $account)`; Geliver is the first (`carrier-label-geliver.md`), Shippo the second (#3407, `carrier-label-shippo.md`), Sendcloud the third (#3431, `carrier-label-sendcloud.md`). A driver without register gets no webhook line on the card (no key is made). The hourly poll (`shipment-tracking.md`) stays as the safety net, budgets unchanged.
+- `POST carrier_webhook.php?driver=<key>&key=<secret>`, functions in `includes/fn/carrier_webhook.php` (loaded by the entry and the Shipping card). A driver joins with optional `pg_label_<key>_webhook_read($body)`, `_webhook_verify($raw, $headers, $account)`, `_webhook_register($url, $account)`, `_webhook_remove($id, $account)`; Geliver is the first (`carrier-label-geliver.md`), Shippo the second (#3407, `carrier-label-shippo.md`), Sendcloud the third (#3431, `carrier-label-sendcloud.md`), Kargonomi the fourth (#3633, `carrier-webhook-drivers.md`). A driver without register gets no webhook line on the card (no key is made). The hourly poll (`shipment-tracking.md`) stays as the safety net, budgets unchanged.
 
 ## Where is the secret?
 - No schema: `webhook_key` (32 hex, `random_bytes`) and `webhook_id` (the service's) are extra entries of the driver's sealed secrets in `connect_apps` `label_<key>` (`pg_carrier_webhook_secrets_put()`, null removes). `pg_label_settings_store()` merges secrets, so a save keeps them; they are never account fields.
@@ -19,7 +19,7 @@ module: carrier_webhook
 ## What does a message change?
 - `pg_carrier_webhook_decide()` (pure) over `pg_carrier_webhook_label()` (label by driver + reference, its parcel row LEFT JOINed): unknown → logged once (last 100 in `data/temp/carrier_webhook.json`), 200; return label or the service's return flag → nothing; label not active, row gone, order incomplete/cancelled → nothing; parcel arrived or returned → nothing (a repeated delivery gives no second `order.delivered`); a status older than the row's `status_at` → nothing (out of order; an arrival is never too old); else `pg_shipment_tracking_decide()` then `pg_shipment_tracking_apply()`, the only write.
 
-## How do Shippo and Sendcloud take part?
+## How do Shippo, Sendcloud and Kargonomi take part?
 - `carrier-webhook-drivers.md`.
 
 ## Firewall?

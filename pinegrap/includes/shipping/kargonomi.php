@@ -886,22 +886,221 @@ function pg_label_kargonomi_track($reference, $account)
         return pg_label_kargonomi_failure($read, false);
     }
 
-    $data = pg_label_kargonomi_shipment_of($read['data']);
+    return pg_label_kargonomi_track_answer(pg_label_kargonomi_shipment_of($read['data']), $read['raw']);
+}
+
+/**
+ * A track() answer from a shipment as GET /shipments/{id} gives it, which
+ * is also the shipment of a shipment.updated message. Pure.
+ *
+ * @param array $data a shipment
+ * @param array $raw  what to keep of Kargonomi's answer
+ * @return array
+ */
+function pg_label_kargonomi_track_answer($data, $raw)
+{
     $status = pg_label_kargonomi_status(pg_label_kargonomi_text($data, 'status'));
 
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Kargonomi gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return array('success' => false, 'error' => lang('Kargonomi gives no status for this shipment yet.'), 'raw' => $raw);
     }
 
     $words = pg_label_kargonomi_text($data, 'status_label');
 
     return array(
         'success'         => true,
-        'reference'       => $id,
+        'reference'       => pg_label_kargonomi_id(isset($data['id']) ? $data['id'] : ''),
         'status'          => $status,
         'status_at'       => pg_label_kargonomi_time($data, $status),
         'tracking_number' => pg_label_kargonomi_number_of($data),
         'carrier'         => pg_label_kargonomi_carrier($data),
         'log'             => ($words !== '') ? array('Kargonomi: ' . $words . '.') : array(),
     );
+}
+
+/**
+ * The parcel news in a shipment.updated message Kargonomi posted to the
+ * store's webhook address (carrier_webhook.php): {meta: {webhook:
+ * {event_type, …}, idempotency_key, attempt_number, executed_at},
+ * shipment: <the shipment as GET /shipments/{id} gives it>}. Another event
+ * carries nothing; a repeated attempt is the same news, which the receiver
+ * records once. Pure.
+ *
+ * @param string $body
+ * @return array|false list of reference (the shipment id), is_return
+ *                     (false: Kargonomi makes outgoing shipments only),
+ *                     answer (a track() answer); false when the body is not
+ *                     a message
+ */
+function pg_label_kargonomi_webhook_read($body)
+{
+    $message = json_decode((string) $body, true);
+
+    if (!is_array($message) || !isset($message['shipment']) || !is_array($message['shipment'])) {
+        return false;
+    }
+
+    $event = isset($message['meta']['webhook']) ? strtolower(pg_label_kargonomi_text($message['meta']['webhook'], 'event_type')) : '';
+
+    if (($event !== '') && ($event !== 'shipment.updated')) {
+        return array();
+    }
+
+    $data = $message['shipment'];
+    $id = pg_label_kargonomi_id(isset($data['id']) ? $data['id'] : '');
+
+    if ($id === '') {
+        return array();
+    }
+
+    return array(array(
+        'reference' => $id,
+        'is_return' => false,
+        'answer'    => pg_label_kargonomi_track_answer($data, array('event' => 'shipment.updated', 'shipment' => $id)),
+    ));
+}
+
+/**
+ * The secret Kargonomi signs its messages with: the account's when given,
+ * else the one kept with the driver's sealed secrets when Kargonomi gave
+ * one at registration. The reference names a secret_key without saying
+ * where it comes from.
+ *
+ * @param array $account
+ * @return string '' when none is known
+ */
+function pg_label_kargonomi_webhook_secret($account)
+{
+    if (isset($account['webhook_secret']) && is_scalar($account['webhook_secret'])) {
+        return (string) $account['webhook_secret'];
+    }
+
+    $settings = pg_label_settings('kargonomi');
+
+    return isset($settings['secrets']['webhook_secret']) ? (string) $settings['secrets']['webhook_secret'] : '';
+}
+
+/**
+ * Whether a message is Kargonomi's: X-Webhook-Signature is the
+ * HMAC-SHA256 of the raw body with the secret key, taken as hex (any case,
+ * an optional "sha256=") or base64. With no secret known the key in the
+ * address is the credential, as with Geliver and Shippo.
+ *
+ * @param string $raw
+ * @param array  $headers lower-case name => value
+ * @param array  $account
+ * @return bool
+ */
+function pg_label_kargonomi_webhook_verify($raw, $headers, $account)
+{
+    $secret = pg_label_kargonomi_webhook_secret($account);
+
+    if ($secret === '') {
+        return true;
+    }
+
+    $signature = (isset($headers['x-webhook-signature']) && is_string($headers['x-webhook-signature'])) ? trim($headers['x-webhook-signature']) : '';
+
+    if (strncasecmp($signature, 'sha256=', 7) === 0) {
+        $signature = substr($signature, 7);
+    }
+
+    if ($signature === '') {
+        return false;
+    }
+
+    $hash = hash_hmac('sha256', (string) $raw, $secret, true);
+
+    return hash_equals(bin2hex($hash), strtolower($signature)) || hash_equals(base64_encode($hash), $signature);
+}
+
+/**
+ * The webhook id and secret in an answer of POST /webhooks, which the
+ * reference shows without an example: the webhook under data or webhook,
+ * or the answer itself. Pure.
+ *
+ * @param array $data
+ * @return array id, secret ('' when absent)
+ */
+function pg_label_kargonomi_webhook_created($data)
+{
+    $webhook = $data;
+
+    foreach (array('data', 'webhook') as $name) {
+        if (isset($data[$name]) && is_array($data[$name])) {
+            $webhook = $data[$name];
+            break;
+        }
+    }
+
+    $secret = '';
+
+    foreach (array('secret_key', 'secret') as $name) {
+        $secret = pg_label_kargonomi_text($webhook, $name);
+
+        if ($secret !== '') {
+            break;
+        }
+    }
+
+    return array('id' => pg_label_kargonomi_id(isset($webhook['id']) ? $webhook['id'] : ''), 'secret' => $secret);
+}
+
+/**
+ * Registers the store's webhook address at Kargonomi for shipment.updated
+ * (POST /webhooks). A secret in the answer is kept with the driver's sealed
+ * secrets and checks every message from then on; none drops an older one.
+ *
+ * @param string $url
+ * @param array  $account
+ * @return array success, id (Kargonomi's webhook id), error
+ */
+function pg_label_kargonomi_webhook_register($url, $account)
+{
+    $read = pg_label_kargonomi_api('POST', '/webhooks', $account, array(
+        'name'       => 'Pinegrap',
+        'url'        => (string) $url,
+        'event_type' => 'shipment.updated',
+        'is_active'  => true,
+    ));
+    $created = $read['ok'] ? pg_label_kargonomi_webhook_created($read['data']) : array('id' => '', 'secret' => '');
+
+    if ($created['id'] === '') {
+        return array('success' => false, 'id' => '', 'error' => $read['ok'] ? lang('Kargonomi refused the request.') : pg_label_kargonomi_failure($read, false)['error']);
+    }
+
+    if (function_exists('pg_carrier_webhook_secrets_put')) {
+        pg_carrier_webhook_secrets_put('kargonomi', array('webhook_secret' => ($created['secret'] !== '') ? $created['secret'] : null));
+    }
+
+    return array('success' => true, 'id' => $created['id'], 'error' => '');
+}
+
+/**
+ * Removes a webhook at Kargonomi (DELETE /webhooks/{id}) and the secret
+ * kept for it. One Kargonomi no longer has (404) counts as removed.
+ *
+ * @param string $id
+ * @param array  $account
+ * @return array success, error
+ */
+function pg_label_kargonomi_webhook_remove($id, $account)
+{
+    $id = pg_label_kargonomi_id($id);
+
+    if ($id === '') {
+        return array('success' => false, 'error' => lang('Kargonomi refused the request.'));
+    }
+
+    $read = pg_label_kargonomi_api('DELETE', '/webhooks/' . $id, $account);
+
+    if (!$read['ok'] && ($read['status'] !== 404)) {
+        return array('success' => false, 'error' => pg_label_kargonomi_failure($read, false)['error']);
+    }
+
+    if (function_exists('pg_carrier_webhook_secrets_put')) {
+        pg_carrier_webhook_secrets_put('kargonomi', array('webhook_secret' => null));
+    }
+
+    return array('success' => true, 'error' => '');
 }
