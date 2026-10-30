@@ -169,7 +169,8 @@
         task: 'bi-check2-square',
         note: 'bi-journal-text',
         wtable_row: 'bi-table',
-        visit: 'bi-geo-alt'
+        visit: 'bi-geo-alt',
+        cart_quote: 'bi-cart3'
     };
 
     // What happened with the customer, newest first, read only when asked
