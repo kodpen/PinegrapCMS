@@ -1056,19 +1056,34 @@ if (!$_POST) {
                     // instead, with its number of boxes: a carrier label
                     // service's label would be a second shipment. The buttons
                     // and the box count post the form outside the order form
-                    // ($output_shipment_label_form).
+                    // ($output_shipment_label_form). A label service that
+                    // books pickups adds "Request Pickup" and its dialog.
                     if (!isset($shipment_label_drivers)) {
                         $shipment_label_drivers = pg_shipment_labels_ready() ? pg_shipment_label_drivers() : array();
+                    }
+
+                    if (!isset($shipment_label_pickup_drivers)) {
+                        $shipment_label_pickup_drivers = pg_shipment_label_pickup_drivers();
                     }
 
                     $shipment_label_marketplace = pg_shipment_label_marketplace($ship_to_id);
                     $output_shipment_labels = '';
                     $shipment_label_active = array(0 => false, 1 => false);
+                    $shipment_label_pickup = array();
 
                     foreach (pg_shipment_label_rows($ship_to_id) as $shipment_label) {
                         $shipment_label_cancelled = ($shipment_label['state'] === 'cancelled');
                         $shipment_label_return = (int) $shipment_label['is_return'] ? 1 : 0;
                         $shipment_label_active[$shipment_label_return] = $shipment_label_active[$shipment_label_return] || !$shipment_label_cancelled;
+
+                        // A booked pickup is shown on its label; an active
+                        // outbound label of a service that books pickups
+                        // offers "Request Pickup" below.
+                        $shipment_label_pickup_ref = (string) ($shipment_label['pickup_ref'] ?? '');
+
+                        if (!$shipment_label_cancelled && !$shipment_label_return && in_array($shipment_label['driver'], $shipment_label_pickup_drivers, true)) {
+                            $shipment_label_pickup[] = $shipment_label;
+                        }
 
                         $output_shipment_labels .=
                             '<li class="d-flex flex-wrap align-items-center gap-3 py-2 border-bottom">
@@ -1076,6 +1091,7 @@ if (!$_POST) {
                                 <span class="small fg-secondary">' . h(pg_shipment_label_driver_name($shipment_label['driver'])) . ' · ' . get_absolute_time(array('timestamp' => (int) $shipment_label['created_at'], 'type' => 'date')) . '</span>
                                 ' . ($shipment_label_return ? '<span class="badge theme-info">' . lang('Return Label') . '</span>' : '') . '
                                 ' . ($shipment_label_cancelled ? '<span class="badge theme-secondary">' . lang('Cancelled') . '</span>' : '') . '
+                                ' . (($shipment_label_pickup_ref !== '') ? '<span class="badge theme-success text-wrap">' . h(lang(array('string' => 'Pickup booked: {var:1}, {var:2}', 'vars' => array($shipment_label_pickup_ref, date('Y-m-d H:i', (int) $shipment_label['pickup_at']))))) . '</span>' : '') . '
                                 <span class="ms-auto pg-print-none">
                                     <a class="btn btn-link pg-link-secondary py-0" href="shipment_label.php?id=' . (int) $shipment_label['id'] . '" target="_blank" rel="noopener"><i class="bi bi-printer me-1" aria-hidden="true"></i>' . lang('Print Label') . '</a>
                                     ' . (($shipment_label_cancelled || !pg_label_can($shipment_label['driver'], 'cancel')) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="cancel-' . (int) $shipment_label['id'] . '" class="btn btn-link pg-link-danger py-0" data-confirm-content="' . h(lang('The label is cancelled at the carrier label service and its tracking number is removed from this address. Continue?')) . '"><i class="bi bi-x-circle me-1" aria-hidden="true"></i>' . lang('Cancel Label') . '</button>') . '
@@ -1097,6 +1113,8 @@ if (!$_POST) {
                                     . '<button type="submit" form="shipment-label-form" id="label_marketplace_' . $ship_to_id . '" name="label_request" value="marketplace-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang(array('string' => '{var:1} makes the shipping label of this package for its carrier, one per box. A package not accepted yet is accepted first, which starts its dispatch time. Continue?', 'vars' => array($shipment_label_marketplace['name'])))) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Get {var:1} label', 'vars' => array($shipment_label_marketplace['name'])))) . '</button>'
                                 : (($shipment_label_active[0] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="create-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A shipment is opened at the carrier label service for this address and its label is bought. Continue?')) . '"><i class="bi bi-upc-scan me-1" aria-hidden="true"></i>' . lang('Create Label') . '</button>'))
                             . (($shipment_label_active[1] || !$shipment_label_drivers) ? '' : '<button type="submit" form="shipment-label-form" name="label_request" value="return-' . $ship_to_id . '" class="btn btn-sm btn-outline theme-secondary" data-confirm-content="' . h(lang('A return shipment, collected from this address and delivered to the store, is opened at the carrier label service and its label is bought. Continue?')) . '"><i class="bi bi-arrow-return-left me-1" aria-hidden="true"></i>' . lang('Create Return Label') . '</button>')
+                            . (!$shipment_label_pickup ? '' : '<button type="button" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_' . $ship_to_id . '"><i class="bi bi-truck me-1" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>'
+                                . pg_shipment_label_pickup_dialog('shipment_pickup_' . $ship_to_id, 'shipment-label-form', 'pickup-' . $ship_to_id, pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked(array($shipment_label_pickup)))))
                             . '</div>';
                     }
 

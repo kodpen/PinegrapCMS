@@ -1,0 +1,28 @@
+{
+  "object_id": "e3b5c1f2a9d84c6b9f0e1d2c3b4a5968",
+  "object_created": "2026-10-30T08:00:00.000Z",
+  "object_updated": "2026-10-30T08:00:01.000Z",
+  "carrier_account": "1a2b3c4d5e6f40718293a4b5c6d7e8f9",
+  "location": {
+    "building_location_type": "Reception",
+    "address": {
+      "name": "Example Shop",
+      "street1": "Friedrichstraße 10",
+      "city": "Berlin",
+      "zip": "10117",
+      "country": "DE"
+    }
+  },
+  "transactions": ["915d94940ea54c3a80cbfa328722f5a1"],
+  "requested_start_time": "2026-11-02T08:00:00Z",
+  "requested_end_time": "2026-11-02T16:00:00Z",
+  "confirmed_start_time": "2026-11-02T08:00:00Z",
+  "confirmed_end_time": "2026-11-02T16:00:00Z",
+  "cancel_by_time": "2026-11-02T07:00:00Z",
+  "status": "CONFIRMED",
+  "confirmation_code": "PRG4711",
+  "timezone": "Europe/Berlin",
+  "messages": [],
+  "metadata": "",
+  "is_test": true
+}

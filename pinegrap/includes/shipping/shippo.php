@@ -30,6 +30,10 @@
  * origin_country) and the shop-defaults block of the account
  * (pg_label_customs_fields(), pg_label_customs_lines()).
  *
+ * A pickup (POST /pickups/) asks the carrier account the labels were bought
+ * from to collect them at the sender address in a time window; its
+ * confirmation code is the answer's reference.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -97,6 +101,25 @@ function pg_label_shippo_fields()
             'max_length' => $field[2],
         );
     }
+
+    // Where the courier collects a pickup (Shippo's building_location_type).
+    $fields[] = array(
+        'name'    => 'pickup_location',
+        'type'    => 'select',
+        'label'   => lang('Pickup Location'),
+        'help'    => lang('Where at the sender address the courier collects the parcels of a pickup request.'),
+        'options' => array(
+            'Front Door'    => lang('Front Door'),
+            'Back Door'     => lang('Back Door'),
+            'Side Door'     => lang('Side Door'),
+            'Reception'     => lang('Reception'),
+            'Office'        => lang('Office'),
+            'Mail Room'     => lang('Mail Room'),
+            'Shipping Dock' => lang('Shipping Dock'),
+            'Other'         => lang('Other'),
+        ),
+        'default' => 'Front Door',
+    );
 
     return array_merge($fields, pg_label_customs_fields());
 }
@@ -1016,4 +1039,153 @@ function pg_label_shippo_webhook_remove($id, $account)
     }
 
     return array('success' => true, 'error' => '');
+}
+
+/**
+ * The POST /pickups/ body: the carrier account, the sender address as the
+ * pickup location, the transactions and the requested window in UTC. Pure.
+ *
+ * @param string   $carrier_account Shippo's carrier account id
+ * @param string[] $ids             transaction ids
+ * @param int      $start           unix time
+ * @param int      $end             unix time
+ * @param array    $account
+ * @return array
+ */
+function pg_label_shippo_pickup_body($carrier_account, $ids, $start, $end, $account)
+{
+    $address = array();
+
+    foreach (array('name', 'company', 'street1', 'street2', 'city', 'state', 'zip', 'country', 'phone', 'email') as $name) {
+        $address[$name] = pg_label_shippo_text($account, 'sender_' . $name);
+    }
+
+    $address['country'] = strtoupper($address['country']);
+    $location = pg_label_shippo_text($account, 'pickup_location');
+
+    return array(
+        'carrier_account'      => (string) $carrier_account,
+        'location'             => array(
+            'building_location_type' => ($location !== '') ? $location : 'Front Door',
+            'address'                => array_filter($address, 'strlen'),
+        ),
+        'transactions'         => array_values($ids),
+        'requested_start_time' => gmdate('Y-m-d\TH:i:s\Z', (int) $start),
+        'requested_end_time'   => gmdate('Y-m-d\TH:i:s\Z', (int) $end),
+    );
+}
+
+/**
+ * A pickup answer read: CONFIRMED and PENDING are booked, the reference is
+ * the carrier's confirmation code (Shippo's pickup id while none is given).
+ * Pure.
+ *
+ * @param array $data
+ * @param array $raw
+ * @return array
+ */
+function pg_label_shippo_pickup_answer($data, $raw)
+{
+    $status = strtoupper(pg_label_shippo_text($data, 'status'));
+    $id = pg_label_shippo_text($data, 'object_id');
+    $code = pg_label_shippo_text($data, 'confirmation_code');
+    $reference = (($code !== '') && (strlen($code) <= 64)) ? $code : $id;
+
+    if ($status === '') {
+        $reference = '';
+    } elseif (!in_array($status, array('CONFIRMED', 'PENDING'), true)) {
+        $words = pg_label_shippo_message_texts(isset($data['messages']) ? $data['messages'] : array());
+
+        return array(
+            'success' => false,
+            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'raw'     => $raw,
+        );
+    }
+
+    if (($reference === '') || (strlen($reference) > 64)) {
+        return array('success' => false, 'unclear' => true, 'error' => lang('The carrier label service gave an answer that cannot be read. Check the shipment on the service\'s own screen before trying again.'), 'raw' => $raw);
+    }
+
+    $window = pg_label_shippo_text($data, 'confirmed_start_time') . ' - ' . pg_label_shippo_text($data, 'confirmed_end_time');
+
+    return array(
+        'success'   => true,
+        'reference' => $reference,
+        'log'       => array('Shippo pickup ' . $id . ' is ' . $status . ' (' . trim($window, ' -') . ').'),
+        'raw'       => $raw,
+    );
+}
+
+/**
+ * Asks the carrier to collect labels: every transaction must be a bought
+ * label of one carrier account (read from its rate), since Shippo books a
+ * pickup at one carrier account.
+ *
+ * @param array $request references (transaction ids), start, end (unix time)
+ * @param array $account
+ * @return array
+ */
+function pg_label_shippo_pickup($request, $account)
+{
+    $ids = array();
+
+    foreach ((isset($request['references']) && is_array($request['references'])) ? $request['references'] : array() as $reference) {
+        $id = pg_label_shippo_id($reference);
+
+        if ($id !== '') {
+            $ids[$id] = $id;
+        }
+    }
+
+    $start = isset($request['start']) ? (int) $request['start'] : 0;
+    $end = isset($request['end']) ? (int) $request['end'] : 0;
+
+    if (!$ids || ($start <= 0) || ($end <= $start)) {
+        return array('success' => false, 'error' => lang('Choose the labels, the date and the time window of the pickup.'));
+    }
+
+    // The carrier account of each label is the one its rate was bought at.
+    $rates = array();
+
+    foreach ($ids as $id) {
+        $read = pg_label_shippo_api('GET', '/transactions/' . $id, $account);
+
+        if (!$read['ok']) {
+            return pg_label_shippo_failure($read, false);
+        }
+
+        if (strtoupper(pg_label_shippo_text($read['data'], 'status')) !== 'SUCCESS') {
+            return array('success' => false, 'error' => lang('A label of this pickup is not a valid label at Shippo (refunded or not bought).'), 'raw' => $read['raw']);
+        }
+
+        $rates[pg_label_shippo_id(pg_label_shippo_text($read['data'], 'rate'))] = true;
+    }
+
+    $carrier_accounts = array();
+
+    foreach (array_keys($rates) as $rate) {
+        $read = ($rate !== '') ? pg_label_shippo_api('GET', '/rates/' . $rate, $account) : null;
+
+        if (($read === null) || !$read['ok']) {
+            return ($read === null)
+                ? array('success' => false, 'error' => lang('Shippo does not say which carrier account a label was bought at.'))
+                : pg_label_shippo_failure($read, false);
+        }
+
+        $carrier_accounts[pg_label_shippo_text($read['data'], 'carrier_account')] = true;
+    }
+
+    if (count($carrier_accounts) !== 1 || isset($carrier_accounts[''])) {
+        return array('success' => false, 'error' => lang('These labels were bought at more than one carrier account: request a pickup for each carrier separately.'));
+    }
+
+    // A booked pickup may cost money: no clear answer is unclear.
+    $read = pg_label_shippo_api('POST', '/pickups/', $account, pg_label_shippo_pickup_body(key($carrier_accounts), $ids, $start, $end, $account));
+
+    if (!$read['ok']) {
+        return pg_label_shippo_failure($read, true);
+    }
+
+    return pg_label_shippo_pickup_answer($read['data'], $read['raw']);
 }

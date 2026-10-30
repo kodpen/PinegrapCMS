@@ -869,6 +869,7 @@
     "{var:1} key codes for the offer code {var:2} were created through the API by the application {var:3} (key {var:4}).": "{var:2} teklif kodu için {var:1} anahtar kod, {var:3} uygulaması tarafından (anahtar {var:4}) API üzerinden oluşturuldu.",
     "{var:1} key codes were created.": "{var:1} anahtar kodu oluşturuldu.",
     "{var:1} key codes were imported": "{var:1} anahtar kod içe aktarıldı",
+    "{var:1} label(s) already have a pickup booked ({var:2}). A second request may be charged again: tick \"Book another pickup\" to send it anyway.": "{var:1} etiket için zaten kurye çağrılmış ({var:2}). İkinci talep yeniden ücretlendirilebilir: yine de göndermek için \"Yeniden kurye çağır\" kutusunu işaretleyin.",
     "{var:1} leads the week with {var:2} order{suffix:2}.": "{var:1} bu hafta {var:2} siparişle önde.",
     "{var:1} left": "{var:1} kaldı",
     "{var:1} left on the account": "Cariye kalan: {var:1}",

@@ -29,7 +29,7 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
    - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`): C1 #3429 (`commerce/product-customs-fields.md`); C2 #3449 Shippo (`commerce/carrier-label-customs.md`). Next: products API `hs_code`/`origin_country` after #3298 (holds `schema.php`); C3 Sendcloud `parcel_items` and the block; EU-only refusal lifted once filled.
 8. Done: return label on the returns screen (#3178): 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic), 8c #3268 (widget).
 9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders list and label card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
-   - P1 (in progress): columns, Shippo, orders list and label card, double-booking warning.
+   - P1 done #3475 (`commerce/shipment-label-pickup.md`): columns, Shippo, list and card.
    - P2: Sendcloud (after C3), API fields (after #3298), then other drivers with a public pickup endpoint.
 
 ## Open questions?
@@ -37,4 +37,4 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 - Formats (#3123): PDF, ZPL, SVG; no converter.
 
 ## Where to start?
-- 7d C3 (reuses `pg_label_customs_lines()`); API fields after #3298; 9 P2 after P1. Yurtiçi waits for docs. Live checks need the owner's keys.
+- 7d C3 (reuses `pg_label_customs_lines()`); API fields after #3298; 9 P2 next. Yurtiçi waits for docs. Live checks need the owner's keys.
