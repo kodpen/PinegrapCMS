@@ -24,7 +24,7 @@ description: Generated from the module field of the memory files: each includes/
 - `commission_list`: [[commission-list-paging]]
 - `config_text`: [[config-table-no-varchar]]
 - `consent`: [[fn-module-errors-mail-backup-consent]]
-- `contact_list`: [[contact-list-names]], [[panel-image-alt]], [[server-paged-lists]]
+- `contact_list`: [[contact-list-names]], [[contact-user-list-view-kept]], [[panel-image-alt]], [[server-paged-lists]]
 - `contacts`: [[contact-holders]], [[contact-lead-source]], [[panel-avatar]], [[panel-avatar-sites]]
 - `core`: [[error-screen-language-and-status]], [[send-to-url-safety]], [[time-zone-list-labels]]
 - `custom_form`: [[collection-template-refs]], [[custom-form-field-rules]], [[sms-consent-custom-form]]
