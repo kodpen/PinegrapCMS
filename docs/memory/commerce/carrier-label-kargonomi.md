@@ -18,6 +18,7 @@ description: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no t
 ## What do the other operations call?
 - label: the same download. cancel: `POST /shipments/cancel {shipment_id}`, carried out by Kargonomi within 36 hours; no answer or a 5xx is unclear. test: `GET /user/credit`, the balance logged.
 - track: `GET /shipments/{id}`. draft, ready, webservice_order_creating/created, webservice_checking_shipment: created; webservice_shipment_started: in_transit at `delivery_date_to_shipment_office`; webservice_shipment_delivered: delivered at `shipping_provider_customer_delivery_date`; webservice_shipment_returning: returned; not_delivered, missing, order_failed, cancelled, request_for_cancellation: exception; any other a plain failure. The `shipment.updated` webhook is not used yet.
+- No pickup endpoint (`shipment-label-pickup-drivers.md`).
 
 ## What is unverified?
 - No call was made. Unverified: the confirmation's answer (the reference repeats the price comparison's) and how long the carrier's number takes; the label answer; the /states and /cities answers (a `data` list of id and name assumed); JSON instead of its example's form fields; error bodies besides 401. Tests: `tests/carrier_label_kargonomi_test.php` with `pg_label_kargonomi_transport()`.

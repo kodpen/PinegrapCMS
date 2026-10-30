@@ -1,6 +1,6 @@
 ---
 name: shipment-label-pickup
-description: Carrier pickup requests (2026.11.0, 11.0.131, #3415): pickup_ref/pickup_at, the driver pickup answer, Shippo POST /pickups/, list and label card dialog, double-booking warning
+description: Carrier pickup requests (2026.11.0, 11.0.131, #3415): pickup_ref/pickup_at, the driver pickup answer, list and label card dialog, groups, window, double-booking warning
 module: shipment_labels
 ---
 
@@ -9,7 +9,7 @@ module: shipment_labels
 
 ## What does a driver answer?
 - The contract's `pg_label_<key>_pickup($request, $account)` (`carrier-label-drivers.md`): `$request` = `references` (the labels' service references), `start`, `end` (unix). Success = `reference` is the confirmation (at most 64 characters, else the caller treats it as unclear). A driver without `pickup` is not offered (`pg_shipment_label_pickup_drivers()`: `pg_label_can()` + `pg_label_ready()`).
-- Shippo (`carrier-label-shippo.md`): `GET /transactions/{id}` per label (must be SUCCESS), `GET /rates/{rate}` for its `carrier_account`; labels of two carrier accounts are refused (one Shippo pickup is one carrier account). `POST /pickups/` with `carrier_account`, `location` (`building_location_type` from the account's `pickup_location` field, default Front Door; the sender address), `transactions`, `requested_start_time`/`requested_end_time` in UTC. CONFIRMED or PENDING succeed, reference = `confirmation_code`, else Shippo's pickup `object_id`; ERROR/CANCELLED are plain failures naming `messages`; no answer, a 5xx or an unreadable 2xx are unclear (a pickup may be charged).
+- Shippo, Sendcloud, and the drivers without a pickup: `shipment-label-pickup-drivers.md`.
 
 ## Where is it asked?
 - Orders list: "Request Pickup" in the selected-orders bar (only while a pickup driver is on) opens `<dialog id="shipment_pickup_dialog">` inside the list form; it posts `label_request=bulk_pickup` with `orders[]`.
@@ -22,5 +22,5 @@ module: shipment_labels
 - Only a success writes `pickup_ref`/`pickup_at` on the group's ids, with `log_activity()`. Notices go back to the list or the order.
 
 ## What is not done yet?
-- P2 (plan `shipping-carrier-labels.md` step 9): Sendcloud, the shipments API fields, other drivers. No live Shippo call: the reference's field names (docs.goshippo.com pickups) are unverified against a test key.
-- Tests: `tests/shipment_label_pickup_test.php` (step source, probe, groups, warning, window, dialog), `tests/carrier_label_shippo_test.php` pickup cases with `tests/fixtures/shippo/pickup.json`, `rate.json`.
+- The shipments API fields `pickup_ref`/`pickup_at` (after #3298).
+- Tests: `tests/shipment_label_pickup_test.php` (step source, probe, groups, warning, window, dialog); the drivers' in `shipment-label-pickup-drivers.md`.
