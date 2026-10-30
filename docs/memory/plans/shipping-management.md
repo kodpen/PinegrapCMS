@@ -26,4 +26,4 @@ description: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode chec
 ## What must the owner check by hand?
 - Live carrier tracking URLs, n11 province/district on a live order, the campaign e-mail via real SMTP, `^^tracking_url^^` on existing sites.
 - Open owner questions: `ship_tos.district` / `states.plate_code` (phase 8), `orders.tracking_company`, ShipWorks through the write path, old n11 records, the delivery rule and the named-only `carrier` (`commerce/shipment-write-path.md`), when the `[NEW]` changelog line comes.
-- Decided (#3346, owner): print the `$output_shipping_details` card of `print_order.php` above each real recipient's items, empty rows hidden; a free S step.
+- Printed order shipping card - done (#3365, decision #3346; `commerce/print-order-shipping-card.md`).

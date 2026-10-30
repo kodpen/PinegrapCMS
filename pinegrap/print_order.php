@@ -649,14 +649,11 @@ if ($ship_to_exists == true) {
         }
     }
     
-    $output_custom_field_headings = '';
-    
-    // loop through the custom field names in order to output headings for them
-    foreach ($custom_field_names as $custom_field_name) {
-        $output_custom_field_headings .= '<span class="col fg-secondary">' . h($custom_field_name) . ':</span>';
-    }
-    
     $output_colspan = 13 + count($custom_field_names);
+
+    // Read once for every recipient's card.
+    $arrival_date_names = pg_order_view_arrival_names(pg_order_view_arrival_codes($ship_tos));
+    $shipping_default_carrier = pg_shipping_default_carrier();
     
     // loop through all ship tos
     foreach ($ship_tos as $key => $recipient) {
@@ -700,205 +697,79 @@ if ($ship_to_exists == true) {
             }
             
             $output_address_verified_check_mark = '';
-            
+
             // if the address has been verified, then prepare to output check mark
             if ($ship_tos[$key]['address_verified'] == 1) {
                 $output_address_verified_check_mark = '<img src="' . OUTPUT_PATH . SOFTWARE_DIRECTORY . '/assets/images/check_mark.gif" width="7" height="7" alt="' . h(lang('Yes')) . '" />';
             }
+
             $output_arrival_date = '';
+
             if ($ship_tos[$key]['arrival_date'] != '0000-00-00') {
                 $output_arrival_date = get_absolute_time(array('timestamp' => strtotime($ship_tos[$key]['arrival_date']), 'type' => 'date'));
             }
-            $arrival_date_code = '';
-            
-            if ($ship_tos[$key]['arrival_date_code']) {
-                $arrival_date_code = ' (' . $ship_tos[$key]['arrival_date_code'] . ')';
-            }
+
             $output_ship_date = '';
             $output_delivery_date = '';
             $output_shipping_tracking_numbers = '';
-            $output_shipping_tracking_numbers_field = '';
-            
-            // If the order is complete, then output ship date and shipping tracking numbers.
-            if ($status != 'incomplete') {
-                // If the form has not been submitted yet, and the ship date is not blank,
-                // then prefill ship date field.
 
-                $output_ship_date = prepare_form_data_for_output($ship_tos[$key]['ship_date'], 'date');
-                // If the form has not been submitted yet, and the delivery date is not blank,
-                // then prefill delivery date field.
-                if (
-                    !$liveform->field_in_session('id')
-                    and $ship_tos[$key]['delivery_date'] != '0000-00-00'
-                ) {
+            // A complete order prints its ship and delivery dates and every
+            // parcel with its carrier, as the order screen names them.
+            if ($status != 'incomplete') {
+                if (($ship_tos[$key]['ship_date'] != '') && ($ship_tos[$key]['ship_date'] != '0000-00-00')) {
+                    $output_ship_date = prepare_form_data_for_output($ship_tos[$key]['ship_date'], 'date');
+                }
+
+                if (($ship_tos[$key]['delivery_date'] != '') && ($ship_tos[$key]['delivery_date'] != '0000-00-00')) {
                     $output_delivery_date = prepare_form_data_for_output($ship_tos[$key]['delivery_date'], 'date');
                 }
-                
 
-                $query =
-                    "SELECT number
-                    FROM shipping_tracking_numbers
-                    WHERE ship_to_id = ?
-                    ORDER BY id ASC";
-                $result = db_q($query, array((string) $ship_tos[$key]['ship_to_id'])) or output_error('Query failed.');
-                $shipping_tracking_numbers = mysqli_fetch_items($result);
-                
-                // loop through the shipping tracking numbers in order to output them
-                foreach ($shipping_tracking_numbers as $shipping_tracking_number) {
-                    // if this is not the first shipping tracking number then add a comma and space for separation
-                    if ($output_shipping_tracking_numbers != '') {
-                        $output_shipping_tracking_numbers .= '<br />';
-                    }
-                    
-                    $shipping_tracking_url = get_shipping_tracking_url($shipping_tracking_number['number'],$recipient['shipping_method_code']);
-                    
-                    // if a shipping tracking url was found, then output link
-                    if ($shipping_tracking_url != '') {
-                        $output_shipping_tracking_numbers .= '<a class="pg-link-secondary pg-print-none" href="' . h($shipping_tracking_url) . '" target="_blank">' . h($shipping_tracking_number['number']) . '</a>';
-                        
-                    } 
-                }
-                
-              // if the form has not been submitted yet, then prefill tracking number field with tracking numbers
-              if ($liveform->field_in_session('id') == FALSE) {
-                $shipping_tracking_numbers_for_field = '';
-                // array_key_last() needs PHP 7.3, so find the last key once, before the loop.
-                $last_shipping_tracking_number_key = null;
+                $parcels = array();
 
-                if ($shipping_tracking_numbers) {
-                    end($shipping_tracking_numbers);
-                    $last_shipping_tracking_number_key = key($shipping_tracking_numbers);
-                    reset($shipping_tracking_numbers);
+                foreach (pg_shipment_rows($ship_tos[$key]['ship_to_id']) as $shipment_row) {
+                    $parcels[] = pg_shipment_view($shipment_row, $recipient['shipping_method_code'], $shipping_default_carrier);
                 }
 
-                // loop through the shipping tracking numbers in order to prepare value for field
-                foreach ($shipping_tracking_numbers as $shipping_tracking_number => $value) {
-                    // if this is not the first shipping tracking number then add a line break
-                    if ($shipping_tracking_numbers_for_field != '') {
-                        $shipping_tracking_numbers_for_field .= "\n";
-                    }
-                
-                    
-                    if ($shipping_tracking_number === $last_shipping_tracking_number_key) {
-                        $shipping_tracking_numbers_for_field .= $value['number'];
-                    }else{
-                        $shipping_tracking_numbers_for_field .= $value['number'] . ',';
-                    }
-                }
+                $output_shipping_tracking_numbers = pg_print_order_tracking_text($parcels);
             }
-            $output_shipping_tracking_numbers_field = $shipping_tracking_numbers_for_field;  
-                
-            }
-            // If the shipping method still exists, then show name and code and link to it.
-            if ($recipient['shipping_method_id']) {
-                $shipping_method =
-                    '<a class="pg-link-secondary" href="edit_shipping_method.php?id=' . h($recipient['shipping_method_id']) . '">' .
-                        h($recipient['shipping_method_name']) . ' (' . h($recipient['shipping_method_code']) . ')' .
-                    '</a>';
-            // Otherwise the shipping method no longer exists, so just show code.
-            } else {
-                $shipping_method = h($recipient['shipping_method_code']);
-            }
-            $packages = '';
-            if ($ship_tos[$key]['packages']) {
-                $packages =
-                    '<div class="row my-3">
-                        <span class="col fg-secondary">' . lang('Packages') . ':</span>
-                        <span class="col text-end">' . h($ship_tos[$key]['packages']) . '</span>
-                    </div>';
-                }
-            
-            $output_custom_field_cells = '';
-            
-            // loop through the custom field names in order to output cells for values
+
+            $shipping_method = $recipient['shipping_method_name']
+                ? $recipient['shipping_method_name'] . ' (' . $recipient['shipping_method_code'] . ')'
+                : $recipient['shipping_method_code'];
+
+            $shipping_card_rows = array(
+                lang('Ship to Name')      => h($ship_tos[$key]['ship_to_name']),
+                lang('Full Name')         => h(trim($name)),
+                lang('Company')           => h($ship_tos[$key]['company']),
+                lang('Address')           => h(rtrim($address, ', ')),
+                lang('Address Type')      => pg_order_view_address_type($ship_tos[$key]['address_type']),
+                lang('Address Verified')  => $output_address_verified_check_mark,
+                lang('Phone')             => h($ship_tos[$key]['phone_number']),
+                lang('Req. Arrival Date') => pg_order_view_arrival_text($output_arrival_date, $ship_tos[$key]['arrival_date_code'], $arrival_date_names),
+                lang('Ship Date')         => $output_ship_date,
+                lang('Delivery Date')     => $output_delivery_date,
+                lang('Shipping Method')   => h($shipping_method),
+                lang('Tracking Numbers')  => $output_shipping_tracking_numbers,
+                lang('Shipping Cost')     => ($ship_tos[$key]['shipping_cost'] > 0) ? pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) : '',
+                lang('Packages')          => h($ship_tos[$key]['packages']),
+            );
+
+            // The custom shipping form fields this recipient answered.
             foreach ($custom_field_names as $custom_field_name) {
-                $data = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['data'];
-                $type = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name]['type'];
-                
-                // assume that we need to prepare data for HTML until we find out otherwise
-                $prepare_for_html = TRUE;
-                
-                // if type is html, then don't prepare data for html, because data is already html
-                if ($type == 'html') {
-                    $prepare_for_html = FALSE;
+                if (!isset($ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name])) {
+                    continue;
                 }
-                
-                $output_custom_field_cells .= '<span class="col text-end order_custom_field">' . prepare_form_data_for_output($data, $type, $prepare_for_html) . '</span>';
+
+                $field = $ship_tos_for_custom_fields[$ship_tos[$key]['ship_to_id']][$custom_field_name];
+
+                // An html field's data is already markup.
+                $shipping_card_rows[$custom_field_name] = prepare_form_data_for_output($field['data'], $field['type'], $field['type'] != 'html');
             }
-            
-            $output_shipping_details =
-                '<div class="col-4">
-                    <div class="card border-0 bg-transparent">
-                        <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                            ' . lang('Shipping Information') . '
-                            
-                        </div>
-                        <div class="card-body">
-                            <div class="row">
-                                <div class="col-12">
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Ship to Name') . ':</span>
-                                        <span class="col text-end">' . h($ship_tos[$key]['ship_to_name']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Full Name') . ':</span>
-                                        <span class="col text-end">' . h($name) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Company') . ':</span>
-                                        <span class="col text-end">' . h($ship_tos[$key]['company']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col-auto fg-secondary">' . lang('Address') . ':</span>
-                                        <span class="col offset-1 " style="font-size:110%;font-weight:500">' . h($address) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Address Type') . ':</span>
-                                        <span class="col text-end translateable">' . pg_order_view_address_type($ship_tos[$key]['address_type']) . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Address Verified') . ':</span>
-                                        <span class="col text-end ">' . $output_address_verified_check_mark . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="translateable col fg-secondary">' . lang('Phone') . ':</span>
-                                        <span class="col text-end ">' . h($ship_tos[$key]['phone_number']) . '</span>
-                                    </div>
-                                </div>
-                                <div class="col-12">
-                                    <div class="row mb-3">
-                                        <span class="translateable col fg-secondary">' . lang('Req. Arrival Date') . ':</span>
-                                        <span class="col text-end ">' . $output_arrival_date . $arrival_date_code . '</span>
-                                    </div>
-                                    <div class="row pt-1 mb-5 justify-content-center">
-                                        
-                                            <span class="col fg-secondary">' . lang('Ship Date') . ' - ' . lang('Delivery Date') . ':</span>
-                                            <span class="col-auto text-end">' . $output_ship_date . ' - ' . $output_delivery_date . '</span>
-                                    </div>
-                                </div>
-                                <div class="col-12 pt-7" id="trackin_number_from_view_orders">
-                                    <div class="row">
-                                        <span class="col fg-secondary">' . lang('Shipping Method') . ':</span>
-                                        <span class="col-auto badge">' . $shipping_method . '</span>
-                                    </div>
-                                    <div class="row">
-                                        <span class="col fg-secondary">' . lang('Tracking Numbers') . ':</span>
-                                        <span class="col-auto text-end">' . $output_shipping_tracking_numbers . $output_shipping_tracking_numbers_field . '</span>
-                                    </div>
-                                    <div class="row my-3">
-                                        <span class="col fg-secondary">' . lang('Shipping Cost') . ':</span>
-                                        <span class="col text-end">' . pg_format_money($ship_tos[$key]['shipping_cost'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                                    </div>
-                                    ' . $packages . '
-                                    <div class="row">
-                                        ' . $output_custom_field_headings . '
-                                        ' . $output_custom_field_cells . '
-                                    </div>
-                                </div> 
-                            </div>
-                        </div>
-                    </div>
-                </div>';
+
+            $output_order_details .=
+                '<tr>
+                    <td colspan="' . $output_colspan . '" style="border: 0">' . pg_print_order_shipping_card($shipping_card_rows) . '</td>
+                </tr>';
         }
         
         $product_list_style = ' ';
