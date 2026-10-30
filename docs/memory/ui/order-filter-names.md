@@ -15,6 +15,7 @@ description: Advanced Filters panel: printed after the toolbar on every list; on
 
 ## Which keyboards?
 - Phone and fax: `inputmode="tel"`; e-mail: `inputmode="email"`. They stay `type="text"` so a partial value still filters.
+- Contacts and the Submitted Forms Referring URL: `contact-filter-keyboards.md`.
 
 ## Where is the panel printed?
 - After the toolbar (`#button_bar`) and before the stats and the list, on Orders, Contacts, Submitted Forms, Commissions and Site Log (Commissions and Site Log: after the row holding the toolbar and the toggle). It was first in `<main>` (Site Log: before it, via `pg_page_shell()` `pre_main_html`), so with the panel open, Tab reached its X and every filter box before the toggle that opened it, while at 1280 px and wider it is drawn as a sticky right column. Test: `tests/advanced_filters_order_test.php`.
