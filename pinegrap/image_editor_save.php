@@ -329,7 +329,7 @@ if ($image_editor_mode === 'replace') {
     $image_editor_id = (int) $image_editor_row['id'];
 
     log_activity(
-        lang(array('string' => 'file ({var:1}) was updated via Image Editor', 'vars' => h($image_editor_name))),
+        lang(array('string' => 'file ({var:1}) was updated via Image Editor', 'vars' => $image_editor_name)),
         $_SESSION['sessionusername']);
 
 } else {
@@ -350,7 +350,7 @@ if ($image_editor_mode === 'replace') {
     $image_editor_id = (int) mysqli_insert_id(db::$con);
 
     log_activity(
-        lang(array('string' => 'file ({var:1}) was created via Image Editor', 'vars' => h($image_editor_name))),
+        lang(array('string' => 'file ({var:1}) was created via Image Editor', 'vars' => $image_editor_name)),
         $_SESSION['sessionusername']);
 }
 

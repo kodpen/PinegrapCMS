@@ -642,7 +642,7 @@ if (!$_POST) {
         $binned_name = pg_catalog_bin_group((int) ($_POST['id'] ?? 0), $user['id']);
 
         if ($binned_name !== false) {
-            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => h($binned_name))), $_SESSION['sessionusername']);
+            log_activity(lang(array('string' => 'The product group, {var:1}, was moved to the Recycle Bin.', 'vars' => $binned_name)), $_SESSION['sessionusername']);
         }
 
     // if product group was selected for delete

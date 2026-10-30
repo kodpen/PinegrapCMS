@@ -559,7 +559,7 @@ function pg_explorer_handle_short_link_delete($type, $request, $user)
 
         $short_link_deleted++;
 
-        log_activity(lang(array('string' => 'The short link, {var:1}, was moved to the Recycle Bin.', 'vars' => h($short_link_row['name']))), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'The short link, {var:1}, was moved to the Recycle Bin.', 'vars' => $short_link_row['name'])), $_SESSION['sessionusername']);
     }
 
     $short_link_binned = pg_short_link_recycle_ready();

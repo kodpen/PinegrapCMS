@@ -105,7 +105,7 @@ function pg_panel_software_backup($request, $action)
                     rmdir($backup_location . $backup_folder_name);
                 }
 
-                log_activity('Creating Mysql Dumb is Failure. Because: ' . h($backups_error_message), $_SESSION['sessionusername']);
+                log_activity('Creating Mysql Dumb is Failure. Because: ' . $backups_error_message, $_SESSION['sessionusername']);
                 //return error json output
                 $response = array(
                     'status' => 'error',

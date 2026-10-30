@@ -211,7 +211,7 @@ function pg_explorer_handle_catalog_quick_edit($type, $request, $user)
 
     $quick_message = lang(array(
         'string' => '{var:1} was updated ({var:2}).',
-        'vars' => array(h($quick_row['name']), $quick_note)));
+        'vars' => array($quick_row['name'], $quick_note)));
 
     log_activity($quick_message, $_SESSION['sessionusername']);
 
