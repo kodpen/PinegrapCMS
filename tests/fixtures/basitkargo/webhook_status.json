@@ -1,0 +1,9 @@
+{
+  "id": "888-6AR-OUP",
+  "orderNumber": "10042",
+  "orderId": "10042",
+  "barcode": "BK4815162342",
+  "status": "SHIPPED",
+  "handler": {"name": "Aras Kargo", "code": "ARAS"},
+  "handlerShipmentCode": "ARS5566778899"
+}
