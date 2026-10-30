@@ -1,11 +1,13 @@
 ---
 name: panel-turkish-terms
-description: Turkish words the panel uses for terms that were translated in several ways (Manager role, password, short link, opt-in, ERP quotes, Anonymous), and which translations were wrong
+description: Turkish words the panel uses for terms translated in several ways (Manager role, password and its page addresses, Guide, short link, opt-in, ERP quotes, Anonymous), and which translations were wrong
 ---
 
 ## Which word does the panel use?
 - Role 2 "Manager": "Menajer" (TDK spelling; it was "Menejer" in 14 values). "Yönetici" stays Administrator; "… Manager" screen names ("Content Manager", "Calendar Manager") are "… Yöneticisi" and do not name the role.
 - Password: "Parola" ("Parola Değiştir", "Parolayı Belirle", "Parolamı Unuttum"); "Şifre" left in other values is an old form, replaced when met.
+- Password page addresses (the keys `forgot-password`, `set-password`, `change-password`, read only by the design templates at install): `parolami-unuttum`, `parola-belirle`, `parola-degistir` (#3622). An installed site keeps its `sifre…` pages: no migration, no redirect step; a rename in the designer leaves the old address as a 301 (`platform/page-rename-redirect.md`).
+- "Guide" (the forum template's guide pages, the Workspace `bi-book` icon label): "Rehber", the word the forum design uses; "Leader" stays "Kılavuz Çizgi" (#3622).
 - Short link: "Kısa Bağlantı" (title, breadcrumb and field alike).
 - Opt-In (contact consent to commercial messages): "İleti İzni"; the CAN-SPAM wording reads "ticari elektronik ileti mevzuatının tanımladığı biçimde" in Turkish, not a US law.
 - ERP quotes (`erp_quotes.php`, key "Quotes"): "Fiyat Teklifleri", apart from the store's offers ("Offers": "Teklifler"). The key "Quote" stays "Alıntı": the designer and templates use it for a block quote.

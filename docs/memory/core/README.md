@@ -90,7 +90,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - output-escaping.md: Escaping output: h() for every value in HTML, liveform values raw, lang() in handlers via json_encode(), raw & in query strings, lang() {var:N} values, form labels as text, _sdT(), PHP tags
 - page-messages-defuse.md: Liveform messages (errors, notices, warnings) are HTML printed into the page before the page eval and marker expansion; pg_defuse_page_message() on store and on print, and the escaped upload refusal
 - panel-action-table.md: Adding an api.php panel action: the pg_panel_actions() row and its columns, handler file and signature, what the general gate does with listed, unlisted and prefixed names, the test.
-- panel-turkish-terms.md: Turkish words the panel uses for terms that were translated in several ways (Manager role, password, short link, opt-in, ERP quotes, Anonymous), and which translations were wrong
+- panel-turkish-terms.md: Turkish words the panel uses for terms translated in several ways (Manager role, password and its page addresses, Guide, short link, opt-in, ERP quotes, Anonymous), and which translations were wrong
 - passkey-account-section.md: Passkeys on the account page (pg_passkey_account_section(), PR #1384, #2226): who may add one, the proofs incl. the e-mailed code, recovery codes of passkey-only accounts, rename and remove
 - passkey-ceremonies.md: Passkeys of accounts: user_passkeys (11.0.13), includes/fn/passkeys.php, passkey.php, the passkey at the second step of mfa.php, the account page; decisions in passkey-decisions
 - passkey-decisions.md: Lasting decisions of the passkeys work (approved 2026-10-19, built in 2026.11.0) and the memory file that holds each built piece
