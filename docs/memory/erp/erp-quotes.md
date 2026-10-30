@@ -1,12 +1,12 @@
 ---
 name: erp-quotes
-description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.
+description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, expiry notice, Workspace tag.
 ---
 
 ## Why do quotes have a table of their own? (`includes/erp/quotes.php`, `erp_quotes`, 2026.4.4 step 4.92)
 - A quote moves no money, stock or tax. It is never written into `erp_invoices`: part of the invoice queries do not look at `doc_type`, so a quote there would leak into balances, VAT and reports.
 - It takes its number on first save: `erp_next_number($series, 'proforma', $year)`, series `ERP_QUOTE_SERIES` or the invoice series + `T` (`erp_quote_series()`). Valid `ERP_QUOTE_VALID_DAYS` (30) unless a date is typed.
-- Typed in the invoice editor (`erp_invoice_form_cards($liveform, ['quote' => true])`); the lines are kept as JSON on the row. Screens `erp_quotes.php`, `add_erp_quote.php`, `edit_erp_quote.php`, PDF `get_erp_quote_pdf.php`.
+- Typed in the invoice editor (`erp_invoice_form_cards($liveform, ['quote' => true])`); the lines are kept as JSON on the row. Screens `erp_quotes.php`, `add_erp_quote.php`, `edit_erp_quote.php`, PDF `get_erp_quote_pdf.php`. Lines from a template: erp-quote-templates.md.
 
 ## What state is a quote in?
 - Stored status: open, accepted, rejected, cancelled, invoiced. Screens and API show `erp_quote_state()`: an open quote past `valid_until` is expired; an invoiced one whose draft was deleted or whose invoice was cancelled reads as accepted again and can be invoiced once more.

@@ -303,6 +303,7 @@
     "Delete this row?": "Bu satır silinsin mi?",
     "Delete this rule": "Bu kuralı sil",
     "Delete this scheduled message? It will not be posted.": "Bu zamanlanmış mesaj silinsin mi? Gönderilmeyecek.",
+    "Delete this template?": "Bu şablon silinsin mi?",
     "Delete this time entry?": "Bu süre kaydı silinsin mi?",
     "Delete this variant set and its {count} products? This cannot be undone.": "Bu varyant seti ve içindeki {count} ürün silinsin mi? Bu işlem geri alınamaz.",
     "Delete unused records": "Kullanılmayan kayıtları sil",

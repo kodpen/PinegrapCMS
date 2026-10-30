@@ -80,6 +80,8 @@ if (!$_POST) {
         $liveform->mark_error('', lang('Quotes come with the software update; run the update to use them.'));
     }
 
+    $output_templates = erp_quotes_ready() ? erp_quote_templates_box($liveform, (int) $user['id']) : '';
+
     echo
     pg_page_shell([
         'title' => lang('New quote'),
@@ -102,6 +104,7 @@ if (!$_POST) {
 
             <form name="form" action="add_erp_quote.php" method="post" autocomplete="off">
                 ' . get_token_field() . '
+                ' . $output_templates . '
                 ' . erp_invoice_form_cards($liveform, $card_options) . '
                 <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                     <div class="container">
@@ -124,9 +127,59 @@ if (!$_POST) {
     // Every field of the form but the lines is one value. One posted as an
     // array counts as not given: (int) read an array account as account 1,
     // (string) wrote "Array" into the notes and trim() stopped the request.
-    pg_request_single_values(erp_invoice_form_single_fields());
+    pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('template_action', 'template_id', 'template_name', 'template_scope')));
 
     $liveform->add_fields_to_session();
+
+    $template_action = (string) ($_POST['template_action'] ?? '');
+    $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
+
+    if ($template_action === 'apply') {
+        $template = erp_quote_template_find((int) $liveform->get_field_value('template_id'), (int) $user['id']);
+
+        if ($template === null) {
+            $liveform->mark_error('template_id', lang('The template could not be found.'));
+        } else {
+            // The lines alone, drawn the way the editor draws stored lines.
+            $rows = erp_quote_editor_rows(array('line_data' => json_encode(erp_quote_template_lines($template['form_data']))));
+            $display = array();
+            foreach ($rows as $row) {
+                $display[] = erp_invoice_form_line($row, true);
+            }
+            $liveform->assign_field_value('lines', $display);
+            $liveform->add_notice(h(lang(array('string' => 'Lines filled from the template {var:1}.', 'vars' => (string) $template['name']))));
+        }
+
+        go($self_url);
+    } elseif ($template_action === 'save') {
+        $read = erp_invoice_form_read($liveform, $user);
+        $saved = $read['success']
+            ? erp_quote_template_save($liveform->get_field_value('template_name'), (string) $liveform->get_field_value('template_scope'), $read['data']['lines'], (int) $user['id'], $readonly)
+            : array('success' => false, 'name' => '', 'error' => $read['error']);
+
+        if ($saved['success']) {
+            $liveform->assign_field_value('template_id', (string) (int) $saved['template_id']);
+            $liveform->assign_field_value('template_name', '');
+            $liveform->add_notice(h(lang(array('string' => 'The lines were saved as the template {var:1}.', 'vars' => $saved['name']))));
+            log_activity(lang(array('string' => 'erp quote template ({var:1}) was saved', 'vars' => $saved['name'])), $_SESSION['sessionusername']);
+        } else {
+            $liveform->mark_error('template_name', h($saved['error']));
+        }
+
+        go($self_url);
+    } elseif ($template_action === 'delete') {
+        $deleted = erp_quote_template_delete((int) $liveform->get_field_value('template_id'), (int) $user['id'], $readonly);
+
+        if ($deleted['success']) {
+            $liveform->assign_field_value('template_id', '');
+            $liveform->add_notice(h(lang(array('string' => 'The template {var:1} was deleted.', 'vars' => $deleted['name']))));
+            log_activity(lang(array('string' => 'erp quote template ({var:1}) was deleted', 'vars' => $deleted['name'])), $_SESSION['sessionusername']);
+        } else {
+            $liveform->mark_error('template_id', h($deleted['error']));
+        }
+
+        go($self_url);
+    }
 
     // An empty date gives the quote the usual run; the form reader would put
     // the account's payment term there instead.

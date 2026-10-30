@@ -1365,6 +1365,8 @@
     "erp quote ({var:1}) was marked {var:2}": "erp teklifi ({var:1}) şu duruma alındı: {var:2}",
     "erp quote ({var:1}) was signed by {var:2}": "erp teklifi ({var:1}) {var:2} tarafından imzalandı",
     "erp quote ({var:1}) was turned into an invoice draft": "erp teklifi ({var:1}) fatura taslağına dönüştürüldü",
+    "erp quote template ({var:1}) was deleted": "erp satış teklifi şablonu ({var:1}) silindi",
+    "erp quote template ({var:1}) was saved": "erp satış teklifi şablonu ({var:1}) kaydedildi",
     "erp quote {var:1} was e-mailed to {var:2}": "erp teklifi {var:1}, {var:2} adresine e-postayla gönderildi",
     "erp receipt (#{var:1}) was allocated to {var:2} invoice(s)": "erp tahsilatı (#{var:1}) {var:2} faturaya tahsis edildi",
     "erp receipt (#{var:1}) was cancelled": "erp tahsilatı (#{var:1}) iptal edildi",
