@@ -434,6 +434,7 @@
     "Only an administrator can connect a transcription service.": "Yazıya dökme hizmetini yalnızca bir yönetici bağlayabilir.",
     "Only an application registers commands; a devices session cannot.": "Komutları yalnızca bir uygulama kaydedebilir; cihaz oturumu kaydedemez.",
     "Only an automatic campaign takes a blind copy address.": "Gizli kopya (BCC) adresi yalnız otomatik kampanyada olur.",
+    "Only an earlier task can be chosen. To wait for a later one, move this task below it with the Drag to change the order button: drag it, or use the arrow keys on it.": "Yalnızca önceki bir görev seçilebilir. Sonraki bir görevi beklemesi için bu görevi Sırayı değiştirmek için sürükleyin düğmesiyle onun altına taşıyın: sürükleyin ya da üzerindeyken ok tuşlarını kullanın.",
     "Only an earlier task can be chosen; drag the task down to wait for a later one.": "Yalnızca önceki bir görev seçilebilir; sonraki bir görevi beklemesi için görevi aşağı sürükleyin.",
     "Only an invoice can be returned.": "Yalnızca fatura iade edilebilir.",
     "Only an issued invoice can repeat.": "Yalnız kesilmiş fatura tekrarlanabilir.",

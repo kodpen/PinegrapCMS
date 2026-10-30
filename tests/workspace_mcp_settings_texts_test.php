@@ -34,7 +34,7 @@ function test_workspace_mcp_settings_texts_by_role()
 	pg_assert_true($tools !== '', 'ws_mcp_settings_tools is found');
 
 	// Tools never read: the refresh button is an administrator's only.
-	pg_assert_contains("\$admin\n                ? lang('The tools have not been read yet. Ask the server for them with the button above.')\n                : lang('The tools have not been read yet. An administrator can ask the server for them.')", $tools, 'never read, by role');
+	pg_assert_contains("\$admin\n                ? lang('The tools have not been read yet. Ask the server for them with the Ask the server for its tools again button.')\n                : lang('The tools have not been read yet. An administrator can ask the server for them.')", $tools, 'never read, by role');
 
 	// No tool on: switches and Save are an administrator's only.
 	pg_assert_contains("? lang(array('string' => 'No tool of @{var:1} is on yet, so it is not offered after @ in the channels and cannot be asked. Turn on the ones that may be used and save.', 'vars' => \$server['alias']))", $tools, 'no tool on, administrator');

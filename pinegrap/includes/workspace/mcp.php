@@ -2067,7 +2067,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
             $empty = lang('The server lists no tools.');
         } else {
             $empty = $admin
-                ? lang('The tools have not been read yet. Ask the server for them with the button above.')
+                ? lang('The tools have not been read yet. Ask the server for them with the Ask the server for its tools again button.')
                 : lang('The tools have not been read yet. An administrator can ask the server for them.');
         }
 

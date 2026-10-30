@@ -2456,7 +2456,7 @@ function ws_notes_js_strings()
         'notes_empty_search'    => lang('No note matches.'),
         'notes_none'            => lang('A clean page - your first note is one click away.'),
         'notes_intro'           => lang('Your notes are yours alone - nobody else sees them, administrators included - until you share them. Keep any message here from its menu with "Save to my notes", or write your own.'),
-        'notes_pick'            => lang('Pick a note on the left, or start a new one.'),
+        'notes_pick'            => lang('Pick a note from the note list, or start a new one.'),
         'notes_title'           => lang('Title'),
         'notes_text'            => lang('Write here. # tags a person or a record, @Claude asks Claude; a line that ends with = is worked out.'),
         'notes_saving'          => lang('Saving…'),
