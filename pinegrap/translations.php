@@ -492,7 +492,7 @@ if (($language !== '') && !$rows) {
 $output_pagination = '';
 
 if ($total_pages > 1) {
-    $output_pagination .= '<nav aria-label="' . h(lang('Pages')) . '"><ul class="pagination pagination-sm mb-0">';
+    $output_pagination .= '<nav aria-label="' . h(lang('Pagination')) . '"><ul class="pagination pagination-sm mb-0">';
 
     for ($i = 1; $i <= $total_pages; $i++) {
         if (($total_pages > 12) && ($i > 2) && ($i < $total_pages - 1) && (abs($i - $page_number) > 2)) {

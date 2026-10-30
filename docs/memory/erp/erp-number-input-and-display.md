@@ -22,7 +22,7 @@ description: How the ERP reads typed quantities, amounts and rates and writes fi
 - Files and the API keep their own fixed formats.
 
 ## What else follows the store's country?
-- CSV delimiter `erp_csv_delimiter()`: `;` where the decimal comma is used, `,` elsewhere; the importers detect either.
+- CSV delimiter `erp_csv_delimiter()`: `;` where the decimal comma is used, `,` elsewhere; the importers detect either. Every ERP CSV uses it, the audit trail download included.
 - PDF paper `erp_paper_size()` (`includes/erp/document.php`): `letter` for the US, Canada, Mexico and a few other American countries, `A4` elsewhere. The built-in templates write `@page { size: {{paper}} portrait; … }`.
 
 ## How does the counter sale screen write money?

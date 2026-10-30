@@ -747,15 +747,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $opt_in = 'no';
         }
 
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'n/j';
-
-        // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j/n';
-        }
-
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
             $currency_code = '"' . $order['currency_code'] . '",';
@@ -808,7 +799,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['surcharge'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $order['order_date']) . '",' .
+            '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
             '"' . $order['special_offer_code'] . '",' .
@@ -1197,18 +1188,18 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     
     $zipfile = new zipfile();
 
-    $zipfile->add_file($order_data, 'orders.csv');
+    $zipfile->add_file("\xEF\xBB\xBF" . $order_data, 'orders.csv');
 
     // if at least one ship to exists, then include ship tos file
     if ($ship_to_exists == true) {
-        $zipfile->add_file($ship_to_data, 'ship_tos.csv');
+        $zipfile->add_file("\xEF\xBB\xBF" . $ship_to_data, 'ship_tos.csv');
     }
 
-    $zipfile->add_file($order_item_data, 'order_items.csv');
+    $zipfile->add_file("\xEF\xBB\xBF" . $order_item_data, 'order_items.csv');
     
     // if there is at least one shipping tracking number, then include file for it
     if ($shipping_tracking_number_data != '') {
-        $zipfile->add_file($shipping_tracking_number_data, 'shipping_tracking_numbers.csv');
+        $zipfile->add_file("\xEF\xBB\xBF" . $shipping_tracking_number_data, 'shipping_tracking_numbers.csv');
     }
 
     header("Content-type: application/octet-stream");
@@ -1476,8 +1467,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
     }
 
     // initialize download dialog
-    header("Content-type: text/csv");
-    header("Content-disposition: attachment; filename=orders.csv");
+    pg_csv_download_start('orders.csv');
 
     // prepare column headings for order records
     echo
@@ -1727,15 +1717,6 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             $opt_in = 'no';
         }
 
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'n/j';
-
-        // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j/n';
-        }
-
         // if multi currency is enabled
         if (ECOMMERCE_MULTICURRENCY === true) {
             $currency_code = '"' . $order['currency_code'] . '",';
@@ -1787,7 +1768,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . sprintf("%01.2lf", $order['surcharge'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['total'] / 100) . '",' .
             '"' . sprintf("%01.2lf", $order['commission'] / 100) . '",' .
-            '"' . date($month_and_day_format . '/Y g:i:s A T', $order['order_date']) . '",' .
+            '"' . pg_csv_export_time($order['order_date']) . '",' .
             '"' . $order['transaction_id'] . '",' .
             '"' . $order['authorization_code'] . '",' .
             '"' . $order['special_offer_code'] . '",' .
@@ -3223,7 +3204,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                             <button type="button" class="btn btn-sm btn-text theme-secondary no-popover pg-menu-caret" data-bs-toggle="menu" aria-expanded="false"><i class="bi bi-file-earmark-arrow-down me-1" aria-hidden="true"></i>' . lang('Export') . '</button>
                             <ul class="menu shadow">
                                 <li><button type="submit" name="submit_data" value="Export Orders (single file)" class="menu-item"><i class="bi bi-file-earmark-arrow-down me-3" aria-hidden="true"></i>' . lang('Single file') . '</button></li>
-                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('One file per order') . '</button></li>
+                                <li><button type="submit" name="submit_data" value="Export Orders (multiple files)" class="menu-item"><i class="bi bi-file-earmark-zip me-3" aria-hidden="true"></i>' . lang('Multiple files') . '</button></li>
                             </ul>
                         </div>
                         ' . $output_gateway_buttons . '
