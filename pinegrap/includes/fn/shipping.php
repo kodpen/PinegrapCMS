@@ -1246,6 +1246,125 @@ function pg_ship_to_district_ready()
 }
 
 /**
+ * Whether a country, as a code or a name ('TR', 'Turkey', 'Türkiye'), is
+ * Turkey. Pure.
+ *
+ * @param  string $country countries.code or countries.name
+ * @return bool
+ */
+function pg_ship_to_district_country_is_tr($country)
+{
+    $country = is_scalar($country) ? trim((string) $country) : '';
+
+    if ($country === '') {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    return pg_sales_map_canonical_country($country, $country) === 'TR';
+}
+
+/**
+ * Whether a carrier's label driver asks for the recipient's district. A
+ * driver says so by defining pg_label_<key>_needs_district() that answers
+ * true; none does yet, so the Turkey rule alone draws the box for now.
+ *
+ * @param  string $carrier a pg_shipping_carriers() key, '' when not known
+ * @return bool
+ */
+function pg_ship_to_district_carrier_asks($carrier)
+{
+    $carrier = (string) $carrier;
+
+    if (($carrier === '') || !function_exists('pg_label_drivers') || !function_exists('pg_label_info')) {
+        return false;
+    }
+
+    foreach (array_keys(pg_label_drivers()) as $key) {
+        $ask = 'pg_label_' . $key . '_needs_district';
+
+        if (function_exists($ask) && in_array($carrier, (array) pg_label_info($key)['carriers'], true) && $ask()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether the optional district box is drawn for an address: only once
+ * ship_tos.district exists, then for a Turkish address or one whose carrier's
+ * driver asks for it.
+ *
+ * @param  string    $country countries.code or countries.name of the address
+ * @param  bool      $carrier_asks pg_ship_to_district_carrier_asks()
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return bool
+ */
+function pg_ship_to_district_shown($country, $carrier_asks = false, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return false;
+    }
+
+    return $carrier_asks || pg_ship_to_district_country_is_tr($country);
+}
+
+/**
+ * A typed district as it is stored: one line, trimmed, at most 50
+ * characters (cut by character, so a Turkish letter is never split). Empty
+ * is allowed: the box is never required. Pure.
+ *
+ * @param  mixed  $value
+ * @return string
+ */
+function pg_ship_to_district_clean($value)
+{
+    $value = is_scalar($value) ? (string) $value : '';
+    // Line breaks and control characters become one space; a value that is
+    // not UTF-8 is dropped rather than stored broken.
+    $value = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', $value);
+    $value = ($value === null) ? '' : trim($value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim(mb_substr($value, 0, 50, 'UTF-8'));
+    }
+
+    return trim(substr($value, 0, 50));
+}
+
+/**
+ * The ", district = '…'" part of an UPDATE or INSERT … SET of ship_tos, or ''
+ * while the column is missing, so a save before step 11.0.134 writes the
+ * address without it, as before.
+ *
+ * @param  mixed     $value the typed district
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return string
+ */
+function pg_ship_to_district_set_sql($value, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return '';
+    }
+
+    return ", district = '" . escape(pg_ship_to_district_clean($value)) . "'";
+}
+
+/**
  * A Turkish province's licence plate number from its name ('İstanbul' ->
  * '34'), or '' for a name no province carries. Accents, case and spacing are
  * folded the way the sales map folds them, so 'IĞDIR', 'Iğdır' and the older
