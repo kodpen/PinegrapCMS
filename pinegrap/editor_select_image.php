@@ -471,7 +471,7 @@ if ($number_of_results > 0) {
 
             $output_images .=
                 '<div class="col">
-                    <div class="esi-tile esi-tile-missing no-popover" tabindex="0" title="' . lang('File not found') . '" data-bs-content="' . $output_details . '">
+                    <div class="esi-tile esi-tile-missing no-popover" tabindex="0" title="' . lang('File not found') . '" data-bs-content="' . h($output_details) . '">
                         <span class="esi-thumb d-flex align-items-center justify-content-center">
                             <span class="bi bi-exclamation-triangle fg-warning fs-2xl"></span>
                         </span>
@@ -498,7 +498,7 @@ if ($number_of_results > 0) {
 
         $output_images .=
             '<div class="col">
-                <button type="button" class="esi-tile no-popover hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
+                <button type="button" class="esi-tile no-popover hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . h($output_details) . '">
                     <span class="esi-thumb">
                         <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>

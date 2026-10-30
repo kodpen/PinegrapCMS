@@ -10355,7 +10355,9 @@ var _pgNoTitlePopover = ':not([data-bs-toggle="menu"]):not([data-bs-toggle="tab"
 
 
 /**
- * The software's own tooltips, over one scope.
+ * The software's own tooltips, over one scope. A title alone is text (the
+ * panel escapes it once, for the attribute); a title with data-bs-content is
+ * a details card whose content is HTML.
  */
 function pgBindTitlePopovers(scope) {
 
@@ -10365,7 +10367,7 @@ function pgBindTitlePopovers(scope) {
         pgUI.popover.get(this, {
             trigger: 'hover',
             placement: 'auto',
-            html: true,
+            html: this.hasAttribute('data-bs-content'),
             container: 'body'
         });
     });
@@ -10374,7 +10376,7 @@ function pgBindTitlePopovers(scope) {
         pgUI.popover.get(this, {
             trigger: 'click',
             placement: 'auto',
-            html: true,
+            html: this.hasAttribute('data-bs-content'),
             container: 'body'
         });
     });
