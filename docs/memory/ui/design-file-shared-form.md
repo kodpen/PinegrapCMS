@@ -12,7 +12,7 @@ description: add_design_file.php and edit_design_file.php draw the File Access C
 
 ## What stays in the screens?
 - Upload: the dropzone script and form, the Files To Upload card, the blocked-name check, the INSERT loop, the notice.
-- Edit: the `$stored_name` not-found gate, the row load, image and editor buttons, the system theme check, rename (only when the name changed and the file is on the disk, `design-file-missing-on-disk.md`), delete, the UPDATE.
+- Edit: the `$stored_name` not-found gate, the blank-name refusal (`file-screen-destinations.md`), the row load, image and editor buttons, the system theme check, rename (only when the name changed and the file is on the disk, `design-file-missing-on-disk.md`), delete, the UPDATE.
 - Every query stays in the screens (`db_q_regions_styles_menus_test.php` counts 5 `db_q` in the edit screen); `panel_id_gate_test.php` reads the edit screen's gate strings.
 
 ## Which test covers it?
