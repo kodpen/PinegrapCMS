@@ -29,8 +29,8 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="pg-f-md">
-                                            <label for="badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
-                                            <input type="text" name="badge_label" id="badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
+                                            <label for="setting_badge_label" class="form-label">' . lang('Default Badge Label') . '</label>
+                                            <input type="text" name="badge_label" id="setting_badge_label" maxlength="100" class="form-control" value="' . h($badge_label) . '" />
                                         </div>
                                         <div class="col-12 ">
                                             <fieldset><legend class="form-label fs-md">'. lang('Site Search Type') . '</legend>

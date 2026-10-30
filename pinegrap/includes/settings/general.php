@@ -37,8 +37,8 @@ $pg_settings_cards[] = '
                         <input type="text" name="hostname" id="hostname" maxlength="255" class="form-control" value="' . h($hostname) . '" />
                     </div>
                     <div class="pg-f-lg">
-                        <label for="email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
-                        <input type="text" name="email_address" id="email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
+                        <label for="setting_email_address" class="form-label">' . lang('Support E-mail Address') . '</label>
+                        <input type="text" name="email_address" id="setting_email_address" autocomplete="off" class="form-control" value="' . h($email_address) . '" inputmode="email" data-inputmask-alias="email"/>
                     </div>
                     <div class="pg-f-lg">
                         <label for="proxy_address" class="form-label">' . lang('Proxy Address') . '</label>
