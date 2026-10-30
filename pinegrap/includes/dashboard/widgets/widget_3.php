@@ -96,9 +96,15 @@ function pg_dashboard_widget_3($request, $user)
         };
 
         // ── Head: stock on one line, two facts under it ──────────
-        $output_stock_sub = $pg_count($product_count) . ' ' . lang('Product(s)')
+        $output_stock_sub = lang(array(
+                'string' => '{var:1} product{suffix:1}',
+                'vars' => $pg_count($product_count),
+                'suffix' => ($product_count == 1) ? '' : 's'))
             . ' <span class="pg-ec-dot">&middot;</span> '
-            . $pg_count($quantity_total) . ' ' . lang('Piece(s)');
+            . lang(array(
+                'string' => '{var:1} piece{suffix:1}',
+                'vars' => $pg_count($quantity_total),
+                'suffix' => ($quantity_total == 1) ? '' : 's'));
 
         // Only when there is something to act on. A steady "0
         // out of stock" is a phrase the eye learns to skip, and then the
