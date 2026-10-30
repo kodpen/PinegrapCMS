@@ -53,6 +53,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - collection-references.md: A form list or detail element prints a field of the record, product or page a reference points at (__ref binding, spec, one read per form, escaping, what is never read)
 - collection-revisions.md: Collection item revisions (record_revisions, 11.0.123, C7a #3068; History and restore C7b #3099): which items, which writers, what a row holds, the History section, restore, retention, erasure
 - collection-template-refs.md: A template's reference into another tab's form (_cf.ref tab:<key>): Publish, forms target first, sample references by label, blog categories, export (C6b1, C6b2)
+- comment-anonymous-name.md: The stored literal 'Anonymous' of a nameless comment and every reader that shows it in the site or panel language through pg_comment_display_name()
 - comment-counters-recount.md: Upgrade step 11.0.33 (data only) counts the comments of form records on designed pages again: two walks, a time pause, a per-database data/temp progress file with a done marker
 - comment-replies.md: Which comment a reply may answer (pg_comment_parent_ok()): same thread, visible to the writer, else refused with the text kept; ?reply_to=, staff mails, API parent_id, deleted parents, page copies
 - comment-thread-rules.md: Comment rules the classic comments block shares with the widget (pg_comments_settings, _allow_new, _viewer, _rows, _thread_order); its HTML stays byte for byte, its quirks kept

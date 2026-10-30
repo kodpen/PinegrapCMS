@@ -870,7 +870,7 @@ function pg_comment_member_name($username, $contact, $designed, $select = false,
 }
 
 /**
- * A comment's name as the panel shows it: the literal 'Anonymous' the name
+ * A comment's name as the panel and the site show it: the literal 'Anonymous' the name
  * choice stores, or no name at all, reads in the panel language.
  *
  * @param mixed $name comments.name

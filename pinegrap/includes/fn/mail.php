@@ -565,10 +565,8 @@ function send_comment_email_to_custom_form_submitter($comment_id)
         $comments_submitter_email_subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_submitter_email_subject, $prepare_for_html = false);
         $body = '';
         $extra_system_content = '';
-        // if name is blank then output anonymous
-        if ($name == '') {
-            $name = lang('Anonymous');
-        }
+        // No name, or the stored 'Anonymous', reads in the site language.
+        $name = pg_comment_display_name($name);
         $output_file_attachment = '';
         // if there is a file attachment, then output it
         if ($file_name != '') {
@@ -717,10 +715,8 @@ function send_comment_email_to_watchers($comment_id)
         if ($page_type == 'form item view') {
             $comments_watcher_email_subject = get_variable_submitted_form_data_for_content($page_id, $item_id, $comments_watcher_email_subject, $prepare_for_html = false);
         }
-        // if name is blank then output anonymous
-        if ($name == '') {
-            $name = lang('Anonymous');
-        }
+        // No name, or the stored 'Anonymous', reads in the site language.
+        $name = pg_comment_display_name($name);
         $output_file_attachment = '';
         // if there is a file attachment, then output it
         if ($file_name != '') {

@@ -113,7 +113,7 @@ function pg_dashboard_widget_25($request, $user)
         $cm_rows .= '
         <a class="d-block px-5 py-3 border-top text-decoration-none fg-body" href="edit_comment.php?id=' . (int) $cm_item['id'] . '&amp;send_to=' . h(PATH . SOFTWARE_DIRECTORY . '/view_comments.php') . '">
             <div class="d-flex align-items-center" style="gap:6px">
-                <span class="text-truncate fw-semibold" style="font-size:.75rem">' . h($cm_item['name'] != '' ? $cm_item['name'] : lang('Unknown')) . '</span>
+                <span class="text-truncate fw-semibold" style="font-size:.75rem">' . h(pg_comment_display_name($cm_item['name'])) . '</span>
                 ' . $cm_stars . '
                 <span class="fg-secondary ms-auto flex-shrink-0" style="font-size:.625rem">' . get_relative_time(array('timestamp' => (int) $cm_item['created_timestamp'])) . '</span>
             </div>

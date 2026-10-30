@@ -8,9 +8,12 @@ description: Order view timeline events/sources, printable invoice endpoint and 
 | Event | Icon | Colour | Source |
 |---|---|---|---|
 | Sipariş Oluşturuldu | bi-receipt | primary | `orders.order_date` |
-| Ödeme Alındı | bi-credit-card | success | `order_date` as proxy when `transaction_id` is set (`orders.paid_at` exists since 2026-09-17 and the ERP bridge reads it; the timeline still uses the proxy) |
-| Kargoya Verildi | bi-truck | info | `MIN(ship_tos.ship_date)` |
-| Teslim Edildi | bi-box-seam | success | `MIN(ship_tos.delivery_date)` |
+| Ödeme Alındı | bi-credit-card | success | `orders.paid_at`; `order_date` only when `paid_at` is 0 and `transaction_id` is set |
+| Kargoya Verildi / Tahmini kargo | bi-truck | info | `pg_shipment_timeline_steps()`: an address with a numbered parcel or `shipped_quantity > 0` is shipped on its earliest parcel `shipped_at`, else its `ship_date`; without one, the earliest `ship_date` as an estimate |
+| Teslim Edildi / Tahmini teslim | bi-box-seam | success | the earliest parcel `delivered_at`; without one, the earliest `delivery_date` as an estimate |
+
+## Why do Shipped and Delivered need a record?
+- #3454: the steps compared the checkout estimates with today, so an unpaid offline-payment order with a same-day estimate read "Sevk edildi <today>" right after checkout. Since #3574 an estimate stays "Estimated …" even after its day. There is no payment gate: a cash-on-delivery order ships before it is paid, and the record rule already keeps an unshipped order from saying Shipped.
 | İptal Edildi | bi-x-circle | danger | `orders.cancelled_at` (probe, 2026.1.26+) |
 
 ## How is the printable invoice served? (`__order_invoice_pdf_url`, flag `can_print_invoice`)

@@ -517,7 +517,7 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
                     break;
 
                 case 'newest_comment_name':
-                    if ($data === '' && !empty($row['newest_comment_id'])) {
+                    if (($data === '' || $data === 'Anonymous') && !empty($row['newest_comment_id'])) {
                         $data = h(lang('Anonymous'));
                     }
                     $data .= _pg_sw_badge_html($row, 'newest_comment_submitter_badge', 'newest_comment_submitter_badge_label');

@@ -165,3 +165,46 @@ function test_comment_display_name()
 	pg_assert_same(lang('Anonymous'), pg_comment_display_name(null));
 	pg_assert_same('Ayşe K.', pg_comment_display_name('Ayşe K.'));
 }
+
+// The stored 'Anonymous' (and no name) reads in the site language on every
+// reader, as it does in the panel: no reader keeps a blank-only fallback.
+function test_comment_member_name_anonymous_readers_use_display_name()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+	$widget = file_get_contents($root . 'includes/fn/widgets_comments.php');
+	foreach (array('$name : lang(\'Anonymous\')', '$parent_name : lang(\'Anonymous\')', '$reply_name : lang(\'Anonymous\')') as $old) {
+		pg_assert_false(strpos($widget, $old) !== false, 'widgets_comments.php keeps ' . $old);
+	}
+	$page = file_get_contents($root . 'get_page_content.php');
+	pg_assert_false((bool) preg_match('/if \(\$comment\[\'name\'\] == \'\'\) \{\s*\$comment\[\'name\'\] = lang\(\'Anonymous\'\);/', $page), 'get_page_content.php keeps the blank-only branch');
+	foreach (array('includes/fn/widgets_comments.php', 'get_page_content.php', 'includes/fn/mail.php', 'includes/dashboard/widgets/widget_25.php') as $file) {
+		pg_assert_contains('pg_comment_display_name(', file_get_contents($root . $file), $file);
+	}
+	foreach (array('includes/fn/widgets.php', 'includes/fn/content.php', 'get_form_item_view.php', 'get_form_list_view.php') as $file) {
+		pg_assert_contains("'Anonymous')", file_get_contents($root . $file), $file . ' maps the stored newest comment name');
+	}
+}
+
+// Row, link and e-mail values name a comment stored as 'Anonymous' with
+// lang('Anonymous'); a real name stays raw (escaped once, later).
+function test_comment_member_name_anonymous_values()
+{
+	pg_assert_same(lang('Anonymous'), pg_comment_display_name('Anonymous'));
+	pg_assert_same(lang('Anonymous'), pg_comment_display_name(''));
+	pg_assert_same('Ann <b>', pg_comment_display_name('Ann <b>'));
+
+	$row = array('id' => '9', 'name' => 'Anonymous', 'message' => 'Hello', 'published' => '1', 'rating' => '0', 'username' => '',
+		'created_timestamp' => (string) (time() - 3600), 'publish_date_and_time' => '0000-00-00 00:00:00', 'featured' => '0');
+	$state = array('is_staff' => false, 'sees_pending' => false, 'own_ids' => array(), 'rating_on' => false, 'badge_label' => '');
+	$env = array('is_staff' => false, 'sees_pending' => false, 'show_date' => false, 'label_lower' => 'reply', 'badge_label' => '');
+	$flags = pg_comments_widget_row_flags($row, false, $state, array('depth' => 0));
+	pg_assert_same(lang('Anonymous'), pg_comments_widget_row_values($row, $flags, $env)['__comment_name'], 'row name');
+	$real = array('name' => 'Ann <b>') + $row;
+	pg_assert_same('Ann <b>', pg_comments_widget_row_values($real, pg_comments_widget_row_flags($real, false, $state, array('depth' => 0)), $env)['__comment_name'], 'a real name stays raw');
+
+	$parent = array('id' => '7', 'name' => 'Anonymous', 'message' => 'First');
+	$links = pg_comments_widget_link_values(array('id' => '9', 'parent_id' => '7'), $parent, true, '/topic', array(), false);
+	pg_assert_same(lang('Anonymous'), $links['__comment_parent_name'], 'link parent name');
+	$mail = pg_comments_email_link_values('https://example.com/topic', '', array('id' => '9', 'parent_id' => '7'), $parent, false);
+	pg_assert_same(lang('Anonymous'), $mail['__comment_parent_name'], 'e-mail parent name');
+}

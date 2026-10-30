@@ -3615,8 +3615,8 @@ function get_variable_submitted_form_data_for_content($current_page_id, $submitt
                     if (($field_name == 'newest_comment') && (mb_strlen($data) > 100)) {
                         $data = mb_substr($data, 0, 100) . '...';
                     }
-                    // if this is the newest comment name field and the value is blank and there is a newest comment, then set name to "Anonymous"
-                    if (($field_name == 'newest_comment_name') && ($data == '') && ($submitted_form['newest_comment_id'] != '')) {
+                    // The newest comment's name: no name, or the stored 'Anonymous', reads in the site language.
+                    if (($field_name == 'newest_comment_name') && (($data == '') || ($data === 'Anonymous')) && ($submitted_form['newest_comment_id'] != '')) {
                         $data = lang('Anonymous');
                     }
                     // If this is the submitter field and badge is enabled for the submitter,

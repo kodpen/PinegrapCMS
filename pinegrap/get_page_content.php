@@ -4246,10 +4246,8 @@ function get_page_content($page_id, $system_content = '', $extra_system_content 
                             $output_published_notices .= lang(array('string'=>'Your {var:1} is awaiting approval','vars'=>$output_comment_label_lowercase));
                         }
                         
-                        // if there is not a comment name to output, then output anonymous
-                        if ($comment['name'] == '') {
-                            $comment['name'] = lang('Anonymous');
-                        }
+                        // No name, or the stored 'Anonymous', reads in the site language.
+                        $comment['name'] = pg_comment_display_name($comment['name']);
                         
                         $output_submitter_name = '';
                         

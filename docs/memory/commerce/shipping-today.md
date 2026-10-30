@@ -19,9 +19,9 @@ description: How shipping works today (checked 2026-10-20): tracking tables and 
 Four meanings live side by side:
 1. a non-empty tracking number: `_order_has_shipped()`, the external API and the customer cancel gate (order-cancel-shipping-gate.md);
 2. `shipped_quantity >= quantity`: `view_orders.php`, `view_shipping_report.php`, dashboard;
-3. `ship_date <= today`: `erp_order_shipment()` (`includes/erp/order_bridge.php`) and the order timeline;
+3. `ship_date <= today`: `erp_order_shipment()` (`includes/erp/order_bridge.php`);
 4. the n11 package status.
-- The timeline (`includes/fn/widgets.php`) shows "Delivered" once the estimated `delivery_date` has passed.
+- The order timeline uses a numbered parcel or a shipped quantity (`pg_shipment_timeline_steps()`, order-view-timeline-invoice-card.md).
 
 ## Which gaps are known?
 - No number format check (panel and ShipWorks only trim; API only checks length). An 11-digit number with no carrier in the method code is taken as UPS, 12/15 digits as FedEx, unless the site names a default carrier (`ECOMMERCE_DEFAULT_TRACKING_PROVIDER`, every order screen since #601).
