@@ -17,5 +17,8 @@ description: How a mail is drawn in a Workspace channel (ws_mail_card_html(), se
 - "Bring in an .eml file" per box: the uploaded file goes to `ws_mail_ingest()`; `ws_mail_ingest_message()` turns each status / reason into a notice or an error. This is how a box without a server is fed; one with a server is read by the general job every minute (`mail-fetch.md`).
 - `ws_mail_ready()`: the three tables exist; the card is hidden before the upgrade.
 
+## How do the assistants name a mail's sender?
+- `ws_ai_mail_author()` (workspace-assistant-reach.md), never "System".
+
 ## Tests?
 - `tests/workspace_mail_card_test.php`.

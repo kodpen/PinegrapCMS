@@ -718,27 +718,24 @@ function ws_recap_sentence($facts)
 
 /**
  * Who wrote a message, for the model: the name, and whether it was the
- * reader or a guest. No tags, so none come back in the summary.
+ * reader, a guest or an e-mail. No tags, so none come back in the summary.
  *
- * @param array $row ws_messages row
+ * @param array $row  ws_messages row
  * @param int   $me
+ * @param array $mail ws_mail_items_map() of the rows being recapped
  * @return string
  */
-function ws_recap_author($row, $me)
+function ws_recap_author($row, $me, $mail = array())
 {
     if ($row['sender_kind'] === 'user') {
-        return ws_person_name((int) $row['sender_id']) . (((int) $row['sender_id'] === (int) $me) ? ' (the reader)' : '');
+        return ws_ai_author_words('user', ws_person_name((int) $row['sender_id']), ((int) $row['sender_id'] === (int) $me) ? '(the reader)' : '');
     }
 
-    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
-        return ws_guest_sender((int) $row['sender_id'])['name'] . ' (guest)';
+    if ($row['sender_kind'] === 'mail') {
+        return ws_ai_mail_author($mail[(int) $row['sender_id']] ?? null, false);
     }
 
-    if ($row['sender_kind'] === 'app') {
-        return (string) ws_app_sender((int) $row['sender_id'])['name'];
-    }
-
-    return 'System';
+    return ws_ai_author($row, null, false);
 }
 
 /**
@@ -776,6 +773,7 @@ function ws_recap_transcript($viewer, $channel, $since_id, $limit, $chars)
 
     $refs = ws_refs_resolve($viewer, $tokens);
     $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
+    $mail = function_exists('ws_mail_items_map') ? ws_mail_items_map($rows) : array();
     $lines = array();
 
     foreach ($rows as $row) {
@@ -788,7 +786,7 @@ function ws_recap_transcript($viewer, $channel, $since_id, $limit, $chars)
             $text = '[file: ' . $row['file_name'] . ']';
         }
 
-        $lines[] = '[' . date('d.m H:i', (int) $row['created_at']) . ' · ' . ws_recap_author($row, $viewer['id']) . ']'
+        $lines[] = '[' . date('d.m H:i', (int) $row['created_at']) . ' · ' . ws_recap_author($row, $viewer['id'], $mail) . ']'
             . (($row['kind'] === 'decision') ? ' (decision)' : '')
             . (((int) $row['task_id'] > 0) ? ' (task card)' : '')
             . ' ' . $text;

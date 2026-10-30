@@ -8,21 +8,24 @@ description: Claude and Pinegrap AI read and answer a discussion or allowed priv
 - Used by Claude's `/answer` and `/fail` (`ws_api_claude_channel()`, api_claude.php) and Pinegrap AI's `ws_ai_deliver()` and `ws_ai_finish_fail()`. An MCP agent's answer was already posted in the asker's name (mcp_agent.php).
 
 ## What did it fix?
-- Before PR #1085 the owner had to be in the room. In a discussion (only its starter and the message's author are in it) or a private channel the owner was not in, Claude failed with "Claude yapamadı: Kanala yazamıyorum: Claude uygulamasının sahibi bu özel kanalın üyesi değil…" (API: context 404, answer 403 "The owner of Claude's application cannot post in that channel…") and Pinegrap AI with "Pinegrap AI'ın uygulamasının sahibi o kanala yazamıyor".
+- Before PR #1085 the owner had to be in the room. In a discussion or a private channel the owner was not in, Claude failed with "Claude yapamadı: Kanala yazamıyorum: Claude uygulamasının sahibi bu özel kanalın üyesi değil…" (API: context 404, answer 403) and Pinegrap AI with "Pinegrap AI'ın uygulamasının sahibi o kanala yazamıyor".
 
 ## How does Claude read such a place?
-- `GET /workspace/channels/{id}/context` with Claude's application key: where the owner does not read the channel it is read through the person who asked, while Claude is switched on and a Claude request asked there (or a run on one of its tasks) is queued, sent or running (`ws_claude_channel_asker()`, claude.php), as that person reads it (tags, open tasks), the asker of the running request first (`ws_claude_asker_order()`). Once the request closes it is 404 again.
-- Every other endpoint and every other application keep the owner's reach (`ws_api_channel_or_404()`). Pinegrap AI always read with the asker's rights (`ws_ai_channel_context($asker, …)`); only its delivery changed.
+- `GET /workspace/channels/{id}/context` with Claude's application key: where the owner does not read the channel it is read through the person who asked, while Claude is switched on and a Claude request asked there (or a run on one of its tasks) is queued, sent or running (`ws_claude_channel_asker()`, claude.php), as that person reads it, the asker of the running request first (`ws_claude_asker_order()`). Once the request closes it is 404 again.
+- Other endpoints and applications keep the owner's reach (`ws_api_channel_or_404()`). Pinegrap AI always read with the asker's rights (`ws_ai_channel_context($asker, …)`); only its delivery changed.
 
 ## Why is that safe?
-- Only someone who writes in the room can ask, and only where the assistant may be asked: a private channel's words still reach Anthropic only after its manager allowed Claude (`claude_access`), and they appear in the routine owner's claude.ai sessions as before. The invitation is one request, not a membership.
+- Only someone who writes in the room can ask, where the assistant may be asked: a private channel's words still reach Anthropic only after its manager allowed Claude (`claude_access`), and they appear in the routine owner's claude.ai sessions as before. The invitation is one request, not a membership.
 - Never through inspection, reading or writing (role 3 is forced, as in `ws_app_reads_channel()`): the work runs in whichever screen carries it.
-- Only the key used as itself is Claude (`ws_api_is_claude()`, also the queue's guard): a device or OAuth session of the chosen application is its person, else a device app wrongly chosen for Claude let every signed-in phone read such rooms (seen in the sandbox before the check).
+- Only the key used as itself is Claude (`ws_api_is_claude()`, also the queue's guard): a device or OAuth session of the chosen application is its person, else every signed-in phone of a device app chosen for Claude read such rooms.
 
 ## When is nothing posted?
 - The person who asked left the channel or the discussion, or it was archived or concluded, and the owner is not in it: `/answer` 403 "The answer cannot be posted there any more: …", Pinegrap AI's request fails with the same sentence; `/fail` keeps the reason on the request only (`told_in_channel` false).
 - Pinegrap AI switched on without an application (none chosen, or it was deleted): nothing is written in the channel, the request only keeps its state; else the asker would stand in and the refusal become their own message (`ws_ai_app()` first).
 
+## How is a message's author named?
+- Through the pure `ws_ai_author_words()` (ai.php), in English: `ws_ai_author()`, `ws_recap_author()` and `ws_mcp_agent_author()` (no tags). A guest is `Name (guest)`, an incoming mail `Name <address> (e-mail from outside the team)`, a team's answer `<writer> (e-mail answer)` (`ws_ai_mail_author()`); mail senders load once per batch (`ws_mail_items_map()`). Before PR #3769 they read as "System".
+
 ## What was checked, and how?
-- Sandbox (tools/setup_sandbox.sh), routine played with the app key and curl: the bug reproduced on the old code (context 404, answer 403); with the fix the discussion and the private channel were answered and the refusal posted, the context closed with the request, another app of the same owner got 404, a concluded discussion 403. Pinegrap AI's delivery and refusal were called directly (no model). Never with a real routine: workspace-claude-routine.md.
-- Tests: tests/workspace_assistant_reach_test.php, the dry-run order in tests/workspace_api_test.php.
+- Sandbox, routine played with curl: with the fix the discussion and private channel were answered, the refusal posted, the context closed with the request, another app of the owner got 404, a concluded discussion 403.
+- Tests: tests/workspace_assistant_reach_test.php, the dry-run order in tests/workspace_api_test.php, tests/workspace_ai_author_test.php.
