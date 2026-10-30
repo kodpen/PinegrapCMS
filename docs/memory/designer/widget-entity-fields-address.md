@@ -9,7 +9,7 @@ description: W8 address values: the order's recipients (ship_to, order view, rec
 - Read by the ship_tos queries the order view already sends (`pg_sw_entity_select('ship_to', 'ship_tos')`), no extra query; dates through the widget's own date formatter. Shipping cost, zone, offer, verification and package data stay off.
 
 ## Which values does the address book offer?
-- In its row loop: `__recipient_salutation`, `__recipient_first_name`, `__recipient_last_name`, `__recipient_address_1` / `_2`, `__recipient_city`, `__recipient_state`, `__recipient_zip`, `__recipient_country` (the country's name, as the one-line address prints it), `__recipient_address_type` (words, only when the widget asks for the address type). Editor group "More recipient details (loop)" (`SW_ADDRESS_BOOK_ENTITY_TOKENS`). Only the signed-in member's own saved recipients.
+- In its row loop: `__recipient_salutation`, `__recipient_first_name`, `__recipient_last_name`, `__recipient_address_1` / `_2`, `__recipient_city`, `__recipient_state`, `__recipient_zip`, `__recipient_country` (the country's name in the site language, `pg_geo_country_label()`, as the one-line address prints it), `__recipient_address_type` (words, only when the widget asks for the address type). Editor group "More recipient details (loop)" (`SW_ADDRESS_BOOK_ENTITY_TOKENS`). Only the signed-in member's own saved recipients.
 
 ## Which row tokens do the order lists carry?
 - `order.shipments` names the ship_to values; `order.items` names the order line and product values (`pg_sw_list_order_entity_tokens()`, labels twin of the editor lists). Being the list's own tokens, a row fills them (empty when the order view did not read them) instead of the outer record.

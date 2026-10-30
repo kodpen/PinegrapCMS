@@ -517,7 +517,7 @@ function pg_sw_apply_tokens($template, $row, $custom = array(), $extra = array()
                     break;
 
                 case 'newest_comment_name':
-                    if ($data === '' && !empty($row['newest_comment_id'])) {
+                    if (($data === '' || $data === 'Anonymous') && !empty($row['newest_comment_id'])) {
                         $data = h(lang('Anonymous'));
                     }
                     $data .= _pg_sw_badge_html($row, 'newest_comment_submitter_badge', 'newest_comment_submitter_badge_label');
@@ -1691,7 +1691,9 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
 //   empty_message       string         shown when no records match (default: the
-//                                      translated "No records found.")
+//                                      translated "No records found."); a search
+//                                      that finds nothing says so instead
+//                                      (pg_sw_form_list_empty_message())
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
 //                               recent_views | newest_activity_date_and_time |
@@ -1741,6 +1743,25 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // uses `$_GET['page']` as the URL slug (set by .htaccess rewrite). A
 // pagination link of the form `?page=2` would overwrite the slug and break
 // routing entirely. Match the legacy form_list_view's `page_number` instead.
+/**
+ * The form list's empty-state words: a search that matched nothing says so
+ * (the list itself may hold records); otherwise the configured message, or
+ * "No records found." when none is set.
+ *
+ * @param  mixed $configured    the widget's empty_message setting
+ * @param  bool  $search_active a search query is applied
+ * @return string Plain text.
+ */
+function pg_sw_form_list_empty_message($configured, $search_active)
+{
+    if ($search_active) {
+        return lang('Nothing matched your search. Try fewer or different words.');
+    }
+    $configured = is_string($configured) ? $configured : '';
+
+    return ($configured !== '') ? $configured : lang('No records found.');
+}
+
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1779,9 +1800,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                         ? substr($cfg['search_label'], 0, 100)
                         : (string)lang('Search...');
 
-    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
-                        ? $cfg['empty_message']
-                        : lang('No records found.');
+    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : '';
 
     $order_by_field    = isset($cfg['order_by_field']) ? (string)$cfg['order_by_field'] : 'submitted_date_and_time';
     $order_by_direction = (isset($cfg['order_by_direction']) && strtoupper($cfg['order_by_direction']) === 'ASC') ? 'ASC' : 'DESC';
@@ -2078,9 +2097,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             '</form>';
     }
 
-    // Empty-state HTML used when no records match (with or without search
-    // active), as an element the records' parent may hold.
-    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
+    // Empty-state HTML used when no records match, as an element the
+    // records' parent may hold: a search that found nothing says so, not
+    // that the list has no records.
+    $empty_html = pg_sw_state_message_html(pg_sw_form_list_empty_message($empty_message, $search_active), $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
 
     // The records go where the loop_area was. The search box and the
     // pagination go there too, except into a list or a table: those may
@@ -6659,6 +6679,32 @@ function pg_sw_item_summary($html, $max = 140)
     return rtrim($cut, " ,.;:-") . "\u{2026}";
 }
 
+// Order view trees saved before the starter's card surcharge row carried
+// has_surcharge printed "Card surcharge 0,00" on every order. The outermost
+// node whose only text-bound token is __order_surcharge, with no
+// eo_visible_if of its own, gets has_surcharge; a node that already has a
+// condition is left alone, and a node holding another figure too is not the
+// row.
+function pg_ov_stamp_surcharge_row(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['eo_visible_if']) && (string)$node['props']['_bindings']['eo_visible_if'] !== '') {
+        return;
+    }
+    $marks = _pg_op_subtree_marks($node);
+    if (array_keys($marks['tokens']) === array('__order_surcharge')) {
+        if (!isset($node['props']) || !is_array($node['props'])) $node['props'] = array();
+        if (!isset($node['props']['_bindings']) || !is_array($node['props']['_bindings'])) $node['props']['_bindings'] = array();
+        $node['props']['_bindings']['eo_visible_if'] = 'has_surcharge';
+        return;
+    }
+    if (!isset($marks['tokens']['__order_surcharge']) || empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as &$child) {
+        pg_ov_stamp_surcharge_row($child);
+    }
+    unset($child);
+}
+
 // Render an 'order_view' system widget. Reads a single completed order via
 // $_GET['order_id'] (or ?oid=) and iterates order_items in loop_area.
 // Security: order must belong to the currently logged-in user (orders.user).
@@ -6981,7 +7027,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)$order['billing_address_1'],
         (string)$order['billing_address_2'],
         $billing_city_line,
-        (string)$order['billing_country'],
+        // The address names the country in the site language; the
+        // __billing_country token keeps the stored code.
+        pg_geo_country_label_site($order['billing_country']),
     ));
     $billing_full_address = implode(', ', $billing_full_parts);
 
@@ -7025,7 +7073,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)($ship_to['address_1'] ?? ''),
         (string)($ship_to['address_2'] ?? ''),
         $shipping_city_line,
-        (string)($ship_to['country']   ?? ''),
+        pg_geo_country_label_site($ship_to['country'] ?? ''),
     ));
     $shipping_full_address = implode(', ', $shipping_full_parts);
     $shipping_address_html = implode('<br>', array_map('h', $shipping_full_parts));
@@ -7247,7 +7295,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
     // own shape (pg_sw_order_parcels(), pg_shipment_view()).
     $tracking_columns = pg_shipment_rows_ready()
-        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status'
+        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status, shipping_tracking_numbers.shipped_at, shipping_tracking_numbers.delivered_at'
         : '';
 
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
@@ -7282,10 +7330,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
 
     // ── Timeline events ───────────────────────────────────────────────
-    // Aggregate ship_to ship_date / delivery_date across all rows; the
-    // earliest non-zero date wins (a multi-recipient order is "shipped"
-    // when the first ship_to goes out, "delivered" when the first
-    // arrives — closest to what customers actually want to see).
     static $_order_view_has_cancelled_at_col = null;
     if ($_order_view_has_cancelled_at_col === null) {
         $_order_view_has_cancelled_at_col = pg_schema_has('orders', 'cancelled_at');
@@ -7301,26 +7345,46 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             $cancellation_reason = trim((string)($_cancel_row['cancellation_reason'] ?? ''));
         }
     }
-    $shipping_ts = 0;
-    $delivery_ts = 0;
+    // A step says Shipped or Delivered only when a record backs it: a
+    // numbered parcel or a shipped quantity for Shipped, a parcel's
+    // delivered_at for Delivered (pg_shipment_timeline_steps()). Without one
+    // the checkout estimate stays an estimate, even after its day has passed.
+    // A multi-recipient order is shipped when the first address goes out and
+    // delivered when the first arrives.
     $st_dates = db_items(
-        "SELECT ship_date, delivery_date FROM ship_tos
+        "SELECT id, ship_date, delivery_date FROM ship_tos
          WHERE order_id = '$oid_esc'
            AND complete = 1
          ORDER BY id ASC"
     );
-    if (is_array($st_dates)) {
-        foreach ($st_dates as $_d) {
-            if (!empty($_d['ship_date']) && $_d['ship_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['ship_date']);
-                if ($_t > 0 && ($shipping_ts === 0 || $_t < $shipping_ts)) $shipping_ts = $_t;
-            }
-            if (!empty($_d['delivery_date']) && $_d['delivery_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['delivery_date']);
-                if ($_t > 0 && ($delivery_ts === 0 || $_t < $delivery_ts)) $delivery_ts = $_t;
-            }
-        }
+    $st_shipped_rows = db_items(
+        "SELECT ship_to_id, COALESCE(SUM(shipped_quantity), 0) AS shipped_quantity
+         FROM order_items
+         WHERE order_id = '$oid_esc' AND ship_to_id > 0
+         GROUP BY ship_to_id"
+    );
+    $st_shipped = array();
+    foreach ((is_array($st_shipped_rows) ? $st_shipped_rows : array()) as $_sq) {
+        $st_shipped[(int)$_sq['ship_to_id']] = (int)$_sq['shipped_quantity'];
     }
+    $st_parcels = array();
+    foreach ((is_array($tracking_rows) ? $tracking_rows : array()) as $_tr) {
+        $st_parcels[(int)$_tr['ship_to_id']][] = array(
+            'shipped_at'   => isset($_tr['shipped_at']) ? (int)$_tr['shipped_at'] : 0,
+            'delivered_at' => isset($_tr['delivered_at']) ? (int)$_tr['delivered_at'] : 0,
+        );
+    }
+    $st_addresses = array();
+    foreach ((is_array($st_dates) ? $st_dates : array()) as $_d) {
+        $_st_id = (int)$_d['id'];
+        $st_addresses[] = array(
+            'ship_date'        => (string)$_d['ship_date'],
+            'delivery_date'    => (string)$_d['delivery_date'],
+            'shipped_quantity' => isset($st_shipped[$_st_id]) ? $st_shipped[$_st_id] : 0,
+            'parcels'          => isset($st_parcels[$_st_id]) ? $st_parcels[$_st_id] : array(),
+        );
+    }
+    $shipment_steps = pg_shipment_timeline_steps($st_addresses);
     // Format helper — same date logic as $order_date above, plus HH:MM
     // for events that have a real time component (cancellation, order
     // creation). Pure-date columns (ship_date, delivery_date) skip the
@@ -7364,24 +7428,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'kind'  => 'paid',
         );
     }
-    // ship_date / delivery_date are worked out at checkout from the
-    // shipping method: until the day comes they are a forecast, and a
-    // just-placed order listed itself as shipped and delivered.
-    $_today_ts = strtotime(date('Y-m-d'));
-    if ($shipping_ts > 0) {
+    if ($shipment_steps['shipped']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
-            'ts'    => $_fmt_ts($shipping_ts, false),
+            'label'    => $shipment_steps['shipped']['estimate'] ? lang('Estimated shipping') : lang('Shipped'),
+            'ts'       => $_fmt_ts($shipment_steps['shipped']['ts'], false),
             'kind'     => 'shipped',
-            'estimate' => ($shipping_ts > $_today_ts),
+            'estimate' => $shipment_steps['shipped']['estimate'],
         );
     }
-    if ($delivery_ts > 0) {
+    if ($shipment_steps['delivered']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
-            'ts'    => $_fmt_ts($delivery_ts, false),
+            'label'    => $shipment_steps['delivered']['estimate'] ? lang('Estimated delivery') : lang('Delivered'),
+            'ts'       => $_fmt_ts($shipment_steps['delivered']['ts'], false),
             'kind'     => 'delivered',
-            'estimate' => ($delivery_ts > $_today_ts),
+            'estimate' => $shipment_steps['delivered']['estimate'],
         );
     }
     if ($cancelled_at_ts > 0) {
@@ -7562,6 +7622,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
+    pg_ov_stamp_surcharge_row($tree_decoded);
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
     }

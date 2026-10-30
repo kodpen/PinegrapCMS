@@ -1244,3 +1244,73 @@ function pg_shipping_postcode_province_text($province)
 {
     return lang(array('string' => 'This postcode belongs to {var:1}, not to the province given. Check the address before shipping.', 'vars' => array($province)));
 }
+
+/**
+ * The Shipped and Delivered steps of the order view timeline. A step is a
+ * fact only when a record says so; otherwise it is the checkout estimate,
+ * even after the estimated day has passed.
+ *
+ * An address counts as shipped when it has a numbered parcel or a shipped
+ * quantity ("Mark Shipped" writes the quantity and no parcel). Its day is its
+ * earliest parcel shipped_at, else its ship_date. The earliest shipped address
+ * wins; with none shipped, the earliest ship_date of all is the estimate.
+ * Delivered is the earliest parcel delivered_at, else the earliest
+ * delivery_date as an estimate.
+ *
+ * @param  array $addresses each: ship_date, delivery_date (Y-m-d, '' or
+ *                          '0000-00-00'), shipped_quantity (int), parcels
+ *                          (rows with shipped_at, delivered_at unix ints, 0
+ *                          when unknown)
+ * @return array shipped => {ts, estimate}, delivered => {ts, estimate}; ts 0
+ *               is no step
+ */
+function pg_shipment_timeline_steps($addresses)
+{
+    $day = function ($date) {
+        $date = trim((string) $date);
+        if ($date === '' || $date === '0000-00-00') {
+            return 0;
+        }
+        $ts = strtotime($date);
+
+        return ($ts > 0) ? $ts : 0;
+    };
+    $earliest = function ($current, $ts) {
+        return ($ts > 0 && ($current === 0 || $ts < $current)) ? $ts : $current;
+    };
+
+    $shipped_real = 0;
+    $shipped_estimate = 0;
+    $delivered_real = 0;
+    $delivered_estimate = 0;
+
+    foreach ((array) $addresses as $address) {
+        if (!is_array($address)) {
+            continue;
+        }
+        $ship_day = $day(isset($address['ship_date']) ? $address['ship_date'] : '');
+        $shipped_estimate = $earliest($shipped_estimate, $ship_day);
+        $delivered_estimate = $earliest($delivered_estimate, $day(isset($address['delivery_date']) ? $address['delivery_date'] : ''));
+
+        $parcels = isset($address['parcels']) ? (array) $address['parcels'] : array();
+        $parcel_shipped = 0;
+        foreach ($parcels as $parcel) {
+            $parcel_shipped = $earliest($parcel_shipped, isset($parcel['shipped_at']) ? (int) $parcel['shipped_at'] : 0);
+            $delivered_real = $earliest($delivered_real, isset($parcel['delivered_at']) ? (int) $parcel['delivered_at'] : 0);
+        }
+
+        $shipped = !empty($parcels) || (isset($address['shipped_quantity']) && (int) $address['shipped_quantity'] > 0);
+        if ($shipped) {
+            $shipped_real = $earliest($shipped_real, ($parcel_shipped > 0) ? $parcel_shipped : $ship_day);
+        }
+    }
+
+    return array(
+        'shipped'   => ($shipped_real > 0)
+            ? array('ts' => $shipped_real, 'estimate' => false)
+            : array('ts' => $shipped_estimate, 'estimate' => true),
+        'delivered' => ($delivered_real > 0)
+            ? array('ts' => $delivered_real, 'estimate' => false)
+            : array('ts' => $delivered_estimate, 'estimate' => true),
+    );
+}

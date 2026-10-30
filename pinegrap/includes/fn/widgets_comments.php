@@ -813,8 +813,8 @@ function pg_comments_quote_excerpt($text, $limit = 160)
  * - __comment_reply_url: the current address with reply_to=<id>, ending at
  *   #software_add_comment (it works without the browser's script), when the
  *   visitor may answer the comment ($reply_ok), else ''.
- * - __comment_parent_id, __comment_parent_name (Anonymous when the comment
- *   answered has no name), __comment_parent_url (its anchor when it is on
+ * - __comment_parent_id, __comment_parent_name (the stored 'Anonymous' or
+ *   no name reads lang('Anonymous')), __comment_parent_url (its anchor when it is on
  *   this page, else its permalink): '' for a comment that answers none among
  *   the rows read ($parent null).
  * - __comment_quote: the start of the answered comment's words
@@ -843,7 +843,7 @@ function pg_comments_widget_link_values($entry, $parent, $parent_on_page, $path,
         '__comment_url' => $permalink($id),
         '__comment_reply_url' => $reply_ok ? pg_comments_widget_page_url($path, $params, array('reply_to'), array('reply_to' => $id), 'software_add_comment') : '',
         '__comment_parent_id' => ($parent_id > 0) ? (string) $parent_id : '',
-        '__comment_parent_name' => ($parent_id > 0) ? (($parent_name !== '') ? $parent_name : lang('Anonymous')) : '',
+        '__comment_parent_name' => ($parent_id > 0) ? pg_comment_display_name($parent_name) : '',
         '__comment_parent_url' => ($parent_id > 0) ? ($parent_on_page ? '#c-' . $parent_id : $permalink($parent_id)) : '',
         '__comment_quote' => (!empty($entry['quoted']) && ($parent_id > 0)) ? pg_comments_quote_excerpt(_pg_comments_row_text($parent, 'message')) : '',
         '__comment_depth' => (string) _pg_comments_row_int($entry, 'depth'),
@@ -3534,8 +3534,8 @@ function pg_comments_email_entry($row, $parent, $featured_mode)
  * - __comment_reply_url: $base . $query with reply_to=<id>, ending at
  *   #software_add_comment, when the comment may be answered there
  *   ($reply_ok), else ''.
- * - __comment_parent_id, __comment_parent_name (Anonymous when it has no
- *   name), __comment_parent_url (its permalink, built the same way): '' for
+ * - __comment_parent_id, __comment_parent_name (the stored 'Anonymous' or
+ *   no name reads lang('Anonymous')), __comment_parent_url (its permalink, built the same way): '' for
  *   a comment that answers none given ($parent null).
  * - __comment_quote: the start of the answered comment's words when the
  *   entry quotes it, else ''.
@@ -3569,7 +3569,7 @@ function pg_comments_email_link_values($base, $query, $entry, $parent, $reply_ok
             ? $base . $query . ((mb_strpos($query, '?') === false) ? '?' : '&') . 'reply_to=' . $id . '#software_add_comment'
             : '',
         '__comment_parent_id' => ($parent_id > 0) ? (string) $parent_id : '',
-        '__comment_parent_name' => ($parent_id > 0) ? (($parent_name !== '') ? $parent_name : lang('Anonymous')) : '',
+        '__comment_parent_name' => ($parent_id > 0) ? pg_comment_display_name($parent_name) : '',
         '__comment_parent_url' => ($parent_id > 0) ? $permalink($parent_id) : '',
         '__comment_quote' => (!empty($entry['quoted']) && ($parent_id > 0)) ? pg_comments_quote_excerpt(_pg_comments_row_text($parent, 'message')) : '',
         '__comment_depth' => (string) _pg_comments_row_int($entry, 'depth'),
@@ -4424,7 +4424,7 @@ function pg_comments_widget_row_values($row, $flags, $env)
     return array(
         '__comment_id' => (string) $id,
         '__comment_anchor' => 'c-' . $id,
-        '__comment_name' => ($name !== '') ? $name : lang('Anonymous'),
+        '__comment_name' => pg_comment_display_name($name),
         '__comment_staff_name' => $is_staff ? _pg_comments_row_text($row, 'username') : '',
         '__comment_message_html' => convert_text_to_html(_pg_comments_row_text($row, 'message')),
         '__comment_excerpt' => pg_comments_quote_excerpt(_pg_comments_row_text($row, 'message')),
@@ -4804,8 +4804,7 @@ function _render_system_widget_comments($tree_json, $widget_id, $cfg = array(), 
     $reply_name = '';
 
     if ($thread_flags['is_replying'] && ($reply_parent !== null)) {
-        $reply_name = _pg_comments_row_text($reply_parent, 'name');
-        $reply_name = ($reply_name !== '') ? $reply_name : lang('Anonymous');
+        $reply_name = pg_comment_display_name(_pg_comments_row_text($reply_parent, 'name'));
     }
 
     $thread_values = array(

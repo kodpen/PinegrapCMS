@@ -718,6 +718,64 @@ function pg_geo_country_label($name, $code = '')
 }
 
 /**
+ * A country stored on an order or an address, named in the current language.
+ * Checkout stores the two-letter code; older rows and imports may hold the
+ * name. A code in $names_by_code is named from its row, an unknown code from
+ * intl, falling back to the code; any other text is named as a stored name,
+ * falling back to itself.
+ *
+ * @param  mixed $stored        the stored value (code or name)
+ * @param  array $names_by_code countries.code => countries.name
+ * @return string Plain text; '' for an empty value.
+ */
+function pg_geo_country_label_stored($stored, array $names_by_code)
+{
+    $stored = trim((string) $stored);
+
+    if ($stored === '') {
+        return '';
+    }
+
+    if (preg_match('/^[A-Za-z]{2}$/', $stored)) {
+        $code = strtoupper($stored);
+        $label = isset($names_by_code[$code])
+            ? pg_geo_country_label((string) $names_by_code[$code], $code)
+            : pg_geo_country_label('', $code);
+
+        return ($label !== '') ? $label : $stored;
+    }
+
+    $label = pg_geo_country_label($stored);
+
+    return ($label !== '') ? $label : $stored;
+}
+
+/**
+ * pg_geo_country_label_stored() against the site's countries table, read
+ * once per request.
+ *
+ * @param  mixed $stored the stored value (code or name)
+ * @return string Plain text.
+ */
+function pg_geo_country_label_site($stored)
+{
+    static $names_by_code = null;
+
+    if ($names_by_code === null) {
+        $names_by_code = array();
+        $rows = function_exists('db_items') ? db_items("SELECT code, name FROM countries") : array();
+        foreach ((is_array($rows) ? $rows : array()) as $row) {
+            $code = strtoupper(trim((string) $row['code']));
+            if ($code !== '' && !isset($names_by_code[$code])) {
+                $names_by_code[$code] = (string) $row['name'];
+            }
+        }
+    }
+
+    return pg_geo_country_label_stored($stored, $names_by_code);
+}
+
+/**
  * Two labels compared the way the current language orders them: the intl
  * Collator of the panel language when PHP has it ("Çin" after "Brezilya",
  * not after "Zimbabve"), else a case-insensitive byte order. Answers below,
