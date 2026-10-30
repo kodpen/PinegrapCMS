@@ -34889,7 +34889,7 @@ const StyleDesigner = (function () {
                         _saHint(esc(_swLinkHint('shipping_address_and_arrival', '__address_type_url')))
                     ) +
                     row(_sdT('Controls'),
-                        _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
+                        _saHint(_sdT('The form reads its controls by name: {var}.', '<code>salutation, first_name, last_name, company, address_1, address_2, city, district, state, zip_code, country, address_type, phone_number, shipping_same_as_billing, arrival_date, custom_arrival_date</code>')))
                 );
             }
 
@@ -38094,6 +38094,7 @@ const StyleDesigner = (function () {
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 1'), 'shipping_address_1',  'text', '', true),
                             _mkField('col-12 col-md-12 mb-2', _sdT('Address 2'), 'shipping_address_2',  'text', '', false),
                             _mkField('col-12 col-md-6 mb-2', _sdT('City'),    'shipping_city',       'text', '', true),
+                            _mkField('col-12 col-md-6 mb-2', _sdT('District'), 'shipping_district',  'text', '', false),
                             _mkField('col-12 col-md-6 mb-2', _sdT('State'),'shipping_state',      'text', '', true),
                             _mkField('col-12 col-md-6 mb-2', _sdT('Zip Code'),'shipping_zip_code',  'text', '', true),
                             createNode('semantic', { tag: 'div', cssClass: 'col-12 col-md-6 mb-2' }, [
@@ -41127,6 +41128,7 @@ const StyleDesigner = (function () {
             ['shipping_address_1',     _sdT('Address 1')],
             ['shipping_address_2',     _sdT('Address 2')],
             ['shipping_city',          _sdT('City')],
+            ['shipping_district',      _sdT('District')],
             ['shipping_state',         _sdT('State / Province')],
             ['shipping_zip_code',      _sdT('Zip Code')],
             ['shipping_country',       _sdT('Country code')]
@@ -59942,6 +59944,8 @@ const StyleDesigner = (function () {
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 1'),    'shipping_address_1',   'text', '', true),
                                     fld('col-12 col-md-6 mb-3', _sdT('Address 2'),    'shipping_address_2',   'text'),
                                     fld('col-12 col-md-6 mb-3', _sdT('City'),         'shipping_city',        'text', '', true),
+                                    // Optional; the site shows it for a Turkish address.
+                                    fld('col-12 col-md-6 mb-3', _sdT('District'),     'shipping_district',    'text'),
                                     sem('div', 'col-12 col-md-6 mb-3', [
                                         lbl('shipping_country', _sdT('Country'), true),
                                         sem('select', 'form-select', null, {
@@ -63955,6 +63959,8 @@ const StyleDesigner = (function () {
                         _swAcctField(_sdT('Address (line 2)'), saId + '_addr2', 'text', 'address_2', { autocomplete: 'address-line2', attrs: [{ name: 'maxlength', value: '50' }] }),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('City') }, [
                             _swAcctField(_sdT('City'), saId + '_city', 'text', 'city', { required: true, autocomplete: 'address-level2', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
+                            // Optional; the site shows it for a Turkish address.
+                            _swAcctField(_sdT('District'), saId + '_district', 'text', 'district', { autocomplete: 'address-level3', colCss: 'col-sm-6', attrs: [{ name: 'maxlength', value: '50' }] }),
                             saCountry
                         ]),
                         createNode('semantic', { tag: 'div', cssClass: 'row', customName: _sdT('State') }, [

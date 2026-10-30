@@ -773,6 +773,7 @@ if (!$_POST) {
                 address_1,
                 address_2,
                 city,
+                " . (pg_ship_to_district_ready() ? "ship_tos.district," : "") . "
                 state,
                 zip_code,
                 country,
@@ -901,6 +902,11 @@ if (!$_POST) {
                     $address .= $ship_tos[$key]['address_2'] . ', ';
                 }
                 
+                // The district, when one was typed, before the city.
+                if (!empty($ship_tos[$key]['district'])) {
+                    $address .= $ship_tos[$key]['district'] . ', ';
+                }
+
                 if ($ship_tos[$key]['city']) {
                     $address .= $ship_tos[$key]['city'] . ', ';
                 }
