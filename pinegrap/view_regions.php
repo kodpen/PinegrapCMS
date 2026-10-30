@@ -32,6 +32,7 @@ $output_filter_for_links = h($filter_for_links);
 $output_table_headers = '';
 $output_table_contents = '';
 $output_sort_menu = '';
+$button_bar_button = '';
 switch ($filter) {
     case 'all_ad_regions':
         
@@ -355,12 +356,12 @@ switch ($filter) {
         $heading = lang('All Dynamic Regions');
         $subheading = lang('All dynamic regions that contain PHP code and can be added to any page style.');
         
-        // Add the create button to the button bar.
-        $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_dynamic_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
-        
         // output dynamic regions
         // if user's role is above a designer role then output dynamic region area
         if ($user['role'] < 1) {
+            // add_dynamic_region.php admits administrators only.
+            $button_bar_button = '<a class="btn btn-sm btn-solid theme-primary m-1" href="add_dynamic_region.php"><span class="bi bi-plus-circle me-3"></span>' . lang(array('string'=>'Create') ) . '</a>';
+
             // The columns this list sorts by, in the order the table shows them.
             // pg_list_state() keeps the choice in the session as a code, so it survives
             // a language change, and falls back to the default for anything else.

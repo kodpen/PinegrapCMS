@@ -19,6 +19,7 @@ description: Main menu entries follow the gate of the screen they open: the scre
 - ERP Settings: not for the read-only accountant (`USER_ERP_READONLY`), as `erp_accountant.php` computes `$can_settings`.
 - Import My Site, Check for Updates, Repair Software: not on a hosted site (`pg_hosted()`); the screens refuse there.
 - The Ship Date Adjustments button of `view_shipping_report.php`: `USER_MANAGE_ECOMMERCE` only.
+- Links inside screens follow the same rule: Create Order's "Sales settings (ERP card)" item is role < 3 only (the ERP settings right does not open the commerce settings screen); ERP Settings prints its three "Site Settings › …" places as plain text for role 3 (no settings dialog above role 2); the Dynamic Regions Create button is drawn only with the list, for administrators (`add_dynamic_region.php`). Pinned by `tests/settings_links_by_role_test.php`.
 
 ## How was it checked?
 - Ten sandbox users (roles 0-3, mixed rights, a calendar and a contact group assigned to one, read-only accountant with the settings right) on the old and new menu: every row equal except these changes, then every link of the menu opened as its user. Before: 10 refused links; after: none.
