@@ -780,6 +780,8 @@
     "A reminder is set": "Hatırlatma kurulu",
     "A reminder is set for a time in the time zone of the app. When reminders come early or late by whole hours, the time zone is usually the cause.": "Bir hatırlatıcı, uygulamanın saat dilimindeki bir saate kurulur. Hatırlatıcılar tam saatler kadar erken ya da geç geliyorsa sebep genellikle saat dilimidir.",
     "A reminder needs a due date.": "Hatırlatma için bitiş tarihi gerekir.",
+    "A reminder text message to the customer was queued on {var:1}.": "Müşteriye hatırlatma SMS'i {var:1} tarihinde kuyruğa alındı.",
+    "A reminder text message was queued for {var:1} customer(s).": "{var:1} müşteri için hatırlatma SMS'i kuyruğa alındı.",
     "A reminder that comes a few minutes late on a phone is often held back by the phone's battery saver. Let the app run in the background to get it on time.": "Telefonda birkaç dakika geç gelen bir hatırlatıcıyı çoğu zaman telefonun pil tasarrufu bekletir. Zamanında almak için uygulamanın arka planda çalışmasına izin verin.",
     "A reminder when a vaccination is due": "Aşı zamanı geldiğinde bir hatırlatma",
     "A repeat counts from the due date, so it was set to {var:1}.": "Tekrar bitiş tarihinden sayılır; bu yüzden bitiş {var:1} olarak yazıldı.",
