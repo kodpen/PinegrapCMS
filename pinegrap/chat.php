@@ -1790,7 +1790,7 @@ function pg_chat_render_backend_launcher()
             #pg-chat-root .pg-chat-body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; }
             #pg-chat-root .pg-chat-row { display: flex; align-items: center; gap: 10px; border-radius: 12px; margin: 4px 8px; padding: 8px 10px; cursor: pointer; background: var(--pg-bg-body); transition: background .12s ease; }
             #pg-chat-root .pg-chat-row:hover { background: var(--pg-bg-2); }
-            #pg-chat-root .pg-chat-row:focus-visible { outline: 0; background: var(--pg-bg-2); box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color); }
+            #pg-chat-root .pg-chat-row:focus-visible { outline: 2px solid transparent; background: var(--pg-bg-2); box-shadow: 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color); }
             #pg-chat-root .pg-chat-row-main { flex: 1 1 auto; min-width: 0; }
             #pg-chat-root .pg-chat-row-name { font-size: 13px; line-height: 1.35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
             #pg-chat-root .pg-chat-row-unread .pg-chat-row-name { font-weight: 600; }
@@ -1883,6 +1883,13 @@ function pg_chat_render_backend_launcher()
                 #pg-chat-root .pg-chat-panel.pg-chat-open { animation: none; }
                 #pg-chat-root.pg-chat-fullscreen .pg-chat-launcher { display: none; }
                 body.pg-chat-no-scroll { overflow: hidden; }
+            }
+            /* Forced colours drop backgrounds and box-shadows: the window
+               gets a real border, the open tab a system highlight, and the
+               transparent outline of a focused row turns visible. */
+            @media (forced-colors: active) {
+                #pg-chat-root .pg-chat-panel { border: 1px solid CanvasText; }
+                #pg-chat-root .pg-chat-tabs .nav-link.active { forced-color-adjust: none; background: Highlight; color: HighlightText; }
             }
         </style>
         <script type="application/json" id="pg-chat-config">' . encode_json($config) . '</script>'

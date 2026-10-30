@@ -171,7 +171,7 @@ if (!$_POST) {
             'heading_description' => lang('Update this shortcut alias for a Page, Product Group, Product, or URL.'),
             'cancel'=>array('enable'=>'true','url'=>'view_short_links.php')
         ,
-            'breadcrumb' => array(array('label' => lang('My Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'), array('label' => lang('Edit Short Link'))),
+            'breadcrumb' => array(array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'), array('label' => lang('Edit Short Link'))),
         )
     )  . '
 <main id="content" class="container-fluid">

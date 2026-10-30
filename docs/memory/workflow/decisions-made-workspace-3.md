@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-3
-description: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after the Scheduled actions section goes; the For each loop of the flows engine (D9)
+description: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
 ---
 
 ## Where do scheduled-action rows go once the Scheduled actions section is removed? (#3173)
@@ -8,5 +8,8 @@ description: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flo
 
 ## How does a "For each" box loop over a list? (#3312)
 - Decided (architect, 2026-10-29, plan `workspace-flows-data-passing.md` D9): a marked body: the For each box's `each` arrow leads into the body, which ends at an "End for each" (collect) box; the flow continues after it once every item has settled. Items run one after another, `pass` = the 1-based item index on `(run_id, node_id, pass)`. The End box outputs `count`, `done`, `failed` and `list`: one chosen body output collected per item as a JSON array of at most 16 KB (the webhook body's limit). At most 50 items a run; a longer list fails the For each box with its reason, never a silent cut; `WS_FLOW_MAX_BOX_RUNS` (200) still bounds the whole run. Side-effect boxes are allowed inside the loop under a per-run cap (20 tasks, approvals or e-mails opened inside loops); the webhook idempotency key already carries `pass`. No schema: `ws_flow_run_steps` has `UNIQUE uq_node (run_id, node_id, pass)` and the collected list fits on the run and step rows like the webhook body.
+
+## What may a role-3 member's personal flow hold? (#3345)
+- Decided (owner, 2026-10-30, narrow; plan `workspace-flows.md` answer 2): starts: manual, time and the event starts the person sees (`ws_events_creator_sees()`). Boxes: post to channels they may post in, notify, task, approval, delay, condition, constants and derived values, report and task_digest over their own reach, row_add and row_set only in workflow tables they may edit, record changes only as a change card (a proposal, never a direct write). No webhook, no e-mail to outside addresses, no web_check, no MCP. Owner-only: no home channel, no shares. Every box is re-checked against the person's reach at publish and at run; a lost right stops the box, as table boxes do. Architect's details: a per-kind allow list for role 3 in `ws_flow_save_check()` and the run, `WS_FLOW_MEMBER_MAX_PER_OWNER` 10 and `WS_FLOW_MEMBER_STARTS_HOURLY` 20, refused kinds hidden in the palette. No schema.
 
 Related: docs/memory/workflow/decisions-made-workspace-2.md, docs/memory/workflow/decisions-made.md

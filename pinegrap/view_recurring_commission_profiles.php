@@ -34,10 +34,10 @@ $sort_levels = $list_sort['sort_levels'];
 
 print
 pg_page_shell([
-        'title'=> lang('All Recurring Commission Profiles'),
+        'title'=> lang('All Commission Profiles'),
         'extra classes'=>'products',
         'icon'=>'store',
-        'heading'=>lang('All Recurring Commission Profiles'),
+        'heading'=>lang('All Commission Profiles'),
         'heading_description' => lang('View all profiles for recurring commissions.'),
     ]) . '
 <main id="content" class="container-fluid">

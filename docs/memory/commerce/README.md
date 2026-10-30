@@ -187,6 +187,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipping-today.md: How shipping works today (checked 2026-10-20): tracking tables and write paths, the four meanings of "shipped", estimated dates, known gaps and reusable Turkish validation helpers
 - short-link-recycle-bin.md: How short links treat a product, product group, page or file in the Recycle Bin (lists, save checks on every entry point), where a deleted short link goes, and posted lists on the short link screens.
 - storefront-pack-decisions.md: Lasting decisions of the storefront pack (reviews, wishlist, back in stock, bundles; 2026-10-19, finished with #2902) and where each part is documented
+- subscriptions-account.md: The customer's subscriptions in My Account (slice 5a): the my_account "subscriptions" section, pause/resume/cancel at period end/update card, ownership, events, the job ending cancelled rows
 - subscriptions-iyzico.md: iyzico store-run subscriptions (PR #3249, decided in #3183): the stored-card renewals switch, card_ref, charge_renewal, update_card, subscription_cancel, the checkout row
 - subscriptions-mails.md: Subscription e-mails (decided in #3288): renewed / failed / cancelled campaign profiles, which event mails which, once per event, the fields, the signed card update page, step 11.0.129
 - subscriptions-renewal.md: Renewals of store-run subscriptions (PR #3290, decided in #3183): job branch, per-row lock, renewal order, next date, 1/3/7 ladder, held rows and Stripe's paid report

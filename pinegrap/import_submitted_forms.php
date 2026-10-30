@@ -68,7 +68,7 @@ if (!$_POST) {
             'heading_description' => lang('Upload submitted form data for any existing custom form.'),
             'cancel'=>array('enable'=>'true','url'=>'view_submitted_forms.php'),
         
-            'breadcrumb' => array(array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Import Submitted Forms'))),
+            'breadcrumb' => array(array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'), array('label' => lang('Import Submitted Forms'))),
         )
     ) . '
 <main id="content" class="container-fluid">
