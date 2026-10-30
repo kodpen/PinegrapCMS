@@ -290,12 +290,14 @@ $(document).ready(function () {
     // settings dialog is open that is the category in it, not the screen
     // underneath. The help controls are plain links; this only follows one,
     // so a private-labelled site, which prints none, gets nothing here either.
+    // The dialog is a Bootstrap 6 <dialog>: open means [open] and not .hiding,
+    // it never gets the Bootstrap 5 .show class.
     $(document).on('keydown', function (e) {
         if ((e.key !== 'F1') || e.ctrlKey || e.metaKey || e.altKey || e.shiftKey) {
             return;
         }
 
-        var link = $('#pg_settings_modal.show #pg_settings_modal_help:not(.d-none)').get(0)
+        var link = $('#pg_settings_modal[open]:not(.hiding) #pg_settings_modal_help:not(.d-none)').get(0)
             || document.getElementById('help_button')
             || $('#help_link a').get(0);
 
