@@ -18,5 +18,8 @@ description: Decisions list, customer data (owner, 2026-10-28): marketing boxes 
 ## What does merging two contacts re-point?
 - `merge_contacts()` re-points every `contact_id` holder by one shared list (orders, forms, `email_recipients`, `ws_channels`, `ws_refs`, cart quotes, the ERP account through `erp_account_link_contact()`, refused when both contacts have one), writes an audit line, and leaves `consent_log` rows as they are: consent proof is per address and must name who gave it. The list is shared with erasure, so a new holder is added once (#2421).
 
+## Where does the SMS consent box appear, and what does it store? (#3570)
+- Decided (architect, 2026-10-30, under #2431): beside the e-mail marketing box in the same places (registration, membership, the widgets, checkout, forms), starting as the e-mail box does; the box-less paths write `opt_in` for SMS as they do for e-mail; no phone number, no box. It writes a `consent_log` row with channel `sms`; İYS's answer lands in `contacts.iys_sms_status` and, as for e-mail (#2430), a marketing SMS goes to every opted-in number İYS has not refused.
+
 ## Who decided these?
 - The owner (2026-10-28) for consent, İYS and the export; the architect (2026-10-27) for reviews and the merge, confirmed by the owner. Reasons are on the issues.

@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, marketing SMS 7-10
 ---
 
 ## Why?
@@ -20,6 +20,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
 5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
+7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
 
 ## Open questions?
 - Answered (#2672): the member code is an alternative to the app code at the second step, role 3 only; no passwordless sign-in.
@@ -30,4 +31,4 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - Contacts opted in by DEFAULT 1 (forms, imports, API, profile) have no consent row and are never pushed (step 5 pushes consent_log rows only).
 
 ## Where to start?
-- First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
+- Steps 7-10 (#3570) in order, 7 first. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
