@@ -341,6 +341,7 @@
     "In your calendar app, add a calendar by its address and paste the feed address.": "Takvim uygulamanızda adresiyle bir takvim ekleyin ve besleme adresini yapıştırın.",
     "In your favour": "Alacaklısınız",
     "In your inbox: sign in and open Inbox from the menu under your name. Every reply is on the conversation page, and you can write back there.": "Gelen kutunuzda: giriş yapın ve adınızın altındaki menüden Gelen kutusu'nu açın. Her yanıt görüşme sayfasındadır, oradan yanıt yazabilirsiniz.",
+    "In your own flows a change is not written at once: you are asked to approve it in this channel first.": "Kendi akışlarınızda değişiklik hemen yazılmaz: önce bu kanalda onaylamanız istenir.",
     "In your own flows a change is proposed for your approval first: choose the channel to ask in.": "Kendi akışlarınızda bir değişiklik önce onayınıza sunulur: onayın isteneceği kanalı seçin.",
     "In your own flows a summary of counts goes to a channel, not to e-mail addresses.": "Kendi akışlarınızda sayıların özeti e-posta adreslerine değil, bir kanala gider.",
     "In {var:1}": "{var:1} cinsinden",

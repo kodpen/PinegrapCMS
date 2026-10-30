@@ -820,11 +820,15 @@ function ws_scheduled_fill($text, $context)
  * actions screens.
  *
  * @param array $viewer
+ * @param bool  $flows  asked by the flow canvas: a role-3 member building
+ *                      their own flows has it too
  * @return array|null
  */
-function ws_scheduled_js_config($viewer)
+function ws_scheduled_js_config($viewer, $flows = false)
 {
-    if (!ws_can_schedule($viewer)) {
+    // The flow canvas also asks it for a role-3 member building their own
+    // flows (its conditions, times and events); the scheduled screens do not.
+    if (!ws_can_schedule($viewer) && !($flows && function_exists('ws_flow_member') && ws_flow_member($viewer))) {
         return null;
     }
 

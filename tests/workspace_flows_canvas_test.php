@@ -39,6 +39,7 @@ if (!defined('PG_API_PANEL')) {
 require_once(PG_FUNCTIONS_DIR . '/includes/panel/actions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_member.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/api_flows.php');
@@ -1633,7 +1634,7 @@ function test_workspace_flows_canvas_mcp_box()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('stepLists', 'rowWriteTables', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
+		array('stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
 		$constants . <<<'JS'
 var FL = { steps: {} };
 var none = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
@@ -1688,6 +1689,35 @@ JS
 }
 
 
+// A role-3 member's palette offers only the kinds the server lists
+// (ws_flow_member_kinds(), handed over as FL.member_kinds); staff's, every
+// kind; a box of a refused kind is not added on a member's canvas either.
+function test_workspace_flows_canvas_member_palette()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/^( *)var PALETTE = \[\n.*?\n\1\];\n/ms', $source, $found), 'workspace_flow.js has PALETTE');
+
+	$member = ws_flow_js_member('member');
+	$result = ws_flows_canvas_test_node(
+		array('stepLists', 'rowWriteTables', 'memberKind', 'paletteItems'),
+		$found[0] . 'var FL = { steps: { mcp: [{ id: 1 }] } };
+var kinds = function () { return paletteItems().map(function (item) { return item[0]; }); };
+var staff = kinds();
+FL.member_kinds = ' . json_encode($member['member_kinds']) . ';
+console.log(JSON.stringify({ staff: staff, member: kinds(), add: [memberKind("webhook"), memberKind("post")] }));'
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_true(in_array('webhook', $result['staff'], true) && in_array('mcp', $result['staff'], true), 'staff keep every kind');
+	pg_assert_same(array(), array_values(array_diff($result['member'], ws_flow_member_kinds())), 'a member is offered no refused kind');
+	pg_assert_true(in_array('post', $result['member'], true) && in_array('manual', $result['member'], true), 'a member is offered their kinds');
+	pg_assert_same(array(false, true), $result['add'], 'a refused kind is not added');
+}
+
 // A row box (a workflow table's row starts the flow) is offered only while
 // the person reads a table; it reads what happens and the table, and gives
 // the server's values (table, row, who) and one per column of its table, by
@@ -1696,7 +1726,7 @@ JS
 function test_workspace_flows_canvas_row_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'stepLists', 'rowWriteTables', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
+		array('nodeById', 'kindOf', 'stepLists', 'rowWriteTables', 'memberKind', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['post', 'fl_add_post'], ['mcp', 'fl_kind_mcp']];
@@ -1743,7 +1773,7 @@ JS
 function test_workspace_flows_canvas_table_write_boxes()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];

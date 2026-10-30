@@ -15,7 +15,7 @@ description: The change box of a role-3 member's flow (R3 #3438, decided in #334
 ## What happens once it is decided?
 - Approved: `ws_flow_approval_recheck()` → `ws_flow_approved_ready()`; the claim runs `ws_step_change_approved_write()`: `began:change` from `approved:<id>` only, `ws_step_change_reach_check()` with the owner now (a lost right fails the box) and `ws_step_starter_refusal()`, then `ws_scheduled_do()` → `ws_scheduled_change()`. Rejected, expired, withdrawn, gone: `ws_flow_change_asked_settlement()` fails the box (on its failed arrow where one leaves), "The change was not made: …".
 - `ws_step_starter_refusal()` defaults to `ws_step_change_reach_check()` (the change alone), so a staff flow's role-3 starter is not asked for a channel.
-- Box try says "Asks you to approve this change in #… and writes nothing until you do: …". The canvas field for the channel comes with R2.
+- Box try says "Asks you to approve this change in #… and writes nothing until you do: …". On a member's own flow the canvas shows the channel and the hours (`changeAskFields()`, R2 #3440).
 
 ## Tests
 - tests/workspace_flows_member_test.php (`…_change_box_*`), tests/workspace_flow_steps_test.php (`…_change_proposed_by_a_member_owner`, `…_change_proposal_settlement`, `…_change_ask_text`).

@@ -6,7 +6,7 @@ description: A role-3 member's own flows (#3345 narrow, R1 #3397, flow_member.ph
 ## Who builds flows now?
 - `ws_flow_builder_kind()` (pure): `staff` (team member, role 0-2, as `ws_can_schedule()`), `member` (role 3), '' (outside the team). `ws_flow_builder()` adds `ws_scheduled_ready()`; `ws_flow_member()` is the role-3 case.
 - `ws_flow_save_check()` lets every builder save ("Only people in the team can build flows." otherwise); `ws_flow_access()` gives a role-3 owner `edit` on their own flow, so publish, pause and delete work through `ws_flow_share_manager()` as for staff. A share at edit to a role-3 member still gives `run` (`ws_flow_share_gives()`).
-- Staff behaviour is unchanged. Making a flow from a table (`ws_wtable_flow_create()`), templates, the draft card and the canvas entry stay staff's until R2 (plan `workspace-flows.md`, slice 9).
+- Staff behaviour is unchanged. The Flows entry and the member's palette (R2): `workspace-flows-member-canvas.md`; making a flow from a table, templates and the draft card stay staff's.
 
 ## Which boxes may a role-3 flow hold?
 - `ws_flow_member_kinds()`: starts manual, schedule, event; end, task, approval, delay, condition, constants, value; post, notify, task_open, report, task_digest; row_add, row_set; change (R3, only as a proposal its owner approves: `workspace-flows-member-change.md`).
