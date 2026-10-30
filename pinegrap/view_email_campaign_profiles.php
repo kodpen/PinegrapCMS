@@ -43,12 +43,28 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_email_campaign_profiles', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
+// The name each action is shown under; the Action column sorts by it.
+$action_names = array(
+    'calendar_event_reserved' => lang('Calendar Event Reserved'),
+    'custom_form_submitted' => lang('Custom Form Submitted'),
+    'email_campaign_sent' => lang('Auto Campaign Sent'),
+    'order_abandoned' => lang('Order Abandoned'),
+    'order_completed' => lang('Order Completed'),
+    'order_review_request' => lang('Order Review Request'),
+    'order_shipped' => lang('Order Shipped'),
+    'order_delivered' => lang('Order Delivered'),
+    'subscription_renewed' => lang('Subscription Renewed'),
+    'subscription_failed' => lang('Subscription Payment Failed'),
+    'subscription_cancelled' => lang('Subscription Cancelled'),
+    'product_ordered' => lang('Product Ordered'),
+);
+
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
     'name'          => 'email_campaign_profiles.name',
     'enabled'       => 'email_campaign_profiles.enabled',
-    'action'        => 'email_campaign_profiles.action',
+    'action'        => pg_list_label_order('email_campaign_profiles.action', $action_names),
     'subject'       => 'email_campaign_profiles.subject',
     'page_to_send'  => 'page.page_name',
     'purpose'       => 'email_campaign_profiles.purpose',
@@ -285,65 +301,22 @@ if (isset($_GET['export'])) {
                 $output_enabled_check_mark = '<span class="material-icons" aria-hidden="true">task_alt</span><span class="visually-hidden">' . lang('Yes') . '</span>';
             }
 
+            $output_action = isset($action_names[$email_campaign_profile['action']]) ? $action_names[$email_campaign_profile['action']] : '';
+
             switch ($email_campaign_profile['action']) {
                 case 'calendar_event_reserved':
-                    $output_action = lang('Calendar Event Reserved');
                     $output_action_item = h(db_value("SELECT name FROM calendar_events WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
                 case 'custom_form_submitted':
-                    $output_action = lang('Custom Form Submitted');
                     $output_action_item = h(db_value("SELECT page_name FROM page WHERE page_id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
                 case 'email_campaign_sent':
-                    $output_action = lang('Auto Campaign Sent');
                     $output_action_item = h(db_value("SELECT name FROM email_campaign_profiles WHERE id = '" . $email_campaign_profile['action_item_id'] . "'"));
                     break;
 
-                case 'order_abandoned':
-                    $output_action = lang('Order Abandoned');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_completed':
-                    $output_action = lang('Order Completed');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_review_request':
-                    $output_action = lang('Order Review Request');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_shipped':
-                    $output_action = lang('Order Shipped');
-                    $output_action_item = '';
-                    break;
-
-                case 'order_delivered':
-                    $output_action = lang('Order Delivered');
-                    $output_action_item = '';
-                    break;
-
-                case 'subscription_renewed':
-                    $output_action = lang('Subscription Renewed');
-                    $output_action_item = '';
-                    break;
-
-                case 'subscription_failed':
-                    $output_action = lang('Subscription Payment Failed');
-                    $output_action_item = '';
-                    break;
-
-                case 'subscription_cancelled':
-                    $output_action = lang('Subscription Cancelled');
-                    $output_action_item = '';
-                    break;
-
                 case 'product_ordered':
-                    $output_action = lang('Product Ordered');
-
                     $product = db_item(
                         "SELECT
                             name,
@@ -365,6 +338,10 @@ if (isset($_GET['export'])) {
                         $output_action_item .= h($product['short_description']);
                     }
 
+                    break;
+
+                default:
+                    $output_action_item = '';
                     break;
             }
 

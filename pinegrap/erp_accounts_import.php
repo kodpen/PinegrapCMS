@@ -322,7 +322,7 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
     $title_warning = $has_title ? '' : '<div class="alert theme-warning">' . h(lang('Map a column to Name to continue.')) . '</div>';
 
     return erp_import_steps(2) . '
-            <form name="form" action="erp_accounts_import.php" method="post">
+            <form name="form" id="erp_import_map_form" action="erp_accounts_import.php" method="post">
                 ' . get_token_field() . '
                 <input type="hidden" name="step" value="map" />
                 <input type="hidden" name="import_token" value="' . h($staged['token']) . '" />
@@ -399,9 +399,42 @@ function erp_import_step_map($staged, $read, $mapping, $plan, $mode, $kind, $kin
                             <button type="submit" name="submit_recheck" value="Re-check" class="btn my-1 btn-outline theme-secondary"><i class="bi bi-arrow-repeat me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Re-check')) . '</span></button>
                             <button type="submit" name="submit_run" value="Import" class="btn my-1 btn-solid theme-success"' . ($has_title ? '' : ' disabled="disabled"') . '><i class="bi bi-check2-circle me-3" aria-hidden="true"></i><span class="pg-btn-label">' . lang(array('string' => 'Start import')) . '</span></button>
                         </div>
+                        <p class="small fg-secondary mt-2 mb-0" id="erp_import_map_status" role="status" aria-live="polite"></p>
                     </div>
                 </nav>
-            </form>';
+            </form>
+            <script>
+            (function () {
+                // The form is sent once: the first submit goes, any later one
+                // is cancelled until the page leaves. Start import writes the
+                // whole file, far longer than the window guard\'s 3 seconds;
+                // a second press would wait for the first run, find the file
+                // already discarded and never show the result. The buttons
+                // are never disabled, so the pressed one travels. Listening
+                // on window lets a handler that cancels a submit keep the
+                // form usable.
+                var erp_import_sent = false;
+                var form = document.getElementById("erp_import_map_form");
+                var status = document.getElementById("erp_import_map_status");
+                if (!form) { return; }
+                window.addEventListener("submit", function (event) {
+                    if (event.target !== form) { return; }
+                    if (erp_import_sent) { event.preventDefault(); return; }
+                    if (event.defaultPrevented) { return; }
+                    erp_import_sent = true;
+                    if (event.submitter && event.submitter.name === "submit_run") {
+                        form.setAttribute("aria-busy", "true");
+                        if (status) { status.textContent = "' . escape_javascript(lang('Importing…')) . '"; }
+                    }
+                });
+                window.addEventListener("pageshow", function (event) {
+                    if (!event.persisted) { return; }
+                    erp_import_sent = false;
+                    form.removeAttribute("aria-busy");
+                    if (status) { status.textContent = ""; }
+                });
+            })();
+            </script>';
 }
 
 /**
@@ -604,13 +637,12 @@ if ($step === 'upload') {
 
     $mode = ((isset($_POST['duplicate_mode']) ? (string) $_POST['duplicate_mode'] : 'skip') === 'update') ? 'update' : 'skip';
 
-    // Step 3: write the file and show the outcome.
-    if (isset($_POST['submit_run'])) {
-
-        if (!in_array('title', $mapping, true)) {
-            $liveform->mark_error('file', lang('Map a column to Name to continue.'));
-            go($self_url);
-        }
+    // Step 3: write the file and show the outcome. A run refused for want
+    // of a Name column draws the mapping again from what was posted: going
+    // back to the address would discard the staged file and every choice.
+    if (isset($_POST['submit_run']) && !in_array('title', $mapping, true)) {
+        $liveform->mark_error('map', lang('Map a column to Name to continue.'));
+    } elseif (isset($_POST['submit_run'])) {
 
         $plan = erp_import_plan($read['rows'], $mapping, $defaults);
         $outcome = erp_import_run($plan, $mode, (int) $user['id']);
