@@ -92,7 +92,7 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
         <tr>
             <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . h('&send_to=' . urlencode(REQUEST_URL)) . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
                 . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
-            <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given')) . '</div></td>
+            <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given out')) . '</div></td>
             <td style="max-width:240px" class="text-break">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>
             <td class="small">' . h(trim((string) $row['bank_name'] . ' ' . (string) $row['serial_no'])) . '</td>
             <td class="text-end text-nowrap" data-sort="' . (int) $row['amount_base'] . '">' . h(erp_money_out_currency((int) $row['amount'], (string) $row['currency'])) . '</td>
@@ -110,7 +110,7 @@ if (isset($statuses[$status])) {
     $status_options[$status] = $statuses[$status][0];
 }
 $output_status_filter = pg_filter_select('status', $status_options, $status, array('label' => lang('Status'), 'icon' => 'funnel', 'action' => 'erp_cheques.php', 'keep' => array('direction', 'search')));
-$output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given')), $direction,
+$output_direction_filter = pg_filter_select('direction', array('' => lang('Both ways'), 'received' => lang('Received'), 'given' => lang('Given out')), $direction,
     array('label' => lang('Direction'), 'icon' => 'arrow-left-right', 'action' => 'erp_cheques.php', 'keep' => array('status', 'search')));
 
 $accounts = array(lang('Choose an account') => '');

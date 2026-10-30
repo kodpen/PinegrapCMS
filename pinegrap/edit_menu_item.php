@@ -35,7 +35,8 @@ $query =
         menus.id,
         menus.name,
         menu_items.name as menu_item_name,
-        menu_items.parent_id
+        menu_items.parent_id,
+        menu_items.link_page_id
     FROM menus
     LEFT JOIN menu_items ON menus.id = menu_items.menu_id
     WHERE menu_items.id = ?";
@@ -53,6 +54,8 @@ $menu_id = $row['id'];
 $menu_name = $row['name'];
 $menu_item_name = $row['menu_item_name'];
 $parent_id = $row['parent_id'];
+// The stored page stays in the page picker, so a plain Save keeps the link.
+$stored_link_page_id = (int) $row['link_page_id'];
 
 // if user has a user role and if they do not have access to this menu, output error
 if (($user['role'] == 3) && (in_array($menu_id, get_items_user_can_edit('menus', $user['id'])) == FALSE)) {
@@ -170,7 +173,7 @@ if (!$_POST) {
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="sort_order" class="form-label">' . lang('Position') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'sort_order', 'name'=>'sort_order', 'class'=>'form-control', 'options'=>$sort_order_options)) . '
-                                        </div>') . '
+                                        </div>', $stored_link_page_id) . '
                     
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">

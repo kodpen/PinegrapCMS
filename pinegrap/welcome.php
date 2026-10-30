@@ -776,7 +776,7 @@ foreach ($widget_order as $widget_id) {
         . '<div widget-id="' . (int) $widget_id . '" class="card widget">'
         . '<div class="card-header pg-widget-handle border-0 bg-reset position-relative">'
         . ($widget_movable
-            ? '<button type="button" class="pg-widget-move btn btn-link p-0 me-2 fg-secondary" aria-label="' . h(lang(array('string' => 'Move {var:1}', 'vars' => array(trim(strip_tags($widget['title'])))))) . '" aria-describedby="pg_widget_move_hint"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>'
+            ? '<button type="button" class="pg-widget-move btn btn-link p-0 fg-secondary" aria-label="' . h(lang(array('string' => 'Move {var:1}', 'vars' => array(trim(strip_tags($widget['title'])))))) . '" aria-describedby="pg_widget_move_hint"><i class="bi bi-grip-vertical" aria-hidden="true"></i></button>'
             : '')
         . (($widget['icon'] != '') ? '<i class="bi ' . $widget['icon'] . ' me-3"></i>' : '')
         . $widget['title']
@@ -789,8 +789,8 @@ foreach ($widget_order as $widget_id) {
 
 // ── Widget controls ─────────────────────────────────────────────────────────
 //
-// Designers and administrators (role < 2): dragging a card by its header
-// stores the new order. Printed into the page script block further down. Card
+// Designers and administrators (role < 2): dragging a card by the grip at the
+// right end of its header stores the new order. Printed into the page script block further down. Card
 // style, backdrop, refresh time and Reset Widgets are on the Dashboard card of
 // Site Settings > Appearance (includes/settings/appearance.php).
 //
@@ -858,8 +858,11 @@ if ($user['role'] < 2) {
         });
     }
 
-    // SortableJS (assets/lib/sortablejs/): a card is picked up by its header
-    // after a 300 ms hold, so a click on a header button stays a click.
+    // SortableJS (assets/lib/sortablejs/): a card is picked up only by its grip,
+    // so a click elsewhere on the header stays a click and a mouse drag starts
+    // at once. Touch keeps a short hold so a finger scrolling the page past the
+    // grip does not pick the card up; the threshold lets a finger tremble a
+    // few pixels during that hold without cancelling it.
     $(function() {
 
         var widgets = document.getElementById("widgets");
@@ -870,10 +873,12 @@ if ($user['role'] < 2) {
 
         Sortable.create(widgets, {
             draggable: ".pg-widget",
-            handle: ".pg-widget-handle",
+            handle: ".pg-widget-move",
             filter: ".no-sortable",
             preventOnFilter: false,
-            delay: 300,
+            delay: 200,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 5,
             animation: 100,
             ghostClass: "pg-widget-ghost",
             forceFallback: true,
@@ -983,9 +988,9 @@ $output_header_includes .
 <script src="assets/lib/chartjs/chart.umd.min.js"></script>
 <script src="assets/lib/sortablejs/Sortable.min.js"></script>
 <style>
-    /* Widget drag (SortableJS): the header is the grip, the card left behind
-       is an empty slot and the copy under the pointer stays fully opaque. */
-    .card.widget .pg-widget-handle { cursor: grab; }
+    /* Widget drag (SortableJS): the card left behind is an empty slot and the
+       copy under the pointer stays fully opaque. The look of the grip is in
+       backend.src.css (.pg-widget-move). */
     .pg-widget-ghost { opacity: 0; }
     .pg-widget-drag { opacity: 1 !important; cursor: move; }
 </style>

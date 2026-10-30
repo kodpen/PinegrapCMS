@@ -32,6 +32,7 @@ description: Generated from the module field of the memory files: each includes/
 - `designer_vocab`: [[designer-bootstrap-vocabulary]]
 - `ecommerce`: [[card-data-manual-processing]], [[express-order-tax-address]], [[panel-image-alt]]
 - `editor`: [[rich-text-profiles]]
+- `email_campaign_schedule`: [[email-campaign-schedule-label]]
 - `errors`: [[fn-module-errors-mail-backup-consent]]
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]

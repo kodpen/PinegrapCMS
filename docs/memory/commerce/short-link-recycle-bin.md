@@ -24,7 +24,9 @@ pages and files by folder: the bin folder or a folder sent into it
   `get_page_options(..., $include_recycled = false, $keep_id)` (default call
   unchanged for its other callers), `get_file_options($design, $keep_id)`.
 - The one a link already points at stays, marked "[IN RECYCLE BIN]" (a page
-  or file under its unparked name), so saving keeps it. Wizard:
+  or file under its unparked name), so saving keeps it. A page `$keep_id` also stays
+  in an archived folder ("[ARCHIVED]") and past the role-3 filter
+  (`pg_page_option_status()`). Wizard:
   `explorer_short_link_options` takes `item_id`; `kept: true` tells the screen
   not to cache those lists; `shortLinkTargetMissing()` asks again when the
   link's target is not on the cached lists.

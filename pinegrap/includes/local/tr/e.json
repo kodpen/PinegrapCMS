@@ -642,6 +642,7 @@
     "Enter the mailbox's e-mail address.": "E-posta kutusunun e-posta adresini girin.",
     "Enter the mailbox's password again; the kept one cannot be read.": "Posta kutusunun şifresini yeniden girin; saklanan şifre okunamıyor.",
     "Enter the mailbox's sending server first.": "Önce e-posta kutusunun gönderme sunucusunu girin.",
+    "Enter the number of guests as a whole number from 1.": "Kişi sayısını 1 ya da daha büyük bir tam sayı olarak yazın.",
     "Enter the number of items to return as a whole number.": "İade edilecek adedi tam sayı olarak girin.",
     "Enter the password for this server and user.": "Bu sunucu ve kullanıcı için şifreyi girin.",
     "Enter the password you were given with the link.": "Bağlantıyla birlikte size verilen parolayı girin.",

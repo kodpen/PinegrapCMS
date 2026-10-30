@@ -26,9 +26,12 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  * @param liveform $liveform
  * @param string $parent_id_options  <option> markup of get_menu_item_options()
  * @param string $extra  Fields printed after the classes (the edit screen's position)
+ * @param int $keep_page_id  The page the stored item links to, kept in the
+ *                           page picker even in an archived folder or one the
+ *                           user cannot edit (0 on the create screen)
  * @return string
  */
-function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
+function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '', $keep_page_id = 0)
 {
     $link_target_options =
         array(
@@ -60,7 +63,7 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                         <div class="col-12 md:col-12 lg:col-5 my-3">
                                             <label for="link_page_id" class="form-label">' . lang('Page') . '</label>
                                             <div class="input-group flex-wrap">
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options(), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options('', '', 'edit', true, $keep_page_id), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
                                                 <div class="input-group-text">
                                                     <div class="form-field">
                                                         <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>

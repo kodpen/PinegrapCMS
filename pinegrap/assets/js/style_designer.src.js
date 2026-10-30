@@ -3612,9 +3612,13 @@ const StyleDesigner = (function () {
     // in place with no history.
     //
     // Each snapshot is { tree: <json>, shared: { sid: <tree-json> } }.
-    // Restore writes both back, marks every restored sid dirty so the
-    // next save flush pushes the rolled-back state to the server, and
-    // reindexes so the global gid counter never collides with a restored id.
+    // Restore writes both back and reindexes so the global gid counter never
+    // collides with a restored id. A restored sid is marked dirty only when
+    // its tree really differs: from the stored row's snapshot when there is
+    // one (an equal tree also drops the mark), else from the tree it
+    // replaces. An undo of a page edit restores identical component trees,
+    // and an unconditional mark made every page showing the header count as
+    // changed (_pgPageUnchanged()), so the save sent every page.
     function _snapshotShared() {
         var out = {};
         var sids = Object.keys(_sharedCache);
@@ -3631,8 +3635,15 @@ const StyleDesigner = (function () {
             try {
                 var t = JSON.parse(snap[sid]);
                 if (!_sharedCache[sid]) _sharedCache[sid] = { name: '', tree: null };
+                var prev = _sharedCache[sid].tree;
+                var key = _sdSharedTreeJSON(t);
                 _sharedCache[sid].tree = t;
-                _sharedDirty[sid] = true;  // restored state must be flushed on next save
+                if (_sharedSnapshots[sid]) {
+                    if (key !== _sharedSnapshots[sid]) _sharedDirty[sid] = true;
+                    else delete _sharedDirty[sid];
+                } else if (!prev || key !== _sdSharedTreeJSON(prev)) {
+                    _sharedDirty[sid] = true;
+                }
                 // Reindex so any new node ids stay above what's now in the cache.
                 var maxInCache = reindex(t);
                 if (maxInCache > nodeIdCounter) nodeIdCounter = maxInCache;
@@ -72779,11 +72790,16 @@ const StyleDesigner = (function () {
     // the component, and the panels change the selected node without marking
     // anything: the next edit was never written. Compared here, before the
     // pages are serialised (_pgPageUnchanged()) and the flush reads the marks.
+    // A mark on a tree equal to its snapshot is dropped (deleted, since the
+    // draft/live check counts the keys), or every page showing that
+    // component would be sent; an entry without a snapshot keeps its mark.
     function _sdSharedCatchEdits() {
         Object.keys(_sharedSnapshots).forEach(function (k) {
-            if (_sharedDirty[k]) return;
             var c = _sharedCache[k];
-            if (c && c.tree && _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k]) _sharedDirty[k] = true;
+            if (!c || !c.tree) return;
+            var changed = _sdSharedTreeJSON(c.tree) !== _sharedSnapshots[k];
+            if (changed) _sharedDirty[k] = true;
+            else if (_sharedDirty[k]) delete _sharedDirty[k];
         });
     }
 

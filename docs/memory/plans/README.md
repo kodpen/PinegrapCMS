@@ -87,5 +87,5 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
-- workspace-quotes.md: Plan (2026-10-23, 1 #1546, 2 #1614, 3 #1705, 6 #1826 #1907 done, answers 1, 3 given): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+- workspace-quotes.md: Plan (2026-10-23; 1-3 and 6 built, 4 and 7 approved): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands

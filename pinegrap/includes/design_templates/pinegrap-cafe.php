@@ -798,11 +798,17 @@ $testimonial = function ($quote, $who, $what) use ($el, $para, $stars, $col) {
 };
 
 // ── Form fields ─────────────────────────────────────────────────────────
-$field = function ($id, $label, $control, $class = 'mb-3') use ($el, $attr) {
-    return $el('div', $class, $label, array(
+// A $hint is drawn under the control, which names it in aria-describedby.
+$field = function ($id, $label, $control, $class = 'mb-3', $hint = '') use ($el, $attr) {
+    $children = array(
         $el('label', 'form-label', lang('Label'), array(), array('text' => $label, '_attrs' => array($attr('for', $id)))),
         $control,
-    ));
+    );
+    if ($hint !== '') {
+        $children[1]['props']['_attrs'][] = $attr('aria-describedby', $id . '-help');
+        $children[] = $el('div', 'form-text', lang('Hint'), array(), array('text' => $hint, 'id' => $id . '-help'));
+    }
+    return $el('div', $class, $label, $children);
 };
 $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf = array(), $more = array()) use ($el, $attr) {
     $attrs = array($attr('type', $type), $attr('name', $name));
@@ -861,13 +867,16 @@ $captcha = function () use ($el) {
     return $el('div', 'mb-3', lang('CAPTCHA'), array(), array('_bindings' => array('section' => 'captcha')));
 };
 // A box the visitor must tick: what was agreed to is stored with the form.
-$agree = function ($id, $name, $text) use ($el, $attr) {
-    return $el('div', 'form-check small mb-3', lang('Consent'), array(
+// $privacy adds a link to the privacy page after the label.
+$agree = function ($id, $name, $text, $privacy = false) use ($el, $attr, $link) {
+    $children = array(
         $el('input', 'form-check-input', lang('Field'), array(), array('id' => $id, '_attrs' => array(
             $attr('type', 'checkbox'), $attr('name', $name), $attr('value', 'yes'), $attr('required', ''),
         ))),
         $el('label', 'form-check-label', lang('Label'), array(), array('text' => $text, '_attrs' => array($attr('for', $id)))),
-    ));
+    );
+    if ($privacy) $children[] = $link(lang('Privacy Policy'), '{{page:privacy}}', 'ms-1');
+    return $el('div', 'form-check small mb-3', lang('Consent'), $children);
 };
 // The newsletter's e-mail field and button, in one line. The address is the
 // contact's, so the sign-up becomes a contact of the newsletter's group.
@@ -1375,7 +1384,7 @@ $pages[] = array(
                         $heading('h2', lang('What guests say'), 'h3 fw-bold mb-0'),
                     )),
                     $el('div', 'd-flex align-items-center gap-3', lang('Rating Summary'), array(
-                        $span('4.8', 'display-6 fw-bold lh-1', lang('Average Rating')),
+                        $span(lang('4.8'), 'display-6 fw-bold lh-1', lang('Average Rating')),
                         $el('div', '', lang('Rating Details'), array(
                             $stars('mb-1', lang('Rated 4.8 out of 5')),
                             $para(lang('from more than 1,200 reviews'), 'small text-body-secondary mb-0'),
@@ -2472,25 +2481,32 @@ $sample_posts = array(
     ),
 );
 
-// The events the events page opens with, a few days apart from the day
-// the template is opened, so they are still to come. Each is a record of
-// the Events form, edited or deleted like any other.
-$event_day = function ($days) {
-    return date('Y-m-d', time() + $days * 86400);
+// The events the events page opens with, spread over the three weeks after
+// the day the template is opened, so they are still to come. Each falls on
+// the weekday its title and café need: the first such day after today
+// (ISO weekday, 1 = Monday), plus $weeks weeks. Each is a record of the
+// Events form, edited or deleted like any other.
+$event_on = function ($weekday, $weeks = 0) {
+    $day = new DateTime('today');
+    do {
+        $day->modify('+1 day');
+    } while ((int)$day->format('N') !== $weekday);
+    if ($weeks > 0) $day->modify('+' . (7 * $weeks) . ' days');
+    return $day->format('Y-m-d');
 };
 $event_kinds = array(lang('Live music'), lang('Tasting'), lang('Workshop'), lang('For children'), lang('Talk'));
 $sample_events = array(
-    array('title' => lang('Acoustic Friday'), 'event_date' => $event_day(3), 'event_time' => '20:00', 'cafe' => $cafes['riverside']['name'], 'kind' => lang('Live music'),
+    array('title' => lang('Acoustic Friday'), 'event_date' => $event_on(5), 'event_time' => '20:00', 'cafe' => $cafes['riverside']['name'], 'kind' => lang('Live music'),
           'summary' => lang('Two guitars, one voice and the autumn menu until late.'), 'price' => lang('Free entry'), 'image' => $photo('event-music', 800, 450)),
-    array('title' => lang('Coffee Tasting: Ethiopia'), 'event_date' => $event_day(6), 'event_time' => '18:30', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Tasting'),
+    array('title' => lang('Coffee Tasting: Ethiopia'), 'event_date' => $event_on(4), 'event_time' => '18:30', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Tasting'),
           'summary' => lang('Taste this season\'s Yirgacheffe brewed three ways, with our head roaster at the roaster.'), 'price' => lang('$15, coffee included'), 'image' => $photo('event-tasting', 800, 450)),
-    array('title' => lang('Latte Art for Beginners'), 'event_date' => $event_day(10), 'event_time' => '10:00', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Workshop'),
+    array('title' => lang('Latte Art for Beginners'), 'event_date' => $event_on(6, 1), 'event_time' => '10:00', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Workshop'),
           'summary' => lang('Steam milk and pour your first heart: two hours, and all the coffee you make.'), 'price' => lang('$35'), 'image' => $photo('event-latte-art', 800, 450)),
-    array('title' => lang('Little Bakers'), 'event_date' => $event_day(13), 'event_time' => '11:00', 'cafe' => $cafes['riverside']['name'], 'kind' => lang('For children'),
+    array('title' => lang('Little Bakers'), 'event_date' => $event_on(7, 1), 'event_time' => '11:00', 'cafe' => $cafes['riverside']['name'], 'kind' => lang('For children'),
           'summary' => lang('Children from six bake and decorate their own cookies; their grown-ups get a coffee.'), 'price' => lang('$12 a child'), 'image' => $photo('event-bakers', 800, 450)),
-    array('title' => lang('Brunch & Book Club'), 'event_date' => $event_day(17), 'event_time' => '10:30', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Talk'),
+    array('title' => lang('Brunch & Book Club'), 'event_date' => $event_on(7, 2), 'event_time' => '10:30', 'cafe' => $cafes['old_town']['name'], 'kind' => lang('Talk'),
           'summary' => lang('This month\'s book, a long brunch and good company. New readers welcome.'), 'price' => lang('$18 with brunch'), 'image' => $photo('event-book-club', 800, 450)),
-    array('title' => lang('Better Coffee at Home'), 'event_date' => $event_day(20), 'event_time' => '18:00', 'cafe' => $cafes['business']['name'], 'kind' => lang('Workshop'),
+    array('title' => lang('Better Coffee at Home'), 'event_date' => $event_on(3, 2), 'event_time' => '18:00', 'cafe' => $cafes['business']['name'], 'kind' => lang('Workshop'),
           'summary' => lang('Filter, French press and AeroPress: café coffee in your own kitchen, and a bag of beans to take home.'), 'price' => lang('$30'), 'image' => $photo('event-brewing', 800, 450)),
 );
 
@@ -2618,6 +2634,30 @@ $pages[] = array(
                 ), '', 'center'),
             )),
         )),
+    )),
+);
+
+// The privacy notice the consent boxes link to: sample text with a note to
+// adapt it.
+$pages[] = array(
+    'key'              => 'privacy',
+    'name'             => lang('privacy-policy'),
+    'folder'           => 'public',
+    'title'            => lang('Privacy Policy'),
+    'meta_description' => lang('What the café keeps about you, why, and what you can ask of us.'),
+    'tree'             => $page(array(
+        $page_header(lang('Privacy Policy'), lang('What the café keeps about you, why, and what you can ask of us.')),
+        $el('section', 'py-5', lang('Your Data'), array(
+            $container(array($row(array($col(array(
+                $el('div', 'alert alert-secondary d-flex gap-2 small', lang('Sample Text Note'), array(
+                    $icon('bi-info-circle', 'mt-1'),
+                    $span(lang('Sample text: adapt it to your café and to the law that applies to you before you publish.'), '', lang('Text')),
+                ), array('_attrs' => array($attr('role', 'note')))),
+                $heading('h2', lang('Your data'), 'h4 fw-bold mb-3'),
+                $para(lang('When you book a table, ask for a catering quote or open an account, we keep your name, your contact details and what you write in the form, to manage the booking or prepare the order.'), 'mb-3'),
+                $para(lang('We keep these details only as long as we need them for that, and never sell them or give them to advertisers. You can see and change your account data from My Account, and ask us to delete it through the contact page.'), 'mb-0'),
+            ), '', '8'))))),
+        ), array('id' => 'your-data')),
     )),
 );
 
@@ -3170,7 +3210,7 @@ $widgets = array(
             $field('cf-res-status', lang('Status'), $select('cf-res-status', 'status', '', array(
                 lang('Requested'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
             ), false, lang('Requested'), array('office_use_only' => true))),
-            $agree('cf-res-consent', 'consent', lang('I agree that the café keeps these details to manage my booking, as its privacy notice explains.')),
+            $agree('cf-res-consent', 'consent', lang('I agree that the café keeps these details to manage my booking, as its privacy notice explains.'), true),
             $captcha(),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Send Area'), array(
                 $submit(lang('Request a Table'), 'btn btn-primary btn-lg px-4'),
@@ -3294,7 +3334,9 @@ $widgets = array(
                 $col(array($field('cf-quote-service', lang('Catering service'), $select('cf-quote-service', 'service', lang('Choose a package…'), array(
                     lang('Coffee Break'), lang('Office Breakfast'), lang('Lunch Boxes'), lang('Office coffee'), lang('An event or a launch'), lang('Something else'),
                 )))), '6'),
-                $col(array($field('cf-quote-guests', lang('Number of guests'), $input('cf-quote-guests', 'number', 'guests', 'off', true, array(), array('min' => '1', 'step' => '1')))), '6'),
+                $col(array($field('cf-quote-guests', lang('Number of guests'), $input('cf-quote-guests', 'number', 'guests', 'off', true,
+                    array('validation_message' => lang('Enter the number of guests as a whole number from 1.')),
+                    array('min' => '1', 'step' => '1', 'pattern' => '[1-9][0-9]{0,3}')))), '6'),
                 $col(array($field('cf-quote-date', lang('Date'), $input('cf-quote-date', 'date', 'event_date', 'off'))), '6'),
                 $col(array($field('cf-quote-time', lang('Serving time'), $input('cf-quote-time', 'text', 'serving_time', 'off', false, array(), array('placeholder' => '09:00')))), '6'),
             ), '3'),
@@ -3307,7 +3349,7 @@ $widgets = array(
             $field('cf-quote-status', lang('Status'), $select('cf-quote-status', 'status', '', array(
                 lang('Request received'), lang('Quote sent'), lang('Confirmed'), lang('Completed'), lang('Cancelled'),
             ), false, lang('Request received'), array('office_use_only' => true))),
-            $agree('cf-quote-consent', 'consent', lang('I agree that the café keeps these details to prepare the quote and the order, as its privacy notice explains.')),
+            $agree('cf-quote-consent', 'consent', lang('I agree that the café keeps these details to prepare the quote and the order, as its privacy notice explains.'), true),
             $captcha(),
             $el('div', 'd-flex flex-wrap align-items-center gap-3', lang('Send Area'), array(
                 $submit(lang('Request a Quote'), 'btn btn-primary btn-lg px-4'),
@@ -3541,7 +3583,8 @@ $widgets = array(
         'tree'   => $widget_root(array(
             $row(array(
                 $col(array($field('cf-dish-category', lang('Category'), $select('cf-dish-category', 'category', lang('Choose a category…'), $category_titles))), '6'),
-                $col(array($field('cf-dish-price', lang('Price'), $input('cf-dish-price', 'text', 'price', 'off', true, array(), array('placeholder' => lang('$3.80'))))), '6'),
+                $col(array($field('cf-dish-price', lang('Price'), $input('cf-dish-price', 'text', 'price', 'off', true, array(), array('placeholder' => lang('$3.80'))),
+                    'mb-3', lang('Write it with the currency, as the menu shows it, for example $3.80.'))), '6'),
             ), '3'),
             $field('cf-dish-name', lang('Name'), pg_cf_with_role($input('cf-dish-name', 'text', 'name', 'off'), 'title')),
             $field('cf-dish-description', lang('Description'), pg_cf_with_role($textarea('cf-dish-description', 'description', 2, false), 'description')),
@@ -4110,6 +4153,9 @@ $search_sections = array(
     'careers' => array(
         '#apply' => array('apply', lang('apply, application, CV, job, work with us, vacancies')),
     ),
+    'privacy' => array(
+        '#your-data' => array('your-data', lang('privacy, personal data, consent, delete my data')),
+    ),
     'contact' => array(
         lang('Contact Details') => array('contact-details', lang('address, phone, e-mail, head office, opening hours')),
     ),
@@ -4145,7 +4191,7 @@ foreach ($pages as $i => $p) {
 
 return array(
     'name'        => lang('Café'),
-    'version'     => '1.0.4',
+    'version'     => '1.0.5',
     'framework'   => 'bootstrap5',
     'order'       => 60,
     'icon'        => 'bi-cup-hot',

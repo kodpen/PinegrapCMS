@@ -170,6 +170,24 @@ function test_product_list_row_cells()
 	pg_assert_contains('title="' . h(lang('Inventory tracking is not active for this product/service')) . '"', $html);
 }
 
+function test_product_list_last_modified_without_a_user()
+{
+	$view = product_list_test_view('all_products');
+	$context = array('quick_edit' => pg_pb_quick_edit_columns(), 'more_images' => array(), 'zones' => array());
+	$time = (string) (time() - 3600);
+	$alone = get_relative_time(array('timestamp' => $time));
+
+	foreach (array('', null) as $user) {
+		$row = pg_product_list_row(product_list_test_product(array('user' => $user, 'timestamp' => $time)), $view, $context);
+		$last = end($row['cells']);
+		pg_assert_same($alone, $last['html'], 'the time alone');
+	}
+
+	$row = pg_product_list_row(product_list_test_product(array('timestamp' => $time)), $view, $context);
+	$last = end($row['cells']);
+	pg_assert_same($alone . ' ' . lang(array('string' => 'by {var:1}', 'vars' => array('ali'))), $last['html']);
+}
+
 function test_product_list_zone_cells()
 {
 	$view = product_list_test_view('shippable_products');

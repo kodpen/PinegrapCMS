@@ -1481,7 +1481,7 @@ if (!$_POST) {
                 ' . ($output_private_folder_access_columns ?? '') . '
                 ' . ($output_add_membership_column ?? '') . '
                 ' . ($output_all_product_actions_columns ?? '') . '
-                <td class="align-middle">' . get_relative_time(array('timestamp' => $row['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($row['user']) ) ) ) . '</td>
+                <td class="align-middle">' . pg_list_when($row['timestamp'], $row['user'] ?? '') . '</td>
                 ' . ($output_out_of_stock_timestamp_column ?? '') . '
             </tr>';
         }

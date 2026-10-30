@@ -783,7 +783,7 @@
     "locked a device of user ({var:1})": "({var:1}) kullanıcısının bir cihazı kilitlendi",
     "log, retention, upload folder, file": "log, retention, upload folder, file, gunluk, günlük, saklama, yukleme klasoru, dosya",
     "login": "giris",
-    "login or register": "giriş yap veya kaydol",
+    "login or register": "giriş yapın veya kaydolun",
     "login region": "giriş bölgesi",
     "login-region": "giris-bolgesi",
     "logout": "cikis",

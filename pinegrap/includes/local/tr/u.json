@@ -263,7 +263,7 @@
     "Upsell Offers (view_offers.php — alert strip, \"only ₺100 to go\")": "Upsell Teklifleri (view_offers.php — alert şeridi, \"₺100'a daha az kaldı\")",
     "Upsell offers (view_offers.php alert strip)": "Ek Satış Teklifleri (view_offers.php uyarı şeridi)",
     "Uptime": "Çalışma Süresi",
-    "Uptime monitors can poll this address. It answers 200 while the site is up and its general job runs, and 503 during maintenance or when the general job has stopped:": "Erişilebilirlik izleyicileri bu adresi yoklayabilir. Site açık ve genel görev çalışıyorken 200, bakım sırasında ya da genel görev durduğunda 503 cevabı verir:",
+    "Uptime monitors can poll this address. It answers 200 while the site is up and its general job runs, and 503 during maintenance or when the general job has stopped:": "Çalışma süresi (uptime) izleyicileri bu adresi yoklayabilir. Site açık ve genel görev çalışıyorken 200, bakım sırasında ya da genel görev durduğunda 503 cevabı verir:",
     "Urgent": "Acil",
     "Urgent and high": "Acil ve yüksek",
     "Urgent and high priority tasks due within a week, the overdue ones included.": "Bir hafta içinde bitmesi gereken acil ve yüksek öncelikli görevler, gecikenler de dahil.",

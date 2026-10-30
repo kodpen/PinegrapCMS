@@ -19,7 +19,7 @@ lang(['string' => '{var:1} match{suffix:1} found in {var:2} item{suffix:2}.', 'v
 
 ## What do the case modifiers do?
 - `{var:1|c}` Title Case, `{var:1|u}` UPPER, `{var:1|l}` lower; single-variable shortcuts `{var|c}`, `{var|u}`, `{var|l}`.
-- Why: in Turkish a word may be lowercase mid-sentence and capitalised at sentence start; one variable used in both places takes `|c` where it starts the sentence.
+- A modifier cases every occurrence of its variable, not one place: a Turkish value needing it capitalised at the start and lowercase later uses it once, with `|c`, and rewords the rest (#3573).
 - They run `mb_convert_case()` (`$safe_case` in `lang()`): UTF-8 safe (`ş` -> `Ş`, `ı` -> `I`), where byte-wise `strtoupper()` or an ASCII `toUpperCase()` leaves or breaks Turkish letters. It is not Turkish-locale aware: `i` becomes `I`, not `İ` (`istanbul` -> `ISTANBUL`, `Istanbul`), and `İ` lowercases to `i` + U+0307.
 
 ## Plural suffix?
