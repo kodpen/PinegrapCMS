@@ -5742,6 +5742,38 @@ div#software_image_picker_container {
   opacity: 1;
 }
 
+/* The drag grip (welcome.php, role < 2) sits at the right end of every header,
+   in the same place on every card, and is the only place a drag starts. Out of
+   the flow, so the centred title is centred on the card, not on what is left
+   beside the grip. Faint until the card is hovered or the grip has focus, but
+   never hidden: a touch screen has no hover. A header action moves left of it. */
+.widget .card-header .pg-widget-move {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pg-radius);
+  line-height: 1;
+  opacity: 0.45;
+  cursor: grab;
+  touch-action: none;
+}
+.widget .card-header .pg-widget-move:active {
+  cursor: grabbing;
+}
+.widget:hover .card-header .pg-widget-move,
+.widget .card-header .pg-widget-move:focus-visible {
+  opacity: 1;
+}
+.widget .card-header .pg-widget-move ~ .pg-widget-action {
+  right: 2.25rem;
+}
+
 .pg-row-heading .pg-row-aside {
   margin-left: auto;
   font-weight: 400;
