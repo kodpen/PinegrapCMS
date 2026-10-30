@@ -2046,11 +2046,12 @@ function _eo_render_billing_address($lf, $totals, $cfg)
     // country code (e.g. 'TR'), and tax rate / shipping validation look it
     // up against `countries.code = '…'`. See _eo_country_options() comment.
     $country_options = _eo_country_options($get('billing_country'));
-    // Salutation options come from get_salutation_options() → key/value array
+    // Salutation options come from get_salutation_options() as label => value:
+    // the label is translated, the posted value is the stored abbreviation.
     $sal_options = function_exists('get_salutation_options') ? get_salutation_options() : array('' => '');
     $sal_html = '';
     $sel_sal = $get('billing_salutation');
-    foreach ($sal_options as $val => $label) {
+    foreach ($sal_options as $label => $val) {
         $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
     }
 
@@ -3619,7 +3620,7 @@ function _eo_render_shipping_section($recipients, $lf, $form_id, $widget_id, $in
         // Address block
         $sal_html = '';
         $sel_sal = $get('salutation');
-        foreach ($sal_options as $val => $label) {
+        foreach ($sal_options as $label => $val) {
             $sal_html .= '<option value="' . h($val) . '"' . ($val === $sel_sal ? ' selected' : '') . '>' . h($label) . '</option>';
         }
         // Country options use CODE as value (matches ship_tos.country storage
