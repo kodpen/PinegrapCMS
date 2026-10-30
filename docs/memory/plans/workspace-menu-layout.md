@@ -23,7 +23,7 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 ## What are the steps?
 - M1 Head, places, Channels, My discussions: done #3794 (`workspace/workspace-menu-list.md`; settings gear in a new `head` group, `foot` gone).
 
-- M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory. Also in M2: drop the `search` hook of `sideHooks()` in `workspace.js` (draw() no longer calls it), and the tour hook's `openSections(['work', 'records'])` follows the new group keys.
+- M2 Tools tiles and More: done #3817 (`workspace/workspace-menu-tools.md`; the tour opens what hides a place with `PGWsSide.openFor()`; the `search` hook of `sideHooks()` is gone).
 
 - M3 The bell is the one inbox: filters All, Site, Workspace (mentions, approvals, tasks, flows), repeated flow runs folded, a wider panel; the list's Inbox opens the bell on Workspace and its own count goes. `ws_inbox` stays the store (API, sync, push) and keeps its bell rows (`ws_bell_add()`); no schema.
 

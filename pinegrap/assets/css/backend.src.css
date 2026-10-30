@@ -17333,6 +17333,77 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
   background: var(--ws-accent);
   color: #fff;
 }
+/* White on the dark theme's light lavender reads at 2.2:1; the panel's
+   near-black ink on it reads at 7:1. */
+html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
+  color: var(--pg-on-accent);
+}
+/* Tools: two tiles to a row, each the screen's icon in its own colour (the
+   main menu's module colours, lighter in the dark theme) and a short name;
+   More, the last tile, opens the rarer screens as rows under them. */
+#ws-menu-side .ws-side-tiles {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .35rem;
+  padding: .15rem 0 0;
+}
+#ws-menu-side .ws-side-tile {
+  display: flex;
+  align-items: center;
+  gap: .45rem;
+  min-width: 0;
+  min-height: 2.25rem;
+  padding: .3rem .55rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+  background: var(--pg-bg-body);
+  color: var(--pg-fg-body);
+  font-size: .82rem;
+  line-height: 1.2;
+  text-align: start;
+  text-decoration: none;
+  transition: background .12s ease, border-color .12s ease;
+}
+#ws-menu-side .ws-side-tile:hover {
+  border-color: var(--pg-border-color);
+  background: var(--pg-bg-1);
+}
+#ws-menu-side .ws-side-tile.active {
+  border-color: color-mix(in srgb, var(--ws-accent) 55%, transparent);
+  background: var(--ws-soft);
+  color: var(--pg-fg-emphasis);
+  font-weight: 600;
+}
+#ws-menu-side .ws-side-tile > .bi {
+  flex: 0 0 auto;
+  color: var(--ws-tile, var(--pg-fg-2));
+}
+html[data-bs-theme="dark"] #ws-menu-side .ws-side-tile > .bi {
+  color: var(--ws-tile-dark, var(--pg-fg-2));
+}
+#ws-menu-side .ws-side-tile-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+#ws-menu-side .ws-side-tile > .ws-side-tile-chevron {
+  font-size: .7rem;
+}
+#ws-menu-side .ws-side-tile[data-ws-nav="notes"] { --ws-tile: var(--forms-color); --ws-tile-dark: var(--forms-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="wtables"] { --ws-tile: var(--ecommerce-color); --ws-tile-dark: var(--ecommerce-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="flows"] { --ws-tile: var(--workspace-color); --ws-tile-dark: var(--workspace-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="calendar"] { --ws-tile: var(--calendars-color); --ws-tile-dark: var(--calendars-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="board"] { --ws-tile: var(--erp-color); --ws-tile-dark: var(--erp-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="timeline"] { --ws-tile: var(--files-color); --ws-tile-dark: var(--files-color-highlight); }
+#ws-menu-side .ws-side-tile[data-ws-nav="mail"] { --ws-tile: var(--campaigns-color); --ws-tile-dark: var(--campaigns-color-highlight); }
+#ws-menu-side .ws-side-more {
+  margin-top: .35rem;
+  padding: .2rem;
+  border: 1px solid var(--pg-border-color-translucent);
+  border-radius: var(--ws-radius-sm);
+}
 #ws-menu-side .ws-side-scroll {
   overflow: visible;
   padding: 0 0 .75rem;

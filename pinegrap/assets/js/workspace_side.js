@@ -5,7 +5,7 @@
  * page: the search of the workspace with a new channel, the settings and the
  * tour beside it, the places (overview, inbox, tasks), one section of
  * channels (pinned, the groups, the rest), the person's discussions and the
- * workspace's other screens.
+ * workspace's other screens as tiles, the rarer ones behind More.
  *
  * What is in it comes from the server only (ws_side_payload(),
  * includes/workspace/nav.php), which leaves out whatever the person may not
@@ -222,6 +222,24 @@
         } catch (error) {
             // Not kept: it opens again next time.
         }
+    }
+
+    // Which group of the list holds a place (ws_nav_groups()), '' for none.
+    function navGroupOf(key) {
+        var nav = (state.data && state.data.nav) || {};
+        var found = '';
+
+        Object.keys(nav).some(function (group) {
+            return (nav[group] || []).some(function (item) {
+                if (item.key === key) {
+                    found = group;
+                }
+
+                return found !== '';
+            });
+        });
+
+        return found;
     }
 
     // ── The groups of channels (includes/workspace/groups.php) ──────────
@@ -511,6 +529,27 @@
 
             inPlace(node, navHooks[item.key]);
             box.appendChild(node);
+        }
+
+        // A tile of Tools: the screen's icon in its own colour and its short
+        // name; the full name is its title.
+        function navTile(item, active) {
+            var node = link('ws-side-tile no-popover' + (active ? ' active' : ''), item.url);
+
+            node.setAttribute('data-ws-nav', item.key);
+            node.setAttribute('data-ws-side-key', 'nav:' + item.key);
+            node.setAttribute('data-pg-menu-label', item.label);
+            node.title = item.label;
+
+            if (active) {
+                node.setAttribute('aria-current', 'page');
+            }
+
+            node.appendChild(icon(item.icon));
+            node.appendChild(el('span', 'ws-side-tile-name', item.short || item.label));
+            inPlace(node, navHooks[item.key]);
+
+            return node;
         }
 
         function navActive(item) {
@@ -852,24 +891,67 @@
             scroll.appendChild(talks);
         }
 
-        ['work', 'records'].forEach(function (key) {
-            var items = nav[key] || [];
+        // ── Tools: the screens of a working day as tiles, two to a row, the
+        // last tile More opening the screens visited now and then ──
 
-            if (!items.length) {
-                return;
-            }
+        var tools = nav.tools || [];
+        var more = nav.more || [];
 
-            var part = group(titles[key] || '', key);
+        if (tools.length || more.length) {
+            var toolsPart = group(titles.tools || '', 'tools');
+            var moreActive = more.some(navActive);
+            // More stays as the person left it; it opens by itself on one of
+            // its own screens.
+            var moreOpen = !!readKept('ws-side-open').more || moreActive;
+            var tiles = el('div', 'ws-side-tiles');
 
-            // Closed, a section still shows the screen that is open.
-            items.forEach(function (item) {
+            // Closed, the section still shows the screen that is open.
+            tools.forEach(function (item) {
                 var active = navActive(item);
 
-                if (!part.shut || active) {
-                    navLink(part.box, item, active, 0);
+                if (!toolsPart.shut || active) {
+                    tiles.appendChild(navTile(item, active));
                 }
             });
-        });
+
+            if (more.length && !toolsPart.shut) {
+                var moreTile = button('ws-side-tile ws-side-more-tile no-popover', '', '', '');
+
+                moreTile.setAttribute('aria-expanded', moreOpen ? 'true' : 'false');
+                moreTile.setAttribute('aria-controls', 'ws-side-more');
+                moreTile.setAttribute('data-ws-side-key', 'more');
+                moreTile.appendChild(icon('bi-three-dots'));
+                moreTile.appendChild(el('span', 'ws-side-tile-name', titles.more || t('more')));
+                moreTile.appendChild(icon(moreOpen ? 'bi-chevron-up' : 'bi-chevron-down', 'ws-side-tile-chevron'));
+                moreTile.addEventListener('click', function () {
+                    writeKept('ws-side-open', 'more', !moreOpen);
+                    draw();
+                });
+                tiles.appendChild(moreTile);
+            }
+
+            if (tiles.firstChild) {
+                toolsPart.box.appendChild(tiles);
+            }
+
+            if (more.length && (moreOpen || moreActive)) {
+                var moreList = el('div', 'ws-side-more');
+
+                moreList.id = 'ws-side-more';
+
+                more.forEach(function (item) {
+                    var active = navActive(item);
+
+                    if (!toolsPart.shut || active) {
+                        navLink(moreList, item, active, 0);
+                    }
+                });
+
+                if (moreList.firstChild) {
+                    toolsPart.box.appendChild(moreList);
+                }
+            }
+        }
 
         clear(root).appendChild(fragment);
         root.removeAttribute('aria-busy');
@@ -1045,6 +1127,30 @@
                 writeKept('ws-side-closed', key, false);
             });
             draw();
+        },
+
+        // Whether the list holds a place of the workspace (ws_nav_groups()),
+        // drawn or waiting in a closed section or behind More.
+        has: function (key) {
+            return navGroupOf(key) !== '';
+        },
+
+        // Opens what keeps a place out of sight: Tools, and More for one of
+        // its screens; then draws the list again (the tour).
+        openFor: function (key) {
+            var group = navGroupOf(key);
+
+            if ((group === 'tools') || (group === 'more')) {
+                writeKept('ws-side-closed', 'tools', false);
+            }
+
+            if (group === 'more') {
+                writeKept('ws-side-open', 'more', true);
+            }
+
+            if (group !== '') {
+                draw();
+            }
         },
 
         root: function () {

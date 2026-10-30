@@ -6109,7 +6109,6 @@
                 },
                 openChannel: function (id) { self.open(id, 0); },
                 openThread: function (thread) { self.threadGo({ id: thread.id, channel_id: thread.channel_id, mine: true }); },
-                search: function (text) { self.search(text); },
                 newChannel: function () {
                     channelForm(null, {}, function (id) { self.reloadChannels(id); });
                 },
@@ -6119,9 +6118,10 @@
                     }
                 },
                 // The workspace's own tour (includes/workspace/tour.php): it
-                // points at entries of the work and records sections.
+                // points at the tiles of the Tools section; a place behind
+                // More is opened by the tour itself (PGWsSide.openFor()).
                 tour: (window.PgTour && window.PG_TOUR && window.PG_TOUR.key) ? function () {
-                    window.PGWsSide.openSections(['work', 'records']);
+                    window.PGWsSide.openSections(['tools']);
                     window.PgTour.start(window.PG_TOUR.key);
                 } : null,
                 pin: function (channel, pinned) { self.pinChannel(channel, pinned); },
