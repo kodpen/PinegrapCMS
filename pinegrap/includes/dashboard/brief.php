@@ -666,30 +666,47 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if (((int) $sig['comments']) > 0) {
 
+        // Two link phrases: Turkish puts the object of "Approving the ..." in
+        // the accusative ("5 yorumu") and the subject of "There are ..." in
+        // the nominative ("5 onay bekleyen yorum").
+        $greeting_comments_one = (((int) $sig['comments']) === 1);
+        $greeting_comments_suffix = $greeting_comments_one ? '' : 's';
         $greeting_comments_link = $greeting_link('view_comments.php', lang(array(
-            'string' => '{var:1} waiting comments', 'vars' => pg_format_number($sig['comments'], 0))));
+            'string' => '{var:1} waiting comment{suffix:1}', 'vars' => pg_format_number($sig['comments'], 0),
+            'suffix' => $greeting_comments_suffix)));
+        $greeting_comments_there = $greeting_link('view_comments.php', lang(array(
+            'string' => '{var:1} comment{suffix:1} waiting for approval', 'vars' => pg_format_number($sig['comments'], 0),
+            'suffix' => $greeting_comments_suffix)));
 
-        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => lang(array(
-            'string' => 'Approving the {var:1} puts them on the pages they belong to.',
-            'vars' => $greeting_comments_link)));
-        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => lang(array(
-            'string' => 'There are {var:1}, and publishing them keeps those pages alive.',
-            'vars' => $greeting_comments_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => $greeting_comments_one
+            ? lang(array('string' => 'Approving the {var:1} puts it on the page it belongs to.', 'vars' => $greeting_comments_link))
+            : lang(array('string' => 'Approving the {var:1} puts them on the pages they belong to.', 'vars' => $greeting_comments_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'comments', 'text' => $greeting_comments_one
+            ? lang(array('string' => 'There is {var:1}, and publishing it keeps that page alive.', 'vars' => $greeting_comments_there))
+            : lang(array('string' => 'There are {var:1}, and publishing them keeps those pages alive.', 'vars' => $greeting_comments_there)));
     }
 
     if (((int) $sig['out_of_stock']) > 0) {
 
         // The filtered list, not the catalogue. Advice that drops you in front of
         // four thousand products has made you do the finding yourself.
-        $greeting_stock_link = $greeting_link('view_products.php?filter=out_of_stock_products', lang(array(
-            'string' => '{var:1} empty products', 'vars' => pg_format_number($sig['out_of_stock'], 0))));
+        // Accusative and nominative link phrases, as with the comments above.
+        $greeting_stock_one = (((int) $sig['out_of_stock']) === 1);
+        $greeting_stock_suffix = $greeting_stock_one ? '' : 's';
+        $greeting_stock_url = 'view_products.php?filter=out_of_stock_products';
+        $greeting_stock_link = $greeting_link($greeting_stock_url, lang(array(
+            'string' => '{var:1} empty product{suffix:1}', 'vars' => pg_format_number($sig['out_of_stock'], 0),
+            'suffix' => $greeting_stock_suffix)));
+        $greeting_stock_there = $greeting_link($greeting_stock_url, lang(array(
+            'string' => '{var:1} out-of-stock product{suffix:1}', 'vars' => pg_format_number($sig['out_of_stock'], 0),
+            'suffix' => $greeting_stock_suffix)));
 
-        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => lang(array(
-            'string' => 'Restocking the {var:1} would keep those pages selling.',
-            'vars' => $greeting_stock_link)));
-        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => lang(array(
-            'string' => 'There are {var:1} on the site, and each one is a page that cannot sell.',
-            'vars' => $greeting_stock_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => $greeting_stock_one
+            ? lang(array('string' => 'Restocking the {var:1} would keep that page selling.', 'vars' => $greeting_stock_link))
+            : lang(array('string' => 'Restocking the {var:1} would keep those pages selling.', 'vars' => $greeting_stock_link)));
+        $greeting_options[] = array('tier' => 1, 'topic' => 'stock', 'text' => $greeting_stock_one
+            ? lang(array('string' => 'There is {var:1} on the site, and that is a page that cannot sell.', 'vars' => $greeting_stock_there))
+            : lang(array('string' => 'There are {var:1} on the site, and each one is a page that cannot sell.', 'vars' => $greeting_stock_there)));
     }
 
     if ($has_perf && ($sig['perf_today'] > $sig['perf_before']) && ($sig['perf_today'] > 500)) {
@@ -709,15 +726,17 @@ function pg_dashboard_brief($user, $changelog_sections)
         // reset=true first, because this screen keeps its filters in the session
         // and a month-old date range left behind from the last visit would hide
         // the very rows the sentence just promised.
+        $greeting_carts_one = (((int) $sig['carts_week']) === 1);
         $greeting_carts_link = $greeting_link('view_orders.php?reset=true&status=incomplete', lang(array(
-            'string' => '{var:1} baskets', 'vars' => pg_format_number($sig['carts_week'], 0))));
+            'string' => '{var:1} basket{suffix:1}', 'vars' => pg_format_number($sig['carts_week'], 0),
+            'suffix' => $greeting_carts_one ? '' : 's')));
 
-        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => lang(array(
-            'string' => 'There are {var:1} left half full this week, and it is worth a look at who walked away.',
-            'vars' => $greeting_carts_link)));
-        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => lang(array(
-            'string' => 'Someone filled {var:1} this week and left them; they are all still on the list.',
-            'vars' => $greeting_carts_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => $greeting_carts_one
+            ? lang(array('string' => 'There is {var:1} left half full this week, and it is worth a look at who walked away.', 'vars' => $greeting_carts_link))
+            : lang(array('string' => 'There are {var:1} left half full this week, and it is worth a look at who walked away.', 'vars' => $greeting_carts_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'carts', 'text' => $greeting_carts_one
+            ? lang(array('string' => 'Someone filled {var:1} this week and left it; it is still on the list.', 'vars' => $greeting_carts_link))
+            : lang(array('string' => 'Someone filled {var:1} this week and left them; they are all still on the list.', 'vars' => $greeting_carts_link)));
     }
 
     if (((int) $sig['new_contacts']) > 0) {
@@ -725,12 +744,14 @@ function pg_dashboard_brief($user, $changelog_sections)
         // Not a problem to fix -- an opening to take. Most days the dashboard has
         // nothing wrong with it, and "nothing is wrong" is not the same as "there
         // is nothing worth doing".
-        $greeting_people_link = $greeting_link('view_contacts.php', lang(array(
-            'string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
+        $greeting_people_one = (((int) $sig['new_contacts']) === 1);
+        $greeting_people_link = $greeting_link('view_contacts.php', $greeting_people_one
+            ? lang(array('string' => '{var:1} person', 'vars' => pg_format_number($sig['new_contacts'], 0)))
+            : lang(array('string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
 
-        $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => lang(array(
-            'string' => 'The {var:1} who joined this week have not heard from you yet.',
-            'vars' => $greeting_people_link)));
+        $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => $greeting_people_one
+            ? lang(array('string' => 'The {var:1} who joined this week has not heard from you yet.', 'vars' => $greeting_people_link))
+            : lang(array('string' => 'The {var:1} who joined this week have not heard from you yet.', 'vars' => $greeting_people_link)));
         $greeting_options[] = array('tier' => 2, 'topic' => 'contacts', 'text' => lang(array(
             'string' => '{var:1} joined this week, and a first hello tends to land well.',
             'vars' => $greeting_people_link)));
@@ -1366,7 +1387,9 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if ($orders_up && (((int) $sig['out_of_stock']) > 0)) {
         $greeting_smart[] = array('topic' => 'stock', 'text' => lang(array(
-            'string' => 'Orders are running ahead of yesterday while {var:1} products sit out of stock.',
+            'string' => (((int) $sig['out_of_stock']) === 1)
+                ? 'Orders are running ahead of yesterday while {var:1} product sits out of stock.'
+                : 'Orders are running ahead of yesterday while {var:1} products sit out of stock.',
             'vars' => pg_format_number($sig['out_of_stock'], 0))));
     }
 
@@ -1374,7 +1397,9 @@ function pg_dashboard_brief($user, $changelog_sections)
     // where nothing happened at all, and no tile on this screen says it.
     if ($has_orders && ($sig['orders_today'] === 0) && (((int) $sig['carts_week']) > 0)) {
         $greeting_smart[] = array('topic' => 'carts', 'text' => lang(array(
-            'string' => 'No orders today, though {var:1} baskets were filled and left this week.',
+            'string' => (((int) $sig['carts_week']) === 1)
+                ? 'No orders today, though {var:1} basket was filled and left this week.'
+                : 'No orders today, though {var:1} baskets were filled and left this week.',
             'vars' => pg_format_number($sig['carts_week'], 0))));
     }
 
@@ -1480,9 +1505,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     }
 
     if (((int) $sig['visitors_now']) > 0) {
-        $greeting_plain[] = array('topic' => 'visitors', 'text' => lang(array(
-            'string' => '{var:1} people are looking around the site right now.',
-            'vars' => pg_format_number($sig['visitors_now'], 0))));
+        $greeting_plain[] = array('topic' => 'visitors', 'text' => (((int) $sig['visitors_now']) === 1)
+            ? lang('One person is looking around the site right now.')
+            : lang(array(
+                'string' => '{var:1} people are looking around the site right now.',
+                'vars' => pg_format_number($sig['visitors_now'], 0))));
     }
 
     // Where the week's orders are coming from. The place is named rather than
@@ -1501,9 +1528,11 @@ function pg_dashboard_brief($user, $changelog_sections)
     }
 
     if (((int) $sig['new_contacts']) > 0) {
-        $greeting_plain[] = array('topic' => 'contacts', 'text' => lang(array(
-            'string' => '{var:1} new people joined your contacts this week.',
-            'vars' => pg_format_number($sig['new_contacts'], 0))));
+        $greeting_plain[] = array('topic' => 'contacts', 'text' => (((int) $sig['new_contacts']) === 1)
+            ? lang('One new person joined your contacts this week.')
+            : lang(array(
+                'string' => '{var:1} new people joined your contacts this week.',
+                'vars' => pg_format_number($sig['new_contacts'], 0))));
     }
 
     if (((int) $sig['low_stock']) > 0) {
