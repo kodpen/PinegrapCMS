@@ -183,20 +183,44 @@ function pg_contact_form_name_row($values, $is_new, $image_html)
 }
 
 /**
+ * The attributes that open the right phone keyboard on a text box: 'tel'
+ * opens the telephone keypad, 'url' the web address keyboard without
+ * capitalising or spellchecking. The box stays type="text" because phone
+ * values carry spaces, + and parentheses and a bare www.example.com is a
+ * valid website.
+ *
+ * @param string $keyboard 'tel', 'url' or '' for the default keyboard
+ * @return string
+ */
+function pg_contact_form_keyboard_attributes($keyboard)
+{
+    if ($keyboard === 'tel') {
+        return ' inputmode="tel"';
+    }
+
+    if ($keyboard === 'url') {
+        return ' inputmode="url" spellcheck="false" autocapitalize="off"';
+    }
+
+    return '';
+}
+
+/**
  * One text field of the work and home cards.
  *
  * @param array $values
  * @param string $name
  * @param string $label
  * @param int $maxlength
+ * @param string $keyboard Phone keyboard (pg_contact_form_keyboard_attributes())
  * @return string
  */
-function pg_contact_form_text_field($values, $name, $label, $maxlength)
+function pg_contact_form_text_field($values, $name, $label, $maxlength, $keyboard = '')
 {
     return '
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="' . $name . '" class="form-label">' . $label . '</label>
-                                            <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" maxlength="' . (int) $maxlength . '" />
+                                            <input value="' . pg_contact_form_value($values, $name) . '" type="text" name="' . $name . '" id="' . $name . '" class="form-control" maxlength="' . (int) $maxlength . '"' . pg_contact_form_keyboard_attributes($keyboard) . ' />
                                         </div>';
 }
 
@@ -245,7 +269,7 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'title', lang('Title'), 50) .
         pg_contact_form_text_field($values, 'department', lang('Department'), 50) .
         pg_contact_form_text_field($values, 'office_location', lang('Office Location'), 50) .
-        pg_contact_form_text_field($values, 'website', lang('Website'), 255);
+        pg_contact_form_text_field($values, 'website', lang('Website'), 255, 'url');
 
     $output_business =
         pg_contact_form_text_field($values, 'business_address_1', lang('Business Address') . ' 1', 50) .
@@ -254,8 +278,8 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'business_state', lang('Business State'), 50) .
         pg_contact_form_text_field($values, 'business_country', lang('Business Country'), 50) .
         pg_contact_form_text_field($values, 'business_zip_code', lang('Business Zip Code'), 50) .
-        pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50) .
-        pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50);
+        pg_contact_form_text_field($values, 'business_phone', lang('Business Phone'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'business_fax', lang('Business Fax'), 50, 'tel');
 
     $output_home =
         pg_contact_form_text_field($values, 'home_address_1', lang('Home Address') . ' 1', 50) .
@@ -264,9 +288,9 @@ function pg_contact_form_detail_cards($values, $is_new, $work_extra, $groups_htm
         pg_contact_form_text_field($values, 'home_state', lang('Home State'), 50) .
         pg_contact_form_text_field($values, 'home_country', lang('Home Country'), 50) .
         pg_contact_form_text_field($values, 'home_zip_code', lang('Home Zip Code'), 50) .
-        pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50) .
-        pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50) .
-        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 255);
+        pg_contact_form_text_field($values, 'home_phone', lang('Home Phone'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'home_fax', lang('Home Fax'), 50, 'tel') .
+        pg_contact_form_text_field($values, 'mobile_phone', lang('Mobile Phone'), 255, 'tel');
 
     return '
                     <div class="row">
