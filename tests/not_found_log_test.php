@@ -170,6 +170,17 @@ function test_not_found_log_redirect_url_fills_the_short_link_screen()
 {
 	pg_assert_same('add_short_link.php?name=eski-sayfa&redirect_code=301', pg_not_found_log_redirect_url('eski-sayfa'), 'name and answer');
 	pg_assert_same('add_short_link.php?name=blog%2F%C3%BCr%C3%BCn_a%26b&redirect_code=301', pg_not_found_log_redirect_url('blog/ürün_a&b'), 'encoded, & inside the name stays the name');
+	pg_assert_same('add_short_link.php?name=x&redirect_code=301&send_to=%2Fpinegrap%2Fview_not_found_log.php%3Fq%3D%2Fwp-', pg_not_found_log_redirect_url('x', '/pinegrap/view_not_found_log.php?q=/wp-'), 'the filtered log rides along as send_to');
+	pg_assert_same('add_short_link.php?name=x&redirect_code=301', pg_not_found_log_redirect_url('x', ''), 'no send_to when none is given');
+}
+
+function test_not_found_log_short_link_notice_goes_where_the_save_lands()
+{
+	pg_assert_same('view_not_found_log', pg_short_link_return_form('/pinegrap/view_not_found_log.php?who=crawlers&q=%2Fwp-'), 'back to the log: its notices');
+	pg_assert_same('view_not_found_log', pg_short_link_return_form('/pinegrap/view_not_found_log.php'), 'the bare log too');
+	pg_assert_same('view_short_links', pg_short_link_return_form('/pinegrap/view_short_links.php'), 'the short link list');
+	pg_assert_same('view_short_links', pg_short_link_return_form(''), 'no send_to');
+	pg_assert_same('view_short_links', pg_short_link_return_form('/pinegrap/x.php?send_to=view_not_found_log.php'), 'only the path counts');
 }
 
 function test_not_found_log_takes_its_turn_at_every_404_that_tries_the_patterns()
@@ -201,7 +212,11 @@ function test_not_found_log_screen_and_the_short_link_screen_it_opens()
 	pg_assert_contains("validate_area_access(\$user, 'manager');", $screen, 'managers and up, as the short link screens');
 	pg_assert_contains('validate_token_field();', $screen, 'delete and clear check the token');
 	pg_assert_contains('pg_not_found_log_since()', $screen, 'the list shows the retention period only');
-	pg_assert_contains('pg_not_found_log_redirect_url($path)', $screen, 'each row opens the short link screen');
+	pg_assert_contains('pg_not_found_log_redirect_url($path, $log_url)', $screen, 'each row opens the short link screen, coming back to the filtered log');
+	pg_assert_contains("'&send_to=' . urlencode(\$log_url)", $screen, 'Edit comes back to the filtered log');
+	pg_assert_contains('<form id="pg-404-delete-form" method="post" action="\' . h($log_url) . \'"', $screen, 'removing an address posts the filter along');
+	pg_assert_contains('go($log_url);', $screen, 'and lands on the filtered log');
+	pg_assert_contains('<form id="pg-404-clear-form" method="post" action="view_not_found_log.php"', $screen, 'Clear Log keeps the bare address');
 	pg_assert_true(preg_match('#<tr[^>]*>(?:(?!</tr>).)*<form#s', $screen) !== 1, 'no form inside a table row');
 
 	$add = not_found_log_test_source('add_short_link.php');
@@ -209,4 +224,15 @@ function test_not_found_log_screen_and_the_short_link_screen_it_opens()
 	pg_assert_contains("\$liveform->assign_field_value('name', pg_short_link_name_from_address(\$_GET['name']));", $add, 'the name is read as a pasted address is');
 	pg_assert_contains("in_array((int) \$_GET['redirect_code'], pg_short_link_answer_codes(), true)", $add, 'only an answer the screen offers');
 	pg_assert_contains("(\$liveform->get_field_value('name') == '')", $add, 'a form already filled in keeps its values');
+
+	foreach (array('add_short_link.php', 'edit_short_link.php') as $file) {
+		$source = not_found_log_test_source($file);
+
+		pg_assert_contains("'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php'))", $source, $file . ': the arrow goes where Save goes');
+		pg_assert_contains('<input type="hidden" name="send_to" value="\' . h(pg_send_to_url(\'\')) . \'">', $source, $file . ': send_to rides the POST');
+		pg_assert_contains("new liveform(pg_short_link_return_form(pg_send_to_url('')))", $source, $file . ': the notice waits on the screen it lands on');
+		pg_assert_true(strpos($source, "SOFTWARE_DIRECTORY . '/view_short_links.php');") === false, $file . ': no save lands on the bare list');
+		pg_assert_contains("header('Location: ' . URL_SCHEME . HOSTNAME . pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_short_links.php'));", $source, $file . ': Save goes to send_to first');
+		pg_assert_true(strpos($source, "'?id=' . \$liveform->get_field_value('id'));") === false, $file . ': a refused save keeps send_to');
+	}
 }

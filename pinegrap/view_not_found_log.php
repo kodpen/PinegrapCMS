@@ -24,6 +24,24 @@ $liveform = new liveform('view_not_found_log');
 
 $ready = pg_not_found_log_ready();
 
+// ---- Filters --------------------------------------------------------------
+
+// Each filter is one value; one sent as a list counts as not given.
+$who_options = array(
+    ''         => lang('Everyone'),
+    'visitors' => lang('Visitors'),
+    'crawlers' => lang('Search engines'),
+);
+
+$who = (isset($_GET['who']) && is_string($_GET['who']) && isset($who_options[$_GET['who']])) ? $_GET['who'] : '';
+$search = (isset($_GET['q']) && is_string($_GET['q'])) ? mb_substr(trim($_GET['q']), 0, PG_NOT_FOUND_LOG_PATH_MAX, 'UTF-8') : '';
+
+$kept = array_filter(array('who' => $who, 'q' => $search), 'strlen');
+
+// The log as filtered now: a removal posts to it and lands on it, and the
+// short link screens opened from a row come back to it (send_to).
+$log_url = PATH . SOFTWARE_DIRECTORY . '/view_not_found_log.php' . ($kept ? '?' . http_build_query($kept) : '');
+
 // ---- Actions ---------------------------------------------------------------
 
 // One address out of the log, or all of them: POST with the token, then back
@@ -46,7 +64,7 @@ if (isset($_POST['submit_delete']) || isset($_POST['submit_clear'])) {
         }
     }
 
-    go(PATH . SOFTWARE_DIRECTORY . '/view_not_found_log.php');
+    go($log_url);
 }
 
 $shell = array(
@@ -84,17 +102,7 @@ if (!$ready) {
     exit();
 }
 
-// ---- Filters and sort ------------------------------------------------------
-
-// Each filter is one value; one sent as a list counts as not given.
-$who_options = array(
-    ''         => lang('Everyone'),
-    'visitors' => lang('Visitors'),
-    'crawlers' => lang('Search engines'),
-);
-
-$who = (isset($_GET['who']) && is_string($_GET['who']) && isset($who_options[$_GET['who']])) ? $_GET['who'] : '';
-$search = (isset($_GET['q']) && is_string($_GET['q'])) ? mb_substr(trim($_GET['q']), 0, PG_NOT_FOUND_LOG_PATH_MAX, 'UTF-8') : '';
+// ---- Sort ------------------------------------------------------------------
 
 $sort_columns = array(
     'path'       => lang('Address'),
@@ -118,7 +126,6 @@ $order_by = pg_list_order_by($sort_levels, array(
     'last_seen'  => 'last_seen',
 )) . ', id DESC';
 
-$kept = array_filter(array('who' => $who, 'q' => $search), 'strlen');
 $kept_extras = $kept ? h('&' . http_build_query($kept)) : '';
 
 $where = pg_not_found_log_where(array('since' => pg_not_found_log_since(), 'who' => $who, 'search' => $search));
@@ -156,13 +163,13 @@ foreach ($rows as $row) {
     $output_create = '';
 
     if ($answer === null) {
-        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="' . h(pg_not_found_log_redirect_url($path)) . '" title="' . h(lang('Create redirect')) . '" aria-label="' . h(lang('Create redirect')) . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>';
+        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="' . h(pg_not_found_log_redirect_url($path, $log_url)) . '" title="' . h(lang('Create redirect')) . '" aria-label="' . h(lang('Create redirect')) . '"><i class="bi bi-signpost-split" aria-hidden="true"></i></a>';
     } elseif (($answer['state'] === 'redirect') || ($answer['state'] === 'pattern')) {
         // A short link answers the address now (a * pattern only once no page
         // does): no new 404 comes, and an exact link would take it from the
         // pattern.
         $output_state = ' <span class="badge rounded-pill badge-subtle theme-secondary border">' . h(($answer['state'] === 'pattern') ? lang('Wildcard') : lang('Short link')) . '</span>';
-        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
+        $output_create = '<a class="m-1 btn-data-control btn btn-outline theme-primary border-2" href="edit_short_link.php?id=' . (int) $answer['id'] . h('&send_to=' . urlencode($log_url)) . '" title="' . h(lang('Edit')) . '" aria-label="' . h(lang('Edit')) . '"><i class="bi bi-pencil" aria-hidden="true"></i></a>';
     } elseif ($answer['state'] === 'binned') {
         $output_state = '<div class="small fg-secondary">' . h(lang('A short link in the Recycle Bin has this name: restore it, or delete it for good, in the File Manager.')) . '</div>';
     } else {
@@ -255,7 +262,7 @@ echo pg_page_shell($shell) . '
             </div>
         </div>
     </div>
-    <form id="pg-404-delete-form" method="post" action="view_not_found_log.php" class="d-none">
+    <form id="pg-404-delete-form" method="post" action="' . h($log_url) . '" class="d-none">
         ' . get_token_field() . '
         <input type="hidden" name="id" value="">
         <input type="hidden" name="submit_delete" value="1">
