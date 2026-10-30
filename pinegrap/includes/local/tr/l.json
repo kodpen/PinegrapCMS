@@ -425,6 +425,7 @@
     "Lined Notebook": "Çizgili Defter",
     "Linen Shirt": "Keten Gömlek",
     "Lines": "Kalemler",
+    "Lines filled from the template {var:1}.": "Satırlar {var:1} şablonundan dolduruldu.",
     "Lines of this order name products deleted from the catalogue since the order was placed: {var:1}. Pinegrap cannot tell whether they kept stock or which Paraşüt product they were, so no shipment document was created. Write this shipment in Paraşüt by hand.": "Bu siparişin bazı satırlarındaki ürünler sipariş verildikten sonra katalogdan silinmiş: {var:1}. Pinegrap bu ürünlerin stoğunun takip edilip edilmediğini ya da Paraşüt'te hangi ürün olduklarını bilemiyor; bu yüzden irsaliye oluşturulmadı. Bu sevkiyatı Paraşüt'te elle oluşturun.",
     "Lines that start with - [ ] become the task's checklist.": "Başında - [ ] olan satırlar görevin kontrol listesi olur.",
     "Lines without a product (services, shipping)": "Ürünsüz satırlar (hizmet, kargo)",

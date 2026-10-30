@@ -658,6 +658,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     $erp_quote_alert_ready = array_key_exists('erp_notify_quote_expiry', $row);
     $erp_notify_quote_expiry_checked = ((int) ($row['erp_notify_quote_expiry'] ?? 1) === 1) ? ' checked="checked"' : '';
     $erp_notify_quote_expiry_days = min(30, max(1, (int) ($row['erp_notify_quote_expiry_days'] ?? 3)));
+    $erp_quote_followup_ready = array_key_exists('erp_quote_expiry_followup', $row);
+    $erp_quote_expiry_followup_checked = ((int) ($row['erp_quote_expiry_followup'] ?? 0) === 1) ? ' checked="checked"' : '';
     $erp_credit_limit_mode = ((string) ($row['erp_credit_limit_mode'] ?? 'warn') === 'block') ? 'block' : 'warn';
     // How an order's shipping and surcharge are taxed on its invoice (4.76);
     // empty lets the store's country decide.

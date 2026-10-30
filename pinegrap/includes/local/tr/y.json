@@ -237,6 +237,7 @@
     "You may not add yourself as a watcher because you are already a watcher. <a href=\"javascript:history.go(-1);\">Go back</a>.": "Zaten bir izleyici olduğunuz için kendinizi izleyici olarak ekleyemezsiniz. <a href=\"javascript:history.go(-1);\">Geri git</a>.",
     "You may not change a record of this kind, so this cannot be applied.": "Bu türde kaydı değiştirme yetkiniz yok, bu yüzden uygulanamaz.",
     "You may not change a record of this kind.": "Bu türde kaydı değiştirme yetkiniz yok.",
+    "You may not change quote templates.": "Teklif şablonlarını değiştiremezsiniz.",
     "You may not change this record.": "Bu kaydı değiştiremezsiniz.",
     "You may not change this task.": "Bu görevi değiştiremezsiniz.",
     "You may not create this kind of record.": "Bu türde kayıt oluşturamazsınız.",

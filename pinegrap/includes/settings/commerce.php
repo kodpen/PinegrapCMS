@@ -755,7 +755,14 @@ $pg_settings_cards[] = '
                             <div class="col-12 md:col-5">
                                 <label class="form-label" for="erp_notify_quote_expiry_days">' . lang('Days before it expires') . '</label>
                                 <input type="number" class="form-control pg-f-xs" id="erp_notify_quote_expiry_days" name="erp_notify_quote_expiry_days" value="' . (int) $erp_notify_quote_expiry_days . '" min="1" max="30" step="1" inputmode="numeric" autocomplete="off" />
-                            </div>' : '') . '
+                            </div>' . ($erp_quote_followup_ready ? '
+                            <div class="col-12">
+                                <div class="form-field">
+                                    <div class="switch"><input value="1"' . $erp_quote_expiry_followup_checked . ' class="" type="checkbox" id="erp_quote_expiry_followup" name="erp_quote_expiry_followup" /></div>
+                                    <label class="" for="erp_quote_expiry_followup">' . lang('Open a Workspace follow-up for each quote announced') . '</label>
+                                </div>
+                                <div class="form-text">' . lang('A task for the person who made the quote, due on its last day. Needs the notice above and the Workspace.') . '</div>
+                            </div>' : '') : '') . '
                         </div>
                     </div>' : '') . '
                 </div>

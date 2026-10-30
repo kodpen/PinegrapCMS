@@ -130,7 +130,8 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.
 - erp-purchase-orders.md: ERP purchase orders (10.58): own table and series, the line key that ties invoice lines back, status read from purchase invoices, the draft made from an order, shared refusals, API line keys.
-- erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, turning into an invoice draft, signature evidence, expiry notice, the Workspace tag.
+- erp-quote-templates.md: Sales quote templates (#3717, 2026.11.0 step 11.0.63): the table, who sees and writes one, what a template keeps, the box on add_erp_quote.php.
+- erp-quotes.md: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, expiry notice, Workspace tag.
 - erp-readonly-accountant-right.md: The ERP read-only right for an accountant (user.manage_erp_readonly, 4.78): what the gate refuses, its areas, USER_ERP_READONLY, the writers outside ERP screens, the Workspace's erp_readonly.
 - erp-receipt-corrections-and-gift-card.md: ERP receipt cancel, settlement removal/late allocation, FX reversal, and the gift card as the only automatic settlement.
 - erp-receipt-not-for-return.md: A receipt is never allocated to a return document: erp_post_receipt() and POST /erp/receipts refuse it (#1063, PR #1132), and the bank statement suggestion offers only invoices (PR #1228).
