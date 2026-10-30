@@ -41,3 +41,25 @@ function test_progressbar_names_board_card_bar_is_named()
 	pg_assert_true(strpos($source, "bar.setAttribute('aria-label', shareText)") !== false, 'the board card bar is named with the progress_text sentence');
 	pg_assert_true(strpos($source, "var shareText = t('progress_text', item.progress.done, item.progress.total, item.progress.percent)") !== false, 'the board card sentence is t(\'progress_text\')');
 }
+
+function test_progressbar_names_workspace_progress_bar_is_named()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.js');
+
+	pg_assert_true(preg_match('/function progressBar\(progress, small, label\) \{.*?bar\.setAttribute\(\'aria-label\', label\);.*?return bar;/s', $source) === 1, 'progressBar() names its bar');
+	pg_assert_true(strpos($source, "label = t('progress_text', progress.done, progress.total, progress.percent);") !== false, 'a checklist bar is named with the progress_text sentence');
+	pg_assert_true(strpos($source, "progressBar({ percent: 100 }, false, waiting)") !== false, 'the notes import reading bar is named with its waiting sentence');
+	pg_assert_true(strpos($source, "progressBar({ percent: 0 }, false, t('uploading'))") !== false, 'the notes import upload bar is named through progressBar()');
+}
+
+function test_progressbar_names_task_time_bar_is_named()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_task_time.js');
+
+	pg_assert_true(preg_match('/function shareBar\(h, share, label\) \{.*?bar\.setAttribute\(\'aria-label\', label\);.*?return bar;/s', $source) === 1, 'shareBar() names its bar');
+	pg_assert_true(strpos($source, 'shareBar(h, time.share, time.compare)') !== false, 'the time bar is named with the "spent of" sentence the drawer prints');
+
+	$bundle = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace.min.js');
+
+	pg_assert_true(substr_count($bundle, 'aria-label') >= 1 && strpos($bundle, 'progress_text') !== false, 'workspace.min.js is rebuilt');
+}

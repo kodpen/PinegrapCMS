@@ -3114,11 +3114,23 @@
     // ── Progress bars and tag fields ───────────────────────────────────
 
     // How far a checklist has got, as a thin bar.
-    function progressBar(progress, small) {
+    // A bar says what it counts: a checklist bar is named with the "items
+    // done" sentence unless the caller names it, so a screen reader does
+    // not hear a bare percentage.
+    function progressBar(progress, small, label) {
         var bar = el('div', 'progress ws-progress' + (small ? ' ws-progress-sm' : '') + (progress.complete ? ' ws-progress-full' : ''));
         var fill = el('div', 'progress-bar');
 
+        if (!label && progress.total) {
+            label = t('progress_text', progress.done, progress.total, progress.percent);
+        }
+
         bar.setAttribute('role', 'progressbar');
+
+        if (label) {
+            bar.setAttribute('aria-label', label);
+        }
+
         bar.setAttribute('aria-valuemin', '0');
         bar.setAttribute('aria-valuemax', '100');
         bar.setAttribute('aria-valuenow', String(progress.percent));
@@ -21665,7 +21677,7 @@
                 clear(footer);
 
                 var label = el('div', 'small fg-secondary mb-3', waiting);
-                var bar = progressBar({ percent: 100 });
+                var bar = progressBar({ percent: 100 }, false, waiting);
 
                 label.setAttribute('role', 'status');
                 bar.firstChild.className = 'progress-bar progress-bar-striped progress-bar-animated';
@@ -21912,13 +21924,12 @@
                 var label = el('span', '', t('uploading'));
                 var percent = el('span');
                 var bytes = el('span');
-                var bar = progressBar({ percent: 0 });
+                var bar = progressBar({ percent: 0 }, false, t('uploading'));
                 var fill = bar.firstChild;
                 var stop = button('btn btn-sm btn-text theme-secondary', t('notes_import_cancel_upload'));
 
                 // The step is announced, not every percent.
                 label.setAttribute('role', 'status');
-                bar.setAttribute('aria-label', t('uploading'));
                 left.appendChild(label);
                 left.appendChild(document.createTextNode(' '));
                 left.appendChild(percent);
