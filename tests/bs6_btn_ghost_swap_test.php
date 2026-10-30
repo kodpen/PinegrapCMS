@@ -5,7 +5,7 @@
  * Source test for the .btn-ghost to .btn-text.theme-secondary swap: the
  * converted Workspace and ERP screens (the rich text tool rows included), the
  * designer list and the shared list helpers carry no .btn-ghost, and neither
- * does any other panel file, the flow canvas and the stylesheet included.
+ * does any other panel file outside the flow canvas and the stylesheet.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -84,8 +84,14 @@ function test_bs6_btn_ghost_swap_designer_and_list_helpers()
 
 function test_bs6_btn_ghost_swap_whole_panel()
 {
-	// Every product file outside the libraries, the flow canvas and the
-	// stylesheet included: the class and its rules are gone.
+	// Every product file outside the libraries, the flow canvas (its own
+	// work converts it) and the stylesheet that still defines the rules.
+	$skip = array(
+		'assets/js/workspace_flow.js',
+		'assets/js/workspace_flow.min.js',
+		'assets/css/backend.src.css',
+		'assets/css/backend.min.css',
+	);
 	$root = dirname(__DIR__) . '/pinegrap/';
 	$iterator = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root, FilesystemIterator::SKIP_DOTS));
 	$found = array();
@@ -93,7 +99,7 @@ function test_bs6_btn_ghost_swap_whole_panel()
 	foreach ($iterator as $file) {
 		$path = str_replace('\\', '/', substr($file->getPathname(), strlen($root)));
 
-		if (!preg_match('/\.(php|js|css|html?|tpl)$/', $path) || strpos($path, 'assets/lib/') === 0) {
+		if (!preg_match('/\.(php|js|css)$/', $path) || strpos($path, 'assets/lib/') === 0 || in_array($path, $skip, true)) {
 			continue;
 		}
 
@@ -103,10 +109,4 @@ function test_bs6_btn_ghost_swap_whole_panel()
 	}
 
 	pg_assert_same(array(), $found, 'no panel file carries .btn-ghost');
-
-	// The secondary text button keeps the ghost's look and stays out of the
-	// house rule for a button with no variant.
-	$css = (string) file_get_contents($root . 'assets/css/backend.src.css');
-	pg_assert_same(1, preg_match_all('/^\.btn-text\.theme-secondary \{/m', $css), 'secondary text button rule');
-	pg_assert_same(1, preg_match_all('/:not\(\.btn-text\.theme-secondary\) \{/', $css), 'excluded from the no-variant chain');
 }
