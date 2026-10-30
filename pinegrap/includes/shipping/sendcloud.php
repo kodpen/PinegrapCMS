@@ -19,7 +19,9 @@
  * cancel it. Parcel status changes arrive at carrier_webhook.php
  * (includes/fn/carrier_webhook.php) as parcel_status_changed messages signed
  * with the secret key; PATCH /integrations/{id} sets the API integration's
- * webhook address.
+ * webhook address. POST /pickups (Pickups API v3) books a one-time
+ * collection of a shipment's carrier at the sender address; Sendcloud offers
+ * it only for the carriers pg_label_sendcloud_pickup_carriers() lists.
  *
  * Sendcloud has no sandbox: test mode ships with the free "Unstamped
  * letter" option (sendcloud:letter), which makes a real label no carrier
@@ -1502,4 +1504,260 @@ function pg_label_sendcloud_webhook_remove($id, $account)
     }
 
     return array('success' => true, 'error' => '');
+}
+
+/**
+ * The carriers of the Pickups API: true for one this driver books, false
+ * for one whose pickup needs fields the store does not keep (Correos'
+ * volumetric kind, the DHL Parcel GB account numbers, FedEx's location
+ * details, UPS's destination and service per item). Any other carrier has
+ * no pickup at Sendcloud.
+ *
+ * @return bool[] carrier code => bookable
+ */
+function pg_label_sendcloud_pickup_carriers()
+{
+    return array(
+        'brt'               => true,
+        'correos_express'   => true,
+        'dhl'               => true,
+        'dhl_de'            => true,
+        'dhl_express'       => true,
+        'dhl_parcel_iberia' => true,
+        'dpd'               => true,
+        'dpd_at'            => true,
+        'gls_it'            => true,
+        'hermes_de'         => true,
+        'poste_it_delivery' => true,
+        'correos'           => false,
+        'dhl_parcel_gb'     => false,
+        'fedex'             => false,
+        'ups'               => false,
+    );
+}
+
+/**
+ * A parcel's weight in kg, null when the answer gives none. Pure.
+ *
+ * @param mixed $parcel a parcel of a shipment answer
+ * @return float|null
+ */
+function pg_label_sendcloud_parcel_kg($parcel)
+{
+    $weight = (is_array($parcel) && isset($parcel['weight'])) ? $parcel['weight'] : null;
+    $value = is_array($weight) ? pg_label_sendcloud_text($weight, 'value') : (is_scalar($weight) ? trim((string) $weight) : '');
+    $units = array('kg' => 1, 'g' => 0.001, 'lbs' => 0.45359237, 'oz' => 0.028349523125);
+    $unit = is_array($weight) ? strtolower(pg_label_sendcloud_text($weight, 'unit')) : 'kg';
+    $unit = ($unit === '') ? 'kg' : $unit;
+
+    if (!is_numeric($value) || ((float) $value <= 0) || !isset($units[$unit])) {
+        return null;
+    }
+
+    return (float) $value * $units[$unit];
+}
+
+/**
+ * The POST /pickups body: the carrier and its contract, the sender address
+ * as the pickup address, one time slot in UTC and the parcels as one item
+ * (the shape of the reference's examples). Pure.
+ *
+ * @param string   $carrier  the Sendcloud carrier code
+ * @param int|null $contract the contract id, null when the shipments name none
+ * @param array    $sender   a sender address of the account
+ * @param int      $count    parcels
+ * @param float    $kg       their total weight
+ * @param int      $start    unix time
+ * @param int      $end      unix time
+ * @return array
+ */
+function pg_label_sendcloud_pickup_body($carrier, $contract, $sender, $count, $kg, $start, $end)
+{
+    $text = 'pg_label_sendcloud_text';
+    $state = strtoupper($text($sender, 'state_province_code'));
+    $body = array('carrier_code' => (string) $carrier);
+
+    if ($contract !== null) {
+        $body['contract_id'] = (int) $contract;
+    }
+
+    $body['address'] = array_filter(array(
+        'name'                => $text($sender, 'name'),
+        'company_name'        => $text($sender, 'company_name'),
+        'address_line_1'      => $text($sender, 'address_line_1'),
+        'house_number'        => $text($sender, 'house_number'),
+        'address_line_2'      => $text($sender, 'address_line_2'),
+        'postal_code'         => $text($sender, 'postal_code'),
+        'city'                => $text($sender, 'city'),
+        'country_code'        => strtoupper($text($sender, 'country_code')),
+        // BRT, GLS Italy and Poste Italiane need an ISO 3166-2 code.
+        'state_province_code' => (preg_match('/^[A-Z]{2}-[A-Z0-9]{1,3}$/', $state) === 1) ? $state : '',
+        'phone_number'        => $text($sender, 'phone_number'),
+        'email'               => $text($sender, 'email'),
+    ), 'strlen');
+    $body['time_slots'] = array(array(
+        'start_at' => gmdate('Y-m-d\TH:i:s\Z', (int) $start),
+        'end_at'   => gmdate('Y-m-d\TH:i:s\Z', (int) $end),
+    ));
+    $body['items'] = array(array(
+        'quantity'       => (int) $count,
+        'container_type' => 'parcel',
+        'total_weight'   => array('value' => number_format(max(0.001, (float) $kg), 3, '.', ''), 'unit' => 'kg'),
+    ));
+
+    return $body;
+}
+
+/**
+ * A pickup answer read: ANNOUNCING (sent on to the carrier) and CREATED are
+ * booked, the reference is Sendcloud's pickup id; FAILED and CANCELLED are
+ * the carrier's refusal. Pure.
+ *
+ * @param array $data the answer
+ * @param array $raw
+ * @return array
+ */
+function pg_label_sendcloud_pickup_answer($data, $raw)
+{
+    $pickup = (isset($data['data']) && is_array($data['data'])) ? $data['data'] : array();
+    $id = pg_label_sendcloud_text($pickup, 'id');
+    $status = strtoupper(pg_label_sendcloud_text($pickup, 'status'));
+
+    if (in_array($status, array('FAILED', 'CANCELLED'), true)) {
+        $words = pg_label_sendcloud_error_texts($data);
+
+        return array(
+            'success' => false,
+            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'log'     => array('Sendcloud pickup ' . $id . ' is ' . $status . '.'),
+            'raw'     => $raw,
+        );
+    }
+
+    if (($id === '') || (strlen($id) > 64) || !in_array($status, array('ANNOUNCING', 'CREATED'), true)) {
+        return array('success' => false, 'unclear' => true, 'error' => lang('The carrier label service gave an answer that cannot be read. Check the shipment on the service\'s own screen before trying again.'), 'raw' => $raw);
+    }
+
+    return array(
+        'success'   => true,
+        'reference' => $id,
+        'log'       => array('Sendcloud pickup ' . $id . ' is ' . $status . ' at ' . pg_label_sendcloud_text($pickup, 'carrier_code') . '.'),
+        'raw'       => $raw,
+    );
+}
+
+/**
+ * Asks the carrier to collect labels: every shipment must be a live label
+ * of one carrier and contract that has a pickup at Sendcloud; the weight is
+ * the sum of the parcels'. The sender address of the account is where the
+ * courier comes.
+ *
+ * @param array $request references (shipment ids), start, end (unix time)
+ * @param array $account
+ * @return array
+ */
+function pg_label_sendcloud_pickup($request, $account)
+{
+    $ids = array();
+
+    foreach ((isset($request['references']) && is_array($request['references'])) ? $request['references'] : array() as $reference) {
+        // A return is collected from the customer, never by a pickup.
+        if (pg_label_sendcloud_return_ids($reference) !== null) {
+            return array('success' => false, 'error' => lang('A return label cannot be collected by a pickup request.'));
+        }
+
+        $id = pg_label_sendcloud_id($reference);
+
+        if ($id !== '') {
+            $ids[$id] = $id;
+        }
+    }
+
+    $start = isset($request['start']) ? (int) $request['start'] : 0;
+    $end = isset($request['end']) ? (int) $request['end'] : 0;
+
+    if (!$ids || ($start <= 0) || ($end <= $start)) {
+        return array('success' => false, 'error' => lang('Choose the labels, the date and the time window of the pickup.'));
+    }
+
+    $groups = array();
+    $count = 0;
+    $kg = 0.0;
+
+    foreach ($ids as $id) {
+        $read = pg_label_sendcloud_shipment($id, $account);
+
+        if (!$read['ok']) {
+            return pg_label_sendcloud_failure($read, false);
+        }
+
+        $shipment = (isset($read['data']['data']) && is_array($read['data']['data'])) ? $read['data']['data'] : array();
+        $parcels = (isset($shipment['parcels']) && is_array($shipment['parcels'])) ? $shipment['parcels'] : array();
+        $option = isset($shipment['ship_with']['properties']) ? $shipment['ship_with']['properties'] : array();
+        $carrier = isset($shipment['carrier']) ? strtolower(pg_label_sendcloud_text($shipment['carrier'], 'code')) : '';
+        $carrier = ($carrier !== '') ? $carrier : strtolower(strtok(pg_label_sendcloud_text($option, 'shipping_option_code'), ':'));
+        $contract = pg_label_sendcloud_text($option, 'contract_id');
+
+        foreach ($parcels as $parcel) {
+            $status = (is_array($parcel) && isset($parcel['status'])) ? strtoupper(pg_label_sendcloud_text($parcel['status'], 'code')) : '';
+
+            if (in_array($status, array('CANCELLED', 'ANNOUNCEMENT_FAILED'), true)) {
+                $parcels = array();
+                break;
+            }
+        }
+
+        if (!$parcels) {
+            return array('success' => false, 'error' => lang('A label of this pickup is not a valid label at Sendcloud (cancelled or never made).'), 'raw' => $read['raw']);
+        }
+
+        $carriers = pg_label_sendcloud_pickup_carriers();
+
+        if (!isset($carriers[$carrier])) {
+            return array('success' => false, 'error' => lang('Sendcloud offers no pickup request for this carrier: hand the parcels in at the carrier.') . (($carrier !== '') ? ' (' . $carrier . ')' : ''), 'raw' => $read['raw']);
+        }
+
+        if (!$carriers[$carrier]) {
+            return array('success' => false, 'error' => lang('Sendcloud\'s pickup for this carrier needs details the store does not send: book it in the Sendcloud panel.') . ' (' . $carrier . ')', 'raw' => $read['raw']);
+        }
+
+        foreach ($parcels as $parcel) {
+            $weight = pg_label_sendcloud_parcel_kg($parcel);
+
+            if ($weight === null) {
+                return array('success' => false, 'error' => lang('Sendcloud does not give the weight of a parcel of this pickup.'), 'raw' => $read['raw']);
+            }
+
+            $count++;
+            $kg += $weight;
+        }
+
+        $groups[$carrier . ' ' . $contract] = array($carrier, ctype_digit($contract) ? (int) $contract : null);
+    }
+
+    // One pickup is one carrier and one contract.
+    if (count($groups) !== 1) {
+        return array('success' => false, 'error' => lang('These labels are with more than one carrier or contract at Sendcloud: request a pickup for each carrier separately.'));
+    }
+
+    $sender = pg_label_sendcloud_sender($account);
+
+    if (!$sender['read']['ok']) {
+        return pg_label_sendcloud_failure($sender['read'], false);
+    }
+
+    if ($sender['address'] === null) {
+        return array('success' => false, 'error' => lang('Sendcloud has no sender address of this id. Add one in the Sendcloud panel.'), 'raw' => $sender['read']['raw']);
+    }
+
+    $group = reset($groups);
+
+    // A booked pickup may cost money: no clear answer is unclear.
+    $read = pg_label_sendcloud_api('POST', '/pickups', $account, pg_label_sendcloud_pickup_body($group[0], $group[1], $sender['address'], $count, $kg, $start, $end));
+
+    if (!$read['ok']) {
+        return pg_label_sendcloud_failure($read, true);
+    }
+
+    return pg_label_sendcloud_pickup_answer($read['data'], $read['raw']);
 }

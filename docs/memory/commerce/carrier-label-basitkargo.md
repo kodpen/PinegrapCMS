@@ -10,6 +10,7 @@ description: Basit Kargo label driver and SVG labels (2026.11.0, #3163): create,
 ## What do the operations call?
 - create: `POST /v2/order/barcode` (type OUTGOING, INCOMING for a return; `handlerCode` = shipment `service`, else the account's) with an `Idempotency-Key` (UUID), then `GET /label/svg/{id}`. Reference = order `id`; tracking number = `shipmentInfo.handlerShipmentCode`, else Basit Kargo's `barcode`. A label that fails does not fail create (label() asks again).
 - label: SVG only. cancel: `GET /v2/order/{id}`, `DELETE /order/barcode/{barcode}` (refused once collected), then `DELETE /order/{id}` (a failure there is only logged). track: `GET /v2/order/{id}`; NEW/READY_TO_SHIP created, SHIPPED/DELAYED in_transit, OUT_FOR_DELIVERY, DELIVERED, RETURNING/RETURNED returned, NEEDS_SUPPORT/LOST exception; `status_at` = the last trace's time. test: `GET /firm/status` (account = type and status labels).
+- No pickup endpoint (`shipment-label-pickup-drivers.md`).
 
 ## How are the limit and lost answers handled?
 - 600 requests a minute per token: `pg_label_basitkargo_window_wait()` counts this request's calls per token (in-process only; a bulk run is at most 20 creates, about 40 calls). A 429 with `Retry-After` ≤ 10 s is waited for and asked once more; a longer one or a second 429 is a plain refusal naming the seconds.

@@ -101,11 +101,9 @@ function test_carrier_label_sendcloud_is_a_builtin_driver()
 	pg_assert_true(pg_label_driver('sendcloud') !== null);
 	pg_assert_same(array('carriers' => array('ups', 'fedex', 'dhl', 'deutschepost', 'dpd', 'royalmail'), 'formats' => array('pdf', 'zpl')), pg_label_info('sendcloud'));
 
-	foreach (array('test', 'create', 'label', 'cancel', 'track') as $operation) {
+	foreach (array('test', 'create', 'label', 'cancel', 'track', 'pickup') as $operation) {
 		pg_assert_true(pg_label_can('sendcloud', $operation), $operation);
 	}
-
-	pg_assert_false(pg_label_can('sendcloud', 'pickup'));
 
 	$fields = array();
 
@@ -704,4 +702,139 @@ function test_carrier_label_sendcloud_eu_route_with_the_block_filled_is_unchange
 	pg_assert_false(isset($sent[2]['body']['customs_information']));
 	pg_assert_false(isset($sent[2]['body']['parcels'][0]['parcel_items']));
 	pg_assert_same(array('items' => null, 'information' => null, 'error' => ''), pg_label_sendcloud_customs($shipment, carrier_label_sendcloud_test_customs_account(), 'NL'));
+}
+
+function carrier_label_sendcloud_test_pickup_request($references = array('f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b'))
+{
+	return array('references' => $references, 'start' => gmmktime(8, 0, 0, 11, 2, 2026), 'end' => gmmktime(16, 0, 0, 11, 2, 2026));
+}
+
+// A second shipment of the same carrier and contract, 1.5 kg given in grams.
+function carrier_label_sendcloud_test_pickup_second($changes = array())
+{
+	return array(200, str_replace(
+		array_merge(array('f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', '"1.250"', '"unit": "kg"'), array_keys($changes)),
+		array_merge(array('a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c', '"1500"', '"unit": "g"'), array_values($changes)),
+		carrier_label_sendcloud_test_fixture('pickup_shipment.json')
+	));
+}
+
+// A pickup reads each shipment's carrier, contract and weight, then books
+// one pickup at that carrier from the sender address, the window in UTC.
+function test_carrier_label_sendcloud_pickup_books_at_the_shipments_carrier()
+{
+	carrier_label_sendcloud_test_stub(array(
+		'GET /shipments/f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b' => array('pickup_shipment.json'),
+		'GET /shipments/a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c' => array(carrier_label_sendcloud_test_pickup_second()),
+		'GET /addresses/sender-addresses?page_size=100'        => array('sender_addresses.json'),
+		'POST /pickups'                                        => array(array(201, carrier_label_sendcloud_test_fixture('pickup.json'))),
+	));
+	$request = carrier_label_sendcloud_test_pickup_request(array('f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', 'a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c'));
+	$answer = pg_label_call('sendcloud', 'pickup', array($request, carrier_label_sendcloud_test_account()));
+	$sent = $GLOBALS['carrier_label_sendcloud_test_sent'];
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_true($answer['success'], isset($answer['error']) ? $answer['error'] : '');
+	pg_assert_same('294247', $answer['reference']);
+	pg_assert_contains('ANNOUNCING', implode(' ', $answer['log']));
+	pg_assert_same('POST /pickups', $sent[3]['request']);
+	pg_assert_same(array(
+		'carrier_code' => 'dpd',
+		'contract_id'  => 517,
+		'address'      => array(
+			'name'           => 'Marie Doe',
+			'company_name'   => 'Example Shop',
+			'address_line_1' => 'Stadhuisplein',
+			'house_number'   => '10',
+			'postal_code'    => '5611 EM',
+			'city'           => 'Eindhoven',
+			'country_code'   => 'NL',
+			'phone_number'   => '+31626262626',
+			'email'          => 'shop@example.com',
+		),
+		'time_slots'   => array(array('start_at' => '2026-11-02T08:00:00Z', 'end_at' => '2026-11-02T16:00:00Z')),
+		'items'        => array(array('quantity' => 2, 'container_type' => 'parcel', 'total_weight' => array('value' => '2.750', 'unit' => 'kg'))),
+	), $sent[3]['body']);
+	pg_assert_false(strpos(json_encode($answer), 'sk_9d3e6a1c5f7b4e20') !== false, 'the key is masked');
+}
+
+// A carrier without a Sendcloud pickup, one whose pickup needs fields the
+// store does not send, two carriers, a cancelled shipment, a parcel without
+// a weight, a return and a window that is no window book nothing.
+function test_carrier_label_sendcloud_pickup_refusals_before_the_booking()
+{
+	$first = 'GET /shipments/f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b';
+	$cases = array(
+		'postnl'    => array($first => array(carrier_label_sendcloud_test_pickup_second(array('a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c' => 'f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', '"code": "dpd"' => '"code": "postnl"', 'dpd:home' => 'postnl:standard')))),
+		'ups'       => array($first => array(carrier_label_sendcloud_test_pickup_second(array('a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c' => 'f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', '"code": "dpd"' => '"code": "ups"', 'dpd:home' => 'ups:standard')))),
+		'cancelled' => array($first => array(carrier_label_sendcloud_test_pickup_second(array('a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c' => 'f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', 'READY_TO_SEND' => 'CANCELLED')))),
+		'no weight' => array($first => array('shipment_get.json')),
+	);
+
+	foreach ($cases as $name => $answers) {
+		carrier_label_sendcloud_test_stub($answers + array('GET /addresses/sender-addresses?page_size=100' => array('sender_addresses.json')));
+		$answer = pg_label_call('sendcloud', 'pickup', array(carrier_label_sendcloud_test_pickup_request(), carrier_label_sendcloud_test_account()));
+		$sent = carrier_label_sendcloud_test_sent();
+		carrier_label_sendcloud_test_done();
+
+		pg_assert_false($answer['success'], $name);
+		pg_assert_false($answer['unclear'], $name);
+		pg_assert_false(in_array('POST /pickups', $sent, true), $name . ': nothing booked');
+	}
+
+	carrier_label_sendcloud_test_stub(array(
+		$first                                                 => array('pickup_shipment.json'),
+		'GET /shipments/a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c' => array(carrier_label_sendcloud_test_pickup_second(array('"code": "dpd"' => '"code": "dhl_de"', 'dpd:home' => 'dhl_de:standard'))),
+	));
+	$mixed = pg_label_call('sendcloud', 'pickup', array(carrier_label_sendcloud_test_pickup_request(array('f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b', 'a9b8c7d6-5b6e-4f70-8a9b-0c1d2e3f4a5c')), carrier_label_sendcloud_test_account()));
+	$sent = carrier_label_sendcloud_test_sent();
+	carrier_label_sendcloud_test_done();
+
+	pg_assert_false($mixed['success']);
+	pg_assert_contains('more than one carrier', $mixed['error']);
+	pg_assert_false(in_array('POST /pickups', $sent, true), 'two carriers: nothing booked');
+
+	$window = carrier_label_sendcloud_test_pickup_request();
+	$window['end'] = $window['start'];
+
+	foreach (array('window' => $window, 'return' => carrier_label_sendcloud_test_pickup_request(array('r-4711-383707310'))) as $name => $request) {
+		carrier_label_sendcloud_test_stub(array());
+		$answer = pg_label_call('sendcloud', 'pickup', array($request, carrier_label_sendcloud_test_account()));
+		$sent = carrier_label_sendcloud_test_sent();
+		carrier_label_sendcloud_test_done();
+
+		pg_assert_false($answer['success'], $name);
+		pg_assert_same(array(), $sent, $name . ': nothing asked');
+	}
+}
+
+// A refusal names Sendcloud's words; a FAILED pickup is the carrier's
+// refusal; no answer, a 5xx or a 2xx without a pickup id is unclear, since
+// a pickup may be charged.
+function test_carrier_label_sendcloud_pickup_failures_and_unclear()
+{
+	$reads = array(
+		'GET /shipments/f3a1c2d4-5b6e-4f70-8a9b-0c1d2e3f4a5b' => array('pickup_shipment.json'),
+		'GET /addresses/sender-addresses?page_size=100'        => array('sender_addresses.json'),
+	);
+	$cases = array(
+		'refused'    => array(array(400, '{"errors": [{"status": "400", "code": "invalid", "detail": "The pickup date must be a working day.", "source": {"pointer": "/time_slots"}}]}'), false, 'working day'),
+		'failed'     => array(array(201, str_replace('ANNOUNCING', 'FAILED', carrier_label_sendcloud_test_fixture('pickup.json'))), false, ''),
+		'timeout'    => array(null, true, ''),
+		'5xx'        => array(array(502, 'Bad Gateway'), true, ''),
+		'unreadable' => array(array(201, 'OK'), true, ''),
+	);
+
+	foreach ($cases as $name => $case) {
+		carrier_label_sendcloud_test_stub($reads + array('POST /pickups' => ($case[0] === null) ? array() : array($case[0])));
+		$answer = pg_label_call('sendcloud', 'pickup', array(carrier_label_sendcloud_test_pickup_request(), carrier_label_sendcloud_test_account()));
+		carrier_label_sendcloud_test_done();
+
+		pg_assert_false($answer['success'], $name);
+		pg_assert_same($case[1], $answer['unclear'], $name);
+
+		if ($case[2] !== '') {
+			pg_assert_contains($case[2], $answer['error'], $name);
+		}
+	}
 }
