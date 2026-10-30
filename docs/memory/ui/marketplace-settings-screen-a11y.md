@@ -1,6 +1,6 @@
 ---
 name: marketplace-settings-screen-a11y
-description: Marketplaces account screen: question and failure rows wrap on a phone, emphasis inks for status text, named dialogs, the current account marked, formatted notice counts
+description: Marketplaces account screen: phone-width rows, emphasis inks, named dialogs, current account marked, formatted counts, a refused Connect or Save drawn again
 ---
 
 ## Why do question rows not use .mp-row?
@@ -19,4 +19,9 @@ description: Marketplaces account screen: question and failure rows wrap on a ph
 - The account card on show (`.mp-tab.sel`) carries `aria-current="page"`.
 - The stale-match and push-all notices format their count with `pg_format_number($n, 0)` like the rest of the screen.
 
-Test: `tests/marketplace_settings_names_test.php`.
+## What does a refused Connect or Save show?
+- `#new_name`, the Connect dialog's text credentials and `#edit_name` are `required`; the hidden marketplace blocks are disabled, so they are not checked. The drawer's credential boxes stay optional: blank keeps what is stored.
+- A refusal the server still makes (blank name, unknown marketplace) does not redirect, so `$mp_refused` (`create`/`update`) draws the form from `$_POST` in the same request: the posted marketplace selected, name, non-secret text credentials and Send prices as posted (`mp_settings_credential_field()` draws a create value, never into a secret box, which keeps `autocomplete="new-password"`). The script reopens `#mp_new` or `#mp_drawer` with `pgUI.ready()` + `pgUI[kind].show()`.
+- A refused Save takes `$selected_id` from the posted `account_id`: the post goes to the bare address, and the screen used to jump to the first account with the stored switches.
+
+Tests: `tests/marketplace_settings_names_test.php`, `tests/marketplace_settings_refused_connect_test.php`.
