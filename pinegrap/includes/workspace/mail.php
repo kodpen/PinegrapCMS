@@ -829,6 +829,12 @@ function ws_mail_ingest($raw, $box)
         ws_mail_auto_reply($box, $item_id);
     }
 
+    // Pinegrap AI's suggestion on a new conversation, where the box switched
+    // it on (mail_triage.php): made after the response, never here.
+    if (function_exists('ws_mail_triage_due') && ws_mail_triage_due($box, $opened, ws_mail_triage_ai_ready())) {
+        ws_mail_triage_queue($conversation_id);
+    }
+
     return array_merge($result, array(
         'status'          => 'stored',
         'item_id'         => $item_id,
