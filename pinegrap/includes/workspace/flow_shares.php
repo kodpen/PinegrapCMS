@@ -508,6 +508,11 @@ function ws_flow_share_set_check($viewer, $flow, $data)
         return ws_flow_refusal(lang('Only the owner of a flow can share it.'), 403);
     }
 
+    // A role-3 member's own flow stays theirs alone (flow_member.php).
+    if (ws_flow_builder_kind($viewer) === 'member') {
+        return ws_flow_refusal(lang('Your own flows are not shared: only you run them.'), 403);
+    }
+
     $type = $data['target_type'] ?? '';
     $target_id = $data['target_id'] ?? 0;
     $level = $data['level'] ?? 'view';
