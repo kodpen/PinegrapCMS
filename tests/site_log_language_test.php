@@ -120,6 +120,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'preview_style.php',
 		'recurring_payment_job.php',
 		'remove_item_from_cart.php',
+		'registration_entrance.php',
 		'reset_password.php',
 		'retrieve_order.php',
 		'set_password.php',
@@ -147,17 +148,24 @@ function test_site_log_writers_pass_no_bare_english()
 }
 
 // A writer without a user stores the literal UNKNOWN pg_log_actor() knows,
-// not its translation.
+// not its translation. view_waf_log.php only reads it: its filter still
+// skips the translated UNKNOWN older rows hold.
 function test_site_log_writers_store_untranslated_unknown()
 {
-	$files = array(
-		'includes/api/resources/account.php',
-		'includes/fn/captcha.php',
-		'includes/fn/passkeys.php',
-		'index.php',
-	);
+	$found = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
 
 	foreach ($files as $file) {
-		pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('UNKNOWN')"), $file);
+		$path = str_replace('\\', '/', substr($file->getPathname(), strlen(PG_FUNCTIONS_DIR) + 1));
+
+		if ((substr($path, -4) !== '.php') || (strpos($path, 'assets/lib/') === 0) || ($path === 'view_waf_log.php')) {
+			continue;
+		}
+
+		if (strpos((string) file_get_contents($file->getPathname()), "lang('UNKNOWN')") !== false) {
+			$found[] = $path;
+		}
 	}
+
+	pg_assert_same(array(), $found);
 }

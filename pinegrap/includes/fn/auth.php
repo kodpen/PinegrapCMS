@@ -3704,7 +3704,7 @@ function pg_form_spam_ip_listed($ip)
         if (is_array($response) && !empty($response['error']) && is_string($response['error'])) {
             $error = ' (' . $response['error'] . ')';
         }
-        log_activity(lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), lang('UNKNOWN'));
+        log_activity(pg_log_lang(array('string' => 'an error occurred when communicating with the spam protection service {var:1}, so visitor\'s request was accepted', 'vars' => array($error))), 'UNKNOWN');
         return false;
     }
 
@@ -3712,7 +3712,7 @@ function pg_form_spam_ip_listed($ip)
         return false;
     }
 
-    log_activity(lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round((float) ($response['ip']['confidence'] ?? 0)), pg_format_number((int) ($response['ip']['frequency'] ?? 0), 0)))), lang('UNKNOWN'));
+    log_activity(pg_log_lang(array('string' => 'visitor\'s request was denied because the spam protection service reported that visitor\'s IP address was used by spammers. (confidence: {var:1}%, frequency: {var:2})', 'vars' => array(round((float) ($response['ip']['confidence'] ?? 0)), pg_format_number((int) ($response['ip']['frequency'] ?? 0), 0)))), 'UNKNOWN');
 
     return true;
 }
@@ -4486,10 +4486,10 @@ function pg_login_record_failure($identifier)
     $closed_at = $account_closed ? $limits['attempts'] : $limits['attempts_address'];
 
     log_activity(
-        lang(array(
+        pg_log_lang(array(
             'string' => 'sign-in locked for {var:1} after {var:2} failed attempts',
             'vars'   => array($subject_label, $closed_at))),
-        lang('UNKNOWN'));
+        'UNKNOWN');
 
     // Also recorded in the firewall log. That is the screen an operator
     // watches while a site is being probed, and a sign-in lockout belongs in
