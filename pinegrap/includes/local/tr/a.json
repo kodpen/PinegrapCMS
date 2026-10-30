@@ -189,6 +189,7 @@
     "A contact form that works": "Çalışan bir iletişim formu",
     "A contact group with the name {var:1} already exists (id {var:2}).": "{var:1} adında bir iletişim grubu zaten var (id {var:2}).",
     "A contact is changed": "Kişi değiştirildi",
+    "A contact with the e-mail address \"{var:1}\" already exists, so the row was not imported.": "\"{var:1}\" e-posta adresine sahip bir kişi zaten var, bu yüzden satır içe aktarılmadı.",
     "A contact, a user or a current account. The records tied to it are shown with it: a user and a current account are tied to a customer through their contact.": "Bir kişi, bir kullanıcı ya da bir cari. Ona bağlı kayıtlar da yanında görünür: kullanıcı ve cari, müşteriye kişi kaydı üzerinden bağlanır.",
     "A control named <code>opt_in_sms</code> asks the SMS marketing question; it is drawn only while SMS is on and the form has a visible control bound to the mobile number.": "<code>opt_in_sms</code> adlı kontrol SMS ile pazarlama sorusunu sorar; yalnızca SMS açıkken ve formda cep telefonuna bağlı görünür bir kontrol varken çizilir.",
     "A control without a name is not submitted. Give it one in the Input panel.": "Adsız kontrol gönderilmez. Input panelinden bir ad verin.",
