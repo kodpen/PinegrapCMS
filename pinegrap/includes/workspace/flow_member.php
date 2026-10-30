@@ -71,9 +71,11 @@ function ws_flow_member($viewer)
  * The kinds of box a role-3 member's flow may hold: started by hand, at a
  * time or on an event they see; tasks, approvals, waits, conditions, value
  * boxes; posts, notices, a summary of counts and the task e-mail over their
- * own reach; rows added or changed in workflow tables they edit. No call
- * to another system (webhook, web check, MCP), no e-mail to addresses, no
- * direct record change, no other flow or scheduled action started. Pure.
+ * own reach; rows added or changed in workflow tables they edit; a record
+ * change, only as a proposal its owner approves before it is written
+ * (ws_flow_change_asks()). No call to another system (webhook, web check,
+ * MCP), no e-mail to addresses, no other flow or scheduled action started.
+ * Pure.
  *
  * @return string[]
  */
@@ -83,14 +85,31 @@ function ws_flow_member_kinds()
         'manual', 'schedule', 'event', 'end',
         'task', 'approval', 'delay', 'condition', 'constants', 'value',
         'post', 'notify', 'task_open', 'report', 'task_digest',
-        'row_add', 'row_set',
+        'row_add', 'row_set', 'change',
     );
 }
 
 /**
+ * Does a change box of this owner's flow propose its change instead of
+ * writing it? A role-3 member's does: the box asks its owner to approve the
+ * change in a channel and writes it only once approved (steps.php,
+ * ws_step_change_ask()). Staff's change boxes write as publishing decided.
+ * Asked with the owner as they stand now, so a flow built on the staff takes
+ * this path once its owner is role 3. Pure.
+ *
+ * @param string $builder ws_flow_builder_kind() of the owner
+ * @return bool
+ */
+function ws_flow_change_asks($builder)
+{
+    return $builder === 'member';
+}
+
+/**
  * Why a role-3 member's flow may not hold this box, '' when it may: a kind
- * outside ws_flow_member_kinds(), or a summary of counts e-mailed to
- * addresses (it goes to a channel). Pure.
+ * outside ws_flow_member_kinds(), a summary of counts e-mailed to
+ * addresses (it goes to a channel), or a change box with no channel to ask
+ * its approval in. Pure.
  *
  * @param array $node a box of a normalized graph
  * @return string
@@ -105,6 +124,10 @@ function ws_flow_member_node_refusal($node)
 
     if (($kind === 'report') && (trim((string) ($node['config']['to'] ?? '')) !== '')) {
         return lang('In your own flows a summary of counts goes to a channel, not to e-mail addresses.');
+    }
+
+    if (($kind === 'change') && ((int) ($node['config']['channel_id'] ?? 0) <= 0)) {
+        return lang('In your own flows a change is proposed for your approval first: choose the channel to ask in.');
     }
 
     return '';
@@ -169,7 +192,9 @@ function ws_flow_max_per_owner($builder)
  * it runs: the owner is a role-3 member now, and their own flow may not hold
  * this box (a flow built while they were on the staff, say). An owner who
  * has left the team is stopped by each box (ws_flow_builder()); the reach
- * within an allowed box is asked by the box itself. Pure.
+ * within an allowed box is asked by the box itself. A change box always
+ * runs on to propose its change (ws_flow_change_asks()): one without a
+ * channel to ask in fails there, never writing. Pure.
  *
  * @param string $builder ws_flow_builder_kind() of the owner now
  * @param array  $node
@@ -177,7 +202,10 @@ function ws_flow_max_per_owner($builder)
  */
 function ws_flow_member_box_refusal($builder, $node)
 {
-    if (($builder === 'member') && (ws_flow_member_node_refusal($node) !== '')) {
+    $kind = (string) ($node['kind'] ?? '');
+    $refused = ($kind === 'change') ? !in_array($kind, ws_flow_member_kinds(), true) : (ws_flow_member_node_refusal($node) !== '');
+
+    if (($builder === 'member') && $refused) {
         return lang('The owner of the flow may not use this kind of box in their own flows, so it did not run.');
     }
 

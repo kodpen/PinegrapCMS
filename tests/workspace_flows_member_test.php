@@ -61,11 +61,13 @@ function test_workspace_flows_member_allowed_kinds_pass()
 		'post', 'notify', 'task_open', 'report', 'task_digest', 'row_add', 'row_set') as $kind) {
 		pg_assert_same('', ws_flow_member_node_refusal(ws_flows_member_test_node('b', $kind)), $kind);
 	}
+
+	pg_assert_true(in_array('change', ws_flow_member_kinds(), true));
 }
 
 function test_workspace_flows_member_refused_kinds_stop()
 {
-	foreach (array('webhook', 'web_check', 'mcp', 'email', 'change', 'lead', 'checkin', 'start_action',
+	foreach (array('webhook', 'web_check', 'mcp', 'email', 'lead', 'checkin', 'start_action',
 		'start_flow', 'for_each', 'for_each_end', 'join', 'row') as $kind) {
 		pg_assert_same('This kind of box is not open to your own flows.', ws_flow_member_node_refusal(ws_flows_member_test_node('b', $kind)), $kind);
 	}
@@ -75,6 +77,30 @@ function test_workspace_flows_member_report_goes_to_a_channel_only()
 {
 	pg_assert_same('', ws_flow_member_node_refusal(ws_flows_member_test_node('b', 'report', array('channel_id' => 4, 'to' => ''))));
 	pg_assert_contains('not to e-mail addresses', ws_flow_member_node_refusal(ws_flows_member_test_node('b', 'report', array('channel_id' => 4, 'to' => 'someone@example.com'))));
+}
+
+function test_workspace_flows_member_change_box_is_saved_with_a_channel_to_ask_in()
+{
+	$change = array('record' => 'contact', 'action' => 'update', 'id' => 4, 'fields' => array('first_name' => 'Ada'));
+
+	pg_assert_same('', ws_flow_member_node_refusal(ws_flows_member_test_node('b', 'change', $change + array('channel_id' => 3))));
+	pg_assert_contains('choose the channel to ask in', ws_flow_member_node_refusal(ws_flows_member_test_node('b', 'change', $change + array('channel_id' => 0))));
+	pg_assert_contains('choose the channel to ask in', ws_flow_member_node_refusal(ws_flows_member_test_node('b', 'change', $change)));
+
+	$saved = ws_flow_member_flow_refusal('member', 0, ws_flows_member_test_graph('change', $change + array('channel_id' => 3)));
+	pg_assert_same('', $saved['refusal']);
+}
+
+function test_workspace_flows_member_change_box_proposes_for_a_member_and_writes_for_staff()
+{
+	pg_assert_true(ws_flow_change_asks('member'));
+	pg_assert_true(!ws_flow_change_asks('staff'));
+	pg_assert_true(!ws_flow_change_asks(''));
+
+	// A staff-built change box with no channel runs on once its owner is
+	// role 3: it proposes, and fails there for the missing channel.
+	pg_assert_same('', ws_flow_member_box_refusal('member', ws_flows_member_test_node('b', 'change', array('record' => 'contact', 'id' => 4))));
+	pg_assert_same('', ws_flow_member_box_refusal('staff', ws_flows_member_test_node('b', 'change')));
 }
 
 function test_workspace_flows_member_graph_refusal_names_the_box()
