@@ -2795,9 +2795,10 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                                     <label class="" for="layout_type_system">'. lang('System') . '</label>
                                 </div>
                                 <div class="form-field">
-                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
-                                    <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
-                                </div>
+                                    <input value="custom" class="radio" type="radio" id="layout_type_custom" name="layout_type"' . ($layout_type_custom_label_title !== '' ? ' aria-describedby="layout_type_custom_hint"' : '') . $layout_type_custom_option_disabled . $layout_type_custom_checked . '>
+                                    <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                                </div>' . ($layout_type_custom_label_title !== '' ? '
+                                <div class="form-text" id="layout_type_custom_hint">' . $layout_type_custom_label_title . '</div>' : '') . '
                             </fieldset>
                         </div>
                         <div class="col-12 md:col-6 lg:col-4 my-3" id="email_a_friend_submit_button_label_row" style="' . $email_a_friend_submit_button_label_row_style . '">

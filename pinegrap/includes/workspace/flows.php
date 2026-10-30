@@ -1164,7 +1164,8 @@ function ws_flow_access($viewer, $flow)
     $owner = ((int) $flow['owner_id'] === (int) $viewer['id']);
     $staff = ws_can_schedule($viewer);
 
-    if ($owner && $staff) {
+    // Staff, and a role-3 member, edit their own (flow_member.php).
+    if ($owner && ($staff || ws_flow_member($viewer))) {
         return 'edit';
     }
 
@@ -1653,16 +1654,18 @@ function ws_flow_save_check($viewer, $data, $flow = null)
         return ws_flow_refusal(lang('The database has to be updated first.'), 503);
     }
 
-    if (!ws_can_schedule($viewer)) {
-        return ws_flow_refusal(lang('Only staff in the team can build flows.'), 403);
+    if (!ws_flow_builder($viewer)) {
+        return ws_flow_refusal(lang('Only people in the team can build flows.'), 403);
     }
 
     $sets = array();
     $draft_rev = 0;
 
     if ($flow === null) {
-        if ((int) db_value("SELECT COUNT(*) FROM ws_flows WHERE owner_id = '" . (int) $viewer['id'] . "' AND status <> 'binned'") >= WS_FLOW_MAX_PER_OWNER) {
-            return ws_flow_refusal(lang(array('string' => 'You can keep at most {var:1} flows.', 'vars' => WS_FLOW_MAX_PER_OWNER)));
+        $max = ws_flow_max_per_owner(ws_flow_builder_kind($viewer));
+
+        if ((int) db_value("SELECT COUNT(*) FROM ws_flows WHERE owner_id = '" . (int) $viewer['id'] . "' AND status <> 'binned'") >= $max) {
+            return ws_flow_refusal(lang(array('string' => 'You can keep at most {var:1} flows.', 'vars' => $max)));
         }
     } else {
         // Its owner, or a colleague on the staff it is shared with at edit.
@@ -1722,6 +1725,15 @@ function ws_flow_save_check($viewer, $data, $flow = null)
         $sets['draft'] = $json;
     } else {
         $graph = ws_flow_graph_of($flow);
+    }
+
+    // A role-3 member's own flow: no home channel and only the kinds of box
+    // open to it (flow_member.php). A colleague shared at edit saves only
+    // into a staff member's flow, so the saver is the owner here.
+    $kept = ws_flow_member_flow_refusal(ws_flow_builder_kind($viewer), $sets['channel_id'] ?? ($flow['channel_id'] ?? 0), $graph);
+
+    if ($kept['refusal'] !== '') {
+        return ws_flow_refusal($kept['refusal'], 422, $kept['field']);
     }
 
     return array(
@@ -1836,6 +1848,14 @@ function ws_flow_publish_check($viewer, $flow, $data = array())
 
     if (!empty($problems)) {
         return ws_flow_refusal(lang(array('string' => 'Fix the flow before it is published: {var:1}', 'vars' => $problems[0]['text']))) + array('problems' => $problems);
+    }
+
+    // A role-3 member publishes only what their own flow may hold, a home
+    // channel or a box kept from a time they were on the staff included.
+    $kept = ws_flow_member_flow_refusal(ws_flow_builder_kind($viewer), $flow['channel_id'] ?? 0, $graph);
+
+    if ($kept['refusal'] !== '') {
+        return ws_flow_refusal($kept['refusal'], 422, $kept['field']);
     }
 
     // A step is checked as the scheduled action's step is, with the owner's
