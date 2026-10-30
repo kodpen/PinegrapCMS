@@ -820,6 +820,7 @@
     "No order was found with this order number and e-mail address.": "Bu sipariş numarası ve e-posta adresiyle bir sipariş bulunamadı.",
     "No orders in the last day.": "Son bir günde sipariş yok.",
     "No orders in this range.": "Bu aralıkta sipariş yok.",
+    "No orders today, though {var:1} basket was filled and left this week.": "Bugün sipariş yok ama bu hafta {var:1} sepet doldurulup bırakılmış.",
     "No orders today, though {var:1} baskets were filled and left this week.": "Bugün sipariş yok ama bu hafta {var:1} sepet doldurulup bırakılmış.",
     "No orders yet": "Henüz sipariş yok",
     "No orders yet today, and there are hours left in it.": "Bugün henüz sipariş yok, günün önü de açık.",

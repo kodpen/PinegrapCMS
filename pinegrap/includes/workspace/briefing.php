@@ -195,9 +195,15 @@ function ws_channel_briefing($viewer, $channel, $membership)
     $readings = array();
 
     if ($first_visit) {
-        $readings[] = ((string) $channel['topic'] !== '')
-            ? lang(array('string' => 'Welcome to {var:1}: {var:2}. {var:3} people talk here.', 'vars' => array($name, $channel['topic'], $members)))
-            : lang(array('string' => 'Welcome to {var:1}. {var:2} people talk here; the summary tab says what the channel is for.', 'vars' => array($name, $members)));
+        if ((string) $channel['topic'] !== '') {
+            $readings[] = ($members === 1)
+                ? lang(array('string' => 'Welcome to {var:1}: {var:2}. One person talks here.', 'vars' => array($name, $channel['topic'])))
+                : lang(array('string' => 'Welcome to {var:1}: {var:2}. {var:3} people talk here.', 'vars' => array($name, $channel['topic'], $members)));
+        } else {
+            $readings[] = ($members === 1)
+                ? lang(array('string' => 'Welcome to {var:1}. One person talks here; the summary tab says what the channel is for.', 'vars' => $name))
+                : lang(array('string' => 'Welcome to {var:1}. {var:2} people talk here; the summary tab says what the channel is for.', 'vars' => array($name, $members)));
+        }
     }
 
     if (!empty($mention_ids)) {
@@ -209,33 +215,56 @@ function ws_channel_briefing($viewer, $channel, $membership)
     if ($recap_line !== '') {
         $readings[] = $recap_line;
     } elseif (!$first_visit && ($new_count > 0)) {
-        $readings[] = ($loudest !== '')
-            ? lang(array('string' => '{var:1} new messages since your last visit, most of them from {var:2}.', 'vars' => array($new_count, $loudest)))
-            : lang(array('string' => '{var:1} new messages since your last visit.', 'vars' => $new_count));
+        if ($new_count === 1) {
+            $readings[] = ($loudest !== '')
+                ? lang(array('string' => 'One new message since your last visit, from {var:1}.', 'vars' => $loudest))
+                : lang('One new message since your last visit.');
+        } else {
+            $readings[] = ($loudest !== '')
+                ? lang(array('string' => '{var:1} new messages since your last visit, most of them from {var:2}.', 'vars' => array($new_count, $loudest)))
+                : lang(array('string' => '{var:1} new messages since your last visit.', 'vars' => $new_count));
+        }
     }
 
     if (!$first_visit && ($new_count === 0) && is_array($last_message) && ((int) $last_message['created_at'] < $now - 2 * 86400)) {
         $readings[] = lang(array('string' => 'It has been quiet here since {var:1}.', 'vars' => ws_time_label($last_message['created_at'])));
     }
 
+    // A count of one takes its own sentence: the verb agrees with the count.
     if ($overdue > 0) {
-        $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here are past their due date.', 'vars' => array($overdue, count($open))));
+        if (count($open) === 1) {
+            $readings[] = lang('The one open task here is past its due date.');
+        } elseif ($overdue === 1) {
+            $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here is past its due date.', 'vars' => array($overdue, count($open))));
+        } else {
+            $readings[] = lang(array('string' => '{var:1} of the {var:2} open tasks here are past their due date.', 'vars' => array($overdue, count($open))));
+        }
     } elseif ($due_today > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks in this channel are due today.', 'vars' => $due_today));
+        $readings[] = ($due_today === 1)
+            ? lang('One task in this channel is due today.')
+            : lang(array('string' => '{var:1} tasks in this channel are due today.', 'vars' => $due_today));
     } elseif (count($open) > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks are open in this channel, none of them late.', 'vars' => count($open)));
+        $readings[] = (count($open) === 1)
+            ? lang('One task is open in this channel, and it is not late.')
+            : lang(array('string' => '{var:1} tasks are open in this channel, none of them late.', 'vars' => count($open)));
     }
 
     if ($mine > 0) {
-        $readings[] = lang(array('string' => '{var:1} of the open tasks here are yours.', 'vars' => $mine));
+        $readings[] = ($mine === 1)
+            ? lang('One of the open tasks here is yours.')
+            : lang(array('string' => '{var:1} of the open tasks here are yours.', 'vars' => $mine));
     }
 
     if ($waiting > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks here are waiting on something.', 'vars' => $waiting));
+        $readings[] = ($waiting === 1)
+            ? lang('One task here is waiting on something.')
+            : lang(array('string' => '{var:1} tasks here are waiting on something.', 'vars' => $waiting));
     }
 
     if ($done_week > 0) {
-        $readings[] = lang(array('string' => '{var:1} tasks were finished here in the last seven days.', 'vars' => $done_week));
+        $readings[] = ($done_week === 1)
+            ? lang('One task was finished here in the last seven days.')
+            : lang(array('string' => '{var:1} tasks were finished here in the last seven days.', 'vars' => $done_week));
     }
 
     if (is_array($decision) && ($decisions_week > 0)) {

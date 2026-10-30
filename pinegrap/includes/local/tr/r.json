@@ -862,6 +862,7 @@
     "Restarting": "Yeniden başlatılıyor",
     "Restock {{record_title}}": "Stok yenile: {{record_title}}",
     "Restocking the {var:1} empty products would keep those pages selling.": "Stoğu biten {var:1} ürünü tazelemek o sayfaların satmaya devam etmesini sağlar.",
+    "Restocking the {var:1} would keep that page selling.": "{var:1} tazelemek o sayfanın satmaya devam etmesini sağlar.",
     "Restocking the {var:1} would keep those pages selling.": "{var:1} tazelemek o sayfaların satmaya devam etmesini sağlar.",
     "Restore": "Geri Yükle",
     "Restore Order": "Siparişi Geri Al",

@@ -2580,6 +2580,7 @@
     "Approved when": "Ne zaman onaylanmış sayılır",
     "Approved: **{var:1}** — {var:2}": "Onaylandı: **{var:1}** — {var:2}",
     "Approved: {var:1}": "Onaylandı: {var:1}",
+    "Approving the {var:1} puts it on the page it belongs to.": "{var:1} onaylarsan ait olduğu sayfada görünmeye başlar.",
     "Approving the {var:1} puts them on the pages they belong to.": "{var:1} onaylarsan ait oldukları sayfalarda görünmeye başlar.",
     "Approving the {var:1} waiting comments puts them on the pages they belong to.": "Bekleyen {var:1} yorumu onaylarsan ait oldukları sayfalarda görünürler.",
     "Apr": "Nis",
