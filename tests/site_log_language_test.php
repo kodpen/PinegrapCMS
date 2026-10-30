@@ -189,3 +189,21 @@ function test_site_log_payment_notice_line_from_parts()
 		pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}\'s own screen.', 'vars' => array('X', 438, 'why', pg_payment_log_name('stripe')))),
 		pg_payment_notify_line('stripe', 'X', 438, 'not_completed', array('reason' => 'why')));
 }
+
+// The payment drivers' own log lines, the cancellation's and the cart
+// retrieval's are built with pg_log_lang(), never from bare English.
+function test_site_log_payment_driver_lines_translated()
+{
+	$patterns = array(
+		'includes/payments/stripe.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\')/',
+		'includes/payments/paypal.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\'|^\s*\'PayPal capture)/m',
+		'includes/payments/paytr.php'   => '/(\'log\'\s*=>\s*array\(\s*\'|_logged\([^;]*\), array\(\s*\'|\? \' \(test mode\)\')/',
+		'includes/payments/iyzico.php'  => '/\$log\[\] = lang\(/',
+		'includes/fn/payments.php'      => '/\$log\[\] = \'Auto-refund/',
+		'retrieve_order.php'            => '/\$message = \'/',
+	);
+
+	foreach ($patterns as $file => $pattern) {
+		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
+	}
+}

@@ -1727,7 +1727,7 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
 
     if ($answer['success']) {
         $reference = ($answer['refund_reference'] !== '') ? $answer['refund_reference'] : (string) $transaction_id;
-        $log[] = 'Auto-refund SUCCESS via ' . $service . ' — order #' . $order_id . ' (payment ' . $reference . ').';
+        $log[] = pg_log_lang(array('string' => 'Auto-refund SUCCESS via {var:1} — order #{var:2} (payment {var:3}).', 'vars' => array($service, $order_id, $reference)));
 
         return array('refund_status' => 'refunded', 'refund_reference' => $reference, 'log' => $log);
     }
@@ -1735,10 +1735,11 @@ function pg_payment_cancel_outcome($order_id, $transaction_id, $answer, $service
     $message = (isset($answer['raw']['message']) && is_scalar($answer['raw']['message'])) ? (string) $answer['raw']['message'] : '';
 
     if (isset($answer['raw']['exception'])) {
-        $log[] = 'Auto-refund EXCEPTION — order #' . $order_id . '. MANUAL REFUND REQUIRED. ' . $message;
+        $log[] = pg_log_lang(array('string' => 'Auto-refund EXCEPTION — order #{var:1}. MANUAL REFUND REQUIRED. {var:2}', 'vars' => array($order_id, $message)));
     } else {
-        $log[] = 'Auto-refund FAILED via ' . $service . ' — order #' . $order_id .
-            '. MANUAL REFUND REQUIRED. Gateway message: ' . ($message !== '' ? $message : '(no message)');
+        $log[] = pg_log_lang(array(
+            'string' => 'Auto-refund FAILED via {var:1} — order #{var:2}. MANUAL REFUND REQUIRED. Gateway message: {var:3}',
+            'vars'   => array($service, $order_id, ($message !== '') ? $message : pg_log_lang(array('string' => '(no message)')))));
     }
 
     return array('refund_status' => 'manual_required', 'refund_reference' => '', 'log' => $log);

@@ -326,7 +326,7 @@ function pg_payment_paypal_refused($order, $error, $message, $code, $state = arr
         'success' => false,
         'error'   => $error,
         'state'   => $state,
-        'log'     => array('PayPal Checkout payment for order #' . (int) pg_payment_paypal_order_value($order, 'id') . ' was not accepted: ' . $detail . (($code !== '') ? ' (' . $code . ')' : '') . '.'),
+        'log'     => array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} was not accepted: {var:2}{var:3}.', 'vars' => array((int) pg_payment_paypal_order_value($order, 'id'), $detail, (($code !== '') ? ' (' . $code . ')' : ''))))),
         'raw'     => array('message' => $message, 'code' => $code),
     );
 }
@@ -509,7 +509,7 @@ function pg_payment_paypal_authorize_with($order, $amount, $payment, $settings, 
         'redirect_url'   => $approve,
         'amount'         => (int) $amount,
         'state'          => array('paypal_order' => $paypal_id, 'order_id' => $order_id, 'amount' => (int) $amount),
-        'log'            => array('PayPal Checkout payment for order #' . (int) $order_id . ' was started (PayPal order ' . $paypal_id . ').'),
+        'log'            => array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} was started (PayPal order {var:2}).', 'vars' => array((int) $order_id, $paypal_id)))),
     );
 }
 
@@ -573,7 +573,7 @@ function pg_payment_paypal_complete_with($order, $amount, $return, $state, $sett
                 return array(
                     'success' => false,
                     'error'   => lang('The order total changed while you were at PayPal. Nothing was charged. Please review your order and try again.'),
-                    'log'     => array('PayPal order ' . $paypal_id . ' for order #' . (int) $order_id . ' was approved for ' . pg_payment_decimal($started) . ', the order now totals ' . pg_payment_decimal($amount) . '; it was not captured.'),
+                    'log'     => array(pg_log_lang(array('string' => 'PayPal order {var:1} for order #{var:2} was approved for {var:3}, the order now totals {var:4}; it was not captured.', 'vars' => array($paypal_id, (int) $order_id, pg_payment_decimal($started), pg_payment_decimal($amount))))),
                 );
             }
 
@@ -656,15 +656,15 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
                 ? lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.')
                 : lang('The order total changed while the payment was being verified, and the payment could not be undone automatically. The store will refund it. Please review your order before paying again.'),
             'log'     => array(
-                'PayPal capture ' . $capture_id . ' for order #' . $order_id . ' does not match the order total ' . pg_payment_decimal($amount) . '.',
+                pg_log_lang(array('string' => 'PayPal capture {var:1} for order #{var:2} does not match the order total {var:3}.', 'vars' => array($capture_id, $order_id, pg_payment_decimal($amount)))),
                 $given
-                    ? 'PayPal capture ' . $capture_id . ' was refunded in full.'
-                    : 'PayPal capture ' . $capture_id . ' could not be refunded. MANUAL REFUND REQUIRED. Gateway message: ' . ($void['message'] !== '' ? $void['message'] : '(no message)'),
+                    ? pg_log_lang(array('string' => 'PayPal capture {var:1} was refunded in full.', 'vars' => array($capture_id)))
+                    : pg_log_lang(array('string' => 'PayPal capture {var:1} could not be refunded. MANUAL REFUND REQUIRED. Gateway message: {var:2}', 'vars' => array($capture_id, ($void['message'] !== '') ? $void['message'] : pg_log_lang(array('string' => '(no message)'))))),
             ),
         );
     }
 
-    $reason = (isset($capture['status_details']['reason']) && is_scalar($capture['status_details']['reason'])) ? (string) $capture['status_details']['reason'] : 'not given';
+    $reason = (isset($capture['status_details']['reason']) && is_scalar($capture['status_details']['reason'])) ? (string) $capture['status_details']['reason'] : pg_log_lang(array('string' => 'not given'));
 
     return array(
         'success'        => true,
@@ -675,8 +675,8 @@ function pg_payment_paypal_capture_answer($order, $amount, $started, $paypal_ord
         'transaction_id' => $capture_id,
         'amount'         => (int) $amount,
         'log'            => ($status === 'PENDING')
-            ? array('PayPal Checkout payment for order #' . $order_id . ' is PENDING on PayPal (capture ' . $capture_id . ', reason ' . $reason . '). Check it on PayPal before shipping: PayPal may still deny it. The order waits as awaiting payment until Payment Received records it.')
-            : array('PayPal Checkout payment for order #' . $order_id . ' was taken (capture ' . $capture_id . ').'),
+            ? array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} is PENDING on PayPal (capture {var:2}, reason {var:3}). Check it on PayPal before shipping: PayPal may still deny it. The order waits as awaiting payment until Payment Received records it.', 'vars' => array($order_id, $capture_id, $reason))))
+            : array(pg_log_lang(array('string' => 'PayPal Checkout payment for order #{var:1} was taken (capture {var:2}).', 'vars' => array($order_id, $capture_id)))),
     );
 }
 
@@ -919,9 +919,9 @@ function pg_payment_paypal_notify_with($headers, $body, $settings, $http)
     $value = (isset($money['value']) && is_scalar($money['value'])) ? (string) $money['value'] : '';
 
     if ($type === 'PAYMENT.CAPTURE.COMPLETED') {
-        $line = 'PayPal reports that capture ' . $raw['id'] . ' of ' . $value . ' ' . $currency . ' completed';
+        $line = pg_log_lang(array('string' => 'PayPal reports that capture {var:1} of {var:2} {var:3} completed', 'vars' => array($raw['id'], $value, $currency)));
     } else {
-        $line = 'PayPal reports that capture ' . $raw['id'] . ' of ' . $value . ' ' . $currency . ' was DENIED: nothing was taken. Do not ship it';
+        $line = pg_log_lang(array('string' => 'PayPal reports that capture {var:1} of {var:2} {var:3} was DENIED: nothing was taken. Do not ship it', 'vars' => array($raw['id'], $value, $currency)));
     }
 
     return array(
