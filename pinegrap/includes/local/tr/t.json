@@ -1050,6 +1050,7 @@
     "The box marked Hide when empty is judged by this element alone: when it is empty, the heading and the words beside it go too.": "Boşsa gizle ile işaretli kutu yalnızca bu öğeye bakılarak değerlendirilir: bu öğe boşken başlık ve yanındaki sözcükler de gider.",
     "The box stopped half way and may have done its work, so it was not tried again.": "Kutu yarıda kaldı ve işini yapmış olabilir, bu yüzden yeniden denenmedi.",
     "The box stopped half way twice and was not tried again.": "Kutu iki kez yarıda kaldı ve yeniden denenmedi.",
+    "The box that gave this value was deleted.": "Bu değeri veren kutu silindi.",
     "The box was skipped.": "Kutu atlandı.",
     "The box was tried again or skipped at this moment already.": "Kutu tam bu anda zaten yeniden denendi veya atlandı.",
     "The box will run again.": "Kutu yeniden çalışacak.",

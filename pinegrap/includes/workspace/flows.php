@@ -2937,6 +2937,7 @@ function ws_flow_js_strings()
         'fl_values_status'    => lang('Status'),
         'fl_values_skipped'   => lang('Empty if skipped'),
         'fl_values_missing'   => lang('No box before this one gives this value.'),
+        'fl_values_gone'      => lang('The box that gave this value was deleted.'),
         'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),
         'fl_add_manual'       => lang('Start manually'),
         'fl_add_task'         => lang('Task'),
