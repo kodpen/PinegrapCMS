@@ -60,11 +60,13 @@
         }, 1000);
     }
 
-    function shareBar(h, share) {
+    // Named with the "spent of" sentence the drawer head prints.
+    function shareBar(h, share, label) {
         var bar = h.el('div', 'progress ws-progress ws-task-time-bar' + (share.over ? ' ws-task-time-over' : ''));
         var fill = h.el('div', 'progress-bar');
 
         bar.setAttribute('role', 'progressbar');
+        bar.setAttribute('aria-label', label);
         bar.setAttribute('aria-valuemin', '0');
         bar.setAttribute('aria-valuemax', '100');
         bar.setAttribute('aria-valuenow', String(share.percent));
@@ -108,7 +110,7 @@
             wrap.appendChild(head);
 
             if (time.share) {
-                wrap.appendChild(shareBar(h, time.share));
+                wrap.appendChild(shareBar(h, time.share, time.compare));
             }
 
             if (time.can_log) {
