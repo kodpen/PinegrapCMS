@@ -25,7 +25,7 @@ description: Collection forms and field kinds: columns, where the kind is writte
 
 ## What does the slug kind do?
 - The record's address name (pretty URLs) comes from the first non-blank slug value, else the Title field (`pg_coll_address_source()`, read by `update_submitted_form_address_name()`; the slug column is probed only when `pg_coll_ready()`). A blank slug falls back to the title, so old records keep their names.
-- The panel's "already in use" check runs on the field that makes the address (`pg_coll_address_field()` in `pg_submitted_form_check_field()`): no Title refused while a slug decides. A clashing slug still saves with a `-1` suffix.
+- The panel's "already in use" check runs on the Title only while it makes the address (`pg_coll_address_field()` in `pg_submitted_form_check_field()`). A slug is never refused: a clashing one saves with a `-1` suffix.
 - Adding a slug field or moving the kind on a design save renames every record, as moving the Title role does: `pg_cf_address_sources()` before and after the save (`pg_cf_refresh_address_names()`).
 - Why: a kind not feeding the address would be a dead choice.
 

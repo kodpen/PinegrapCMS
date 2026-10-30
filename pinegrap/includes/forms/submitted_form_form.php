@@ -596,12 +596,11 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
 
     $kinds = pg_coll_field_kinds((int) $page_id);
 
-    // When pretty URLs are enabled, the field the record's address name is
-    // made from (the first filled slug field, else the Title field) is
-    // checked for an address name already in use. A Title is not refused
-    // while a slug field decides the address.
+    // When pretty URLs are enabled, a Title field is checked for an address
+    // name already in use only while it makes the record's address: a filled
+    // slug field comes first, and the Title is then not refused.
     if (
-        (($field['rss_field'] == 'title') || (isset($kinds[(int) $field['id']]) && $kinds[(int) $field['id']]['kind'] === 'slug'))
+        ($field['rss_field'] == 'title')
         && ($liveform->check_field_error($field['id']) == false)
         && ($liveform->get_field_value($field['id']) != '')
         && ($pretty_urls == true)
