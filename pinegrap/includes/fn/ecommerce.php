@@ -4016,7 +4016,19 @@ function pg_order_installment_charge($lines, $discount, $charges, $installment)
     return (int) pg_order_charges_reachable($lines, $discount, $charges)['installment'];
 }
 
-function update_order_item_taxes()
+/**
+ * Takes the tax of every line of the session's order and writes it to
+ * order_items.tax_total (and tax_rate): a line with a recipient on the
+ * recipient's address, a line without one on the billing address.
+ *
+ * @param array $ship_to_addresses ship_to_id => [country, state] taken instead of the
+ *                                 stored ship_tos address. The express order widget passes
+ *                                 the address its form shows, to take the render-time tax
+ *                                 on it before the visitor has submitted one; nothing is
+ *                                 written to ship_tos, and submit_order() recomputes from
+ *                                 the stored rows. Empty for every other caller.
+ */
+function update_order_item_taxes($ship_to_addresses = array())
 {
     // get information from order
     $query = "SELECT
@@ -4096,7 +4108,10 @@ function update_order_item_taxes()
             $shipping_address_tax_rate = false;
             // if this ship to is a real recipient, get tax rate for shipping address
             if ($ship_to['ship_to_id'] > 0) {
-                $shipping_address_tax_rate = get_tax_rate_for_address($ship_to['country'], $ship_to['state']);
+                $ship_to_address = isset($ship_to_addresses[(int) $ship_to['ship_to_id']])
+                    ? $ship_to_addresses[(int) $ship_to['ship_to_id']]
+                    : array('country' => $ship_to['country'], 'state' => $ship_to['state']);
+                $shipping_address_tax_rate = get_tax_rate_for_address((string) ($ship_to_address['country'] ?? ''), (string) ($ship_to_address['state'] ?? ''));
             }
             // get all order items for this ship to
             $query = "SELECT
