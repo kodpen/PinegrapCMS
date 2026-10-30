@@ -552,6 +552,32 @@ function erp_allocate($total, $weights)
 }
 
 /**
+ * Whole-percent shares of a set of amounts, adding up to exactly 100.
+ *
+ * Rounding each share on its own makes three equal parts read 33% each, 99%
+ * in all, and leaves a stacked bar short of its track; the shares are split
+ * by largest remainder instead (erp_allocate()). A non-zero amount below half
+ * a percent can come out as 0, so a caller that prints the share checks the
+ * amount too.
+ *
+ * @param array $amounts  key => amount (kurus), none below 0
+ * @return array  key => whole percent; all 0 when the amounts sum to 0
+ */
+function erp_percent_shares($amounts)
+{
+    $sum = 0;
+    foreach ($amounts as $amount) {
+        $sum += (int) $amount;
+    }
+
+    if ($sum <= 0) {
+        return array_fill_keys(array_keys($amounts), 0);
+    }
+
+    return erp_allocate(100, $amounts);
+}
+
+/**
  * A document's taxes, each taken once on the sum of the lines at its rate.
  *
  * Lines with the same VAT rate and the same withholding rate form a group. The
