@@ -556,7 +556,14 @@ function ws_personal_ical_events($text, $from, $to)
 
         $all_day = (strpos((string) $event['DTSTART']['value'], 'T') === false);
         $end = isset($event['DTEND']) ? ws_personal_ical_moment($event['DTEND']) : null;
-        $length = ($end && ($end > $start)) ? ($end->getTimestamp() - $start->getTimestamp()) : ($all_day ? 86400 : 0);
+        $length = ($end && ($end > $start)) ? ($end->getTimestamp() - $start->getTimestamp()) : 0;
+
+        // Without a DTEND the event lasts its DURATION, an all-day one a day.
+        if (!$end && isset($event['DURATION'])) {
+            $length = ws_ical_duration($event['DURATION']['value']);
+        }
+
+        $length = ($length > 0) ? $length : ($all_day ? 86400 : 0);
         $title = mb_substr(ws_ical_text($event['SUMMARY']['value'] ?? ''), 0, 120);
         $title = ($title !== '') ? $title : lang('Busy');
         $uid = trim((string) ($event['UID']['value'] ?? ''));
