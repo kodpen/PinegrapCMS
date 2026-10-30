@@ -556,32 +556,47 @@ function pg_contact_form_email($email_address)
 }
 
 /**
- * The affiliate code a posted contact is saved with: the posted one, which
- * no other contact may use (an error ends the request), or a new one when
- * the contact is approved without a code.
+ * The affiliate code a posted contact is saved with: the posted one,
+ * trimmed, which no other contact may use (an error ends the request), or a
+ * new one when the contact is approved without a code. A code of only
+ * spaces is blank: under PAD SPACE it would match every contact with the
+ * empty code, and checkout matches the trimmed offer code, so a padded code
+ * would never credit its affiliate.
  *
  * @param array $post
  * @param int|string $contact_id The contact itself, 0 for a new one
+ * @param callable $taken Lookup as pg_contact_form_affiliate_code_taken() (tests stub it)
+ * @param callable $generate Code generator (tests stub it)
  * @return string
  */
-function pg_contact_form_affiliate_code($post, $contact_id)
+function pg_contact_form_affiliate_code($post, $contact_id, $taken = 'pg_contact_form_affiliate_code_taken', $generate = 'generate_affiliate_code')
 {
-    $affiliate_code = pg_contact_form_posted($post, 'affiliate_code');
+    $affiliate_code = trim(pg_contact_form_posted($post, 'affiliate_code'));
 
-    if ($affiliate_code) {
-        $result = db_q("SELECT id FROM contacts WHERE affiliate_code = ? AND id != ?", array($affiliate_code, (string) $contact_id)) or output_error('Query failed.');
-
-        if (mysqli_num_rows($result) > 0) {
-            output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
-        }
+    if ($affiliate_code && $taken($affiliate_code, $contact_id)) {
+        output_error(lang('That affiliate code is already in use. Please use a different code') . '. <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // An unticked Approved box is not posted at all.
     if (!empty($post['affiliate_approved']) && (!$affiliate_code)) {
-        $affiliate_code = generate_affiliate_code();
+        $affiliate_code = $generate();
     }
 
     return $affiliate_code;
+}
+
+/**
+ * Whether another contact already has the affiliate code.
+ *
+ * @param string $affiliate_code
+ * @param int|string $contact_id The contact itself (left out), 0 for a new one
+ * @return bool
+ */
+function pg_contact_form_affiliate_code_taken($affiliate_code, $contact_id)
+{
+    $result = db_q("SELECT id FROM contacts WHERE affiliate_code = ? AND id != ?", array((string) $affiliate_code, (string) $contact_id)) or output_error('Query failed.');
+
+    return mysqli_num_rows($result) > 0;
 }
 
 /**

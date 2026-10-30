@@ -10,7 +10,7 @@ description: The contact create and edit screens share includes/forms/contact_fo
 - Description has no `maxlength`: `contacts.description` is LONGTEXT and site forms fill it, so a 50-character cap refused longer notes on save (#2892).
 
 ## What does a save share?
-- `pg_contact_form_email()` (trim + invalid stops), `…_affiliate_code($post, $id)` (duplicate check, 0 = new; generates when approved without one), `…_columns($post, $user_id)` + `…_affiliate_columns()` (strings for `db_q()`; an array-posted field saves `''`), `…_sync_opt_in()` (same-address opt-in with its audit read/record), `…_save_groups()` (ticked in, unticked out, opt-in rows, join/leave events), `…_affiliate_key_code()`, `…_redirect()` (send_to).
+- `pg_contact_form_email()` (trim + invalid stops), `…_affiliate_code($post, $id)` (trimmed, duplicate check through `…_affiliate_code_taken()`, 0 = new; generates when approved without one; a code of only spaces is blank, so it is not looked up — under PAD SPACE it matched every contact with the empty code and was refused as 'already in use'), `…_columns($post, $user_id)` + `…_affiliate_columns()` (strings for `db_q()`; an array-posted field saves `''`), `…_sync_opt_in()` (same-address opt-in with its audit read/record), `…_save_groups()` (ticked in, unticked out, opt-in rows, join/leave events), `…_affiliate_key_code()`, `…_redirect()` (send_to).
 
 ## What stays in the screens?
 - Create: the subscriber card (opt-in ticked), the role-3 "at least one group" check, the INSERT, the create audit line and `pg_announce_contact_created()`, affiliate columns written even while the program is off.

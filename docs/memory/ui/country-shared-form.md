@@ -9,6 +9,7 @@ description: add_country.php and edit_country.php draw the country options card 
 
 ## How is a taken code refused?
 - `pg_country_form_code_error($code, $stored_code, $except_id)` answers 'The code that you entered is already in use by another country…' when another country has the code (`pg_country_form_code_taken()`, db_q, edit leaves its own id out). Only a non-empty code that is new or changed is looked up, so an edit keeping an old clash still saves; delete is never held back.
+- The name and code are trimmed in `pg_country_form_values()`, and the code error compares against the trimmed stored code, so a legacy padded code posted back unchanged is not looked up. Why: `utf8mb4_unicode_ci` (PAD SPACE) ignores trailing but not leading spaces, so ' US' passed the check beside 'US', and checkout (trimmed post) never found it.
 - Why: checkout's zone lookup and the product destination check take the country id from the first `countries` row with the code. Create/Edit Currency already refused a taken code.
 - The screen draws the form again with the posted values and `pg_country_form_card($values, $errors)` marks the code field (`is-invalid`, `aria-describedby="code-error"`, message under it); nothing is written. Tests: `tests/commerce_code_taken_test.php`.
 
