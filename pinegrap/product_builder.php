@@ -680,6 +680,14 @@ function pg_pb_common_from_post()
         'form_quantity_type'      => $post('form_quantity_type'),
     );
 
+    // Customs data (products.hs_code, products.origin_country), a property
+    // of the goods like the weight, so every variant of a set takes it. Only
+    // where the upgrade has added the columns; pg_pb_validate_product_post()
+    // refused a value that cannot be stored before this runs.
+    if (pg_product_customs_ready()) {
+        $common = array_merge($common, pg_product_customs_from_post($_POST));
+    }
+
     /* ---------------------------------------------------- checkout */
 
     $common['required_product'] = $post('required_product');
@@ -4352,6 +4360,24 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             '</div>';
     }
 
+    // Customs data for parcels sent abroad, on a site that has the columns.
+    // Empty is the shop default of the label driver's settings, which the
+    // hint says, so an empty field is not read as "no customs data".
+    $output_customs_fields = '';
+
+    if (pg_product_customs_ready()) {
+        $output_customs_fields =
+            '<div class="col-6 lg:col-3 my-1">
+                <label for="hs_code" class="form-label">' . lang('HS Code') . '</label>
+                <input value="' . h($v('hs_code', '')) . '" type="text" name="hs_code" id="hs_code" class="form-control" maxlength="' . PG_PRODUCT_HS_CODE_MAX . '" inputmode="decimal" pattern="[0-9]+(\\.[0-9]+)*" aria-describedby="pg_pb_customs_help" />
+            </div>
+            <div class="col-6 lg:col-3 my-1">
+                <label for="origin_country" class="form-label">' . lang('Country of Origin') . '</label>
+                <select name="origin_country" id="origin_country" class="form-control" aria-describedby="pg_pb_customs_help">' . pg_product_origin_country_options($v('origin_country', '')) . '</select>
+            </div>
+            <div class="col-12 form-text mt-0" id="pg_pb_customs_help">' . lang('Declared on labels of parcels sent abroad. Empty uses the shop default of the label service.') . '</div>';
+    }
+
     // Shipping is a store-wide feature: with it off, the switch and every dimension
     // behind it are noise.
     $output_shippable = '';
@@ -4428,7 +4454,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                         </label>
                                                     </div>
 
-                                                    ' . $output_zones_field .
+                                                    ' . $output_customs_fields . $output_zones_field .
 
                                                     pg_pb_render_switch_row(
                                                         pg_pb_render_switch(array(
@@ -6224,6 +6250,20 @@ function pg_pb_validate_product_post($user, $product_id = 0)
         && !empty($_POST['compare_at_price_enabled'])
         && (pg_pb_compare_at_price_from_input(isset($_POST['compare_at_price']) ? $_POST['compare_at_price'] : '') === false)) {
         output_error(lang(array('string' => '{var:1} is too large.', 'vars' => array(lang('Compare-at Price')))) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+    }
+
+    // An HS code or a country of origin that cannot be stored is refused
+    // before anything is written, rather than saved empty, which would fall
+    // back to the shop default the operator did not choose.
+    if (pg_product_customs_ready()) {
+
+        $customs_problem = pg_product_customs_problem(
+            isset($_POST['hs_code']) ? $_POST['hs_code'] : '',
+            isset($_POST['origin_country']) ? $_POST['origin_country'] : '');
+
+        if ($customs_problem !== '') {
+            output_error(lang($customs_problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
     }
 
     // A product code is one product's, as the external API holds it: two

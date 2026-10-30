@@ -66,7 +66,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - calendar-shared-form.md: The calendar create and edit screens share includes/forms/calendar_form.php: what it holds and what stays in the screens
 - chart-destroy-before-markup-change.md: Destroy Chart.js charts (destroy_widget_charts in welcome.php) before .html()/.remove()/.append() replaces markup with canvases, or instances leak.
 - chart-text-equivalents.md: Text copies of canvas-only and tooltip-only figures: orders Top 5, Search Console by day, Daily Traffic, Sales Map table, seven-day bars; Sales Map role=img on the map layer
-- chat-window-contrast.md: Panel chat window colours readable in both themes: own-message gradient, read ticks, active tab, emoji tool and send button
+- chat-window-contrast.md: Panel chat window colours readable in both themes (own-message gradient, read ticks, active tab, emoji tool, send button) and text and box sizes in rem
 - chat-window-keyboard.md: Panel chat window (chat_backend.src.js) from the keyboard: rows as buttons, focus on open, Escape and close back to the launcher, focus kept across the 15 s list refresh
 - code-editor-escape-in-dialogs.md: Escape inside a code editor that sits in a dialog: an Escape the editor used (completion list, search panel, full window) stops at the editor; only a free one closes the dialog
 - code-field-keyboard-exit.md: Leaving a code field from the keyboard: Tab indents, Ctrl+M (Mac Shift+Alt+M) switches Tab to moving focus, the hint line under an editable field and its aria-describedby
@@ -199,6 +199,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()
 - panel-stepper-and-product-names.md: Accessible names of number steppers, catalog landmarks and the product screen (variant matrix, advanced row, image chip remove, attribute dialog), and the tests that pin them
 - panel-tab-rows.md: Panel tab rows say which tab is open (role=tab + aria-selected, named tabpanel) and move with the arrow keys; a hidden Bootstrap tab is also disabled
+- panel-text-size.md: Panel text in rem so it follows the browser's text size: the screens converted, the columns that grow with their text, what stays px, what waits for backend.src.css
 - panel-times-user-time-zone.md: Which time zone get_relative_time() and get_absolute_time() draw in (the person's or the site's, pg_time_in_user_zone()), and how stored zone names are read (pg_timezone_canonical(), old IANA links)
 - panel-toast-timing.md: pgToast() timing: danger and warning toasts stay until closed and are not stacked twice; success and info keep their timer
 - panel-top-bar-phone.md: Panel top bar (#header) below 768px: the logo item (li.pg-brand-item) and the page heading (.pg-navhead) are hidden, why, what stays, the test that keeps it

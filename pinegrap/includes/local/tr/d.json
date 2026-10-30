@@ -165,6 +165,7 @@
     "Decisions are written in the channel and kept on its Decisions tab. Action items become tasks: people with @, a day such as friday or 26.10, ~2h, !urgent.": "Kararlar kanala yazılır ve Kararlar sekmesinde kalır. Aksiyonlar görev olur: kişiler @ ile, gün cuma ya da 26.10 gibi, ~2sa, !acil.",
     "Declare the \"Not said\" ones read-only": "\"Belirtilmemiş\" olanları yalnızca okur say",
     "Declared and paid by the store on the seller's behalf.": "Satıcı adına mağaza beyan eder ve öder.",
+    "Declared on labels of parcels sent abroad. Empty uses the shop default of the label service.": "Yurt dışına giden kargoların etiketinde beyan edilir. Boş bırakılırsa kargo etiketi hizmetinin mağaza varsayılanı kullanılır.",
     "Decorate": "Dekore Et",
     "Decoration": "Süsleme",
     "Decrease": "Azalt",

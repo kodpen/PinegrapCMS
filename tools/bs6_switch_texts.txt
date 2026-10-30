@@ -496,9 +496,9 @@ text tone. Every value is a theme colour.
 
 @@ includes/dashboard/widgets/widget_21.php
 <<<
-                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:.5625rem">' . h($waf_badge[1]) . '</span>
 ===
-                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:.5625rem">' . h($waf_badge[1]) . '</span>
 >>>
 
 @@ includes/fn/parasut.php

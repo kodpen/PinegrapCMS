@@ -1647,6 +1647,9 @@ if (!$_POST) {
         $compare_at_column = array_key_exists('compare_at_price', $row) ? 'compare_at_price,' : '';
         $compare_at_value  = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
 
+        // products.hs_code and origin_country (2026.11.0) the same way.
+        $customs = pg_product_customs_copy_sql($row);
+
         // products.ai_fields (2026.11.0) likewise: the copy keeps the marks of
         // the texts it writes unchanged; the short description, whose last
         // letters are replaced, keeps its mark only if it is still the same.
@@ -1844,6 +1847,8 @@ if (!$_POST) {
     
                 " . $compare_at_column . "
     
+                " . $customs['columns'] . "
+    
                 " . $ai_fields_column . "
     
                 user,
@@ -2033,6 +2038,8 @@ if (!$_POST) {
                 '" . escape($row['mpn']) . "',
     
                 " . $compare_at_value . "
+
+                " . $customs['values'] . "
     
                 " . $ai_fields_value . "
     
