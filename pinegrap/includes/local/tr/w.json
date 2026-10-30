@@ -943,6 +943,7 @@
     "Write a valid e-mail address for every customer asked.": "Sorulan her müşteri için geçerli bir e-posta adresi yazın.",
     "Write a whole number: -1 for no limit, 0 for no text snippet, or at most {var} characters.": "Bir tam sayı yazın: sınırsız için -1, metin özeti olmaması için 0 ya da en çok {var} karakter.",
     "Write an amount, such as 12.50.": "12.50 gibi bir tutar yazın.",
+    "Write an amount, such as {var:1}.": "{var:1} gibi bir tutar yazın.",
     "Write an answer of at least 10 characters.": "En az 10 karakterlik bir yanıt yazın.",
     "Write an article": "Haber yaz",
     "Write an entry; it appears in the journal as soon as you send it.": "Bir yazı yazın; gönderdiğiniz anda güncede görünür.",
