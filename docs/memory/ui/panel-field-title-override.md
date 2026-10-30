@@ -9,7 +9,7 @@ description: A labelled panel field carries no title: Bootstrap 6 copies a popov
 
 ## What replaces the title?
 - A title that repeats the label: drop it (the "Select All" switches of the page, calendar event, organize contacts and user permission lists).
-- A real hint: print it under the field as `<div class="form-text" id="<id>_hint">` through `lang()` and add `aria-describedby="<id>_hint"` (`#ws_hol_to`). Never keep a title beside `aria-describedby`: the popover sets and removes `aria-describedby` itself when it shows and hides.
+- A real hint: print it under the field as `<div class="form-text" id="<id>_hint">` through `lang()` and add `aria-describedby="<id>_hint"` (`#ws_hol_to`; else bound at runtime, `field-help-describedby.md`). Never keep a title beside `aria-describedby`: the popover sets and removes `aria-describedby` itself when it shows and hides.
 - A hint on a switch or check in a row of controls: one `form-text` under the rows with an id, each control `aria-describedby` it (`#tr_auto_hint`, `#tr_remove_hint` of the Site Languages card).
 - An icon-only button whose name changes with its state: `no-popover`, a `title` and its own `aria-label`, both rewritten by the script; a popover would keep the first text, since `_fixTitle()` stores it once (the review toggle of `translations.php`).
 - A hint on a toolbar control, where a line under it breaks the row: a compact tooltip (`no-popover` + `data-bs-toggle="tooltip"`), which keyboard focus shows too (`#pg_tr_engine`, `translations.php`; a select's option text keeps Bootstrap from writing `aria-label`, an input would still lose its label this way).

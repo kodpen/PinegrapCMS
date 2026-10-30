@@ -9399,6 +9399,91 @@ function pg_background_calls_allowed() {
         }
     }
 
+    var PG_HELP_CONTROLS = 'input, select, textarea';
+    var PG_HELP_SKIP_TYPES = /^(hidden|submit|button|reset|image)$/;
+    var pgHelpSeq = 0;
+
+    // The input, select or textarea a field help belongs to, when there is
+    // exactly one in el; the chips box's typing input does not count.
+    function pgHelpOneControl(el) {
+        if (!el || !el.querySelectorAll) return null;
+
+        var found = [];
+
+        Array.prototype.forEach.call(el.querySelectorAll(PG_HELP_CONTROLS), function (c) {
+            if (c.tagName === 'INPUT' && PG_HELP_SKIP_TYPES.test(c.type || '')) return;
+            if (c.classList.contains('form-ghost')) return;
+            found.push(c);
+        });
+
+        return found.length === 1 ? found[0] : null;
+    }
+
+    // Ties each panel field's visible .form-text help to its field through
+    // aria-describedby, so a screen reader reads the help on focus, not the
+    // label alone. The field is the one control in the help's parent, else
+    // the one control (not a radio) of the element just before the help: a
+    // switch in a .form-field with its help after it. Left alone: help inside
+    // a label, help after a group of controls or a radio, help already bound
+    // by hand, date and time hook fields, and fields with a popover title
+    // (Bootstrap's Tooltip removes aria-describedby when it hides). Runs once
+    // per help; a combobox toggle or chips box already drawn is linked too.
+    function pgBindFieldHelp(root) {
+        root = root || document;
+
+        var referenced = {};
+
+        Array.prototype.forEach.call(document.querySelectorAll('[aria-describedby]'), function (el) {
+            el.getAttribute('aria-describedby').split(/\s+/).forEach(function (id) {
+                if (id) referenced[id] = true;
+            });
+        });
+
+        Array.prototype.forEach.call(root.querySelectorAll('.form-text'), function (helpEl) {
+            if (helpEl.dataset.pgHelpBound === '1') return;
+            helpEl.dataset.pgHelpBound = '1';
+
+            if (helpEl.id && referenced[helpEl.id]) return;
+            if (helpEl.closest('label')) return;
+
+            var control = pgHelpOneControl(helpEl.parentElement);
+
+            if (!control) {
+                control = pgHelpOneControl(helpEl.previousElementSibling);
+                if (control && control.type === 'radio') control = null;
+            }
+
+            if (!control || control.type === 'radio') return;
+            if (control.hasAttribute('title') || control.hasAttribute('data-bs-original-title')) return;
+            if (control.hasAttribute('data-pg-date') || control.hasAttribute('data-pg-datetime') || control.hasAttribute('data-pg-time')) return;
+            if (control.closest('[data-pg-date-selects]')) return;
+
+            var bound = (control.getAttribute('aria-describedby') || '').split(/\s+/).some(function (id) {
+                var target = id ? document.getElementById(id) : null;
+
+                return !!(target && target.classList.contains('form-text'));
+            });
+
+            if (bound) return;
+
+            if (!helpEl.id) {
+                var base = (control.id || 'pg-field') + '-help';
+                var id = base;
+
+                while (document.getElementById(id)) id = base + '-' + (++pgHelpSeq);
+                helpEl.id = id;
+            }
+
+            pgDescribedBy(control, helpEl.id, true);
+
+            if (control.pgComboboxToggle) pgDescribedBy(control.pgComboboxToggle, helpEl.id, true);
+
+            var ghost = control.pgChipsBox ? control.pgChipsBox.querySelector('.form-ghost') : null;
+
+            if (ghost) pgDescribedBy(ghost, helpEl.id, true);
+        });
+    }
+
     // Mirrors .is-invalid into aria-invalid and links the field's message
     // through aria-describedby while the field is invalid, so a screen reader
     // hears the error and its reason; both go when the class does. A message
@@ -9585,9 +9670,13 @@ function pg_background_calls_allowed() {
     }
 
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', function () { pgInjectAriaAndRequiredMarkers(); });
+        document.addEventListener('DOMContentLoaded', function () {
+            pgInjectAriaAndRequiredMarkers();
+            pgBindFieldHelp();
+        });
     } else {
         pgInjectAriaAndRequiredMarkers();
+        pgBindFieldHelp();
     }
 
     // Scripts mark fields after the page is drawn (a product code already in
@@ -9611,6 +9700,7 @@ function pg_background_calls_allowed() {
     // Expose for callers that render forms after initial load.
     window.pgInjectAriaAndRequiredMarkers = pgInjectAriaAndRequiredMarkers;
     window.pgFieldInvalid = pgFieldInvalid;
+    window.pgBindFieldHelp = pgBindFieldHelp;
 })(window);
 
 /* ── User permission rows (add_user.php, edit_user.php) ────────────────────
@@ -10353,6 +10443,12 @@ function pgInitInjected(scope) {
             showMaskOnHover: false,
             showMaskOnFocus: false
         });
+    }
+
+    // Field help read with its field; before pgFields.init, so a combobox
+    // toggle copies the link when it is drawn.
+    if (window.pgBindFieldHelp) {
+        window.pgBindFieldHelp($scope[0]);
     }
 
     // Chips, combobox, date and time fields marked with a data-pg-* hook; a
