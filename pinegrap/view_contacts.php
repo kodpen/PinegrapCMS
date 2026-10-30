@@ -811,7 +811,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Contacts') {
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="email_address" class="form-label">' . lang('Email') . '</label>
-                            <input type="text" id="email_address" name="email_address" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" data-inputmask-alias="email" />
+                            <input type="text" id="email_address" name="email_address" class="form-control" autocomplete="pg-no-autofill" value="' . h(($_SESSION['software']['view_contacts']['email_address'] ?? '')) . '" maxlength="100" inputmode="email" spellcheck="false" autocapitalize="off" />
                         </div>
                         <div class="col-12 sm:col-6 md:col-12 my-1">
                             <label for="opt_in_status" class="form-label">' . lang('Opt-In Status') . '</label>
