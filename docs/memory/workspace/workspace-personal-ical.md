@@ -18,7 +18,7 @@ description: A person's own secret iCal address as a read-only layer on their Wo
 
 ## Why are nested blocks skipped and lines split outside quotes?
 - `ws_ical_vevents()` used to write every line between BEGIN:VEVENT and END:VEVENT into one array, a later name winning. A VALARM's SUMMARY/DESCRIPTION/UID replaced the event's: Google events with an e-mail reminder showed as "Alarm notification", and with Apple's reminder UIDs a moved weekly occurrence showed twice (the `UID|time` match broke). Now any nested BEGIN:…END: block is skipped by depth (#3392).
-- A line is split at the first ':' outside double quotes and the name at the first ';' outside them; `params` stays the raw text after the name. A quoted `TZID="(UTC+03:00) Istanbul"` used to drop the event; now an unknown zone falls back to the site's (#3392, PR #PRNUM).
+- A line is split at the first ':' outside double quotes and the name at the first ';' outside them; `params` stays the raw text after the name. A quoted `TZID="(UTC+03:00) Istanbul"` used to drop the event; now an unknown zone falls back to the site's (#3392, PR #3490).
 
 ## What stays as before?
 - Site-wide rows (`user_id` 0): `ws_holiday_feeds()` and the settings card read only those (`ws_holiday_feed_owner_where(0)`), and the admin's Read now / Remove refuse a person's row (`ws_holiday_feed_site_wide()`).
