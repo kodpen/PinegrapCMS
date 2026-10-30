@@ -148,7 +148,7 @@ foreach ($accounts as $account) {
 
     $status_class = ((string) $account['status'] === 'passive') ? ' fg-secondary text-decoration-line-through' : '';
 
-    $output_link_url = 'edit_erp_account.php?id=' . $id;
+    $output_link_url = h('edit_erp_account.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL));
 
     // The contact behind the card, when there is one: the link is where the
     // orders come from.

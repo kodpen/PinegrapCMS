@@ -155,6 +155,9 @@ $money = function ($kurus) {
 $today = date('Y-m-d');
 $output_rows = '';
 
+// An expense opened from here comes back to this period and these filters.
+$output_send_to = h('&send_to=' . urlencode(REQUEST_URL));
+
 foreach ($expenses as $expense) {
     $id = (int) $expense['id'];
     $status = (string) $expense['status'];
@@ -179,11 +182,11 @@ foreach ($expenses as $expense) {
     $output_rows .= '
         <tr' . (($status === 'cancelled') ? ' class="opacity-75"' : '') . '>
             <td class="align-middle text-nowrap" data-sort="' . h(str_replace('-', '', (string) $expense['expense_date']) . sprintf('%07d', $id % 10000000)) . '">
-                <a class="pg-link-body-emphasis" href="edit_erp_expense.php?id=' . $id . '">' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)) . '</a>
+                <a class="pg-link-body-emphasis" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)) . '</a>
             </td>
             <td class="align-middle">' . h((string) $expense['category_name']) . '</td>
             <td class="align-middle' . $struck . '">
-                <a class="pg-link-body-emphasis text-decoration-none" href="edit_erp_expense.php?id=' . $id . '">' . h(((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : ('#' . $id)) . '</a>'
+                <a class="pg-link-body-emphasis text-decoration-none" href="edit_erp_expense.php?id=' . $id . $output_send_to . '">' . h(((string) $expense['supplier'] !== '') ? (string) $expense['supplier'] : ('#' . $id)) . '</a>'
                 . (((string) $expense['document_no'] !== '') ? '<div class="small fg-secondary font-monospace">' . h((string) $expense['document_no']) . '</div>' : '') . '
             </td>
             <td class="align-middle small' . $struck . '" style="max-width:18rem">' . h((string) $expense['description']) . '</td>
@@ -233,7 +236,7 @@ if ($ready && erp_expense_recurring_ready()) {
         $output_recurring .= '
             <li class="list-group-item px-5 py-3">
                 <div class="d-flex justify-content-between gap-3">
-                    <a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . h($label) . '</a>
+                    <a class="pg-link-body-emphasis text-decoration-none text-break" href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . $output_send_to . '">' . h($label) . '</a>
                     <span class="text-nowrap fw-semibold">' . h(erp_money_out_currency((int) $recurrence['amount'], (string) $recurrence['currency'])) . '</span>
                 </div>
                 <div class="small fg-secondary d-flex justify-content-between gap-3">
