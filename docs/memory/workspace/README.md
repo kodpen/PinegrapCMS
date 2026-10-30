@@ -173,6 +173,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-flows-template-last-day.md: The forms, orders and chain flow templates (R1b, #2787): counts of the last day once a day, the orders webhook, chain a manual start a "Start a flow" box starts
 - workspace-flows-template-saved.md: Flow templates saved on the site (G3a #3146, G3b #3242): ws_flow_templates, what a save keeps, settings, rights, panel actions, the editor's Save as template, the gallery's saved cards
 - workspace-flows-template-setup.md: Placing a flow template (G2): motion schedule from ws_flow_template_motion(), drawn threads, reduced motion, the setup panel, ws_flow_template_setup action, answers checked on the server
+- workspace-flows-template-table.md: Saved flow templates ask the table of a row box (PR #3597): the table setting, the setup panel's picker, the reach refused at Use, the fields a changed table clears
 - workspace-flows-thread-binding.md: Drawing a data thread into a field on the Flows canvas (T2, PR #2540): live dots, drag, two taps or Fork, the lit fields, bindValue(), the keyboard's Pass to a field
 - workspace-flows-thread-drawing.md: Data threads on the Flows canvas (T1, V6): read from the fields, the row under a box within its width, thread paths around boxes, tones, dimming, the toggle, the outline lines
 - workspace-flows-trigger-values.md: What a flow's step boxes read of what started the run (#2205, D5 #2341): {{trigger.<field>}} declared per start kind, event and record values, the newcomer, a post box in the channel joined (-1)
