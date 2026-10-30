@@ -123,6 +123,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - update-channel-stable-beta.md: Update channel (stable/beta): config key, the three channel functions all callers must use, download_assistant stays stable, switching, version format.
 - update-package-extraction.md: How update packages must be downloaded and extracted (pg_extract_archive, pg_looks_like_zip) so a partial install is never reported as success.
 - update-tls-verification.md: TLS on outgoing cURL: pg_curl_tls() / da_curl_tls(), no silent downgrade, CURL_CA_BUNDLE, ALLOW_INSECURE_UPDATE_TLS; who uses it (classic Stripe and iyzico do not).
+- upload-drop-area-sizes.md: Upload File and Upload Design Files write the drop-area sizes and the too-big refusal in the panel's units and decimal mark, not Dropzone's
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes, the import screens' refusal helpers.
 - upload-refusal-answers.md: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line, base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
