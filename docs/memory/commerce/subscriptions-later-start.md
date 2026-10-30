@@ -1,6 +1,6 @@
 ---
 name: subscriptions-later-start
-description: Recurring lines that start after the order day on the driver gateways (PR #3367, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
+description: Recurring lines that start after the order day on the driver gateways (PR #3378, decided in #3310): their row on today's card, the first charge on the start date, the nothing-today order refused
 module: subscriptions
 ---
 
