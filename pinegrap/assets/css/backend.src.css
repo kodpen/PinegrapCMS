@@ -19667,6 +19667,13 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
 .wsf-app.wsf-no-palette .wsf-palette {
   display: none;
 }
+/* The search field keeps its height. The groups under it are taller than
+   the column, so the column shrinks its items, and Bootstrap 6 draws the
+   field as a flex box whose smallest height is its padding: it was squeezed
+   to a thin line. */
+.wsf-palette-search {
+  flex-shrink: 0;
+}
 .wsf-palette-group {
   display: flex;
   flex-direction: column;
@@ -19682,9 +19689,15 @@ html[data-bs-theme="dark"] .wsf-node { --wsf-ring: #a78bfa; }
   text-transform: uppercase;
   color: var(--wsf-kind);
 }
+/* A long box name wraps inside the column. Bootstrap 6 keeps a button's
+   text on one line, which pushed the longer names past the column's edge
+   and gave the palette a sideways scroll bar. */
 .wsf-palette-item {
+  --bs-btn-white-space: normal;
   justify-content: flex-start;
+  min-width: 0;
   text-align: left;
+  overflow-wrap: anywhere;
   cursor: grab;
 }
 .wsf-palette-item .ws-flow-icon {
