@@ -856,6 +856,58 @@ function erp_account_form_check_formats($liveform, $country_code = '')
 }
 
 /**
+ * Marks the tax number when another active account already holds it, with
+ * the message the New account dialog shows. The CSV import matches cards
+ * by this number and account sync skips a number two cards carry, so a
+ * second card with it would never be found again.
+ *
+ * Runs after erp_account_form_check_formats(): an empty or malformed
+ * number is not looked up. On edit ($stored_number given) only a changed
+ * number is checked, as the ERP API does, so cards that already share one
+ * still save.
+ *
+ * @param liveform      $liveform
+ * @param string        $country_code   The account's country; the store's when empty
+ * @param int           $account_id     The card being saved, 0 when new
+ * @param string|null   $stored_number  The card's saved number on edit, null on create
+ * @param callable|null $lookup         function ($number, $account_id): array('id', 'title')|null; the database by default
+ * @return void
+ */
+function erp_account_form_check_tax_number_taken($liveform, $country_code, $account_id = 0, $stored_number = null, $lookup = null)
+{
+    $country = erp_account_country($country_code);
+    $tax = erp_tax_number_check((string) $liveform->get_field_value('tax_number'), $country);
+
+    if (($tax['value'] === '') || ($tax['error'] !== '')) {
+        return;
+    }
+
+    // Both sides normalised: an older card may hold the number with spaces.
+    if (($stored_number !== null) && ($tax['value'] === erp_tax_number_check((string) $stored_number, $country)['value'])) {
+        return;
+    }
+
+    if ($lookup === null) {
+        $lookup = function ($number, $account_id) {
+            $other = db_item("SELECT id, title FROM erp_accounts
+                WHERE tax_number = '" . escape($number) . "' AND status = 'active' AND id <> '" . (int) $account_id . "'
+                ORDER BY id ASC LIMIT 1");
+
+            return is_array($other) ? $other : null;
+        };
+    }
+
+    $other = $lookup($tax['value'], (int) $account_id);
+
+    if (is_array($other)) {
+        $liveform->mark_error('tax_number', lang(array(
+            'string' => 'This number already belongs to the account “{var:1}”. Search for it instead.',
+            'vars' => array(h((string) $other['title'])),
+        )));
+    }
+}
+
+/**
  * The payment term and the reminder threshold as posted, trimmed, with a
  * value that is not whole days from 0 to 3650 marked on its field.
  *

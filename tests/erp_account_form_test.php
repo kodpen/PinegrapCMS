@@ -155,3 +155,61 @@ function test_erp_account_form_check_formats_email()
 		pg_assert_false(isset($form->errors['email']), 'not marked: ' . $email);
 	}
 }
+
+// A lookup stand-in for the tax-number check: it records what it was asked
+// and answers with the card it was given.
+function pg_test_account_tax_lookup($found, &$asked)
+{
+	return function ($number, $account_id) use ($found, &$asked) {
+		$asked[] = array($number, $account_id);
+
+		return $found;
+	};
+}
+
+// A number another active card holds is marked on the field with that
+// card's name escaped; the lookup gets the normalised number and the
+// card's own id to leave out.
+function test_erp_account_form_check_tax_number_taken_marks()
+{
+	$asked = array();
+	$form = pg_test_account_form_marks(array('tax_number' => ' 1234567808 '));
+	erp_account_form_check_tax_number_taken($form, 'TR', 7, '9999999999', pg_test_account_tax_lookup(array('id' => 3, 'title' => 'A & <b>B</b>'), $asked));
+
+	pg_assert_same(array(array('1234567808', 7)), $asked, 'normalised number and own id asked');
+	pg_assert_true(isset($form->errors['tax_number']), 'taken number marked');
+	pg_assert_true(strpos($form->errors['tax_number'], 'A &amp; &lt;b&gt;B&lt;/b&gt;') !== false, 'other card title escaped');
+	pg_assert_true(strpos($form->errors['tax_number'], '<b>') === false, 'no raw markup');
+}
+
+// A free number is not marked; create (no stored number) always asks.
+function test_erp_account_form_check_tax_number_taken_free()
+{
+	$asked = array();
+	$form = pg_test_account_form_marks(array('tax_number' => '1234567808'));
+	erp_account_form_check_tax_number_taken($form, 'TR', 0, null, pg_test_account_tax_lookup(null, $asked));
+
+	pg_assert_same(array(array('1234567808', 0)), $asked, 'create asks with id 0');
+	pg_assert_false(isset($form->errors['tax_number']), 'free number not marked');
+}
+
+// Not asked: an empty number, one the format check refuses, and on edit
+// a number that did not change, so cards that already share one still save.
+function test_erp_account_form_check_tax_number_taken_skips()
+{
+	$cases = array(
+		'empty' => array(array('tax_number' => '  '), 'TR', 0, null),
+		'malformed' => array(array('tax_number' => '12345'), 'TR', 0, null),
+		'unchanged on edit' => array(array('tax_number' => '1234567808'), 'TR', 7, '1234567808'),
+		'unchanged once normalised' => array(array('tax_number' => '123 456 78 08'), 'TR', 7, '1234567808'),
+	);
+
+	foreach ($cases as $label => $case) {
+		$asked = array();
+		$form = pg_test_account_form_marks($case[0]);
+		erp_account_form_check_tax_number_taken($form, $case[1], $case[2], $case[3], pg_test_account_tax_lookup(array('id' => 3, 'title' => 'Other'), $asked));
+
+		pg_assert_same(array(), $asked, 'not asked: ' . $label);
+		pg_assert_false(isset($form->errors['tax_number']), 'not marked: ' . $label);
+	}
+}
