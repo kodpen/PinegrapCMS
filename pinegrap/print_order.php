@@ -42,7 +42,9 @@ $query = "SELECT
             contacts.email_address AS contact_email_address,
             contacts.member_id,
             contacts.file_id as contact_file_id,
-            contacts.image AS contact_image
+            contacts.image AS contact_image,
+            contacts.tax_number AS contact_tax_number,
+            contacts.tax_office AS contact_tax_office
          FROM orders
          LEFT JOIN user ON orders.user_id = user.user_id
          LEFT JOIN contacts ON orders.contact_id = contacts.id
@@ -107,6 +109,34 @@ $custom_field_2 = $row['custom_field_2'];
 $po_number = $row['po_number'];
 $payment_method = $row['payment_method'];
 $ip_address = $row['ip_address'];
+$contact_tax_number = (string) ($row['contact_tax_number'] ?? '');
+$contact_tax_office = (string) ($row['contact_tax_office'] ?? '');
+
+// Read before $row is reused by the later queries. An order put on the
+// customer's account is stored as an offline payment, but no transfer is
+// coming. paid_at exists from 2026.4.4 on; without it the unpaid state is off.
+$order_on_account = !empty($row['erp_on_account']);
+$order_awaiting_payment = isset($row['paid_at']) && pg_order_awaiting_payment($row);
+$order_payment_pending = $order_awaiting_payment && pg_order_payment_pending($row);
+$order_cancelled_at = isset($row['cancelled_at']) ? (int) $row['cancelled_at'] : 0;
+$order_cancellation_reason = isset($row['cancellation_reason']) ? trim((string) $row['cancellation_reason']) : '';
+
+// The unpaid state and the cancellation reason beside the status line.
+$output_status_note = '';
+if ($order_awaiting_payment) {
+    if ($order_on_account) {
+        $output_status_note = ' (' . lang('On account') . ')';
+    } elseif ($order_payment_pending) {
+        $output_status_note = ' (' . lang('Payment pending on PayPal') . ')';
+    } else {
+        $output_status_note = ' (' . lang('Awaiting bank transfer') . ')';
+    }
+}
+if (($status == 'cancelled') && (($order_cancellation_reason !== '') || ($order_cancelled_at > 0))) {
+    $output_status_note .=
+        '<div>' . lang('Cancellation reason') . ': ' . (($order_cancellation_reason !== '') ? h($order_cancellation_reason) : '-')
+        . (($order_cancelled_at > 0) ? ' (' . get_absolute_time(array('timestamp' => $order_cancelled_at)) . ')' : '') . '</div>';
+}
 $source = '';
 $output_contact_image = '';
 
@@ -350,19 +380,6 @@ if ($surcharge > 0) {
             <span class="col text-end">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</span>
         </div>';
 }
-//if there is installment charge and payment installment((1) is no installment)
-$output_number_of_installment_row = '';
-if(($installment_charges != 0)&&($payment_installment >= 2)){  
-    $output_number_of_installment_row =
-        '<div class="row" >
-            <span class="translateable col fg-secondary">' . lang('Number of Installments') . ':</span>
-            <span class="col">' . $payment_installment . '</span>
-        </div>
-        <div class="row" >
-            <span class="translateable col fg-secondary">' . lang('Installment Charge') . ':</span>
-            <span class="col text-end">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</span>
-        </div>';
-}
 $output_payment_information = '';
 // if there was a payment method, then prepare to output payment information
 if ($payment_method != '') {
@@ -432,7 +449,7 @@ if ($payment_method != '') {
                         <hr/>
                        <div class="row" >
                            <span class="translateable col fg-secondary">' . lang('Payment Method') . ':</span>
-                           <span class="col translateable text-end">' . lang($payment_method) . '</span>
+                           <span class="col translateable text-end">' . ($order_on_account ? lang('Put on account') : lang($payment_method)) . '</span>
                        </div>
                        ' . $output_credit_debit_card_information . '
                        ' . $transaction_id_row . '
@@ -575,6 +592,7 @@ $query = "SELECT
             address_1,
             address_2,
             city,
+            " . (pg_ship_to_district_ready() ? "ship_tos.district," : "") . "
             state,
             zip_code,
             country,
@@ -683,6 +701,11 @@ if ($ship_to_exists == true) {
             if ($ship_tos[$key]['address_2']) {
                 $address .= $ship_tos[$key]['address_2'] . ', ';
             }
+
+            // The district, when one was typed, before the city.
+            if (!empty($ship_tos[$key]['district'])) {
+                $address .= $ship_tos[$key]['district'] . ', ';
+            }
             
             if ($ship_tos[$key]['city']) {
                 $address .= $ship_tos[$key]['city'] . ', ';
@@ -696,8 +719,9 @@ if ($ship_to_exists == true) {
                 $address .= $ship_tos[$key]['zip_code'] . ', ';
             }
             
+            // The country's name, not its code, ends the address line.
             if ($ship_tos[$key]['country']) {
-                $address .= $ship_tos[$key]['country'];
+                $address .= pg_order_view_country($ship_tos[$key]['country']);
             }
             
             $output_address_verified_check_mark = '';
@@ -942,7 +966,7 @@ if ($ship_to_exists == true) {
                 
                 // if the number of payments is set to 0, then change value to [no limit]
                 if ($recurring_number_of_payments == 0) {
-                    $output_recurring_number_of_payments = '[no limit]';
+                    $output_recurring_number_of_payments = lang('No limit');
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
@@ -1309,7 +1333,7 @@ if ($ship_to_exists == true) {
             
             // if the number of payments is set to 0, then change value to [no limit]
             if ($recurring_number_of_payments == 0) {
-                $output_recurring_number_of_payments = '[no limit]';
+                $output_recurring_number_of_payments = lang('No limit');
                 
             // else the number of payments is greater than 0, so show value
             } else {
@@ -1463,7 +1487,7 @@ if ($ship_to_exists == true) {
                 
                 // if the legend content is not blank, then output a legend
                 if ($output_legend_content != '') {
-                    $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</legend>';
+                    $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                 }
                 
                 $output_forms .=
@@ -1529,24 +1553,8 @@ if ($ship_to_exists == true) {
                 ' . $output_form_row;
     }
 }
-// if multi currency is enabled, output miscellaneous fieldset with currency information
-if (ECOMMERCE_MULTICURRENCY === true) {
-    $currency_name_and_code = '';
-    
-    // if there is a currency code, then output it
-    if ($currency_code != '') {
-        $currency_name_and_code = get_currency_name_from_code($currency_code) . ' (' . $currency_code . ')';
-    }
-    $output_currency_code_row =
-    '<div class="row" >
-        <span class=" col fg-secondary">' . lang('Currency') . ':</span>
-        <span class="col text-end">' . h($currency_name_and_code) . '</span>
-    </div>';
-    
-} else {
-    $output_currency_code_row = '';
-}
 $output_applied_gift_cards = '';
+$output_applied_gift_card_rows = '';
 // if there is a gift card discount and there is at least one applied gift card, then prepare to output applied gift cards
 // this double check is not redundant, because there can be a situation where there is a discount with no gift cards if there was an error when the gift card transaction was submitted
 if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
@@ -1566,10 +1574,11 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
                 <span class="translateable col fg-secondary">' . lang('Amount') . ':</span>
                 <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
             </div>
-            <div class="row" >
+            ' . (($applied_gift_card['givex'] != 0) ?
+            '<div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
                 <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
-            </div>
+            </div>' : '') . '
             <div class="row" >
                 <span class="translateable col fg-secondary">' . lang('Remaining Balance') . ':</span>
                 <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
@@ -1579,6 +1588,7 @@ if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
     $output_applied_gift_cards =
         '<div class="card mt-5 bg-transparent border-0">
                 <div class="card-body">
+                    <div class="ord-section-title">' . lang('Applied Gift Cards') . '</div>
                     ' . $output_applied_gift_card_rows . '
                 </div>
             </div>';
@@ -1607,9 +1617,17 @@ if ($billing_address_2) $_addr_parts[] = h($billing_address_2);
 $_cs = trim(h($billing_city) . ($billing_state ? ' / ' . h($billing_state) : ''));
 if ($_cs) $_addr_parts[] = $_cs;
 if ($billing_zip_code) $_addr_parts[] = h($billing_zip_code);
-if ($billing_country)  $_addr_parts[] = h($billing_country);
+if ($billing_country)  $_addr_parts[] = h(pg_order_view_country($billing_country));
 $billing_address_inline = implode(', ', $_addr_parts);
 unset($_addr_parts, $_cs);
+
+// The header's payment block: method, offer and reference codes, currency.
+// The codes print for a free order too, where the offer code made it free.
+$output_print_payment =
+    ($payment_method ? '<div><strong>' . ($order_on_account ? lang('Put on account') : lang(h($payment_method))) . '</strong></div>' : '') .
+    ($special_offer_code ? '<div>' . lang('Special Offer Code') . ': ' . h($special_offer_code) . '</div>' : '') .
+    ($reference_code ? '<div>' . lang('Reference Code') . ': ' . h($reference_code) . '</div>' : '') .
+    ((ECOMMERCE_MULTICURRENCY === true) && ($currency_code != '') ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '');
 
 // Build print-friendly shipping section
 $output_print_shipping = '';
@@ -1620,9 +1638,10 @@ if ($ship_to_exists) {
             $st_addr = '';
             if ($st['address_1']) $st_addr .= h($st['address_1']) . '<br/>';
             if ($st['address_2']) $st_addr .= h($st['address_2']) . '<br/>';
+            if (!empty($st['district'])) $st_addr .= h($st['district']) . '<br/>';
             $_st_cs = trim(h($st['city']) . ($st['state'] ? ', ' . h($st['state']) : '') . ' ' . h($st['zip_code']));
             if ($_st_cs) $st_addr .= $_st_cs . '<br/>';
-            if ($st['country']) $st_addr .= h($st['country']);
+            if ($st['country']) $st_addr .= h(pg_order_view_country($st['country']));
             $st_method = $st['shipping_method_name'] ? $st['shipping_method_name'] : $st['shipping_method_code'];
             if ($st_name) $output_print_shipping .= '<div><strong>' . $st_name . '</strong></div>';
             if ($st['company']) $output_print_shipping .= '<div>' . h($st['company']) . '</div>';
@@ -1700,7 +1719,7 @@ legend { font-size: .9em; font-weight: bold; }
             <td>
                 <h1>' . lang('Order') . ' #' . h($order_number) . '</h1>
                 <div>' . lang('Date') . ': ' . $order_date . '</div>
-                <div>' . lang('Status') . ': ' . lang(ucwords($status)) . '</div>
+                <div>' . lang('Status') . ': ' . lang(ucwords($status)) . $output_status_note . '</div>
             </td>
             <td style="text-align:right;vertical-align:top">
                 <strong>' . h(ORGANIZATION_NAME) . '</strong><br/>
@@ -1726,6 +1745,8 @@ legend { font-size: .9em; font-weight: bold; }
                 ' . ($po_number ? '<div style="margin-top:3px">' . lang('PO Number') . ': ' . h($po_number) . '</div>' : '') . '
                 ' . ($custom_field_1 ? '<div>' . lang('Custom Field') . ' #1: ' . h($custom_field_1) . '</div>' : '') . '
                 ' . ($custom_field_2 ? '<div>' . lang('Custom Field') . ' #2: ' . h($custom_field_2) . '</div>' : '') . '
+                ' . ($contact_tax_number !== '' ? '<div style="margin-top:3px">VKN / TCKN: ' . h($contact_tax_number) . '</div>' : '') . '
+                ' . ($contact_tax_office !== '' ? '<div>' . lang('Tax Office') . ': ' . h($contact_tax_office) . '</div>' : '') . '
             </td>
             ' . ($ship_to_exists && $output_print_shipping !== '' ?
             '<td style="width:33%;padding-right:1.5em;vertical-align:top">
@@ -1740,13 +1761,10 @@ legend { font-size: .9em; font-weight: bold; }
                 $output_member_id_row .
                 $output_ip_address_row . '
                 </div>' .
-                ($payment_method ? '
+                ($output_print_payment !== '' ? '
                 <div style="margin-top:6px">
-                    <div class="ord-section-title">' . lang('Payment') . '</div>
-                    <div><strong>' . lang(h($payment_method)) . '</strong></div>' .
-                    ($special_offer_code ? '<div>' . lang('Special Offer Code') . ': ' . h($special_offer_code) . '</div>' : '') .
-                    ($reference_code ? '<div>' . lang('Reference Code') . ': ' . h($reference_code) . '</div>' : '') .
-                    ($output_currency_code_row ? '<div>' . lang('Currency') . ': ' . h(get_currency_name_from_code($currency_code)) . ' (' . h($currency_code) . ')</div>' : '') . '
+                    <div class="ord-section-title">' . lang('Payment') . '</div>' .
+                    $output_print_payment . '
                 </div>' : '') . '
             </td>
         </tr>
@@ -1764,7 +1782,7 @@ legend { font-size: .9em; font-weight: bold; }
         ' . ($shipping > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Shipping') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($shipping, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         ' . ($gift_card_discount > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Gift Card') . '</td><td style="padding:.15em .5em;text-align:right">-' . pg_format_money($gift_card_discount, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         ' . ($surcharge > 0 ? '<tr><td style="padding:.15em .5em">' . lang('Surcharge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($surcharge, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
-        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
+        ' . ($installment_charges > 0 && $payment_installment >= 2 ? '<tr><td style="padding:.15em .5em">' . lang('Number of Installments') . '</td><td style="padding:.15em .5em;text-align:right">' . (int) $payment_installment . '</td></tr><tr><td style="padding:.15em .5em">' . lang('Installment Charge') . '</td><td style="padding:.15em .5em;text-align:right">' . pg_format_money($installment_charges, BASE_CURRENCY_SYMBOL) . '</td></tr>' : '') . '
         <tr style="border-top:2px solid #333"><td style="padding:.2em .5em"><strong>' . lang('Total') . '</strong></td><td style="padding:.2em .5em;text-align:right"><strong>' . prepare_amount($total) . '</strong></td></tr>
         ' . ($refunded_amount_cents > 0 ?
             '<tr><td style="padding:.15em .5em;color:#dc3545">' . lang('Total Refunded') . '</td><td style="padding:.15em .5em;text-align:right;color:#dc3545">-' . pg_format_money($refunded_amount_cents / 100, BASE_CURRENCY_SYMBOL) . '</td></tr>
