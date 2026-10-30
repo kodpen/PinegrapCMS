@@ -7247,7 +7247,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // (ECOMMERCE_DEFAULT_TRACKING_PROVIDER), and failing that from the number's
     // own shape (pg_sw_order_parcels(), pg_shipment_view()).
     $tracking_columns = pg_shipment_rows_ready()
-        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status'
+        ? ', shipping_tracking_numbers.carrier, shipping_tracking_numbers.tracking_url, shipping_tracking_numbers.status, shipping_tracking_numbers.shipped_at, shipping_tracking_numbers.delivered_at'
         : '';
 
     $tracking_rows = db_items("SELECT shipping_tracking_numbers.number,
@@ -7282,10 +7282,6 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     }
 
     // ── Timeline events ───────────────────────────────────────────────
-    // Aggregate ship_to ship_date / delivery_date across all rows; the
-    // earliest non-zero date wins (a multi-recipient order is "shipped"
-    // when the first ship_to goes out, "delivered" when the first
-    // arrives — closest to what customers actually want to see).
     static $_order_view_has_cancelled_at_col = null;
     if ($_order_view_has_cancelled_at_col === null) {
         $_order_view_has_cancelled_at_col = pg_schema_has('orders', 'cancelled_at');
@@ -7301,26 +7297,46 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             $cancellation_reason = trim((string)($_cancel_row['cancellation_reason'] ?? ''));
         }
     }
-    $shipping_ts = 0;
-    $delivery_ts = 0;
+    // A step says Shipped or Delivered only when a record backs it: a
+    // numbered parcel or a shipped quantity for Shipped, a parcel's
+    // delivered_at for Delivered (pg_shipment_timeline_steps()). Without one
+    // the checkout estimate stays an estimate, even after its day has passed.
+    // A multi-recipient order is shipped when the first address goes out and
+    // delivered when the first arrives.
     $st_dates = db_items(
-        "SELECT ship_date, delivery_date FROM ship_tos
+        "SELECT id, ship_date, delivery_date FROM ship_tos
          WHERE order_id = '$oid_esc'
            AND complete = 1
          ORDER BY id ASC"
     );
-    if (is_array($st_dates)) {
-        foreach ($st_dates as $_d) {
-            if (!empty($_d['ship_date']) && $_d['ship_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['ship_date']);
-                if ($_t > 0 && ($shipping_ts === 0 || $_t < $shipping_ts)) $shipping_ts = $_t;
-            }
-            if (!empty($_d['delivery_date']) && $_d['delivery_date'] !== '0000-00-00') {
-                $_t = strtotime((string)$_d['delivery_date']);
-                if ($_t > 0 && ($delivery_ts === 0 || $_t < $delivery_ts)) $delivery_ts = $_t;
-            }
-        }
+    $st_shipped_rows = db_items(
+        "SELECT ship_to_id, COALESCE(SUM(shipped_quantity), 0) AS shipped_quantity
+         FROM order_items
+         WHERE order_id = '$oid_esc' AND ship_to_id > 0
+         GROUP BY ship_to_id"
+    );
+    $st_shipped = array();
+    foreach ((is_array($st_shipped_rows) ? $st_shipped_rows : array()) as $_sq) {
+        $st_shipped[(int)$_sq['ship_to_id']] = (int)$_sq['shipped_quantity'];
     }
+    $st_parcels = array();
+    foreach ((is_array($tracking_rows) ? $tracking_rows : array()) as $_tr) {
+        $st_parcels[(int)$_tr['ship_to_id']][] = array(
+            'shipped_at'   => isset($_tr['shipped_at']) ? (int)$_tr['shipped_at'] : 0,
+            'delivered_at' => isset($_tr['delivered_at']) ? (int)$_tr['delivered_at'] : 0,
+        );
+    }
+    $st_addresses = array();
+    foreach ((is_array($st_dates) ? $st_dates : array()) as $_d) {
+        $_st_id = (int)$_d['id'];
+        $st_addresses[] = array(
+            'ship_date'        => (string)$_d['ship_date'],
+            'delivery_date'    => (string)$_d['delivery_date'],
+            'shipped_quantity' => isset($st_shipped[$_st_id]) ? $st_shipped[$_st_id] : 0,
+            'parcels'          => isset($st_parcels[$_st_id]) ? $st_parcels[$_st_id] : array(),
+        );
+    }
+    $shipment_steps = pg_shipment_timeline_steps($st_addresses);
     // Format helper — same date logic as $order_date above, plus HH:MM
     // for events that have a real time component (cancellation, order
     // creation). Pure-date columns (ship_date, delivery_date) skip the
@@ -7364,24 +7380,20 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
             'kind'  => 'paid',
         );
     }
-    // ship_date / delivery_date are worked out at checkout from the
-    // shipping method: until the day comes they are a forecast, and a
-    // just-placed order listed itself as shipped and delivered.
-    $_today_ts = strtotime(date('Y-m-d'));
-    if ($shipping_ts > 0) {
+    if ($shipment_steps['shipped']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($shipping_ts > $_today_ts) ? lang('Estimated shipping') : lang('Shipped'),
-            'ts'    => $_fmt_ts($shipping_ts, false),
+            'label'    => $shipment_steps['shipped']['estimate'] ? lang('Estimated shipping') : lang('Shipped'),
+            'ts'       => $_fmt_ts($shipment_steps['shipped']['ts'], false),
             'kind'     => 'shipped',
-            'estimate' => ($shipping_ts > $_today_ts),
+            'estimate' => $shipment_steps['shipped']['estimate'],
         );
     }
-    if ($delivery_ts > 0) {
+    if ($shipment_steps['delivered']['ts'] > 0) {
         $timeline_events[] = array(
-            'label' => ($delivery_ts > $_today_ts) ? lang('Estimated delivery') : lang('Delivered'),
-            'ts'    => $_fmt_ts($delivery_ts, false),
+            'label'    => $shipment_steps['delivered']['estimate'] ? lang('Estimated delivery') : lang('Delivered'),
+            'ts'       => $_fmt_ts($shipment_steps['delivered']['ts'], false),
             'kind'     => 'delivered',
-            'estimate' => ($delivery_ts > $_today_ts),
+            'estimate' => $shipment_steps['delivered']['estimate'],
         );
     }
     if ($cancelled_at_ts > 0) {
