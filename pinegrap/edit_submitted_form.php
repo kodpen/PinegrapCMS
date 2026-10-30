@@ -381,7 +381,7 @@ if (!$_POST) {
             'heading_description' => lang('View or update this submitted form. Office use only fields are also visible.'),
             'cancel'=>array('enable'=>'true','url'=>($send_to !== '') ? $send_to : 'view_submitted_forms.php'),
             'breadcrumb' => array(
-                array('label' => lang('My Submitted Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
+                array('label' => lang('Forms'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_submitted_forms.php'),
                 array('label' => lang('Edit Submitted Form')),
             ),
         )

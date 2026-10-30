@@ -36,7 +36,7 @@ if (!$_POST) {
             'heading_description' => lang('Add a currency conversion that is selectable by customers.'),
             'cancel'=>array('enable'=>'true','url'=>'view_currencies.php')
         ,
-            'breadcrumb' => array(array('label' => lang('Currencies'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_currencies.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Currency'))))),
+            'breadcrumb' => array(array('label' => lang('All Currencies'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_currencies.php'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Currency'))))),
         )
     )  . '
 <main id="content" class="container-fluid">
