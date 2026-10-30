@@ -3509,7 +3509,10 @@ body:not(.toolbar) .software-content {
 .pg-breadcrumb .breadcrumb {
   --bs-breadcrumb-divider: "\203A";   /* › — escaped so no encoding can break it */
   --bs-breadcrumb-item-padding-x: 0.4rem;
-  margin: 0;
+  /* The strip scrolls, so it clips: inner room for a crumb's focus ring,
+     which is drawn 2-4px outside the link, given back by the margin. */
+  padding: 4px;
+  margin: -4px;
   flex-wrap: nowrap;
   /* A deep trail scrolls sideways instead of wrapping onto a second line and
      doubling the height of the bar. */
@@ -3977,6 +3980,11 @@ body:not(.toolbar) .software-content {
    wrong way in one of them. */
 #header .pg-lic-row:is(:hover, :focus-visible) {
   box-shadow: inset 0 0 0 9999px var(--pg-tint);
+}
+/* The card clips (overflow: hidden) and the row fills it: the ring inset. */
+#header .pg-lic-row:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
 }
 #header .pg-lic-label {
   flex: 1 1 auto;
@@ -4788,6 +4796,13 @@ nav.buttons.navigation .btn-solid.theme-secondary {
   border: var(--pg-border-width) solid var(--pg-border-color);
   border-radius: var(--pg-radius);
   overflow: hidden;
+}
+/* The editor's own focus mark (a dotted outline) falls outside the clipped
+   box, so the field wears the panel ring, inset so it also shows when F11
+   fills the window. */
+.pg-code-field:focus-within {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
 }
 
 .pg-code-field .cm-editor {
@@ -8232,7 +8247,8 @@ textarea:focus-visible,
 .nav-link:focus-visible,
 .menu-item:focus-visible,
 .breadcrumb-item a:focus-visible,
-.form-adorn:has(> .form-ghost:focus-visible) {
+.form-adorn:has(> .form-ghost:focus-visible),
+.chip-input.pg-chips:has(> .form-ghost:focus-visible) {
   outline: 2px solid var(--pg-primary-ink);
   outline-offset: 2px;
   box-shadow: 0 0 0 0.2rem var(--pg-focus-ring-color);
@@ -8490,6 +8506,10 @@ html:has(.mpp-bulk:not(.d-none)) {
   gap: 1px;
   max-height: calc(100vh - var(--pg-navbar-h) - 2rem);
   overflow-y: auto;
+  /* The rail scrolls, so it clips: inner room for the full-width links'
+     focus ring, given back by the margin so the rail does not move. */
+  padding: 4px;
+  margin: -4px;
 }
 .pg-settings-group {
   padding: 0.75rem 0.5rem 0.25rem;
@@ -8718,6 +8738,7 @@ html:has(.mpp-bulk:not(.d-none)) {
     z-index: 3;
     display: none;
     max-height: 60vh;
+    margin: 0;
     padding: 0.5rem;
     border: var(--pg-border-width) solid var(--pg-border-color-translucent);
     border-radius: var(--pg-radius-lg);
@@ -9478,7 +9499,10 @@ body.pg-side-panel-open .pg-chat-launcher {
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: thin;
-  padding-bottom: .15rem;
+  /* Room for a chip's focus ring inside the scrolling (so clipping) strip;
+     the block margin keeps the bar's height. */
+  padding: 4px;
+  margin-block: -4px;
 }
 
 /* ── The cards of a category screen ──────────────────────────────────────
@@ -10503,6 +10527,13 @@ body.pg-side-panel-open .pg-chat-launcher {
   color: var(--pg-fg-2);
 }
 .pg-sale-ig > .btn { border-radius: 0; }
+/* The box clips and the frame glows for any of its controls: the focused
+   one wears its own ring, inset. */
+.pg-sale-ig input:focus-visible,
+.pg-sale-ig > .btn:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+}
 .pg-sale-mult {
   display: flex;
   align-items: center;
@@ -10705,7 +10736,12 @@ body.pg-side-panel-open .pg-chat-launcher {
   font-variant-numeric: tabular-nums;
   outline: 0;
 }
-.pg-sale-step input:focus-visible { box-shadow: inset 0 -2px 0 var(--pg-primary); }
+.pg-sale-step input:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+  border-radius: var(--pg-radius);
+  box-shadow: none;
+}
 .pg-sale[data-mode="kasa"] .pg-sale-step button { width: 38px; height: 38px; }
 .pg-sale-linemsg {
   display: block;
@@ -15467,11 +15503,8 @@ a.ws-chip:hover {
 .office-sheet[role="grid"] td {
   cursor: cell;
 }
-.office-sheet td:focus {
-  outline: none;
-}
 .office-sheet td.office-selected {
-  box-shadow: inset 0 0 0 2px var(--pg-primary);
+  box-shadow: inset 0 0 0 2px var(--pg-primary-ink);
 }
 .office-sheet td.office-edited {
   background: var(--pg-warning-bg-subtle);
@@ -15582,8 +15615,16 @@ a.ws-chip:hover {
 .office-doc [data-p] {
   border-radius: .2rem;
 }
-.office-doc [data-p]:focus {
-  outline: none;
+/* The preview frame clips (overflow: hidden), so a focused cell, paragraph
+   or scrolling box wears the ring inset; .office-view outranks the global
+   [tabindex] ring. */
+.office-view .office-sheet td:focus-visible,
+.office-view .office-doc [data-p]:focus-visible,
+.office-view .office-pane:focus-visible,
+.office-view .office-doc:focus-visible {
+  outline: 2px solid var(--pg-primary-ink);
+  outline-offset: -2px;
+  box-shadow: none;
 }
 .office-doc-edit .office-para {
   cursor: text;
