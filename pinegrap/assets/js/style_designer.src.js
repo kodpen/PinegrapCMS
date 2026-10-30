@@ -16715,7 +16715,9 @@ const StyleDesigner = (function () {
                 // Hero Explosion
                 if (ctype === 'hero') {
                     // A dark band in any mode: the theme switch makes text-body and
-                    // the palette's dark colours apply inside it.
+                    // the palette's dark colours apply inside it. The second action is a
+                    // solid btn-secondary: btn-outline-secondary keeps Bootstrap's grey
+                    // text, 3.2:1 on the dark band.
                     return createNode('semantic', { tag: 'div', cssClass: 'py-5 px-3 text-center bg-body text-body mb-4 rounded-3', customName: _sdT('Hero Section'),
                         _attrs: [{ name: 'data-bs-theme', value: 'dark' }] }, [
                         createNode('content', { contentType: 'heading', tag: 'h1', text: _sdT('Hero title'), cssClass: 'display-5 fw-bold' }),
@@ -16723,7 +16725,7 @@ const StyleDesigner = (function () {
                              createNode('content', { contentType: 'paragraph', text: _sdT('Quickly design and customize responsive mobile-first sites with Bootstrap.'), cssClass: 'lead mb-4' }),
                              createNode('semantic', { tag: 'div', cssClass: 'd-grid gap-2 d-sm-flex justify-content-sm-center', customName: _sdT('Hero Buttons') }, [
                                   createNode('component', { componentType: 'btn', text: _sdT('Primary button'), variant: 'primary', size: 'lg' }),
-                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'outline-secondary', size: 'lg' })
+                                  createNode('component', { componentType: 'btn', text: _sdT('Secondary'), variant: 'secondary', size: 'lg' })
                              ])
                         ])
                     ]);
