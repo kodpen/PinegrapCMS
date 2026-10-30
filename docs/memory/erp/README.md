@@ -69,7 +69,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-expenses.md: ERP expenses (4.95): why an expense is nobody's debt, how payment and cancel post to the till, amount and base figures, date and till rules, categories, the API's cash gate and events.
 - erp-file-map-features.md: Where ERP work lives, part 2: stock, accountant pack, period lock, expenses, reports, rules, quotes, purchase orders, recurring documents, prices, cheques, bank statements, storefront, CSV.
 - erp-file-map.md: Where ERP work lives, part 1: the core (entry, money, ledger, accounts, settlement, orders, invoices, waybills, documents, aging, e-documents, API seam). Part 2: erp-file-map-features.md.
-- erp-input-keyboards.md: Phone keyboards of ERP boxes: liveform's opt-in autocapitalize, the till IBAN, the expense VKN/TCKN and the send-by-e-mail recipient list
+- erp-input-keyboards.md: Phone keyboards of ERP boxes: liveform's opt-in autocapitalize, the till IBAN, the expense VKN/TCKN, the send-by-e-mail recipient list and the account card's e-mail, phone and postcode
 - erp-internal-waybill.md: Internal ERP waybill (irsaliye; no driver sends e-Irsaliye): files, series, one open waybill per order, derived invoiced state, editor reuse, units and templates.
 - erp-invoice-cancel-and-open-amount.md: When an ERP invoice can be cancelled, what the screen asks before the provider, what cancel does to ledger, number, gift card, stock and order, the period lock, open amount and returns.
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.

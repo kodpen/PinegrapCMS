@@ -219,13 +219,14 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                     <label for="email" class="form-label">' . lang('E-mail Address') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'email', 'name' => 'email',
-                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '255', 'autocomplete' => 'off',
+                        'inputmode' => 'email', 'spellcheck' => 'false', 'autocapitalize' => 'off')) . '
                 </div>
                 <div class="col-12 lg:col-6 my-3">
                     <label for="phone" class="form-label">' . lang('Phone Number') . '</label>
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => 'phone', 'name' => 'phone',
-                        'class' => 'form-control', 'maxlength' => '50', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '50', 'autocomplete' => 'off', 'inputmode' => 'tel')) . '
                 </div>
                 <div class="col-12 my-3">
                     <label for="address" class="form-label">' . lang('Address') . '</label>
@@ -253,9 +254,10 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
                 </div>
                 <div class="col-12 sm:col-6 lg:col-3 my-3">
                     <label for="postcode" class="form-label">' . lang('Postal Code') . '</label>
-                    ' . $liveform->output_field(array(
+                    ' . $liveform->output_field(array_merge(array(
                         'type' => 'text', 'id' => 'postcode', 'name' => 'postcode',
-                        'class' => 'form-control', 'maxlength' => '20', 'autocomplete' => 'off')) . '
+                        'class' => 'form-control', 'maxlength' => '20',
+                        'autocomplete' => 'off'), $is_tr ? array('inputmode' => 'numeric') : array())) . '
                 </div>
                 <div class="col-12 sm:col-6 lg:col-4 my-3">
                     <label for="country_code" class="form-label">' . lang('Country') . '</label>
@@ -286,14 +288,18 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
             if (label) {
                 label.textContent = label.getAttribute(tr ? "data-label-tr" : "data-label-other");
             }
-            var input = document.getElementById("tax_number");
-            if (input) {
+            // A Turkish tax number and postcode are digits only.
+            ["tax_number", "postcode"].forEach(function (id) {
+                var input = document.getElementById(id);
+                if (!input) {
+                    return;
+                }
                 if (tr) {
                     input.setAttribute("inputmode", "numeric");
                 } else {
                     input.removeAttribute("inputmode");
                 }
-            }
+            });
         });
     })();
     (function () {
