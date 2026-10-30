@@ -855,6 +855,7 @@
     "flow run {var:1} failed": "akış çalışması {var:1} başarısız oldu",
     "flow run {var:1} finished": "akış çalışması {var:1} bitti",
     "flow run {var:1} was cancelled": "akış çalışması {var:1} iptal edildi",
+    "flow “{var:1}” started for {var:2} customers": "“{var:1}” akışı {var:2} müşteri için başlatıldı",
     "flow “{var:1}” started, run {var:2}": "“{var:1}” akışı başladı, çalıştırma {var:2}",
     "flu shots, clinics": "grip aşısı, sağlık merkezleri",
     "folded code": "katlanmış kod",

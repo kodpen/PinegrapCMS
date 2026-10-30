@@ -813,7 +813,8 @@ function ws_step_trigger_context($context)
  * and payload only where the owner may see the record now ($sees); its
  * name always. A row box's table, row and cells only where the owner reads
  * the table now ($sees), each cell as ws_flow_row_cell_text() says it. A
- * run started by hand or by another flow's box declares none, whatever it
+ * customer who stopped ordering only where the owner may still read them
+ * ($sees). A run started by hand or by another flow's box declares none, whatever it
  * carries. Pure but for a row box's columns when $names lacks them.
  *
  * @param array $context ws_flow_run_context()
@@ -861,6 +862,8 @@ function ws_step_trigger_values($context, $sees, $names = array())
         foreach ((array) ($payload['cells'] ?? array()) as $id => $value) {
             $given['cell_' . (int) $id] = function_exists('ws_flow_row_cell_text') ? ws_flow_row_cell_text($value) : '';
         }
+    } elseif (($kind === 'no_order') && $sees) {
+        $given = is_array($context['customer'] ?? null) ? $context['customer'] : array();
     }
 
     $out = array();
@@ -903,6 +906,13 @@ function ws_step_trigger_values_for($owner, $context)
         $table_id = (int) ($payload['table_id'] ?? 0);
         $sees = ($table_id > 0) && (ws_wtable_flow_check($owner, $table_id, 'view') === '');
         $names['columns'] = $sees ? array_values(ws_wtable_columns($table_id)) : array();
+    }
+
+    // A customer who stopped ordering: orders and contacts still read by
+    // the owner, the contact one they may open.
+    if (($kind === 'no_order') && function_exists('ws_flow_no_order_refusal')) {
+        $contact_id = (int) ($context['customer']['contact_id'] ?? 0);
+        $sees = ($contact_id > 0) && (ws_flow_no_order_refusal($owner) === '') && !empty(ws_viewer_contacts_open($owner, array($contact_id)));
     }
 
     if ($kind === 'join') {

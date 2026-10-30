@@ -210,6 +210,7 @@
     "A custom style is not available inside a shared component.": "Ortak bileşenin içinde özel stil kullanılamaz.",
     "A custom style is not available inside a system widget.": "Sistem widget'ının içinde özel stil kullanılamaz.",
     "A customer asked to return goods.": "Bir müşteri ürün iadesi istedi.",
+    "A customer has not ordered for {var:1} days": "Bir müşteri {var:1} gündür sipariş vermedi",
     "A customer is asked in the channel of the task: you cannot post in it.": "Müşteri onayı görevin kanalında istenir: o kanala yazamıyorsunuz.",
     "A customer may add one image (JPG, PNG, GIF or WebP) to a product review. Other files are never taken on a review, whatever the page allows.": "Müşteri ürün değerlendirmesine bir görsel (JPG, PNG, GIF veya WebP) ekleyebilir. Sayfa ne izin verirse versin, değerlendirmede başka dosya alınmaz.",
     "A customer needs at least a name, a company or an e-mail address.": "Bir müşterinin en azından adı, firması ya da e-posta adresi olmalı.",

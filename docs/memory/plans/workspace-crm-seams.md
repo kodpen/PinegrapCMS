@@ -22,7 +22,7 @@ A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools;
 7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.
 8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #2246; storefront, merge #2620; membership and recurring jobs, checkout tax fill #2643; designed forms (`custom_form.php`) #2768. Done.
 9. Done PR #3135 (decided #3138, `workflow/decisions-made-schema-4.md`; workspace/workspace-ref-sources.md): `ws_refs.source_type` to VARCHAR(20) (11.0.116), sources `note` and `wtable_row` with `channel_id` 0 behind `ws_ref_sources_ready()`; drawer, badge, `GET /workspace/refs` and the history check `ws_note_access()` / `ws_wtable_access()` per source; older notes and rows by the general job's budgeted backfill, cursor in `config_text`.
-10. Decided #3416 (`workflow/decisions-made-schema-5.md`, `-workspace-4.md`): 3 done #3427 (core/contact-lead-source.md; API param next); 1 visit link (`ws_events.contact_id`) and 2 no-order start follow; custom fields, pipelines: question 1 [9].
+10. Decided #3416 (`workflow/decisions-made-schema-5.md`, `-workspace-4.md`): 3 done #3427 (core/contact-lead-source.md; API param next); 2 no-order start done #3522 (workspace/workspace-flows-no-order-start.md); 1 visit link (`ws_events.contact_id`) follows; custom fields, pipelines: question 1 [9].
 
 ## Open questions (recommendation)
 1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
@@ -34,4 +34,4 @@ A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools;
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 10: the `lead_source` API param (needs `includes/api/schema.php`), `ws_events.contact_id` (next free Workspace label), then the Flows start after the queued Flows work.
+- 10: the `lead_source` API param (needs `includes/api/schema.php`), `ws_events.contact_id` (next free Workspace label).

@@ -90,6 +90,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_values.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_loops.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_anchors.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_no_order.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_templates_saved.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_shares.php');

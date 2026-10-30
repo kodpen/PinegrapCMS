@@ -518,6 +518,7 @@
     "When": "Ne zaman",
     "When I print a note while the app is in the dark theme, the page comes out with light text that is hard to read. Could printing always use the light theme?": "Uygulama koyu temadayken bir notu yazdırdığımda sayfa okunması zor, açık renkli bir yazıyla çıkıyor. Yazdırma hep açık temayı kullanabilir mi?",
     "When a contact is changed": "Kişi değiştirildiğinde",
+    "When a customer stops ordering": "Bir müşteri sipariş vermeyi bıraktığında",
     "When a customer's invoices pass the threshold, a short reminder listing them goes to the e-mail address on their account, from the store address, with a second one a month later. Off for a single account on its card.": "Bir müşterinin faturaları eşiği geçince, bunları listeleyen kısa bir hatırlatma mağaza adresinden carinin e-posta adresine gider; bir ay sonra ikincisi. Tek bir cari için kartından kapatılır.",
     "When a form is submitted": "Form gönderildiğinde",
     "When a form is submitted: {var:1}": "Form gönderildiğinde: {var:1}",
