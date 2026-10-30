@@ -28,7 +28,7 @@ description: Workspace flow runs (flow_runs.php): start, run channel, walk, task
 - A box of a deleted flow's run cancels it (`ws_flow_runs_cancel_ids()`); deleting cancels every open run.
 
 ## Drivers and limits?
-- `ws_scheduled_run($limit, $flow_budget)` calls `ws_flow_advance()` before its early returns: 10 s on a screen, 25 s in jobs; 3 boxes a run, 30 a call (`ws_flow_advance_boxes()`). `ws_scheduled_due()` asks `ws_flow_due()`.
+- `ws_scheduled_run()` calls `ws_flow_advance()` before its early returns: 10 s on a screen, 25 s in jobs; rounds of 3 boxes a run, 30 a call (`workspace-flows-runner-rounds.md`). `ws_scheduled_due()` asks `ws_flow_due()`.
 - 200 boxes a run, result 16 KB JSON `{text, data}`, ended runs swept at 30 days (`ws_flow_runs_sweep()`, recurring job).
 
 ## End and cancel?
