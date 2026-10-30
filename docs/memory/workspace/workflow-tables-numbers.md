@@ -1,6 +1,6 @@
 ---
 name: workflow-tables-numbers
-description: How the workflow tables screen reads and shows amounts and numbers (#3391, PR #PRNUM): ws_calc_number() for typed figures, the site's separators on display, machine form stored
+description: How the workflow tables screen reads and shows amounts and numbers (#3391, PR #3507): ws_calc_number() for typed figures, the site's separators on display, machine form stored
 ---
 
 ## How is a typed amount or number read?
