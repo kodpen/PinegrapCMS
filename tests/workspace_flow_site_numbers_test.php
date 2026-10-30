@@ -64,7 +64,7 @@ function test_workspace_flow_typed_number()
 		pg_assert_same(1500.0, ws_flow_typed_number('1500'));
 		pg_assert_same(1.5, ws_flow_typed_number('1.5'), 'a dot not before three digits is a machine decimal');
 		pg_assert_same(0.125, ws_flow_typed_number('0.125'), 'nobody groups the thousands of 0');
-		pg_assert_same(1000.5, ws_flow_typed_number('1.000.50'), 'the canvas writes a typed comma as a dot');
+		pg_assert_same(1000.5, ws_flow_typed_number('1.000.50'), 'a flow stored before kept a typed comma as a dot');
 		pg_assert_same(null, ws_flow_typed_number('abc'));
 		pg_assert_same(null, ws_flow_typed_number(''));
 	});
@@ -75,6 +75,29 @@ function test_workspace_flow_typed_number()
 		pg_assert_same(1500.0, ws_flow_typed_number('1500'));
 		pg_assert_same(0.125, ws_flow_typed_number('0.125'));
 		pg_assert_same(null, ws_flow_typed_number('abc'));
+	});
+}
+
+// What the canvas stores comes back with its value: a value rule's number
+// as typed, read the site's way; a record rule's decimal as the machine
+// number the canvas read it as (siteNumber() in workspace_flow.js).
+function test_workspace_flow_typed_number_from_the_canvas()
+{
+	ws_flow_site_numbers_test_as(true, function () {
+		pg_assert_same(1.5, ws_flow_typed_number('1,500'), 'typed 1,500 is one and a half');
+		pg_assert_same(1.5, ws_flow_typed_number('1,5'));
+		pg_assert_same(1.5, ws_flow_typed_number('1.5'));
+		pg_assert_same(1250.5, ws_flow_typed_number('1.250,5'));
+		pg_assert_same(1500.0, ws_flow_typed_number('1500'));
+		pg_assert_true(ws_flow_site_numbers_test_holds('2', 'gt', '1,500')['holds'], '2 is more than 1,500 in Turkish');
+		pg_assert_true(ws_scheduled_compare('2', 'gt', '1.5', 'decimal'), 'a record decimal kept as 1.5');
+		pg_assert_true(!ws_scheduled_compare('1499', 'gt', '1500', 'decimal'), 'and as 1500');
+	});
+
+	ws_flow_site_numbers_test_as(false, function () {
+		pg_assert_same(1500.0, ws_flow_typed_number('1,500'));
+		pg_assert_same(1.5, ws_flow_typed_number('1.5'));
+		pg_assert_same(1500.0, ws_flow_typed_number('1500'));
 	});
 }
 

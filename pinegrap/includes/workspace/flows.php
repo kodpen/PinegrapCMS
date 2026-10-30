@@ -3298,6 +3298,8 @@ function ws_flow_js_config($viewer, $mode)
         // be asked (its licence included, flow_draft.php).
         'ai_sketch' => $staff_build && function_exists('ws_flow_ai_sketch_ready') && ws_flow_ai_sketch_ready($viewer),
         'ai_sketch_max' => WS_FLOW_AI_SKETCH_MAX,
+        // The decimal mark a typed number is read by on the canvas.
+        'decimal'  => (function_exists('ws_calc_decimal_comma') && ws_calc_decimal_comma()) ? ',' : '.',
         'steps'    => $steps,
         'outputs'  => $outputs,
         'trigger_outputs' => $trigger_outputs,

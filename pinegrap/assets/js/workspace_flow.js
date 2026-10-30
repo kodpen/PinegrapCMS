@@ -6626,22 +6626,28 @@
         return isNaN(places) ? 2 : Math.max(0, Math.min(places, 6));
     }
 
-    // A cell as its field shows it: money in minor units as an amount.
+    // A cell as its field shows it: money in minor units as an amount, a
+    // number with the site's decimal mark (siteShown()).
     function cellShown(column, value) {
         if ((value === null) || (value === undefined)) {
             return '';
         }
 
         if ((column.type === 'money') && (typeof value === 'number')) {
-            return (value / Math.pow(10, cellPlaces(column))).toFixed(cellPlaces(column));
+            return siteShown((value / Math.pow(10, cellPlaces(column))).toFixed(cellPlaces(column)));
+        }
+
+        if (typeof value === 'number') {
+            return siteShown(value);
         }
 
         return (typeof value === 'object') ? JSON.stringify(value) : String(value);
     }
 
     // What a field typed keeps, as the table takes it: nothing for an empty
-    // field, a number typed as a number (money in minor units, rounded), a
-    // text otherwise; a value from a box before stays a text the run fills.
+    // field, a number typed the site's way as a number (siteNumber(); money
+    // in minor units, rounded), a text otherwise; a value from a box before
+    // stays a text the run fills.
     function cellKept(column, text) {
         var typed = text.trim();
 
@@ -6649,12 +6655,12 @@
             return undefined;
         }
 
-        if (((column.type === 'number') && /^-?\d+(\.\d+)?$/.test(typed)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
-            return Number(typed);
+        if (((column.type === 'number') && (siteNumber(typed) !== null)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
+            return Number((column.type === 'number') ? siteNumber(typed) : typed);
         }
 
-        if ((column.type === 'money') && /^-?\d+([.,]\d+)?$/.test(typed)) {
-            return Math.round(parseFloat(typed.replace(',', '.')) * Math.pow(10, cellPlaces(column)));
+        if ((column.type === 'money') && (siteNumber(typed) !== null)) {
+            return Math.round(Number(siteNumber(typed)) * Math.pow(10, cellPlaces(column)));
         }
 
         return (column.type === 'text') ? text : typed;
@@ -6984,7 +6990,7 @@
 
         var operators = stepLists().operators;
 
-        conditionCompare(box, node, rule, VALUE_OPS[type].map(function (key) { return [key, operators[key] || key]; }), (type === 'number') ? { kind: 'decimal' } : null);
+        conditionCompare(box, node, rule, VALUE_OPS[type].map(function (key) { return [key, operators[key] || key]; }), (type === 'number') ? { kind: 'number' } : null);
     }
 
     // A count compared with a number; a count of a channel's tasks reads one
@@ -7136,11 +7142,63 @@
         box.appendChild(field(t('fl_cond_value'), input, (rule.op === 'within') ? t('fl_cond_within_help') : ''));
     }
 
+    // The site's decimal mark (ws_flow_js_config()): ',' in Turkish.
+    function siteDecimal() {
+        return (FL.decimal === ',') ? ',' : '.';
+    }
+
+    // A number typed the site's way, read as ws_calc_number() reads it: with
+    // both marks the last one marks the decimals; a lone mark before groups
+    // of three digits groups thousands, unless it is the site's decimal mark
+    // written once (Turkish 1,500 is 1.5, 1.500 is 1500, 1.250,5 is 1250.5).
+    // Gives a machine number as text, or null when the text is no number.
+    function siteNumber(text) {
+        var match = /^([+-]?)(\d[\d.,]*)$/.exec(String(text).replace(/[\s\u00a0]/g, ''));
+        var decimal = '.';
+
+        if (!match) {
+            return null;
+        }
+
+        var digits = match[2];
+        var dot = digits.lastIndexOf('.');
+        var comma = digits.lastIndexOf(',');
+
+        if ((dot !== -1) && (comma !== -1)) {
+            decimal = (dot > comma) ? '.' : ',';
+        } else if ((dot !== -1) || (comma !== -1)) {
+            var mark = (dot !== -1) ? '.' : ',';
+            var parts = digits.split(mark);
+            var grouped = parts.slice(1).every(function (part) { return part.length === 3; });
+
+            decimal = (grouped && ((parts.length > 2) || (mark !== siteDecimal()))) ? ((mark === '.') ? ',' : '.') : mark;
+
+            if ((parts.length > 2) && (decimal === mark)) {
+                return null;
+            }
+        }
+
+        // Trailing zeros of the decimals go: Turkish 1,500 is kept as 1.5.
+        digits = digits.split((decimal === '.') ? ',' : '.').join('').replace(decimal, '.').replace(/(\.\d*?)0+$/, '$1').replace(/\.$/, '');
+
+        return /^\d+(\.\d+)?$/.test(digits) ? ((match[1] === '-') ? '-' : '') + digits : null;
+    }
+
+    // A machine number shown with the site's decimal mark and no grouping,
+    // so it reads back as the same number (Turkish 1.234 shown as 1,234).
+    function siteShown(value) {
+        var text = String(value);
+
+        return ((siteDecimal() === ',') && /^-?\d+\.\d+$/.test(text)) ? text.replace('.', ',') : text;
+    }
+
     // A value a field is compared with, kept as the record keeps it and as
     // the scheduled form sends it (saValueInput() in workspace.js): an amount
     // shown as a decimal and kept in minor units (changeInput()), yes or no
     // as '1' or '0', a day as YYYY-MM-DD, a moment as YYYY-MM-DD HH:MM:00, a
-    // decimal with a dot, anything else as typed. Always text: the store
+    // decimal typed the site's way kept as a machine number (siteNumber()),
+    // anything else as typed: a value of the run's number stays as typed,
+    // read the site's way by ws_flow_typed_number(). Always text: the store
     // would keep a true or false as '' (ws_flow_text()).
     function conditionValue(meta, value, onChange) {
         var kind = meta ? meta.kind : '';
@@ -7166,10 +7224,16 @@
                 typed = (typed === '') ? '' : typed.replace('T', ' ').slice(0, 16) + ':00';
             }
 
-            onChange((kind === 'decimal') ? typed.replace(',', '.') : typed);
+            if (kind === 'decimal') {
+                typed = (siteNumber(typed) === null) ? typed : siteNumber(typed);
+            }
+
+            onChange(typed);
         });
 
-        if (kind === 'date') {
+        if (kind === 'decimal') {
+            input.value = siteShown(value || '');
+        } else if (kind === 'date') {
             input.type = 'date';
         } else if (kind === 'datetime') {
             input.type = 'datetime-local';
