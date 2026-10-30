@@ -14,4 +14,4 @@ description: add_state.php and edit_state.php draw the state/province options ca
 - Only the edit screen deletes: the `states` row, then its `zones_states_xref`, `tax_zones_states_xref` and `verified_shipping_addresses` rows. This stays in `edit_state.php`.
 
 ## What changed for a posted value?
-- `pg_state_form_values()` (pure, tests in `tests/state_form_test.php`): a missing or non-scalar value is empty; before, an array was saved as "Array" with a notice.
+- `pg_state_form_values()` (pure, tests in `tests/state_form_test.php`): a missing or non-scalar value is empty; before, an array was saved as "Array" with a notice. The name and code are trimmed; the code error compares against the trimmed stored code (PAD SPACE ignores only trailing spaces, so ' TX' passed beside 'TX' and checkout's trimmed lookup missed it).

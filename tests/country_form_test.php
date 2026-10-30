@@ -29,6 +29,11 @@ function test_country_form_values()
 		array('name' => '', 'code' => '', 'zip_code_required' => '', 'transit_adjustment_days' => '', 'default_selected' => ''),
 		pg_country_form_values(array('name' => array('x'), 'code' => null)),
 		'missing, null or nested values are empty');
+
+	pg_assert_same(
+		array('name' => 'United States', 'code' => 'US', 'zip_code_required' => '1', 'transit_adjustment_days' => '', 'default_selected' => ''),
+		pg_country_form_values(array('name' => ' United States ', 'code' => " US\t", 'zip_code_required' => '1')),
+		'the name and the code are trimmed');
 }
 
 function test_country_form_card_prints_stored_values()
