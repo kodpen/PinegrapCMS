@@ -4,7 +4,7 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 ---
 
 ## What is this plan?
-- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list (`workspace/workspace-menu-list.md`) gets the layout below, which the owner approved; only the list changes: the channel screen, the Overview and the other workspace screens stay as they are (`workflow/decisions-made-workspace-5.md`).
+- Owner request (2026-10-30, "Menü çok karışık"): the Workspace list (`workspace/workspace-menu-list.md`) gets the layout below, which the owner approved (`workflow/decisions-made-workspace-5.md`); the channel screen is redrawn in `plans/workspace-channel-layout.md`.
 - Kept: the place (#2545), the data (`ws_side_payload()`: every entry under its screen's gate, the script hides nothing), `<a href>` links, pin, drag into a group, right-click menus, the closed state in localStorage, the panel colours (`--pg-*`, `--ws-accent`) in light and dark.
 - Files: `assets/js/workspace_side.js` (`draw()`), `includes/workspace/nav.php`, the Workspace block of `assets/css/backend.src.css`, `includes/workspace/tour.php`, `tests/workspace_side_test.php`; new words through `tools/tr_add.php`. No schema, no new right.
 
