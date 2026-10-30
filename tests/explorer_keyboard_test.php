@@ -63,9 +63,9 @@ function test_explorer_shortcuts_leave_keys_to_a_focused_control()
 
 function test_explorer_breadcrumb_takes_focus()
 {
-	$crumbs = explorer_keyboard_function('renderBreadcrumb');
+	$crumbs = explorer_keyboard_function('drawBreadcrumb');
 
-	pg_assert_true($crumbs !== '', 'renderBreadcrumb() is found');
+	pg_assert_true($crumbs !== '', 'drawBreadcrumb() is found');
 	pg_assert_true(strpos($crumbs, '<a data-folder-id="0" class="pg-link-secondary">') === false, 'no root crumb without href');
 	pg_assert_true(strpos($crumbs, '<a data-catalog-id="0" class="pg-link-secondary">') === false, 'no catalog root crumb without href');
 	pg_assert_true(substr_count($crumbs, '<a href="#" draggable="false" data-folder-id="') >= 6, 'every folder crumb has an href');

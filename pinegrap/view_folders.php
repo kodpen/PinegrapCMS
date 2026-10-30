@@ -983,6 +983,8 @@ echo
 #file_scope_menu .menu-item [data-role="check"] { opacity: 0; }
 #file_scope_menu .menu-item.active [data-role="check"] { opacity: 1; }
 #file_scope_menu .menu-item.active { background: var(--pg-bg-2); color: var(--pg-fg-body); }
+#explorer_breadcrumb { position: relative; }
+#explorer_breadcrumb.is-scrolled::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 1.25rem; background: linear-gradient(to right, var(--pg-bg-body), transparent); pointer-events: none; z-index: 1; }
 #explorer_breadcrumb .breadcrumb { margin: 0; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 #explorer_breadcrumb .breadcrumb::-webkit-scrollbar { display: none; }
 #explorer_breadcrumb .breadcrumb-item { white-space: nowrap; }
@@ -4248,7 +4250,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         newButton.classList.toggle('disabled', !anyAction);
     }
 
+    // The bar is a horizontal scroll container with a hidden scrollbar; drawn
+    // from its start, a narrow toolbar would hide the open folder's name, so
+    // every draw ends scrolled to the last crumb.
     function renderBreadcrumb() {
+        drawBreadcrumb();
+        showBreadcrumbEnd();
+    }
+
+    // Scrolls the bar to its end and fades its left edge while crumbs are
+    // hidden there. Reading scrollWidth lays the new markup out first.
+    function showBreadcrumbEnd() {
+        var list = document.querySelector('#explorer_breadcrumb .breadcrumb');
+
+        if (!list) { return; }
+
+        list.scrollLeft = list.scrollWidth;
+        document.getElementById('explorer_breadcrumb').classList.toggle('is-scrolled', list.scrollLeft > 0);
+    }
+
+    function drawBreadcrumb() {
         if (state.mode === 'catalog') {
 
             var catalogCrumbs = '<li class="breadcrumb-item"><a href="#" draggable="false" data-catalog-id="0" class="pg-link-secondary"><span class="bi bi-boxes me-1"></span>' + esc(L.catalog_root) + '</a></li>';
@@ -15098,6 +15119,18 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     document.addEventListener('contextmenu', function (event) {
         if ((Date.now() - keyboardMenuAt) < 1000) { event.preventDefault(); }
     });
+
+    // A wider or narrower bar keeps the open folder in view. Scroll does not
+    // bubble and the list is redrawn, so the bar listens in the capture phase.
+    if (window.ResizeObserver) {
+        new ResizeObserver(showBreadcrumbEnd).observe(document.getElementById('explorer_breadcrumb'));
+    } else {
+        window.addEventListener('resize', showBreadcrumbEnd);
+    }
+
+    document.getElementById('explorer_breadcrumb').addEventListener('scroll', function (event) {
+        this.classList.toggle('is-scrolled', event.target.scrollLeft > 0);
+    }, true);
 
     document.getElementById('explorer_breadcrumb').addEventListener('click', function (event) {
         // The crumbs carry href="#" only so the keyboard can reach them.
