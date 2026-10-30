@@ -35,7 +35,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 
 - T5 a value whose box was deleted gets a red dashed thread. Done (PR #3711, `workspace/workspace-flows-thread-drawing.md`).
 
-- T6 (left) the per-thread "when empty, write" fallback of a value from a branch that may be skipped.
+- T6 (in progress) the per-thread "when empty, write" fallback of a value from a branch that may be skipped: kept in the token, filled by the run, set from the chip.
 
 ## Which questions are answered? (#2415)
 1. Pure boxes are computed when a thread reads them, cached per run, with no run row (as drawn).
