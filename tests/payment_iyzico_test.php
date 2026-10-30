@@ -719,7 +719,7 @@ function test_payment_iyzico_threeds_start_failure_names_iyzicos_reason()
 	pg_assert_false($answer['success']);
 	pg_assert_same(lang('Payment could not be initiated. Please try again.') . ' (Kart numarası geçersizdir)', $answer['error']);
 	pg_assert_same(1, count($answer['log']));
-	pg_assert_contains('Iyzipay 3DS init error: status=failure, code=12, message=Kart numarası geçersizdir, raw={', $answer['log'][0]);
+	pg_assert_contains('Iyzipay 3D Secure could not be started: status failure, code 12, message Kart numarası geçersizdir. Answer: {', $answer['log'][0]);
 	pg_assert_same(1, count($kept), 'the row is written before iyzico is asked, as before');
 }
 
@@ -730,21 +730,21 @@ function test_payment_iyzico_payment_failure_and_fraud()
 
 	pg_assert_false($failed['success']);
 	pg_assert_same(lang('Payment failed. Please try again.'), $failed['error']);
-	pg_assert_same(array('Iyzipay payment error: code=10051, message=Yetersiz bakiye'), $failed['log']);
+	pg_assert_same(array(lang(array('string' => 'Iyzipay payment was not accepted: code {var:1}, message {var:2}', 'vars' => array('10051', 'Yetersiz bakiye')))), $failed['log']);
 
 	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '77', 'fraudStatus' => -1))));
 	$rejected = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
 
 	pg_assert_false($rejected['success']);
 	pg_assert_same(lang('Payment was found to be risky and rejected.'), $rejected['error']);
-	pg_assert_same(array('Iyzipay fraud rejected: paymentId=77'), $rejected['log']);
+	pg_assert_same(array(lang(array('string' => 'Iyzipay rejected payment {var:1} as fraud.', 'vars' => array('77')))), $rejected['log']);
 
 	payment_iyzico_test_http(array('/payment/auth' => payment_iyzico_test_success(array('paymentId' => '78', 'fraudStatus' => 0))));
 	$review = payment_iyzico_test_authorize(payment_iyzico_test_settings(), payment_iyzico_test_payment());
 
 	pg_assert_true($review['success'], 'a payment under review completes the order, as before');
 	pg_assert_same('paid', $review['status']);
-	pg_assert_same(array('Iyzipay fraud pending review: paymentId=78'), $review['log']);
+	pg_assert_same(array(lang(array('string' => 'Iyzipay holds payment {var:1} for a fraud review.', 'vars' => array('78')))), $review['log']);
 }
 
 /* ---------------------------------------------------------------------------
@@ -785,7 +785,7 @@ function test_payment_iyzico_pay_with_iyzico_start_failure()
 	pg_assert_false($answer['success']);
 	pg_assert_same(lang('Payment could not be initiated. Please try again.'), $answer['error'], 'an empty message adds nothing');
 	pg_assert_same(array(), $answer['state']);
-	pg_assert_contains('Pay with Iyzico init error: code=1, message=, raw=', $answer['log'][0]);
+	pg_assert_contains('Pay with iyzico could not be started: code 1, message . Answer: ', $answer['log'][0]);
 }
 
 function test_payment_iyzico_pay_with_iyzico_return_needs_its_token_and_order()
@@ -807,7 +807,7 @@ function test_payment_iyzico_pay_with_iyzico_return_needs_its_token_and_order()
 		pg_assert_same(lang('Session could not be verified. Please try again.'), $answer['error'], $label);
 		pg_assert_same($case[1], $answer['state'], $label . ': the wait goes on');
 		pg_assert_same(array(), $http->posts, $label . ': iyzico is not asked');
-		pg_assert_contains('Pay with Iyzico callback: token or order mismatch (order_id=', $answer['log'][0], $label);
+		pg_assert_contains('Pay with iyzico answer does not match this order (order #', $answer['log'][0], $label);
 	}
 }
 
@@ -863,8 +863,8 @@ function test_payment_iyzico_pay_with_iyzico_return_cancels_a_payment_for_anothe
 		pg_assert_same(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $answer['error'], $label);
 		pg_assert_same('/payment/cancel', $http->posts[1]['path'], $label);
 		pg_assert_same(legacy_iyzico_void_request('9003', 123456789, 'Order total changed during Pay with Iyzico checkout'), $http->posts[1]['body'], $label);
-		pg_assert_contains('Pay with Iyzico amount mismatch: paymentId=9003, order_id=438', $answer['log'][0], $label);
-		pg_assert_same('Iyzipay payment 9003 was cancelled: Order total changed during Pay with Iyzico checkout.', $answer['log'][1], $label);
+		pg_assert_contains('Pay with iyzico payment 9003 does not match order #438:', $answer['log'][0], $label);
+		pg_assert_same(lang(array('string' => 'Iyzipay payment {var:1} was cancelled: {var:2}.', 'vars' => array('9003', 'Order total changed during Pay with Iyzico checkout'))), $answer['log'][1], $label);
 	}
 }
 
@@ -877,7 +877,7 @@ function test_payment_iyzico_pay_with_iyzico_refused_cancel_asks_for_a_manual_re
 
 	$answer = pg_payment_answer('complete', pg_payment_pay_with_iyzico_complete_with(payment_iyzico_test_order(), 10714, array('token' => 'tok-1'), payment_iyzico_test_pwi_state(), payment_iyzico_test_settings()));
 
-	pg_assert_same('Iyzipay payment 9004 could not be cancelled (Order total changed during Pay with Iyzico checkout). MANUAL REFUND REQUIRED. Gateway message: İptal süresi geçti', $answer['log'][1]);
+	pg_assert_same(lang(array('string' => 'Iyzipay payment {var:1} could not be cancelled ({var:2}). MANUAL REFUND REQUIRED. Gateway message: {var:3}', 'vars' => array('9004', 'Order total changed during Pay with Iyzico checkout', 'İptal süresi geçti'))), $answer['log'][1]);
 }
 
 function test_payment_iyzico_pay_with_iyzico_unverified_payment()
@@ -889,7 +889,7 @@ function test_payment_iyzico_pay_with_iyzico_unverified_payment()
 	pg_assert_false($answer['success']);
 	pg_assert_same(lang('Payment could not be verified. Please try again.'), $answer['error']);
 	pg_assert_same(array(), $answer['state'], 'asked once, the wait ends as before');
-	pg_assert_same(array('Pay with Iyzico status!=success: code=5, message=Token bulunamadı'), $answer['log']);
+	pg_assert_same(array(lang(array('string' => 'Pay with iyzico payment was not accepted: code {var:1}, message {var:2}', 'vars' => array('5', 'Token bulunamadı')))), $answer['log']);
 }
 
 /* ---------------------------------------------------------------------------
