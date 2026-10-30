@@ -42,4 +42,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- Role-3 flows (#3345): done (slice 9; R2 #3440, R3 #3438). Saved templates ask no table of a row box yet. Values: plans/workspace-flows-data-passing.md.
+- Role-3 flows (#3345): done (slice 9; R2 #3440, R3 #3438). Saved templates ask the table of a row box: done (PR #TBD). Values: plans/workspace-flows-data-passing.md.

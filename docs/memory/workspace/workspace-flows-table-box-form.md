@@ -13,5 +13,5 @@ description: The canvas form of the add-row and change-row flow boxes (F6b-2, #3
 ## Values and threads?
 - The cells' tokens draw threads (`fieldTexts()`) but no thread drops into them (`openFields()`). Tests `test_workspace_flows_canvas_table_write_boxes`.
 
-## What is left?
-- Saved templates ask no table for these boxes yet.
+## Do saved templates ask the table?
+- Yes (PR #TBD): `workspace-flows-template-table.md`.

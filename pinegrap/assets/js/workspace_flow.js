@@ -65,7 +65,7 @@
     var BOX_W = 208;
     var BOX_H = 80;
     // The label of each kind of template setting (ws_flow_template_setting_types()).
-    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address' };
+    var SETTINGS = { channel: 'fl_tpl_set_channel', person: 'fl_tpl_set_person', time: 'fl_tpl_set_time', url: 'fl_tpl_set_url', address: 'fl_tpl_set_address', table: 'fl_tpl_set_table' };
     var ZOOM_MIN = 0.25;
     var ZOOM_MAX = 2;
     var SAVE_DELAY = 1500;
@@ -2053,7 +2053,21 @@
         return node ? node.config[target[1]] : null;
     }
 
-    function setupControl(setting, answers) {
+    // The tables a template's table setting offers, of those the person
+    // reaches (ws_flow_row_tables()): only those whose rows they may change
+    // once one of its boxes adds or changes rows, as the server refuses any
+    // other (ws_flow_template_table_refusal()).
+    function setupTables(template, setting) {
+        var kinds = {};
+
+        (template.graph.nodes || []).forEach(function (node) { kinds[node.id] = node.kind; });
+
+        var writes = setting.targets.some(function (target) { return (kinds[target[0]] === 'row_add') || (kinds[target[0]] === 'row_set'); });
+
+        return stepLists().tables.filter(function (table) { return !writes || !!table.edit; });
+    }
+
+    function setupControl(setting, answers, template) {
         var type = setting.type;
         var value = settingValue(setting);
         var control;
@@ -2063,6 +2077,15 @@
         if (type === 'channel') {
             control = channelPick({ channel_id: value || 0 }, t('fl_post_pick'));
             control.addEventListener('change', function () { answers.channel = parseInt(control.value, 10) || 0; });
+        } else if (type === 'table') {
+            // The table's own columns and rows are cleared by the server on
+            // a change (ws_flow_template_apply()), as the box form does.
+            var offered = setupTables(template, setting);
+            var known = offered.some(function (table) { return table.id === value; });
+
+            control = K.select([[0, t('fl_row_table_pick')]].concat(offered.map(function (table) { return [table.id, table.name]; })), known ? value : 0);
+            answers.table = known ? value : 0;
+            control.addEventListener('change', function () { answers.table = parseInt(control.value, 10) || 0; });
         } else if (type === 'person') {
             control = el('div', 'wsf-people-list');
             control.setAttribute('role', 'group');
@@ -2117,7 +2140,7 @@
         ui.setup.appendChild(title);
         ui.setup.appendChild(el('p', 'wsf-setup-help', t('fl_tpl_setup_help', template.title)));
         template.settings.forEach(function (setting) {
-            ui.setup.appendChild(setupControl(setting, answers));
+            ui.setup.appendChild(setupControl(setting, answers, template));
         });
         error.setAttribute('role', 'alert');
         ui.setup.appendChild(error);
