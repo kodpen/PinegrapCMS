@@ -12,7 +12,7 @@ description: The Kodpen API's release check (GET /releases/latest, PR #3282) beh
 
 ## What does it offer?
 - `pg_vendor_release_offer($found, $installed, $build, $channel, $mode)`: 403 `access_blocked` and 404 `release_not_found` are no_update; any other answer without a release is unusable; `blocked` (any reason) is blocked; another channel is refused. Update: newer is an update, else up_to_date; on beta the same version with another build only when the site records a build (#3204). Repair: older refused, equal repairs, newer updates.
-- The installed build is '' until the build file exists, so a beta site is offered newer versions only.
+- The installed build is `pg_update_build_read()['build']` (`data/update_build.json`, `update-beta-builds.md`): without the file a beta site is offered newer versions only.
 - `pg_vendor_release_message()`: the stepping stone, another channel, "Service access is closed for this site." (the licence card's text too), the existing repair and no-update texts; a beta build is named beside its version. An unusable answer keeps the screens' own texts ("No access to the update server." with `pg_curl_tls_hint()`, "No response from the update server.").
 
 ## What does the check step keep?

@@ -1833,10 +1833,10 @@ function pg_vendor_release_check($mode)
 {
     $answer = pg_vendor_api_request('GET', pg_vendor_api_url(pg_vendor_release_path(pg_update_channel(), pg_vendor_api_version())));
 
-    // No beta build is recorded yet, so a beta site is offered newer
-    // versions only.
+    // Another build of the running version only over a recorded beta build
+    // of it (#3204).
     return array(
-        'decision' => pg_vendor_release_offer(pg_vendor_release_read($answer), defined('VERSION') ? (string) VERSION : '', '', pg_update_channel(), $mode),
+        'decision' => pg_vendor_release_offer(pg_vendor_release_read($answer), defined('VERSION') ? (string) VERSION : '', pg_update_build_read()['build'], pg_update_channel(), $mode),
         'errno'    => (int) $answer['errno'],
         'error'    => (string) $answer['error'],
     );
@@ -1913,8 +1913,10 @@ function pg_vendor_manifest_read($bytes)
     $version = pg_vendor_api_version_value(isset($data['version']) ? $data['version'] : null);
     $channel = isset($data['channel']) ? $data['channel'] : null;
     $build = isset($data['build']) ? $data['build'] : '';
+    $git_ref = isset($data['git_ref']) ? $data['git_ref'] : '';
 
-    if (($version === '') || !in_array($channel, array('stable', 'beta'), true) || !is_string($build) || (preg_match('/\A[0-9A-Za-z._-]{0,64}\z/', $build) !== 1)) {
+    if (($version === '') || !in_array($channel, array('stable', 'beta'), true) || !is_string($build) || (preg_match('/\A[0-9A-Za-z._-]{0,64}\z/', $build) !== 1)
+        || (($git_ref !== '') && !pg_update_build_value_ok($git_ref, 'git_ref'))) {
         return null;
     }
 
@@ -1941,6 +1943,7 @@ function pg_vendor_manifest_read($bytes)
         'version' => $version,
         'channel' => $channel,
         'build'   => $build,
+        'git_ref' => $git_ref,
         'update'  => array('size' => $update['size'], 'sha256' => strtolower($update['sha256'])),
     );
 }
@@ -2229,10 +2232,9 @@ function pg_vendor_update_refusal_message($reason)
  */
 function pg_vendor_update_site()
 {
-    // No beta build is recorded yet.
     return array(
         'installed_version'     => defined('VERSION') ? (string) VERSION : '',
-        'installed_build'       => '',
+        'installed_build'       => pg_update_build_read()['build'],
         'update_channel'        => pg_update_channel(),
         'api_base'              => pg_vendor_api_base(),
         'openssl_verify_exists' => function_exists('openssl_verify'),
@@ -2381,7 +2383,7 @@ function pg_vendor_update_download($pin)
         return $refused($result);
     }
 
-    return array('ok' => true, 'reason' => '', 'message' => '', 'log' => '', 'security' => false);
+    return array('ok' => true, 'reason' => '', 'message' => '', 'log' => '', 'security' => false, 'pin' => pg_vendor_update_pin_manifest($pin, $observed['manifest']));
 }
 
 /**
@@ -2417,6 +2419,247 @@ function pg_vendor_update_forget()
     }
 
     unset($_SESSION['software']['update']);
+}
+
+// ----------------------------------------------------------------------------
+// The beta build an installation runs: data/update_build.json
+// ----------------------------------------------------------------------------
+// A beta build carries the version number of the release it leads to, so the
+// version alone cannot tell two builds apart. The file names the build of the
+// verified manifest the last update installed; it counts only while its
+// version is the code's own, so a site updated past it by any other route
+// reads no build.
+
+/**
+ * Where the build of the running beta is recorded.
+ *
+ * @return string
+ */
+function pg_update_build_path()
+{
+    return PG_FUNCTIONS_DIR . '/data/update_build.json';
+}
+
+/**
+ * Whether a value can be a build id or a git ref: a build as the release
+ * check reads it, a ref as a tag or commit name without a slash, so it is one
+ * path segment of a GitHub URL.
+ *
+ * @param mixed  $value
+ * @param string $kind 'build' or 'git_ref'
+ * @return bool
+ */
+function pg_update_build_value_ok($value, $kind)
+{
+    $pattern = ($kind === 'git_ref') ? '/\A[0-9A-Za-z][0-9A-Za-z._-]{0,127}\z/' : '/\A[0-9A-Za-z._-]{1,64}\z/';
+
+    return is_string($value) && (preg_match($pattern, $value) === 1) && (strpos($value, '..') === false);
+}
+
+/**
+ * The build file's contents as this installation reads them: version, build
+ * and git_ref, all '' unless the file names a build of $code_version. A
+ * git_ref that cannot be a ref is left out, the build kept.
+ *
+ * @param string $json         the file's contents
+ * @param string $code_version pg_code_version()
+ * @return array
+ */
+function pg_update_build_parse($json, $code_version)
+{
+    $none = array('version' => '', 'build' => '', 'git_ref' => '');
+    $data = json_decode((string) $json, true);
+
+    if (!is_array($data) || ((string) $code_version === '') || !isset($data['version'], $data['build'])
+        || ($data['version'] !== (string) $code_version) || !pg_update_build_value_ok($data['build'], 'build')) {
+        return $none;
+    }
+
+    $git_ref = isset($data['git_ref']) ? $data['git_ref'] : '';
+
+    return array(
+        'version' => $data['version'],
+        'build'   => $data['build'],
+        'git_ref' => pg_update_build_value_ok($git_ref, 'git_ref') ? $git_ref : '',
+    );
+}
+
+/**
+ * The build this installation runs (pg_update_build_parse()).
+ *
+ * @param string|null $path         pg_update_build_path() when null
+ * @param string|null $code_version pg_code_version() when null
+ * @return array version, build, git_ref
+ */
+function pg_update_build_read($path = null, $code_version = null)
+{
+    $path = ($path === null) ? pg_update_build_path() : (string) $path;
+    $json = is_file($path) ? (string) @file_get_contents($path) : '';
+
+    return pg_update_build_parse($json, ($code_version === null) ? pg_code_version() : (string) $code_version);
+}
+
+/**
+ * Records a beta build: written to a temporary file next to it and renamed,
+ * so a reader never meets half a file.
+ *
+ * @param string      $version
+ * @param string      $build   not empty
+ * @param string      $git_ref '' when the manifest names none
+ * @param string|null $path    pg_update_build_path() when null
+ * @return bool
+ */
+function pg_update_build_write($version, $build, $git_ref, $path = null)
+{
+    if (!pg_update_build_value_ok($build, 'build')) {
+        return false;
+    }
+
+    $path = ($path === null) ? pg_update_build_path() : (string) $path;
+    $temporary = $path . '.' . bin2hex(random_bytes(4)) . '.tmp';
+    $data = array('version' => (string) $version, 'build' => $build, 'git_ref' => pg_update_build_value_ok($git_ref, 'git_ref') ? $git_ref : '');
+
+    if (@file_put_contents($temporary, json_encode($data, JSON_PRETTY_PRINT)) === false) {
+        @unlink($temporary);
+        return false;
+    }
+
+    // rename() does not replace an existing file on Windows.
+    if (!@rename($temporary, $path)) {
+        @unlink($path);
+
+        if (!@rename($temporary, $path)) {
+            @unlink($temporary);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Forgets the recorded build.
+ *
+ * @param string|null $path pg_update_build_path() when null
+ * @return bool true when no file is left
+ */
+function pg_update_build_delete($path = null)
+{
+    $path = ($path === null) ? pg_update_build_path() : (string) $path;
+
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    return !is_file($path);
+}
+
+/**
+ * What the build file holds once a pin is installed: its beta build, or null
+ * (no file) for a stable package or a beta one without a build.
+ *
+ * @param array $pin the check step's pin, with the manifest's git_ref
+ * @return array|null version, build, git_ref
+ */
+function pg_update_build_for_pin($pin)
+{
+    if (!isset($pin['channel'], $pin['build']) || ($pin['channel'] !== 'beta') || ((string) $pin['build'] === '')) {
+        return null;
+    }
+
+    return array(
+        'version' => (string) $pin['version'],
+        'build'   => (string) $pin['build'],
+        'git_ref' => isset($pin['git_ref']) ? (string) $pin['git_ref'] : '',
+    );
+}
+
+/**
+ * Puts back the build a backup archive recorded, or deletes the file when it
+ * recorded none (a stable install, or an archive older than the field).
+ *
+ * @param array       $manifest the archive's manifest.json
+ * @param string|null $path     pg_update_build_path() when null
+ * @return bool
+ */
+function pg_update_build_restore($manifest, $path = null)
+{
+    $build = isset($manifest['build']) ? $manifest['build'] : '';
+
+    if (!pg_update_build_value_ok($build, 'build')) {
+        return pg_update_build_delete($path);
+    }
+
+    return pg_update_build_write((string) $manifest['version'], $build, isset($manifest['git_ref']) ? $manifest['git_ref'] : '', $path);
+}
+
+/**
+ * The pin after the download step: the verified manifest's git_ref joins it,
+ * '' when the manifest names none.
+ *
+ * @param array $pin
+ * @param array $manifest pg_vendor_manifest_read()
+ * @return array
+ */
+function pg_vendor_update_pin_manifest($pin, $manifest)
+{
+    $pin['git_ref'] = isset($manifest['git_ref']) ? (string) $manifest['git_ref'] : '';
+
+    return $pin;
+}
+
+/**
+ * Whether an installed pin is another build of the running version, whose
+ * upgrade steps must run again: config.version then goes back one entry.
+ *
+ * @param array  $pin
+ * @param string $installed_version VERSION
+ * @param string $installed_build   pg_update_build_read()['build']
+ * @return bool
+ */
+function pg_vendor_update_rerun($pin, $installed_version, $installed_build)
+{
+    return ((string) $pin['version'] === (string) $installed_version) && ((string) $pin['build'] !== (string) $installed_build);
+}
+
+/**
+ * After the files of a pin are in place: for another build of the running
+ * version config.version goes back to the versions.php entry before it, so
+ * the upgrade screen runs that version's steps again; then the build file is
+ * written, or deleted for a stable package.
+ *
+ * @param array  $pin
+ * @param string $installed_build the build before the files were replaced
+ * @return string '' when done, else the error to show
+ */
+function pg_vendor_update_record_build($pin, $installed_build)
+{
+    if (pg_vendor_update_rerun($pin, defined('VERSION') ? (string) VERSION : '', $installed_build)) {
+        $previous = pg_upgrade_previous_version((string) $pin['version']);
+        $written = ($previous !== '') && (mysqli_query(db::$con, "UPDATE config SET version = '" . e($previous) . "'") !== false);
+
+        // The write is read back: without it the upgrade would not run the
+        // new build's steps.
+        if ($written) {
+            $check = mysqli_query(db::$con, "SELECT version FROM config");
+            $row = ($check instanceof mysqli_result) ? mysqli_fetch_assoc($check) : null;
+            $written = is_array($row) && ((string) $row['version'] === $previous);
+        }
+
+        if (!$written) {
+            return lang('The files of the new build are in place, but the database could not be prepared for its upgrade steps. Run Repair Software to finish the update.');
+        }
+    }
+
+    $record = pg_update_build_for_pin($pin);
+
+    if ($record === null) {
+        pg_update_build_delete();
+    } elseif (!pg_update_build_write($record['version'], $record['build'], $record['git_ref'])) {
+        return lang('The files of the new build are in place, but data/update_build.json could not be written. Run Repair Software to finish the update.');
+    }
+
+    return '';
 }
 
 /**
@@ -2514,6 +2757,22 @@ function pg_upgrade_rerun_choices($versions = null, $installed = null)
     }
 
     return array_slice($versions, $first, $position - $first);
+}
+
+/**
+ * The versions.php entry before $version: the version an upgrade starts from
+ * to run $version's steps again.
+ *
+ * @param string     $version
+ * @param array|null $versions pg_upgrade_versions_list() when null
+ * @return string '' when $version is not listed or is the first entry
+ */
+function pg_upgrade_previous_version($version, $versions = null)
+{
+    $versions = ($versions === null) ? pg_upgrade_versions_list() : array_values((array) $versions);
+    $position = array_search((string) $version, $versions, true);
+
+    return (($position === false) || ($position === 0)) ? '' : (string) $versions[$position - 1];
 }
 
 /**
@@ -2851,6 +3110,32 @@ function pg_update_backup_records_write(array $records)
 }
 
 /**
+ * The manifest.json of a backup archive: the version and beta build the
+ * files belong to (build and git_ref '' when none is recorded), so a
+ * rollback can put the build file back with them.
+ *
+ * @param string $version VERSION
+ * @param int    $created
+ * @param string $package the package's file name
+ * @param int    $files   files saved
+ * @param array  $added   files the update adds
+ * @param array  $build   pg_update_build_read()
+ * @return array
+ */
+function pg_update_backup_manifest($version, $created, $package, $files, $added, $build)
+{
+    return array(
+        'version' => (string) $version,
+        'build'   => isset($build['build']) ? (string) $build['build'] : '',
+        'git_ref' => isset($build['git_ref']) ? (string) $build['git_ref'] : '',
+        'created' => $created,
+        'package' => (string) $package,
+        'files'   => (int) $files,
+        'added'   => $added,
+    );
+}
+
+/**
  * The file entries of an update package, by safe name.
  *
  * @param string $package path of the downloaded package
@@ -3134,13 +3419,7 @@ function pg_update_backup_create($package)
         return $fail(lang(array('string' => 'The archive {var:1} could not be written.', 'vars' => array('software.zip'))));
     }
 
-    $manifest = array(
-        'version' => (string) VERSION,
-        'created' => $now,
-        'package' => basename((string) $package),
-        'files'   => count($sources),
-        'added'   => $added,
-    );
+    $manifest = pg_update_backup_manifest((string) VERSION, $now, basename((string) $package), count($sources), $added, pg_update_build_read());
 
     if (@file_put_contents($work . '/manifest.json', json_encode($manifest, JSON_PRETTY_PRINT)) === false) {
         return $fail(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => array('manifest.json'))));
@@ -3344,6 +3623,9 @@ function pg_update_rollback($name)
     if (defined('VERSION') && (version_compare((string) VERSION, $result['version'], '>'))) {
         db("UPDATE config SET version = '" . e($result['version']) . "'");
     }
+
+    // The build the files belong to, or none for a stable install.
+    pg_update_build_restore($manifest);
 
     $result['ok'] = true;
     $result['message'] = lang(array(

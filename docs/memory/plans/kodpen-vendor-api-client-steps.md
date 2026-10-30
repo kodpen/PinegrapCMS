@@ -20,7 +20,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 
 - P5c (S, the owner's public keys) Keys in `pg_vendor_release_keys()`. Test: two P-256 keys, two lower-case ids. Memory: their fingerprints in `vendor-api-update.md`. After P5b.
 
-- P6 (S) Beta builds. Build file, Q1, re-run, `build` in backup and rollback, integrity tag (`update.php`, `software.php`, `system_status.php`). Tests: `update_build_test.php`, `update_backup_test.php`. Memory: new `update-beta-builds.md`, `update-backup-rollback.md`, `update-channel-stable-beta.md`, `core/file-integrity-github-reference.md`. After P5b, Q1.
+- P6 (S) Done (#3755). Beta builds. Build file, Q1, re-run, `build` in backup and rollback, integrity tag (`update.php`, `software.php`, `system_status.php`). Tests: `update_build_test.php`, `update_backup_test.php`. Memory: new `update-beta-builds.md`, `update-backup-rollback.md`, `update-channel-stable-beta.md`, `core/file-integrity-github-reference.md`. After P5b, Q1.
 
 - P7 (S) Widget 14 and the API key out. `widget_14.php` a stub like `widget_6.php`; registry entry out, its comment after the architect's entry (`welcome.php`); `API=` out of `update.php`, `software_update_check.php`, `output.php`; Subscription ID field and save line out; Settings note. Tests: the three that read its source (`dashboard_test.php`, dark theme, pill contrast) on the stub; no `api2?API=` in `pinegrap/`. Memory: `ui/` `dashboard-widget-files.md`, `dark-theme-fixed-fills.md`, `dashboard-pill-contrast.md`; `curl-run-callers.md`. After P4, P6.
 

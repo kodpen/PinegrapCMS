@@ -2901,6 +2901,7 @@
     "software update extraction failed: {var:1}": "yazılım güncellemesi arşivi açılamadı: {var:1}",
     "software update {var:1} refused as a security event at the replace step: {var:2}.": "yazılım güncellemesi {var:1}, değiştirme adımında güvenlik olayı olarak reddedildi: {var:2}.",
     "software update {var:1} refused at the replace step: {var:2}.": "yazılım güncellemesi {var:1}, değiştirme adımında reddedildi: {var:2}.",
+    "software update {var:1}: {var:2}": "yazılım güncellemesi {var:1}: {var:2}",
     "software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect": "yazılım güncellemesi: bayt kodu önbelleği temizlenemedi - güncelleme etkili olmazsa Önbelleği Temizle'yi çalıştırın",
     "software, language, licence, license, subscription, error, debug": "software, language, licence, license, subscription, error, debug, yazilim, dil, lisans, abonelik, hata",
     "solved, answered, accepted answer": "çözüldü, yanıtlandı, kabul edilen yanıt",
