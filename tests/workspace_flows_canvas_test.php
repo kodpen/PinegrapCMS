@@ -977,7 +977,7 @@ JS
 function test_workspace_flows_canvas_condition_values_are_kept_as_the_field_holds_them()
 {
 	$result = ws_flows_canvas_test_node(
-		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'conditionValue', 'conditionCompare', 'conditionMetric'),
+		array('field', 'textInput', 'stepLists', 'changeInput', 'channelPick', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionMetric'),
 		<<<'JS'
 var uid = 0;
 var FL = {};
@@ -1027,6 +1027,12 @@ var out = {
     days: compare('date', 'within', '7', '10'),
     overdue: compare('date', 'overdue', '', '')
 };
+// A Turkish site: a comma marks the decimals, a dot groups thousands.
+FL.decimal = ',';
+out.turkish = ['1,500', '1.500', '1.250,5', '18,5', '1.5', '-0,25', '1.000.50', 'abc'].map(function (typed) { return compare('decimal', 'gte', '', typed).kept; });
+out.turkishShown = compare('decimal', 'gte', '1.234', '1,234').shown;
+FL.decimal = '.';
+out.english = ['1,500', '1.5', '1,250.5'].map(function (typed) { return compare('decimal', 'gte', '', typed).kept; });
 FL.steps = {
     metrics: [{ key: 'tasks_open', label: 'Open tasks', scope: 'channel' }, { key: 'stock_low', label: 'Products low in stock', scope: 'threshold' }],
     counts: ['gt'],
@@ -1070,6 +1076,9 @@ JS
 	pg_assert_same(array('datetime-local', '2026-10-26T14:30'), array($result['moment']['type'], $result['moment']['shown']), 'a moment picked as one');
 	pg_assert_same('2026-11-01 09:15:00', $result['moment']['kept'], 'kept as the record keeps it');
 	pg_assert_same('18.5', $result['decimal']['kept'], 'a decimal comma kept as a dot');
+	pg_assert_same(array('1.5', '1500', '1250.5', '18.5', '1.5', '-0.25', '1.000.50', 'abc'), $result['turkish'], 'a Turkish number kept as the machine number it means; no number kept as typed');
+	pg_assert_same('1,234', $result['turkishShown'], 'a kept decimal shown the Turkish way, so it reads back the same');
+	pg_assert_same(array('1500', '1.5', '1250.5'), $result['english'], 'an English comma groups thousands');
 	pg_assert_same(array('text', 'Ankara'), array($result['text']['type'], $result['text']['kept']), 'a text as typed');
 	pg_assert_same(array('text', '10'), array($result['days']['type'], $result['days']['kept']), '"falls within the next days" takes a number of days');
 	pg_assert_same('', $result['overdue']['tag'], '"has gone by" takes no value');
@@ -1160,7 +1169,7 @@ function test_workspace_flows_canvas_condition_value_rule()
 {
 	$result = ws_flows_canvas_test_node(
 		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources', 'valueNames',
-			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
+			'field', 'textInput', 'changeInput', 'siteDecimal', 'siteNumber', 'siteShown', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
 		<<<'JS'
 var uid = 0;
 var DAYS = {};
@@ -1204,6 +1213,13 @@ node.config.rule = rule;
 var form = new FakeNode('div');
 conditionValueRule(form, node, rule);
 var out = { values: options(controls(form)[0]), ops: options(controls(form)[1]).map(function (item) { return item.split('=')[0]; }), meta: conditionMeta(rule, node) };
+// A number typed on a Turkish site stays as typed: the server reads it the
+// site's way (ws_flow_typed_number()).
+FL.decimal = ',';
+var typed = controls(form)[2];
+typed.value = '1,500';
+typed.listeners.input.forEach(function (fn) { fn(); });
+out.typed = rule.value;
 var pick = controls(form)[0];
 pick.value = '{{node.web_check_1.text}}';
 pick.listeners.change.forEach(function (fn) { fn(); });
@@ -1235,6 +1251,7 @@ JS
 	), $result['values'], 'the boxes before, a branch marked');
 	pg_assert_same(array('eq', 'neq', 'gt', 'gte', 'lt', 'lte', 'empty', 'not_empty'), $result['ops'], 'a number\'s comparisons');
 	pg_assert_same('Check a web address › Status code', $result['meta'], 'the box reads the value\'s name');
+	pg_assert_same('1,500', $result['typed'], 'a typed number kept as typed, not with its comma made a dot');
 	pg_assert_same(array('ref' => '{{node.web_check_1.text}}', 'op' => 'eq', 'redrawn' => 1), $result['after'], 'a text after "is more than" goes back to "is"');
 	pg_assert_same(array('eq', 'neq', 'contains', 'empty', 'not_empty'), $result['textOps'], 'a text\'s comparisons');
 	pg_assert_same(1, $result['alone'], 'a box with nothing before offers no value');
@@ -1773,7 +1790,7 @@ JS
 function test_workspace_flows_canvas_table_write_boxes()
 {
 	$result = ws_flows_canvas_test_node(
-		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'memberKind', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'siteDecimal', 'siteNumber', 'siteShown', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];
@@ -1804,6 +1821,10 @@ var out = {
     open: openFields(node).map(function (item) { return item.key; }),
     openAdd: openFields({ kind: 'row_add', config: { cells: '' } }).length
 };
+FL.decimal = ',';
+out.turkish = [cellKept(amount, '1.250,5'), cellKept(amount, '1.250'), cellKept(amount, '12,5'), cellKept({ type: 'number' }, '1,5'), cellKept({ type: 'number' }, '1.500'), cellShown(amount, 125050), cellShown({ type: 'number' }, 1.234)];
+FL.decimal = '.';
+out.english = [cellKept(amount, '1,250.5'), cellKept({ type: 'number' }, '1,500')];
 FL.steps.tables[0].edit = false;
 out.noEdit = paletteItems().map(function (item) { return item[0]; });
 console.log(JSON.stringify(out));
@@ -1824,6 +1845,8 @@ JS
 	pg_assert_same('{"9":1250,"15":"kept"}', $result['afterEmpty'], 'an empty field leaves its column out');
 	pg_assert_same(array('{{trigger.amount}}', 3.5, 12, '2026-11-02', ' a b '), $result['kept']);
 	pg_assert_same(array('12.50', '{{trigger.amount}}', ''), $result['shown']);
+	pg_assert_same(array(125050, 125000, 1250, 1.5, 1500, '1250,50', '1,234'), $result['turkish'], 'a Turkish figure read the site\'s way, shown the same way');
+	pg_assert_same(array(125050, 1500), $result['english'], 'an English comma groups thousands');
 	pg_assert_same(array('fl_rows_meta Deals Add › Row', 'fl_rows_meta Deals 12', '#8', 'fl_row_none'), $result['meta']);
 	pg_assert_same(array('row', 'cells'), $result['texts'], 'the cells\' values are threaded');
 	pg_assert_same(array('row'), $result['open'], 'a value is never dropped into the JSON');
@@ -2496,4 +2519,18 @@ JS
 	pg_assert_same('Approval', $out[3][0], 'a value no box gives: the kind name');
 	pg_assert_same('After [Task › Task]', $out[4][0], 'a box whose title holds values is named by its kind');
 	pg_assert_same('Plain', $out[5][0]);
+}
+
+// A typed number is read by the site's separators (siteNumber()), never by
+// turning the first comma into a dot: Turkish 1,500 (1.5) was kept as 1.500,
+// which the server reads as fifteen hundred, and 1.250,5 as 1.250.5.
+function test_workspace_flows_canvas_typed_numbers_read_the_site_way()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js');
+
+	pg_assert_same(0, preg_match_all("/replace\\(\\s*(',' *, *'\\.'|\\/,\\/)/", $source), 'no comma made a dot');
+
+	foreach (array('conditionValue', 'cellKept') as $name) {
+		pg_assert_true(strpos(ws_flows_canvas_test_script_function($source, $name), 'siteNumber(') !== false, $name . '() reads by siteNumber()');
+	}
 }
