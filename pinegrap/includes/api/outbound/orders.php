@@ -288,6 +288,19 @@ function mp_order_stage($account, $package) {
 
 }
 
+// Whether the Imported orders card offers to mark a package Invoiced: an
+// imported row with an order, a package still the seller's to prepare
+// (mp_order_stage() 'open'), and not marked Invoiced already. The caller has
+// asked mp_can(…, 'mark_invoiced').
+function mp_invoiced_offer($row, $stage) {
+
+	return isset($row['status']) && ($row['status'] === 'imported')
+		&& !empty($row['order_id'])
+		&& ($stage === 'open')
+		&& (!isset($row['remote_status']) || ((string)$row['remote_status'] !== 'Invoiced'));
+
+}
+
 // One batch's packages (a pull's pass or a webhook delivery) with the cancelled
 // ones first, the rest in the order they were read, each package once.
 //
