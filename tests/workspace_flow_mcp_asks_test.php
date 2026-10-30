@@ -218,7 +218,7 @@ function test_workspace_flow_mcp_asks_asks_and_waits()
 	pg_assert_contains('ws_flow_approval_wait(', $run);
 	pg_assert_true(strpos($run, 'ws_step_mcp_ask(') < strpos($run, 'ws_flow_approval_wait('), 'waits once the request is out');
 	pg_assert_true(strpos($run, 'WS_STEP_BEGAN') < strpos($run, 'ws_step_mcp_ask('), 'never asked twice');
-	pg_assert_contains("in_array(\$kind, array('approval', 'mcp'), true)", $run, 'the deadline counts from when the box runs');
+	pg_assert_contains("in_array(\$kind, array('approval', 'mcp', 'change'), true)", $run, 'the deadline counts from when the box runs');
 
 	$ask = ws_flow_mcp_asks_test_source('ws_step_mcp_ask');
 

@@ -7126,6 +7126,21 @@
         if (config.action !== 'delete') {
             changeValues(box, node, info);
         }
+
+        changeAskFields(box, node);
+    }
+
+    // A role-3 member's own flow proposes its change on an approval request
+    // to its owner (ws_step_change_ask()): the channel it asks in and the
+    // hours it stays open (channel_id, closes_in, as an approval box's).
+    function changeAskFields(box, node) {
+        if (!memberOwn()) {
+            return;
+        }
+
+        channelField(box, node, t('fl_approval_channel'), t('fl_post_pick'));
+        box.appendChild(el('p', 'form-text mt-0', t('fl_change_ask_help')));
+        closesField(box, node);
     }
 
     // The fields of an update, one row each, and a list to add another from.
@@ -7687,7 +7702,7 @@
         } else if (kind === 'start_action') {
             config = { target_id: 0, delay: 0 };
         } else if (kind === 'change') {
-            config = { record: '', action: 'update', id: 0, fields: {} };
+            config = memberOwn() ? { record: '', action: 'update', id: 0, fields: {}, channel_id: 0, closes_in: '' } : { record: '', action: 'update', id: 0, fields: {} };
         } else if (kind === 'constants') {
             config = { rows: [{ key: '', type: 'text', value: '' }] };
         } else if (kind === 'value') {

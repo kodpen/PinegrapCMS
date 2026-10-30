@@ -136,9 +136,10 @@ function test_workspace_flows_member_canvas_script_follows_the_server()
 	pg_assert_contains('FL.member_kinds', $script, 'the palette reads the server list');
 	pg_assert_true(strpos($script, "'row_add', 'row_set'") === false, 'the member list is not copied into the script');
 
-	foreach (array('function memberKind(', 'function homeField(', 'function shareOffered(', 'function reportToField(') as $piece) {
+	foreach (array('function memberKind(', 'function homeField(', 'function shareOffered(', 'function reportToField(', 'function changeAskFields(') as $piece) {
 		pg_assert_contains($piece, $script);
 	}
 
 	pg_assert_contains('memberKind(item[0])', $script, 'the palette leaves refused kinds out');
+	pg_assert_contains('changeAskFields(box, node);', $script, 'a member\'s change box takes the channel it asks in');
 }

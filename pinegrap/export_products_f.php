@@ -138,6 +138,12 @@ function pg_products_export_columns()
         $columns[] = array('heading' => 'compare_at_price', 'column' => 'compare_at_price', 'kind' => 'money_optional');
     }
 
+    // Customs data (2026.11.0), after it for the same reason.
+    if (pg_product_customs_ready()) {
+        $columns[] = array('heading' => 'hs_code', 'column' => 'hs_code', 'kind' => 'text');
+        $columns[] = array('heading' => 'origin_country', 'column' => 'origin_country', 'kind' => 'text');
+    }
+
     $labels = array(
         1 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_1_LABEL,
         2 => ECOMMERCE_CUSTOM_PRODUCT_FIELD_2_LABEL,

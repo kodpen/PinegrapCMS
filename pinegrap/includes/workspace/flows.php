@@ -3038,6 +3038,7 @@ function ws_flow_js_strings()
         'fl_home_none_other'  => lang('No channel'),
         // A role-3 member's own flow (flow_member.php), in the save check's words.
         'fl_member_no_home'   => lang('Your own flows have no home channel: only you run them.'),
+        'fl_change_ask_help'  => lang('In your own flows a change is not written at once: you are asked to approve it in this channel first.'),
         'fl_member_report_to' => lang('In your own flows a summary of counts goes to a channel, not to e-mail addresses.'),
     );
 }

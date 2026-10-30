@@ -234,7 +234,22 @@ if (!$_POST) {
         }
     }
 
+    // The customs columns, by position, read with the product screen's rules
+    // (pg_product_customs_import_row()); a row whose cell cannot be stored is
+    // left out whole and named in the result, like a row of a money cell
+    // that is not an amount.
+    $customs_positions = array();
+
+    foreach (array('hs_code', 'origin_country') as $customs_column) {
+        $customs_position = array_search($customs_column, $column_names, true);
+
+        if ($customs_position !== false) {
+            $customs_positions[$customs_column] = $customs_position;
+        }
+    }
+
     $rows_not_amounts = array();
+    $rows_not_customs = array();
     $row_number = 1;
 
     // loops through all rows of data in CSV file
@@ -257,6 +272,15 @@ if (!$_POST) {
                 $rows_not_amounts[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
                 continue;
             }
+
+            $customs_row = pg_product_customs_import_row($row, $customs_positions);
+
+            if ($customs_row === false) {
+                $rows_not_customs[] = $row_number . ' (' . htmlspecialchars((string) $row[$name_key], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . ')';
+                continue;
+            }
+
+            $row = $customs_row;
 
             // get product information if it exists
             $query =
@@ -809,6 +833,12 @@ if (!$_POST) {
         $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because a price, compare-at price or extra shipping cost in them is not an amount: {var:1}.', 'vars' => array($rows_listed))));
     }
 
+    // Rows left out because an HS code or a country of origin cannot be stored.
+    if ($rows_not_customs) {
+        $rows_listed = implode(', ', array_slice($rows_not_customs, 0, 50)) . ((count($rows_not_customs) > 50) ? ', ...' : '');
+        $liveform_view_products->add_error(lang(array('string' => 'These rows were not imported because their HS code or country of origin is not valid: {var:1}.', 'vars' => array($rows_listed))));
+    }
+
     // Display notices to tell the user what has been done. Redirect them to proper page.
     if (($product_imported_count > 0) && ($product_updated_count > 0)) {
         $liveform_view_products->add_notice( lang(array('string'=>'{var:1} {var:3} have been imported, and {var:2} {var:3} have been updated.','vars'=>array( $product_imported_count, $product_updated_count,lang('product(s)')))) );
@@ -1209,6 +1239,11 @@ function convert_column_name($column_name)
         // missing column fails, and that stops the whole import.
         case 'compare_at_price':
             return pg_compare_at_price_ready() ? 'compare_at_price' : false;
+
+        // Customs data (2026.11.0), on the same condition.
+        case 'hs_code':
+        case 'origin_country':
+            return pg_product_customs_ready() ? $column_name : false;
     }
     
     return false;

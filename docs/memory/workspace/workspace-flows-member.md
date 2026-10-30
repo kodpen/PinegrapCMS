@@ -9,8 +9,8 @@ description: A role-3 member's own flows (#3345 narrow, R1 #3397, flow_member.ph
 - Staff behaviour is unchanged. The Flows entry and the member's palette (R2): `workspace-flows-member-canvas.md`; making a flow from a table, templates and the draft card stay staff's.
 
 ## Which boxes may a role-3 flow hold?
-- `ws_flow_member_kinds()`: starts manual, schedule, event; end, task, approval, delay, condition, constants, value; post, notify, task_open, report, task_digest; row_add, row_set.
-- Refused (`ws_flow_member_node_refusal()`): webhook, web_check, mcp, email, change (a change card comes in R3), lead, checkin, start_action, start_flow, for_each and its end, join and row starts; a report with e-mail addresses (`to`): it goes to a channel.
+- `ws_flow_member_kinds()`: starts manual, schedule, event; end, task, approval, delay, condition, constants, value; post, notify, task_open, report, task_digest; row_add, row_set; change (R3, only as a proposal its owner approves: `workspace-flows-member-change.md`).
+- Refused (`ws_flow_member_node_refusal()`): webhook, web_check, mcp, email, lead, checkin, start_action, start_flow, for_each and its end, join and row starts; a report with e-mail addresses (`to`): it goes to a channel; a change box without `channel_id` (where it asks).
 - Reach inside an allowed box is the existing check with the owner's rights: `ws_step_check()` at publish and in `ws_step_run()` (a channel they post in, counts their rights read, tasks to people they may give work to, tables they edit through `ws_wtable_flow_check()`), `ws_flow_condition_check()`, `ws_flow_anchor_check()` (an event their rights see; own events again per event through `ws_events_creator_sees()`).
 
 ## Where is it checked?

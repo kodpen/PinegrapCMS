@@ -921,6 +921,28 @@ function ws_flow_approval_settlement($outcome, $routed)
 }
 
 /**
+ * How the way a request ended settles a change box that proposed its change
+ * (a role-3 member's). Approved is not settled here: the box goes back to
+ * ready to write the change (ws_flow_approved_ready()). Rejected, expired,
+ * withdrawn or gone made no change: the box failed, leaving on failed where
+ * an arrow does, as any change box that could not make its change. One still
+ * open keeps it waiting (status ''). Pure.
+ *
+ * @param string|null $outcome what the request ended with ('' while open,
+ *                             null when it is gone)
+ * @param bool        $failed_routed an arrow leaves the box on failed
+ * @return array status (done | failed | ''), outcome
+ */
+function ws_flow_change_asked_settlement($outcome, $failed_routed)
+{
+    if (($outcome === '') || ($outcome === 'approved')) {
+        return array('status' => '', 'outcome' => '');
+    }
+
+    return ws_step_settlement(false, $failed_routed);
+}
+
+/**
  * Why a flow takes no further start, '' when it does.
  *
  * @param int $open_runs     its runs open now
@@ -3196,7 +3218,10 @@ function ws_flow_approval_wait($step, $approval_id, $text, $data, $kind = 'appro
  *
  * An MCP box waits on the request for its call: approved, it is made ready
  * again to make the call (ws_flow_approved_ready()); ended any other way, it
- * settles as an approval box, with the values of an MCP box.
+ * settles as an approval box, with the values of an MCP box. A change box
+ * that proposed its change (a role-3 member's, steps.php) is made ready
+ * again to write it once approved; ended any other way, the change was not
+ * made and the box fails (ws_flow_change_asked_settlement()).
  *
  * @param array $step ws_flow_run_steps row, waiting
  * @return bool whether this request settled it
@@ -3225,10 +3250,36 @@ function ws_flow_approval_recheck($step)
     $graph = ws_flow_run_graph($run);
     $node = ws_flow_graph_node($graph, $step['node_id']);
     $mcp = $node && ((string) $node['kind'] === 'mcp');
+    $change = $node && ((string) $node['kind'] === 'change');
     $title = $approval ? (string) $approval['title'] : '';
 
-    if ($mcp && ($outcome === 'approved')) {
+    if (($mcp || $change) && ($outcome === 'approved')) {
         return ws_flow_approved_ready($step, $approval_id, lang(array('string' => 'The approval request “{var:1}” was approved.', 'vars' => $title)));
+    }
+
+    if ($change) {
+        $settled = ws_flow_change_asked_settlement($outcome, ws_flow_outcome_routed($graph, $step['node_id'], 'failed'));
+
+        if ($settled['status'] === '') {
+            return false;
+        }
+
+        switch ($outcome) {
+            case 'rejected':
+                $text = lang(array('string' => 'The change was not made: the approval request “{var:1}” was rejected.', 'vars' => $title));
+                break;
+
+            case 'expired':
+                $text = lang(array('string' => 'The change was not made: the approval request “{var:1}” expired without a decision.', 'vars' => $title));
+                break;
+
+            default:
+                $text = $approval
+                    ? lang(array('string' => 'The change was not made: the approval request “{var:1}” was closed without a decision.', 'vars' => $title))
+                    : lang('The change was not made: the approval request is gone.');
+        }
+
+        return ws_flow_step_settle($step, 'waiting', $settled['status'], $settled['outcome'], $text, ws_step_result_data('change', $node['config'], array()));
     }
 
     $routed = ($outcome !== '') && ws_flow_outcome_routed($graph, $step['node_id'], ($outcome === 'expired') ? 'expired' : 'withdrawn');
