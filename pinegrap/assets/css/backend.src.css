@@ -16650,18 +16650,43 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-pane svg {
   display: block;
 }
+/* The mini flow window in px, to the visual spec: control arrows 2 px with a
+   filled head, data threads 1 px in their type's tone, boxes 128 x 60. */
+.ws-fd-arrow {
+  fill: none;
+  stroke: #7d8696;
+  stroke-width: 2;
+}
+.ws-fd-head {
+  fill: #7d8696;
+}
 .ws-fd-thread {
   fill: none;
-  stroke: var(--pg-fg-3);
-  stroke-width: 3;
+  stroke: var(--ws-fd-tone);
+  stroke-width: 1;
 }
+.ws-fd-dot {
+  fill: var(--ws-fd-tone);
+}
+.ws-fd-tone-number-0 { --ws-fd-tone: #2f6fcc; }
+.ws-fd-tone-number-1 { --ws-fd-tone: #5a8fdd; }
+.ws-fd-tone-number-2 { --ws-fd-tone: #1d56a8; }
+.ws-fd-tone-text-0 { --ws-fd-tone: #a8760f; }
+.ws-fd-tone-text-1 { --ws-fd-tone: #c08f2e; }
+.ws-fd-tone-text-2 { --ws-fd-tone: #8c6200; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-0 { --ws-fd-tone: #6ea8ff; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-1 { --ws-fd-tone: #9cc4ff; }
+html[data-bs-theme="dark"] .ws-fd-tone-number-2 { --ws-fd-tone: #4d8fe8; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-0 { --ws-fd-tone: #e9b44c; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-1 { --ws-fd-tone: #f5cf7d; }
+html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-fd-box {
   cursor: pointer;
 }
 .ws-fd-box rect {
   fill: var(--pg-bg-body);
   stroke: var(--pg-border-color);
-  stroke-width: 3;
+  stroke-width: 1.5;
 }
 .ws-fd-box.is-outbound rect {
   stroke: var(--pg-warning);
@@ -16669,25 +16694,29 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-box.is-added rect,
 .ws-fd-box.is-changed rect {
   stroke: var(--pg-info);
-  stroke-dasharray: 12 8;
+  stroke-dasharray: 5 3;
   fill: var(--pg-info-bg-subtle);
 }
 .ws-fd-box.is-picked rect,
 .ws-fd-box:focus-visible rect {
   stroke: rgb(var(--ws-accent-rgb));
-  stroke-width: 6;
+  stroke-width: 2.5;
 }
 .ws-fd-box:focus {
   outline: none;
 }
 .ws-fd-name {
   fill: var(--pg-fg-body);
-  font-size: 26px;
+  font-size: 11px;
   font-weight: 600;
 }
-.ws-fd-kind {
+.ws-fd-kind,
+.ws-fd-said {
   fill: var(--pg-fg-2);
-  font-size: 22px;
+  font-size: 10px;
+}
+.ws-fd-said.is-failed {
+  fill: var(--pg-danger-ink);
 }
 .ws-fd-icon {
   fill: none;
@@ -16712,7 +16741,7 @@ body.ws-drawer-open #pg-chat-root .pg-chat-launcher {
 .ws-fd-out {
   fill: none;
   stroke: var(--pg-warning);
-  stroke-width: 4;
+  stroke-width: 1.5;
   stroke-linecap: round;
 }
 .ws-fd-tools {

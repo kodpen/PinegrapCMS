@@ -19,7 +19,7 @@ description: Plan (owner, 2026-10-29): bring the Flows editor and list to the ow
 
 - V6 the data row no wider than its box (`drawData()`): output dots along the box's own bottom edge, labels shortened, threads routed around other boxes. Done (PR #3134, `workspace/workspace-flows-thread-drawing.md`).
 
-- V7a mini flow window to the spec (AI draft card and Add › Scheduled flow; visual spec 'Mini window and templates?'): boxes 128 × 60 px, control arrows 2 px with a filled head from the right edge, data threads 1 px from the output dot (sag 10 px + 0.05 × span, the type's tones, 3 px apart) sent by the server with their output type, each box's F4e dry run as its third line (a waiting new draft or a scheduled sketch with the asker's rights on an in-memory flow; none for a waiting patch; an opened draft where `can_try`). "Edit here" waits for a V7b. In progress.
+- V7a mini flow window to the spec (AI draft card and Add › Scheduled flow; visual spec 'Mini window and templates?'): boxes 128 × 60 px, control arrows 2 px with a filled head from the right edge, data threads 1 px from the output dot (sag 10 px + 0.05 × span, the type's tones, 3 px apart) sent by the server with their output type, each box's F4e dry run as its third line (a waiting new draft or a scheduled sketch with the asker's rights on an in-memory flow; none for a waiting patch; an opened draft where `can_try`). "Edit here" waits for a V7b. Done (PR #3393, `workspace/workspace-flow-draft-card-window.md`).
 
 ## Where to start?
-- V1-V6 are done. Next: compare the drawing's other boards (run view, channel, templates, AI draft, the parts map) with the screens before this plan closes; each finding becomes a step here, else the plan closes.
+- V1-V7a are done. Next: compare the drawing's other boards (run view, channel, templates, AI draft, the parts map) with the screens before this plan closes; each finding becomes a step here, else the plan closes.

@@ -9948,11 +9948,14 @@
 
         // onPick, when given, is told the box picked instead of the detail
         // below (the mini window of Add › Scheduled flow shows its form).
+        // Drawn to the visual spec in px (ws_flow_card_graph()): boxes
+        // 128 × 60 with the kind's icon and name, the kind and the box's dry
+        // run as its third line; control arrows 2 px with a filled head;
+        // data threads 1 px in their type's tone, placed by the server.
         flowWindowDraw: function (wrap, graph, onPick) {
             var NS = 'http://www.w3.org/2000/svg';
-            var W = 208;
-            var H = 80;
-            var SCALE = 0.4;
+            var W = 128;
+            var H = 60;
             var byId = {};
             var picked = null;
 
@@ -9977,8 +9980,8 @@
             var pane = el('div', 'ws-fd-pane');
             var drawing = make('svg', {
                 viewBox: '0 0 ' + graph.width + ' ' + graph.height,
-                width: Math.round(graph.width * SCALE),
-                height: Math.round(graph.height * SCALE),
+                width: graph.width,
+                height: graph.height,
                 role: 'group',
                 'aria-label': t('fd_window')
             });
@@ -9990,19 +9993,40 @@
                 byId[node.id] = node;
             });
 
+            // Control arrows from a box's right edge into the next one's
+            // left, the head drawn as its own shape so no marker id is
+            // shared between windows.
             graph.edges.forEach(function (edge) {
                 var from = byId[edge.from];
                 var to = byId[edge.to];
                 var x1 = from.x + W;
                 var y1 = from.y + H / 2;
-                var x2 = to.x;
+                var x2 = to.x - 6;
                 var y2 = to.y + H / 2;
-                var bend = Math.max(48, Math.abs(x2 - x1) / 2);
+                var bend = Math.max(24, Math.abs(x2 - x1) / 2);
 
                 drawing.appendChild(make('path', {
-                    'class': 'ws-fd-thread',
+                    'class': 'ws-fd-arrow',
                     d: 'M' + x1 + ' ' + y1 + ' C' + (x1 + bend) + ' ' + y1 + ' ' + (x2 - bend) + ' ' + y2 + ' ' + x2 + ' ' + y2
                 }));
+                drawing.appendChild(make('path', { 'class': 'ws-fd-head', d: 'M' + to.x + ' ' + y2 + ' l-7 -4 v8 z' }));
+            });
+
+            // Data threads: a quadratic curve from the value's dot on the
+            // source's bottom edge to the bottom edge of the box it fills.
+            var dots = {};
+
+            (graph.threads || []).forEach(function (thread) {
+                var tone = 'ws-fd-tone-' + thread.type + '-' + thread.tone;
+
+                drawing.appendChild(make('path', {
+                    'class': 'ws-fd-thread ' + tone,
+                    d: 'M' + thread.x1 + ' ' + thread.y1 + ' Q' + thread.cx + ' ' + thread.cy + ' ' + thread.x2 + ' ' + thread.y2
+                }));
+
+                if (!dots[thread.from + '.' + thread.value]) {
+                    dots[thread.from + '.' + thread.value] = make('circle', { 'class': 'ws-fd-dot ' + tone, cx: thread.dot_x, cy: thread.y1, r: 2.5 });
+                }
             });
 
             function show(node, group) {
@@ -10076,25 +10100,31 @@
                     role: 'button',
                     'aria-label': node.name + ', ' + node.label + (node.outbound ? ', ' + t('fd_outbound') : '')
                         + (node.mark ? ', ' + t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : '')
+                        + (node.said ? ', ' + node.said : '')
                 });
-                var name = node.name.length > 18 ? node.name.slice(0, 17) + '…' : node.name;
+                var cut = function (text, most) {
+                    return text.length > most ? text.slice(0, most - 1) + '…' : text;
+                };
+                var kind = node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : node.label;
 
-                group.appendChild(make('title', {}, node.name + ' · ' + node.label));
-                group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 12 }));
-                group.appendChild(make('text', { x: node.x + 14, y: node.y + 34, 'class': 'ws-fd-name' }, name));
-                // The kind's icon before its name, drawn at 24 units (the
-                // window is shown at 0.4).
-                var sign = make('svg', { x: node.x + 14, y: node.y + 44, width: 24, height: 24, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
+                group.appendChild(make('title', {}, node.name + ' · ' + node.label + (node.said ? '\n' + node.said : '')));
+                group.appendChild(make('rect', { x: node.x, y: node.y, width: W, height: H, rx: 8 }));
+                // The kind's icon before its name, at the canvas's 16 px.
+                var sign = make('svg', { x: node.x + 7, y: node.y + 6, width: 16, height: 16, viewBox: '0 0 16 16', 'class': 'ws-fd-icon' });
 
                 flowIconPaths(node.kind).forEach(function (d) {
                     sign.appendChild(make('path', { d: d }));
                 });
                 group.appendChild(sign);
-                group.appendChild(make('text', { x: node.x + 46, y: node.y + 64, 'class': 'ws-fd-kind' },
-                    node.mark ? t(node.mark === 'added' ? 'fd_added' : 'fd_changed') : (node.label.length > 19 ? node.label.slice(0, 18) + '…' : node.label)));
+                group.appendChild(make('text', { x: node.x + 28, y: node.y + 18, 'class': 'ws-fd-name' }, cut(node.name, node.outbound ? 13 : 16)));
+                group.appendChild(make('text', { x: node.x + 8, y: node.y + 35, 'class': 'ws-fd-kind' }, cut(kind, 22)));
+
+                if (node.said) {
+                    group.appendChild(make('text', { x: node.x + 8, y: node.y + 50, 'class': 'ws-fd-said' + (node.failed ? ' is-failed' : '') }, cut(node.said, 24)));
+                }
 
                 if (node.outbound) {
-                    group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 34) + ' ' + (node.y + 34) + ' l16 -16 m-10 0 h10 v10' }));
+                    group.appendChild(make('path', { 'class': 'ws-fd-out', d: 'M' + (node.x + W - 18) + ' ' + (node.y + 18) + ' l10 -10 m-6 0 h6 v6' }));
                 }
 
                 group.addEventListener('click', function () {
@@ -10107,6 +10137,10 @@
                     }
                 });
                 drawing.appendChild(group);
+            });
+
+            Object.keys(dots).forEach(function (key) {
+                drawing.appendChild(dots[key]);
             });
 
             pane.appendChild(drawing);
@@ -10911,11 +10945,63 @@
                 shown();
 
                 // A box picked in the drawing brings its settings forward.
-                self.flowWindowDraw(drawing, data.graph, function (picked) {
-                    var target = (picked.id === 'post') ? message : date;
+                function draw(graph) {
+                    clear(drawing);
+                    self.flowWindowDraw(drawing, graph, function (picked) {
+                        var target = (picked.id === 'post') ? message : date;
 
-                    target.focus();
-                    target.scrollIntoView({ block: 'nearest' });
+                        target.focus();
+                        target.scrollIntoView({ block: 'nearest' });
+                    });
+                }
+
+                function filled() {
+                    return {
+                        channel_id: channelId,
+                        name: name.value,
+                        body: message.value,
+                        start: scheduledFlowStart({
+                            date: date.value,
+                            time: time.value,
+                            repeat: repeat.value,
+                            every: every.value,
+                            until: until.value,
+                            days: Array.prototype.filter.call(days.querySelectorAll('input'), function (box) {
+                                return box.checked;
+                            }).map(function (box) { return box.value; })
+                        })
+                    };
+                }
+
+                draw(data.graph);
+
+                // Each box's dry run follows the form: the sketch is asked
+                // again with what it holds once typing stops. A late answer
+                // to an older form is dropped.
+                var asked = 0;
+                var wait = null;
+
+                function sketchAgain() {
+                    var mine = ++asked;
+
+                    api('ws_flow_scheduled_new', Object.assign(filled(), { sketch: 1 })).then(function (again) {
+                        if (mine === asked) {
+                            draw(again.graph);
+                        }
+                    }).catch(function () {
+                        // The drawing as it was stays; Publish says what is wrong.
+                    });
+                }
+
+                ['input', 'change'].forEach(function (type) {
+                    body.addEventListener(type, function (event) {
+                        if (drawing.contains(event.target)) {
+                            return;
+                        }
+
+                        clearTimeout(wait);
+                        wait = setTimeout(sketchAgain, 600);
+                    });
                 });
 
                 function send(publish, control) {
@@ -10927,24 +11013,11 @@
                     control.disabled = true;
                     clear(said);
 
-                    api('ws_flow_scheduled_new', {
-                        channel_id: channelId,
+                    api('ws_flow_scheduled_new', Object.assign(filled(), {
                         flow_id: saved.flow_id,
                         draft_rev: saved.draft_rev,
-                        name: name.value,
-                        body: message.value,
-                        publish: publish ? 1 : 0,
-                        start: scheduledFlowStart({
-                            date: date.value,
-                            time: time.value,
-                            repeat: repeat.value,
-                            every: every.value,
-                            until: until.value,
-                            days: Array.prototype.filter.call(days.querySelectorAll('input'), function (box) {
-                                return box.checked;
-                            }).map(function (box) { return box.value; })
-                        })
-                    }).then(function (result) {
+                        publish: publish ? 1 : 0
+                    })).then(function (result) {
                         busy = false;
                         control.disabled = false;
                         saved.flow_id = result.flow_id;

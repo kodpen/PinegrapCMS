@@ -454,12 +454,23 @@ function ws_flow_draft_open($viewer, $change_id)
 
 // ─── The card as a mini flow window ─────────────────────────────────────
 
-/** Margin around the boxes of a card's window, in canvas units. */
-define('WS_FLOW_CARD_PAD', 32);
+/** Margin around the boxes of a card's window, in px. */
+define('WS_FLOW_CARD_PAD', 16);
 
-/** A box on a card's window, in canvas units (the canvas draws them 208 by 80). */
-define('WS_FLOW_CARD_BOX_W', 208);
-define('WS_FLOW_CARD_BOX_H', 80);
+/** A box on a card's window, in px. */
+define('WS_FLOW_CARD_BOX_W', 128);
+define('WS_FLOW_CARD_BOX_H', 60);
+
+/**
+ * A box on the canvas, in canvas units: places are scaled by the card's box
+ * over this, across and down apart, so the gaps between boxes keep their
+ * share of a box.
+ */
+define('WS_FLOW_CARD_CANVAS_W', 208);
+define('WS_FLOW_CARD_CANVAS_H', 80);
+
+/** Px between two threads leaving one output dot. */
+define('WS_FLOW_CARD_THREAD_GAP', 3);
 
 /**
  * The kinds of box that send something out of Pinegrap or write a record:
@@ -478,11 +489,13 @@ function ws_flow_card_outbound_kinds()
  * sit at the margin, whether it sends or writes outside, how a patch marks
  * it (ws_flow_patch_marks()) and whether it can be tried (every kind but the
  * value boxes, which only hold values); the threads; the names of the boxes
- * a patch removed; and the size of the whole, in canvas units.
+ * a patch removed; the data threads (ws_flow_card_threads()); and the size
+ * of the whole, in px. Each box's third line (said, failed) is filled by
+ * ws_flow_card_tries().
  *
  * @param array      $graph ws_flow_graph_normalize(), the patch made
  * @param array|null $patch ws_flow_patch_apply() ops of a draft that changes a flow
- * @return array nodes, edges, removed, width, height
+ * @return array nodes, edges, threads, removed, width, height
  */
 function ws_flow_card_graph($graph, $patch = null)
 {
@@ -522,8 +535,8 @@ function ws_flow_card_graph($graph, $patch = null)
 
     foreach ($graph['nodes'] as $node) {
         $kind = (string) $node['kind'];
-        $x = (int) $node['x'] - (int) $left + WS_FLOW_CARD_PAD;
-        $y = (int) $node['y'] - (int) $top + WS_FLOW_CARD_PAD;
+        $x = (int) round(((int) $node['x'] - (int) $left) * WS_FLOW_CARD_BOX_W / WS_FLOW_CARD_CANVAS_W) + WS_FLOW_CARD_PAD;
+        $y = (int) round(((int) $node['y'] - (int) $top) * WS_FLOW_CARD_BOX_H / WS_FLOW_CARD_CANVAS_H) + WS_FLOW_CARD_PAD;
         $there[$node['id']] = true;
         $width = max($width, $x + WS_FLOW_CARD_BOX_W + WS_FLOW_CARD_PAD);
         $height = max($height, $y + WS_FLOW_CARD_BOX_H + WS_FLOW_CARD_PAD);
@@ -539,6 +552,8 @@ function ws_flow_card_graph($graph, $patch = null)
             'outbound' => isset($outbound[$kind]),
             'mark'     => (string) ($marks[$node['id']] ?? ''),
             'try'      => isset($kinds[$kind]) && empty($kinds[$kind]['pure']),
+            'said'     => '',
+            'failed'   => false,
         );
     }
 
@@ -550,7 +565,273 @@ function ws_flow_card_graph($graph, $patch = null)
         }
     }
 
-    return array('nodes' => $nodes, 'edges' => $edges, 'removed' => array_values($removed), 'width' => $width, 'height' => $height);
+    $threads = ws_flow_card_threads($graph, $nodes);
+
+    foreach ($threads as $thread) {
+        $height = max($height, (int) ceil(max($thread['y1'], $thread['y2']) + ($thread['cy'] - max($thread['y1'], $thread['y2'])) / 2) + WS_FLOW_CARD_PAD / 2);
+    }
+
+    return array('nodes' => $nodes, 'edges' => $edges, 'threads' => $threads, 'removed' => array_values($removed), 'width' => $width, 'height' => $height);
+}
+
+/**
+ * The type a box's value has, as a thread's colour takes it (pure): number
+ * for the counting types, text for the rest, as the canvas colours them.
+ * Text, outcome and status of every box are text.
+ *
+ * @param array  $node  ws_flow_graph_normalize() box
+ * @param array  $kinds ws_flow_kinds()
+ * @param string $key   the value, {{node.<id>.<key>}}
+ * @return string number | text
+ */
+function ws_flow_card_value_type($node, $kinds, $key)
+{
+    $kind = (string) $node['kind'];
+
+    if ($kind === 'constants') {
+        $outputs = function_exists('ws_flow_constants_outputs') ? ws_flow_constants_outputs($node['config']) : array();
+    } elseif (($kind === 'for_each') && function_exists('ws_flow_loop_outputs')) {
+        $outputs = ws_flow_loop_outputs($node['config']);
+    } elseif (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) {
+        $outputs = ws_step_outputs($kind, $node['config']);
+    } else {
+        $outputs = (array) ($kinds[$kind]['outputs'] ?? array());
+    }
+
+    foreach ($outputs as $output) {
+        if ((string) $output['key'] === (string) $key) {
+            return in_array((string) $output['type'], array('number', 'integer', 'money'), true) ? 'number' : 'text';
+        }
+    }
+
+    return 'text';
+}
+
+/**
+ * The sag of a data thread in a card's window, in px (pure): the control
+ * point of its curve sits this far below the lower of its two ends, so a
+ * longer span hangs a little more.
+ *
+ * @param int|float $span the horizontal distance between its ends
+ * @return float
+ */
+function ws_flow_card_thread_sag($span)
+{
+    return 10 + 0.05 * abs((float) $span);
+}
+
+/**
+ * The data threads of a card's window (pure): one for each box and field
+ * another box's value fills (ws_flow_template_threads()), with the value it
+ * reads, its type and its tone (the type's three tones taken in turn), and
+ * where it is drawn. It leaves its value's dot on the source box's bottom
+ * edge (one dot per value used, spread along the edge) and ends on the
+ * bottom edge of the box it fills (spread likewise), a quadratic curve
+ * whose control point sits ws_flow_card_thread_sag() below its lower end.
+ * Threads of one dot leave it WS_FLOW_CARD_THREAD_GAP apart, the farthest
+ * on the left and hanging that much deeper per place, so they never cross
+ * near the dot.
+ *
+ * @param array   $graph ws_flow_graph_normalize()
+ * @param array[] $nodes the card's boxes (id, x, y)
+ * @return array[] from, to, key, value, type, tone, dot_x (the dot's middle), x1, y1, x2, y2, cx, cy
+ */
+function ws_flow_card_threads($graph, $nodes)
+{
+    $kinds = ws_flow_kinds();
+    $by = array();
+    $places = array();
+
+    foreach ($graph['nodes'] as $node) {
+        $by[(string) $node['id']] = $node;
+    }
+
+    foreach ($nodes as $node) {
+        $places[$node['id']] = $node;
+    }
+
+    $threads = array();
+    $tones = array();
+    $dots = array();
+    $ends = array();
+
+    foreach (ws_flow_template_threads($graph) as $thread) {
+        if (!isset($places[$thread['from']], $places[$thread['to']])) {
+            continue;
+        }
+
+        // The value it reads: the first {{node.<from>.<value>}} of the field.
+        $texts = array();
+        $config = $by[$thread['to']]['config'][$thread['key']] ?? '';
+
+        if (is_array($config)) {
+            array_walk_recursive($config, function ($item) use (&$texts) {
+                $texts[] = $item;
+            });
+        } else {
+            $texts[] = $config;
+        }
+
+        $value = '';
+
+        foreach ($texts as $text) {
+            if (is_string($text) && preg_match('/\{\{node\.' . preg_quote($thread['from'], '/') . '\.([a-z_][a-z0-9_]*)\}\}/', $text, $match)) {
+                $value = $match[1];
+                break;
+            }
+        }
+
+        $type = ws_flow_card_value_type($by[$thread['from']], $kinds, $value);
+        $tones[$type] = $tones[$type] ?? 0;
+        $dot = $thread['from'] . '.' . $value;
+
+        if (!isset($dots[$thread['from']][$dot])) {
+            $dots[$thread['from']][$dot] = count($dots[$thread['from']] ?? array());
+        }
+
+        $ends[$thread['to']][] = count($threads);
+        $threads[] = $thread + array('value' => $value, 'type' => $type, 'tone' => ($tones[$type]++) % 3, 'dot' => $dot);
+    }
+
+    // Where each end sits: dots spread along the source's bottom edge,
+    // ends along the target's.
+    foreach ($threads as $n => $thread) {
+        $from = $places[$thread['from']];
+        $count = count($dots[$thread['from']]);
+        $threads[$n]['x1'] = $from['x'] + (int) round(WS_FLOW_CARD_BOX_W * ($dots[$thread['from']][$thread['dot']] + 1) / ($count + 1));
+        $threads[$n]['y1'] = $from['y'] + WS_FLOW_CARD_BOX_H;
+
+        $to = $places[$thread['to']];
+        $place = array_search($n, $ends[$thread['to']], true);
+        $threads[$n]['x2'] = $to['x'] + (int) round(WS_FLOW_CARD_BOX_W * ($place + 1) / (count($ends[$thread['to']]) + 1));
+        $threads[$n]['y2'] = $to['y'] + WS_FLOW_CARD_BOX_H;
+    }
+
+    // Threads of one dot: the farthest first, on the left, deepest.
+    $fans = array();
+
+    foreach ($threads as $n => $thread) {
+        $fans[$thread['dot']][] = $n;
+    }
+
+    foreach ($fans as $fan) {
+        usort($fan, function ($a, $b) use ($threads) {
+            return abs($threads[$b]['x2'] - $threads[$b]['x1']) - abs($threads[$a]['x2'] - $threads[$a]['x1']);
+        });
+
+        $many = count($fan);
+
+        foreach ($fan as $place => $n) {
+            $threads[$n]['dot_x'] = $threads[$n]['x1'];
+            $threads[$n]['x1'] += $place * WS_FLOW_CARD_THREAD_GAP - intdiv(($many - 1) * WS_FLOW_CARD_THREAD_GAP, 2);
+            $threads[$n]['deeper'] = ($many - 1 - $place) * WS_FLOW_CARD_THREAD_GAP;
+        }
+    }
+
+    $out = array();
+
+    foreach ($threads as $thread) {
+        $sag = ws_flow_card_thread_sag($thread['x2'] - $thread['x1']) + $thread['deeper'];
+
+        $out[] = array(
+            'from'  => (string) $thread['from'],
+            'to'    => (string) $thread['to'],
+            'key'   => (string) $thread['key'],
+            'value' => $thread['value'],
+            'type'  => $thread['type'],
+            'tone'  => $thread['tone'],
+            'dot_x' => $thread['dot_x'],
+            'x1'    => $thread['x1'],
+            'y1'    => $thread['y1'],
+            'x2'    => $thread['x2'],
+            'y2'    => $thread['y2'],
+            'cx'    => (int) round(($thread['x1'] + $thread['x2']) / 2),
+            'cy'    => (int) round(max($thread['y1'], $thread['y2']) + $sag),
+        );
+    }
+
+    return $out;
+}
+
+/**
+ * The flow a card's window tries its boxes on (pure): a waiting new flow,
+ * or the sketch of Add › Scheduled flow, as a flow of the person's own in
+ * memory (owner the asker, a draft holding the graph, edit access), so the
+ * try reads with the asker's rights and nothing is written; a waiting patch
+ * none, as its flow's owner alone tries boxes (ws_flow_box_try()); an
+ * opened draft its flow, only where the person may try it.
+ *
+ * @param array      $viewer
+ * @param string     $state   new (a waiting new flow or a sketch) | patch | opened
+ * @param array      $graph   ws_flow_graph_normalize(), for new
+ * @param array|null $flow    the flow, for opened (ws_flow_for())
+ * @param bool       $can_try for opened (ws_flow_share_manager())
+ * @param string     $name    the flow's name, for new
+ * @return array|null a flow row for ws_flow_box_try()
+ */
+function ws_flow_card_try_flow($viewer, $state, $graph, $flow = null, $can_try = false, $name = '')
+{
+    if ($state === 'new') {
+        return array(
+            'id'         => 0,
+            'owner_id'   => (int) $viewer['id'],
+            'name'       => (string) $name,
+            'status'     => 'draft',
+            'channel_id' => 0,
+            'draft'      => json_encode($graph),
+            'access'     => 'edit',
+        );
+    }
+
+    return (($state === 'opened') && $can_try && is_array($flow)) ? $flow : null;
+}
+
+/**
+ * A box's third line on a card's window from its try (pure): what it would
+ * do, or why it would not run; none when the try itself was refused.
+ *
+ * @param array $tried ws_flow_box_try()
+ * @return array|null said, failed
+ */
+function ws_flow_card_try_line($tried)
+{
+    if (empty($tried['ok'])) {
+        return null;
+    }
+
+    if ((string) ($tried['refusal'] ?? '') !== '') {
+        return array('said' => lang(array('string' => 'It would not run: {var:1}', 'vars' => (string) $tried['refusal'])), 'failed' => true);
+    }
+
+    return array('said' => (string) ($tried['said'] ?? ''), 'failed' => false);
+}
+
+/**
+ * Fills each box's third line of a card's window with its dry run
+ * (ws_flow_box_try(), which writes nothing), on the flow
+ * ws_flow_card_try_flow() gives; none without one.
+ *
+ * @param array      $viewer
+ * @param array|null $flow
+ * @param array      $card ws_flow_card_graph()
+ * @return array the card
+ */
+function ws_flow_card_tries($viewer, $flow, $card)
+{
+    if (!is_array($flow) || !function_exists('ws_flow_box_try')) {
+        return $card;
+    }
+
+    foreach ($card['nodes'] as $n => $node) {
+        $line = $node['try'] ? ws_flow_card_try_line(ws_flow_box_try($viewer, $flow, array('node_id' => $node['id']))) : null;
+
+        if ($line !== null) {
+            $card['nodes'][$n]['said'] = $line['said'];
+            $card['nodes'][$n]['failed'] = $line['failed'];
+        }
+    }
+
+    return $card;
 }
 
 /**
@@ -592,9 +873,12 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
             return $fail(lang('The flow this draft was opened as is gone, or you may no longer see it.'));
         }
 
-        return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph(ws_flow_graph_of($flow), $patch) + array(
+        $can_try = ws_flow_share_manager($viewer, $flow);
+        $card = ws_flow_card_graph(ws_flow_graph_of($flow), $patch);
+
+        return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, ws_flow_card_try_flow($viewer, 'opened', null, $flow, $can_try), $card) + array(
             'flow_id' => (int) $flow['id'],
-            'can_try' => ws_flow_share_manager($viewer, $flow),
+            'can_try' => $can_try,
         ));
     }
 
@@ -606,8 +890,12 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
         return $fail(lang('Only staff in the team can build flows.'));
     }
 
+    $name = '';
+
     if ($patch === null) {
-        $graph = ws_flow_draft_flow_input($draft)['graph'];
+        $input = ws_flow_draft_flow_input($draft);
+        $graph = $input['graph'];
+        $name = $input['name'];
     } else {
         $flow = ws_flow_for($viewer, (int) ($draft['base']['flow_id'] ?? 0), 'edit');
 
@@ -624,8 +912,11 @@ function ws_flow_draft_card_graph_read($viewer, $change_id)
         $graph = $made['graph'];
     }
 
-    // Not a flow of the person yet: no canvas to link to, nothing to try.
-    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_graph($graph, $patch) + array('flow_id' => 0, 'can_try' => false));
+    // Not a flow of the person yet: no canvas to link to and no try button;
+    // a new flow's boxes are tried in memory for their third line.
+    $tries = ws_flow_card_try_flow($viewer, ($patch === null) ? 'new' : 'patch', $graph, null, false, $name);
+
+    return array('ok' => true, 'error' => '', 'graph' => ws_flow_card_tries($viewer, $tries, ws_flow_card_graph($graph, $patch)) + array('flow_id' => 0, 'can_try' => false));
 }
 
 /**
