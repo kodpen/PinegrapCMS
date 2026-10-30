@@ -1440,9 +1440,9 @@ if (!$_POST) {
                             </div>
                         </div>';
                     
-                    // if the number of payments is set to 0, then change value to [no limit]
+                    // if the number of payments is set to 0, then change value to "No limit"
                     if ($recurring_number_of_payments == 0) {
-                        $output_recurring_number_of_payments = '[no limit]';
+                        $output_recurring_number_of_payments = lang('No limit');
                         
                     // else the number of payments is greater than 0, so show value
                     } else {
@@ -1889,9 +1889,9 @@ if (!$_POST) {
                         </div>
                     </div>';
                 
-                // if the number of payments is set to 0, then change value to [no limit]
+                // if the number of payments is set to 0, then change value to "No limit"
                 if ($recurring_number_of_payments == 0) {
-                    $output_recurring_number_of_payments = '[no limit]';
+                    $output_recurring_number_of_payments = lang('No limit');
                     
                 // else the number of payments is greater than 0, so show value
                 } else {
@@ -2096,7 +2096,7 @@ if (!$_POST) {
                     
                     // if the legend content is not blank, then output a legend
                     if ($output_legend_content != '') {
-                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</legend>';
+                        $output_legend = '<div class="card-header bg-reset border-0 text-uppercase h5 fg-secondary fw-bold">' . $output_legend_content . '</div>';
                     }
                     
                     $output_forms .=
@@ -2219,6 +2219,8 @@ if (!$_POST) {
     // if there is a gift card discount and there is at least one applied gift card, then prepare to output applied gift cards
     // this double check is not redundant, because there can be a situation where there is a discount with no gift cards if there was an error when the gift card transaction was submitted
     if (($gift_card_discount > 0)  && (count($applied_gift_cards) > 0)) {
+        $output_applied_gift_card_rows = '';
+
         // loop through applied gift cards in order to prepare to output them
         foreach ($applied_gift_cards as $applied_gift_card) {
             if ($applied_gift_card['givex'] == 0) {
@@ -2235,12 +2237,20 @@ if (!$_POST) {
                 <div class="row" >
                     <span class="translateable col fg-secondary">' . lang('Amount') . ':</span>
                     <span class="col text-end">' . pg_format_money($applied_gift_card['amount'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
-                </div>
-                <div class="row" >
-                    <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
-                    <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
-                </div>
-                <div class="row" >
+                </div>';
+
+            // Only a Givex redemption writes an authorization number; the
+            // shop's own cards have none.
+            if ($applied_gift_card['givex'] != 0) {
+                $output_applied_gift_card_rows .=
+                    '<div class="row" >
+                        <span class="translateable col fg-secondary">' . lang('Givex Auth') . ' #:</span>
+                        <span class="col text-end">' . h($applied_gift_card['authorization_number']) . '</span>
+                    </div>';
+            }
+
+            $output_applied_gift_card_rows .=
+                '<div class="row" >
                     <span class="translateable col fg-secondary">' . lang('Remaining Balance') . ':</span>
                     <span class="col text-end">' . pg_format_money($applied_gift_card['new_balance'] / 100, BASE_CURRENCY_SYMBOL) . '</span>
                 </div>';
