@@ -1772,6 +1772,7 @@
     "The expiration is not valid.": "Son kullanma tarihi geçerli değil.",
     "The expiration month must be between 01 and 12.": "Son kullanma ayı 01 ile 12 arasında olmalıdır.",
     "The explanation can be at most 500 characters.": "Açıklama en fazla 500 karakter olabilir.",
+    "The export file could not be created. Please try again.": "Dışa aktarma dosyası oluşturulamadı. Lütfen tekrar deneyin.",
     "The export holds more than {var:1} notes and attachments.": "Dışa aktarımda {var:1} taneden fazla not ve ek var.",
     "The extra service follows record crowds at last year's light displays, when many visitors left early to catch the last train.": "Ek seferler, geçen yılki ışık gösterilerinde rekor kalabalık oluşması ve birçok ziyaretçinin son treni yakalamak için erken ayrılması üzerine geldi.",
     "The failed ones will be tried again on the next run.": "Başarısız olanlar bir sonraki çalışmada yeniden denenecek.",

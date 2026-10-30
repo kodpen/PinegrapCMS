@@ -274,6 +274,55 @@ $(document).ready(function () {
     });
 
 
+    // Orders > Export for Paraşüt Selected. edit_orders.php marks the orders
+    // exported, then streams a zip. The form is sent with fetch so the page
+    // waits for that zip however long the export takes: a reload or a new
+    // navigation before the answer would cancel the download while the
+    // orders stay marked. The reload after saving shows the marks and the
+    // notice; any answer other than a zip leaves the page as it is. The
+    // Confirm button carries the translated wait and error texts.
+    function pgParasutOrderExport(form, $button) {
+        // The hidden input named "action" shadows form.action.
+        var url = form.getAttribute('action');
+        var $overlay = $('<div class="pg-parasut-export-wait" role="status" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;inset: 0;display: flex;align-items: center;justify-content: center;gap: 1rem;backdrop-filter: blur(4px);font-size: 1.5rem;"></div>');
+        $overlay.append('<span class="spinner-border" aria-hidden="true"></span>', $('<span></span>').text($button.attr('data-wait-text') || lang('Please Wait')));
+        $('body').prepend($overlay).css('overflow', 'hidden');
+
+        var fail = function () {
+            $overlay.remove();
+            $('body').css('overflow', '');
+            if (typeof window.pgToast === 'function') {
+                window.pgToast({ message: $button.attr('data-error-text') || lang('An error occurred.'), variant: 'danger' });
+            }
+        };
+
+        fetch(url, { method: 'POST', body: new FormData(form), credentials: 'same-origin' }).then(function (response) {
+            var type = response.headers.get('Content-Type') || '';
+            if (!response.ok || type.indexOf('application/zip') === -1) {
+                fail();
+                return;
+            }
+            // The name is sent unquoted: filename=parasut_<date>.zip
+            var disposition = response.headers.get('Content-Disposition') || '';
+            var match = /filename="?([^";]+)"?/i.exec(disposition);
+            var name = match ? match[1].trim() : 'parasut.zip';
+            return response.blob().then(function (blob) {
+                var href = URL.createObjectURL(blob);
+                var link = document.createElement('a');
+                link.href = href;
+                link.download = name;
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                // Revoking at once can cut the save short in some browsers.
+                window.setTimeout(function () {
+                    URL.revokeObjectURL(href);
+                    window.location.reload();
+                }, 500);
+            });
+        }).catch(fail);
+    }
+
     // Buttons are never relabelled or held while a request runs. A label
     // swapped to "Saving" and a button kept disabled for a fixed time made
     // screens that save over Ajax wait long after the answer had come back.
@@ -332,15 +381,12 @@ $(document).ready(function () {
         }
         if (confirm_content || autoconfirm == true) {
             if (confirmation == true) {
-                // if this is parasut export button, than output page refresh for user to see the changed order results.
+                // The Paraşüt export answers with a zip; it is fetched and
+                // saved, then the page reloads to show the marks and notice.
                 if (value == 'Export Orders For Parasut') {
                     pgUI.dialog.hide('#xlsl_setup_modal');
-                    //reload this page to show user exported orders.
-                    $('body').prepend('<div id="couldown_for_order_exporting_10000" style="z-index: 999;background: color-mix(in srgb, var(--pg-bg-body) 70%, transparent);color: var(--pg-fg-body);position: fixed;left: 0;top: 0;width: 100%;height: 100%;text-align: center;line-height: 100vh;backdrop-filter: blur(4px);font-size: 40px;">' + lang('Please Wait') + '...</div>');
-                    $('body').attr('style', 'overflow:hidden');
-                    setTimeout(function () {
-                        window.location.reload();
-                    }, 4000);//4sec wait
+                    pgParasutOrderExport(document.form, el);
+                    return true;
                 }
 
                 //if form need to be send also send it.

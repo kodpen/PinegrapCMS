@@ -520,7 +520,7 @@ if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
                 <div class="dialog-footer">
                 <p>' . lang('Do you approve to create 2 excel files suitable for using the selected orders in Paraşut application?') . '</p>
                     <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
-                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
+                    <button type="button" name="submit_data" value="Export Orders For Parasut" class="btn btn-solid theme-success" data-wait-text="' . h(lang('Preparing the export file. Please wait.')) . '" data-error-text="' . h(lang('The export file could not be created. Please try again.')) . '"><span class="material-icons me-3">done</span>' . lang(array('string'=>'Confirm') ) . '</button>
                 </div>
     </dialog>';
     $output_generate_xlsl_button = '<button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-success disabled" data-bs-toggle="dialog" data-bs-target="#xlsl_setup_modal"><span class="material-icons me-3">file_present</span>' . lang(array('string'=>'Export for Parasut Selected') ) . '</button>';
