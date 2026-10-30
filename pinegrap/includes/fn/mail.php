@@ -2123,23 +2123,23 @@ function email($properties)
         $error = $outcome['error'];
         $permanent = $outcome['permanent'];
 
-        $log = lang('The following email could not be delivered.') . "\n\n";
-        $log .= lang('Error') . ': ' . $error . "\n\n";
-        $log .= lang('Subject') . ': ' . $subject . "\n";
-        $log .= lang('To') . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
+        $log = pg_log_lang(array('string' => 'The following email could not be delivered.')) . "\n\n";
+        $log .= pg_log_lang(array('string' => 'Error')) . ': ' . $error . "\n\n";
+        $log .= pg_log_lang(array('string' => 'Subject')) . ': ' . $subject . "\n";
+        $log .= pg_log_lang(array('string' => 'To')) . ': ' . (is_array($to) ? implode(', ', $to) : $to) . "\n";
 
         if ($bcc) {
-            $log .= lang('BCC') . ': ' . (is_array($bcc) ? implode(', ', $bcc) : $bcc) . "\n";
+            $log .= pg_log_lang(array('string' => 'BCC')) . ': ' . (is_array($bcc) ? implode(', ', $bcc) : $bcc) . "\n";
         }
 
-        $log .= lang('From') . ': ' . ($from_name ? "$from_name <$from_email_address>" : $from_email_address) . "\n";
+        $log .= pg_log_lang(array('string' => 'From')) . ': ' . ($from_name ? "$from_name <$from_email_address>" : $from_email_address) . "\n";
 
         if ($reply_to) {
-            $log .= lang('Reply-To') . ': ' . $reply_to . "\n";
+            $log .= pg_log_lang(array('string' => 'Reply-To')) . ': ' . $reply_to . "\n";
         }
 
         if (pg_mail_failure_body_shown($properties)) {
-            $log .= lang('Body') . ":\n" . $body;
+            $log .= pg_log_lang(array('string' => 'Body')) . ":\n" . $body;
         }
 
         log_activity($log);

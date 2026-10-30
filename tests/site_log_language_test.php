@@ -92,6 +92,8 @@ function test_site_log_writers_pass_no_bare_english()
 		'add_field.php',
 		'cancel_order.php',
 		'change_password.php',
+		'delete_styles.php',
+		'delete_users.php',
 		'edit_contact.php',
 		'edit_pages.php',
 		'edit_theme_file.php',
@@ -103,16 +105,52 @@ function test_site_log_writers_pass_no_bare_english()
 		'get_photo_gallery.php',
 		'get_set_password.php',
 		'import_design.php',
+		'import_key_codes.php',
+		'includes/explorer/handle_backups.php',
+		'includes/explorer/handle_bulk_edit.php',
+		'includes/explorer/handle_catalog.php',
+		'includes/explorer/handle_catalog_edit.php',
+		'includes/explorer/handle_file_usage.php',
+		'includes/explorer/handle_file_window.php',
+		'includes/explorer/handle_files.php',
+		'includes/explorer/handle_files_media.php',
+		'includes/explorer/handle_folder_access.php',
+		'includes/explorer/handle_folders.php',
+		'includes/explorer/handle_items.php',
+		'includes/explorer/handle_products_bulk.php',
+		'includes/explorer/handle_recycle.php',
+		'includes/explorer/handle_short_links.php',
+		'includes/explorer/handle_upload.php',
+		'includes/explorer/handle_zip.php',
 		'includes/explorer/recycle_bin.php',
 		'includes/fn/carrier_webhook.php',
+		'includes/fn/designer.php',
 		'includes/fn/ecommerce.php',
 		'includes/fn/google_reviews.php',
+		'includes/fn/mail.php',
+		'includes/fn/mail_queue.php',
 		'includes/fn/order_completion.php',
+		'includes/fn/returns.php',
+		'includes/fn/subscription_renewal.php',
+		'includes/fn/subscriptions_account.php',
 		'includes/fn/update.php',
 		'includes/iys/client.php',
 		'includes/panel/commerce.php',
-		'includes/payments/callback.php',
+		'includes/panel/shared_component.php',
 		'includes/panel/software.php',
+		'includes/payments/callback.php',
+		'includes/settings/commerce.save.php',
+		'includes/settings/features.save.php',
+		'includes/settings/firewall.save.php',
+		'includes/settings/fragment.php',
+		'includes/settings/general.save.php',
+		'includes/settings/languages.save.php',
+		'includes/settings/screen.php',
+		'includes/settings/seo.save.php',
+		'includes/workspace/ai.php',
+		'includes/workspace/api_resources.php',
+		'includes/workspace/changes.php',
+		'mail_queue.php',
 		'membership_entrance.php',
 		'membership_job.php',
 		'my_account_profile.php',
@@ -120,8 +158,8 @@ function test_site_log_writers_pass_no_bare_english()
 		'order_invoice_print.php',
 		'preview_style.php',
 		'recurring_payment_job.php',
-		'remove_item_from_cart.php',
 		'registration_entrance.php',
+		'remove_item_from_cart.php',
 		'reset_password.php',
 		'retrieve_order.php',
 		'set_password.php',
@@ -191,7 +229,10 @@ function test_site_log_payment_notice_line_from_parts()
 }
 
 // The payment drivers' own log lines, the cancellation's, the cart
-// retrieval's and the shipping method refusals' are built with pg_log_lang(), never from bare English.
+// retrieval's, the shipping method refusals', the checkout's gateway
+// errors (one text for the visitor through lang(), one for the log), the
+// undelivered e-mail's and the subscription engine's are built with
+// pg_log_lang(), never from bare English or the visitor's language.
 function test_site_log_payment_driver_lines_translated()
 {
 	$patterns = array(
@@ -203,9 +244,22 @@ function test_site_log_payment_driver_lines_translated()
 		'retrieve_order.php'            => '/\$message = \'/',
 		'shipping_method.php'           => '/\' \(Order ID: \'/',
 		'express_order.php'             => '/\' \(Order ID: \'/',
+		'includes/fn/mail.php'          => '/\$log \.?= lang\(/',
+		'includes/fn/mail_queue.php'    => '/log_activity\(lang\(/',
+		'includes/fn/subscription_renewal.php'  => '/(log_activity\(|\$io\[\'log\'\], )lang\(/',
+		'includes/fn/subscriptions_account.php' => '/\$io\[\'log\'\]\(lang\(/',
+		'submit_order.php'              => '/lang\(\'(Error message from payment gateway: \'\)|cURL Error Number:)/',
 	);
 
 	foreach ($patterns as $file => $pattern) {
 		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
 	}
+
+	// Each gateway error the checkout shows the visitor is logged from the
+	// same parts in the software language.
+	$checkout = (string) file_get_contents(PG_FUNCTIONS_DIR . '/submit_order.php');
+	$shown = substr_count($checkout, '$payment_gateway_error_message = lang($payment_gateway_error);');
+
+	pg_assert_true($shown > 0, 'the checkout builds its gateway errors from parts');
+	pg_assert_same($shown, substr_count($checkout, 'log_activity(pg_log_lang($payment_gateway_error)'), 'one log line per error shown');
 }

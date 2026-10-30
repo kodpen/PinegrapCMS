@@ -270,7 +270,7 @@ function pg_subscription_store_move($row, $action, $detail, $io)
         $answer = $io['call']((string) $row['driver'], 'subscription_cancel', pg_subscription_driver_row($row));
 
         if (empty($answer['success'])) {
-            $io['log'](lang(array('string' => 'The payment service did not forget the card of cancelled subscription {var:1}.', 'vars' => array((int) $row['id']))));
+            $io['log'](pg_log_lang(array('string' => 'The payment service did not forget the card of cancelled subscription {var:1}.', 'vars' => array((int) $row['id']))));
         }
     }
 

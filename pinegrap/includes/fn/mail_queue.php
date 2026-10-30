@@ -555,7 +555,7 @@ function pg_mail_queue_run($limit = 25, $seconds = 20)
                     claimed_at = 0
                 WHERE id = '" . $id . "'");
 
-            log_activity(lang(array(
+            log_activity(pg_log_lang(array(
                 'string' => 'An e-mail to {var:1} was given up after {var:2} attempts: {var:3}',
                 'vars'   => array($row['recipient'], $attempt, $error),
             )), 'UNKNOWN');

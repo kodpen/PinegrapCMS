@@ -396,7 +396,7 @@ function pg_subscription_renewal_run_row($id, $now, array $io)
     if (($outcome === 'paid') && ($order_id <= 0)) {
         // The money was taken: staff must see that no order holds it.
         $plan['detail'] = lang('Paid, but the renewal order could not be written.') . ' ' . (string) ($answer['transaction_id'] ?? '');
-        call_user_func($io['log'], lang(array(
+        call_user_func($io['log'], pg_log_lang(array(
             'string' => 'Subscription {var:1} was renewed and paid, but its order could not be written. Payment: {var:2}',
             'vars'   => array($id, (string) ($answer['transaction_id'] ?? '')),
         )));
@@ -761,7 +761,7 @@ function pg_subscription_renewals_run($now, $limit = 200)
     pg_subscription_price_notices_run($now, $io);
 
     if ($done > 0) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'Subscription renewals: {var:1} paid, {var:2} failed, {var:3} waiting for the customer, {var:4} waiting for the payment service.',
             'vars'   => array($counts['paid'], $counts['failed'] + $counts['refused'], $counts['confirm'], $counts['pending'] + $counts['unclear']),
         )), 'UNKNOWN');
@@ -988,7 +988,7 @@ function pg_subscription_mail_send($id, $event_id, $event, $status_before, $stat
             'data'          => array('subscription' => $row),
         ));
     } catch (\Throwable $exception) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'The e-mail of subscription {var:1} could not be prepared: {var:2}',
             'vars'   => array((int) $id, $exception->getMessage()),
         )), 'UNKNOWN');
@@ -1256,7 +1256,7 @@ function pg_subscription_price_notices_run($now, array $io)
     } while ($rows === 200);
 
     if ($noticed > 0) {
-        log_activity(lang(array(
+        log_activity(pg_log_lang(array(
             'string' => 'Subscription price changes: {var:1} customers were told of a new amount.',
             'vars'   => array($noticed),
         )), 'UNKNOWN');

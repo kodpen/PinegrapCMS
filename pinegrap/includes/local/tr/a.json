@@ -2326,6 +2326,7 @@
     "An error occurred while trying to communicate with PayPal.": "PayPal ile iletişim kurulmaya çalışılırken bir hata oluştu.",
     "An error occurred while trying to communicate with PayPal. cURL Error Number: {var:1}. cURL Error Message: {var:2}.": "PayPal ile iletişim kurulmaya çalışılırken bir hata oluştu. cURL Hata Numarası: {var:1}. cURL Hata Mesajı: {var:2}.",
     "An error occurred while trying to communicate with the payment gateway.": "Ödeme altyapısıyla iletişim kurulmaya çalışılırken bir hata oluştu.",
+    "An error occurred while trying to communicate with the payment gateway. cURL Error Number: {var:1}. cURL Error Message: {var:2}.": "Ödeme altyapısıyla iletişim kurulmaya çalışılırken bir hata oluştu. cURL Hata Numarası: {var:1}. cURL Hata Mesajı: {var:2}.",
     "An error occurred while trying to get a delivery date from FedEx: {var:1} Request: {var:2}": "FedEx'ten teslim tarihi alınırken hata oluştu: {var:1} İstek: {var:2}",
     "An error occurred while trying to get a delivery date from USPS: {var:1} Request: {var:2}": "USPS'ten teslim tarihi alınırken hata oluştu: {var:1} İstek: {var:2}",
     "An error occurred while trying to get real-time rates from UPS: {var:1}": "UPS'ten anlık fiyat alınırken hata oluştu: {var:1}",
