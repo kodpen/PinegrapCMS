@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
 - Drivers done: İleti Merkezi (PR #3623), Twilio (PR #3647); `platform/sms-iletimerkezi-driver.md`, `sms-twilio-driver.md`.
 7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
-- 7 is cut: ~~7a writers, member widgets, e-mail preferences box~~ (PR #3660, `core/sms-consent-box.md`); 7b checkout and its widgets, custom forms (`custom_form.php` held at the cut), designer default trees and help.
+- 7 is cut: ~~7a writers, member widgets, e-mail preferences box~~ (PR #3660, `core/sms-consent-box.md`); 7b checkout and its widgets, custom forms, designer default trees and help (in progress).
 
 ## Open questions?
 - İYS test credentials: owner provides; until then the client runs dry (logs only). Answered 2026-10-26: the contact status column is approved (`contacts.iys_email_status`, 11.0.39).
