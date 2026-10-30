@@ -53,11 +53,11 @@ function ws_wtable_import_names($header)
         $base = $name;
         $n = 1;
 
-        while (isset($seen[mb_strtolower($name)])) {
+        while (isset($seen[ws_fold($name)])) {
             $name = $base . ' ' . (++$n);
         }
 
-        $seen[mb_strtolower($name)] = true;
+        $seen[ws_fold($name)] = true;
         $names[] = $name;
     }
 
@@ -258,7 +258,7 @@ function ws_wtable_import_guess($values)
         } elseif (($type === 'number') && !$all('ws_wtable_import_number')) {
             continue;
         } elseif ($type === 'status') {
-            $labels = array_unique(array_map('mb_strtolower', $filled));
+            $labels = array_unique(array_map('ws_fold', $filled));
 
             if ((count($filled) < 4) || (count($labels) > 10) || (count($labels) * 2 > count($filled))) {
                 continue;
@@ -329,7 +329,7 @@ function ws_wtable_import_options($type, $values)
             $labels = array();
 
             foreach ($values as $value) {
-                $labels[mb_strtolower($value)] = isset($labels[mb_strtolower($value)]) ? $labels[mb_strtolower($value)] : $value;
+                $labels[ws_fold($value)] = isset($labels[ws_fold($value)]) ? $labels[ws_fold($value)] : $value;
             }
 
             return array('choices' => ws_wtable_screen_status_choices(implode("\n", $labels)));
@@ -347,7 +347,7 @@ function ws_wtable_import_options($type, $values)
  *
  * @param array  $column type, options
  * @param string $text
- * @param array  $people lower-case name or user name => user id
+ * @param array  $people name or user name folded (ws_fold()) => user id
  * @return mixed
  */
 function ws_wtable_import_cell($column, $text, $people = array())
@@ -390,7 +390,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
 
         case 'status':
             foreach ((array) ($options['choices'] ?? array()) as $choice) {
-                if ((mb_strtolower((string) $choice['label']) === mb_strtolower($text)) || ((string) $choice['key'] === $text)) {
+                if ((ws_fold((string) $choice['label']) === ws_fold($text)) || ((string) $choice['key'] === $text)) {
                     return (string) $choice['key'];
                 }
             }
@@ -403,7 +403,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
             return ($tick === null) ? $text : $tick;
 
         case 'person':
-            return $people[mb_strtolower($text)] ?? (ctype_digit($text) ? (int) $text : $text);
+            return $people[ws_fold($text)] ?? (ctype_digit($text) ? (int) $text : $text);
 
         case 'link':
             return ws_wtable_screen_cell_from_form($column, $text);
@@ -413,7 +413,8 @@ function ws_wtable_import_cell($column, $text, $people = array())
 }
 
 /**
- * The file's columns matched to a table's by name, case and spaces aside;
+ * The file's columns matched to a table's by name, case, dotted or dotless i
+ * and spaces aside (ws_fold());
  * each table column takes one file column, a formula column none.
  *
  * @param string[] $names   the file's column names
@@ -423,7 +424,7 @@ function ws_wtable_import_cell($column, $text, $people = array())
 function ws_wtable_import_match($names, $columns)
 {
     $key = function ($name) {
-        return mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) $name)));
+        return ws_fold(trim(preg_replace('/\s+/u', ' ', (string) $name)));
     };
 
     $by_name = array();
@@ -814,7 +815,7 @@ function ws_wtable_import_note_read($viewer, $note_id, $block, $max)
    --------------------------------------------------------------------------- */
 
 /**
- * The team by lower-case name and user name, for person cells.
+ * The team by name and user name folded (ws_fold()), for person cells.
  *
  * @return array
  */
@@ -825,7 +826,7 @@ function ws_wtable_import_people()
     foreach ((array) ws_team_members() as $person) {
         foreach (array('name', 'username') as $key) {
             if (isset($person[$key]) && ((string) $person[$key] !== '')) {
-                $people[mb_strtolower((string) $person[$key])] = (int) $person['id'];
+                $people[ws_fold((string) $person[$key])] = (int) $person['id'];
             }
         }
     }
