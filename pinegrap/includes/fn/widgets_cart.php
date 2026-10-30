@@ -1989,6 +1989,92 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
 }
 
 /**
+ * The addresses the express order widget takes the tax on when it draws the
+ * page: the ones its form shows and will post, so the tax shown is the tax
+ * submit_order() recomputes from them.
+ *
+ * A recipient takes the form's country and state when the form holds a
+ * country for it, else its stored row (an empty row until the first submit).
+ * Billing takes the form's own values, except when "billing same as
+ * shipping" is ticked on an order with exactly one recipient that has a
+ * country: then it is that recipient's address, as express_order.php copies
+ * it on submit.
+ *
+ * @param array  $recipients        list of ship_tos rows: id, country, state
+ * @param array  $fields            the form's values: billing_country, billing_state,
+ *                                  shipping_<id>_country, shipping_<id>_state
+ * @param string $same_as_shipping  the billing_same_as_shipping value
+ * @return array billing => [country, state], ship_tos => [id => [country, state]]
+ */
+function pg_express_order_tax_addresses($recipients, $fields, $same_as_shipping)
+{
+    $fields = (array) $fields;
+    $value = function ($key) use ($fields) {
+        return isset($fields[$key]) ? trim((string) $fields[$key]) : '';
+    };
+
+    $ship_tos = array();
+    foreach ((array) $recipients as $recipient) {
+        $id = (int) ($recipient['id'] ?? 0);
+        if ($id <= 0) continue;
+        $country = $value('shipping_' . $id . '_country');
+        if ($country !== '') {
+            $ship_tos[$id] = array('country' => $country, 'state' => $value('shipping_' . $id . '_state'));
+        } else {
+            $ship_tos[$id] = array(
+                'country' => (string) ($recipient['country'] ?? ''),
+                'state'   => (string) ($recipient['state'] ?? ''),
+            );
+        }
+    }
+
+    $billing = array('country' => $value('billing_country'), 'state' => $value('billing_state'));
+    if (((string) $same_as_shipping === '1') && (count($ship_tos) === 1)) {
+        $only = reset($ship_tos);
+        if ($only['country'] !== '') $billing = $only;
+    }
+
+    return array('billing' => $billing, 'ship_tos' => $ship_tos);
+}
+
+/**
+ * The tax the cart widget estimates before the checkout: the stored line
+ * taxes (order_items.tax_total, written by the checkout's tax pass on the
+ * buyer's address) while every taxable line has one, else the preview on the
+ * site's default rate over the whole cart.
+ *
+ * A line counts as untaxed when its tax_total is 0 although the preview would
+ * tax it (taxable product, rate above 0): a product added after the visitor
+ * once reached the checkout. The whole cart is then previewed rather than
+ * only that line, so the tax is taken once per rate on the sum of the lines,
+ * as the checkout takes it (pg_tax_by_rate()), and not rounded per batch.
+ *
+ * @param array       $lines         per active line: amount (price × quantity), tax_total,
+ *                                   taxable, tax_rate (products.tax_rate, null for the zone's)
+ * @param float|false $default_rate  get_default_tax_rate(): false when the default country is in no zone
+ * @return int minor units
+ */
+function pg_cart_estimate_tax($lines, $default_rate)
+{
+    $stored = 0;
+    $preview = array();
+    $untaxed = false;
+
+    foreach ((array) $lines as $key => $line) {
+        $stored += (int) ($line['tax_total'] ?? 0);
+        if (empty($line['taxable']) || $default_rate === false) continue;
+        $rate = (float) get_effective_tax_rate($line['tax_rate'] ?? null, $default_rate);
+        if ($rate <= 0) continue;
+        $preview[$key] = array('amount' => (int) ($line['amount'] ?? 0), 'rate' => $rate);
+        if ((int) ($line['tax_total'] ?? 0) === 0) $untaxed = true;
+    }
+
+    if (!$untaxed) return $stored;
+
+    return (int) array_sum(pg_tax_by_rate($preview));
+}
+
+/**
  * The totals of the cart as submit_order() charges them when the order is
  * placed, in minor units: the lines charged today
  * (pg_order_line_charged_today(); a recurring line that starts later is
