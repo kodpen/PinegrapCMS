@@ -67,7 +67,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang('Create Menu Item'),
         'heading_description' => lang('Create a new menu item within this shared menu.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_menu_items.php?id=' . (int)$menu_id . '&from=' . urlencode((string)($_GET['from'] ?? '')) . '&send_to=' . urlencode((string)($_GET['send_to'] ?? ''))),
         'breadcrumb' => array(
             array('label' => lang('All Menus'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menus.php'),
             array('label' => lang('Edit Menu'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_menu_items.php?id=' . $menu_id),

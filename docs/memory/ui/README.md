@@ -46,6 +46,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - ascii-names-in-urls-iis.md: IIS re-encodes non-ASCII URL paths to the ANSI code page so Turkish-named files 404 (pg_ascii_file_name); Windows drops a trailing dot, so no stored file name ends in one
 - audit-log-paging.md: The audit trail list (view_audit_log.php) paged, sorted and searched on the server; changes read when a line's fold opens; filters stay in the address
 - auto-dialog-shared-form.md: add_auto_dialog.php and edit_auto_dialog.php share the template and includes/forms/auto_dialog_form.php (checks, page clean-up, saved values); what stays in the screens
+- back-arrow-targets.md: The back arrow of a panel screen (pg_page_shell 'cancel') goes where its Save goes, send_to first; the screens fixed for it and the ones that keep another target
 - bootstrap-6-button-alignment.md: Shell rule .btn:where(.text-start|.text-end) in backend.src.css: why text-start buttons came out centred under Bootstrap 6, how the rule keeps utilities winning, the ellipsis limit
 - bootstrap-6-codemod.md: tools/bs6_migrate.php, the switch fixes and tools/check_bs6.php: contexts read, what is rewritten or reported, sizes converted once, scope, how the switch keeps the v5 look
 - bootstrap-6-collapse-switcher.md: Sections behind a panel switch (input.collapse-switcher) on Bootstrap 6: why they stayed 0 px high, the .show that pgCollapseSwitcherShow() adds with the display, why switch callouts lost their arrow
@@ -91,6 +92,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dashboard-pill-contrast.md: Dashboard cards: tinted pills mixed 50% toward the text colour, zero-count and expired rows on .fg-2 instead of opacity, the headline arrow's direction in words
 - dashboard-sales-map-data.md: Dashboard sales map widget 1 data side: files, map assets, adding a country, region-name resolution, matching, opening view, number definition, quantile steps.
 - dashboard-sales-map-panel.md: Dashboard sales map widget 1 panel behavior: corner menu with fixed Popper, card colour, permission gates, link gating, brief line signals, reused id 1.
+- dashboard-scroll-regions.md: Dashboard card lists that scroll inside the square card become named keyboard regions (pg_widget_scroll_regions() in welcome.php)
 - dashboard-welcome-card.md: The dashboard top card (welcome.php, .pg-clockbar): greeting on the left, time and date on the right in one full-width card; phone stacking, themes, ids the scripts read
 - dashboard-widget-files.md: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.php and its function contract, the welcome.php registry entry, retired ids never reused, the refresh and solo lists, charts.
 - design-file-missing-on-disk.md: What the theme, design file and CSS/JS/text editor screens do when a files row has no file on the disk; the Turkish "noise" theme file and upgrade step 10.5
@@ -116,7 +118,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - file-preview-names.md: Names of the File Manager and Edit File previews: frame titles from the item's name, the side pane's image link, the decorative .ico preview
 - file-shared-form.md: add_file.php and edit_file.php draw the File Access Control and Description cards through includes/forms/design_file_form.php; what each screen keeps
 - flex-overflow-hidden-pitfall.md: CSS pitfall - any overflow value other than visible zeroes a flex item's automatic minimum size (min-height: auto), collapsing panels on narrow screens.
-- focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, product group Load More)
+- focus-after-removal.md: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, marketplace bulk bar, product group Load More)
 - folder-shared-form.md: The folder create and edit screens share includes/forms/folder_form.php: what it holds, the inputs that differ, what stays in the screens
 - form-adorn-settings-cards.md: Form-adorn on the Site Settings cards (B9f part 6, #2501): which fields, the row rules that name the wrapper, the add-on type that keeps the rows 38px tall, what stays an input-group
 - form-adorn.md: Bootstrap 6 form-adorn in the panel (step B9f): which input-groups become a label wrapper with the add-on inside the border, the markup, the panel focus rules, the pilot places
@@ -151,7 +153,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - main-menu-panels.md: Main menu rows that open their entries in a panel inside the menu: which rows, where entries and permissions come from, the widened rail, the kept panel, the current entry
 - main-menu-settings-row.md: The Site Settings row of the main menu (slot 20): two levels of panels, the page path instead of the modal (data-pg-settings-page), the gates it shares with the modal, the rows it marks active
 - main-menu-states.md: Main menu on wide screens: expanded / mini / hidden, the one bar button (#menu_mode_toggle) that walks them (the drawer on phones), the cookie, server-drawn classes, Ctrl+D
-- marketplace-products-names.md: Marketplace products screen: row boxes named per row, focus kept on a redrawn row, disabled pager arrows as spans, status text in emphasis inks, counts formatted (#2988), read progress announced
+- marketplace-products-names.md: Marketplace products screen: named row boxes, focus kept on redrawn rows and when the bulk bar hides, pager spans, emphasis inks, formatted counts, announced progress and selected count
 - marketplace-settings-screen-a11y.md: Marketplaces account screen: question and failure rows wrap on a phone, emphasis inks for status text, named dialogs, the current account marked, formatted notice counts
 - menu-item-shared-form.md: The menu item create and edit screens share includes/forms/menu_item_form.php
 - menu-shared-form.md: The menu create and edit screens share includes/forms/menu_form.php: what it holds, the underscore name rule, what stays in the screens
@@ -185,6 +187,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-link-roles.md: Links turned into buttons (report Edit, Add Filter, Unlock Sign-in), real Create an User link, Optimize/Shipment Tracking/Print names, edit-file previews and Download names
 - panel-load-failures.md: Dashboard cards and the SEO detail panel when a load fails: the card retry line, the 401/403 fragment of get_seo_analysis.php, response.ok && !response.redirected in the fetch handlers
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
+- panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form
 - panel-screenshots.md: tools/screenshots/shoot.js shoots panel screens (light/dark, wide/phone) on a setup_sandbox.sh instance with sample records: running it, adding a screen, the private page
 - panel-script-number-format.md: Panel scripts and size labels write figures with pg_number_separators(), never toLocaleString() or a bare toFixed()

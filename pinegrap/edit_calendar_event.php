@@ -243,7 +243,7 @@ if (!$_POST) {
             'icon'=>'calendar', 
             'heading'=> lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))),
             'heading_description' => lang('View, edit, or publish this calendar event.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('calendars.php')),
         
             'breadcrumb' => array(array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php'), array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Event'))))),
         )

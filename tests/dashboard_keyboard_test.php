@@ -62,3 +62,21 @@ function test_dashboard_keyboard_refresh_keeps_focus()
 	pg_assert_contains('pg_widget_focus_restore($widget[0], focus_key);', $source);
 	pg_assert_contains('data-pg-focus-key', $source);
 }
+
+// A card list that scrolls inside the card and holds no link or button has
+// no Tab stop, so Safari cannot scroll it from the keyboard and other
+// browsers focus it without a name. After each draw and on resize such an
+// area becomes a named region with a Tab stop; the marks come off when it
+// stops overflowing or gains a control.
+function test_dashboard_keyboard_scroll_areas_are_named_regions()
+{
+	$source = dashboard_keyboard_source('welcome.php');
+
+	pg_assert_contains('function pg_widget_scroll_regions(', $source);
+	pg_assert_contains('".card-body, .pg-split, .pg-split-half, .pg-split-scroll, .pg-ops-body, .pg-vs-pages"', $source);
+	pg_assert_contains('setAttribute("role", "region")', $source);
+	pg_assert_contains('setAttribute("tabindex", "0")', $source);
+	pg_assert_contains('removeAttribute("aria-label")', $source);
+	pg_assert_contains('pg_widget_scroll_regions(event.target);', $source);
+	pg_assert_contains('[data-pg-focus-key^="scroll-"]:focus-visible', $source);
+}

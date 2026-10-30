@@ -33,7 +33,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))),
         'heading_description' => lang('Create an ad region to display rotating ad content.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_ad_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Ad Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_ad_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Ad Region'))))),
         ]) . '
