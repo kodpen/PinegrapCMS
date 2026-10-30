@@ -29,3 +29,6 @@ description: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who use
 ## What colour is Next?
 - `.pg-tour-primary` text is `--pg-on-accent` on `--pg-primary`, like every filled panel control; white on `#64b5f6` was about 2.2:1.
 - `veil` and `bubble` keep `data-pg-menu-hold` (`main-menu-panel-scripts.md`).
+
+## What marks the target in forced colours?
+- The ring and the dim are box-shadows on `.pg-tour-hole`, which Windows High Contrast removes; under 576px the arrow is hidden too. `@media (forced-colors: active)` gives the hole `outline: 3px solid Highlight` (`tests/forced_colors_widgets_test.php`).
