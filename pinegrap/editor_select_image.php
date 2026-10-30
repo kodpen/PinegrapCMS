@@ -469,7 +469,7 @@ if ($number_of_results > 0) {
 
             $output_images .=
                 '<div class="col">
-                    <div class="esi-tile esi-tile-missing" title="' . lang('File not found') . '" data-bs-content="' . $output_details . '">
+                    <div class="esi-tile esi-tile-missing no-popover" tabindex="0" title="' . lang('File not found') . '" data-bs-content="' . $output_details . '">
                         <span class="esi-thumb d-flex align-items-center justify-content-center">
                             <span class="bi bi-exclamation-triangle fg-warning fs-2xl"></span>
                         </span>
@@ -496,7 +496,7 @@ if ($number_of_results > 0) {
 
         $output_images .=
             '<div class="col">
-                <button type="button" class="esi-tile hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
+                <button type="button" class="esi-tile no-popover hover-lift image' . h($images[$key]['access_control_type']) . '" onclick="' . $output_onclick . '" title="' . lang('Image Details') . '" data-bs-content="' . $output_details . '">
                     <span class="esi-thumb">
                         <img src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/assets/images/loading.gif" data-src="' . OUTPUT_PATH . h($images[$key]['name']) . '" class="lazy" alt="">
                         <span class="esi-overlay"><span class="bi bi-check-lg me-1"></span>' . lang('Select') . '</span>
@@ -761,10 +761,7 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }</style>
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid" id="esi_toolbar">
-        <span
-            class="navbar-text d-flex align-items-center gap-3 py-0"
-            data-bs-content="' . lang('Select the image that you want to embed in your content. Hover over an image to see more info.') . '"
-            title="' . lang('Browse Images') . '">
+        <span class="navbar-text d-flex align-items-center gap-3 py-0">
             <span class="bi bi-images"></span>
             <span class="d-none md:d-inline">' . lang('Browse Images') . '</span>
             <span class="badge rounded-pill theme-secondary fw-normal">' . $number_of_results . '</span>
@@ -827,6 +824,8 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
 <main class="container-fluid pb-7">
 
+    <p class="form-text mt-5 mb-0">' . lang('Select the image that you want to embed in your content. Hover over or focus an image to see more info.') . '</p>
+
     ' . ($show_unsplash ? '
     <!-- Tab nav -->
     <ul class="nav nav-tabs mt-5 mb-0" id="esi_tabs" role="tablist">
@@ -888,6 +887,18 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 
 </main>
 <script>
+/* The global title binder opens popovers on hover only; the tiles carry
+   no-popover so their details also open when the keyboard focuses a tile. */
+document.addEventListener("DOMContentLoaded", function () {
+    if (!window.pgUI) {
+        return;
+    }
+
+    document.querySelectorAll(".esi-tile[data-bs-content]").forEach(function (tile) {
+        pgUI.popover.get(tile, {trigger: "hover focus", html: true, placement: "auto", container: "body"});
+    });
+});
+
 /* The picker opens as a bare popup with no browser chrome, so the keyboard is the only
    quick way around it: Escape gives it back, "/" jumps straight to the search box. */
 document.addEventListener("keydown", function (event) {

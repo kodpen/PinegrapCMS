@@ -22,7 +22,8 @@ if (!defined('PG_INIT_LOADED')) {
         <div class="col-12">
             <div class="row mb-3  flex-wrap">
                 <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
-                    <h2 class="d-inline-block text-break" data-bs-content="<?php echo lang('Copy & paste the code below into your custom layout.')?>" title="<?php echo lang('Generate Layout')?>">[<?=h($page['name'])?>]</h2>
+                    <h2 class="d-inline-block text-break">[<?=h($page['name'])?>]</h2>
+                    <p class="form-text mt-0"><?php echo lang('Copy & paste the code below into your custom layout.')?></p>
                 </div>
             </div>
             <div class="row">

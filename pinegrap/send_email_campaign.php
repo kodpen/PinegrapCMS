@@ -454,7 +454,7 @@ if (mysqli_num_rows($result) > 0) {
     <noscript><meta http-equiv="refresh" content="1;url=' . URL_SCHEME . h($_SERVER['HTTP_HOST']) . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/send_email_campaign.php?id=' . h(urlencode($_GET['id'])) . get_token_query_string_field() . '"></noscript>
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
-            <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
+            <span class="navbar-text me-auto">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                     <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
@@ -636,7 +636,7 @@ if (mysqli_num_rows($result) > 0) {
     output_header_secure(array('title'=>lang('Send E-mail Campaign'),'icon'=>'campaign')) . '
     <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
         <div class="container-fluid">
-            <span class="navbar-text me-auto" data-bs-content="' . lang('A function for sending e-mails to recipients') . '" title="' . lang('Send E-mail Campaign') . '">' . lang('Send E-mail Campaign') . '</span>
+            <span class="navbar-text me-auto">' . lang('Send E-mail Campaign') . '</span>
             <ul class="navbar-nav ms-auto">
                 <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                     <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
