@@ -82,6 +82,11 @@ while ($row = mysqli_fetch_assoc($result)){
     $ad_regions[] = $row;
 }
 
+// A remembered region that is gone or out of reach goes back to [All].
+$_SESSION['software']['ads']['view_ads']['ad_region_id'] = pg_list_filter_known(
+    $_SESSION['software']['ads']['view_ads']['ad_region_id'],
+    array_column($ad_regions, 'id'));
+
 $output_ad_region_options = '';
 
 // loop through all ad regions in order to prepare options for ad region pick list
