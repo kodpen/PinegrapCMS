@@ -2117,6 +2117,10 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
+            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set'), true)) {
+                $node['config'] = ws_flow_row_box_masked($node['config']);
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -2124,6 +2128,29 @@ function ws_flow_graph_present($graph, $edit = false)
         'edges' => $graph['edges'],
         'notes' => $graph['notes'],
     );
+}
+
+/**
+ * A table box's settings as a reader who may not change the flow reads
+ * them: the table and the columns it writes, never the row it names nor
+ * the values, which may be a customer's data, as a change box's. Cells the
+ * server cannot read as a JSON object keep nothing. Pure.
+ *
+ * @param array $config ws_step_config_normalize() of row_add or row_set
+ * @return array
+ */
+function ws_flow_row_box_masked($config)
+{
+    if (array_key_exists('row', $config)) {
+        $config['row'] = '';
+    }
+
+    $cells = json_decode((string) ($config['cells'] ?? ''), true);
+    $config['cells'] = is_array($cells)
+        ? (string) json_encode((object) array_fill_keys(array_map('strval', array_keys($cells)), ''), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        : '';
+
+    return $config;
 }
 
 /**
@@ -2628,6 +2655,27 @@ function ws_flow_js_strings()
         'fl_row_any_column'   => lang('Any column'),
         'fl_row_column_help'  => lang('A change starts the flow only when it writes this column.'),
         'fl_row_none'         => lang('No table chosen'),
+        'fl_kind_row_add'     => lang('Add a row to a table'),
+        'fl_kind_row_set'     => lang('Change a row of a table'),
+        'fl_rows_table_help'  => lang('The tables the flow\'s owner may change rows of; the box writes with their rights.'),
+        'fl_rows_row'         => lang('Row'),
+        'fl_rows_row_help'    => lang('The row\'s number, or one value, such as the row a box before added.'),
+        'fl_rows_cells'       => lang('Cells'),
+        'fl_rows_add_help'    => lang('A column left empty stays empty in the new row.'),
+        'fl_rows_set_help'    => lang('A column left empty keeps what the row has.'),
+        'fl_rows_json'        => lang('Cells as JSON'),
+        'fl_rows_json_help'   => lang('A JSON object of column ids and values, as the table API takes them.'),
+        'fl_rows_json_why'    => lang('These cells are shown as JSON: the table is not among those you may change, or they are not an object the form can show.'),
+        'fl_rows_json_bad'    => lang('The cells are not a JSON object of column ids and values.'),
+        'fl_rows_no_columns'  => lang('This table has no column a box may write.'),
+        'fl_rows_unset'       => lang('Not written'),
+        'fl_rows_money_help'  => lang('An amount such as 12.50; a value from a box before is taken in minor units, such as 1250.'),
+        'fl_rows_date_help'   => lang('As YYYY-MM-DD.'),
+        'fl_rows_time_help'   => lang('As YYYY-MM-DD, or YYYY-MM-DD HH:MM.'),
+        'fl_rows_person_help' => lang('The person\'s user number.'),
+        'fl_rows_link_kind'   => lang('Kind of record'),
+        'fl_rows_link_id'     => lang('Record number'),
+        'fl_rows_meta'        => ws_js_template('{var:1} · row {var:2}', 2),
         'fl_day_mon'         => lang('Monday'),
         'fl_day_tue'         => lang('Tuesday'),
         'fl_day_wed'         => lang('Wednesday'),

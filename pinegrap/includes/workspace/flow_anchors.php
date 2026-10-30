@@ -138,10 +138,12 @@ function ws_flow_row_columns($config)
 /**
  * The tables a row box may start a flow on, for the canvas: those the
  * person reaches, the latest changed first, at most 200, each with its
- * columns (id, name, type) for the values the box gives.
+ * columns (id, name, type, options) for the values the box gives, and
+ * whether the person may change its rows (edit), as a box that adds or
+ * changes a row needs (ws_step_row_check()).
  *
  * @param array $viewer
- * @return array[] id, name, columns
+ * @return array[] id, name, edit, columns
  */
 function ws_flow_row_tables($viewer)
 {
@@ -152,16 +154,20 @@ function ws_flow_row_tables($viewer)
     $tables = array();
 
     foreach (array_slice(ws_wtables_reached($viewer, 'all'), 0, 200) as $table) {
-        $tables[(int) $table['id']] = array('id' => (int) $table['id'], 'name' => (string) $table['name'], 'columns' => array());
+        $tables[(int) $table['id']] = array('id' => (int) $table['id'], 'name' => (string) $table['name'],
+            'edit' => ws_wtable_access_rank((string) $table['access']) >= ws_wtable_access_rank('edit'), 'columns' => array());
     }
 
     if (empty($tables)) {
         return array();
     }
 
-    foreach ((array) db_items("SELECT id, table_id, name, type FROM ws_wtable_columns
+    foreach ((array) db_items("SELECT id, table_id, name, type, options FROM ws_wtable_columns
         WHERE table_id IN ('" . implode("','", array_keys($tables)) . "') ORDER BY position, id") as $column) {
-        $tables[(int) $column['table_id']]['columns'][] = array('id' => (int) $column['id'], 'name' => (string) $column['name'], 'type' => (string) $column['type']);
+        $options = json_decode((string) $column['options'], true);
+
+        $tables[(int) $column['table_id']]['columns'][] = array('id' => (int) $column['id'], 'name' => (string) $column['name'],
+            'type' => (string) $column['type'], 'options' => (object) (is_array($options) ? $options : array()));
     }
 
     return array_values($tables);
