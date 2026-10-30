@@ -143,13 +143,15 @@ if ($auto_registration == 0) {
 $user_id = '';
 $contact_id = '';
 $member_id = '';
+$contact_mobile_phone = '';
 
 // If the user is logged in, then get info for user.
 if (USER_LOGGED_IN == true) {
     $query = "SELECT
                 user.user_id,
                 contacts.id as contact_id,
-                contacts.member_id
+                contacts.member_id,
+                contacts.mobile_phone
              FROM user
              LEFT JOIN contacts ON user.user_contact = contacts.id
              WHERE user.user_username = ?";
@@ -158,6 +160,7 @@ if (USER_LOGGED_IN == true) {
     $user_id = $row['user_id'];
     $contact_id = $row['contact_id'];
     $member_id = $row['member_id'];
+    $contact_mobile_phone = $row['mobile_phone'];
 }
 
 // if custom form grants membership access and the user is a member or has been a member, then output error
@@ -280,14 +283,30 @@ $pretty_urls = check_if_pretty_urls_are_enabled($_POST['page_id']);
 
 $collection_kinds = pg_coll_field_kinds(is_string($_POST['page_id'] ?? null) ? (int) $_POST['page_id'] : 0);
 
+// The query of the address the form was drawn on: ?show_<field id>=false
+// there draws the field hidden, and it still posts its default
+// (get_form_info()).
+$send_to_query = array();
+parse_str((string) parse_url((string) $liveform->get_field_value('send_to'), PHP_URL_QUERY), $send_to_query);
+
+// The SMS question the form did not draw, because the visitor could not be
+// asked it (pg_cf_drop_sms_question()): it is neither required nor an answer.
+$sms_question_dropped = array_diff_key($fields, pg_cf_drop_sms_question(
+    $fields,
+    (($connect_to_contact != 'false') && !empty($contact_mobile_phone)) ? array('mobile_phone' => $contact_mobile_phone) : array(),
+    $send_to_query));
+
 // loop through all fields in order to validate fields
-foreach ($fields as $field) {
+foreach ($fields as $field_key => $field) {
     // if the field is an office use only field and we need to deal with office use only fields
     // or if the field is not an office use only field,
     // then the field appeared on the form, so validate the field
     if (
-        (($field['office_use_only'] == 1) && ($office_use_only == TRUE))
-        || ($field['office_use_only'] == 0)
+        (
+            (($field['office_use_only'] == 1) && ($office_use_only == TRUE))
+            || ($field['office_use_only'] == 0)
+        )
+        && !isset($sms_question_dropped[$field_key])
     ) {
         // if field is required and visitor clicked submit button,
         // then validate field
@@ -576,18 +595,18 @@ if ($liveform->check_form_errors() == false) {
     // answer: set by the last field bound to opt_in, as that one is stored.
     $contact_opt_in_asked = false;
 
-    // The query of the address the form was drawn on: ?show_<field id>=false
-    // there draws the field hidden, and it still posts its default
-    // (get_form_info()).
-    $send_to_query = array();
-    parse_str((string) parse_url((string) $liveform->get_field_value('send_to'), PHP_URL_QUERY), $send_to_query);
+    // The same for the SMS marketing question, a field bound to opt_in_sms:
+    // no contacts column holds it, so its posted value is kept here for the
+    // consent log.
+    $contact_sms_opt_in_asked = false;
+    $contact_sms_opt_in = '';
 
     // Only set when this submission creates a user account; the notification
     // further below is written either way.
     $username = '';
     
     // loop through all fields
-    foreach ($fields as $field) {
+    foreach ($fields as $field_key => $field) {
         // If the field is an office use only field and office use only fields did not appear on the form,
         // then set the value of the field to the default value
         if (($field['office_use_only'] == 1) && ($office_use_only == FALSE)) {
@@ -775,8 +794,21 @@ if ($liveform->check_form_errors() == false) {
             
             // if this field is connected to a contact field, and if connect to contact is on, prepare SQL for updating contact
             if (($field['contact_field']) && ($connect_to_contact != 'false')) {
+                // Only a choice the visitor saw holds the visitor's answer.
+                // An office-use-only field is filled by staff in edit mode
+                // or carries its default, a designed hidden input is
+                // stored as a text box, and a field hidden through the
+                // address posts its default.
+                $field_asked = ($field['office_use_only'] == 0)
+                    && pg_cf_type_has_options($field['type'])
+                    && !(isset($send_to_query['show_' . $field['id']]) && ($send_to_query['show_' . $field['id']] === 'false'));
+
+                if (!pg_cf_contact_column($field['contact_field'])) {
+                    $contact_sms_opt_in_asked = $field_asked && !isset($sms_question_dropped[$field_key]);
+                    $contact_sms_opt_in = $liveform->get_field_value($field['id']);
+
                 // if contact_field is image and type is file upload we can use file id for connect to contact image
-                if(($field['contact_field'] == 'image') && ($field['type'] == 'file upload')){
+                } else if(($field['contact_field'] == 'image') && ($field['type'] == 'file upload')){
                     $sql_update_contact .= "file_id = '" . escape($file_id) . "', ";
                     // we remove image data. we dont need it while field type changed
                     $sql_update_contact .= "image = '', ";
@@ -787,15 +819,8 @@ if ($liveform->check_form_errors() == false) {
                     }
                     $sql_update_contact .= $field['contact_field'] . " = '" . escape($liveform->get_field_value($field['id'])) . "', ";
 
-                    // Only a choice the visitor saw holds the visitor's answer.
-                    // An office-use-only field is filled by staff in edit mode
-                    // or carries its default, a designed hidden input is
-                    // stored as a text box, and a field hidden through the
-                    // address posts its default.
                     if ($field['contact_field'] == 'opt_in') {
-                        $contact_opt_in_asked = ($field['office_use_only'] == 0)
-                            && pg_cf_type_has_options($field['type'])
-                            && !(isset($send_to_query['show_' . $field['id']]) && ($send_to_query['show_' . $field['id']] === 'false'));
+                        $contact_opt_in_asked = $field_asked;
                     }
                 }
             }
@@ -1203,20 +1228,28 @@ if ($liveform->check_form_errors() == false) {
             pg_audit_site_record('update', 'contacts', (int) $contact_id, $audit_before);
         }
 
-        // The visitor's answer goes to the consent log as stored: the column
-        // keeps the posted value cast to an integer. A contact filled in for
+        // The visitor's answers go to the consent log as stored: the opt_in
+        // column keeps the posted value cast to an integer; the SMS answer
+        // counts only while SMS is ready and the contact has a mobile number
+        // after the save (pg_cf_sms_answers()). A contact filled in for
         // somebody else holds that person's values, not the visitor's answer.
         // A repeated answer writes nothing (pg_consent_log_answers()).
-        if ($contact_opt_in_asked && !$contact_for_someone_else) {
-            $consent_contact = db_item("SELECT email_address, opt_in FROM contacts WHERE id = '" . (int) $contact_id . "'");
+        if (($contact_opt_in_asked || $contact_sms_opt_in_asked) && !$contact_for_someone_else) {
+            $consent_contact = db_item("SELECT email_address, opt_in, mobile_phone FROM contacts WHERE id = '" . (int) $contact_id . "'");
 
             if ($consent_contact) {
+                $consent_answers = pg_cf_sms_answers($contact_sms_opt_in_asked, $consent_contact['mobile_phone'], $contact_sms_opt_in);
+
+                if ($contact_opt_in_asked) {
+                    $consent_answers['email:marketing'] = ((int) $consent_contact['opt_in'] === 1);
+                }
+
                 pg_consent_log_answers(
                     array(
                         'email' => $consent_contact['email_address'],
                         'user_id' => (int) $user_id,
                         'contact_id' => (int) $contact_id),
-                    array('email:marketing' => ((int) $consent_contact['opt_in'] === 1)),
+                    $consent_answers,
                     'form');
             }
         }
