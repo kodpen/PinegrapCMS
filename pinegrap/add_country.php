@@ -21,7 +21,23 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/country_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-if (!$_POST) {
+// A post whose code another country has draws the form again with what was
+// typed and the message under the code field; nothing is written.
+$values = null;
+$errors = array();
+
+if ($_POST) {
+    validate_token_field();
+
+    $values = pg_country_form_values($_POST);
+    $code_error = pg_country_form_code_error($values['code'], null, null);
+
+    if ($code_error !== '') {
+        $errors['code'] = $code_error;
+    }
+}
+
+if (!$_POST || $errors) {
     $output =
         pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('Country'))),
@@ -37,7 +53,7 @@ if (!$_POST) {
                     
                     <form name="form" action="add_country.php" method="post">
                         ' . get_token_field() . '
-                        ' . pg_country_form_card(null) . '
+                        ' . pg_country_form_card($values, $errors) . '
                         <input type="hidden" id="submitted_button_field" name="submitted_button_field" value="submit" />          
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
@@ -56,9 +72,6 @@ if (!$_POST) {
     echo $output;
 
 } else {
-
-    validate_token_field();
-    
     // create country
     $query = "INSERT INTO countries (
                 name,
@@ -76,7 +89,6 @@ if (!$_POST) {
                 ?,
                 ?,
                 UNIX_TIMESTAMP())";
-    $values = pg_country_form_values($_POST);
     $result = db_q($query, array(
         $values['name'],
         $values['code'],

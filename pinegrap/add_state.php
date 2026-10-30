@@ -21,7 +21,24 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/state_form.php');
 $user = validate_user();
 validate_ecommerce_access($user);
 
-if (!$_POST) {
+// A post whose code another state of the same country has draws the form
+// again with what was typed and the message under the code field; nothing
+// is written.
+$values = null;
+$errors = array();
+
+if ($_POST) {
+    validate_token_field();
+
+    $values = pg_state_form_values($_POST);
+    $code_error = pg_state_form_code_error($values, null, null);
+
+    if ($code_error !== '') {
+        $errors['code'] = $code_error;
+    }
+}
+
+if (!$_POST || $errors) {
     $output =
         pg_page_shell([
         'title'=> lang(array('string'=>'Create {var:1}','vars'=>lang('State'))),
@@ -39,7 +56,7 @@ if (!$_POST) {
                     
                     <form name="form" action="add_state.php" method="post">
                         ' . get_token_field() . '
-                        ' . pg_state_form_card(null) . '
+                        ' . pg_state_form_card($values, $errors) . '
                         <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                             <div class="container">
                                 <div class=" btn-group flex-wrap justify-content-center">
@@ -57,8 +74,6 @@ if (!$_POST) {
     print $output;
 
 } else {
-    validate_token_field();
-    
     // create state
     $query = "INSERT INTO states (
                 name,
@@ -72,7 +87,6 @@ if (!$_POST) {
                 ?,
                 ?,
                 UNIX_TIMESTAMP())";
-    $values = pg_state_form_values($_POST);
     $result = db_q($query, array($values['name'], $values['code'], $values['country_id'], (int) $user['id'])) or output_error('Query failed.');
     log_activity(lang(array('string'=>'{var:1} ({var:2}) was created','vars'=>array(lang('state'),$_POST['name']))), $_SESSION['sessionusername']);
 
