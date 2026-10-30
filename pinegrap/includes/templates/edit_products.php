@@ -145,11 +145,11 @@ if (!defined('PG_INIT_LOADED')) {
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
+							<label for="price_value" id="price_value_label" class="form-label"><?=h(lang('Amount'))?></label>
 							<div class="input-group my-1">
 								<span id="value_type" class="input-group-text"><?=BASE_CURRENCY_CODE?></span>
 								<?=$liveform->output_field(array(
 									'type' => 'number',
-									'placeholder' =>'12,30',
 									'id' => 'price_value',
 									'class'=>'form-control'))?>
 							</div>
@@ -171,7 +171,8 @@ if (!defined('PG_INIT_LOADED')) {
 				</div>
 			</div>
 			<div class="col-12 sm:col-6 md:col-4 lg:col-3">
-				<div class="input-group mt-1 mb-3">
+				<label for="tax_rate_value" class="form-label"><?=h(lang('New Tax Rate'))?></label>
+				<div class="input-group mb-3">
 					<?=$liveform->output_field(array(
 						'type' => 'number',
 						'id' => 'tax_rate_value',
@@ -180,10 +181,11 @@ if (!defined('PG_INIT_LOADED')) {
 						'max' => '100',
 						'step' => '0.001',
 						'placeholder' => '20',
+						'aria-describedby' => 'tax_rate_value_hint',
 						'class'=>'form-control'))?>
 					<span class="input-group-text">%</span>
 				</div>
-				<div class="form-text"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
+				<div class="form-text" id="tax_rate_value_hint"><?=lang(array('string'=>'Used only when the rate is being set.' ))?></div>
 			</div>
 		</div>
 		<div class="row mt-1 mb-3">
@@ -213,6 +215,7 @@ if (!defined('PG_INIT_LOADED')) {
                     <div class="popover-arrow" style="position: absolute; left: 0px; transform: translate(59px, 0px);"></div>
                     <div class="popover-body">
                         <div class="row">
+							<label for="inventory_quantity" class="form-label"><?=h(lang('Quantity'))?></label>
 							<div class="input-group number-controls">
                                 <button class="btn material-icons minus border border-end-0" type="button" aria-label="<?=h(lang('Decrease'))?>">remove</button>
                                 <?=$liveform->output_field(array(
@@ -289,15 +292,17 @@ if (!defined('PG_INIT_LOADED')) {
 		var percentiles = '\%';
 		var $value_type =  document.getElementById("value_type");
 		var $change_price = document.getElementById("change_price_method").value;
-		var $price_value_input = document.getElementById("price_value");
+		var price_value_label = document.getElementById("price_value_label");
 		
+		// The visible label names the box for the chosen method: an amount in
+		// the base currency or a percent.
 		if(($change_price == '1') || ($change_price == '2')){
 			$value_type.innerHTML = base_currency;
-			$price_value_input.placeholder='12,30';
+			price_value_label.textContent = <?=json_encode(lang('Amount'))?>;
 		}
 		else if(($change_price == '3') || ($change_price == '4')){
 			$value_type.innerHTML = percentiles;
-			$price_value_input.placeholder='30';
+			price_value_label.textContent = <?=json_encode(lang('Percent'))?>;
 		}
 		
 	}

@@ -436,6 +436,11 @@
         setActive(count ? 0 : -1);
     }
 
+    // A person line that carries the account link beside the conversation.
+    function hasAccount(item) {
+        return (item.type === 'person') && !item.me && !!item.url && (typeof window.pgChatOpenWith === 'function');
+    }
+
     function addRow(item, query) {
         var k = kit();
         var index = state.items.length;
@@ -482,12 +487,15 @@
         }
 
         // A colleague: the conversation with them, and their account where
-        // the reader may open it.
-        if ((item.type === 'person') && !item.me && item.url && (typeof window.pgChatOpenWith === 'function')) {
+        // the reader may open it. The link sits inside the option, so it is
+        // a mouse shortcut only: no Tab stop and no part of the option's
+        // name; the keyboard opens the account with Shift+Enter (onKey()).
+        if (hasAccount(item)) {
             var account = el('a', 'btn btn-sm btn-text theme-secondary ws-palette-side');
             account.href = item.url;
             account.title = t('pal_profile');
-            account.setAttribute('aria-label', t('pal_profile'));
+            account.tabIndex = -1;
+            account.setAttribute('aria-hidden', 'true');
             account.appendChild(icon('bi-person-gear'));
             account.addEventListener('click', function (event) { event.stopPropagation(); });
             row.appendChild(account);
@@ -551,6 +559,16 @@
             // Enter waits for the next one.
             if (state.timer) {
                 search();
+                return;
+            }
+
+            var entry = state.items[state.active];
+
+            // Shift+Enter on a colleague opens their account, the keyboard's
+            // way to the link drawn on the line.
+            if (event.shiftKey && entry && hasAccount(entry.data)) {
+                remember(ui.input.value);
+                go(entry.data.url);
                 return;
             }
 

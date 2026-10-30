@@ -2847,17 +2847,27 @@
             '</div>';
     }
 
+    /* Each option row is named by its position ("Option 2"): the placeholder
+       alone repeated the word of the attribute's own Label field. */
+    function numberOptionRows() {
+        $('#pg_pb_attr_options .pg-pb-attr-option-label').each(function (index) {
+            $(this).attr('aria-label', label('option_n').replace('{n}', index + 1));
+        });
+    }
+
     function resetAttributeModal() {
         $('#pg_pb_attribute_modal_error').addClass('d-none').text('');
         $('#pg_pb_attr_name').val('').removeClass('is-invalid');
         $('#pg_pb_attr_label').val('');
         $('#pg_pb_attr_options').html(optionRow() + optionRow());
+        numberOptionRows();
     }
 
     pgUI.dialog.on('#pg_pb_attribute_modal', 'show', resetAttributeModal);
 
     $('#pg_pb_attr_add_option').on('click', function () {
         $('#pg_pb_attr_options').append(optionRow());
+        numberOptionRows();
         $('#pg_pb_attr_options .pg-pb-attr-option-label').last().trigger('focus');
     });
 
@@ -2865,6 +2875,7 @@
         var $rows = $('#pg_pb_attr_options .pg-pb-attr-option');
         if ($rows.length > 1) {
             $(this).closest('.pg-pb-attr-option').remove();
+            numberOptionRows();
         } else {
             $rows.find('.pg-pb-attr-option-label').val('');
         }
