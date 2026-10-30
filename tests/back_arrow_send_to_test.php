@@ -91,3 +91,12 @@ function test_back_arrow_edit_ad_follows_send_to()
 	pg_assert_contains("'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php'))", $source, 'Edit Ad goes back to the site page or list it came from');
 	pg_assert_contains("'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php?filter=all_ad_regions'", $source, 'the Edit Ad breadcrumb stays on its list');
 }
+
+function test_back_arrow_edit_comment_follows_send_to()
+{
+	$source = back_arrow_send_to_source('edit_comment.php');
+
+	pg_assert_contains("'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php'))", $source, 'Edit Comment goes back to the site page or dashboard it came from');
+	pg_assert_contains("array('label' => lang('Comments'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_comments.php')", $source, 'the Edit Comment breadcrumb stays on its list');
+	pg_assert_contains("'/edit_comment.php?id=' . \$liveform->get_field_value('id') . '&send_to=' . urlencode(\$liveform->get_field_value('send_to'))", $source, 'a refused Save keeps send_to for the arrow');
+}
