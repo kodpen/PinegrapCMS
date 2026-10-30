@@ -8,6 +8,10 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 - Kept: the place (#2545), the data (`ws_side_payload()`: every entry under its screen's gate, the script hides nothing), `<a href>` links, pin, drag into a group, right-click menus, the closed state in localStorage, the panel colours (`--pg-*`, `--ws-accent`) in light and dark.
 - Files: `assets/js/workspace_side.js` (`draw()`), `includes/workspace/nav.php`, the Workspace block of `assets/css/backend.src.css`, `includes/workspace/tour.php`, `tests/workspace_side_test.php`; new words through `tools/tr_add.php`. No schema, no new right.
 
+## Who builds it?
+- From M2 on, only a session the owner names in chat for the design; a coordinator does not hand the steps out and a worker does not claim them (owner, 2026-10-31, `workflow/decisions-made-workspace-5.md`).
+- Each step is checked on dev against the drawn design at desktop and phone width, light and dark, before it is marked ready.
+
 ## What is the order, top to bottom?
 1. Head: one search field that opens the workspace search (`hooks.palette`, elsewhere `?view=home&palette=1`; it finds channels, people, messages, decisions, tasks, notes and files), so the separate message search input goes. Beside it: "+" New channel, the gear of Workspace Settings (from `nav.foot`) and the tour button (kept in sight: the tour's `ready()` waits for `[data-ws-tour]`).
 2. Places, no heading: Overview (keeps its name), Inbox (unread count), My Tasks (moved up from Work and planning).
