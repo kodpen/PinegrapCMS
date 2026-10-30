@@ -111,6 +111,7 @@
     "Last event:": "Son olay:",
     "Last failure": "Son hata",
     "Last first": "Sondan başa",
+    "Last flow run": "Son çalıştırma",
     "Last full check: {var:1}.": "Son tam denetim: {var:1}.",
     "Last here: {var:1}": "Son görülme: {var:1}",
     "Last message {var:1}": "Son mesaj {var:1}",

@@ -2605,6 +2605,8 @@
     "Appointments Note": "Randevular Notu",
     "Approval": "Onay",
     "Approval deadlines": "Onay son tarihleri",
+    "Approval expired": "Süresi doldu",
+    "Approval given": "Onaylandı",
     "Approval pending": "Onay bekliyor",
     "Approval request": "Onay isteği",
     "Approval requested: {var:1}": "Onay isteği: {var:1}",
