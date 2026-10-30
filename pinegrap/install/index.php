@@ -2578,7 +2578,11 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	// prepare the starter sites
 	$output_starter_sites = '';
 
+	$starter_site_number = 0;
+
 	foreach ($install_starter_sites as $starter_site) {
+
+		$starter_site_number++;
 
 		$output_starter_site_selected = '';
 
@@ -2593,9 +2597,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		$output_starter_sites .= '
 		<div class="pg-source' . $output_starter_site_selected . '" data-source="starter" data-folder="' . h($starter_site['folder']) . '" data-language="' . h($starter_site['language']) . '">
+			<input type="radio" class="visually-hidden pg-choice-input" name="pg_source_choice" value="starter" aria-labelledby="pg_source_starter_' . $starter_site_number . '"' . (($output_starter_site_selected != '') ? ' checked' : '') . '>
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-star me-1 fg-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
+				<div class="fw-semibold" id="pg_source_starter_' . $starter_site_number . '"><i class="bi bi-star me-1 fg-primary"></i>' . lang(array('string' => '{var:1} starter site', 'vars' => $starter_site['label'])) . '</div>
 				<div class="small fg-secondary">' . lang('Sample pages, a ready made design and content are installed.') . ' <span class="font-monospace">' . h($starter_site['folder']) . '</span></div>
 			</div>
 		</div>';
@@ -2639,11 +2644,12 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 		$output_backup_source = '
 		<div class="pg-source' . (($install_source_type == 'backup') ? ' selected' : '') . '" data-source="backup">
+			<input type="radio" class="visually-hidden pg-choice-input" name="pg_source_choice" value="backup" aria-labelledby="pg_source_backup"' . (($install_source_type == 'backup') ? ' checked' : '') . '>
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-folder2-open me-1 fg-primary"></i>' . lang('A backup on the server') . ' <span class="badge theme-secondary">' . count($install_backups) . '</span></div>
+				<div class="fw-semibold" id="pg_source_backup"><i class="bi bi-folder2-open me-1 fg-primary"></i>' . lang('A backup on the server') . ' <span class="badge theme-secondary">' . count($install_backups) . '</span></div>
 				<div class="small fg-secondary">' . lang('The site is restored exactly as it was when the backup was made.') . '</div>
-				<select class="form-control form-control-sm mt-3" id="pg_backup_select">' . $output_backup_options . '</select>
+				<select class="form-control form-control-sm mt-3" id="pg_backup_select" aria-label="' . h(lang('A backup on the server')) . '">' . $output_backup_options . '</select>
 			</div>
 		</div>';
 
@@ -2663,16 +2669,22 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 
 	$output_upload_source = '';
 
+	// the upload area follows the group of source cards, it is not one of the choices
+	$output_upload_area = '';
+
 	if ($install_upload_allowed == true) {
 
 		$output_upload_source = '
 		<div class="pg-source" data-source="upload">
+			<input type="radio" class="visually-hidden pg-choice-input" name="pg_source_choice" value="upload" aria-labelledby="pg_source_upload">
 			<span class="pg-radio"></span>
 			<div class="flex-grow-1">
-				<div class="fw-semibold"><i class="bi bi-cloud-arrow-up me-1 fg-primary"></i>' . lang('Upload a backup from my computer') . '</div>
+				<div class="fw-semibold" id="pg_source_upload"><i class="bi bi-cloud-arrow-up me-1 fg-primary"></i>' . lang('Upload a backup from my computer') . '</div>
 				<div class="small fg-secondary">' . lang('The archive is extracted into the backups folder and then appears in the list above.') . '</div>
 			</div>
-		</div>
+		</div>';
+
+		$output_upload_area = '
 		<div class="pg-drop d-none" id="pg_zip_area">
 			<div class="mb-3"><i class="bi bi-file-earmark-zip fs-2xl fg-primary"></i></div>
 			<div class="fw-semibold">' . lang('Upload a backup archive') . '</div>
@@ -2689,7 +2701,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	}
 	else {
 
-		$output_upload_source = '
+		$output_upload_area = '
 		<div class="alert theme-secondary small d-flex gap-3 mt-5 mb-0">
 			<i class="bi bi-info-circle"></i>
 			<div>' . lang('To restore a backup that is not on this server yet, copy the backup folder or its .zip archive into the backups folder with FTP, or place the backup archive next to the download assistant and run it again.') . '</div>
@@ -2772,6 +2784,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		$output_design_choices .= '
 		<div class="col-12 md:col-6">
 			<div class="pg-source pg-design pg-design-template h-100 mb-0' . (($install_design_selected == $design_template['id']) ? ' selected' : '') . '" data-design="' . h($design_template['id']) . '" data-kinds="' . h(json_encode(pg_design_template_starter_kinds($design_template, true))) . '" data-preview-pages="' . h(json_encode($design_template_preview)) . '">
+				<input type="radio" class="visually-hidden pg-choice-input" name="pg_design_choice" value="' . h($design_template['id']) . '" aria-labelledby="pg_design_name_' . $design_template_number . '"' . (($install_design_selected == $design_template['id']) ? ' checked' : '') . '>
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
 					<div class="d-flex flex-wrap align-items-center gap-1 mb-1">
@@ -2779,7 +2792,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 						<span class="badge theme-secondary">' . h($design_template_summary['framework_label']) . '</span>
 						<span class="badge theme-secondary">' . lang(array('string' => '{var:1} pages', 'vars' => count($design_template['pages']))) . '</span>
 					</div>
-					<div class="fw-semibold pg-design-name"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 fg-primary"></i>' . h($design_template_summary['name']) . '</div>
+					<div class="fw-semibold pg-design-name" id="pg_design_name_' . $design_template_number . '"><i class="bi ' . h($design_template_summary['icon']) . ' me-1 fg-primary"></i>' . h($design_template_summary['name']) . '</div>
 					<div class="small fg-secondary">' . h($design_template_summary['description']) . '</div>
 					<div class="small fw-semibold fg-primary mt-3"><i class="bi bi-magic me-1"></i>' . lang('Made to be edited in the Visual Page Editor') . '</div>
 					<ul class="pg-design-points list-unstyled small fg-secondary mb-0 mt-1">' . $output_design_points . '</ul>
@@ -2792,9 +2805,10 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 	$output_design_choices .= '
 		<div class="col-12 md:col-6">
 			<div class="pg-source pg-design h-100 mb-0' . (($install_design_selected == 'standard') ? ' selected' : '') . '" id="pg_design_standard" data-design="standard">
+				<input type="radio" class="visually-hidden pg-choice-input" name="pg_design_choice" value="standard" aria-labelledby="pg_design_name_standard"' . (($install_design_selected == 'standard') ? ' checked' : '') . '>
 				<span class="pg-radio"></span>
 				<div class="flex-grow-1">
-					<div class="fw-semibold pg-design-name"><i class="bi bi-box-seam me-1 fg-primary"></i>' . lang('Standard installation') . '</div>
+					<div class="fw-semibold pg-design-name" id="pg_design_name_standard"><i class="bi bi-box-seam me-1 fg-primary"></i>' . lang('Standard installation') . '</div>
 					<div class="small fg-secondary">' . lang('The starter site is installed as it is, with its own pages and page styles.') . '</div>
 					<div class="small fg-secondary mt-3"><i class="bi bi-info-circle me-1"></i>' . lang('Its pages are classic pages: they are not built with the Visual Page Editor.') . '</div>
 				</div>
@@ -3036,12 +3050,13 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 		}
 		.pg-source.selected { border-color: var(--pg-primary); background: color-mix(in srgb, var(--pg-primary) 8%, transparent); }
 		.pg-source.disabled { opacity: .55; cursor: not-allowed; }
+		.pg-source:has(> .pg-choice-input:focus-visible) { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }
 		.pg-design-points li { display: flex; gap: .4rem; margin-top: .2rem; }
 		.pg-design-custom { padding: 1rem; border: 1px solid var(--pg-border-color); border-radius: 1rem; background: var(--pg-bg-1); }
 		.pg-design-swatch { display: inline-flex; width: 28px; height: 28px; padding: 0; border-radius: 50%; overflow: hidden; border: 2px solid transparent; transform: rotate(-45deg); box-shadow: 0 0 0 1px var(--pg-border-color); cursor: pointer; }
 		.pg-design-swatch i { flex: 1; }
 		.btn-check:checked + .pg-design-swatch { border-color: var(--pg-bg-body); box-shadow: 0 0 0 2px var(--pg-fg-emphasis); }
-		.btn-check:focus-visible + .pg-design-swatch { box-shadow: 0 0 0 3px color-mix(in srgb, var(--pg-primary) 35%, transparent), 0 0 0 1px var(--pg-border-color); }
+		.btn-check:focus-visible + .pg-design-swatch { outline: 2px solid var(--pg-primary-ink); outline-offset: 3px; }
 		.pg-design-frame { position: relative; width: 100%; aspect-ratio: 16 / 10; overflow: hidden; border: 1px solid var(--pg-border-color); border-radius: .75rem; background: var(--pg-bg-body); }
 		.pg-design-frame iframe { position: absolute; top: 0; left: 0; width: 1280px; height: 800px; border: 0; transform-origin: 0 0; background: #fff; }
 		.pg-design-frame.pg-mobile { aspect-ratio: auto; height: 34rem; background: var(--pg-bg-2); }
@@ -3231,7 +3246,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'id' => 'install_from_folder',
 										'name' => 'install_from_folder'
 										)) . '
-										' . $output_restore_unfinished . $output_source_warning . $output_starter_sites . $output_backup_source . $output_upload_source . '
+										' . $output_restore_unfinished . $output_source_warning . '<div role="radiogroup" aria-label="' . h(lang('Installation Folder')) . '">' . $output_starter_sites . $output_backup_source . $output_upload_source . '</div>' . $output_upload_area . '
 										<div class="text-end mt-5"><button type="button" class="btn btn-solid theme-primary pg-install-next">' . lang('Continue') . '<i class="bi bi-arrow-right ms-1"></i></button></div>
 									</div>
 								</div>
@@ -3286,7 +3301,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 										'name' => 'design_template'
 										)) . '
 										<input type="hidden" name="design_template_starters" id="design_template_starters" value="">
-										<div class="row g-5">' . $output_design_choices . '</div>
+										<div class="row g-5" role="radiogroup" aria-label="' . h(lang('Site Design')) . '">' . $output_design_choices . '</div>
 										<div class="pg-design-custom mt-5 d-none" id="pg_design_custom">
 											<div class="mb-5">
 												<div class="small fw-semibold mb-1">' . lang('Look') . ' <span class="fw-normal fg-secondary">— ' . lang('corners, shadows, type and buttons') . '</span></div>
@@ -4366,6 +4381,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			if ((!element) || ($(element).hasClass("disabled"))) { return; }
 			$(".pg-design").removeClass("selected");
 			$(element).addClass("selected");
+			$(element).find(".pg-choice-input").prop("checked", true);
 			$("#design_template").val($(element).attr("data-design"));
 			// layouts built for another choice are built again when the installation starts
 			$("#design_template_starters").val("");
@@ -4376,6 +4392,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var starter = pg_install_source_is_starter();
 			$("#pg_design_only_starter").toggleClass("d-none", starter);
 			$(".pg-design-template").toggleClass("disabled", !starter);
+			$(".pg-design-template .pg-choice-input").prop("disabled", !starter);
 			if ((!starter) && ($("#design_template").val() !== "standard")) {
 				pg_install_select_design(document.getElementById("pg_design_standard"));
 			} else if ((starter) && (!pg_install_design_chosen) && ($("#design_template").val() === "standard") && ($(".pg-design-template").length > 0)) {
@@ -4522,6 +4539,7 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			var source = $(element).attr("data-source");
 			$(".pg-source").not(".pg-design").removeClass("selected");
 			$(element).addClass("selected");
+			$(element).find(".pg-choice-input").prop("checked", true);
 			$("#pg_zip_area").toggleClass("d-none", source !== "upload");
 			if (source === "starter") {
 				$("#install_from_folder").val($(element).attr("data-folder"));
@@ -4598,7 +4616,20 @@ if ((!isset($_POST['submit'])) && ($automated_upgrade == false)) {
 			});
 
 			$("#pg_backup_select").on("change", function() {
-				$("#install_from_folder").val($(this).val());
+				pg_install_select_source($(this).closest(".pg-source")[0]);
+			});
+
+			// Each card holds a visually hidden radio, so Tab reaches the chosen card of a
+			// group and Space or the arrow keys choose one; the card follows its radio.
+			$(".pg-source .pg-choice-input").on("change", function() {
+				if (this.checked) { $(this).closest(".pg-source").trigger("click"); }
+			});
+
+			// Enter would submit the form from a radio; it chooses the card instead.
+			$(".pg-source .pg-choice-input").on("keydown", function(event) {
+				if (event.key !== "Enter") { return; }
+				event.preventDefault();
+				$(this).closest(".pg-source").trigger("click");
 			});
 
 			// If the frame finishes without reporting the end, then something went wrong on the
