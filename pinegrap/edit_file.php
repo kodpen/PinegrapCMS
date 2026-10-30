@@ -710,6 +710,12 @@ $liveform->remove_form('edit_file');
     // Renaming "photo.jpg" to "photo.php" is uploading a PHP file with an
     // extra step, so a new name keeps the upload rule. The file's current
     // name is let through as it is, so an old file can still be edited.
+    // A blank name is refused here, after Delete: prepare_file_name() would
+    // turn it into 'file' and break every link to the stored file.
+    if (trim((string) $_POST['name']) === '') {
+        output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
+
     if ($name === '.htaccess') {
         output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
