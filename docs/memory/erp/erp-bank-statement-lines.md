@@ -1,6 +1,6 @@
 ---
 name: erp-bank-statement-lines
-description: ERP bank statement lines: each line once (line_hash with an occurrence count for repeated lines), matching to till movements, recording an unmatched line.
+description: ERP bank statement lines: each line once (line_hash), matching to till movements, recording a line; what a refused step keeps, the send-once forms.
 ---
 
 ## How is a line taken once? (`erp_bank_statement_build()`)
@@ -20,3 +20,8 @@ description: ERP bank statement lines: each line once (line_hash with an occurre
 - Nothing is written until the operator says so. `erp_bank_line_record()`: a collection or payment through `erp_post_receipt()` (closing an invoice when one is named), or an expense paid from the bank through `erp_expense_save()` (VAT 0, not deductible). Or the line is set aside (`erp_bank_line_ignore()`). No bank API: statements come as files.
 
 Reading the file, CSV separator and amount: `erp-bank-statements.md`. Tests: `tests/erp_bank_import_test.php`. The invoice a line suggests: erp-receipt-not-for-return.
+
+## What does a refused step keep, and which forms send once?
+- A column choice without a Date column, or with none of Amount, Money out and Money in, is refused by `erp_bank_statement.php` before the build: the posted columns, "Dates are written" and the heading box go to the liveform session and the missing select is marked (`col_date`, `col_amount`); the screen shows them instead of the bank account's remembered columns. Before, everything chosen was reset and only a general error showed.
+- A refused upload (`erp_bank_statements.php`: no file, over 5 MB, unreadable) keeps the Bank account chosen; before, it fell back to the first account and the file could go into the wrong one.
+- Take in, Take the lines in and Record the suggested lines carry `data-erp-send-once`: a window submit listener lets the first submit through and cancels later ones until a persisted `pageshow`, sets `aria-busy` and fills the form's status line. Before, a press after the 3 s window guard added an extra statement, a false "The statement could not be found." or a second notice and log entry. Split again (a new split renumbers the columns) and the per-line forms keep the window guard only.

@@ -55,6 +55,27 @@ if ($_POST) {
     }
 
     if ($action === 'map') {
+        // The same rule the build checks, checked here so that a refusal
+        // keeps the columns just chosen and marks the one missing; the page
+        // was drawn again from the bank account's remembered columns.
+        $no_date = ((int) ($_POST['col_date'] ?? -1) < 0);
+        $no_amount = (((int) ($_POST['col_amount'] ?? -1) < 0) && ((int) ($_POST['col_debit'] ?? -1) < 0) && ((int) ($_POST['col_credit'] ?? -1) < 0));
+
+        if ($no_date || $no_amount) {
+            $liveform->add_fields_to_session();
+            $message = h(lang('Choose the date column and the amount column (or the debit and credit columns).'));
+
+            if ($no_date) {
+                $liveform->mark_error('col_date', $message);
+            }
+
+            if ($no_amount) {
+                $liveform->mark_error('col_amount', $message);
+            }
+
+            go($self);
+        }
+
         $built = erp_bank_statement_build($statement_id, array(
             'header' => !empty($_POST['header']),
             'date_order' => ((string) ($_POST['date_order'] ?? 'dmy') === 'mdy') ? 'mdy' : 'dmy',
@@ -130,10 +151,13 @@ $money = function ($kurus) use ($statement) {
     return h(erp_money_out_currency((int) $kurus, (string) $statement['till_currency']));
 };
 
-$post_form = function ($fields, $button, $class) use ($statement_id) {
-    return '<form method="post" action="erp_bank_statement.php" class="d-inline-flex flex-wrap gap-1 align-items-center">' . get_token_field()
+// $attributes ' data-erp-send-once' sends the form once (the script at the
+// end) and adds the status line it fills.
+$post_form = function ($fields, $button, $class, $attributes = '') use ($statement_id) {
+    return '<form method="post" action="erp_bank_statement.php" class="d-inline-flex flex-wrap gap-1 align-items-center"' . $attributes . '>' . get_token_field()
         . '<input type="hidden" name="id" value="' . $statement_id . '" />' . $fields
-        . '<button type="submit" class="btn btn-sm ' . $class . '">' . $button . '</button></form>';
+        . '<button type="submit" class="btn btn-sm ' . $class . '">' . $button . '</button>'
+        . (($attributes !== '') ? '<span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span>' : '') . '</form>';
 };
 
 $output_body = '';
@@ -171,13 +195,21 @@ if ((string) $statement['status'] === 'mapping') {
             . '<div class="form-text">' . lang('If the columns come out wrong, choose the separator and split the lines again.') . '</div></div>';
     }
 
-    $select = function ($name, $key, $label, $optional) use ($width, $mapping) {
+    // After a refused choice the columns posted are shown, not the bank
+    // account's remembered ones.
+    $posted = $liveform->field_in_session('col_date');
+    $chosen = function ($key, $field) use ($posted, $liveform, $mapping) {
+        return $posted ? $liveform->get_field_value($field) : ($mapping[$key] ?? null);
+    };
+
+    $select = function ($name, $key, $label, $optional) use ($width, $chosen, $liveform) {
+        $value = $chosen($key, $name);
         $options = $optional ? '<option value="-1">—</option>' : '<option value="-1">' . lang('Choose') . '</option>';
         for ($i = 0; $i < $width; $i++) {
-            $options .= '<option value="' . $i . '"' . (((int) ($mapping[$key] ?? -1) === $i) ? ' selected' : '') . '>' . h(lang(array('string' => 'Column {var:1}', 'vars' => $i + 1))) . '</option>';
+            $options .= '<option value="' . $i . '"' . ((is_scalar($value) && ((string) $value !== '') && ((int) $value === $i)) ? ' selected' : '') . '>' . h(lang(array('string' => 'Column {var:1}', 'vars' => $i + 1))) . '</option>';
         }
 
-        return '<div class="col-6 md:col-2"><label class="form-label small" for="' . $name . '">' . $label . '</label><select class="form-control form-control-sm" name="' . $name . '" id="' . $name . '">' . $options . '</select></div>';
+        return '<div class="col-6 md:col-2"><label class="form-label small" for="' . $name . '">' . $label . '</label><select class="form-control form-control-sm' . ($liveform->check_field_error($name) ? ' is-invalid' : '') . '" name="' . $name . '" id="' . $name . '">' . $options . '</select></div>';
     };
 
     $head = '<tr>';
@@ -201,7 +233,7 @@ if ((string) $statement['status'] === 'mapping') {
                 ' . $separator_form . '
                 <div class="card-body p-0 table-responsive"><table class="table table-sm table-bordered mb-0"><thead>' . $head . '</thead><tbody>' . $body . '</tbody></table></div>
             </div>
-            ' . (!$readonly ? '<form method="post" action="erp_bank_statement.php" class="card my-7">
+            ' . (!$readonly ? '<form method="post" action="erp_bank_statement.php" class="card my-7" data-erp-send-once>
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $statement_id . '" />
                 <input type="hidden" name="erp_action" value="map" />
@@ -212,10 +244,10 @@ if ((string) $statement['status'] === 'mapping') {
                     ' . $select('col_amount', 'amount', lang('Amount (+/−)'), true) . '
                     ' . $select('col_debit', 'debit', lang('Money out'), true) . '
                     ' . $select('col_credit', 'credit', lang('Money in'), true) . '
-                    <div class="col-6 md:col-2"><label class="form-label small" for="date_order">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" id="date_order" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) ($mapping['date_order'] ?? 'dmy') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
-                    <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header" name="header" value="1"' . (!empty($mapping['header']) ? ' checked' : '') . ' /><label class="" for="header">' . lang('The first line is the column names') . '</label></div></div>
+                    <div class="col-6 md:col-2"><label class="form-label small" for="date_order">' . lang('Dates are written') . '</label><select class="form-control form-control-sm" id="date_order" name="date_order"><option value="dmy">' . lang('day first') . '</option><option value="mdy"' . (((string) $chosen('date_order', 'date_order') === 'mdy') ? ' selected' : '') . '>' . lang('month first') . '</option></select></div>
+                    <div class="col-12"><div class="form-field"><input class="check" type="checkbox" id="header" name="header" value="1"' . (($posted ? !empty($liveform->get_field_value('header')) : !empty($mapping['header'])) ? ' checked' : '') . ' /><label class="" for="header">' . lang('The first line is the column names') . '</label></div></div>
                     <div class="col-12 form-text">' . lang('Either one amount column, with money out as a minus, or a money-out and a money-in column. Lines without a date or an amount (totals, balances, headings) are left out.') . '</div>
-                    <div class="col-12"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button></div>
+                    <div class="col-12 d-flex flex-wrap gap-3 align-items-center"><button type="submit" class="btn btn-solid theme-primary">' . lang('Take the lines in') . '</button><span class="small fg-secondary" role="status" aria-live="polite" data-erp-send-once-status></span></div>
                 </div>
             </form>' : '');
 } else {
@@ -298,7 +330,7 @@ if ((string) $statement['status'] === 'mapping') {
     }
 
     $output_body = $output_bank_quick . '
-            ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-5">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success') . '</div>' : '') . '
+            ' . (($suggested > 0 && !$readonly) ? '<div class="d-flex justify-content-end my-5">' . $post_form('<input type="hidden" name="erp_action" value="record_suggested" />', '<i class="bi bi-check2-all me-1" aria-hidden="true"></i>' . h(lang(array('string' => 'Record the {var:1} suggested line(s)', 'vars' => $suggested))), 'btn-solid theme-success', ' data-erp-send-once') . '</div>' : '') . '
             <div class="card my-7">
                 <div class="card-body p-0 table-responsive">
                     <table class="table table-hover align-middle mb-0" data-pg-sort>
@@ -333,6 +365,35 @@ pg_page_shell([
         </div>
     </div>
 </main>
+<script>
+(function () {
+    // Take the lines in and Record the suggested lines are sent once: either
+    // can take longer than the 3 seconds the window guard covers, and a
+    // second press then showed a false error or a second notice and log
+    // entry. The button is never disabled; a submit a handler cancelled does
+    // not count.
+    var sent = [];
+    window.addEventListener("submit", function (event) {
+        var form = event.target;
+        if (!form || !form.hasAttribute || !form.hasAttribute("data-erp-send-once")) { return; }
+        if (sent.indexOf(form) !== -1) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        sent.push(form);
+        form.setAttribute("aria-busy", "true");
+        var status = form.querySelector("[data-erp-send-once-status]");
+        if (status) { status.textContent = "' . escape_javascript(lang('Working on it. Wait for the answer before leaving this page.')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        sent.forEach(function (form) {
+            form.removeAttribute("aria-busy");
+            var status = form.querySelector("[data-erp-send-once-status]");
+            if (status) { status.textContent = ""; }
+        });
+        sent = [];
+    });
+})();
+</script>
 ' . pg_fields_script() .
 output_footer();
 
