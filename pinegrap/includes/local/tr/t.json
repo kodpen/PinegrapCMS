@@ -3351,6 +3351,7 @@
     "The sending server is a host name such as smtp.gmail.com, with a port from 1 to 65535.": "Gönderme sunucusu smtp.gmail.com gibi bir ana makine adıdır; bağlantı noktası 1 ile 65535 arasındadır.",
     "The sent folder's name is at most 255 characters.": "Gönderilenler klasörünün adı en çok 255 karakter olabilir.",
     "The server answered {var:1} without a readable error message.": "Sunucu {var:1} yanıtını okunabilir bir hata mesajı olmadan verdi.",
+    "The server cannot send e-mail with PHP mail(). Set up an SMTP server in SMTP Settings.": "Sunucu PHP mail() işleviyle e-posta gönderemiyor. SMTP Ayarları'ndan bir SMTP sunucusu tanımlayın.",
     "The server could not accept {var:1}. Please try again.": "Sunucu {var:1} dosyasını kabul edemedi. Lütfen tekrar deneyin.",
     "The server could not be reached on its port.": "Sunucuya bağlantı noktasından ulaşılamadı.",
     "The server could not write a temporary file.": "Sunucu geçici bir dosya yazamadı.",
