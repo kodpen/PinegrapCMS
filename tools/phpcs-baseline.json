@@ -1,18 +1,4 @@
 {
-    "pinegrap/includes/fn/custom_form.php": {
-        "PHPCompatibility.ControlStructures.ForbiddenBreakContinueOutsideLoop.FatalError": 1
-    },
-    "pinegrap/includes/fn/ecommerce.php": {
-        "PHPCompatibility.Constants.RemovedConstants.mcrypt_mode_cbcDeprecatedRemoved": 2,
-        "PHPCompatibility.Constants.RemovedConstants.mcrypt_rijndael_256DeprecatedRemoved": 2,
-        "PHPCompatibility.Extensions.RemovedExtensions.mcryptDeprecatedRemoved": 3,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_decryptDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_get_iv_sizeDeprecatedRemoved": 1,
-        "PHPCompatibility.FunctionUse.RemovedFunctions.mcrypt_list_algorithmsDeprecatedRemoved": 1
-    },
-    "pinegrap/includes/fn/office.php": {
-        "PHPCompatibility.FunctionUse.RemovedFunctions.libxml_disable_entity_loaderDeprecated": 1
-    },
     "pinegrap/submit_order.php": {
         "PHPCompatibility.Extensions.RemovedExtensions.pfpro_Removed": 2,
         "PHPCompatibility.FunctionUse.RemovedFunctions.pfpro_processRemoved": 2
