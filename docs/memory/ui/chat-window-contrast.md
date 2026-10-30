@@ -14,4 +14,5 @@ description: Panel chat window colours readable in both themes: own-message grad
 - The active Conversations/People tab and the switched-on emoji button (`.pg-chat-tool-on`): `--pg-primary-fg-emphasis` (5.1/4.8:1 light, 8.4/6.6:1 dark; the primary was under 2:1 in light).
 - The send and record-stop button keeps the `--pg-primary` fill with a `--pg-on-accent` icon (7.7:1); its disabled rule is unchanged.
 - Left as they are: the launcher (white icon, 3.8:1), the unread badge, the emoji category tabs (colour glyphs) and the site chat `#pg-chat-site`.
+- Windows High Contrast (forced colours): an `@media (forced-colors: active)` block at the end of the `#pg-chat-root` style gives the panel `border: 1px solid CanvasText` (it was `border: 0` with only a shadow) and the open tab `forced-color-adjust: none` on `Highlight`/`HighlightText`; the focused row's `outline: 0` became `outline: 2px solid transparent`, which forced colours paint. Pinned by `tests/forced_colors_widgets_test.php`.
 - Pinned by `tests/chat_window_contrast_test.php`, which computes the bubble ratios from `chat.php`.
