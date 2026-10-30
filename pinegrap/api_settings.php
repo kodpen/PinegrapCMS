@@ -2241,7 +2241,7 @@ echo '
 		document.getElementById("d_app_id").value = app.id;
 		document.getElementById("d_title").textContent = app.name;
 		document.getElementById("d_sub").innerHTML =
-			' . json_encode(lang('Owner'), JSON_UNESCAPED_UNICODE) . ' + " <b>" + app.owner + "</b> &middot; " + app.created;
+			' . json_encode(lang('Owner'), JSON_UNESCAPED_UNICODE) . ' + " <b>" + esc(app.owner) + "</b> &middot; " + esc(app.created);
 		document.getElementById("d_name").value = app.name;
 		document.getElementById("d_description").value = app.description || "";
 		document.getElementById("d_key").textContent = app.key;

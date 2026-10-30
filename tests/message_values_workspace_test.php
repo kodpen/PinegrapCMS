@@ -22,6 +22,8 @@ function test_message_values_workspace_are_escaped()
 	$lines = array(
 		array('includes/workspace/ai.php', '$liveform->add_error(h($error));', 2),
 		array('includes/workspace/claude.php', '$liveform->add_error(h($result[\'error\']));', 1),
+		array('includes/workspace/mail_settings.php', '$liveform->add_error(h(ws_mail_error_text($result[\'error\'], $result[\'detail\'], (string) ($settings[\'host\'] ?? \'\'))));', 1),
+		array('includes/workspace/mail_settings.php', '$liveform->add_notice(lang(array(\'string\' => \'Connected: {var:1} e-mails in {var:2}.\', \'vars\' => array(pg_format_number($result[\'exists\'], 0), h((string) $box[\'folder\'])))));', 1),
 		array('includes/workspace/mcp.php', '$liveform->add_error(h($flash[\'text\']));', 1),
 		array('includes/workspace/mcp.php', '$liveform->add_error(lang(array(\'string\' => \'@{var:1} could not be reached: {var:2}\', \'vars\' => array($server[\'alias\'], h($refresh[\'error\'])))));', 2),
 		array('includes/workspace/mcp.php', '$liveform->add_error(lang(array(\'string\' => \'@{var:1} was saved but could not be reached: {var:2}\', \'vars\' => array($alias, h($refresh[\'error\'])))));', 1),
