@@ -509,19 +509,10 @@ $output_rows = '';
 
 // if there is at least one result to display
 if ($items) {
-    // Sorted by each level in turn. Items that tie on every level are
-    // ordered by their other values, as array_multisort() compares them.
-    $sort_arguments = array();
-    $sort_values = array();
-
-    foreach ($sort_levels as $index => $level) {
-        $sort_values[$index] = array_column($items, $sort_keys[$level['sort']]);
-        $sort_arguments[] = &$sort_values[$index];
-        $sort_arguments[] = ($level['order'] === 'desc') ? SORT_DESC : SORT_ASC;
-    }
-
-    $sort_arguments[] = &$items;
-    call_user_func_array('array_multisort', $sort_arguments);
+    // Sorted by each level in turn, the way the database lists sort: a size
+    // or a time as a number, a page type by the name it is shown under, text
+    // in the panel language's order.
+    $items = pg_list_sort_items($items, $sort_levels, $sort_keys, array('size', 'last_modified_timestamp'), array('page_type' => get_page_type_names()));
 
     foreach ($items as $item) {
         $output_last_modified_username = '';

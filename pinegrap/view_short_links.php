@@ -38,11 +38,20 @@ $sort_default = array('sort' => 'last_modified', 'order' => 'desc');
 $list_state = pg_list_state('view_short_links', $sort_columns, $sort_default);
 $sort_levels = $list_state['sorts'];
 
+// The name each destination type is shown under; the column sorts by it.
+$destination_type_names = array(
+    'page' => lang('Page'),
+    'product_group' => lang('Product Group'),
+    'product' => lang('Product'),
+    'url' => lang('URL'),
+    'file' => lang('File'),
+);
+
 // What each sort code orders by. Only codes pg_list_state() let through
 // reach pg_list_order_by(), and it writes nothing but these.
 $order_by = pg_list_order_by($sort_levels, array(
     'name'             => 'short_links.name',
-    'destination_type' => 'short_links.destination_type',
+    'destination_type' => pg_list_label_order('short_links.destination_type', $destination_type_names),
     'created'          => 'short_links.created_timestamp',
     'last_modified'    => 'short_links.last_modified_timestamp',
 ));
@@ -132,42 +141,31 @@ if ($short_links) {
     
 
     foreach ($short_links as $short_link) {
-        $output_destination_type = '';
+        $output_destination_type = isset($destination_type_names[$short_link['destination_type']]) ? $destination_type_names[$short_link['destination_type']] : '';
         $output_destination = '';
 
         switch ($short_link['destination_type']) {
             case 'page':
-                $output_destination_type = lang('Page');
-
                 $output_destination = h(encode_url_path($short_link['page_name']));
 
                 break;
 
             case 'product_group':
-                $output_destination_type = lang('Product Group');
-
                 $output_destination = h(encode_url_path($short_link['page_name'])) . '/' . h(encode_url_path($short_link['product_group_address_name']));
 
                 break;
 
             case 'product':
-                $output_destination_type = lang('Product');
-
                 $output_destination = h(encode_url_path($short_link['page_name'])) . '/' . h(encode_url_path($short_link['product_address_name']));
 
                 break;
 
             case 'url':
-                $output_destination_type = lang('URL');
-
                 $output_destination = h($short_link['url']);
 
                 break;
 
-            // A link to a file had neither cell filled.
             case 'file':
-                $output_destination_type = lang('File');
-
                 $output_destination = h(encode_url_path($short_link['file_name']));
 
                 break;
