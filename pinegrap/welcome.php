@@ -986,6 +986,16 @@ $output_header_includes .
        the skeleton was measured against the loaded rows with 1em. */
     @layer custom { .card-body-placeholder .placeholder { min-height: 1em; } }
 </style>
+<style>
+    /* A card list made reachable by pg_widget_scroll_regions(): the card
+       clips everything outside it, so the ring is drawn inside the box. */
+    @layer custom {
+        .card.widget [data-pg-focus-key^="scroll-"]:focus-visible {
+            outline: none;
+            box-shadow: inset 0 0 0 var(--pg-focus-ring-width) var(--pg-focus-ring-color);
+        }
+    }
+</style>
     <section class="card pg-clockbar" aria-label="' . h(lang('Welcome')) . '">
         <div class="pg-brief" id="pg_brief">
             <!-- One mark, not two. The hour already had an icon in front of the
@@ -1364,6 +1374,68 @@ $output_header_includes .
         $(event.target).find("[data-pg-filterable]").each(function(){
             pg_filter_apply(this, pg_filter_read(this));
         });
+    });
+
+    // A card body, or one half of a split card, scrolls inside the square
+    // card. When it holds only text rows there is no Tab stop inside it, so
+    // Safari cannot scroll it from the keyboard and Chrome and Firefox focus
+    // it without a name. Such an area becomes a named region with a Tab
+    // stop; the marks come off when it stops overflowing or gains a
+    // control. The focus key lets the refresh give its focus back.
+    function pg_widget_scroll_regions(card) {
+        var header = card.querySelector(".card-header");
+        var title = "";
+        if (header) {
+            var copy = header.cloneNode(true);
+            copy.querySelectorAll("button, a, .pg-widget-action").forEach(function(el){
+                el.remove();
+            });
+            title = copy.textContent.replace(/\s+/g, " ").trim();
+        }
+        var areas = Array.prototype.slice.call(card.querySelectorAll(".card-body, .pg-split, .pg-split-half, .pg-split-scroll, .pg-ops-body, .pg-vs-pages"));
+        // Inner areas first, so an outer one sees whether an inner one
+        // already took a Tab stop.
+        areas.reverse().forEach(function(el, index){
+            var marked = /^scroll-/.test(el.getAttribute("data-pg-focus-key") || "");
+            var style = window.getComputedStyle(el);
+            var scrolls = (/(auto|scroll)/.test(style.overflowY) && (el.scrollHeight > el.clientHeight + 1))
+                || (/(auto|scroll)/.test(style.overflowX) && (el.scrollWidth > el.clientWidth + 1));
+            var control = el.querySelector("a[href], button, input, select, textarea, [tabindex]");
+            if (scrolls && !control) {
+                if (!marked && el.hasAttribute("tabindex")) {
+                    return;
+                }
+                var name = title;
+                var heading = el.matches(".pg-split-half, .pg-split-scroll") ? el.querySelector(".pg-row-heading") : null;
+                if (heading && heading.firstChild && (heading.firstChild.nodeType === 3)) {
+                    var label = heading.firstChild.nodeValue.trim();
+                    if (label !== "") {
+                        name = (name !== "") ? (name + " – " + label) : label;
+                    }
+                }
+                el.setAttribute("tabindex", "0");
+                el.setAttribute("role", "region");
+                el.setAttribute("aria-label", name);
+                el.setAttribute("data-pg-focus-key", "scroll-" + index);
+            } else if (marked) {
+                el.removeAttribute("tabindex");
+                el.removeAttribute("role");
+                el.removeAttribute("aria-label");
+                el.removeAttribute("data-pg-focus-key");
+            }
+        });
+    }
+
+    $(document).on("pg:widget-drawn", function(event){
+        pg_widget_scroll_regions(event.target);
+    });
+
+    var pg_scroll_regions_timer = null;
+    $(window).on("resize", function(){
+        clearTimeout(pg_scroll_regions_timer);
+        pg_scroll_regions_timer = setTimeout(function(){
+            document.querySelectorAll(".card.widget").forEach(pg_widget_scroll_regions);
+        }, 200);
     });
 
     $(document).on("click", "[data-pg-filterable] [data-pg-filter]", function(){
