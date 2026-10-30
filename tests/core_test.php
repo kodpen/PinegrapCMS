@@ -196,6 +196,24 @@ function test_core_timezone_list_follows_the_database()
 	}
 }
 
+// A label's offset is the zone's standard one in this PHP's database, with
+// its minutes, and none for a zone this PHP cannot build.
+function test_core_timezone_offset_label()
+{
+	pg_assert_same('(UTC+00:00)', pg_timezone_offset_label('UTC'), 'UTC');
+	pg_assert_same('(UTC+03:00)', pg_timezone_offset_label('Europe/Moscow', 2026), 'Moscow since 2014');
+	pg_assert_same('(UTC+04:00)', pg_timezone_offset_label('Europe/Moscow', 2012), 'Moscow in 2012');
+	pg_assert_same('(UTC-04:00)', pg_timezone_offset_label('America/Caracas', 2026), 'Caracas since 2016');
+	pg_assert_same('(UTC+01:00)', pg_timezone_offset_label('Europe/Berlin'), 'summer time left out (northern)');
+	pg_assert_same('(UTC+10:00)', pg_timezone_offset_label('Australia/Sydney'), 'summer time left out (southern)');
+	pg_assert_same('(UTC+05:30)', pg_timezone_offset_label('Asia/Kolkata'), 'half an hour');
+	pg_assert_same('(UTC+05:45)', pg_timezone_offset_label('Asia/Kathmandu'), 'three quarters');
+	pg_assert_same('(UTC-03:30)', pg_timezone_offset_label('America/St_Johns'), 'negative with minutes');
+	pg_assert_same('(UTC-10:00)', pg_timezone_offset_label('Pacific/Honolulu'), 'negative');
+	pg_assert_same('', pg_timezone_offset_label('Nowhere/Atlantis'), 'an unknown zone has none');
+	pg_assert_same('', pg_timezone_offset_label("UTC\0"), 'nor a name with a NUL byte');
+}
+
 // A stored name is read as this PHP knows it: an old name as its current one,
 // a current name as its old one where an older database lacks it, an unknown
 // name as none (the site's zone).

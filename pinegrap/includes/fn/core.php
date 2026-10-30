@@ -1893,6 +1893,40 @@ function pg_timezone_object($name)
     }
 }
 
+/**
+ * The '(UTC+03:00)' prefix of a zone's pick list label, from this PHP's time
+ * zone database rather than a fixed text: offsets change (Moscow has been
+ * +03:00 since 2014, Caracas -04:00 since 2016). The offset is the zone's
+ * standard one, the smaller of its offsets on 1 January and 1 July, so
+ * summer time on either hemisphere is left out. Minutes are kept (+05:30,
+ * +05:45, -03:30). '' when this PHP cannot build the zone.
+ *
+ * @param string   $zone
+ * @param int|null $year the year whose offsets are read; the current UTC year
+ * @return string
+ */
+function pg_timezone_offset_label($zone, $year = null)
+{
+    if ($year === null) {
+        $year = (int) gmdate('Y');
+    }
+
+    try {
+        $object = new DateTimeZone((string) $zone);
+        $january = $object->getOffset(new DateTime(sprintf('%04d-01-01 00:00:00', $year), new DateTimeZone('UTC')));
+        $july = $object->getOffset(new DateTime(sprintf('%04d-07-01 00:00:00', $year), new DateTimeZone('UTC')));
+    } catch (Throwable $exception) {
+        // An Exception for an unknown name; a ValueError (PHP 8) for one
+        // with a NUL byte.
+        return '';
+    }
+
+    $offset = min($january, $july);
+    $minutes = intdiv(abs($offset), 60);
+
+    return sprintf('(UTC%s%02d:%02d)', ($offset < 0) ? '-' : '+', intdiv($minutes, 60), $minutes % 60);
+}
+
 // Create function that will allow us to get a time, like "5 days ago", from a timestamp.
 // Properties:
 // timestamp: The Unix timestamp for the time that you want to compare to now.
