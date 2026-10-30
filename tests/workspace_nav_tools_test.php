@@ -73,3 +73,18 @@ function test_workspace_nav_tools_and_more_have_titles()
 	pg_assert_true(isset($titles['tools']) && ($titles['tools'] !== ''), 'Tools');
 	pg_assert_true(isset($titles['more']) && ($titles['more'] !== ''), 'More');
 }
+
+// The long names have a short one for the tile; the full name stays its label.
+function test_workspace_nav_tools_long_names_have_short_ones()
+{
+	$groups = ws_nav_groups(array('role' => 1, 'settings' => true), workspace_nav_tools_test_flags());
+	$short = array();
+
+	foreach ($groups['tools'] as $item) {
+		if (isset($item['short'])) {
+			$short[$item['key']] = $item['short'];
+		}
+	}
+
+	pg_assert_same(array('calendar' => 'Calendar', 'board' => 'Board', 'timeline' => 'Decisions'), $short, 'Calendar, Board and Decisions');
+}

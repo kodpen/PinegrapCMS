@@ -84,7 +84,7 @@ function ws_nav_groups($viewer, $flags = null)
     }
 
     $groups['tools'][] = array('key' => 'calendar', 'label' => lang('Work Calendar'), 'short' => lang('Calendar'), 'icon' => 'bi-calendar3', 'url' => $base . 'workspace_calendar.php');
-    $groups['tools'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
+    $groups['tools'][] = array('key' => 'board', 'label' => lang('Planning Board'), 'short' => lang('Board'), 'icon' => 'bi-calendar-week', 'url' => $base . 'workspace_board.php');
     $groups['tools'][] = array('key' => 'timeline', 'label' => lang('Decision Timeline'), 'short' => lang('Decisions'), 'icon' => 'bi-clock-history', 'url' => $base . 'workspace_timeline.php');
 
     if (!empty($flags['mail'])) {

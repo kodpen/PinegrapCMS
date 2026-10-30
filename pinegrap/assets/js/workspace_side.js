@@ -922,7 +922,6 @@
                 moreTile.setAttribute('data-ws-side-key', 'more');
                 moreTile.appendChild(icon('bi-three-dots'));
                 moreTile.appendChild(el('span', 'ws-side-tile-name', titles.more || t('more')));
-                moreTile.appendChild(icon(moreOpen ? 'bi-chevron-up' : 'bi-chevron-down', 'ws-side-tile-chevron'));
                 moreTile.addEventListener('click', function () {
                     writeKept('ws-side-open', 'more', !moreOpen);
                     draw();
