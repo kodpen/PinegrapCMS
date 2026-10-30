@@ -52,6 +52,19 @@ function test_dashboard_keyboard_status_popover_opens_on_focus()
 	pg_assert_contains("selector: \\'.status-popover\\',\n            trigger: \"hover focus\"", $source);
 }
 
+// Bootstrap 6's popover data API cancels every click on
+// [data-bs-toggle="popover"], so a chip that is a link never followed its
+// href. The welcome.php delegate gives the chip its popover without the
+// attribute; no-popover keeps the title popover off it.
+function test_dashboard_keyboard_status_chip_link_is_followed()
+{
+	$source = dashboard_keyboard_source('includes/dashboard/widgets/widget_2.php');
+
+	pg_assert_false(strpos($source, 'data-bs-toggle="popover"') !== false, 'chip carries data-bs-toggle="popover"');
+	pg_assert_false(strpos($source, 'data-bs-trigger="hover focus"') !== false, 'chip carries an ignored data-bs-trigger');
+	pg_assert_contains(' class="pg-check pg-check-\' . $check_tone . \' status-popover no-popover"', $source);
+}
+
 // The refresh replaces a card's body; the control that had focus is found
 // again by its key and focused, as the scroll position is restored.
 function test_dashboard_keyboard_refresh_keeps_focus()
