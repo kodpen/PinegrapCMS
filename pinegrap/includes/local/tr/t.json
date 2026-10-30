@@ -2637,6 +2637,7 @@
     "The order has been retrieved.": "Sipariş geri alındı.",
     "The order has been saved.": "Sipariş kaydedildi.",
     "The order has items": "Siparişte ürün var",
+    "The order has no currency to declare its goods in.": "Siparişin, mallarını beyan edecek bir para birimi yok.",
     "The order has no invoice yet. Once it is invoiced, issue a return invoice for these lines from the order's document card.": "Siparişin henüz faturası yok. Faturalandığında bu kalemler için siparişin belge kartından iade faturası kesin.",
     "The order has not been completed yet (the checkout did not finish); it can be invoiced once it is.": "Sipariş henüz tamamlanmadı (ödeme adımı bitmedi); tamamlanınca faturalanabilir.",
     "The order has not been completed yet; the delivery note is written once it is.": "Sipariş henüz tamamlanmadı; tamamlanınca irsaliye kesilebilir.",

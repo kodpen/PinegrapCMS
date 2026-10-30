@@ -26,9 +26,8 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
    - 5c. API: done #3220 (`commerce/shipment-label-api.md`).
 6. Aggregators, done: Basit Kargo #3163 (`commerce/carrier-label-basitkargo.md`), Kargonomi #3286 (`commerce/carrier-label-kargonomi.md`); MNG ApiZone (M) waits for docs.
 7. International (#3124), done: Shippo #3192 (`commerce/carrier-label-shippo.md`), Sendcloud #3226 (`commerce/carrier-label-sendcloud.md`); 7b Shippo webhook #3407; 7c Sendcloud return labels #3409.
-   - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`), a PR each: C1 #3429 (`commerce/product-customs-fields.md`): columns, product screen, copy, import/export. C2 Shippo `customs_declaration`, shop defaults in its settings, products API fields. C3 Sendcloud `parcel_items` + the block; EU-only refusal lifted once filled.
-8. Return label on the returns screen (#3178, `workflow/decisions-made-product-4.md`) (S).
-   - Done: 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic view), 8c #3268 (widget).
+   - 7d Customs, decided #3408 (`workflow/decisions-made-product-7.md`): C1 #3429 (`commerce/product-customs-fields.md`); C2 #3449 Shippo (`commerce/carrier-label-customs.md`). Next: products API `hs_code`/`origin_country` after #3298 (holds `schema.php`); C3 Sendcloud `parcel_items` and the block; EU-only refusal lifted once filled.
+8. Done: return label on the returns screen (#3178): 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic), 8c #3268 (widget).
 9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders list and label card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
 
 ## Open questions?
@@ -36,4 +35,4 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 - Formats (#3123): PDF, ZPL, SVG; no ZPL converter.
 
 ## Where to start?
-- 7d C2 after C1, C3 after C2; 9 pickup is free. Yurtiçi waits for docs. Live checks of Geliver, Shippo, Sendcloud (owner keys).
+- 7d C3 (reuses `pg_label_customs_lines()`) after #3431; API fields after #3298; 9 pickup is free. Yurtiçi waits for docs. Live checks of Geliver, Shippo, Sendcloud (owner keys).

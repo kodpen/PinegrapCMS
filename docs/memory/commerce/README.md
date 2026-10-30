@@ -32,6 +32,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - card-surcharge-rounding.md: Card surcharge (ECOMMERCE_SURCHARGE_PERCENTAGE) as a figure: pg_percent_of() in minor units, the same on every PHP version; the classic pages post what submit_order() charges (PR #1388)
 - carrier-label-aras.md: Aras Kargo label driver (2026.11.0, #3259), the first direct Turkish carrier: SOAP from its WSDL, integration code as reference, Aras's own ZPL/PDF label, cancel, waybill status, unverified points
 - carrier-label-basitkargo.md: Basit Kargo label driver and SVG labels (2026.11.0, #3163): create, SVG only, no test mode, 600 a minute and Retry-After, idempotency key; SVG checks, print page, sandboxed download, bulk PDF
+- carrier-label-customs.md: Customs declaration of carrier labels (2026.11.0, #3449, decided #3408): shop-defaults block in a driver's settings, carrier-neutral lines, when a route needs one, Shippo's customs_declaration
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, TRACK_UPDATED webhook (#3245), what is unverified
 - carrier-label-kargonomi.md: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no test mode: draft, prices, confirmation as the charge, carrier number read after it, PDF label, cancel in 36 h, unverified points

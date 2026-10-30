@@ -423,3 +423,101 @@ function test_carrier_label_shippo_carrier_of_a_provider()
 		pg_assert_same($carrier, pg_label_shippo_carrier($provider), $provider);
 	}
 }
+
+// Order lines as pg_shipment_label_shipment() gives them for customs: the
+// unit price in minor units, the unit weight in kg.
+function carrier_label_shippo_test_goods()
+{
+	return array(
+		array('name' => 'Kaffeebecher „Berlin“', 'quantity' => 2, 'price' => 1249.5, 'weight' => 0.4, 'hs_code' => '6912.00', 'origin_country' => 'PT'),
+		array('name' => 'Untersetzer', 'quantity' => 1, 'price' => 1, 'weight' => 0, 'hs_code' => '', 'origin_country' => ''),
+	);
+}
+
+// A parcel from Germany to Great Britain carries the declaration of
+// tests/fixtures/shippo/customs_declaration.json with the shipment: the
+// product's values first, the shop defaults for the line with none, total
+// value and net weight per line.
+function test_carrier_label_shippo_create_declares_customs()
+{
+	carrier_label_shippo_test_stub(array(
+		'POST /shipments/'    => array('shipment.json'),
+		'POST /transactions/' => array('transaction.json'),
+		'GET shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf' => array('label.pdf'),
+	));
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	$account = carrier_label_shippo_test_account(array(
+		'customs_contents'       => 'merchandise',
+		'customs_incoterm'       => 'DDU',
+		'customs_non_delivery'   => 'return',
+		'customs_hs_code'        => '4823.90',
+		'customs_origin_country' => 'DE',
+		'customs_signer'         => '',
+	));
+	$answer = pg_label_call('shippo', 'create', array($shipment, $account));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_true($answer['success'], $answer['error']);
+	pg_assert_same(json_decode(carrier_label_shippo_test_fixture('customs_declaration.json'), true), $sent[0]['body']['customs_declaration']);
+
+	// A return is declared as returned goods; the shop's choices are mapped.
+	$shipment['return'] = true;
+	$customs = pg_label_shippo_customs($shipment, array_merge($account, array('customs_incoterm' => 'DAP', 'customs_non_delivery' => 'abandon', 'customs_signer' => 'Jane Roe')));
+
+	pg_assert_same('RETURN_MERCHANDISE', $customs['declaration']['contents_type']);
+	pg_assert_same('DAP', $customs['declaration']['incoterm']);
+	pg_assert_same('ABANDON', $customs['declaration']['non_delivery_option']);
+	pg_assert_same('Jane Roe', $customs['declaration']['certify_signer']);
+}
+
+// A line with no HS code anywhere refuses the label before Shippo is asked.
+function test_carrier_label_shippo_create_refuses_a_line_without_hs_code()
+{
+	carrier_label_shippo_test_stub(array());
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	$answer = pg_label_call('shippo', 'create', array($shipment, carrier_label_shippo_test_account(array('customs_origin_country' => 'DE'))));
+	$sent = carrier_label_shippo_test_sent();
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_false(!empty($answer['unclear']), 'nothing was bought');
+	pg_assert_contains('Untersetzer', $answer['error']);
+	pg_assert_same(array(), $sent, 'no request');
+}
+
+// A domestic or EU route, or a shop that has filled nothing yet, sends the
+// shipment as before: no declaration.
+function test_carrier_label_shippo_routes_without_customs_are_unchanged()
+{
+	$filled = carrier_label_shippo_test_account(array('customs_hs_code' => '6912', 'customs_origin_country' => 'DE'));
+	$shipment = carrier_label_shippo_test_shipment();
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+
+	foreach (array('DE' => 'domestic', 'FR' => 'within the EU') as $country => $route) {
+		$shipment['recipient']['country'] = $country;
+		pg_assert_same(array('declaration' => null, 'error' => ''), pg_label_shippo_customs($shipment, $filled), $route);
+	}
+
+	$shipment['recipient']['country'] = 'GB';
+	$plain = carrier_label_shippo_test_goods();
+	$plain[0]['hs_code'] = '';
+	$plain[0]['origin_country'] = '';
+	$shipment['goods'] = $plain;
+	pg_assert_same(array('declaration' => null, 'error' => ''), pg_label_shippo_customs($shipment, carrier_label_shippo_test_account()), 'nothing filled yet');
+
+	carrier_label_shippo_test_stub(array(
+		'POST /shipments/'    => array('shipment.json'),
+		'POST /transactions/' => array('transaction.json'),
+		'GET shippo-delivery-east.s3.amazonaws.com/915d94940ea54c3a80cbfa328722f5a1.pdf' => array('label.pdf'),
+	));
+	$shipment['recipient']['country'] = 'DE';
+	$shipment['goods'] = carrier_label_shippo_test_goods();
+	pg_label_call('shippo', 'create', array($shipment, $filled));
+	$sent = $GLOBALS['carrier_label_shippo_test_sent'];
+	carrier_label_shippo_test_done();
+
+	pg_assert_false(array_key_exists('customs_declaration', $sent[0]['body']), 'a domestic shipment carries none');
+}

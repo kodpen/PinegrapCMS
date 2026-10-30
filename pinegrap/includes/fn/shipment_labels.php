@@ -301,7 +301,9 @@ function pg_shipment_label_expires_at($created_at, $delivered_at, $cancelled_at)
  * @param array $ship_to the ship_tos row (first_name, last_name, company,
  *                       address_1, address_2, city, state, zip_code,
  *                       country, phone_number) and total (minor units)
- * @param array $items   list of product_name, quantity, weight, length, width, height
+ * @param array $items   list of product_name, quantity, weight, length, width, height,
+ *                       and for a customs declaration price (minor units),
+ *                       hs_code, origin_country
  * @param string $state_code the province's plate number, TR-34 or 34
  * @param bool  $return
  * @return array
@@ -321,6 +323,7 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
     $weight = 0.0;
     $size = array('length' => 0.0, 'width' => 0.0, 'height' => 0.0);
     $lines = array();
+    $goods = array();
 
     foreach ((array) $items as $item) {
         $quantity = max(1, (int) $text($item, 'quantity'));
@@ -333,6 +336,17 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         if ($text($item, 'product_name') !== '') {
             $lines[] = array('title' => $text($item, 'product_name'), 'quantity' => $quantity);
         }
+
+        // Every line, for a customs declaration (pg_label_customs_lines()):
+        // the unit weight in kilograms.
+        $goods[] = array(
+            'name'           => $text($item, 'product_name'),
+            'quantity'       => $quantity,
+            'price'          => (int) round((float) $text($item, 'price')),
+            'weight'         => round(((float) $text($item, 'weight')) * 0.45359237, 3),
+            'hs_code'        => $text($item, 'hs_code'),
+            'origin_country' => strtoupper($text($item, 'origin_country')),
+        );
     }
 
     $parcel = array();
@@ -359,11 +373,25 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
         ),
         'parcel'       => $parcel,
         'items'        => $lines,
+        'goods'        => $goods,
         'total'        => (int) $text($ship_to, 'total'),
         'currency'     => strtoupper($text($order, 'currency')),
         'service'      => '',
         'return'       => (bool) $return,
     );
+}
+
+/**
+ * The products' customs columns for the label's line query, '' on a site
+ * that has not run the upgrade that adds them.
+ *
+ * @return string
+ */
+function pg_shipment_label_customs_columns()
+{
+    return pg_product_customs_ready() ? ',
+            products.hs_code,
+            products.origin_country' : '';
 }
 
 /**
@@ -631,10 +659,11 @@ function pg_shipment_label_create($ship_to_id, $user_id, $return = false)
         "SELECT
             order_items.product_name,
             order_items.quantity,
+            order_items.price,
             products.weight,
             products.length,
             products.width,
-            products.height
+            products.height" . pg_shipment_label_customs_columns() . "
         FROM order_items
         LEFT JOIN products ON products.id = order_items.product_id
         WHERE (order_items.ship_to_id = '" . (int) $ship_to['id'] . "')" . pg_order_item_active_sql());
@@ -885,7 +914,7 @@ function pg_shipment_label_return_open($return, $user_id)
             products.weight,
             products.length,
             products.width,
-            products.height
+            products.height" . pg_shipment_label_customs_columns() . "
         FROM order_return_items
         LEFT JOIN order_items ON order_items.id = order_return_items.order_item_id
         LEFT JOIN products ON products.id = order_items.product_id
