@@ -261,11 +261,20 @@ if (!$_POST) {
 
     if ($review) {
         if ($verified_order_id > 0) {
-            $order_number = (string) db_value("SELECT order_number FROM orders WHERE id = '" . $verified_order_id . "'");
-            $output_order = h(($order_number !== '') ? $order_number : (string) $verified_order_id);
+            $order = db_item("SELECT id, order_number FROM orders WHERE id = '" . $verified_order_id . "'");
 
-            if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
-                $output_order = '<a href="view_order.php?id=' . $verified_order_id . '">' . $output_order . '</a>';
+            if ($order) {
+                $order_number = (string) $order['order_number'];
+                $output_order = h(($order_number !== '') ? $order_number : (string) $verified_order_id);
+
+                if (defined('USER_MANAGE_ECOMMERCE') && USER_MANAGE_ECOMMERCE) {
+                    $output_order = '<a href="view_order.php?id=' . $verified_order_id . '">' . $output_order . '</a>';
+                }
+
+            // The order was deleted after the review was written: the review
+            // stays verified, but there is nothing left to link to.
+            } else {
+                $output_order = '#' . $verified_order_id . ' ' . h(lang('(deleted)'));
             }
 
             $output_review_line = '<p class="p-0 m-0">' . lang(array('string' => 'Verified purchase: order {var:1}', 'vars' => array($output_order))) . '</p>';
