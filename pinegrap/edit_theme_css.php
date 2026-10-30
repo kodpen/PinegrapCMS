@@ -153,6 +153,11 @@ if (!$_POST) {
     // error page).
     pg_request_single_values(array('code'));
 
+    if (!isset($_POST['code'])) {
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id);
+        exit();
+    }
+
     // A file that could not be written is not recorded and no success is
     // shown: the editor opens again with the error and the typed code.
     function edit_theme_css_write_failed($liveform, $id, $file_name)
@@ -160,11 +165,6 @@ if (!$_POST) {
         $liveform->assign_field_value('code', $_POST['code']);
         $liveform->add_error(lang(array('string' => '{var:1} could not be written to disk.', 'vars' => h($file_name))));
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id . '&send_to=' . urlencode($_POST['send_to'] ?? '') . '&from=' . urlencode($_POST['from'] ?? ''));
-        exit();
-    }
-
-    if (!isset($_POST['code'])) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_theme_css.php?id=' . $id);
         exit();
     }
     
