@@ -10,7 +10,7 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 
 ## How is the kept file found again, on Windows too?
 - `kept()` and `drop()` both use `ws_wtable_import_kept_path()`: `realpath()` directly in the temp folder, a file, a name `ws_wtable_import_temp_name()` takes (`\` read as `/`; `pg_wtimport_*` or Windows' `pg_<1–4 hex>.tmp`, as Windows `tempnam()` keeps 3 prefix characters).
-- Before #PR (#3390) a prefix check on `pg_basename()` failed on IIS: no confirmation, JSON never deleted.
+- Before #3447 (#3390) a prefix check on `pg_basename()` failed on IIS: no confirmation, JSON never deleted.
 
 ## How is the file read?
 - `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's most used separator, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read, the screen says so). The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
