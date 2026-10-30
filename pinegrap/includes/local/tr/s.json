@@ -868,6 +868,7 @@
     "Sending invoices on their own is switched off on the ERP settings card; this choice takes effect once it is on. An invoice can always be sent from its own screen.": "Faturaların kendiliğinden gönderilmesi ERP ayar kartında kapalı; bu seçim o açıldığında geçerli olur. Fatura her zaman kendi ekranından gönderilebilir.",
     "Sending the e-mail message to each specific subscriber now.": "E-posta mesajı belirli abonelerin tümüne gönderiyor.",
     "Sending the refund. Wait for the answer before leaving this page.": "İade gönderiliyor. Bu sayfadan ayrılmadan önce yanıtı bekleyin.",
+    "Sending to this country is not enabled on the Twilio account (Messaging › Settings › Geo permissions).": "Twilio hesabında bu ülkeye gönderim açık değil (Messaging › Settings › Geo permissions).",
     "Sending…": "Gönderiliyor…",
     "Sends one notification to this device now, so you can see whether it arrives.": "Bu cihaza hemen bir bildirim gönderir; ulaşıp ulaşmadığını böyle görürsünüz.",
     "Sends or writes outside the flow": "Akışın dışına gönderir veya yazar",
