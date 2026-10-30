@@ -1,6 +1,6 @@
 ---
 name: workspace-text-fold
-description: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains() in commands.php): what folds, who calls it, why not mb_stripos(), part 2 still pending
+description: Turkish-aware case-insensitive search of the workspace (ws_fold(), ws_text_position(), ws_text_contains() in commands.php): what folds, who calls it, why not mb_stripos(), and ws_scheduled_compare()
 ---
 
 ## Why not mb_stripos() or mb_strtolower()?
@@ -18,5 +18,5 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 - Person and department pickers (`ws_ref_search()` in `refs.php`).
 - Tests: `tests/workspace_text_fold_test.php` (the issue's pairs, plain ASCII, positions, the palette excerpt).
 
-## What is still pending?
-Part 2 of #3400: `ws_scheduled_compare()` in `scheduled.php` (the Flows condition box, the derived "compare" value, scheduled record conditions) still uses `mb_stripos()` / `mb_strtolower()`; it goes together with #3399. The browser side already uses `toLocaleLowerCase('tr')`.
+- Comparisons (#3500, part 2 of #3400): `ws_scheduled_compare()` in `scheduled.php` folds both sides for eq and neq (`ws_fold()`) and contains (`ws_text_contains()`): the Flows condition box, the derived "compare" value, scheduled record conditions. "AYDIN" is "Aydın", "İzmir" contains "izmir". Tests in tests/workspace_flow_site_numbers_test.php.
+- The browser side already uses `toLocaleLowerCase('tr')`.

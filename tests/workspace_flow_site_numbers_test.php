@@ -88,7 +88,7 @@ function test_workspace_flow_condition_reads_site_numbers()
 		pg_assert_true(ws_flow_site_numbers_test_holds('1500', 'gte', '1000')['holds'], '1500 >= 1000 is met');
 		pg_assert_true(ws_flow_site_numbers_test_holds('1.250,50', 'gt', '1.000')['holds'], 'a run value written the Turkish way');
 		pg_assert_false(ws_flow_site_numbers_test_holds('', 'lt', '5')['holds'], 'an empty value is no number');
-		pg_assert_contains('is greater than 1.000,5', ws_flow_site_numbers_test_holds('1500', 'gt', '1.000,50')['text']);
+		pg_assert_contains('is more than 1.000,5', ws_flow_site_numbers_test_holds('1500', 'gt', '1.000,50')['text']);
 	});
 
 	ws_flow_site_numbers_test_as(false, function () {
@@ -96,7 +96,7 @@ function test_workspace_flow_condition_reads_site_numbers()
 		pg_assert_true(ws_flow_site_numbers_test_holds('1500', 'gte', '1000')['holds']);
 		pg_assert_true(ws_flow_site_numbers_test_holds('1500.5', 'gt', '1500.25')['holds'], 'stored machine numbers');
 		pg_assert_false(ws_flow_site_numbers_test_holds('503', 'lt', '99')['holds']);
-		pg_assert_contains('is greater than 1,000 (it was "1500")', ws_flow_site_numbers_test_holds('1500', 'gt', '1000')['text']);
+		pg_assert_contains('is more than 1,000 (it was "1500")', ws_flow_site_numbers_test_holds('1500', 'gt', '1000')['text']);
 	});
 }
 
@@ -113,7 +113,7 @@ function test_workspace_flow_condition_unreadable_number()
 		pg_assert_contains('not a number', ws_flow_condition_problems($config('gt', 'bin'), 'Check')[0]);
 		pg_assert_same(array(), ws_flow_condition_problems($config('gt', '1.000,50'), 'Check'));
 		pg_assert_same(array(), ws_flow_condition_problems($config('eq', 'bin'), 'Check'), 'only a size needs a number');
-		pg_assert_false(ws_flow_condition_check(array(), $config('lte', '1.2.3,4'))['ok']);
+		pg_assert_false(ws_flow_condition_check(array(), $config('lte', '1,2,3'))['ok']);
 		pg_assert_true(ws_flow_condition_check(array(), $config('lte', '1.000'))['ok']);
 	});
 }
@@ -137,7 +137,7 @@ function test_workspace_flow_constants_read_site_numbers()
 		pg_assert_same('1250.5', ws_flow_pure_values($graph('1.250,50'))['c']['limit']);
 		pg_assert_same('1.250', ws_flow_pure_values($graph('1.250'))['c']['code'], 'a text stays as typed');
 		pg_assert_same(array(), $problems('1.250,50'));
-		pg_assert_same(1, count($problems('1.2.3,4')));
+		pg_assert_same(1, count($problems('1,2,3')));
 	});
 
 	ws_flow_site_numbers_test_as(false, function () use ($graph, $problems) {
