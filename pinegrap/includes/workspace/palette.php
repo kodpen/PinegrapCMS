@@ -865,7 +865,7 @@ function ws_palette_js_strings()
         'pal_recent'      => lang('Recent searches'),
         'pal_clear_recent' => lang('Forget the recent searches'),
         'pal_short'       => lang('Type at least two letters.'),
-        'pal_hint'        => lang('↑ ↓ to move, Enter to open, Esc to close'),
+        'pal_hint'        => lang('↑ ↓ to move, Enter to open, Shift+Enter for a person\'s account, Esc to close'),
         'pal_no_composer' => lang('Commands are written in a channel\'s writing box: open a channel first.'),
         'pal_profile'     => lang('Open the account'),
         'pal_count'       => ws_js_template('{var:1} found', 1),
