@@ -30,6 +30,6 @@ description: Plan (2026-10-23; 1-3, 4 panel and 6 built, 7 approved): Sales quot
 3. Cart quote: own tables at catalogue prices, valid until expired or ordered; a single-use offer code later; never a per-line price (not the saved-cart link).
 
 ## Where to start?
-- Slices 1-3, 4 (panel) and 6 are built; 7 is approved and free to claim; 4's API part after 5e.
+- Slices 1-3, 4 (panel) and 6 are built; 7 is being built (`feature/erp-quote-guest-link`); 4's API part after 5e.
 - 5a PR #3091: tables 11.0.124, model, link page `cart_quote.php`, order completion, contact holder, export, erasure (commerce/cart-quotes.md). 5b PR #3148: panel screens, cancel, new link, Workspace card section. 5c PR #3197: "New cart quote" on the customer card (not the channel menu). 5d PR #3256: the tag `cart_quote` (`#sepet`, `#cartquote`), read under `orders:read`; `view_cart_quotes.php?id=` (workspace/workspace-cart-quote-tag.md).
 - Next: 5e, the `cart_quote.*` routes (api/README.md). Their reads ask `orders:read`, as the tag's two scope maps do; another scope changes those maps and `test_ws_api_search_record_scopes_name_known_kinds` with it.
