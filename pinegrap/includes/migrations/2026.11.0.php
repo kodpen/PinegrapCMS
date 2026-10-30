@@ -122,6 +122,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
 	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
 	upgrade_2026_11_0_erp_quote_templates();    // 11.0.63
+	upgrade_2026_11_0_form_field_rules();       // 11.0.135
 
 }
 
@@ -3903,5 +3904,17 @@ function upgrade_2026_11_0_tr_district_plate() {
 	}
 
 	install_note('Addresses: a recipient can carry a district, and the Turkish provinces in the states list now carry their plate numbers.');
+
+}
+
+// A designed form field can carry visitor rules: a date not before today and a
+// field required only for some answers of another field. The rules are a JSON
+// object written by the designer sync and checked on site submissions only.
+// NULL means no rule, which changes nothing on a running site.
+function upgrade_2026_11_0_form_field_rules() {
+
+	install_add_column('form_fields', 'rules', "TEXT NULL");
+
+	install_note('Designed forms: a date field can refuse dates before today and a field can be required only when another field has a given answer.');
 
 }
