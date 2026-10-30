@@ -117,6 +117,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_product_customs();       // 11.0.130
 	upgrade_2026_11_0_shipment_label_pickup(); // 11.0.131
 	upgrade_2026_11_0_subscription_price_notice(); // 11.0.132
+	upgrade_2026_11_0_workspace_visit_contact(); // 11.0.118
 
 }
 
@@ -3760,5 +3761,21 @@ function upgrade_2026_11_0_subscription_price_notice() {
 	}
 
 	install_note('Subscriptions: a price change is e-mailed to the customer at least 14 days before it is charged, through campaign profiles of the new subscription price changed action.');
+
+}
+
+// The customer a Workspace plan item is about (2026.11.0, 11.0.118;
+// includes/workspace/schedule.php). A customer visit on the Work Calendar
+// may name the contact it is with; it then shows on that customer's card and
+// history. 0 for every item made before, and for meetings, leave and
+// holidays. The column is a contact holder (pg_contact_holders()), so a merge
+// re-points it and an erasure finds it. KEY idx_contact serves the history
+// read of one customer.
+function upgrade_2026_11_0_workspace_visit_contact() {
+
+	install_add_column('ws_events', 'contact_id', "INT UNSIGNED NOT NULL DEFAULT 0");
+	install_add_index('ws_events', 'idx_contact', "INDEX idx_contact (contact_id)");
+
+	install_note('Workspace: a customer visit on the Work Calendar can name the customer, and it shows on that customer\'s card and history.');
 
 }
