@@ -2444,6 +2444,7 @@ function mp_trendyol_address($entry, $key) {
 		'address_2' => $line_2,
 		'city'      => mp_trendyol_text($address, array('city')),
 		'state'     => mp_trendyol_text($address, array('district')),
+		'district'  => mp_trendyol_text($address, array('district')),
 		'zip'       => mp_trendyol_text($address, array('postalCode')),
 		'country'   => mp_trendyol_text($address, array('countryCode')),
 		'phone'     => mp_trendyol_text($address, array('phone'))

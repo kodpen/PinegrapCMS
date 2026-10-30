@@ -613,3 +613,28 @@ function test_carrier_label_aras_long_refusal_is_cut_on_a_character()
 	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
 	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
 }
+
+// The recipient's district goes as the town when one was entered; an order
+// from before the district box sends its city as before.
+function test_carrier_label_aras_town_is_the_district_else_the_city()
+{
+	pg_label_load('aras');
+	$shipment = carrier_label_aras_test_shipment();
+	$shipment['recipient']['district'] = 'Kızılay';
+	$order = pg_label_aras_order($shipment, carrier_label_aras_test_account(), 'C1');
+	pg_assert_same('Kızılay', $order['ReceiverTownName']);
+	pg_assert_same('Ankara', $order['ReceiverCityName']);
+
+	$order = pg_label_aras_order(carrier_label_aras_test_shipment(), carrier_label_aras_test_account(), 'C1');
+	pg_assert_same('Çankaya', $order['ReceiverTownName'], 'no district key');
+
+	$shipment['recipient']['district'] = ' ';
+	$order = pg_label_aras_order($shipment, carrier_label_aras_test_account(), 'C1');
+	pg_assert_same('Çankaya', $order['ReceiverTownName'], 'an empty district');
+
+	$shipment['recipient']['district'] = 'Çankaya';
+	$shipment['recipient']['city'] = '';
+	pg_assert_same('', pg_label_aras_shipment_error($shipment), 'a district without a city is enough');
+
+	pg_assert_true(pg_label_aras_needs_district());
+}

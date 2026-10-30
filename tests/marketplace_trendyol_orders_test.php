@@ -194,6 +194,7 @@ function test_marketplace_trendyol_orders_package_addresses()
 	pg_assert_same('Caferağa Mahallesi', $shipping['address_2'], 'a copy of the first line is replaced by the neighbourhood');
 	pg_assert_same('İstanbul', $shipping['city']);
 	pg_assert_same('Kadıköy', $shipping['state'], 'the district');
+	pg_assert_same('Kadıköy', $shipping['district'], 'the district for ship_tos.district');
 	pg_assert_same('34710', $shipping['zip']);
 	pg_assert_same('TR', $shipping['country']);
 	pg_assert_same('5551112233', $shipping['phone']);

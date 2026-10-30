@@ -41,6 +41,17 @@ function pg_label_aras_info()
     );
 }
 
+/**
+ * SetOrder needs the recipient's district (ReceiverTownName), so checkout
+ * offers the district box for Aras's carriers (pg_ship_to_district_carrier_asks()).
+ *
+ * @return bool
+ */
+function pg_label_aras_needs_district()
+{
+    return true;
+}
+
 function pg_label_aras_fields()
 {
     return array(
@@ -510,10 +521,14 @@ function pg_label_aras_shipment_error($shipment)
         return lang('Aras Kargo labels are made for addresses in Turkey only.');
     }
 
-    foreach (array('name', 'address_1', 'city', 'state') as $name) {
+    foreach (array('name', 'address_1', 'state') as $name) {
         if (pg_label_aras_field($recipient, $name) === '') {
             return lang('Aras Kargo needs the name, address, district, province and phone number of the shipping address.');
         }
+    }
+
+    if (pg_label_recipient_district($recipient) === '') {
+        return lang('Aras Kargo needs the name, address, district, province and phone number of the shipping address.');
     }
 
     if (strlen(pg_label_aras_phone(pg_label_aras_field($recipient, 'phone'))) < 10) {
@@ -565,7 +580,7 @@ function pg_label_aras_order($shipment, $account, $code)
         'ReceiverAddress'      => mb_substr(trim($field($recipient, 'address_1') . ' ' . $field($recipient, 'address_2')), 0, 250),
         'ReceiverPhone1'       => pg_label_aras_phone($field($recipient, 'phone')),
         'ReceiverCityName'     => $field($recipient, 'state'),
-        'ReceiverTownName'     => $field($recipient, 'city'),
+        'ReceiverTownName'     => pg_label_recipient_district($recipient),
         'VolumetricWeight'     => (string) $desi,
         'Weight'               => (string) $weight,
         'PieceCount'           => '1',

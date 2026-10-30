@@ -44,6 +44,18 @@ function pg_label_kargonomi_info()
     );
 }
 
+/**
+ * A shipment is refused without the recipient's district (its lookup in
+ * GET /cities), so checkout offers the district box for Kargonomi's
+ * carriers (pg_ship_to_district_carrier_asks()).
+ *
+ * @return bool
+ */
+function pg_label_kargonomi_needs_district()
+{
+    return true;
+}
+
 function pg_label_kargonomi_fields()
 {
     return array(
@@ -319,7 +331,7 @@ function pg_label_kargonomi_shipment_error($shipment)
     $address = trim(pg_label_kargonomi_text($recipient, 'address_1') . ' ' . pg_label_kargonomi_text($recipient, 'address_2'));
 
     if ((mb_strlen($name) < 5) || (count(preg_split('/\s+/', $name)) < 2) || (mb_strlen($address) < 10)
-        || (pg_label_kargonomi_text($recipient, 'city') === '') || (pg_label_kargonomi_text($recipient, 'state') === '')
+        || (pg_label_recipient_district($recipient) === '') || (pg_label_kargonomi_text($recipient, 'state') === '')
         || (pg_label_kargonomi_phone(pg_label_kargonomi_text($recipient, 'phone')) === '')) {
         return lang('Kargonomi needs the recipient\'s name and surname, an address of at least ten characters, the district, the province and a Turkish phone number.');
     }
@@ -690,7 +702,7 @@ function pg_label_kargonomi_create($shipment, $account)
 
     $recipient = $shipment['recipient'];
     $province = pg_label_kargonomi_text($recipient, 'state');
-    $district = pg_label_kargonomi_text($recipient, 'city');
+    $district = pg_label_recipient_district($recipient);
     $states = pg_label_kargonomi_places('/states', $account);
 
     if (!$states['ok']) {

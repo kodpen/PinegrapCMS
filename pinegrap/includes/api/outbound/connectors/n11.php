@@ -973,7 +973,8 @@ function mp_n11_package($entry) {
 //
 // Their city is the province and their district the town within it; the
 // store keeps the town as the city and the province as the state, the way a
-// Turkish address is entered at checkout. Only an order being created reads
+// Turkish address is entered at checkout; the town also goes to
+// ship_tos.district. Only an order being created reads
 // this (mp_order_ship_to() inserts the address once), so orders imported
 // earlier keep the two the other way round.
 function mp_n11_address($entry, $key) {
@@ -1007,6 +1008,7 @@ function mp_n11_address($entry, $key) {
 		'address_1' => $read(array('address', 'addressText', 'fullAddress')),
 		'address_2' => $read(array('neighborhood', 'address2')),
 		'city'      => $read(array('district', 'districtName', 'town')),
+		'district'  => $read(array('district', 'districtName', 'town')),
 		'state'     => $read(array('city', 'cityName')),
 		'zip'       => $read(array('postalCode', 'zipCode')),
 		'country'   => $read(array('country', 'countryName')),

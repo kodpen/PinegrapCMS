@@ -4,11 +4,11 @@ description: Geliver label driver (2026.11.0, #3096): two-step flow, offers, bar
 ---
 
 ## What is it?
-- `includes/shipping/geliver.php`, key `geliver` in `pg_label_builtin_drivers()` (portal: the Geliver panel's API tokens page). Contract and answers: `carrier-label-drivers.md`. Built from the public reference https://docs.geliver.io (`llms-full.txt`), base `https://api.geliver.io/api/v1`, `Authorization: Bearer`, answers `{result, data}` or `{result: false, code|errorCode, message}`.
+- `includes/shipping/geliver.php`, key `geliver` in `pg_label_builtin_drivers()` (token: Geliver panel, API tokens). Contract: `carrier-label-drivers.md`. From the public reference https://docs.geliver.io (`llms-full.txt`), base `https://api.geliver.io/api/v1`, `Authorization: Bearer`, answers `{result, data}` or `{result: false, code|errorCode, message}`.
 - Fields: `api_token` (secret, required), `mode` (select live/test, default test: `"test": true` makes a free shipment), `sender_address` (a Geliver sender address id; empty = the default sender at Geliver), `service` (a service code such as `YURTICI_STANDART`; empty = the cheapest offer). No sender address fields: Geliver keeps the sender address itself.
 
 ## How does create() work?
-- The `$shipment` shape is in the file header (order_number, recipient with `state_code` = plate number, parcel cm/kg, items, total in minor units, currency, service, return). Step 3 builds it.
+- `$shipment`: file header (order_number, recipient with `state_code` = plate, parcel cm/kg, items, total in minor units, currency, service, return). `districtName` = `district`, else `city` (`tr-district-carriers.md`).
 - `POST /shipments` → offers; while `percentageCompleted` < 100 it reads `GET /shipments/{id}` up to 5 times, 2 s apart. The offer: the asked service's (shipment `service`, else the account's), else `offers.cheapest`. In test mode the service is ignored (only `GELIVER_STANDART` offers). No offer → plain failure; the unpaid shipment stays at Geliver.
 - `POST /transactions {offerID}` buys the label. A transport error after the request went out, a 5xx or a non-JSON answer is `unclear` (it may have been charged); `result: false` (E1066 balance etc.) is a plain refusal.
 - `tracking_number` is the carrier's `trackingNumber`, else Geliver's `barcode`: some carriers give their number only at the branch, and the barcode is what the branch scans. `carrier` maps providerCode YURTICI/SURAT/ARAS/MNG/PTT; others stay '' (the shipping method decides).
