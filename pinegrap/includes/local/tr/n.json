@@ -1158,6 +1158,7 @@
     "Not available": "Yok",
     "Not available in a shared component": "Ortak bileşende kullanılamaz",
     "Not available: {why}": "Kullanılamıyor: {why}",
+    "Not before today": "Bugünden önce olamaz",
     "Not billable": "Faturalanmaz",
     "Not built yet.": "Henüz oluşturulmadı.",
     "Not checked": "Kontrol edilmedi",

@@ -2195,7 +2195,7 @@ $widgets = array(
             ), lang('At the practice')),
             $form_step(2, lang('When suits you?')),
             $row(array(
-                $col(array($field('cl-appt-date', lang('Preferred Date'), $input('cl-appt-date', 'date', 'preferred_date', 'off'))), '6'),
+                $col(array($field('cl-appt-date', lang('Preferred Date'), $input('cl-appt-date', 'date', 'preferred_date', 'off', true, array('rules' => array('min_date' => 'today'))))), '6'),
                 $col(array($field('cl-appt-time', lang('Preferred Time'), $select('cl-appt-time', 'preferred_time', lang('Choose a time of day…'), $time_windows))), '6'),
             ), '3'),
             $form_step(3, lang('About you')),
