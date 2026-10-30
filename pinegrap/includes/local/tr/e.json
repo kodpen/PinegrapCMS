@@ -915,6 +915,7 @@
     "Every request from companies, with its quote and status.": "Şirketlerden gelen tüm talepler, teklifleri ve durumlarıyla.",
     "Every request, newest first, with its status.": "Bütün talepler, en yenisi üstte, durumlarıyla.",
     "Every revision younger than this, however many there are. 1 to {var:1}.": "Bundan yeni her sürüm, kaç tane olursa olsun. 1 ile {var:1} arası.",
+    "Every run": "Her çalıştırmada",
     "Every sale invoiced, every purchase entered.": "Her satış faturalandı, her alış girildi.",
     "Every saved page of the design, with its shared components, widgets, folders and assets, becomes a template under Choose a Template. Save first: the template is made from what is on the server.": "Tasarımın kaydedilmiş bütün sayfaları; ortak bileşenleri, widget'ları, klasörleri ve varlıklarıyla birlikte Şablondan Seç altında bir şablon olur. Önce kaydedin: şablon, tasarımın sunucudaki hâlinden oluşturulur.",
     "Every screen sits in the same frame: the menu down the left, the bar across the top, and the chat in the corner. A few short steps and you will know where things are. You can leave at any point, and start this again whenever you like from Interface tour in My Menu at the top right.": "Her ekran aynı çerçevenin içinde durur: solda menü, üstte çubuk, köşede sohbet. Birkaç kısa adımda neyin nerede olduğunu öğreneceksiniz. İstediğiniz anda çıkabilir, sağ üstteki Menüm içindeki Arayüz turu ile dilediğiniz zaman yeniden başlatabilirsiniz.",

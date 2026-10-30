@@ -19,6 +19,10 @@
  * Only runs of flows with the root's owner fold into the line: a chained
  * flow somebody else owns tells its owner on a line per run, as before.
  *
+ * The start box's tell choice (every run, only failures, never) decides
+ * whether a run's end is told (ws_flow_run_tell_wanted()): the root's choice
+ * for a run that goes well, a flow set to never stays out of the line.
+ *
  * The root's id is written into a chained run's context as it is started
  * (chain_root); a run started before that walks its start keys
  * (flow:<run>-<box>-<pass>) up to the root. No schema: the line is the
@@ -106,6 +110,34 @@ function ws_flow_chain_folds($run_id, $root_id, $owner_id, $root_owner_id)
 {
     return ((int) $root_id > 0) && ((int) $root_id !== (int) $run_id)
         && ((int) $root_owner_id > 0) && ((int) $owner_id === (int) $root_owner_id);
+}
+
+/**
+ * Whether a run's end is told at all, by the tell choices
+ * (ws_flow_tell_of()) of its own flow and of its chain's root. A flow set to
+ * never is never told and stays out of a chain's line, even when it failed.
+ * Any other failure is told: alone, or as the chain's line turned to
+ * failure. A run that went well is told by the choice of the line it lands
+ * on: its own alone, the root's when it folds into the root's line; only
+ * every run tells it. Pure.
+ *
+ * @param string $own    the run's own flow's choice
+ * @param string $root   the root's flow's choice (the own one for a run alone)
+ * @param string $state  done | failed
+ * @param bool   $folded whether the run folds into its root's line
+ * @return bool
+ */
+function ws_flow_run_tell_wanted($own, $root, $state, $folded)
+{
+    if ((string) $own === 'never') {
+        return false;
+    }
+
+    if ((string) $state === 'failed') {
+        return true;
+    }
+
+    return ((string) ($folded ? $root : $own) === 'every');
 }
 
 /**
@@ -236,7 +268,8 @@ function ws_flow_chain_notice_line($owner_id, $root_id)
 
 /**
  * How many runs of the root's chain, of flows with this owner, ended on the
- * line since it began; the run ending now always counts.
+ * line since it began; the run ending now always counts, a run of a flow
+ * set to never tell does not (its graph read per version, few in a chain).
  *
  * @param int   $owner_id
  * @param array $root_run
@@ -250,12 +283,21 @@ function ws_flow_chain_notice_count($owner_id, $root_run, $run_id, $since)
 
     // The context is JSON written once, chain_root its last key
     // (ws_flow_chain_context()).
-    return (int) db_value("SELECT COUNT(*) FROM ws_flow_runs r
+    $rows = db_items("SELECT r.id, r.version_id FROM ws_flow_runs r
         JOIN ws_flows f ON f.id = r.flow_id
         WHERE f.owner_id = '" . (int) $owner_id . "' AND r.depth > 0 AND r.status IN ('done', 'failed')
         AND r.started_at >= '" . (int) ($root_run['started_at'] ?? 0) . "'
         AND (r.id = '" . (int) $run_id . "' OR (r.finished_at >= '" . (int) $since . "'
             AND (r.context LIKE '%\"chain_root\":" . $root_id . "}' OR r.context LIKE '%\"chain_root\":" . $root_id . ",%')))");
+    $count = 0;
+
+    foreach ((array) $rows as $row) {
+        if (((int) $row['id'] === (int) $run_id) || (ws_flow_tell_of(ws_flow_run_graph($row)) !== 'never')) {
+            $count++;
+        }
+    }
+
+    return $count;
 }
 
 /**
@@ -282,6 +324,15 @@ function ws_flow_run_tell_chain($run, $state, $flow, $owner_id)
 
     if (($root_id !== $run_id) && !ws_flow_chain_folds($run_id, $root_id, $owner_id, $root_flow ? (int) $root_flow['owner_id'] : 0)) {
         return null;
+    }
+
+    // Each choice is read from the version the run used: the owner
+    // publishes it, so a member's draft never changes what is told.
+    $own_tell = ws_flow_tell_of(ws_flow_run_graph($run));
+    $root_tell = ($root_id === $run_id) ? $own_tell : ws_flow_tell_of(ws_flow_run_graph($root_run));
+
+    if (!ws_flow_run_tell_wanted($own_tell, $root_tell, $state, $root_id !== $run_id)) {
+        return 0;
     }
 
     $root_name = (string) $root_flow['name'];
