@@ -21,7 +21,7 @@ description: ERP bell and device notices (4.91): money in, low stock, quotes run
 - Visibility today: `manage_erp` with the module on; `erp_money` also needs the cash right.
 
 ## How does a sales quote about to run out become a follow-up? (#1826)
-- Only with `ERP_QUOTE_EXPIRY_FOLLOWUP` true and the Workspace on. A switch on Settings would need a `config` column (schema), so it is a config.php constant; the owner was asked about a checkbox.
+- Only with `ERP_QUOTE_EXPIRY_FOLLOWUP` true and the Workspace on. A Settings checkbox on `config.erp_quote_expiry_followup` is approved (#3672) and not built yet; until then the config.php constant.
 - Opened as the quote's `created_by` (`pg_load_user_row()`, `ws_viewer()`, members only), skipped when nobody is left to open it as. Channel: the first of `ws_customer_channels('erp_account', account)` (about the account or its contact, most recently active first) the maker may post in; none: the maker's own task.
 - `erp_quote_followup_input()` (pure): tag `<#erp_quote:id>`, title "Sales quote <number> runs out" (never the account's name), due on `valid_until` at 23:59, reminded that day at `WS_TASK_REMIND_DAY_TIME` (at once when that has passed).
 - `ws_followup_task_open(..., true)`: an open follow-up of the quote is handed back, so a moved date announced again opens no second one. The days window is `erp_quote_expiry_window()`, shared with `erp_quote_expiring_count()`.

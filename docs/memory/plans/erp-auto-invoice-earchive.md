@@ -26,8 +26,8 @@ description: Plan (approved 2026-10-19): auto invoice with its two filters and t
 5. When done: decisions move to docs/memory/erp/erp-auto-invoice.md and this file is deleted.
 
 ## Open questions?
-- Marketplace orders: auto-invoice too (the marketplace needs the invoice link) once `marketplace-trendyol-hepsiburada.md` pushes links; default on for them. Until then the decision skips them.
+- Marketplace orders: decided #3670 (`workflow/decisions-made-product-9.md`): behind `config.erp_auto_invoice_marketplace`, default off, the card's trigger, `mp_order_apply_tracking()` fires `order_shipped`; the link push and a public PDF address later. Not built.
 - Once the queue worker exists: enqueue the e-document send right after the automatic invoice, as first planned.
 
 ## Where to start?
-- Step 3 is the only step left; it waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
+- Step 3 and the marketplace switch (#3670, free to claim) are left; step 3 waits for the İşbaşı test environment, to check the internet-sale note and payment fields against the provider's UBL profile (no field is guessed, `erp-edoc-driver-layer.md`). Read docs/memory/erp/erp-auto-invoice.md first.
