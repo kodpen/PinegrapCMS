@@ -121,7 +121,7 @@ function csv_export_test_function_body($file, $name)
 	$start = strpos($source, 'function ' . $name . '(');
 	$end = strpos($source, "\nfunction ", $start + 1);
 
-	return substr($source, $start, ($end === false) ? null : $end - $start);
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
 }
 
 function test_csv_export_erp_audit_trail_guards_its_text_cells()
