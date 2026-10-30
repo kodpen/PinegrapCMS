@@ -239,7 +239,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - pg-ui-adapter.md: pgUI (assets/js/pg_ui.js), the panel's one door to Bootstrap's JavaScript on 5.3 and 6: kinds, promises, both event names, dialog markup, overlay host, readiness, the Bootstrap 6 bridge
 - phone-width-rows.md: Phone-width fixes: v6 .input-group and .btn do not wrap (rate tiers, order documents card, sign-in rows), Login Region code fields, inner flex clusters wrap, marketplace grid minimum
 - print-order-product-links.md: The order print view's product name and image are real links to edit_product.php, reachable from the keyboard
-- print-views-light-paper.md: The order print view and packing slip force the light theme (they stand for the paper), carry their own title and the store icon; the e-mail campaign popups' title and icon
+- print-views-light-paper.md: The order print view and packing slip force the light theme, carry their own title and the store icon; the packing slip's address lines; the campaign popups' title and icon
 - product-attribute-shared-form.md: The product attribute create and edit screens share includes/forms/product_attribute_form.php: what it holds, what stays in the screens
 - product-edit-vs-set-edit.md: Why product editing (edit_product.php) and variant set editing (edit_product_group.php) are separate screens, and why the product screen has no variant matrix.
 - product-group-shared-form.md: The product group create and edit screens share includes/forms/product_group_form.php: what it holds, what stays in the screens
