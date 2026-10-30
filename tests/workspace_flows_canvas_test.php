@@ -1092,7 +1092,7 @@ JS
 function test_workspace_flows_canvas_value_picker_offers_the_boxes_before()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     event: { into: false, out: ['next'] },
@@ -1159,7 +1159,7 @@ JS
 function test_workspace_flows_canvas_condition_value_rule()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources', 'valueNames',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources', 'valueNames',
 			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
 		<<<'JS'
 var uid = 0;
@@ -1257,7 +1257,7 @@ function test_workspace_flows_canvas_data_threads_come_from_the_fields()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1325,7 +1325,7 @@ function test_workspace_flows_canvas_thread_binds_into_the_fields_after()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'bindValue'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1401,7 +1401,7 @@ JS
 function test_workspace_flows_canvas_constants_are_offered_to_every_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1443,7 +1443,7 @@ JS
 function test_workspace_flows_canvas_derived_box_reads_any_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'derivedRule', 'openFields'),
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'derivedRule', 'openFields'),
 		"var VALUE_FIELDS = { post: [['body', 'fl_post_body', 4000]], value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]] };\n" . <<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1508,7 +1508,7 @@ function test_workspace_flows_canvas_run_lists_the_values_received()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads', 'toneClass', 'stepOf', 'runValue', 'runFilled', 'runReads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -2309,7 +2309,7 @@ function test_workspace_flows_canvas_for_each_loop()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf',
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf',
 			'valueGroups', 'valueSources', 'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'arrowOutcomes', 'loopFrame'),
 		$kinds[0] . $fields[0] . 'var BOX_W = 208; var BOX_H = 80; var LOOP_PAD = { side: 16, top: 28, bottom: 32 };' . "\n"
 		. 'var FL = { outputs: ' . json_encode(array_map(function ($kind) { return $kind['outputs']; }, ws_flow_kinds())) . ', trigger_outputs: { kinds: {} }, steps: {} };' . "\n"
@@ -2436,4 +2436,64 @@ function test_workspace_flows_canvas_outline_draws_the_open_form_only()
 	pg_assert_true(substr_count($outline, 'nodeForm(node)') === 1, 'no other form is drawn');
 	pg_assert_contains("label.setAttribute('aria-expanded'", $outline, 'the heading says whether the box is open');
 	pg_assert_contains('drawOutline();', $select, 'selecting another box opens its form');
+}
+
+// The run notice's address (workspace_flows.php?flow=…&run=…) opens the
+// flow with that run shown.
+function test_workspace_flows_canvas_address_opens_a_run()
+{
+	$start = ws_flows_canvas_test_script_function(str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js')), 'start');
+
+	pg_assert_contains('[?&]run=([0-9]+)', $start);
+	pg_assert_contains('openLastRun({ id: askedRun, flow_id: asked })', $start);
+}
+
+// A live flow's side panel says changes stay in the draft; the cancel
+// dialog's way out reads Keep running, not a second Cancel.
+function test_workspace_flows_canvas_live_hint_and_cancel_dialog()
+{
+	pg_assert_contains("state.edit ? flowHelp() : t('fl_read_only')", ws_flows_canvas_test_function('flowForm'));
+	pg_assert_contains("(flow.status === 'live') && (flow.version > 0)) ? t('fl_flow_help_live')", ws_flows_canvas_test_function('flowHelp'));
+	pg_assert_contains("t('fl_run_keep')", ws_flows_canvas_test_function('askCancel'));
+	pg_assert_contains('askCancel()', ws_flows_canvas_test_function('cancelRun'));
+	pg_assert_contains('askCancel()', ws_flows_canvas_test_function('stopLastRun'));
+	pg_assert_contains("'fl_flow_help_live'", ws_flows_canvas_test_strings_source());
+	pg_assert_contains("'fl_run_keep'", ws_flows_canvas_test_strings_source());
+}
+
+// A title with values reads as the value picker names them; a value no box
+// gives leaves the box's kind name; the settings keep the title as written.
+function test_workspace_flows_canvas_titles_name_their_values()
+{
+	pg_assert_contains('textInput(rawTitle(node)', ws_flows_canvas_test_function('nodeForm'));
+
+	$out = ws_flows_canvas_test_node(array('rawTitle', 'titleOf', 'namedTitle'), <<<'JS'
+var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))\}\}/g;
+var KINDS = { manual: { name: 'Started by hand', into: false }, task: { name: 'Task', into: true }, approval: { name: 'Approval', into: true }, constants: { name: 'Constants', into: false, pure: true } };
+function kindOf(node) { return KINDS[node.kind]; }
+state.graph = { nodes: [
+    { id: 'start', kind: 'manual', label: '', config: {} },
+    { id: 'd30', kind: 'constants', label: 'Counter', config: {} },
+    { id: 't1', kind: 'task', label: '', config: { title: 'Finish (counter {{node.d30.value}}) for {{trigger.name}}' } },
+    { id: 't2', kind: 'approval', label: '', config: { title: 'Stock {{node.gone.qty}}' } },
+    { id: 't3', kind: 'task', label: '', config: { title: 'After {{node.t1.task_id}}' } },
+    { id: 't4', kind: 'task', label: '', config: { title: 'Plain' } }
+] };
+function nodeById(id) { return state.graph.nodes.filter(function (node) { return node.id === id; })[0] || null; }
+function boxValues(node) {
+    var keys = { start: [['trigger.', 'name', 'Name']], d30: [['node.d30.', 'value', 'value']], t1: [['node.t1.', 'task_id', 'Task']] }[node.id] || [];
+    return keys.map(function (key) { return { token: '{{' + key[0] + key[1] + '}}', key: key[1], label: key[2] }; });
+}
+console.log(JSON.stringify(state.graph.nodes.map(function (node) { return [titleOf(node), rawTitle(node)]; })));
+JS
+	);
+
+	if ($out === null) {
+		return;
+	}
+
+	pg_assert_same(array('Finish (counter [Counter › value]) for [Started by hand › Name]', 'Finish (counter {{node.d30.value}}) for {{trigger.name}}'), $out[2]);
+	pg_assert_same('Approval', $out[3][0], 'a value no box gives: the kind name');
+	pg_assert_same('After [Task › Task]', $out[4][0], 'a box whose title holds values is named by its kind');
+	pg_assert_same('Plain', $out[5][0]);
 }
