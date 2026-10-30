@@ -213,6 +213,13 @@ $settings_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commer
 $contact_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('contact');
 $edoc_url = PATH . SOFTWARE_DIRECTORY . '/' . pg_settings_return_url('commerce', 'pgset-invoice');
 
+// The Site Settings dialog and screens are for role < 3; a role 3 user with
+// the ERP settings right sees where the setting is as plain text.
+$can_site_settings = ((int) $user['role'] < 3);
+$contact_place = lang('Site Settings') . ' &rsaquo; ' . lang('Contact');
+$settings_place = lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('ERP');
+$edoc_place = lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('E-Invoice');
+
 // The names a template may use, grouped the way the data is nested. Kept next
 // to the editor because a placeholder nobody can find is a placeholder nobody
 // uses.
@@ -489,11 +496,11 @@ echo pg_page_shell(array(
                 </div>
                 <div class="card-body">
                     <p class="mb-3">' . lang('The seller title, address and logo printed on the invoice come from the organization settings.') . '
-                        <a href="' . h($contact_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Contact') . '</a></p>
+                        ' . ($can_site_settings ? '<a href="' . h($contact_url) . '">' . $contact_place . '</a>' : $contact_place) . '</p>
                     <p class="mb-3">' . lang('The seller tax number, tax office and the address the sale was made at are on the ERP card of the commerce settings.') . '
-                        <a href="' . h($settings_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('ERP') . '</a></p>
+                        ' . ($can_site_settings ? '<a href="' . h($settings_url) . '">' . $settings_place . '</a>' : $settings_place) . '</p>
                     <p class="mb-0">' . lang('The e-document provider (Paraşüt, Logo İşbaşı) and its credentials are on the E-Invoice card of the commerce settings.') . '
-                        <a href="' . h($edoc_url) . '">' . lang('Site Settings') . ' &rsaquo; ' . lang('Commerce') . ' &rsaquo; ' . lang('E-Invoice') . '</a></p>
+                        ' . ($can_site_settings ? '<a href="' . h($edoc_url) . '">' . $edoc_place . '</a>' : $edoc_place) . '</p>
                 </div>
             </div>
 

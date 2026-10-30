@@ -349,7 +349,8 @@ $config = array(
     ),
 );
 
-$output_can_settings = $can_erp && (((int) $user['role'] < 3) || !empty($user['manage_erp_settings']));
+// The ERP card is on the commerce settings screen, which admits role < 3 only.
+$output_can_settings = $can_erp && ((int) $user['role'] < 3);
 
 // The account drawer of the ERP lists, reused for "Account summary".
 if ($can_erp) {
