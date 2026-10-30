@@ -4,7 +4,8 @@
  *
  * Short shared keys read in the sense of each screen: SEO stays SEO, the
  * cheque direction filter has its own key beside the cheque status, the
- * uptime note names uptime monitors, and the visitor report's order steps
+ * uptime note names uptime monitors, the audit trail's action has its own
+ * "created" key, and the visitor report's order steps
  * and page views read as the order flow, not as data recovery.
  *
  * @author      Erdal Güral (Kodpen)
@@ -43,6 +44,21 @@ function test_panel_shared_keys_cheque_direction_has_its_own_key()
 
 	pg_assert_false(strpos($source, "lang('Given')") !== false, 'erp_cheques.php has no lang(\'Given\')');
 	pg_assert_same(2, substr_count($source, "lang('Given out')"), 'erp_cheques.php direction label and filter');
+}
+
+// The audit trail's action reads "Oluşturuldu" under its own key; "Created"
+// stays "Oluşturulma", the column header of about 30 lists.
+function test_panel_shared_keys_audit_action_has_its_own_key()
+{
+	$map = pg_test_language_map();
+
+	pg_assert_same('Oluşturuldu', $map['Record created'] ?? null, 'Record created');
+	pg_assert_same('Oluşturulma', $map['Created'] ?? null, 'Created');
+
+	$source = panel_shared_keys_source('includes/fn/audit_view.php');
+
+	pg_assert_true(strpos($source, "'create'  => lang('Record created')") !== false, 'audit action create label');
+	pg_assert_false(strpos($source, "lang('Created')") !== false, 'audit_view.php has no lang(\'Created\')');
 }
 
 function test_panel_shared_keys_uptime_note_names_uptime_monitors()

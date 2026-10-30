@@ -345,3 +345,85 @@ function test_core_timezone_object_never_throws()
 	pg_assert_same(date_default_timezone_get(), pg_timezone_object('Nowhere/Atlantis')->getName(), 'an unknown name: the default zone');
 	pg_assert_same(date_default_timezone_get(), pg_timezone_object('')->getName(), 'none: the default zone');
 }
+
+// Draws a relative time and the absolute time of the same moment in a PHP
+// process of its own with the panel in Turkish (the runner's lang() speaks
+// English). Null when PHP cannot be started again.
+function core_test_turkish_relative_time()
+{
+	if (!function_exists('exec') || !defined('PHP_BINARY') || (PHP_BINARY === '')) {
+		return null;
+	}
+
+	$file = @tempnam(sys_get_temp_dir(), 'pgreltime');
+
+	if ($file === false) {
+		return null;
+	}
+
+	$script = <<<'PHP'
+define('SOFTWARE_LANGUAGE', 'tr');
+define('DATE_FORMAT', 'day_month');
+define('TIME_FORMAT', 'twenty_four_hours');
+date_default_timezone_set('Europe/Istanbul');
+require $pg_dir . '/functions.php';
+
+// Thursday 15 October 2026, 22:11 in Istanbul.
+$timestamp = 1792091501;
+$out = array();
+
+foreach (array('date_and_time', 'date') as $type) {
+	$out[$type] = array(
+		'relative' => get_relative_time(array('timestamp' => $timestamp, 'type' => $type)),
+		'absolute' => get_absolute_time(array('timestamp' => $timestamp, 'type' => $type, 'format' => 'plain_text')),
+	);
+}
+
+echo json_encode($out);
+PHP;
+
+	file_put_contents($file, '<?php' . "\n"
+		. '$pg_dir = ' . var_export(PG_FUNCTIONS_DIR, true) . ";\n"
+		. $script . "\n");
+
+	$lines = array();
+	$code = 1;
+	@exec(escapeshellarg(PHP_BINARY) . ' -d display_errors=stderr -d error_reporting=-1 ' . escapeshellarg($file) . ' 2>&1', $lines, $code);
+	@unlink($file);
+
+	$result = json_decode(implode("\n", $lines), true);
+
+	if (($code !== 0) || !is_array($result) || !isset($result['date_and_time'], $result['date'])) {
+		return array('error' => implode("\n", $lines));
+	}
+
+	return $result;
+}
+
+// The tooltip of a relative time is the plain-text absolute time of the same
+// moment, so a Turkish panel shows "Per 15 Eki 2026 22:11 +03", not
+// "Thu 15 Oct 2026 22:11 +03" (#3606).
+function test_core_relative_time_tooltip_follows_the_panel_language()
+{
+	$result = core_test_turkish_relative_time();
+
+	if ($result === null) {
+		pg_assert_true(true, 'PHP cannot be started again');
+		return;
+	}
+
+	pg_assert_false(isset($result['error']), $result['error'] ?? '');
+
+	if (isset($result['error'])) {
+		return;
+	}
+
+	pg_assert_same('Per 15 Eki 2026 22:11 +03', $result['date_and_time']['absolute'], 'absolute date and time');
+	pg_assert_same('Per 15 Eki 2026', $result['date']['absolute'], 'absolute date');
+
+	foreach ($result as $type => $pair) {
+		pg_assert_true(preg_match('/ title="([^"]*)"/', $pair['relative'], $match) === 1, $type . ' has a title');
+		pg_assert_same(h($pair['absolute']), $match[1] ?? null, $type . ' title is the absolute time');
+		pg_assert_same(0, preg_match('/\b(Mon|Tue|Wed|Thu|Fri|Sat|Sun|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\b/', $match[1] ?? ''), $type . ' title has no English name');
+	}
+}
