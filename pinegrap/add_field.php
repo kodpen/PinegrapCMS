@@ -159,6 +159,10 @@ if ((isset($_REQUEST['page_id'])) && ($_REQUEST['page_id'] != '')) {
 $pg_breadcrumb_items = isset($pg_breadcrumb_parent_items) ? $pg_breadcrumb_parent_items : (isset($pg_breadcrumb_parent) ? array($pg_breadcrumb_parent) : array());
 $pg_breadcrumb_items[] = array('label' => $output_form_designer_content_heading);
 
+// The back arrow goes where Save goes: the fields of this form, with the
+// Express Order form type (shipping or billing) and send_to.
+$pg_back_arrow_url = 'view_fields.php?' . $form_type_identifier_id . '=' . urlencode((string) $_REQUEST[$form_type_identifier_id]) . pg_field_form_express_query($page_type, $form_type) . '&send_to=' . urlencode(is_scalar($_GET['send_to'] ?? null) ? (string) $_GET['send_to'] : '');
+
 // if the form has not been submitted yet, then prepare to output form
 if (!$_POST) {
     // The new field goes below the form's last field by default.
@@ -187,7 +191,7 @@ if (!$_POST) {
         'icon'=>'design',
         'heading'=>$output_form_designer_content_heading,
         'heading_description' => $output_form_designer_content_subheading,
-        'cancel'=>array('enable'=>'true','url'=>'view_fields.php?' . $form_type_identifier_id . '=' . urlencode($_REQUEST[$form_type_identifier_id])),
+        'cancel'=>array('enable'=>'true','url' => $pg_back_arrow_url),
         'breadcrumb' => $pg_breadcrumb_items,
     ]) . '
 <main id="content" class="container-fluid">

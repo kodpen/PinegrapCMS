@@ -23,6 +23,6 @@ description: Trendyol common label (#3123, PRs #3257, #3281): by cargo number, Z
 
 ## What is unverified or left?
 - No live call; fixtures follow the docs (`tests/marketplace_trendyol_common_label_test.php`, `tests/marketplace_labels_test.php`). Unknown: GET before a request, how long the label takes, whether a second request is refused, a seller-paid or other carrier's answer, `volumetricHeight`, whether GET still answers after delivery.
-- A Trendyol-carried package that does not qualify still gets Create Label from a carrier service. The bulk buttons show only while one is on.
+- A Trendyol-carried package that does not qualify still gets Create Label from a carrier service: the refusal is decided (#3568), not built. The bulk buttons show only while one is on.
 
 Related: docs/memory/commerce/shipment-labels.md, docs/memory/workflow/decisions-made-product-3.md

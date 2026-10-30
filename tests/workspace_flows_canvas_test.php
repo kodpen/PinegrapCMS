@@ -2534,3 +2534,21 @@ function test_workspace_flows_canvas_typed_numbers_read_the_site_way()
 		pg_assert_true(strpos(ws_flows_canvas_test_script_function($source, $name), 'siteNumber(') !== false, $name . '() reads by siteNumber()');
 	}
 }
+
+// Every start box shows the tell choice; every run is kept as no key, as
+// the server keeps it (ws_flow_tell_normalize()).
+function test_workspace_flows_canvas_start_box_tell_choice()
+{
+	pg_assert_contains("(KINDS[node.kind].group === 'start')) {\n            tellField(box, node);", ws_flows_canvas_test_function('nodeForm'));
+
+	$tell = ws_flows_canvas_test_function('tellField');
+
+	pg_assert_contains("['failures', t('fl_tell_failures')]", $tell);
+	pg_assert_contains("node.config.tell || 'every'", $tell);
+	pg_assert_contains('delete node.config.tell;', $tell);
+	pg_assert_contains("field(t('fl_tell'), tell, t('fl_tell_help'))", $tell);
+
+	foreach (array('fl_tell', 'fl_tell_every', 'fl_tell_failures', 'fl_tell_never', 'fl_tell_help') as $key) {
+		pg_assert_contains("'" . $key . "'", ws_flows_canvas_test_strings_source());
+	}
+}

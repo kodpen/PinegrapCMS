@@ -375,13 +375,16 @@ function test_ws_customer_summary_cart_quotes_section()
 	pg_assert_same(array('count' => 0, 'rows' => array()), ws_customer_cart_quote_rows(array('contact_id' => 0, 'user_ids' => array(3), 'erp_account_ids' => array(9)), 5), 'no contact, nothing to read');
 
 	$data = workspace_customer_summary_test_data();
-	$data['cart_quotes'] = array('count' => 3, 'rows' => array(array('id' => '12', 'valid_until' => '1792300000', 'line_count' => '4'), array('id' => '9', 'valid_until' => '0', 'line_count' => '1')));
+	$data['cart_quotes'] = array('count' => 3, 'rows' => array(
+		array('id' => '12', 'status' => 'open', 'valid_until' => '1792300000', 'line_count' => '4', 'created_at' => '1761000000', 'token_hash' => str_repeat('a', 64), 'token_hint' => 'abc123'),
+		array('id' => '9', 'status' => 'open', 'valid_until' => '0', 'line_count' => '1', 'created_at' => '1760000000'),
+	));
 	$summary = ws_customer_summary_build(ws_customer_summary_rights(workspace_customer_summary_test_viewer()), $data, 'workspace_customer_summary_test_money');
 
 	pg_assert_same(array('count' => 3, 'latest' => array(
-		array('id' => 12, 'valid_until' => 1792300000, 'lines' => 4),
-		array('id' => 9, 'valid_until' => 0, 'lines' => 1),
-	)), $summary['cart_quotes']);
+		array('id' => 12, 'state' => 'open', 'valid_until' => 1792300000, 'lines' => 4, 'created_at' => 1761000000),
+		array('id' => 9, 'state' => 'open', 'valid_until' => 0, 'lines' => 1, 'created_at' => 1760000000),
+	)), $summary['cart_quotes'], 'no token, no hint');
 
 	$no_shop = ws_customer_summary_rights(workspace_customer_summary_test_viewer());
 	$no_shop['cart_quotes'] = false;
@@ -528,6 +531,8 @@ function test_ws_api_channel_customer_objects()
 		'WorkspaceCustomerQuotes'  => array('ws_api_customer_quotes_schema', 'ws_api_customer_quotes_present'),
 		'WorkspaceCustomerQuote'   => array('ws_api_customer_quote_schema', 'ws_api_customer_quote_present'),
 		'WorkspaceCustomerForm'    => array('ws_api_customer_form_schema', 'ws_api_customer_form_present'),
+		'WorkspaceCustomerCartQuotes' => array('ws_api_customer_cart_quotes_schema', 'ws_api_customer_cart_quotes_present'),
+		'WorkspaceCustomerCartQuote'  => array('ws_api_customer_cart_quote_schema', 'ws_api_customer_cart_quote_present'),
 	);
 
 	foreach ($pairs as $name => $functions) {
@@ -561,6 +566,36 @@ function test_ws_api_channel_customer_objects()
 	pg_assert_same(1, count($answer['links']));
 }
 
+// The cart quote section: how many open ones and the latest, each with its
+// state, lines, dates and the panel's address, never the link's token or its
+// hint; only with the ecommerce right, and for a key only with orders:read.
+function test_ws_api_channel_customer_cart_quotes()
+{
+	$data = workspace_customer_summary_test_data();
+	$data['cart_quotes'] = array('count' => 2, 'rows' => array(
+		array('id' => '12', 'status' => 'open', 'valid_until' => '1792300000', 'line_count' => '4', 'created_at' => '1761000000', 'token_hash' => str_repeat('a', 64), 'token_hint' => 'abc123'),
+		array('id' => '9', 'status' => 'open', 'valid_until' => '0', 'line_count' => '1', 'created_at' => '1760000000'),
+	));
+	$identity = ws_customer_identity_build('contact', 5, 5, array(), array(
+		'contact:5' => workspace_customer_summary_test_ref('contact', 5, 'Ayşe Demir', true, '/pg/edit_contact.php?id=5'),
+	));
+	$summary = ws_customer_summary_build(ws_customer_summary_rights(workspace_customer_summary_test_viewer()), $data, 'workspace_customer_summary_test_money');
+	$answer = ws_api_channel_customer_present(array('id' => 30), $identity, $summary, 'https://example.com', '/pg/');
+
+	pg_assert_same(array_keys(ws_api_customer_cart_quotes_schema()), array_keys($answer['cart_quotes']), 'the section');
+	pg_assert_same(array_keys(ws_api_customer_cart_quote_schema()), array_keys($answer['cart_quotes']['latest'][0]), 'a cart quote');
+	pg_assert_same(array('id' => 12, 'state' => 'open', 'lines' => 4, 'valid_until' => '2026-10-18T05:06:40Z', 'created_at' => '2025-10-20T22:40:00Z', 'url' => 'https://example.com/pg/view_cart_quotes.php?id=12'), $answer['cart_quotes']['latest'][0]);
+	pg_assert_same(null, $answer['cart_quotes']['latest'][1]['valid_until'], 'no last day');
+	pg_assert_same(2, $answer['cart_quotes']['count']);
+	pg_assert_false(strpos(json_encode($answer), 'abc123') !== false, 'never the hint');
+
+	$narrow = ws_api_customer_viewer(workspace_customer_summary_test_viewer(), array('workspace:read', 'forms:read'));
+	pg_assert_false(ws_customer_summary_rights($narrow)['cart_quotes'], 'a key without orders:read reads no cart quote');
+
+	$closed = ws_customer_summary_build(ws_customer_summary_rights($narrow), $data, 'workspace_customer_summary_test_money');
+	pg_assert_same(null, ws_api_channel_customer_present(array('id' => 30), $identity, $closed, 'https://example.com', '/pg/')['cart_quotes'], 'null without it');
+}
+
 // A channel about nobody, and sections left out, answer null; the links are
 // an empty list.
 function test_ws_api_channel_customer_present_nulls()
@@ -574,6 +609,7 @@ function test_ws_api_channel_customer_present_nulls()
 		'orders'       => null,
 		'erp_accounts' => null,
 		'sales_quotes' => null,
+		'cart_quotes'  => null,
 		'forms'        => null,
 	), $answer);
 

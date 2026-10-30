@@ -2223,7 +2223,8 @@ function ws_flow_run_refresh($run_id)
  * a line of its own ('separate'): the inbox keys a line by its channel,
  * message and task, all 0 here, so a line still unread would otherwise take
  * the sentence of any later run of any of the owner's flows, and a failure
- * would be written over by an unrelated success.
+ * would be written over by an unrelated success. The start box's tell
+ * choice may keep a run's end from the owner (ws_flow_run_tell_wanted()).
  *
  * @param array  $run
  * @param string $state done | failed
@@ -2242,6 +2243,13 @@ function ws_flow_run_tell_owner($run, $state)
 
     if ($chained !== null) {
         return $chained;
+    }
+
+    // Told alone: by the start box's choice of the version the run used.
+    $tell = ws_flow_tell_of(ws_flow_run_graph($run));
+
+    if (!ws_flow_run_tell_wanted($tell, $tell, $state, false)) {
+        return 0;
     }
 
     $text = ws_flow_chain_notice_text($flow['name'], (int) $run['id'], 0, ($state === 'failed') ? ws_flow_run_failure($run, $flow) : null);

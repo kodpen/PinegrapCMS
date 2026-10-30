@@ -926,10 +926,13 @@ function ws_customer_summary_build($rights, $data, $money, $limit = WS_CUSTOMER_
         $latest = array();
 
         foreach ($rows as $row) {
+            // Only what is named here leaves: never the link's token or its hint.
             $latest[] = array(
                 'id'          => (int) $row['id'],
+                'state'       => (string) ($row['status'] ?? 'open'),
                 'valid_until' => (int) ($row['valid_until'] ?? 0),
                 'lines'       => (int) ($row['line_count'] ?? 0),
+                'created_at'  => (int) ($row['created_at'] ?? 0),
             );
         }
 
@@ -1377,7 +1380,7 @@ function ws_customer_sales_quote_rows($identity, $limit)
  *
  * @param array $identity ws_customer_identity()
  * @param int   $limit
- * @return array count, rows (id, valid_until, line_count)
+ * @return array count, rows (id, status, valid_until, created_at, line_count)
  */
 function ws_customer_cart_quote_rows($identity, $limit)
 {
@@ -1391,7 +1394,7 @@ function ws_customer_cart_quote_rows($identity, $limit)
 
     return array(
         'count' => (int) db_value("SELECT COUNT(*) FROM cart_quotes AS q WHERE " . $where),
-        'rows'  => (array) db_items("SELECT q.id, q.valid_until, (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
+        'rows'  => (array) db_items("SELECT q.id, q.status, q.valid_until, q.created_at, (SELECT COUNT(*) FROM cart_quote_items AS i WHERE i.cart_quote_id = q.id) AS line_count
             FROM cart_quotes AS q WHERE " . $where . " ORDER BY q.id DESC LIMIT " . max(1, (int) $limit)),
     );
 }
