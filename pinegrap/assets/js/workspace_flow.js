@@ -5228,6 +5228,10 @@
             noOrderFields(box, node);
         }
 
+        if (KINDS[node.kind] && (KINDS[node.kind].group === 'start')) {
+            tellField(box, node);
+        }
+
         if (state.edit) {
             // Only the owner: the box is looked at with their rights.
             if (state.flow && state.flow.manage) {
@@ -6566,6 +6570,27 @@
             refreshNode(node);
         });
         box.appendChild(field(t('fl_no_order_days'), days, t('fl_no_order_days_help')));
+    }
+
+    // When a run tells the flow's owner it ended (ws_flow_tell_normalize()):
+    // every run is kept as no key, as the server keeps it.
+    function tellField(box, node) {
+        var tell = K.select([
+            ['every', t('fl_tell_every')],
+            ['failures', t('fl_tell_failures')],
+            ['never', t('fl_tell_never')]
+        ], node.config.tell || 'every');
+
+        tell.addEventListener('change', function () {
+            if (tell.value === 'every') {
+                delete node.config.tell;
+            } else {
+                node.config.tell = tell.value;
+            }
+
+            refreshNode(node);
+        });
+        box.appendChild(field(t('fl_tell'), tell, t('fl_tell_help')));
     }
 
     // ── Boxes that add or change a row ─────────────────────────────────

@@ -76,7 +76,7 @@ if (!$_POST) {
             'icon'=>'calendar',
             'heading'=> lang(array('string'=>'Edit Calendar Properties') ),
             'heading_description' => lang('Edit the properties for this calendar.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_calendars.php'),
+            'cancel'=>array('enable'=>'true','url' => 'calendars.php?calendar_id=' . (int) $_GET['id']),
             'breadcrumb' => array(
                 array('label' => lang('Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_calendars.php'),
                 array('label' => lang('View Calendars'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/calendars.php?calendar_id=' . h($_GET['id'])),

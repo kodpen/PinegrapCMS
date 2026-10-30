@@ -1666,8 +1666,9 @@ function pg_regex_replacement($text)
  * It is a request value, so it may only ever be a path on this site: one leading
  * slash and no more. An absolute URL, a "//host" that borrows our scheme, or a
  * "javascript:" that would run the moment Cancel is clicked are all refused and
- * the screen's own default is used instead. A newline is refused for the same
- * reason a header must not carry one.
+ * the screen's own default is used instead; so is "/\host", which browsers
+ * follow as "//host". Control characters are refused too, as in
+ * pg_safe_redirect_path().
  *
  * @param  string $fallback where to go when there is no usable send_to
  * @return string
@@ -1680,7 +1681,20 @@ function pg_send_to_url($fallback = '')
         return $fallback;
     }
 
-    if ((strpbrk($send_to, "\r\n") !== false) || (mb_substr($send_to, 0, 1) !== '/') || (mb_substr($send_to, 0, 2) === '//')) {
+    // Any control character: CR/LF split a header, and browsers drop a tab or
+    // newline inside a URL, which can turn "/<TAB>/host" into "//host".
+    if (preg_match('/[\x00-\x1F\x7F]/', $send_to) === 1) {
+        return $fallback;
+    }
+
+    if (mb_substr($send_to, 0, 1) !== '/') {
+        return $fallback;
+    }
+
+    // Browsers read "/\host" as "//host", so a backslash is refused like a slash.
+    $second = mb_substr($send_to, 1, 1);
+
+    if (($second === '/') || ($second === '\\')) {
         return $fallback;
     }
 

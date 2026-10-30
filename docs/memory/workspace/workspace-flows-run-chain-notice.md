@@ -21,5 +21,6 @@ description: One flow_finished inbox line per chain of runs (#3526 step 1, PR #3
 - Sentence: `ws_flow_chain_notice_text()`; failure: "… and N flows it started: run R of “Y” failed at the box B: text" (`ws_flow_run_failure()`).
 
 ## What does not change?
+- A run whose start box says "only failures" or "never" may write nothing: `workspace-flows-run-tell-choice.md` (PR #3566).
 - Webhook run events, the runs list, schema. No lock: two chain runs ending in the same instant with no unread line may write two lines.
 - Tests `tests/workspace_flow_run_chain_notice_test.php`.

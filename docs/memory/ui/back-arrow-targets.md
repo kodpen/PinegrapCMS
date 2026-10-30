@@ -14,6 +14,9 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - Edit Form List View / Item View went to the submitted-forms list, whose `validate_forms_access()` can refuse a page editor. Now `send_to` or `edit_page.php?id=<page>`.
 - Create/Edit Event went to `view_calendars.php` (the list of calendars) instead of the calendar view `calendars.php` (edit: `send_to` first).
 - All Referral Sources (Site Settings › Store Lists) went to the Dashboard; it now prints no arrow.
+- Create/Edit Field (both Edit branches) dropped `form_type` and `send_to`: on an Express Order shipping form the arrow opened the billing fields, and the fields list's own arrow then went to All My Pages. Now built like Save: `pg_field_form_express_query()` and `send_to`.
+- Visit Details went to All Visitor Reports; now to its breadcrumb parent `view_visitor_report.php?id=<visitor_report_id>` (an int, not the `h()`-escaped crumb url).
+- Edit Calendar Properties went to `view_calendars.php`; now `calendars.php?calendar_id=<id>` like its Save.
 - Pinned by `tests/back_arrow_targets_test.php`.
 
 ## Where does the back arrow go when the screen got send_to?
