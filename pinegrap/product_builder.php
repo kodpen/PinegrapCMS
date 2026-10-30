@@ -1805,23 +1805,39 @@ function pg_pb_google_taxonomy_search($query, $limit = 30)
         return array();
     }
 
+    // Folded on both sides so 'interkom' finds 'İnterkomlar', 'ışık' finds
+    // 'Işık' and 'bahce' finds 'Bahçe', as a utf8mb4_unicode_ci LIKE would.
+    // The folded paths are kept for the rest of the request.
+    static $folded_paths = NULL;
+
+    if ($folded_paths === NULL) {
+        $folded_paths = array();
+
+        foreach (pg_pb_google_taxonomy_map() as $id => $path) {
+            $folded_paths[$id] = fold_keyword_for_matching($path);
+        }
+    }
+
+    $query = fold_keyword_for_matching($query);
+
     $leaf_matches = array();
     $path_matches = array();
 
     foreach (pg_pb_google_taxonomy_map() as $id => $path) {
 
-        $path = (string) $path;
+        $path   = (string) $path;
+        $folded = $folded_paths[$id];
 
-        if (mb_stripos($path, $query) === FALSE) {
+        if (mb_strpos($folded, $query) === FALSE) {
             continue;
         }
 
-        $segments = explode('>', $path);
+        $segments = explode('>', $folded);
         $leaf     = trim(end($segments));
 
         $entry = array('id' => (string) $id, 'path' => $path);
 
-        if (mb_stripos($leaf, $query) !== FALSE) {
+        if (mb_strpos($leaf, $query) !== FALSE) {
             $leaf_matches[] = $entry;
         } else {
             $path_matches[] = $entry;
