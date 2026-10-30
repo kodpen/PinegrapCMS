@@ -1242,7 +1242,7 @@ if (!$_POST) {
                                         ' . $output_password_hint_field . '
                                         <div class="col-12 sm:col-6 lg:col-4">
                                             <label class="form-label" for="reward_points">' . lang('Reward Program, Reward Points') . '</label>
-                                            <input value="' . h($reward_points) . '" type="number" class="form-control" id="reward_points" name="reward_points" maxlength="9"/>
+                                            <input value="' . h($reward_points) . '" type="number" min="0" max="4294967295" step="1" class="form-control" id="reward_points" name="reward_points"/>
                                         </div>
                                         <div class="col-12">
                                             <div class="form-field">
