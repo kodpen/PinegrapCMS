@@ -183,9 +183,10 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     // ── signals ──────────────────────────────────────────────────────────────────
 
-    // Comment moderation. Same scope marker as view_comments.php: unpublished.
+    // Comment moderation: unpublished comments, as the Comment Moderation
+    // card counts them, without those on pages in the Recycle Bin.
     if ($user['role'] < 3) {
-        $sig['comments'] = (int) db_value("SELECT COUNT(*) FROM comments WHERE published = '0'");
+        $sig['comments'] = (int) db_value("SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids()));
     }
 
     if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {

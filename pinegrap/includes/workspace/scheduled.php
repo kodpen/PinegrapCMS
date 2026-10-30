@@ -618,7 +618,8 @@ function ws_scheduled_metric_value($viewer, $key, $param = 0, $since = 0)
             break;
 
         case 'comments_pending':
-            $value = (int) db_value("SELECT COUNT(*) FROM comments WHERE published = '0'");
+            // Comments on pages in the Recycle Bin are not waiting on anyone.
+            $value = (int) db_value("SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids()));
             break;
 
         case 'visitors_yesterday':
