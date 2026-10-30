@@ -136,6 +136,13 @@ if($item_type === 'submitted_form'){
     $output_reference_button = '<a class="btn btn-link pg-link-secondary py-0 mb-3 " href="' . h(OUTPUT_PATH . get_page_name($page_id) . pg_comment_view_query('', $comment_id) . '#c-' . $comment_id) . '"><i class="bi bi-link bi-me-2"></i>' . lang('Go To Comment') . '</a>';
 }
 
+// A page in the Recycle Bin is not on the site, so its comment gets no link.
+$binned = in_array((int) $folder_id, array_map('intval', (array) pg_recycle_bin_folder_ids()), true);
+
+if ($binned) {
+    $output_reference_button = '';
+}
+
 //if there is a command button to output
 // prepare button bar
 if($output_reference_button != ''){
@@ -356,7 +363,7 @@ if (!$_POST) {
                             <div class="col-12 md:col">
                                 
                                 <p class="p-0 m-0">' . lang('Added') . ': ' . get_relative_time(array('timestamp' => $created_timestamp)) . ' ' . $created_username . '</p>
-                                <p class="p-0 m-0">' . lang('Page') . ': ' . h(get_page_name($page_id)) . '</p>
+                                <p class="p-0 m-0">' . lang('Page') . ': ' . h(pg_comment_page_label(get_page_name($page_id), $page_id)) . ($binned ? ' (' . h(lang('In the Recycle Bin')) . ')' : '') . '</p>
                                 ' . $output_reference_line . '
                                 ' . $output_review_line . '
                             </div>

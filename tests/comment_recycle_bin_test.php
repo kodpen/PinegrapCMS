@@ -50,3 +50,34 @@ function test_comment_recycle_bin_page_label()
 	pg_assert_same('', pg_comment_page_label(array(), 1));
 	pg_assert_same('', pg_comment_page_label(null, 1));
 }
+
+// The queue, its count, the greeting and the Workspace counter all leave out
+// comments on binned pages, joining page for its folder.
+function test_comment_recycle_bin_counts_use_fragment()
+{
+	foreach (array('includes/dashboard/widgets/widget_25.php', 'includes/dashboard/brief.php', 'includes/workspace/scheduled.php') as $file) {
+		pg_assert_contains('pg_comment_live_page_sql(pg_recycle_bin_folder_ids())', comment_recycle_bin_test_source($file), $file);
+	}
+
+	pg_assert_contains(
+		"SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'",
+		comment_recycle_bin_test_source('includes/dashboard/brief.php')
+	);
+	pg_assert_contains(
+		"SELECT COUNT(*) FROM comments LEFT JOIN page ON comments.page_id = page.page_id WHERE comments.published = '0'",
+		comment_recycle_bin_test_source('includes/workspace/scheduled.php')
+	);
+}
+
+// The Comments list and edit screens mark a binned page's comment and give
+// it no link; the edit screen shows the page's own name.
+function test_comment_recycle_bin_screens_mark_comment()
+{
+	foreach (array('view_comments.php', 'edit_comment.php') as $file) {
+		$source = comment_recycle_bin_test_source($file);
+		pg_assert_contains('pg_recycle_bin_folder_ids()', $source, $file);
+		pg_assert_contains("lang('In the Recycle Bin')", $source, $file);
+	}
+
+	pg_assert_contains('pg_comment_page_label(get_page_name($page_id), $page_id)', comment_recycle_bin_test_source('edit_comment.php'));
+}

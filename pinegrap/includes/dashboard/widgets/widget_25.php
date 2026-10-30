@@ -32,7 +32,11 @@ function pg_dashboard_widget_25($request, $user)
     // need the folder list — and resolving it in SQL keeps this
     // to two queries instead of one recursive access check per
     // row.
-    $cm_where = "(comments.published = '0')";
+    //
+    // Comments on pages in the Recycle Bin are left out for every
+    // role: the page is not on the site, its name is the bin's
+    // pgbin_ address, and purging it deletes them.
+    $cm_where = "(comments.published = '0')" . pg_comment_live_page_sql(pg_recycle_bin_folder_ids());
     $cm_no_access = false;
 
     if ($user['role'] == 3) {
