@@ -1955,12 +1955,18 @@ $(document).ready(function () {
 
         var datatable = $("table.chart").DataTable(options);
         datatable.buttons().container().appendTo($(".chart-buttons"));
+        // A Turkish panel finds "Yıldız" for "YILDIZ" in a list searched in
+        // the browser; a list paged on the server searches in SQL.
+        if (/^tr/i.test(String(software_system_language || '')) && options["searching"]
+            && !options.serverSide) {
+            pgListTurkishSearch(datatable);
+        }
         // Each draw follows a page, length or search change, after
         // DataTables has settled the start (a new search goes to page 1).
         if (pgListKey !== null) {
             datatable.on('draw.dt', function () {
                 var info = datatable.page.info();
-                pgListKeep(pgListKey, { start: info.start, length: info.length, search: datatable.search() });
+                pgListKeep(pgListKey, { start: info.start, length: info.length, search: String(datatable.search()) });
             });
         }
         datatable.on('draw.dt column-sizing.dt fixedheader-mode.dt', function (e) {
@@ -2924,6 +2930,126 @@ function pgListServerOptions(options, $table) {
         if ($.fn.Lazy) {
             pgLazyStill($table.find('img.lazy'));
             $table.find('img.lazy:not(.delayed)').Lazy(pgLazyOptions);
+        }
+    });
+}
+
+// Lowers text the Turkish way: İ is i and I is ı before toLowerCase(), which
+// pairs I with i only; then the marks stripped as DataTables strips them, so
+// "ş" is "s" and "ç" is "c" on both sides of a comparison.
+function pgListTurkishLower(s) {
+    s = String(s).replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+
+    return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s;
+}
+
+/**
+ * Whether a row's search text holds every word of a search the way a Turkish
+ * reader means it. The words are DataTables' smart search words: split on
+ * spaces, a "quoted phrase" is one word, a !word must be missing. A word is
+ * found when DataTables' own case-insensitive match finds it (IPHONE finds
+ * iPhone, DEMİR finds Demir) or when it occurs lowered the Turkish way
+ * (YILDIZ finds Yıldız, IŞIK finds Işık). ı and i stay different letters,
+ * so "yildiz" does not find "Yıldız".
+ */
+function pgListTurkishMatch(term, text) {
+    var words = String(term).match(/!?["“][^"”]+["”]|[^ ]+/g) || [];
+    var plain = String(text);
+    var lowered = pgListTurkishLower(plain);
+
+    // DataTables' own match: the text as it is and with its marks stripped,
+    // the word with its marks stripped, case-insensitive.
+    if (plain.normalize) {
+        plain = plain + '\n' + plain.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    }
+
+    for (var i = 0; i < words.length; i++) {
+        var word = words[i];
+        var negative = word.charAt(0) === '!';
+
+        if (negative) {
+            word = word.substring(1);
+        }
+
+        word = word.replace(/^["“](.*)["”]$/, '$1').replace(/"/g, '');
+
+        if (word === '' || (negative && word.length < 2)) {
+            continue;
+        }
+
+        var bare = word.normalize ? word.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : word;
+        var found = new RegExp(bare.replace(/[.*+?^${}()|[\]\\\-]/g, '\\$&'), 'i').test(plain)
+            || lowered.indexOf(pgListTurkishLower(word)) !== -1;
+
+        if (found === negative) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+/**
+ * Searches a list drawn in the browser with pgListTurkishMatch(). The typed
+ * text stays the table's search, so the search box, datatable.search() and
+ * the kept list state still see the string; DataTables' filter reads the
+ * search through a getter that hands it a matcher for that text, the one
+ * search form whose test is not a case-insensitive RegExp (JavaScript never
+ * pairs I with ı). A diacritics hook would lower both sides alike, and
+ * lowering IPHONE to ıphone the Turkish way would lose iPhone.
+ */
+function pgListTurkishSearch(datatable) {
+    datatable.settings().each(function (settings) {
+        var search = settings.oPreviousSearch;
+        var text = String(search.search || '');
+        var matcher = null;
+
+        Object.defineProperty(search, 'search', {
+            configurable: true,
+            enumerable: true,
+            get: function () {
+                if (text === '') {
+                    return '';
+                }
+
+                if (!matcher) {
+                    var typed = text;
+
+                    matcher = function (data) {
+                        return pgListTurkishMatch(typed, data);
+                    };
+                    // The search box compares its value with the search.
+                    matcher.toString = function () {
+                        return typed;
+                    };
+                }
+
+                return matcher;
+            },
+            set: function (value) {
+                value = (value === null || value === undefined) ? '' : String(value);
+
+                if (value !== text) {
+                    text = value;
+                    matcher = null;
+                }
+            }
+        });
+
+        // DataTables empties its box for a function search; the box shows
+        // the typed text again unless the reader is typing in it. Later:
+        // with the language file loading, DataTables binds its own handler
+        // after this one.
+        $(settings.nTable).on('search.dt', function (e, s) {
+            if (s === settings) {
+                setTimeout(function () {
+                    $(datatable.table(settings.nTable).container()).find('div.dt-search input').not(document.activeElement).val(text);
+                }, 0);
+            }
+        });
+
+        if (text !== '' && settings._bInitComplete) {
+            datatable.table(settings.nTable).draw(false);
         }
     });
 }

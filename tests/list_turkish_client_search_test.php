@@ -138,6 +138,6 @@ function test_list_turkish_client_search_wiring()
 
 	pg_assert_contains('function pgListTurkishSearch(', $source, 'installer exists');
 	pg_assert_contains("/^tr/i.test(String(software_system_language", $source, 'only on a Turkish panel');
-	pg_assert_contains('if (!options.serverSide) {' . "\n" . '            pgListTurkishSearch(datatable);', $source, 'not on a list paged on the server');
+	pg_assert_contains('&& !options.serverSide) {' . "\n" . '            pgListTurkishSearch(datatable);', $source, 'not on a list paged on the server');
 	pg_assert_contains('search: String(datatable.search())', $source, 'the list state keeps the typed text');
 }
