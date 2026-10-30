@@ -10443,12 +10443,17 @@ function pgSyncCollapseSwitchers(scope) {
 /**
  * Everything a freshly injected piece of the panel still needs.
  */
-// Bootstrap 6 Ranges marked data-pg-range, with the value bubble; the
-// attribute's value is the unit after the number ("%").
+// Bootstrap 6 Ranges marked data-pg-range, with the value bubble. The
+// attribute is the translated wording with {var:1} for the value
+// (lang('{var:1}%'), "%{var:1}" in Turkish); a value without {var:1} is a
+// unit appended after the number.
 function pgBindRanges(scope) {
     $(scope).find('.form-range[data-pg-range]').each(function () {
-        var unit = this.getAttribute('data-pg-range') || '';
-        pgUI.range.bubble(this, function (value) { return value + unit; });
+        var tpl = this.getAttribute('data-pg-range') || '';
+        if (tpl.indexOf('{var:1}') === -1) {
+            tpl = '{var:1}' + tpl;
+        }
+        pgUI.range.bubble(this, function (value) { return tpl.replace('{var:1}', value); });
     });
 }
 

@@ -12,7 +12,7 @@ description: Panel sliders as the Bootstrap 6 Range with a value bubble (step B9
 ## How is it started?
 - Bootstrap starts every `.form-range` only at DOMContentLoaded and without a formatter. `pgUI.range.bubble(wrapper, format)` (`pg_ui.js`) disposes that instance and makes one with `bubble: true` and `format(value)` as the bubble text; it waits for `pgUI.ready()` and returns a promise (null under Bootstrap 5).
 - It also disposes the instances of wrappers no longer in the page: Bootstrap keeps each instance in a Map until `dispose()`, and the editor inspector is redrawn on every selection.
-- Server markup: `data-pg-range="<unit>"` on the wrapper (`"%"`); `pgBindRanges(scope)` in `backend.src.js` binds them on page load and from `pgInitInjected()` for settings cards. Markup built in JS calls `pgUI.range.bubble()` itself.
+- Server markup: `data-pg-range="' . h(lang('{var:1}%')) . '"` on the wrapper: the translated wording with `{var:1}` for the value, so Turkish reads `%10`, not `10%` (#3613). An attribute without `{var:1}` is still a bare unit appended after the number. `pgBindRanges(scope)` in `backend.src.js` binds them on page load and from `pgInitInjected()` for settings cards. Markup built in JS calls `pgUI.range.bubble()` itself.
 - A value set from code needs `instance.update()` (none of today's places does this).
 
 ## Where is it used?

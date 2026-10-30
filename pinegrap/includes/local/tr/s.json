@@ -1464,6 +1464,7 @@
     "Sign in with your email address or username.": "E-posta adresiniz ya da kullanıcı adınızla giriş yapın.",
     "Sign in with {var:1}": "{var:1} ile Giriş",
     "Sign in with {var:1} is not turned on on this site. Please sign in with your account details.": "{var:1} ile giriş bu sitede açık değil. Lütfen hesap bilgilerinizle giriş yapın.",
+    "Sign in with {var:1}, {var:2} and {var:3}": "{var:1}, {var:2} ve {var:3} ile Giriş",
     "Sign out": "Çıkış yap",
     "Sign out all sessions": "Tüm oturumları kapat",
     "Sign out all {var:1} sessions of your account? This browser is signed out too.": "Hesabınızın {var:1} oturumunun tümü kapatılsın mı? Bu tarayıcıdaki oturum da kapanır.",
