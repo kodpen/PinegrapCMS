@@ -16,8 +16,9 @@ description: Panel tab rows say which tab is open (role=tab + aria-selected, nam
 - API application drawer (`api_settings.php`): every tab button has `d_<pane>_label`; `openApp()` disables the Devices tab for a server key and the Events tab for a device or OAuth application along with hiding them.
 - Image picker (`editor_select_image.php`, My Files / Unsplash): `esiSwitchTab()` keeps `aria-selected` and tabindex in step; a document keydown handler moves along `#esi_tabs`.
 - Spreadsheet preview (`assets/js/pg_office_view.js` `renderBook()`, File Manager and Workspace): tablist named by `strings.sheets`, pane id per render (`office_pane_N`), `.office-tab-changed` span kept in step in `drawStatus()` (`strings.changed_mark`).
+- The same preview off the tabs: an editable grid's first cell is its Tab stop, a read-only sheet's pane is (`tabindex=0`, scrolls); a `focusin` selects a Tab-reached cell (`select()`), so arrows and typing work. An editable document's first paragraph is its stop and a Tab-reached paragraph is picked; a read-only document box is a stop, named `strings.doc` (#PR; before, Tab reached nothing, or an unpicked paragraph the keys ignored). The `:focus-visible` rings in backend.src.css are still to come.
 - Not here: the chat window tabs.
 
-Test: `tests/panel_tab_rows_test.php`.
+Test: `tests/panel_tab_rows_test.php`, `tests/office_view_keyboard_test.php`.
 
 Related: docs/memory/ui/current-and-pressed-state.md, docs/memory/ui/pg-ui-adapter.md
