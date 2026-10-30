@@ -29,6 +29,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes: F6b-1 server done #3189 (workspace/workspace-flows-table-boxes.md), F6b-2 canvas form done #3359; F6c workflow mode (#3122): F6c-a done #3145, F6c-b #3301, its runs API contact_id done #3351 (workspace/workspace-flows-from-table.md).
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md).
 8. F8 MCP box (answer 5): F8a #3000; F8b #3028; F8c (writes propose and wait): F8c-1 #3144, F8c-2 #3321.
+9. Role-3 personal flows (#3345, narrow, no schema): R1 server rules: per-kind allow list at save, publish and run, owner-only (no home, no shares), caps 10 flows and 20 starts an hour, reach re-checked at run; the change box refused until R3 (in progress). R2 canvas: palette hides refused kinds, Flows entry and editor for role 3 (workspace_flow.js, actions.php if needed). R3 the change box as a change card (a proposal) for a role-3 owner.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations taken (owner: decide); 8 below.
@@ -42,4 +43,4 @@ Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations tak
 8. Scheduled actions in Flows, no loss: workspace/workspace-flows-scheduled-merge.md.
 
 ## Where to start?
-- Role-3 flows (#3345) next. Saved templates ask no table of a row box yet. Values: plans/workspace-flows-data-passing.md.
+- Role-3 flows (#3345): R1 in progress, then R2, R3 (slice 9). Saved templates ask no table of a row box yet. Values: plans/workspace-flows-data-passing.md.
