@@ -45,7 +45,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_ad_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_ad_region_form_card($liveform, '<input name="name" id="name" type="text" class="form-control" maxlength="100" />', true) . '
+                    ' . pg_ad_region_form_card($liveform, $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')), $liveform->prefill()) . '
 
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">

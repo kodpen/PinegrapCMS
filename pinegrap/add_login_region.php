@@ -45,7 +45,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_login_region.php" method="post">
                     ' . get_token_field() . '
-                    ' . pg_login_region_form_card($liveform, true) . '
+                    ' . pg_login_region_form_card($liveform, $liveform->prefill()) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
