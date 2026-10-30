@@ -366,6 +366,7 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
             <input type="text" id="mfa_uri" class="form-control" readonly="readonly" value="' . h($key_uri) . '" aria-label="' . h(lang('Key link')) . '"/>
             <button type="button" class="btn btn-outline theme-secondary" id="mfa_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . h(lang('Copy')) . '</button>
         </div>
+        <span class="visually-hidden" role="status" aria-live="polite" id="mfa_copy_status" data-copied="' . h(lang('Copied')) . '" data-refused="' . h(lang('The browser did not let the text be copied. Select it and copy it from here.')) . '"></span>
         ' . $messages . '
         <form name="mfa_setup" action="' . $form_action . '" method="post" autocomplete="off">
             ' . $hidden . '
@@ -375,11 +376,37 @@ if (($mode === 'setup') && !empty($pending['codes'])) {
         </form>
         <script>
         document.getElementById("mfa_copy").addEventListener("click", function () {
+            // The button keeps its label; only the icon changes and the
+            // status after the field says whether the copy happened.
             var field = document.getElementById("mfa_uri");
-            if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(field.value).catch(function () { field.select(); });
-            } else {
+            var status = document.getElementById("mfa_copy_status");
+            var icon = this.querySelector("i");
+            var done = function () {
+                icon.className = "bi bi-check2 me-1";
+                status.textContent = status.getAttribute("data-copied");
+                setTimeout(function () {
+                    icon.className = "bi bi-clipboard me-1";
+                    status.textContent = "";
+                }, 1500);
+            };
+            // Plain http has no clipboard API and a write can be refused:
+            // copy the selected text the old way; when that fails too, leave
+            // it selected and say so.
+            var fallback = function () {
+                var copied = false;
+                field.focus();
                 field.select();
+                try { copied = document.execCommand("copy"); } catch (error) {}
+                if (copied) {
+                    done();
+                } else {
+                    status.textContent = status.getAttribute("data-refused");
+                }
+            };
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(field.value).then(done, fallback);
+            } else {
+                fallback();
             }
         });
         </script>';

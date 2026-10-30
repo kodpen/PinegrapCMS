@@ -91,7 +91,6 @@ print
         'icon'=>'setting',
         'heading'=>lang('All Referral Sources'),
         'heading_description' => lang('All possible answers to the checkout question: "How did you hear about us?"'),
-        'cancel'=>array('enable'=>'true','url'=>'welcome.php')
     ])  . '
 <main id="content" class="container-fluid">
             <div class="row">
