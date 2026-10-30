@@ -575,3 +575,95 @@ function test_workspace_flow_templates_saved_fields()
 	pg_assert_same(160, mb_strlen(ws_flow_template_fields_check(array('title' => str_repeat('ş', 300)))['sets']['title']), 'cut by characters');
 	pg_assert_same(array('help' => 'New'), ws_flow_template_fields_check(array('help' => 'New'), true)['sets'], 'an update sets only what came');
 }
+
+// A row box's table: a flow started by a row, a row added to the same table
+// and a row changed in another.
+function ws_flow_templates_test_rows()
+{
+	return ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'row', 'x' => 0, 'y' => 0, 'config' => array('table_id' => 7, 'what' => 'updated', 'column_id' => 31)),
+		array('id' => 'add', 'kind' => 'row_add', 'x' => 256, 'y' => 0, 'config' => array('table_id' => 7, 'cells' => '{"31":"x"}')),
+		array('id' => 'set', 'kind' => 'row_set', 'x' => 512, 'y' => 0, 'config' => array('table_id' => 9, 'row' => '12', 'cells' => '{"40":1}')),
+		array('id' => 'set2', 'kind' => 'row_set', 'x' => 768, 'y' => 0, 'config' => array('table_id' => 7, 'row' => '{{node.add.row_id}}', 'cells' => '{"31":"y"}')),
+	), 'edges' => array(
+		array('from' => 'start', 'to' => 'add', 'on' => 'next'),
+		array('from' => 'add', 'to' => 'set', 'on' => 'done'),
+		array('from' => 'set', 'to' => 'set2', 'on' => 'done'),
+	), 'notes' => array()));
+}
+
+// A saved template asks the table of its row boxes: the boxes on the first
+// box's table are its targets, a box on another table keeps it, no table is
+// no setting.
+function test_workspace_flow_templates_saved_table_setting()
+{
+	pg_assert_true(in_array('table', ws_flow_template_setting_types(), true), 'a table is a setting type');
+
+	$settings = array_column(ws_flow_template_settings_of(ws_flow_templates_test_rows()), 'targets', 'type');
+
+	pg_assert_same(array(array('start', 'table_id'), array('add', 'table_id'), array('set2', 'table_id')), $settings['table'] ?? null, 'the boxes on the first table');
+
+	$none = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'manual', 'config' => array()),
+		array('id' => 'add', 'kind' => 'row_add', 'config' => array('table_id' => 0, 'cells' => '')),
+	), 'edges' => array(array('from' => 'start', 'to' => 'add', 'on' => 'next')), 'notes' => array()));
+	pg_assert_same(array(), ws_flow_template_settings_of($none), 'no table chosen, nothing asked');
+
+	$answer = array('settings' => array(array('type' => 'table', 'targets' => array(array('add', 'table_id')))));
+	pg_assert_same('table', ws_flow_template_answers_check($answer, array('table' => 0))['field'], 'a table is needed');
+	pg_assert_same(array('table' => 5), ws_flow_template_answers_check($answer, array('table' => '5'))['values']);
+}
+
+// The table chosen is written into its boxes; a box whose table changed
+// loses what belonged to the old one (cells, the column a change writes, a
+// row named by its number), a row read from a box before stays.
+function test_workspace_flow_templates_saved_table_applied()
+{
+	$graph = ws_flow_templates_test_rows();
+	$template = array('graph' => $graph, 'settings' => ws_flow_template_settings_of($graph));
+	$by_id = array_column(ws_flow_template_apply($template, $graph, array('table' => 8))['nodes'], 'config', 'id');
+
+	pg_assert_same(8, $by_id['start']['table_id']);
+	pg_assert_same(0, $by_id['start']['column_id'], 'the column was the old table\'s');
+	pg_assert_same('updated', $by_id['start']['what'], 'what happens stays');
+	pg_assert_same(8, $by_id['add']['table_id']);
+	pg_assert_same('', $by_id['add']['cells'], 'the cells were the old table\'s');
+	pg_assert_same('{{node.add.row_id}}', $by_id['set2']['row'], 'a row read from a box stays');
+	pg_assert_same('', $by_id['set2']['cells']);
+	pg_assert_same(9, $by_id['set']['table_id'], 'a box on its own table keeps it');
+	pg_assert_same('{"40":1}', $by_id['set']['cells']);
+	pg_assert_same('12', $by_id['set']['row']);
+
+	$same = array_column(ws_flow_template_apply($template, $graph, array('table' => 7))['nodes'], 'config', 'id');
+	pg_assert_same(31, $same['start']['column_id'], 'the same table keeps its column');
+	pg_assert_same('{"31":"x"}', $same['add']['cells'], 'the same table keeps its cells');
+
+	// A literal row of a row change goes with its table.
+	$set = ws_flow_graph_normalize(array('v' => 1, 'nodes' => array(
+		array('id' => 'start', 'kind' => 'manual', 'config' => array()),
+		array('id' => 'set', 'kind' => 'row_set', 'config' => array('table_id' => 9, 'row' => '12', 'cells' => '{"40":1}')),
+	), 'edges' => array(array('from' => 'start', 'to' => 'set', 'on' => 'next')), 'notes' => array()));
+	$one = array('graph' => $set, 'settings' => ws_flow_template_settings_of($set));
+	$changed = array_column(ws_flow_template_apply($one, $set, array('table' => 8))['nodes'], 'config', 'id');
+	pg_assert_same('', $changed['set']['row'], 'a row number was the old table\'s');
+}
+
+// The table chosen must be one the person reaches as far as its boxes need:
+// read for a row start, change for a box that adds or changes rows.
+function test_workspace_flow_templates_saved_table_rights()
+{
+	$graph = ws_flow_templates_test_rows();
+	$writes = array('graph' => $graph, 'settings' => ws_flow_template_settings_of($graph));
+	$start = array('graph' => $graph, 'settings' => array(array('type' => 'table', 'targets' => array(array('start', 'table_id')))));
+
+	pg_assert_same('edit', ws_flow_template_table_need($writes), 'a row written needs change');
+	pg_assert_same('view', ws_flow_template_table_need($start), 'a row start needs read');
+	pg_assert_same('', ws_flow_template_table_need(array('graph' => $graph, 'settings' => array())), 'no table asked');
+
+	pg_assert_true(ws_flow_template_table_refusal($writes, '') !== '', 'a table out of reach');
+	pg_assert_true(ws_flow_template_table_refusal($writes, 'view') !== '', 'read is not enough to write');
+	pg_assert_same('', ws_flow_template_table_refusal($writes, 'edit'));
+	pg_assert_same('', ws_flow_template_table_refusal($writes, 'owner'));
+	pg_assert_same('', ws_flow_template_table_refusal($start, 'view'));
+	pg_assert_true(ws_flow_template_table_refusal($start, '') !== '');
+}
