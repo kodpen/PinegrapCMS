@@ -75,7 +75,7 @@ function ws_tour_steps($viewer)
             'target'    => array('#ws-menu-side .ws-side-head'),
             'placement' => 'right',
             'title'     => lang('Search and a new channel'),
-            'text'      => lang('Search every conversation you can read from the box. The New channel button starts a channel: give it a name, make it public or private, invite people and, when it is about a customer, tie it to them.'),
+            'text'      => lang('The search field finds channels, people, messages, decisions, tasks, notes and files across the workspace. The New channel button beside it starts a channel: give it a name, make it public or private, invite people and, when it is about a customer, tie it to them.'),
         ),
         array(
             'art'       => 'head',

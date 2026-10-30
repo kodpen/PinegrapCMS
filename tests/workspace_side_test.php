@@ -238,7 +238,7 @@ function test_workspace_side_head_is_one_search_field()
 	pg_assert_contains('hooks.palette', $script, 'the search field opens the palette on the channel screen');
 	pg_assert_contains("view=home&palette=1", $script, 'and links to it elsewhere');
 	pg_assert_contains("setAttribute('data-ws-tour', '1')", $script, 'the tour button the tour waits for');
-	pg_assert_contains("'ws-notjoined'", $script, 'channels not joined are dimmed');
+	pg_assert_contains("' ws-notjoined'", $script, 'channels not joined are dimmed');
 }
 
 // The list's data is read only where it is drawn at once: a page that
