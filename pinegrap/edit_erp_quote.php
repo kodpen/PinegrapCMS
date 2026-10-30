@@ -25,6 +25,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_quote');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_quotes.php';
+
+// The filtered list the quote was opened from: the back arrow, the
+// breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_quote.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
 $quote_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $quote = erp_quote($quote_id);
 
@@ -33,7 +39,7 @@ if ($quote === null) {
     exit();
 }
 
-$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_quote.php?id=' . $quote_id;
+$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_quote.php?id=' . $quote_id . $send_to_query;
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
@@ -176,8 +182,8 @@ $money = function ($kurus) use ($quote) {
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
-$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($quote_id) {
-    return '<form method="post" action="edit_erp_quote.php" class="d-inline">' . get_token_field()
+$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($quote_id, $self_action) {
+    return '<form method="post" action="' . $self_action . '" class="d-inline">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $quote_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
         . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
@@ -232,7 +238,7 @@ if ($editable) {
     }
 
     $output_body = '
-            <form name="form" action="edit_erp_quote.php" method="post" autocomplete="off">
+            <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $quote_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
@@ -317,7 +323,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if ($can_mail) {
         $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_quote.php" method="post" class="row g-3">
+            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $quote_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
@@ -403,7 +409,7 @@ if ($signature !== null) {
             <div class="card my-7" id="erp-signature">
                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Customer signature') . '</div>
                 <div class="card-body">
-                    <form name="signature_form" action="edit_erp_quote.php" method="post" class="row g-5 disable_shortcut" autocomplete="off">
+                    <form name="signature_form" action="' . $self_action . '" method="post" class="row g-5 disable_shortcut" autocomplete="off">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $quote_id . '" />
                         <input type="hidden" name="erp_action" value="sign" />
@@ -450,9 +456,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Quote {var:1}', 'vars' => (string) $quote['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>' . $output_signature_icon,
     'heading_description' => (string) $quote['account_title'] . ' · ' . lang(array('string' => 'Valid until {var:1}', 'vars' => prepare_form_data_for_output((string) $quote['valid_until'], 'date', false))),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_quotes.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_quotes.php')),
     'breadcrumb' => array(
-        array('label' => lang('Quotes'), 'url' => $list_url),
+        array('label' => lang('Quotes'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => (string) $quote['full_number']),
     ),
 ]) . '

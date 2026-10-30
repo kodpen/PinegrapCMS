@@ -30,6 +30,13 @@ $liveform = new liveform('edit_erp_invoice_draft');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_invoices.php';
 
+// The filtered register the draft was opened from: the back arrow, the
+// breadcrumb, Delete and every reload of this screen keep it, and so does
+// the issued document it becomes.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_invoice_draft.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
+
 $invoice_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 
 $invoice = ($invoice_id > 0)
@@ -43,10 +50,10 @@ if (!is_array($invoice)) {
 
 // Only a draft is edited here; anything issued is a document and is read.
 if ((string) $invoice['status'] !== 'draft') {
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
 }
 
-$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id;
+$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice_draft.php?id=' . $invoice_id . $send_to_query;
 
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
@@ -76,9 +83,9 @@ if (!$_POST) {
         'icon' => 'erp',
         'heading' => lang('Draft Invoice'),
         'heading_description' => lang('No number has been taken and nothing has been posted to the account. Issue the draft when it is ready.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_invoices.php'),
+        'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_invoices.php')),
         'breadcrumb' => array(
-            array('label' => lang('Invoices'), 'url' => $list_url),
+            array('label' => lang('Invoices'), 'url' => pg_send_to_list_url($list_url)),
             array('label' => lang('Draft Invoice')),
         ),
     ]) . '
@@ -97,7 +104,7 @@ if (!$_POST) {
                 <a class="btn btn-sm btn-outline theme-secondary" href="add_erp_manual_invoice.php?copy=' . $invoice_id . '"><i class="bi bi-files me-1" aria-hidden="true"></i>' . lang('Copy') . '</a>
             </nav>' : '') . '
 
-            <form name="form" action="edit_erp_invoice_draft.php" method="post" autocomplete="off">
+            <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $invoice_id . '" />
                 ' . erp_invoice_form_cards($liveform, array('lines' => erp_invoice_form_lines($liveform, $stored_rows))) . '
@@ -146,7 +153,7 @@ if (!$_POST) {
         $liveform_list = new liveform('erp_invoices');
         $liveform_list->add_notice(lang('The draft has been deleted.'));
 
-        go($list_url);
+        go(pg_send_to_url($list_url));
     }
 
     $liveform->add_fields_to_session();
@@ -202,7 +209,7 @@ if (!$_POST) {
             $liveform_document->add_warning(h($credit_warning));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id);
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . $invoice_id . $send_to_query);
     }
 
     if (!erp_tx_commit()) {

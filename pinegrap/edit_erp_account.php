@@ -28,6 +28,12 @@ $liveform = new liveform('edit_erp_account');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_accounts.php';
 
+// The filtered list the account was opened from: the back arrow, the
+// breadcrumb, Save and every reload of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_account.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
+
 // If the form has not been submitted yet, then show it.
 if (!$_POST) {
 
@@ -192,9 +198,9 @@ if (!$_POST) {
         'icon' => 'erp',
         'heading' => h($account['title']),
         'heading_description' => lang('The account details, and every movement behind its balance.'),
-        'cancel' => array('enable' => 'true', 'url' => 'erp_accounts.php'),
+        'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_accounts.php')),
         'breadcrumb' => array(
-            array('label' => lang('Accounts'), 'url' => $list_url),
+            array('label' => lang('Accounts'), 'url' => pg_send_to_list_url($list_url)),
             array('label' => $account['title']),
         ),
     ]) . '
@@ -229,7 +235,7 @@ if (!$_POST) {
                 ' . (($output_late_fee !== '') ? '<div class="card-footer bg-reset">' . $output_late_fee . '</div>' : '') . '
             </div>
 
-            <form name="form" id="erp_account_form" action="edit_erp_account.php" method="post">
+            <form name="form" id="erp_account_form" action="' . $self_action . '" method="post">
                 ' . get_token_field() . '
                 ' . $liveform->field(array('type' => 'hidden', 'name' => 'id')) . '
                 ' . erp_account_form_cards($liveform, false, $has_movements, $linked_contact, $account) . '
@@ -296,7 +302,7 @@ if (!$_POST) {
         $liveform->remove_form();
         $liveform_list = new liveform('erp_accounts');
         $liveform_list->mark_error('_error', lang('The account could not be found.'));
-        go(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php');
+        go(pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php'));
     }
 
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
@@ -337,7 +343,7 @@ if (!$_POST) {
     }
 
     if ($liveform->check_form_errors() == true) {
-        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id . $send_to_query);
     }
 
     // An empty country choice is saved as empty: the store's country applies.
@@ -346,7 +352,7 @@ if (!$_POST) {
 
     if (!$result['success']) {
         $liveform->mark_error('_error', $result['error']);
-        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id);
+        go(PATH . SOFTWARE_DIRECTORY . '/edit_erp_account.php?id=' . $account_id . $send_to_query);
     }
 
     log_activity(lang(array('string' => 'erp account ({var:1}) was changed', 'vars' => $liveform->get_field_value('title'))), $_SESSION['sessionusername']);
@@ -355,5 +361,5 @@ if (!$_POST) {
     $liveform_list = new liveform('erp_accounts');
     $liveform_list->add_notice(lang('The account has been saved.'));
 
-    go(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php');
+    go(pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/erp_accounts.php'));
 }

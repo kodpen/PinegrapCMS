@@ -22,6 +22,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_expense');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php';
+
+// The filtered list the expense was opened from (its period above all): the
+// back arrow, the breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_expense.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
@@ -31,10 +37,10 @@ $expense = erp_expense($id);
 if ($expense === null) {
     $liveform_list = new liveform('erp_expenses');
     $liveform_list->mark_error('_error', lang('The expense could not be found.'));
-    go($list_url);
+    go(pg_send_to_url($list_url));
 }
 
-$self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id;
+$self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id . $send_to_query;
 
 // ------------------------------------------------------------------ actions
 if ($_POST) {
@@ -297,7 +303,7 @@ if ($status === 'paid') {
     $output_payment = '
         <p class="mb-3">' . (((string) $expense['due_date'] > '0000-00-00') ? h(lang(array('string' => 'To pay by {var:1}.', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) : lang('Not paid yet.')) . '</p>
         ' . (($till_count === 0) ? '<div class="alert theme-warning small py-3">' . h(lang(array('string' => 'No active till or bank account is kept in {var:1}, so this expense cannot be paid from one yet.', 'vars' => $currency))) . '</div>' : '') . '
-        <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end">
+        <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $id . '" />
             <input type="hidden" name="erp_action" value="pay" />
@@ -369,7 +375,7 @@ if ($kept !== null) {
             $output_receipt .= '
                 <details class="mt-5"' . ($liveform->check_field_error('receipt_file') ? ' open' : '') . '>
                     <summary class="small">' . lang('Replace the file') . '</summary>
-                    <form method="post" action="edit_erp_expense.php" enctype="multipart/form-data" class="mt-3">
+                    <form method="post" action="' . $self_action . '" enctype="multipart/form-data" class="mt-3">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         <input type="hidden" name="erp_action" value="replace" />
@@ -386,7 +392,7 @@ if ($kept !== null) {
     }
 } elseif (!$readonly && $open) {
     $output_receipt = '
-        <form method="post" action="edit_erp_expense.php" enctype="multipart/form-data">
+        <form method="post" action="' . $self_action . '" enctype="multipart/form-data">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $id . '" />
             <input type="hidden" name="erp_action" value="attach" />
@@ -427,7 +433,7 @@ if (erp_expense_recurring_ready()) {
                 <details class="mb-3"' . ($till_off ? ' open' : '') . '>
                     <summary class="small">' . lang('Change the till') . '</summary>
                     ' . (($till_off && ((string) $recurrence['last_error'] !== $not_active)) ? '<div class="alert theme-warning small py-3 mt-3 mb-0">' . h($not_active) . '</div>' : '') . '
-                    <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end mt-0">
+                    <form method="post" action="' . $self_action . '" class="row g-3 align-items-end mt-0">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . $id . '" />
                         <input type="hidden" name="erp_action" value="repeat_till" />
@@ -460,7 +466,7 @@ if (erp_expense_recurring_ready()) {
             ' . (((string) $recurrence['last_error'] !== '') ? '<div class="alert theme-warning small py-3">' . h((string) $recurrence['last_error']) . '</div>' : '') . '
             ' . (!$is_source ? '<p class="small mb-3"><a href="edit_erp_expense.php?id=' . (int) $recurrence['source_expense_id'] . '">' . lang('The expense it started from') . '</a></p>' : '') . '
             ' . $output_repeat_till . '
-            ' . (($active && !$readonly) ? '<form method="post" action="edit_erp_expense.php">
+            ' . (($active && !$readonly) ? '<form method="post" action="' . $self_action . '">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
                 <input type="hidden" name="erp_action" value="stop_repeat" />
@@ -501,7 +507,7 @@ if (erp_expense_recurring_ready()) {
         }
 
         $output_repeat .= (($output_repeat !== '') ? '<hr />' : '') . '
-            <form method="post" action="edit_erp_expense.php" class="row g-3 align-items-end">
+            <form method="post" action="' . $self_action . '" class="row g-3 align-items-end">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $id . '" />
                 <input type="hidden" name="erp_action" value="repeat" />
@@ -541,7 +547,7 @@ if ($can_change) {
                 <p class="small fg-secondary">' . (($status === 'paid')
                     ? lang('The expense stays on the list, struck through; its money goes back into the till with a movement dated today.')
                     : lang('The expense stays on the list, struck through, and counts for nothing.')) . '</p>
-                <form method="post" action="edit_erp_expense.php" class="d-flex flex-wrap gap-3">
+                <form method="post" action="' . $self_action . '" class="d-flex flex-wrap gap-3">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . $id . '" />
                     <input type="hidden" name="erp_action" value="cancel" />
@@ -571,9 +577,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h($heading),
     'heading_description' => h((string) $expense['category_name']) . ' · ' . h(prepare_form_data_for_output((string) $expense['expense_date'], 'date', false)),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_expenses.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_expenses.php')),
     'breadcrumb' => array(
-        array('label' => lang('Expenses'), 'url' => $list_url),
+        array('label' => lang('Expenses'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => lang(array('string' => 'Expense #{var:1}', 'vars' => $id))),
     ),
 ]) . '

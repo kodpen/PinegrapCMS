@@ -90,7 +90,7 @@ foreach (erp_cheque_rows(array('direction' => $direction, 'status' => $status, '
 
     $output_rows .= '
         <tr>
-            <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
+            <td class="text-nowrap" data-sort="' . h(str_replace('-', '', (string) $row['due_date'])) . '"><a class="pg-link-body-emphasis fw-semibold" href="erp_cheque.php?id=' . (int) $row['id'] . h('&send_to=' . urlencode(REQUEST_URL)) . '">' . h(prepare_form_data_for_output((string) $row['due_date'], 'date')) . '</a>'
                 . ($late ? ' <span class="badge theme-danger">' . lang('Overdue') . '</span>' : '') . '</td>
             <td>' . h($kinds[(string) $row['kind']] ?? '') . '<div class="small fg-secondary">' . ((string) $row['direction'] === 'received' ? lang('Received') : lang('Given')) . '</div></td>
             <td style="max-width:240px" class="text-break">' . h((string) $row['account_title']) . (((string) $row['drawer'] !== '') ? '<div class="small fg-secondary text-break">' . h((string) $row['drawer']) . '</div>' : '') . '</td>

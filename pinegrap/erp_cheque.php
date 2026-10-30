@@ -30,7 +30,13 @@ if ($cheque === null) {
     exit();
 }
 
-$self = PATH . SOFTWARE_DIRECTORY . '/erp_cheque.php?id=' . $cheque_id;
+// The filtered list the cheque was opened from: the back arrow, the
+// breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('erp_cheque.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
+
+$self = PATH . SOFTWARE_DIRECTORY . '/erp_cheque.php?id=' . $cheque_id . $send_to_query;
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
@@ -82,9 +88,9 @@ foreach (erp_accounts(array('status' => 'active')) as $account) {
     }
 }
 
-$step_form = function ($step, $title, $button, $class, $fields, $note) use ($cheque_id) {
+$step_form = function ($step, $title, $button, $class, $fields, $note) use ($cheque_id, $self_action) {
     return '
-        <form method="post" action="erp_cheque.php" class="card my-5">
+        <form method="post" action="' . $self_action . '" class="card my-5">
             ' . get_token_field() . '
             <input type="hidden" name="id" value="' . $cheque_id . '" />
             <input type="hidden" name="step" value="' . $step . '" />
@@ -143,9 +149,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h($name) . ' <span class="badge theme-' . h($state[1]) . ' ms-1 align-middle fs-md">' . h($state[0]) . '</span>',
     'heading_description' => (string) $cheque['account_title'] . ' · ' . erp_money_out_currency((int) $cheque['amount'], (string) $cheque['currency']) . ' · ' . lang(array('string' => 'due {var:1}', 'vars' => prepare_form_data_for_output((string) $cheque['due_date'], 'date', false))),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_cheques.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_cheques.php')),
     'breadcrumb' => array(
-        array('label' => lang('Cheques and notes'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cheques.php'),
+        array('label' => lang('Cheques and notes'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_cheques.php')),
         array('label' => ($name !== '') ? $name : ('#' . $cheque_id)),
     ),
 ]) . '

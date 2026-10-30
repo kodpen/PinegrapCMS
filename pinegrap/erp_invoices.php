@@ -288,7 +288,7 @@ foreach ($invoices as $invoice) {
     // The title as it was when the document was issued; the live card for
     // documents written before the copy existed.
     $account_title = (trim((string) $invoice['account_title']) !== '') ? (string) $invoice['account_title'] : (string) $invoice['live_account_title'];
-    $output_link_url = ($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id;
+    $output_link_url = h(($is_draft ? 'edit_erp_invoice_draft.php?id=' : 'edit_erp_invoice.php?id=') . $id . '&send_to=' . urlencode(REQUEST_URL));
     $output_number = $is_draft
         ? '<span class="fg-secondary fst-italic">' . lang('Draft') . '</span>'
         : h($invoice['full_number']);
