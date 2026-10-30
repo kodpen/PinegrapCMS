@@ -109,6 +109,9 @@ function test_site_log_writers_pass_no_bare_english()
 		'get_set_password.php',
 		'import_design.php',
 		'import_key_codes.php',
+		'includes/erp/mail.php',
+		'includes/erp/order_bridge.php',
+		'includes/erp/order_flow.php',
 		'includes/erp/quote_links.php',
 		'includes/erp/quotes.php',
 		'includes/explorer/handle_backups.php',
@@ -284,6 +287,25 @@ function test_site_log_visitor_form_logout_signature_lines_translated()
 		'custom_form.php'              => '/log_activity\(lang\(/',
 		'includes/fn/forms.php'        => '/log_activity\(lang\(\'user logged out\'\)/',
 		'includes/erp/quote_links.php' => '/log_activity\(lang\(array\(\s*\'string\' => \'erp quote \(\{var:1\}\) was signed by/',
+	);
+
+	foreach ($patterns as $file => $pattern) {
+		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
+	}
+}
+
+// The checkout's automatic invoice (order_flow.php's invoice, delivery note
+// and cancellation steps, the auto-invoice lines in order_bridge.php and the
+// automatic invoice e-mail in mail.php) and the order completion lines run
+// in the visitor's checkout or payment callback as well as from the panel:
+// they take the software language, so one checkout logs in one language.
+function test_site_log_checkout_auto_invoice_lines_translated()
+{
+	$patterns = array(
+		'includes/erp/order_flow.php'      => '/log_activity\(lang\(/',
+		'includes/erp/order_bridge.php'    => '/(log_activity\(lang\(|\? lang\(array\(\'string\' => \'Order \(#\{var:1\}\) was invoiced|: lang\(array\(\'string\' => \'Order \(#\{var:1\}\) was invoiced)/',
+		'includes/erp/mail.php'            => '/log_activity\(lang\(/',
+		'includes/fn/order_completion.php' => '/log_activity\(lang\(/',
 	);
 
 	foreach ($patterns as $file => $pattern) {
