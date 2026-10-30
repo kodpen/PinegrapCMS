@@ -5694,6 +5694,15 @@ function pg_pb_render_product_screen($values = array(), $context = array())
             token: ' . str_replace('</', '<\/', encode_json($_SESSION['software']['token'])) . ',
             // Host only, the way a search result prints it — no scheme.
             siteUrl: ' . str_replace('</', '<\/', encode_json(HOSTNAME . PATH)) . ',
+            // The accent table the save transliterates an address with, so the
+            // search result preview shows the address the save will write.
+            asciiTable: ' . str_replace('</', '<\/', encode_json(pg_transliterate_ascii_table())) . ',
+            // On Edit, a blank Catalog Name box keeps the stored address
+            // (the save rebuilds it only when the box changed), so the preview
+            // shows that address instead of one made from the description.
+            storedAddress: ' . (($pg_mode === 'edit')
+                ? str_replace('</', '<\/', encode_json((string) db_value("SELECT address_name FROM products WHERE id = '" . e((int) (isset($context['product_id']) ? $context['product_id'] : $v('id', 0))) . "'")))
+                : 'null') . ',
             // One option per attribute while editing: a product is one variant, and
         // a screen that lets it hold two options of the same attribute is a
         // screen that quietly turns it into a set.
