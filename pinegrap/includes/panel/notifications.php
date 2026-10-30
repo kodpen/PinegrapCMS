@@ -336,6 +336,15 @@ function pg_panel_push_test($request, $action)
     exit();
 }
 
+// The title a device banner shows. pg_notification_display() returns it as
+// escaped markup for the bell; the operating system shows text, so the
+// markup is dropped and the entities decoded, as pg_notification_body()
+// does for the body beside it.
+function pg_panel_push_title($title)
+{
+    return trim(html_entity_decode(strip_tags((string) $title), ENT_QUOTES, 'UTF-8'));
+}
+
 function pg_panel_push_pending($request, $action)
 {
     // Kept global: helpers read the session user through `global $user`;
@@ -366,7 +375,7 @@ function pg_panel_push_pending($request, $action)
 
         $array[] = array(
             'id'        => $notification['id'],
-            'title'     => $display['title'],
+            'title'     => pg_panel_push_title($display['title']),
             'body'      => pg_notification_body($display),
             'url'       => $display['url'],
             'icon'      => $display['icon'],

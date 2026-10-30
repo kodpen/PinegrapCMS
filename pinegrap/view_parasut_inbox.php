@@ -279,7 +279,7 @@ if ($tab === 'incoming') {
             $total      = pg_format_number($totals['total'], 2);
             $item_type  = $attr['item_type']  ?? '';
             $status     = $attr['payment_status'] ?? ($attr['status'] ?? '');
-            $description = h($attr['description'] ?? '');
+            $description = (string) ($attr['description'] ?? '');
 
             $js_detail_id = 'detail_' . preg_replace('/[^a-z0-9]/i', '_', $bid);
 
@@ -367,7 +367,7 @@ if ($tab === 'outgoing') {
             $total       = pg_format_number($totals['total'], 2);
             $item_type   = $attr['item_type']   ?? '';
             $status      = $attr['payment_status'] ?? ($attr['status'] ?? '');
-            $description = h($attr['description'] ?? '');
+            $description = (string) ($attr['description'] ?? '');
 
             $rows .= '
             <tr>
