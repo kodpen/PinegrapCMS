@@ -70,7 +70,7 @@ function test_print_order_prints_card_per_real_recipient()
 {
 	$source = print_order_shipping_card_source();
 
-	$card = strpos($source, '$output_order_details .= pg_print_order_shipping_card(');
+	$card = strpos($source, '<td colspan="\' . $output_colspan . \'" style="border: 0">\' . pg_print_order_shipping_card($shipping_card_rows) . \'</td>');
 	$items = strpos($source, '<table cellpadding="4" class="order_details table table-bordered w-auto">');
 	$real = strpos($source, "if (\$ship_tos[\$key]['ship_to_id'] > 0) {");
 

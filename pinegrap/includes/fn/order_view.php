@@ -5,7 +5,8 @@
  * The panel order screen's card rows (view_order.php): a "label: value" row
  * only when there is a value, the stored address type and country code as
  * the panel names them, the requested arrival date as the customer chose it
- * at the checkout, and the text of the contact link.
+ * at the checkout, the text of the contact link, and the printed order's
+ * shipping card (print_order.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -213,4 +214,59 @@ function pg_order_view_contact_text($contact_id, $first_name, $last_name, $compa
     }
 
     return h($text);
+}
+
+/**
+ * The printed order's shipping card (print_order.php): a recipient's rows
+ * under the "Shipping Information" heading, in the print view's section
+ * look. A row without a value is left out; a card with no value at all
+ * prints nothing.
+ *
+ * @param array $rows label (plain text) => value markup (escaped text or
+ *                    markup the caller built), in print order
+ * @return string
+ */
+function pg_print_order_shipping_card(array $rows)
+{
+    $rows_html = '';
+
+    foreach ($rows as $label => $value_html) {
+        $rows_html .= pg_order_view_row(h((string) $label), $value_html);
+    }
+
+    if ($rows_html === '') {
+        return '';
+    }
+
+    return '<div class="print-order-shipping-card" style="margin-bottom:.5em;font-size:.9em">
+                <div class="ord-section-title">' . h(lang('Shipping Information')) . '</div>
+                ' . $rows_html . '
+            </div>';
+}
+
+/**
+ * A recipient's tracking numbers as the printed order lists them: every
+ * number, one a line, its carrier in brackets when known. Paper takes no
+ * link, so unlike the order screen a number is printed whether or not its
+ * carrier has a tracking page. Escaped.
+ *
+ * @param array $parcels rows of pg_shipment_view(): number, carrier_name
+ * @return string
+ */
+function pg_print_order_tracking_text(array $parcels)
+{
+    $lines = array();
+
+    foreach ($parcels as $parcel) {
+        $number = isset($parcel['number']) ? trim((string) $parcel['number']) : '';
+
+        if ($number === '') {
+            continue;
+        }
+
+        $carrier = isset($parcel['carrier_name']) ? trim((string) $parcel['carrier_name']) : '';
+        $lines[] = h($number) . (($carrier !== '') ? ' (' . h($carrier) . ')' : '');
+    }
+
+    return implode('<br />', $lines);
 }
