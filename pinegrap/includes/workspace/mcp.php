@@ -2131,7 +2131,7 @@ function ws_mcp_settings_tools($self_url, $server, $admin)
         }
 
         $rows .= '
-            <li class="ws-dept-row align-items-start" data-ws-mcp-tool="' . h(mb_strtolower($name . ' ' . $tool['title'] . ' ' . $description)) . '"' . (($can === 'read') ? ' data-ws-mcp-reads' : '') . '>
+            <li class="ws-dept-row align-items-start" data-ws-mcp-tool="' . h(ws_fold($name . ' ' . $tool['title'] . ' ' . $description)) . '"' . (($can === 'read') ? ' data-ws-mcp-reads' : '') . '>
                 ' . $control . '
                 <label class="ws-grow" for="' . $field . '">
                     <span class="fw-semibold"><code>' . h($name) . '</code></span>
@@ -2415,14 +2415,17 @@ function ws_mcp_settings_card($self_url, $viewer, $liveform = null)
                 field.value = \'\';
             }
 
-            var words = field.value.toLocaleLowerCase().trim();
+            // Both sides folded (pgFoldTR() of backend.src.js, ws_fold() on
+            // the server), so İ, I, ı and i match alike in any browser language.
+            var fold = window.pgFoldTR || function (text) { return String(text).toLowerCase(); };
+            var words = fold(field.value).trim();
             var form = field.closest(\'form\');
             var status = form.querySelector(\'[data-ws-mcp-filter-status]\');
             var rows = form.querySelectorAll(\'[data-ws-mcp-tool]\');
             var shown = 0;
 
             rows.forEach(function (row) {
-                var hide = words !== \'\' && row.getAttribute(\'data-ws-mcp-tool\').indexOf(words) === -1;
+                var hide = words !== \'\' && fold(row.getAttribute(\'data-ws-mcp-tool\')).indexOf(words) === -1;
 
                 row.classList.toggle(\'d-none\', hide);
 
