@@ -242,9 +242,9 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle"><span class="badge ' . $sms_queue_status[1] . '">' . h($sms_queue_status[0]) . '</span></td>
                             <td class="align-middle">' . h(isset($sms_queue_kind_labels[$sms_queue_row['kind']]) ? $sms_queue_kind_labels[$sms_queue_row['kind']] : $sms_queue_row['kind']) . '</td>
                             <td class="align-middle text-nowrap">+' . h($sms_queue_row['recipient']) . '</td>
-                            <td class="align-middle" title="' . h($sms_queue_row['body']) . '">' . h(truncate($sms_queue_row['body'], 80)) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
+                            <td class="align-middle text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_row['body']) . (($sms_queue_reference !== '') ? '<div class="small fg-secondary">' . h($sms_queue_reference) . '</div>' : '') . '</td>
                             <td class="align-middle">' . (int) $sms_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger" title="' . h($sms_queue_error) . '">' . h(truncate($sms_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($sms_queue_error) . '</td>
                             <td class="align-middle small text-nowrap">' . h($sms_queue_provider) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $sms_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $sms_queue_when . '</td>
@@ -402,7 +402,7 @@ if ($mail_queue_tab === 'sms') {
                             <td class="align-middle">' . h($mail_queue_row['recipient']) . '</td>
                             <td class="align-middle">' . h($mail_queue_row['subject']) . '</td>
                             <td class="align-middle">' . (int) $mail_queue_row['attempts'] . '</td>
-                            <td class="align-middle small fg-danger" title="' . h($mail_queue_error) . '">' . h(truncate($mail_queue_error, 80)) . '</td>
+                            <td class="align-middle small fg-danger text-wrap text-break" style="max-width: 28rem;">' . h($mail_queue_error) . '</td>
                             <td class="align-middle text-nowrap">' . prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $mail_queue_row['created_at']), 'date and time') . '</td>
                             <td class="align-middle text-nowrap">' . $mail_queue_when . '</td>
                         </tr>';
