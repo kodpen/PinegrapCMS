@@ -1094,7 +1094,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     $greeting_tips = array_map('h', array(
         lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
         lang('Did you know the widgets can be dragged around by their headers?'),
-        lang('If you prefer the light theme, it is in the user menu at the top right.'),
+        lang('If you prefer the light theme, choose Light under Appearance in My Menu at the top right.'),
     ));
 
     // The widget theme settings are on the Dashboard card of Site Settings >
