@@ -26,6 +26,16 @@ $ready = erp_bank_import_ready();
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $self = PATH . SOFTWARE_DIRECTORY . '/erp_bank_statements.php';
 
+// A statement over post_max_size makes PHP throw the whole request away;
+// without this the screen drew itself again as if nothing had been sent.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('statement', h(erp_upload_discarded_message()));
+    go($self);
+}
+
+// The statement box's limit, or the server's when that is lower.
+$statement_max = erp_upload_max_bytes(5 * 1024 * 1024);
+
 if ($_POST) {
     validate_token_field();
 
@@ -39,13 +49,17 @@ if ($_POST) {
 
     $file = $_FILES['statement'] ?? null;
 
-    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {
-        $liveform->mark_error('statement', h(lang('Choose the file the bank gave you.')));
+    // An oversize or broken upload is named as such, with the limit, before
+    // the empty box's message.
+    $refusal = erp_upload_refusal($file, 5 * 1024 * 1024);
+
+    if ($refusal !== '') {
+        $liveform->mark_error('statement', h($refusal));
         go($self);
     }
 
-    if ((int) $file['size'] > 5 * 1024 * 1024) {
-        $liveform->mark_error('statement', h(lang('The file is larger than 5 MB.')));
+    if (!is_array($file) || ((int) ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) || !is_uploaded_file((string) $file['tmp_name'])) {
+        $liveform->mark_error('statement', h(lang('Choose the file the bank gave you.')));
         go($self);
     }
 
@@ -121,7 +135,7 @@ pg_page_shell([
                         <button type="submit" class="btn btn-solid theme-primary w-100"><i class="bi bi-upload me-3" aria-hidden="true"></i>' . lang('Take in') . '</button>
                     </div>
                     <p class="col-12 small fg-secondary mb-0" role="status" aria-live="polite" data-erp-send-once-status></p>
-                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . '</div>
+                    <div class="col-12 form-text">' . lang('Download the statement from internet banking as Excel (.xlsx or .xls), OpenDocument (.ods) or CSV and take it in as it is; the first sheet is read and the bank\'s title rows above the transactions are skipped. You choose the columns on the next screen; they are remembered for this bank account. A line already taken in is not added twice.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text($statement_max)))) . '</div>
                 </div>
             </form>' : '') . '
 

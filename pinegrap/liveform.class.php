@@ -640,8 +640,10 @@ class liveform {
                 
                 $output_onclick = ($onclick) ? ' onclick="' . $onclick . '"' : '';
                 $output_onfocus = ($onfocus) ? ' onfocus="' . $onfocus . '"' : '';
+                // The picker offers only the types the screen takes.
+                $output_accept = isset($attributes['accept']) ? ' accept="' . h($attributes['accept']) . '"' : '';
                 
-                return '<input type="file" name="' . h($field) . '"' . $output_id_attribute . ' size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
+                return '<input type="file" name="' . h($field) . '"' . $output_id_attribute . ' size="' . $size . '" class="' . $class . '" style="' . $style . '"' . $output_accept . $output_onclick . $output_onfocus . $output_required . $output_aria_label . $output_aria_invalid . $autofocus . '>' . $output_inline_feedback;
                 break;
 
             case 'submit':

@@ -181,8 +181,8 @@ function erp_import_step_upload($liveform, $kind_options)
                         <div class="row">
                             <div class="col-12 lg:col-8 my-3">
                                 <label for="file" class="form-label">' . lang('CSV file') . '</label>
-                                ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control')) . '
-                                <div class="form-text">' . lang('Upload a CSV file. The first row must hold the column names.') . ' ' . lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.') . ' ' . lang(array('string' => 'Up to {var:1} MB.', 'vars' => (int) (ERP_IMPORT_MAX_BYTES / (1024 * 1024)))) . '</div>
+                                ' . $liveform->output_field(array('type' => 'file', 'id' => 'file', 'name' => 'file', 'class' => 'form-control', 'accept' => '.csv,.txt,text/csv')) . '
+                                <div class="form-text">' . lang('Upload a CSV file. The first row must hold the column names.') . ' ' . lang('The delimiter and the character set are detected; Excel files saved as CSV in Turkish work as they are.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_IMPORT_MAX_BYTES))))) . '</div>
                             </div>
                             <div class="col-12 lg:col-4 my-3">
                                 <label for="default_kind" class="form-label">' . lang('Default type for rows without one') . '</label>
@@ -522,6 +522,13 @@ pg_request_single_values(array('step', 'default_kind', 'import_token', 'duplicat
 
 $step = isset($_POST['step']) ? (string) $_POST['step'] : '';
 
+// A file over post_max_size makes PHP throw the whole request away; without
+// this the wizard started over as if nothing had been sent.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('file', h(erp_upload_discarded_message()));
+    go($self_url);
+}
+
 // No submission: the upload form. Any file left from an earlier visit is
 // dropped so a token cannot be reused after the operator started over.
 if (!$_POST) {
@@ -544,10 +551,12 @@ if ($step === 'upload') {
 
     $upload = isset($_FILES['file']) && is_array($_FILES['file']) ? $_FILES['file'] : array('name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'tmp_name' => '', 'size' => 0);
 
+    $refusal = erp_upload_refusal($upload, ERP_IMPORT_MAX_BYTES);
+
     if (((string) $upload['name'] === '') || ((int) $upload['error'] === UPLOAD_ERR_NO_FILE)) {
         $liveform->mark_error('file', lang('Please select a file.'));
-    } elseif (((int) $upload['error'] === UPLOAD_ERR_INI_SIZE) || ((int) $upload['error'] === UPLOAD_ERR_FORM_SIZE) || ((int) $upload['size'] > ERP_IMPORT_MAX_BYTES)) {
-        $liveform->mark_error('file', lang('The file is too large.'));
+    } elseif ($refusal !== '') {
+        $liveform->mark_error('file', h($refusal));
     } elseif (((int) $upload['error'] !== UPLOAD_ERR_OK) || !is_uploaded_file($upload['tmp_name'])) {
         $liveform->mark_error('file', lang('The file could not be read.'));
     } elseif (!in_array(strtolower((string) pathinfo($upload['name'], PATHINFO_EXTENSION)), array('csv', 'txt'), true)) {

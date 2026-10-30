@@ -140,6 +140,15 @@ include_once('liveform.class.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/forms/submitted_form_form.php');
 $liveform = new liveform('edit_submitted_form', $_REQUEST['id']);
 
+// An attachment over post_max_size makes PHP throw the whole request away.
+// The id and the screen to return to ride in the form's address, so the
+// record comes back with what happened instead of "Record not found".
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('', h(pg_submitted_form_discarded_message()));
+    $discarded_send_to = pg_safe_redirect_path(pg_send_to_url(''), '/__none__');
+    go(PATH . SOFTWARE_DIRECTORY . '/edit_submitted_form.php?id=' . $id . (($discarded_send_to !== '/__none__') ? '&send_to=' . urlencode($discarded_send_to) : ''));
+}
+
 // if form has not been submitted yet
 if (!$_POST) {
     // get form information
@@ -404,7 +413,7 @@ if (!$_POST) {
                             <div class="col-12 md:col-auto">' . $output_workspace_button . '</div>
                         </div>
                     </div>
-                    <form' . $form_markup['enctype'] . ' name="form" action="edit_submitted_form.php" method="post">
+                    <form' . $form_markup['enctype'] . ' name="form" action="edit_submitted_form.php?id=' . $id . (($send_to !== '') ? '&amp;send_to=' . h(urlencode($send_to)) : '') . '" method="post">
                         ' . get_token_field() . '
                         <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
                         ' . (($send_to !== '') ? '<input type="hidden" name="send_to" value="' . h($send_to) . '" />' : '') . '
