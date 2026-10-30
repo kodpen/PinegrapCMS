@@ -682,7 +682,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         '"affiliate_code",' .
         $multi_currency_column_name .
         '"http_referer",' .
-        '"ip_address"';
+        '"ip_address",' .
+        '"installment_charges"';
 
     // Loop through the custom billing field names in order to
     // output them in the first row of the orders.csv data.
@@ -821,7 +822,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['affiliate_code'] . '",' .
             $currency_code .
             '"' . $order['http_referer'] . '",' .
-            '"' . $ip_address . '"';
+            '"' . $ip_address . '",' .
+            '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
 
         // Loop through the custom billing field names in order to
         // output custom billing form data for this order row.
@@ -1133,7 +1135,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $row['quantity'] . '",' .
             '"' . $shipped_quantity . '",' .
             '"' . sprintf("%01.2lf", $row['price'] / 100) . '",' .
-            '"' . sprintf("%01.2lf", $row['tax'] / 100) . '",' .
+            '"' . sprintf("%01.2lf", pg_order_item_line_tax($row['tax_total'], $row['tax'], $row['quantity']) / 100) . '",' .
             '"' . $recurring_payment_period . '",' .
             '"' . $recurring_number_of_payments . '",' .
             '"' . $recurring_start_date . '",' .
@@ -1254,6 +1256,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             orders.shipping,
             orders.gift_card_discount,
             orders.surcharge,
+            orders.installment_charges,
             orders.total,
             orders.commission,
             orders.order_date,
@@ -1362,7 +1365,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             products.short_description,
             order_items.quantity,
             order_items.price,
-            order_items.tax_total AS tax,
+            order_items.tax,
+            order_items.tax_total,
             order_items.recurring_payment_period,
             order_items.recurring_number_of_payments,
             order_items.recurring_start_date,
@@ -1527,8 +1531,9 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
         '"member_id",' .
         '"affiliate_code",' .
         $multi_currency_column_name .
-        '"http_referer",' . 
-        '"ip_address"';
+        '"http_referer",' .
+        '"ip_address",' .
+        '"installment_charges"';
         
     // Loop through the custom billing field names in order to output them in the order heading row.
     foreach ($custom_billing_field_names as $custom_billing_field_name) {
@@ -1790,7 +1795,8 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             '"' . $order['affiliate_code'] . '",' .
             $currency_code .
             '"' . $order['http_referer'] . '",' .
-            '"' . $ip_address . '"';
+            '"' . $ip_address . '",' .
+            '"' . sprintf("%01.2lf", $order['installment_charges'] / 100) . '"';
         
         // Loop through the custom billing field names in order to output custom billing form data for this order row.
         foreach ($custom_billing_field_names as $custom_billing_field_name) {
@@ -1863,7 +1869,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                 '"' . $order_item['quantity'] . '",' .
                 '"' . $shipped_quantity . '",' .
                 '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                '"' . sprintf("%01.2lf", $order_item['tax'] / 100) . '",' .
+                '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
                 '"' . $recurring_payment_period . '",' .
                 '"' . $recurring_number_of_payments . '",' .
                 '"' . $recurring_start_date . '",' .
@@ -2100,7 +2106,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     '"' . $order_item['quantity'] . '",' .
                     '"' . $shipped_quantity . '",' .
                     '"' . sprintf("%01.2lf", $order_item['price'] / 100) . '",' .
-                    '"' . sprintf("%01.2lf", $order_item['tax'] / 100) . '",' .
+                    '"' . sprintf("%01.2lf", pg_order_item_line_tax($order_item['tax_total'], $order_item['tax'], $order_item['quantity']) / 100) . '",' .
                     '"' . $recurring_payment_period . '",' .
                     '"' . $recurring_number_of_payments . '",' .
                     '"' . $recurring_start_date . '",' .
