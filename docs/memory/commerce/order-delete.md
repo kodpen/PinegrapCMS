@@ -14,3 +14,6 @@ description: What deleting an order removes (delete_order.php, the only DELETE F
 ## Why are the legal document copies deleted?
 - They hold the buyer's name, address, phone, e-mail, IP and browser. Before PR #1088 (issue #766) they stayed after the order was gone: personal data nothing could reach (not the panel, not the API), kept through a deletion request. And MySQL 5.7 does not keep AUTO_INCREMENT across a restart, so a new order could get the deleted one's id; `pg_legal_documents_store()` then found copies "already stored" and the new customer's receipt and document page showed the old customer's documents.
 - Test: `test_legal_documents_deleted_with_the_order` (`tests/legal_documents_test.php`).
+
+## What stays behind in the ERP?
+- `erp_invoices.order_id` and `erp_waybills.order_id` keep the deleted order's id (clearing them is not decided). The ERP screens read `o.id AS order_exists` from their `LEFT JOIN orders` and draw the order with `erp_order_link_html()` (`includes/erp/waybills.php`): linked while the order is there, plain "#N (silinmiş)" after, so no link opens view_order.php's 404. Test: `tests/erp_order_link_test.php`.
