@@ -14,7 +14,7 @@ description: A flow run's flag (C1, #2903): state, duration, one-line result fol
 - `runFlag()` lives in `assets/js/workspace_flow_flag.js` (`window.PGWsFlowFlag`, in the workspace.min.js bundle before workspace.js, so the channel screen has it without the canvas); `workspace_flow.js` calls it and still offers `window.PGWsFlow.runFlag()`. It needs only `window.PGWsKit` and the `fl_flag_*` and `fl_run_*` texts of `ws_flow_js_strings()`, which every workspace screen carries.
 
 ## Which result does a run show?
-- `ws_flow_run_result_pick()` (pure, `flow_runs.php`): a failed run shows the sentence of its first failed box; any other run the sentence of the box that moved last, a box still open counting as the latest. Boxes without a sentence are skipped; cut to `WS_FLOW_RUN_RESULT_CHARS` (1000).
+- `ws_flow_run_result_pick()` (pure, `flow_runs.php`): a failed run shows the sentence of its first failed box; any other run the sentence of the box that moved last, a box still open counting as the latest; a skipped box ("Not reached in this run.") comes last whenever it settled, as the walk writes it in the ending box's second with a larger id (#3473, bug #3370). Boxes without a sentence are passed over; cut to `WS_FLOW_RUN_RESULT_CHARS` (1000).
 - Each sentence is the one the reader is shown (`ws_step_result_shown()`): a reader without edit gets a condition's or record change's plain word. No column holds it; it is read from `ws_flow_run_steps` (no schema change).
 
 ## Which reads carry it?

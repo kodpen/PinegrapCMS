@@ -1445,8 +1445,10 @@ function ws_flow_step_states($rows)
  * The result a run's flag shows: the sentence of the box that failed it
  * first for a failed run, else the sentence of the box that moved last (a
  * box still open counts as the latest), so a run done shows what it ended
- * on and a waiting one what it waits at. Boxes without a sentence are
- * passed over; none at all gives ''. Trimmed and cut to
+ * on and a waiting one what it waits at. A box not reached (skipped) comes
+ * after every other box whenever it settled: the walk writes it in the
+ * same second as the box the run ended on, with a larger id. Boxes without
+ * a sentence are passed over; none at all gives ''. Trimmed and cut to
  * WS_FLOW_RUN_RESULT_CHARS. Pure.
  *
  * @param string  $run_status ws_flow_run_statuses()
@@ -1472,6 +1474,8 @@ function ws_flow_run_result_pick($run_status, $lines)
             // The first failure: the earliest settled, a failed box never
             // being open.
             $key = array(0, -$finished, -$id);
+        } elseif ((string) ($line['status'] ?? '') === 'skipped') {
+            $key = array(-2, $finished, $id);
         } else {
             $key = array(-1, ($finished > 0) ? $finished : PHP_INT_MAX, $id);
         }
@@ -2402,10 +2406,10 @@ function ws_flow_runs_heal($run_id = 0)
  * Carries the runs on: boxes that stopped half way are taken care of, runs
  * a request left half walked are walked again, waiting boxes whose next look
  * has come look at their task, then the ready boxes are claimed and carried
- * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run and
+ * out, oldest first, at most WS_FLOW_BOXES_PER_RUN of one run a round and
  * WS_FLOW_ADVANCE_MAX in all, and none started once the time budget is
  * spent (ws_flow_advance_boxes()). A box that ends makes the next ones
- * ready, which a later round of the same call takes.
+ * ready, which a later batch or round of the same call takes.
  *
  * @param int $budget seconds: WS_FLOW_BUDGET_TICK on a screen, WS_FLOW_BUDGET_JOB in a job
  * @param int $run_id only this run (the one just started), 0 for all
@@ -2454,11 +2458,14 @@ function ws_flow_advance($budget = WS_FLOW_BUDGET_TICK, $run_id = 0)
  * The ready boxes one call of ws_flow_advance() carries out, oldest first: a
  * batch read at a time ($select, told the runs that had their share so that
  * it leaves them out), each box taken ($claim) and carried out ($carry) in
- * turn. At most WS_FLOW_BOXES_PER_RUN boxes of one run, also when one batch
- * holds more of it, and WS_FLOW_ADVANCE_MAX in all; none started once the
- * deadline has passed. A box another request took counts for nothing; a
- * batch that starts no box ends the call. A box that ends makes the next
- * ones ready, which a later batch takes. Pure but for its callables.
+ * turn. A round gives each run at most WS_FLOW_BOXES_PER_RUN boxes, also
+ * when one batch holds more of it; once no run without its share has a box
+ * to start, the next round gives every run a new share, so a lone run walks
+ * on. WS_FLOW_ADVANCE_MAX in all; none started once the deadline has
+ * passed. A box another request took counts for nothing; a batch that
+ * starts no box ends the call when no run had its share this round. A box
+ * that ends makes the next ones ready, which a later batch takes. Pure but
+ * for its callables.
  *
  * @param callable $select   function (int[] $full): array[], ready rows of runs not in $full
  * @param callable $claim    function (array $row): bool, whether this request took the box
@@ -2472,7 +2479,7 @@ function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
     $per_run = array();
     $full = array();
 
-    for ($round = 0; $round < WS_FLOW_ADVANCE_MAX; $round++) {
+    while (($ran < WS_FLOW_ADVANCE_MAX) && (microtime(true) < $deadline)) {
         $started = 0;
 
         foreach ((array) $select($full) as $row) {
@@ -2502,7 +2509,16 @@ function ws_flow_advance_boxes($select, $claim, $carry, $deadline)
         }
 
         if ($started === 0) {
-            break;
+            // Nothing left for the runs still under their share: a new round
+            // when some run had its share, else the call ends. Every batch
+            // that starts a box counts towards WS_FLOW_ADVANCE_MAX, and a
+            // round that starts none ends the call, so the loop ends.
+            if (empty($full)) {
+                break;
+            }
+
+            $full = array();
+            $per_run = array();
         }
     }
 

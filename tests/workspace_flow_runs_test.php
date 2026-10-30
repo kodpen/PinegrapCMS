@@ -899,6 +899,71 @@ function test_workspace_flow_runs_advance_budgets()
 	pg_assert_same(0, ws_flow_advance_boxes($select, $counted, $carry, 0.0), 'a deadline passed');
 	pg_assert_same(0, $claims);
 
+	// A lone run walks on in further rounds: a box that ends makes the next
+	// one ready, and the call keeps going until WS_FLOW_ADVANCE_MAX.
+	$chain = function ($lengths) {
+		$state = array('ready' => array(), 'left' => $lengths, 'id' => 0);
+
+		foreach (array_keys($lengths) as $run) {
+			$state['id']++;
+			$state['ready'][$state['id']] = array('id' => $state['id'], 'run_id' => $run);
+			$state['left'][$run]--;
+		}
+
+		return $state;
+	};
+	$state = $chain(array(1 => 10));
+	$carried = array();
+	$chain_select = function ($full) use (&$state) {
+		return array_slice(array_values(array_filter($state['ready'], function ($row) use ($full) {
+			return !isset($full[$row['run_id']]);
+		})), 0, 20);
+	};
+	$chain_claim = function ($row) use (&$state) {
+		if (!isset($state['ready'][$row['id']])) {
+			return false;
+		}
+
+		unset($state['ready'][$row['id']]);
+
+		return true;
+	};
+	$chain_carry = function ($row) use (&$state, &$carried) {
+		$carried[] = (int) $row['run_id'];
+		$run = (int) $row['run_id'];
+
+		if ($state['left'][$run] > 0) {
+			$state['id']++;
+			$state['ready'][$state['id']] = array('id' => $state['id'], 'run_id' => $run);
+			$state['left'][$run]--;
+		}
+	};
+
+	pg_assert_same(10, ws_flow_advance_boxes($chain_select, $chain_claim, $chain_carry, microtime(true) + 60), 'a lone run of ten boxes ends in one call');
+
+	$state = $chain(array(1 => 50));
+	$carried = array();
+
+	pg_assert_same(WS_FLOW_ADVANCE_MAX, ws_flow_advance_boxes($chain_select, $chain_claim, $chain_carry, microtime(true) + 60), 'a long lone run stops at the call\'s share');
+
+	// Two runs still take turns: each has its share per round, neither runs
+	// more than one share ahead of the other.
+	$state = $chain(array(1 => 40, 2 => 40));
+	$carried = array();
+
+	pg_assert_same(WS_FLOW_ADVANCE_MAX, ws_flow_advance_boxes($chain_select, $chain_claim, $chain_carry, microtime(true) + 60));
+	pg_assert_same(array(1 => WS_FLOW_ADVANCE_MAX / 2, 2 => WS_FLOW_ADVANCE_MAX / 2), array_count_values($carried), 'the call is shared evenly');
+
+	$seen = array(1 => 0, 2 => 0);
+	$gap = 0;
+
+	foreach ($carried as $run) {
+		$seen[$run]++;
+		$gap = max($gap, abs($seen[1] - $seen[2]));
+	}
+
+	pg_assert_true($gap <= WS_FLOW_BOXES_PER_RUN, 'no run gets more than its share ahead');
+
 	// ws_flow_advance() reads each batch without the runs that had their
 	// share, takes each box with the conditional claim, and carries it out
 	// as the claim left it.
@@ -1016,8 +1081,14 @@ function test_workspace_flow_runs_result_pick()
 	pg_assert_same('Mail sent.', ws_flow_run_result_pick('done', array(
 		$line('done', 'Task opened.', 10, 1),
 		$line('done', 'Mail sent.', 20, 2),
-		$line('skipped', '', 30, 3),
+		$line('skipped', 'Not reached in this run.', 30, 3),
 	)), 'the last box with a sentence');
+	pg_assert_same('The flow reached its end.', ws_flow_run_result_pick('done', array(
+		$line('done', 'Started the flow.', 100, 41),
+		$line('done', 'The flow reached its end.', 101, 42),
+		$line('skipped', 'Not reached in this run.', 101, 43),
+	)), 'a box not reached never stands for the run, also when it settled later');
+	pg_assert_same('Not reached in this run.', ws_flow_run_result_pick('done', array($line('skipped', 'Not reached in this run.', 10, 1))), 'only boxes not reached: their sentence');
 	pg_assert_same('Second.', ws_flow_run_result_pick('done', array($line('done', 'First.', 20, 1), $line('done', 'Second.', 20, 2))), 'a tie goes to the later box');
 	pg_assert_same('Waiting for Ada.', ws_flow_run_result_pick('waiting', array(
 		$line('waiting', 'Waiting for Ada.', 0, 1),
