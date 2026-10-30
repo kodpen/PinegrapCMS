@@ -203,14 +203,22 @@ function test_form_protection_sweep_keeps_day_counters()
 	$queries = waf_rate_sweep_queries(100000, 3600);
 
 	pg_assert_same(array(
-		"DELETE FROM waf_rate WHERE window_start < 96400 AND bucket_key NOT LIKE '%|cfr' LIMIT 5000",
+		"DELETE FROM waf_rate WHERE window_start < 96400 AND bucket_key NOT LIKE '%|cfr' AND bucket_key NOT LIKE '%|eaf' LIMIT 5000",
 		"DELETE FROM waf_rate WHERE window_start < 13600 AND bucket_key LIKE '%|cfr' LIMIT 5000",
+		"DELETE FROM waf_rate WHERE window_start < 13600 AND bucket_key LIKE '%|eaf' LIMIT 5000",
 	), $queries, 'hour retention');
 
 	// A sign-in lockout longer than a day already covers them.
 	pg_assert_same(array(
 		"DELETE FROM waf_rate WHERE window_start < 0 LIMIT 5000",
 	), waf_rate_sweep_queries(100000, 100000), 'retention past a day');
+}
+
+// The day counters: the custom form's per-address limit and E-mail a
+// Friend's ten e-mails a day per visitor address.
+function test_form_protection_long_scopes()
+{
+	pg_assert_same(array('cfr' => 86400, 'eaf' => 86400), waf_rate_long_scopes());
 }
 
 // A "+tag" reaches the same inbox, and Gmail ignores dots in the name, so
