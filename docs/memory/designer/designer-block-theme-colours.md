@@ -21,7 +21,7 @@ description: Which classes keep a ready-made designer block in step with the des
 - The palette builder makes `--pg-primary-fg` readable against `bg-body` only: small `text-primary` / `link-primary` / `btn-outline-primary` text on `bg-body-tertiary` or `bg-body-secondary` fails in dark mode and with light palettes (amber). Put such text on `bg-body`, or use `text-body-emphasis`.
 - Status text: `text-success` / `text-danger` fail on tinted surfaces; use `text-success-emphasis` / `text-danger-emphasis`, always with an icon or sign as well (colour is never the only cue).
 - `.blockquote-footer` is a literal grey in Bootstrap 5.3.8 and does not follow dark mode: add `text-body-secondary`.
-- `btn-outline-primary` on a dark band without a palette is 3.4:1; use `btn-primary` there.
+- On a dark band without a palette `btn-outline-primary` is 3.4:1 (use `btn-primary`) and `btn-outline-secondary` 3.2:1 (use `btn-secondary`, Hero Section, PR #3510).
 - `.badge` is `white-space: nowrap`: a pill longer than two words needs `text-wrap`, or a Turkish translation pushes the page sideways at 360 px. A joined row (`pagination`) is 373 px in looks with wide buttons (bold): `flex-wrap`, as the site's own pagers.
 - A block may have no palette accent when it is photos, logos, plain lists or Bootstrap status colours (`image-grid`, `logos-*`, `alert-*`, tables): it still follows the look and dark mode. A navbar shows only its brand at 360/768 px, so the brand is `text-primary`.
 - The editor's audit measures the same thing on the canvas: `docs/memory/designer/designer-audit-contrast.md`.

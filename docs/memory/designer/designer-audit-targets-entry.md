@@ -11,6 +11,9 @@ description: Designer audit's target size (WCAG 2.5.8, 24px with the spacing exc
 - Exempt as in the criterion: a link in running text (inline, with other words in its block; editor boxes looked through, `_sdTargetInSentence()`), the browser's own checkboxes and radios (`appearance` not `none`), `.stretched-link` (its target is the whole card), hidden, disabled and visually hidden ones.
 - Bootstrap's 16px `form-check-input` rows pass (28px apart on the canvas); its carousel indicators (30×23 with 6px gaps) would be flagged, which is right.
 
+## Which tree names a finding?
+- `_sdCanvasNodeIndex()` keeps the page's ids in `page` and each shared component's in `shared[sid]`: shared trees keep their saved ids, which collide with the page's. `_sdCanvasNodeOf()` reads a wrapper's id in the tree of its `data-sw-sid` stamp (`buildSharedRefEl()`), else the page's. One map named a page button after a shared component's "Cart Button" (#3385, PR #3510); `tests/designer_audit_node_index_test.php`.
+
 ## What does the redundant entry hint do?
 - `_sdRedundantEntryIssues()`: within one form, or one widget whose form the server wraps around its fields only when the page is drawn (`.sd-system-wrap`, no `<form>` on the canvas), a second field with the same purpose is flagged (rule `redundant_entry`): the same `autocomplete` value, or the same name once a `confirm`/`repeat`/`again`/`verify`/`retype`/`tekrar`/`dogrula`/`onay` part is dropped (`email` and `email_confirm`). Passwords, choices, files and buttons are not looked at; two phone fields with different names are not the same.
 - `email_verify` and `email_address_verify` are looked at like any field: since PR #668 the server asks the address once (docs/memory/designer/member-email-asked-once.md), so a registration or membership layout that keeps the second field is flagged. Their exemption list went in the PR that closed the accessibility plan.
