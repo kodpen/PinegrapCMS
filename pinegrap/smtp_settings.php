@@ -163,7 +163,9 @@ if (!$_POST) {
                 'name'=>'dkim_selector',
                 'id'=>'dkim_selector',
                 'class'=>'form-control text-end',
-                'placeholder'=>lang('Selector')
+                'placeholder'=>lang('Selector'),
+                'spellcheck'=>'false',
+                'autocapitalize'=>'off'
             ]) . '
             <span class="input-group-text">._domainkey.</span>
             ' . $liveform->output_field([
@@ -171,7 +173,10 @@ if (!$_POST) {
                 'name'=>'dkim_domain',
                 'id'=>'dkim_domain',
                 'class'=>'form-control',
-                'placeholder'=>'example.com'
+                'placeholder'=>'example.com',
+                'inputmode'=>'url',
+                'spellcheck'=>'false',
+                'autocapitalize'=>'off'
             ]) . '
         </div>
     </div>';
@@ -251,7 +256,7 @@ if (!$_POST) {
                                     <div class="row">
                                         <div class="col-12 md:col-8 my-3">
                                             <label for="system_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
-                                            ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_hostname','id'=>'system_smtp_hostname','class'=>'form-control']) . '
+                                            ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_hostname','id'=>'system_smtp_hostname','class'=>'form-control','inputmode'=>'url','spellcheck'=>'false','autocapitalize'=>'off']) . '
                                         </div>
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="system_smtp_port" class="form-label">' . lang('Port') . '</label>
@@ -259,7 +264,7 @@ if (!$_POST) {
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="system_smtp_username" class="form-label">' . lang('Username') . '</label>
-                                            ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_username','id'=>'system_smtp_username','class'=>'form-control','autocomplete'=>'new-password']) . '
+                                            ' . $liveform->output_field(['type'=>'text','name'=>'system_smtp_username','id'=>'system_smtp_username','class'=>'form-control','autocomplete'=>'new-password','spellcheck'=>'false','autocapitalize'=>'off']) . '
                                         </div>
                                         <div class="col-12 lg:col-6 my-3">
                                             <label for="system_smtp_password" class="form-label">' . lang('Password') . '</label>
@@ -295,7 +300,7 @@ if (!$_POST) {
                                         <div class="row">
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_hostname" class="form-label">' . lang('Hostname') . '</label>
-                                                ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_hostname','id'=>'campaign_smtp_hostname','class'=>'form-control']) . '
+                                                ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_hostname','id'=>'campaign_smtp_hostname','class'=>'form-control','inputmode'=>'url','spellcheck'=>'false','autocapitalize'=>'off']) . '
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-3 my-3">
                                                 <label for="email_campaign_job_number_of_emails" class="form-label">' . lang('Max.') . '</label>
@@ -307,7 +312,7 @@ if (!$_POST) {
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_username" class="form-label">' . lang('Username') . '</label>
-                                                ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_username','id'=>'campaign_smtp_username','class'=>'form-control','autocomplete'=>'new-password']) . '
+                                                ' . $liveform->output_field(['type'=>'text','name'=>'campaign_smtp_username','id'=>'campaign_smtp_username','class'=>'form-control','autocomplete'=>'new-password','spellcheck'=>'false','autocapitalize'=>'off']) . '
                                             </div>
                                             <div class="col-12 lg:col-6 my-3">
                                                 <label for="campaign_smtp_password" class="form-label">' . lang('Password') . '</label>
