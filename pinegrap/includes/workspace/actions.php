@@ -702,6 +702,23 @@ function ws_handle_action($action, $request)
 
             return $result['ok'] ? ws_action_ok(array('graph' => $result['graph'])) : ws_action_error($result['error']);
 
+        // Edit here on a box of an opened flow draft card (flow_draft.php):
+        // the box's form, then its save through the canvas's own save, a
+        // draft moved meanwhile told apart as on the canvas.
+        case 'ws_flow_draft_box':
+            $result = ws_flow_draft_box_read($viewer, (int) ($request['change_id'] ?? 0), (string) ($request['node_id'] ?? ''));
+
+            return $result['ok'] ? ws_action_ok(array('box' => $result['box'])) : ws_action_error($result['error']);
+
+        case 'ws_flow_draft_box_save':
+            $result = ws_flow_draft_box_save($viewer, (int) ($request['change_id'] ?? 0), (string) ($request['node_id'] ?? ''), array(
+                'label'     => $request['label'] ?? '',
+                'settings'  => $request['settings'] ?? array(),
+                'draft_rev' => (int) ($request['draft_rev'] ?? 0),
+            ));
+
+            return $result['ok'] ? ws_action_ok(array('draft_rev' => $result['draft_rev'], 'problems' => $result['problems'])) : ws_action_flow_refused($result);
+
         // Add › Scheduled flow in a channel's composer (scheduled_convert.php):
         // with sketch, the two boxes its mini window draws with what the form
         // holds so far, each with its dry run, nothing written;

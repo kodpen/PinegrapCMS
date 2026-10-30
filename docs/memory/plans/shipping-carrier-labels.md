@@ -30,11 +30,11 @@ description: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for 
 8. Done: return label on the returns screen (#3178): 8a #3194 (`commerce/shipment-label-returns.md`), 8b #3239 (classic), 8c #3268 (widget).
 9. Pickup requests, decided #3415 (`workflow/decisions-made-product-7.md`): orders list and label card action, `pickup_ref`/`pickup_at` on the label; Shippo and Sendcloud first (M).
    - P1 done #3475 (`commerce/shipment-label-pickup.md`): columns, Shippo, list and card.
-   - P2: Sendcloud (after C3), API fields (after #3298), then other drivers with a public pickup endpoint.
+   - P2 done #3496: Sendcloud; the others have no pickup endpoint. P3: API fields `pickup_ref`/`pickup_at` after #3298.
 
 ## Open questions?
 - #3073: Geliver first; the owner confirms its prices; no aggregator-specific fields in the shipment row.
 - Formats (#3123): PDF, ZPL, SVG; no converter.
 
 ## Where to start?
-- 7d API fields after #3298; 9 P2 next (Sendcloud, C3 done). Yurtiçi waits for docs. Live checks need the owner's keys.
+- 7d API fields after #3298; 9 P3 API fields after #3298. Yurtiçi waits for docs. Live checks need the owner's keys.

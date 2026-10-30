@@ -18,6 +18,7 @@ description: Geliver label driver (2026.11.0, #3096): two-step flow, offers, bar
 - `test`: `GET /addresses/{sender}` or the first sender address; `account` = its short name.
 - `label`: pdf only (Geliver reports ZPL in `labelFileType` but the reference has no way to ask for it). `cancel`: `DELETE /shipments/{id}`. `track`: `GET /shipments/{id}`; trackingStatusCode PRE_TRANSIT created, TRANSIT in_transit (sub `out_for_delivery` out_for_delivery), DELIVERED, RETURNED, FAILURE/CANCELED exception; without one the shipment `statusCode`; UNKNOWN is a plain failure.
 - `track` is asked hourly by the tracking job (`shipment-tracking.md`); its time is `statusDate`, else the tracking status's `updatedAt`/`createdAt` (`pg_label_geliver_track_answer()`, shared with the webhook).
+- No pickup endpoint (`shipment-label-pickup-drivers.md`).
 
 ## How does the TRACK_UPDATED webhook work?
 - Receiver: `carrier-webhook.md`. `_webhook_read()` takes `{event, metadata, data: <shipment>}` (the reference's test message, fixture `webhook_track_updated.json`), only `TRACK_UPDATED`, `data.id` the reference, `data.isReturn` the return flag; `_webhook_register()` `POST /webhook {type, url}`, `_webhook_remove()` `DELETE /webhook/{id}` (404 = gone).
