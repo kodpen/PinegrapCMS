@@ -5,7 +5,7 @@
  * Tests for Return and Enter on panel buttons. Return in a text field presses
  * the first submit button of its form, so a drawer whose first button issues
  * a new secret or removes an account must start with a hidden, nameless
- * submit button that only saves. The guided tour reads Enter as Next, but a
+ * submit button that only saves; SMTP Settings starts with a hidden Save. The guided tour reads Enter as Next, but a
  * focused Skip or Back button keeps Enter for itself.
  *
  * @author      Erdal Güral (Kodpen)
@@ -70,6 +70,29 @@ function test_return_key_buttons_marketplace_drawer_starts_with_a_nameless_submi
 	$delete = strpos($form, 'value="delete"');
 
 	pg_assert_true(($delete !== false) && ($at < $delete), 'the hidden submit button stands before Remove marketplace');
+}
+
+// Return in a SMTP Settings box must save: Send Test (SMTP ready) or
+// Generate DKIM Key (not ready) would otherwise be the default button.
+function test_return_key_buttons_smtp_settings_start_with_a_hidden_save()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/smtp_settings.php');
+	$from = strpos($source, '<form name="form" action="smtp_settings.php"');
+	$to = ($from === false) ? false : strpos($source, '</form>', $from);
+	$form = (($from === false) || ($to === false)) ? '' : substr($source, $from, $to - $from);
+	list($at, $button) = return_key_buttons_test_first_submit($form);
+
+	pg_assert_true($at !== false, 'the SMTP Settings form has a submit button');
+	pg_assert_contains('visually-hidden', $button, 'the first submit button of the SMTP Settings form is hidden');
+	pg_assert_contains('name="submit_save"', $button, 'the hidden submit button posts submit_save, which the save branch needs');
+	pg_assert_contains('value="Save"', $button, 'the hidden submit button posts the value Save');
+	pg_assert_false(strpos($button, 'id=') !== false, 'the hidden submit button leaves id submit_save to the visible Save');
+
+	$system = strpos($form, '$system_buttons');
+	$dkim = strpos($form, '$dkim_txt_preview');
+
+	pg_assert_true(($system !== false) && ($at < $system), 'the hidden submit button stands before Send Test');
+	pg_assert_true(($dkim !== false) && ($at < $dkim), 'the hidden submit button stands before Generate DKIM Key');
 }
 
 // onKey() of the tour, up to the next function.
