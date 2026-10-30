@@ -466,6 +466,33 @@ function test_shipment_label_create_refusal_marketplace_label()
 	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver'), 'none named: as before');
 }
 
+// A package the marketplace carries on its own carrier but whose label it
+// does not make (another carrier, or no longer open) gets no carrier label
+// service's label either: that would be a second, paid shipment.
+function test_shipment_label_create_refusal_marketplace_carried()
+{
+	$order = array('status' => 'complete');
+	$refusal = pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, '', 'Trendyol');
+
+	pg_assert_same('marketplace_carried', $refusal['code']);
+	pg_assert_contains('Trendyol', $refusal['error']);
+	pg_assert_same('marketplace_carried', pg_shipment_label_create_refusal(true, $order, 0, '', false, '', 'Trendyol')['code'], 'before a missing driver');
+	pg_assert_same('label_exists', pg_shipment_label_create_refusal(true, $order, 1, 'geliver', false, '', 'Trendyol')['code'], 'the label kept first');
+	pg_assert_same('marketplace_label', pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, 'Trendyol', '')['code'], 'covered: the common label');
+	pg_assert_same(array('code' => '', 'error' => ''), pg_shipment_label_create_refusal(true, $order, 0, 'geliver', false, '', ''), 'ships itself or no marketplace');
+}
+
+// The orders list's bulk buttons show for a carrier label service, or for a
+// marketplace account whose label is fetched; Request Pickup keeps its own.
+function test_shipment_label_bulk_buttons_gate()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_orders.php');
+
+	pg_assert_contains('if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_label_marketplace_offers())) {', $source);
+	pg_assert_contains("if (\$output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {", $source);
+	pg_assert_contains('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?', $source);
+}
+
 // The name a label's maker is shown by.
 function test_shipment_label_driver_name()
 {
