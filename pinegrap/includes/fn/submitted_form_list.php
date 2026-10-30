@@ -62,9 +62,12 @@ function pg_submitted_form_list_custom_forms()
 /**
  * Fills the list's session filters that are not set yet with their
  * defaults: every custom form, advanced filters off, no search, the last
- * modified date, the last month. A date part that is not a number of up to
- * four digits is replaced too: the date math throws a TypeError for one, and
- * kept in the session it would break the list for the rest of the session.
+ * modified date, the last month. A remembered custom form that is not in
+ * $custom_forms (deleted, or out of the user's reach) goes back to every
+ * form, and drops out of the advanced filters' checked forms. A date part
+ * that is not a number of up to four digits is replaced too: the date math
+ * throws a TypeError for one, and kept in the session it would break the
+ * list for the rest of the session.
  *
  * @param array $custom_forms pg_submitted_form_list_custom_forms()'s answer
  * @return void
@@ -73,9 +76,10 @@ function pg_submitted_form_list_defaults($custom_forms)
 {
     $state = &$_SESSION['software']['forms']['view_submitted_forms'];
 
-    if (!isset($state['custom_form'])) {
-        $state['custom_form'] = '[All]';
-    }
+    $form_ids = array_map('strval', array_column($custom_forms, 'id'));
+
+    // A remembered form that is gone or out of reach goes back to [All].
+    $state['custom_form'] = pg_list_filter_known($state['custom_form'] ?? '[All]', $form_ids);
 
     if (!isset($state['advanced_filters'])) {
         $state['advanced_filters'] = false;
@@ -96,6 +100,13 @@ function pg_submitted_form_list_defaults($custom_forms)
         } else {
             $state['custom_forms'][] = $state['custom_form'];
         }
+    }
+
+    // Gone forms leave the advanced filters' checked forms.
+    if (isset($state['custom_forms']) && is_array($state['custom_forms'])) {
+        $state['custom_forms'] = array_values(array_filter($state['custom_forms'], function ($id) use ($form_ids) {
+            return is_scalar($id) && in_array((string) $id, $form_ids, true);
+        }));
     }
 
     if (!isset($state['date_type'])) {
