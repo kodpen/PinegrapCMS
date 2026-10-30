@@ -193,12 +193,12 @@ function pg_explorer_handle_pages_bulk_edit($type, $request, $user)
     pg_audit_record_many('update', 'page', $audit_before);
 
     if (count($allowed) > 0) {
-        log_activity(lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);
+        log_activity(((count($allowed) == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed)))), $_SESSION['sessionusername']);
     }
 
     // The skip note below is appended as its own sentence, so the
     // count has to end like one.
-    $bulk_pages_message = pg_explorer_sentence_end(lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed))));
+    $bulk_pages_message = pg_explorer_sentence_end(((count($allowed) == 1) ? lang(array('string' => '{var:1} page was updated', 'vars' => 1)) : lang(array('string' => '{var:1} pages were updated', 'vars' => count($allowed)))));
 
     // Said rather than left to be noticed: an operator who picked a
     // style and saw nothing change on half the list would go looking
@@ -336,7 +336,7 @@ function pg_explorer_handle_files_bulk_edit($type, $request, $user)
 
         pg_audit_record_many('update', 'files', $audit_before);
 
-        log_activity(lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed))), $_SESSION['sessionusername']);
+        log_activity(((count($allowed) == 1) ? lang(array('string' => '{var:1} file was updated', 'vars' => 1)) : lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed)))), $_SESSION['sessionusername']);
     }
 
     respond(array(
@@ -346,5 +346,5 @@ function pg_explorer_handle_files_bulk_edit($type, $request, $user)
         'errors' => $errors,
         'message' => (count($errors) > 0)
             ? implode(' ', $errors)
-            : lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed)))));
+            : ((count($allowed) == 1) ? lang(array('string' => '{var:1} file was updated', 'vars' => 1)) : lang(array('string' => '{var:1} files were updated', 'vars' => count($allowed))))));
 }

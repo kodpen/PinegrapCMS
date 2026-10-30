@@ -131,8 +131,12 @@ if ($_POST['users']) {
     
     // if more than one user was deleted, then log activity and add notice
     if ($number_of_users > 0) {
-        log_activity(lang(array('string'=>'{var:1} users were deleted','vars'=>pg_format_number($number_of_users, 0))), $_SESSION['sessionusername']);
-        $liveform_view_users->add_notice(lang(array('string'=>'{var:1} users were deleted','vars'=>pg_format_number($number_of_users, 0))));
+        $users_deleted_text = ($number_of_users == 1)
+            ? lang(array('string' => '{var:1} user was deleted', 'vars' => pg_format_number($number_of_users, 0)))
+            : lang(array('string' => '{var:1} users were deleted', 'vars' => pg_format_number($number_of_users, 0)));
+
+        log_activity($users_deleted_text, $_SESSION['sessionusername']);
+        $liveform_view_users->add_notice($users_deleted_text);
     }
 }
 

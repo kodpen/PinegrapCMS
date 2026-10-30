@@ -166,7 +166,7 @@ function pg_explorer_handle_zip_create($type, $request, $user)
 
     log_activity(lang(array('string' => 'file ({var:1}) was created', 'vars' => $zip_name)), $_SESSION['sessionusername']);
 
-    $message = lang(array('string' => '{var:1} files were compressed', 'vars' => $added));
+    $message = (($added == 1) ? lang(array('string' => '{var:1} file was compressed', 'vars' => 1)) : lang(array('string' => '{var:1} files were compressed', 'vars' => $added)));
 
     if ($skipped_pages > 0) {
         $message .= ' ' . lang(array('string' => '{var:1} page(s) were left out: a page is a record, not a file.', 'vars' => $skipped_pages));
@@ -334,7 +334,7 @@ function pg_explorer_handle_zip_extract($type, $request, $user)
         db("DELETE FROM folder WHERE folder_id = '" . e($extract_folder_id) . "'");
     }
 
-    $message = lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted));
+    $message = (($extracted == 1) ? lang(array('string' => '{var:1} file was extracted', 'vars' => 1)) : lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted)));
 
     if (count($blocked) > 0) {
         $message .= ' ' . lang(array('string' => '{var:1} file(s) were not extracted because their type is not allowed on a web site.', 'vars' => count($blocked)));

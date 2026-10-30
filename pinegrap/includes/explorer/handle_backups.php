@@ -391,7 +391,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
         @rmdir($destination_real);
     }
 
-    log_activity(lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted)), $_SESSION['sessionusername']);
+    log_activity((($extracted == 1) ? lang(array('string' => '{var:1} file was extracted', 'vars' => 1)) : lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted))), $_SESSION['sessionusername']);
 
     respond(array(
         'status' => ($extracted > 0) ? 'success' : 'error',
@@ -400,7 +400,7 @@ function pg_explorer_handle_backup_extract($type, $request, $user)
         'skipped' => $skipped,
         'name' => basename($destination_real),
         'message' => ($extracted > 0)
-            ? lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted))
+            ? (($extracted == 1) ? lang(array('string' => '{var:1} file was extracted', 'vars' => 1)) : lang(array('string' => '{var:1} files were extracted', 'vars' => $extracted)))
             : lang('The zip archive could not be opened.')));
 }
 
@@ -652,5 +652,5 @@ function pg_explorer_handle_backup_zip($type, $request, $user)
         'path' => trim(str_replace('\\', '/', substr($zip_path, strlen($root))), '/'),
         'size_label' => convert_bytes_to_string(filesize($zip_path)),
         'files' => $added,
-        'message' => lang(array('string' => '{var:1} files were compressed', 'vars' => $added))));
+        'message' => (($added == 1) ? lang(array('string' => '{var:1} file was compressed', 'vars' => 1)) : lang(array('string' => '{var:1} files were compressed', 'vars' => $added)))));
 }

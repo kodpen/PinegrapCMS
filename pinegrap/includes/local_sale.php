@@ -1376,6 +1376,25 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
 }
 
 /**
+ * The cart's line and unit count ("1 line · 3 units"), or '' for an empty
+ * cart. Shared by the cart header, the summary card and the Ajax answer.
+ *
+ * @param array $totals local_sale_totals()
+ * @return string plain text
+ */
+function local_sale_count_text($totals)
+{
+    if ($totals['count'] <= 0) {
+        return '';
+    }
+
+    return lang(array(
+        'string' => '{var:1} line{suffix:1} · {var:2} unit{suffix:2}',
+        'vars' => array(pg_format_number($totals['count'], 0), pg_format_number($totals['units'], 0)),
+        'suffix' => array(($totals['count'] == 1) ? '' : 's', ($totals['units'] == 1) ? '' : 's')));
+}
+
+/**
  * The summary card's body: a large total for the till view, a VAT breakdown
  * for the document view.
  *
@@ -1385,7 +1404,7 @@ function local_sale_render_rows($lines, $line_errors = array(), $flash_id = 0)
 function local_sale_render_summary($totals)
 {
     $count = ($totals['count'] > 0)
-        ? lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units'])))
+        ? local_sale_count_text($totals)
         : lang('Cart is empty.');
 
     $output = '<div class="pg-kasa pg-sale-total">'
@@ -1546,7 +1565,7 @@ function local_sale_render_ledger($user)
             : '<span class="badge theme-secondary">' . lang('e-Archive') . '</span>') . '</dd>';
     }
 
-    $facts .= '<dt>' . lang('Payment term') . '</dt><dd>' . (($term > 0) ? h(lang(array('string' => '{var:1} days', 'vars' => array($term)))) : lang('Store default')) . '</dd>';
+    $facts .= '<dt>' . lang('Payment term') . '</dt><dd>' . (($term > 0) ? h(lang(array('string' => '{var:1} day{suffix:1}', 'vars' => array($term), 'suffix' => ($term == 1) ? '' : 's'))) : lang('Store default')) . '</dd>';
 
     $warning = '';
     if (function_exists('erp_edoc_invoice_party_missing')) {
@@ -1786,7 +1805,7 @@ function local_sale_render_recent($user)
 
         $output .= '<div class="pg-sale-rs">'
             . '<div><b>#' . h($row['order_number']) . '</b> <small class="fg-secondary">· ' . get_relative_time(array('timestamp' => $row['order_date'])) . '</small>'
-            . '<br><small class="fg-secondary">' . h(lang(array('string' => '{var:1} · {var:2} lines', 'vars' => array($who, (int) $row['item_count'])))) . '</small></div>'
+            . '<br><small class="fg-secondary">' . h(lang(array('string' => '{var:1} · {var:2} line{suffix:1}', 'vars' => array($who, (int) $row['item_count']), 'suffix' => ((int) $row['item_count'] == 1) ? '' : 's'))) . '</small></div>'
             . '<div class="text-end fw-semibold">' . local_sale_money($row['total']) . '</div>'
             . '<div class="pg-sale-rs-acts">' . $invoice
             . '<a class="btn btn-sm btn-text theme-secondary ms-auto" href="view_order.php?id=' . (int) $row['id'] . '" title="' . h(lang('View')) . '" aria-label="' . h(lang('View')) . '"><i class="bi bi-eye" aria-hidden="true"></i></a></div>'
@@ -1823,7 +1842,7 @@ function local_sale_payload($user, $res, $with_customer)
             'units' => $totals['units'],
             'total_cents' => $totals['gross'],
             'total_text' => local_sale_money_text($totals['gross']),
-            'count_text' => ($totals['count'] > 0) ? lang(array('string' => '{var:1} lines · {var:2} units', 'vars' => array($totals['count'], $totals['units']))) : '',
+            'count_text' => local_sale_count_text($totals),
             'rows' => local_sale_render_rows($lines, (array) $res['line_errors'], (int) $res['line_id']),
             'summary' => local_sale_render_summary($totals),
         ),

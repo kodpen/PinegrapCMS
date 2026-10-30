@@ -575,8 +575,9 @@ function pg_user_list_row($row, $view, $providers)
         // touch nor screen-reader users.
         $username_cell .= ' <span class="badge theme-danger fw-light">' . lang('Locked') . '</span>'
             . ' <span class="small fg-secondary">' . h(lang(array(
-            'string' => 'Clears in {var:1} minutes.',
-            'vars'   => $minutes))) . '</span>';
+            'string' => 'Clears in {var:1} minute{suffix:1}.',
+            'vars'   => $minutes,
+            'suffix' => ($minutes == 1) ? '' : 's'))) . '</span>';
     }
 
     // Google, Microsoft and Apple badges beside the name, next to the

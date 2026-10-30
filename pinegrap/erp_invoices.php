@@ -321,11 +321,11 @@ foreach ($invoices as $invoice) {
                 $output_snoozed = ($snoozed_text !== '')
                     ? ' <i class="bi bi-bell-slash fg-secondary" aria-hidden="true" title="' . h($snoozed_text) . '"></i><span class="visually-hidden">' . h($snoozed_text) . '</span>'
                     : '';
-                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} days overdue', 'vars' => $days))) . '</span>' . $output_snoozed . '</div>';
+                $output_due .= '<div><span class="badge theme-danger">' . h(lang(array('string' => '{var:1} day{suffix:1} overdue', 'vars' => $days, 'suffix' => ($days == 1) ? '' : 's'))) . '</span>' . $output_snoozed . '</div>';
             } elseif ($days === 0) {
                 $output_due .= '<div><span class="badge theme-warning">' . lang('Due today') . '</span></div>';
             } elseif (-$days <= 7) {
-                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} days', 'vars' => -$days))) . '</span></div>';
+                $output_due .= '<div><span class="badge theme-warning">' . h(lang(array('string' => 'due in {var:1} day{suffix:1}', 'vars' => -$days, 'suffix' => ($days == -1) ? '' : 's'))) . '</span></div>';
             }
         }
     }

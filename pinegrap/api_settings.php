@@ -957,7 +957,7 @@ foreach ($apps as $app) {
 
 	$is_device = (isset($app['kind']) && ($app['kind'] === 'device'));
 
-	$signed_in_count = pg_format_number(isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0, 0);
+	$signed_in_number = isset($device_rows[(int)$app['id']]) ? count($device_rows[(int)$app['id']]) : 0;
 
 	$app_rows .= '
 	<div class="api-row" data-app="' . (int)$app['id'] . '" role="button" tabindex="0">
@@ -966,9 +966,9 @@ foreach ($apps as $app) {
 			<div>
 				<b>' . h($app['name']) . '</b>
 				' . ($is_oauth
-					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . $signed_in_count . ' ' . lang('connections') . '</code>'
+					? '<code>' . lang('Connected apps (OAuth)') . ' &middot; ' . lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
 					: ($is_device
-					? '<code>' . lang('Team devices') . ' &middot; ' . $signed_in_count . ' ' . lang('devices') . '</code>'
+					? '<code>' . lang('Team devices') . ' &middot; ' . lang(array('string' => '{var:1} device{suffix:1}', 'vars' => pg_format_number($signed_in_number, 0), 'suffix' => ($signed_in_number == 1) ? '' : 's')) . '</code>'
 					: '<code>' . h(substr($app['api_key'], 0, 16)) . '&hellip;</code>')) . '
 			</div>
 		</div>
@@ -976,9 +976,9 @@ foreach ($apps as $app) {
 		<div><span class="api-status ' . $status_class . '">' . h($status_label) . '</span></div>
 		<div class="api-meta">' . h(api_settings_ago($app['last_used_timestamp'])) . '
 			<small>' . ($app['last_used_ip'] !== '' ? h($app['last_used_ip']) : '&mdash;') . '</small></div>
-		<div class="api-meta">' . ($stats['requests'] > 0 ? pg_format_number($stats['requests'], 0) . ' ' . lang('requests') : '&mdash;') . '
+		<div class="api-meta">' . ($stats['requests'] > 0 ? lang(array('string' => '{var:1} request{suffix:1}', 'vars' => pg_format_number($stats['requests'], 0), 'suffix' => ($stats['requests'] == 1) ? '' : 's')) : '&mdash;') . '
 			<small' . ($stats['failures'] > 0 ? ' class="bad"' : '') . '>'
-			. ($stats['failures'] > 0 ? pg_format_number($stats['failures'], 0) . ' ' . lang('errors') : '&mdash;') . '</small></div>
+			. ($stats['failures'] > 0 ? lang(array('string' => '{var:1} error{suffix:1}', 'vars' => pg_format_number($stats['failures'], 0), 'suffix' => ($stats['failures'] == 1) ? '' : 's')) : '&mdash;') . '</small></div>
 		<div class="text-end"><i class="bi bi-chevron-right"></i></div>
 	</div>';
 
@@ -1498,7 +1498,7 @@ if ($oauth_in_use || !empty($oauth_clients)) {
 		}
 
 		$meta = array(
-			pg_format_number((int)$client['connections'], 0) . ' ' . lang('connections'),
+			lang(array('string' => '{var:1} connection{suffix:1}', 'vars' => pg_format_number((int)$client['connections'], 0), 'suffix' => ((int)$client['connections'] == 1) ? '' : 's')),
 			lang('Last used') . ' ' . api_settings_ago($client['last_used_timestamp']),
 			lang(array('string' => 'Registered on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$client['created_timestamp'], 'type' => 'date'))))
 		);

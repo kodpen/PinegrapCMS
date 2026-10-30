@@ -942,6 +942,7 @@
     "drag it onto another page and the same widget appears there too.": "başka bir sayfaya sürükleyince aynı widget orada da görünür.",
     "dry_run must be true or false.": "dry_run true veya false olmalıdır.",
     "due in {var:1} days": "{var:1} gün sonra vadesi geliyor",
+    "due in {var:1} day{suffix:1}": "{var:1} gün sonra vadesi geliyor",
     "due within a week, and overdue": "bir hafta içinde bitecekler ve gecikenler",
     "due {var:1}": "vade {var:1}",
     "due:week finds the tasks due this week.": "due:week, son tarihi bu hafta olan görevleri bulur.",
