@@ -112,7 +112,7 @@ if (((int) $waybill['invoice_id'] > 0) && ($invoice_state !== 'none')) {
 }
 
 $output_order = ((int) $waybill['order_id'] > 0)
-    ? '<a href="view_order.php?id=' . (int) $waybill['order_id'] . '">' . h($waybill['order_number'] ?: ('#' . (int) $waybill['order_id'])) . '</a>'
+    ? erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null)
     : $empty;
 
 $output_lines = '';

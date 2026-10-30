@@ -191,7 +191,7 @@ function pg_dashboard_brief($user, $changelog_sections)
 
     if ((ECOMMERCE == true) && (($user['role'] < 3) || ($user['manage_ecommerce'] == true))) {
 
-        $sig['out_of_stock'] = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'");
+        $sig['out_of_stock'] = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
 
         // Today against the same stretch of yesterday, which is what makes the
         // number mean something: eleven orders is good news or bad news depending
@@ -330,9 +330,20 @@ function pg_dashboard_brief($user, $changelog_sections)
             "SELECT COUNT(*) FROM visitors WHERE stop_timestamp >= " . (int) ($greeting_now - 1200));
     }
 
-    if (($user['role'] < 3) || ($user['manage_contacts'] == true)) {
+    // A User sees on the contacts list only the contacts in groups they may
+    // edit, so their count reads those groups alone, each contact once.
+    if ($user['role'] < 3) {
         $sig['new_contacts'] = (int) db_value(
             "SELECT COUNT(*) FROM contacts WHERE timestamp >= " . (int) $greeting_week_start);
+    } elseif ($user['manage_contacts'] == true) {
+        $greeting_groups = array_map('intval', get_items_user_can_edit('contact_groups', $user['id']));
+
+        $sig['new_contacts'] = empty($greeting_groups) ? 0 : (int) db_value(
+            "SELECT COUNT(DISTINCT contacts.id)
+             FROM contacts
+             JOIN contacts_contact_groups_xref ON contacts.id = contacts_contact_groups_xref.contact_id
+             WHERE contacts.timestamp >= " . (int) $greeting_week_start . "
+             AND contacts_contact_groups_xref.contact_group_id IN (" . implode(',', $greeting_groups) . ")");
     }
 
     if ($user['role'] < 3) {
@@ -513,7 +524,8 @@ function pg_dashboard_brief($user, $changelog_sections)
             $sig['low_stock'] = (int) db_value(
                 "SELECT COUNT(*) FROM products
                  WHERE inventory = '1' AND backorder != '1'
-                 AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD);
+                 AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD
+                 . pg_catalog_bin_live_sql('products'));
         }
 
         // Offers that stop within the week. Switched off ones are left out: an

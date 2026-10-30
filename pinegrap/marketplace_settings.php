@@ -1583,6 +1583,26 @@ function mp_settings_ago($timestamp) {
 
 }
 
+// An imported order's total, as markup. The import keeps the marketplace's
+// currency in orders.currency_code with the totals unconverted, so a total in
+// another currency is written with its code; one in the base currency under
+// the base symbol, as the order screen prints it. Never converted to the
+// currency the operator's browser picked for the shop.
+function mp_settings_order_total($row) {
+
+	$total = ((int) $row['total']) / 100;
+	$code = strtoupper(trim((string) ($row['currency_code'] ?? '')));
+
+	if (($code !== '') && ($code !== strtoupper(trim((string) BASE_CURRENCY_CODE)))) {
+
+		return pg_format_money($total, '', ' ' . h($code));
+
+	}
+
+	return pg_format_money($total, BASE_CURRENCY_SYMBOL);
+
+}
+
 // The credential fields this provider asks for, read out of the form.
 function mp_settings_credentials_from_post($provider) {
 
@@ -1724,7 +1744,7 @@ if ($selected) {
 	$failed_orders = (int) db_value("SELECT COUNT(*) FROM marketplace_order_map
 		WHERE (account_id = '" . e($selected_id) . "') AND (status = 'failed') AND (order_id = 0)");
 
-	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total,
+	$orders = (array) db_items("SELECT marketplace_order_map.*, orders.order_number, orders.total, orders.currency_code,
 			orders.billing_first_name, orders.billing_last_name, orders.status AS order_status
 		FROM marketplace_order_map
 		LEFT JOIN orders ON orders.id = marketplace_order_map.order_id
@@ -2182,7 +2202,7 @@ if ($selected) {
 				</span>
 				<span>' . (($name !== '') ? h($name) : '&mdash;') . '</span>
 				<span>' . (($row['order_id'] && $row['total'] !== null)
-					? prepare_price_for_output((int)$row['total'], false, 0, 'html', false) : '&mdash;') . '</span>
+					? mp_settings_order_total($row) : '&mdash;') . '</span>
 				<span>' . (($row['status'] === 'imported')
 						? '<span class="mp-pill on">' . h((string)$row['remote_status']) . '</span>'
 						: '<span class="mp-pill bad">' . h(lang('Failed')) . '</span>')

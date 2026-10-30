@@ -258,7 +258,7 @@ function erp_alert_low_stock()
  * comes near. Run from the ERP's hourly job.
  *
  * @return array ['ran' => bool, 'count' => int, 'notification_id' => int,
- *               'followups' => int (opened, ERP_QUOTE_EXPIRY_FOLLOWUP)]
+ *               'followups' => int (opened, erp_quote_expiry_followup_on())]
  */
 function erp_alert_quote_expiry()
 {
@@ -303,7 +303,7 @@ function erp_alert_quote_expiry()
 
     db("UPDATE erp_quotes SET expiry_notified_at = UNIX_TIMESTAMP() WHERE id IN (" . implode(', ', $ids) . ")");
 
-    if (ERP_QUOTE_EXPIRY_FOLLOWUP) {
+    if (erp_quote_expiry_followup_on()) {
         $result['followups'] = erp_quote_expiry_followups($rows);
     }
 
@@ -312,7 +312,7 @@ function erp_alert_quote_expiry()
 
 /**
  * A Workspace follow-up for each sales quote the bell has just announced
- * (ERP_QUOTE_EXPIRY_FOLLOWUP): opened as the person who made it, on the
+ * (erp_quote_expiry_followup_on()): opened as the person who made it, on the
  * most recently active channel about its account (or the account's contact)
  * they may post in, else theirs alone. A quote whose date is moved forward is announced
  * again; an open follow-up of it is then handed back, not opened twice.

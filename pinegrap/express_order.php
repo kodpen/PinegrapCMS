@@ -1843,7 +1843,9 @@ if (ECOMMERCE_SHIPPING) {
 
                 // Log activity because it is important for an admin to know if there are shipping
                 // method issues preventing orders from being completed.
-                log_activity($response['message'] . ' (Order ID: ' . $order_id . ', Reference Code: ' . db("SELECT reference_code FROM orders WHERE id = '"  . e($order_id) . "'") . ', Ship to Name: ' . $recipient['ship_to_name'] . ') Request: ' . print_r($request, true));
+                log_activity(pg_log_lang(array(
+                    'string' => '{var:1} (Order ID: {var:2}, Reference Code: {var:3}, Ship to Name: {var:4}) Request: {var:5}',
+                    'vars'   => array($response['message'], $order_id, db("SELECT reference_code FROM orders WHERE id = '" . e($order_id) . "'"), $recipient['ship_to_name'], print_r($request, true)))));
             }
         }
 

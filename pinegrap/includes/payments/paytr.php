@@ -494,7 +494,7 @@ function pg_payment_paytr_authorize_with($order, $amount, $payment, $settings, $
     if ($status === 0) {
         $message = (is_array($response) && isset($response['error'])) ? (string) $response['error'] : '';
 
-        return pg_payment_failure_logged(lang('The payment service could not be reached.'), array('PayTR could not be reached for order #' . $order_id . ': ' . $message));
+        return pg_payment_failure_logged(lang('The payment service could not be reached.'), array(pg_log_lang(array('string' => 'PayTR could not be reached for order #{var:1}: {var:2}', 'vars' => array($order_id, $message)))));
     }
 
     $token = (isset($body['token']) && is_string($body['token'])) ? trim($body['token']) : '';
@@ -502,7 +502,7 @@ function pg_payment_paytr_authorize_with($order, $amount, $payment, $settings, $
     if ((($body['status'] ?? '') !== 'success') || (preg_match('/^[A-Za-z0-9]{1,128}$/', $token) !== 1)) {
         $reason = (isset($body['reason']) && is_scalar($body['reason'])) ? trim((string) $body['reason']) : 'HTTP ' . $status;
 
-        return pg_payment_failure_logged(lang('This payment method is not available.'), array('PayTR refused the payment page for order #' . $order_id . ': ' . $reason));
+        return pg_payment_failure_logged(lang('This payment method is not available.'), array(pg_log_lang(array('string' => 'PayTR refused the payment page for order #{var:1}: {var:2}', 'vars' => array($order_id, $reason)))));
     }
 
     return array(
@@ -511,7 +511,7 @@ function pg_payment_paytr_authorize_with($order, $amount, $payment, $settings, $
         'transaction_id' => $oid,
         'amount'         => (int) round((float) $amount),
         'html'           => pg_payment_paytr_page($token),
-        'log'            => array('PayTR payment ' . $oid . ' started for order #' . $order_id . (($settings['test_mode'] === '1') ? ' (test mode)' : '') . '.'),
+        'log'            => array(pg_log_lang(array('string' => 'PayTR payment {var:1} started for order #{var:2}{var:3}.', 'vars' => array($oid, $order_id, ($settings['test_mode'] === '1') ? ' ' . pg_log_lang(array('string' => '(test mode)')) : '')))),
         'raw'            => array('merchant_oid' => $oid),
     );
 }
@@ -547,7 +547,7 @@ function pg_payment_paytr_notify_with($body, $settings)
 
     $oid = $post['merchant_oid'];
     $currency = pg_payment_paytr_currency_iso(isset($post['currency']) && is_string($post['currency']) ? $post['currency'] : 'TL');
-    $test = (isset($post['test_mode']) && ((string) $post['test_mode'] === '1')) ? ' (test mode)' : '';
+    $test = (isset($post['test_mode']) && ((string) $post['test_mode'] === '1')) ? ' ' . pg_log_lang(array('string' => '(test mode)')) : '';
     $raw = array('signature' => 'valid', 'status' => $post['status'], 'currency' => $currency);
 
     if (($post['status'] !== 'success') || !pg_payment_paytr_oid_valid($oid) || (preg_match('/^[0-9]{1,15}$/', $post['total_amount']) !== 1)) {
@@ -567,7 +567,9 @@ function pg_payment_paytr_notify_with($body, $settings)
         'amount'          => (int) $post['total_amount'],
         'installments'    => $installments,
         'reply'           => 'OK',
-        'log'             => array('PayTR reports that payment ' . $oid . ' of ' . pg_payment_decimal((int) $post['total_amount']) . ' ' . $currency . (($installments > 1) ? ' in ' . $installments . ' installments' : '') . ' was taken' . $test),
+        'log'             => array(($installments > 1)
+            ? pg_log_lang(array('string' => 'PayTR reports that payment {var:1} of {var:2} {var:3} in {var:4} installments was taken{var:5}', 'vars' => array($oid, pg_payment_decimal((int) $post['total_amount']), $currency, $installments, $test)))
+            : pg_log_lang(array('string' => 'PayTR reports that payment {var:1} of {var:2} {var:3} was taken{var:4}', 'vars' => array($oid, pg_payment_decimal((int) $post['total_amount']), $currency, $test)))),
         'raw'             => $raw,
     );
 }
@@ -653,7 +655,7 @@ function pg_payment_paytr_refund_with($order, $amount, $settings, $http)
 
     if ($result === 'success') {
         $given = (isset($body['return_amount']) && is_scalar($body['return_amount']) && is_numeric($body['return_amount'])) ? pg_payment_hundredths($body['return_amount']) : null;
-        $test = (isset($body['is_test']) && ((string) $body['is_test'] === '1')) ? ' (test mode)' : '';
+        $test = (isset($body['is_test']) && ((string) $body['is_test'] === '1')) ? ' ' . pg_log_lang(array('string' => '(test mode)')) : '';
 
         return array(
             'success'          => true,
@@ -661,7 +663,7 @@ function pg_payment_paytr_refund_with($order, $amount, $settings, $http)
             'transaction_id'   => $oid,
             'amount'           => ($given !== null) ? (int) $given : $hundredths,
             'refund_reference' => $reference,
-            'log'              => array('PayTR refunded ' . $fields['return_amount'] . ' of payment ' . $oid . ' for order #' . $order_id . $test . '.'),
+            'log'              => array(pg_log_lang(array('string' => 'PayTR refunded {var:1} of payment {var:2} for order #{var:3}{var:4}.', 'vars' => array($fields['return_amount'], $oid, $order_id, $test)))),
             'raw'              => array('merchant_oid' => $oid, 'reference_no' => $reference),
         );
     }

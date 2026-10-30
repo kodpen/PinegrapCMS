@@ -90,7 +90,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
 - dashboard-card-drag.md: Dashboard card drag: the grip pinned to the right of the header is the only handle, mouse drags at once, touch keeps a short hold, keyboard unchanged
-- dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
+- dashboard-card-figures.md: Dashboard card figures: rows counted like their lists, the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 - dashboard-hover-figures.md: Dashboard figures and states printed as text instead of a native title: shipped state, firewall request count and score limit, address and request counts, Search Console basis, Away
 - dashboard-keyboard.md: Dashboard keyboard and screen-reader access: Online Engagement rows, focusable System Status chips and their links, focus kept across the refresh
 - dashboard-percent-and-empty-text.md: Dashboard wording: '{var:1}%' percentage figures and the whole-sentence empty states of each card
@@ -153,6 +153,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - list-label-sort.md: List columns that show a label for a stored code sort by that label (pg_list_label_order(), FIELD()); the link picker sorts in PHP with pg_list_sort_items()
 - list-page-state.md: A paged panel list (table.chart) comes back on its page, length and search after Back (history.state, pgListState/pgListKeep); the pager landmark named from the DataTables language
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
+- list-period-order.md: List screens swap a date range entered the wrong way round (pg_list_period_ordered()); the Site Log's 7/30-day presets count calendar days
 - list-period-week.md: Week's first day (Monday in Turkish, Sunday otherwise) for the list screens' period navigator (#2039) and the get_calendar() grids (#3328)
 - list-quick-edit-keyboard.md: List quick edit (data-pg-edit cells in backend.src.js) from the keyboard: Enter, Escape, Tab to the next row, where focus goes past the last row
 - list-row-names.md: Orders, products, submitted forms, pages and files lists: row box names, SEO links, No Image, folder access by icon and word, names and descriptions that wrap instead of a cut
@@ -211,6 +212,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - panel-layout-pitfalls.md: Panel CSS and JS traps that fail silently, with their files: hiding under CSS layers, menus in scroll boxes, flex min-height 0, nested :has(), drawers in forms, top layer, multiselect.
 - panel-link-roles.md: Links turned into buttons (report Edit, Add Filter, Unlock Sign-in), real Create an User link, Optimize/Shipment Tracking/Print names, edit-file previews and Download names
 - panel-load-failures.md: Dashboard cards and the SEO detail panel when a load fails: the card retry line, the 401/403 fragment of get_seo_analysis.php, response.ok && !response.redirected in the fetch handlers
+- panel-money-base-currency.md: Panel amounts print in the base currency (prepare_amount()), never at the storefront currency the operator's browser picked; ERP documents in their own currency; Workspace and Marketplace helpers.
 - panel-picture-viewer-focus.md: Panel picture viewer (pg_lightbox.js): focus moves in, Tab wraps, focus returns to the opener, the closed overlay is inert and hidden, named dialog and thumbnails, closes only on a background tap
 - panel-picture-viewer-zoom.md: Panel picture viewer (pg_lightbox.js): zoom measured from the fitted size, a zoomed picture pans by drag and by the arrow keys, Left/Right change the picture only at the fit
 - panel-save-shortcut.md: Panel Ctrl+S (backend.src.js) and Return in a text field: which form and button each submits, the button hint, disable_shortcut forms, a key a dialog handled, buttons on their own form

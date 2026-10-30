@@ -65,3 +65,24 @@ function test_link_rights_no_contact_gets_no_link()
 	pg_assert_false(pg_can_open_contact(array('role' => 3), 0, true));
 	pg_assert_false(pg_can_open_contact(array('role' => 0), ''));
 }
+
+function test_link_rights_view_order_guards_its_user_and_contact_links()
+{
+	$lines = file(PG_FUNCTIONS_DIR . '/view_order.php');
+	$found = 0;
+
+	foreach ($lines as $i => $line) {
+		foreach (array('edit_user.php' => 'pg_can_open_user(', 'edit_contact.php' => 'pg_can_open_contact(') as $screen => $helper) {
+			if (strpos($line, 'href="' . $screen) === false) {
+				continue;
+			}
+
+			$found++;
+			$context = implode('', array_slice($lines, max(0, $i - 2), 3));
+			pg_assert_true(strpos($context, $helper) !== false, 'view_order.php:' . ($i + 1) . ' links ' . $screen . ' without ' . $helper . ')');
+		}
+	}
+
+	pg_assert_true($found >= 3, 'the User, Contact and affiliate links are still there');
+	pg_assert_true(strpos(implode('', $lines), 'user.user_role AS username_role') !== false, 'the order query reads the buyer account role');
+}

@@ -162,7 +162,8 @@ function pg_payment_notify_matches_order($answer, $order, $store_currency)
  * @param array|null $order          pg_payment_notify_order()
  * @param string     $store_currency the store's currency code
  * @return array http (status code), status, log (lines), alert (detail, '' for none),
- *               mark_paid (bool), complete (bool)
+ *               mark_paid (bool), complete (bool), source (the service's line,
+ *               once the message names an order)
  */
 function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
 {
@@ -194,18 +195,21 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
     }
 
     $order_id = (int) $order['id'];
-    $line = isset($answer['log'][0]) ? $answer['log'][0] : pg_payment_log_name($key) . ' reports ' . $answer['status'] . ' for payment ' . $answer['transaction_id'];
+    $source = isset($answer['log'][0])
+        ? $answer['log'][0]
+        : pg_log_lang(array('string' => '{var:1} reports {var:2} for payment {var:3}', 'vars' => array(pg_payment_log_name($key), $answer['status'], $answer['transaction_id'])));
+    $outcome['source'] = $source;
 
     if (($answer['status'] === 'paid') && pg_order_payment_pending($order)) {
         if (($answer['amount'] !== null) && ((int) $answer['amount'] === (int) ($order['total'] ?? -1))) {
             $outcome['status'] = 'recorded';
-            $outcome['log'] = array($line . ' for order #' . $order_id . ', which was awaiting it. The payment was recorded.');
+            $outcome['log'] = array(pg_payment_notify_line($key, $source, $order_id, 'recorded'));
             $outcome['mark_paid'] = true;
 
             return $outcome;
         }
 
-        $line .= ' for order #' . $order_id . ', which is awaiting payment, but not for the order\'s total. The payment was not recorded: check it on ' . pg_payment_log_name($key) . '\'s own screen.';
+        $line = pg_payment_notify_line($key, $source, $order_id, 'not_total');
     } elseif (in_array($answer['status'], array('paid', 'authorized'), true)) {
         if ((string) $order['status'] !== 'incomplete') {
             $outcome['status'] = 'nothing';
@@ -215,15 +219,15 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
 
         if (pg_payment_notify_matches_order($answer, $order, $store_currency)) {
             $outcome['status'] = 'complete';
-            $outcome['log'] = array($line . ' for order #' . $order_id . ', which was still incomplete. The order was completed from the message.');
+            $outcome['log'] = array(pg_payment_notify_line($key, $source, $order_id, 'completed'));
             $outcome['complete'] = true;
 
             return $outcome;
         }
 
-        $line .= ' for order #' . $order_id . ', which is still incomplete, but not for its own payment, its total or the store\'s currency. The order was not completed: check the payment on ' . pg_payment_log_name($key) . '\'s own screen.';
+        $line = pg_payment_notify_line($key, $source, $order_id, 'not_matching');
     } else {
-        $line .= ' for order #' . $order_id . '. The order was not changed.';
+        $line = pg_payment_notify_line($key, $source, $order_id, 'unchanged');
     }
 
     $outcome['status'] = 'alerted';
@@ -231,6 +235,48 @@ function pg_payment_notify_outcome($key, $answer, $order, $store_currency = '')
     $outcome['alert'] = $line;
 
     return $outcome;
+}
+
+/**
+ * The site log line of a message about an order, in the software language:
+ * the service's own line, then what the store did with it.
+ *
+ * @param string $key      driver key
+ * @param string $source   the service's line (its answer's first log line)
+ * @param int    $order_id
+ * @param string $result   recorded, not_total, completed, not_completed,
+ *                         not_matching or unchanged
+ * @param array  $detail   completed: number (the order number);
+ *                         not_completed: reason
+ * @return string
+ */
+function pg_payment_notify_line($key, $source, $order_id, $result, array $detail = array())
+{
+    $service = pg_payment_log_name($key);
+
+    switch ($result) {
+        case 'recorded':
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was awaiting it. The payment was recorded.', 'vars' => array($source, $order_id)));
+
+        case 'not_total':
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which is awaiting payment, but not for the order\'s total. The payment was not recorded: check it on {var:3}\'s own screen.', 'vars' => array($source, $order_id, $service)));
+
+        case 'completed':
+            // Before the completion has run, the line has no order number yet.
+            if (!isset($detail['number'])) {
+                return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was completed from the message.', 'vars' => array($source, $order_id)));
+            }
+
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was completed from the message. Order number: {var:3}.', 'vars' => array($source, $order_id, $detail['number'])));
+
+        case 'not_completed':
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}\'s own screen.', 'vars' => array($source, $order_id, isset($detail['reason']) ? $detail['reason'] : '', $service)));
+
+        case 'not_matching':
+            return pg_log_lang(array('string' => '{var:1} for order #{var:2}, which is still incomplete, but not for its own payment, its total or the store\'s currency. The order was not completed: check the payment on {var:3}\'s own screen.', 'vars' => array($source, $order_id, $service)));
+    }
+
+    return pg_log_lang(array('string' => '{var:1} for order #{var:2}. The order was not changed.', 'vars' => array($source, $order_id)));
 }
 
 /**
@@ -305,12 +351,12 @@ function pg_payment_callback_answer_text($reply)
 function pg_payment_callback_renewal($key, $answer)
 {
     $result = pg_subscription_renewal_confirmed($key, (int) $answer['raw']['subscription_id'], $answer, time());
-    $line = ($answer['log'] ? $answer['log'][0] : 'A subscription renewal was reported') . '.';
+    $source = $answer['log'] ? $answer['log'][0] : pg_log_lang(array('string' => 'A subscription renewal was reported'));
 
     if ($result === 'paid') {
-        log_activity($line . ' The renewal order was written.', 'SYSTEM');
+        log_activity(pg_log_lang(array('string' => '{var:1}. The renewal order was written.', 'vars' => array($source))), 'SYSTEM');
     } elseif ($result === 'refused') {
-        $line .= ' The amount or the subscription\'s first order does not match: nothing was written. Check the payment on ' . pg_payment_log_name($key) . '\'s own screen.';
+        $line = pg_log_lang(array('string' => '{var:1}. The amount or the subscription\'s first order does not match: nothing was written. Check the payment on {var:2}\'s own screen.', 'vars' => array($source, pg_payment_log_name($key))));
         log_activity($line, 'SYSTEM');
         pg_ops_alert('payment_notice', $line);
     }
@@ -363,13 +409,13 @@ function pg_payment_callback_receive()
 
         if ($completion['status'] === 'completed') {
             $outcome['status'] = 'completed';
-            $outcome['log'][0] .= ' Order number: ' . $completion['order_number'] . '.';
+            $outcome['log'] = array(pg_payment_notify_line($key, $outcome['source'], (int) $order['id'], 'completed', array('number' => $completion['order_number'])));
         } elseif ($completion['status'] === 'nothing') {
             $outcome['status'] = 'nothing';
             $outcome['log'] = array();
         } else {
             $outcome['status'] = 'alerted';
-            $outcome['log'] = array(str_replace('The order was completed from the message.', 'The order was not completed: ' . $completion['reason'] . '. Check the payment on ' . pg_payment_log_name($key) . '\'s own screen.', $outcome['log'][0]));
+            $outcome['log'] = array(pg_payment_notify_line($key, $outcome['source'], (int) $order['id'], 'not_completed', array('reason' => $completion['reason'])));
             $outcome['alert'] = $outcome['log'][0];
         }
     }

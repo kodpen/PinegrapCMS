@@ -222,3 +222,44 @@ function test_list_period_date_filter_selects_are_named()
 		}
 	}
 }
+
+function test_list_period_ordered_swaps_a_range_entered_the_wrong_way_round()
+{
+	pg_assert_same(list_period_test_range('2026-10-01', '2026-10-30'), pg_list_period_ordered(list_period_test_range('2026-10-30', '2026-10-01')), 'start after stop is swapped');
+	pg_assert_same(list_period_test_range('2026-10-01', '2026-10-30'), pg_list_period_ordered(list_period_test_range('2026-10-01', '2026-10-30')), 'an ordered range stays');
+	pg_assert_same(list_period_test_range('2026-10-15', '2026-10-15'), pg_list_period_ordered(list_period_test_range('2026-10-15', '2026-10-15')), 'one day stays');
+	pg_assert_same(list_period_test_range('2025-12-31', '2026-01-01'), pg_list_period_ordered(list_period_test_range('2026-01-01', '2025-12-31')), 'across the year end');
+
+	// Other keys of a screen's session state are kept.
+	$state = list_period_test_range('2026-10-30', '2026-10-01') + array('status' => 'complete');
+	$ordered = pg_list_period_ordered($state);
+	pg_assert_same('complete', $ordered['status'], 'other keys kept');
+	pg_assert_same('01', $ordered['start_day'], 'start day swapped with the other keys present');
+}
+
+function test_list_period_screens_order_their_range()
+{
+	$root = dirname(__DIR__) . '/pinegrap/';
+
+	foreach (array('view_orders.php', 'includes/fn/contact_list.php', 'includes/fn/commission_list.php', 'view_log.php') as $file) {
+		pg_assert_contains('pg_list_period_ordered(', file_get_contents($root . $file), $file . ' orders its range');
+	}
+
+	pg_assert_contains("\$filters['from'] > \$filters['to']", file_get_contents($root . 'erp_audit.php'), 'erp_audit.php reads a reversed range the right way round');
+}
+
+function test_site_log_presets_count_calendar_days()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_log.php');
+
+	pg_assert_contains("strtotime('-6 days', \$today_timestamp)", $source, 'Last 7 Days steps calendar days');
+	pg_assert_contains("strtotime('-29 days', \$today_timestamp)", $source, 'Last 30 Days steps calendar days');
+	pg_assert_false(strpos($source, '* 86400)') !== false, 'no preset counts 86400-second days');
+
+	// The week after the spring clock change still starts six calendar days back.
+	$zone = date_default_timezone_get();
+	date_default_timezone_set('Europe/Berlin');
+	$today = mktime(0, 0, 0, 3, 30, 2027);
+	pg_assert_same('2027-03-24', date('Y-m-d', strtotime('-6 days', $today)), 'seven days back across the change');
+	date_default_timezone_set($zone);
+}
