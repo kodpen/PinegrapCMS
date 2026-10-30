@@ -35,7 +35,7 @@ if (!$_POST) {
     $till_options[lang('Choose a till or bank account')] = '';
 
     foreach ((array) db_items("SELECT id, name FROM erp_cash_accounts WHERE is_active = 1 ORDER BY sort_order ASC, name ASC") as $till) {
-        $till_options[$till['name']] = (string) (int) $till['id'];
+        $till_options[h($till['name'])] = (string) (int) $till['id'];
     }
 
     echo

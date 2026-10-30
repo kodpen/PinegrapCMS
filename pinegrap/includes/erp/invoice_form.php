@@ -217,7 +217,7 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                     <input type="hidden" name="' . h($name('source_line')) . '" value="' . h((string) ($line['source_line'] ?? '')) . '" />
                     ' . $liveform->output_field(array(
                         'type' => 'text', 'id' => $id('product_search'), 'name' => $name('product_name'),
-                        'value' => h($line['product_name']),
+                        'value' => $line['product_name'],
                         'class' => 'form-control form-control-sm erp-product-search', 'maxlength' => '100', 'autocomplete' => 'off',
                         'placeholder' => lang('Search products'), 'aria-label' => lang('Product'))) . '
                     <div class="menu shadow-sm" id="' . h($id('product_results')) . '" data-erp-product-results></div>
@@ -228,45 +228,45 @@ function erp_invoice_form_line_row($liveform, $index, $line, $withholding_shown 
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('description'), 'name' => $name('description'),
-                    'value' => h($line['description']),
+                    'value' => $line['description'],
                     'class' => 'form-control form-control-sm', 'maxlength' => '255', 'autocomplete' => 'off',
                     'aria-label' => lang('Description'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('quantity'), 'name' => $name('quantity'),
-                    'value' => h($line['quantity']),
+                    'value' => $line['quantity'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '12', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Quantity'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'select', 'id' => $id('unit_code'), 'name' => $name('unit_code'),
-                    'value' => h($unit_code),
+                    'value' => $unit_code,
                     'class' => 'form-control form-control-sm', 'options' => $unit_options,
                     'aria-label' => lang('Unit'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('unit_price'), 'name' => $name('unit_price'),
-                    'value' => h($line['unit_price']),
+                    'value' => $line['unit_price'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '15', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Unit price'))) . '</td>
                 <td>
                     <input type="hidden" name="' . h($name('offer_id')) . '" value="' . (int) $line['offer_id'] . '" data-erp-offer-id />
                     ' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('offer_discount_rate'), 'name' => $name('offer_discount_rate'),
-                    'value' => h($line['offer_discount_rate']),
+                    'value' => $line['offer_discount_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Campaign %'))) . '
                 </td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('discount_rate'), 'name' => $name('discount_rate'),
-                    'value' => h($line['discount_rate']),
+                    'value' => $line['discount_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => lang('Discount %'))) . '</td>
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('tax_rate'), 'name' => $name('tax_rate'),
-                    'value' => h($line['tax_rate']),
+                    'value' => $line['tax_rate'],
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => erp_tax_label('percent'))) . '</td>' . (erp_tax2_enabled() ? '
                 <td>' . $liveform->output_field(array(
                     'type' => 'text', 'id' => $id('tax2_rate'), 'name' => $name('tax2_rate'),
-                    'value' => h((string) ($line['tax2_rate'] ?? '')),
+                    'value' => (string) ($line['tax2_rate'] ?? ''),
                     'class' => 'form-control form-control-sm text-end', 'maxlength' => '7', 'inputmode' => 'decimal', 'autocomplete' => 'off',
                     'aria-label' => erp_tax2_name() . ' %')) . '</td>' : '') . '
                 <td data-erp-withholding-col' . ($withholding_shown ? '' : ' class="d-none"') . '>
