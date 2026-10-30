@@ -2874,7 +2874,9 @@
             badge.remove();
         }
 
-        if (!state.run) {
+        // A value box writes no step: its value is worked out when a box
+        // reading it runs, so it is never "not reached".
+        if (!state.run || kindOf(node).pure) {
             return;
         }
 
@@ -7503,7 +7505,7 @@
 
         var list = el('ol', 'wsf-outline-list');
 
-        orderedNodes().forEach(function (node) {
+        (state.run ? runOrder() : orderedNodes()).forEach(function (node) {
             var item = el('li', 'wsf-outline-item ' + kindClasses(node.kind));
             var head = el('h3', 'wsf-outline-head');
 
@@ -7522,7 +7524,7 @@
 
                 head.tabIndex = -1;
                 head.setAttribute('data-refocus', 'outline-box-' + node.id);
-                item.classList.add('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none'));
+                item.classList.add(kindOf(node).pure ? 'wsf-run-value' : ('wsf-run-' + ((step && STEP_STATES[step.status]) ? step.status : 'none')));
                 item.appendChild(outlineRun(node, step));
             } else {
                 item.appendChild(nodeForm(node));
@@ -8571,6 +8573,29 @@
         return badge;
     }
 
+    // A value box in a run's words: a neutral mark in place of a state, as
+    // it writes no step of its own (paintRun()).
+    function stepBadge(node, step) {
+        if (kindOf(node).pure) {
+            var badge = el('span', 'wsf-run-badge wsf-run-value');
+
+            badge.appendChild(K.icon('bi-calculator'));
+            badge.appendChild(document.createTextNode(t('fl_group_values')));
+
+            return badge;
+        }
+
+        return runBadge(STEP_STATES, step ? step.status : 'none');
+    }
+
+    // The boxes of a run in arrow order, the steps first and the value
+    // boxes after them.
+    function runOrder() {
+        var nodes = orderedNodes();
+
+        return nodes.filter(function (node) { return !kindOf(node).pure; }).concat(nodes.filter(function (node) { return kindOf(node).pure; }));
+    }
+
     // A run's flag (assets/js/workspace_flow_flag.js, in the workspace
     // bundle so the run's card in a channel draws the same one).
     function runFlag(run, options) {
@@ -9197,7 +9222,7 @@
         title.setAttribute('data-refocus', 'step');
         wrap.appendChild(title);
         wrap.appendChild(el('div', 'fw-semibold mb-1', nameOf(node)));
-        wrap.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        wrap.appendChild(stepBadge(node, step));
 
         [metaOf(node), (step && step.started_at) ? t('fl_run_at', when(step.started_at)) : '', (step && step.finished_at) ? t('fl_run_ended', when(step.finished_at)) : ''].forEach(function (text) {
             if (text) {
@@ -9284,15 +9309,28 @@
         wrap.appendChild(el('p', 'small fg-secondary mb-3', t('fl_run_pick')));
         list.setAttribute('aria-label', t('fl_run_boxes'));
 
-        orderedNodes().forEach(function (node) {
+        var values = false;
+
+        // The value boxes come after the steps, under their own heading.
+        runOrder().forEach(function (node) {
             var step = stepOf(node.id);
             var row = K.button('wsf-run-step-row', '');
+            var pure = !!kindOf(node).pure;
+
+            if (pure && !values) {
+                values = true;
+                list.appendChild(el('li', 'wsf-run-values small fw-semibold fg-secondary mt-3 mb-1', t('fl_group_values')));
+            }
 
             row.appendChild(K.flowIcon(node.kind));
 
             row.setAttribute('data-refocus', 'run-step-' + node.id);
             row.appendChild(el('span', 'wsf-run-step-name', nameOf(node)));
-            row.appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+
+            if (!pure) {
+                row.appendChild(stepBadge(node, step));
+            }
+
             row.addEventListener('click', function () {
                 select({ type: 'node', id: node.id }, { reveal: true, focus: true });
             });
@@ -9310,7 +9348,7 @@
         var box = el('div', 'wsf-run-outline');
         var meta = metaOf(node);
 
-        box.appendChild(el('p', 'mb-1')).appendChild(runBadge(STEP_STATES, step ? step.status : 'none'));
+        box.appendChild(el('p', 'mb-1')).appendChild(stepBadge(node, step));
 
         if (meta) {
             box.appendChild(el('p', 'small fg-secondary mb-1', meta));
