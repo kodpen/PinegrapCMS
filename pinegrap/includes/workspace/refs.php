@@ -1533,7 +1533,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
     if (($type === 'user') || ($type === 'dept')) {
         if ($type === 'user') {
             foreach (ws_team_members() as $person) {
-                if (($query === '') || (mb_stripos($person['name'], $query) !== false) || (mb_stripos($person['username'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($person['name'], $query) || ws_text_contains($person['username'], $query)) {
                     $out[] = array('token' => '<@user:' . $person['id'] . '>', 'type' => 'user', 'id' => $person['id'],
                         'label' => $person['name'], 'meta' => $person['title'], 'icon' => 'bi-person', 'avatar' => $person['avatar']);
                 }
@@ -1544,7 +1544,7 @@ function ws_ref_search($viewer, $type, $query, $limit = 8, $only = null)
             }
         } else {
             foreach (ws_departments() as $department) {
-                if (($query === '') || (mb_stripos($department['name'], $query) !== false)) {
+                if (($query === '') || ws_text_contains($department['name'], $query)) {
                     $out[] = array('token' => '<@dept:' . $department['id'] . '>', 'type' => 'dept', 'id' => $department['id'],
                         'label' => $department['name'], 'meta' => lang('Department'), 'icon' => 'bi-people');
                 }

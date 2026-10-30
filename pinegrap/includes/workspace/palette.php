@@ -93,7 +93,7 @@ function ws_palette_snippet($text, $query, $length = 120)
         return $text;
     }
 
-    $at = ((string) $query !== '') ? mb_stripos($text, (string) $query) : false;
+    $at = ((string) $query !== '') ? ws_text_position($text, (string) $query) : false;
 
     // Found near the start, or not at all: the start of the text.
     if (($at === false) || ($at < (int) ($length / 3))) {
@@ -295,7 +295,7 @@ function ws_palette_channels($viewer, $query, $limit)
     $out = array();
 
     foreach (ws_channels_for($viewer) as $channel) {
-        if ((mb_stripos($channel['name'], $query) === false) && (mb_stripos($channel['topic'], $query) === false)) {
+        if (!ws_text_contains($channel['name'], $query) && !ws_text_contains($channel['topic'], $query)) {
             continue;
         }
 
@@ -546,7 +546,7 @@ function ws_palette_people($viewer, $query, $channel_id, $limit)
     $people = array();
 
     foreach (ws_team_members() as $person) {
-        if (($query === '') || (mb_stripos($person['name'], $query) !== false) || (mb_stripos($person['username'], $query) !== false)) {
+        if (($query === '') || ws_text_contains($person['name'], $query) || ws_text_contains($person['username'], $query)) {
             $people[] = $person;
         }
     }
