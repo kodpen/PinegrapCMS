@@ -6,7 +6,8 @@ description: Liveform field names and pagers: aria-label, file id, required impo
 ## Does liveform print an aria-label?
 - Yes: `liveform::output_field()` prints an `aria-label` it is given, escaped, on text, select, textarea, checkbox, radio, password and file fields; without one it prints none, so site forms are unchanged.
 - Before, it silently dropped it, so the invoice, quote, purchase-order and waybill line fields (`includes/erp/invoice_form.php`, `waybill_form.php`) and their Notes boxes shipped unnamed although the callers passed a name.
-- Pinned by `tests/liveform_test.php` (`test_liveform_output_field_aria_label`).
+- It passes `aria-describedby` the same way (the id of a `form-text` hint under the field: menu item `#security`, Migration `#url`, Create Page `#name`). The script that marks an invalid field adds its own id to it, keeping this one.
+- Pinned by `tests/liveform_test.php` (`test_liveform_output_field_aria_label`, `test_liveform_output_field_aria_describedby`).
 
 ## Does a liveform file field print its id?
 - Yes, like every other type; before, `'file'` dropped it, so the `<label for="file">` of the Products, E-mail Campaign Profiles, Submitted Forms, Users, ZIP and ERP accounts import screens named nothing (and the site comment form's `comment_file` picker). Pinned by `test_liveform_output_field_without_id`.

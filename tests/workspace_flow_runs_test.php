@@ -727,7 +727,7 @@ function test_workspace_flow_runs_token_answers_before_refusals()
 	$check = ws_flow_runs_test_source('ws_flow_run_start_check');
 
 	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'Only a published flow that is live can be run.'), 'before the live check');
-	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'ws_can_schedule($owner)'), 'before the owner check');
+	pg_assert_true(strpos($check, 'start_key = ') < strpos($check, 'ws_flow_builder($owner)'), 'before the owner check');
 	pg_assert_contains('ws_flow_start_key($token)', $check);
 
 	pg_assert_contains('ws_flow_run_for_token(', $check, 'the run a token started, without the right to run the flow');

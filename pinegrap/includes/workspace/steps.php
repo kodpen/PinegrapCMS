@@ -1576,8 +1576,15 @@ function ws_flow_box_try($viewer, $flow, $data)
     // The boxes act with the rights the flow's owner holds when they run.
     $owner = ws_change_viewer_for_id((int) $flow['owner_id']);
 
-    if (!is_array($owner) || !ws_can_schedule($owner)) {
+    if (!is_array($owner) || !ws_flow_builder($owner)) {
         return ws_flow_refusal(lang('The owner of the flow is no longer on the staff, so the box did not run.'));
+    }
+
+    // A role-3 member tries only a box their own flow may hold.
+    $refused = ws_flow_member_box_refusal(ws_flow_builder_kind($owner), $node);
+
+    if ($refused !== '') {
+        return ws_flow_refusal($refused);
     }
 
     // The values of the boxes a run of the person's choice has settled; a

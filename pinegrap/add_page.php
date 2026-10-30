@@ -146,9 +146,10 @@ if (!$_POST) {
                                                 <div class="col-12 md:col-8 lg:col-6 my-3">
                                                     <label for="name" class="form-label">' . lang('Page Name') . '</label>
                                                     <div class="input-group ">
-                                                        <span class="input-group-text material-icons" title="' . lang('This option determines the url address of the page.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}">public</span>
-                                                        ' . $liveform_add_page->output_field(array('type'=>'text','id'=>'name','name'=>'name','placeholder'=>lang('Page Name'),'maxlength'=>'100', 'class'=>'form-control ', 'required'=>'required')) . '
+                                                        <span class="input-group-text material-icons" aria-hidden="true">public</span>
+                                                        ' . $liveform_add_page->output_field(array('type'=>'text','id'=>'name','name'=>'name','placeholder'=>lang('Page Name'),'maxlength'=>'100', 'class'=>'form-control ', 'required'=>'required', 'aria-describedby'=>'name_hint')) . '
                                                     </div>
+                                                    <div class="form-text" id="name_hint">' . lang('This option determines the url address of the page.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Page Name') . '}') . '</code></div>
                                                 </div>
                                             </div>
                                         </div>
