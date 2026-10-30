@@ -135,7 +135,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "AND (LOWER(CONCAT_WS(',', page.page_name, page.page_type, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // Pages in the Recycle Bin are not offered: a link to one stops working.
@@ -254,7 +254,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // Get all files.
@@ -371,7 +371,7 @@ switch (($_SESSION['software']['editor_select_page_or_file']['type'] ?? '')) {
 
         // If there is a search query and it is not blank, then prepare filter.
         if ((isset($_SESSION['software']['editor_select_page_or_file']['query']) == true) && (($_SESSION['software']['editor_select_page_or_file']['query'] ?? '') != '')) {
-            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_page_or_file']['query'] ?? '')))) . "%')";
+            $where .= "WHERE (LOWER(CONCAT_WS(',', short_links.name, short_links.destination_type, page.page_name, product_groups.name, products.name, short_links.url, short_links.tracking_code, last_modified_user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_page_or_file']['query'] ?? ''))) . "%')";
         }
 
         // A link with a token for its address has no name to link to, a
