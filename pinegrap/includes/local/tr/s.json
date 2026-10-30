@@ -230,6 +230,7 @@
     "Saving": "Kaydediliyor",
     "Saving against the bundle's products bought one by one (with symbol)": "Paketin ürünlerini tek tek almaya göre kazanç (simgeyle)",
     "Saving the task like this causes these clashes:": "Görevi bu hâliyle kaydetmek şu çakışmalara yol açıyor:",
+    "Saving with {var:1} switched on and ready gives a status webhook address to add in its panel, so parcel statuses arrive as they change.": "{var:1} açık ve hazırken kaydetmek, paneline eklenecek bir durum webhook adresi verir; böylece kargo durumları değiştikçe gelir.",
     "Saving with {var:1} switched on registers a webhook there, so parcel statuses arrive as they change.": "{var:1} açıkken kaydetmek orada bir webhook kaydeder; böylece kargo durumları değiştikçe gelir.",
     "Saving...": "Kaydediliyor...",
     "Saving... (please wait)": "Kaydediliyor.. (lütfen bekleyin)",

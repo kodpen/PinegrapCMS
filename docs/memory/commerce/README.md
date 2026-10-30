@@ -41,6 +41,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, customs once filled, cancel, tracking
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers
 - carrier-label-text-cuts.md: Carrier label drivers cut a carrier's message, error text and the Sendcloud name with mb_substr(), never byte substr(): a split letter empties the order screen notice or the request body
+- carrier-webhook-basitkargo.md: Basit Kargo's side of the carrier webhook (#3645): added by hand in its panel, two unsigned messages (status change, movement), latest trace by time
 - carrier-webhook-drivers.md: The carrier webhook's Shippo (#3407), Sendcloud (#3431) and Kargonomi (#3633) sides: what each reader takes, the signature checks, how each registers and removes its webhook
 - carrier-webhook.md: carrier_webhook.php (2026.11.0, #3245): a label service's parcel status messages written through the tracking write-back, key in the URL, optional signature check, registration, answers, firewall
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
