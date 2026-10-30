@@ -16795,6 +16795,19 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 .ws-fd-try {
   white-space: pre-line;
 }
+/* Edit here: a box's form under the card's window. */
+.ws-fd-form {
+  max-width: 32rem;
+  margin-top: .5rem;
+  padding: .75rem;
+  border: 1px solid var(--pg-border-color);
+  border-radius: .5rem;
+  background: var(--pg-body-bg);
+  color: var(--pg-body-color);
+}
+.ws-fd-form .mb-5 {
+  margin-bottom: .6rem;
+}
 .ws-draft-actions {
   display: flex;
   flex-wrap: wrap;
