@@ -1,6 +1,6 @@
 ---
 name: workspace-friendly-ui
-description: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; slices U1-U6 and open questions
+description: Plan (2026-10-19) for a friendlier Workspace look: token scale, channel colour in the header, empty-state art, motion (avatar moved to bootstrap-6-panel); no schema; U1, U3-U5 done, U6 approved
 ---
 
 ## What is this plan?
@@ -21,11 +21,10 @@ description: Plan (2026-10-19) for a friendlier Workspace look: token scale, cha
 - U3 Channel identity — done (PR #2094, memory docs/memory/workspace/workspace-channel-identity-motion.md): header icon tile and top stripe in the channel colour; group colour chips.
 - U4 Empty states and loading — done (PR #2027, memory docs/memory/workspace/workspace-empty-states.md): friendly one-line copy plus a small SVG from the tour kit for "no channels", "no tasks", "inbox zero", "no notes"; skeleton rows instead of "Loading…"; the first "Loading…" and the start-up error span the grid (`grid-column: 1 / -1`), today they sit in the sidebar column.
 - U5 Motion — done (PR #2094, same file): send pop, reaction bounce, new-message slide-in, under `prefers-reduced-motion: no-preference`.
-- U6 Density switch (comfortable / compact) kept in localStorage like `ws-side-closed`; no `ws_profiles` column.
+- U6 Density switch (comfortable / compact), owner-approved (#3673): a Workspace toggle kept per browser in localStorage like `ws-side-closed` (no `ws_profiles` column), a compact class narrows the spacing tokens, default comfortable. Not built.
 
-## What is still open?
-1. How far "cute" goes: rounder + softer + illustrations (default) or also a rounded display font (Google Fonts are not loaded in the panel today; a self-hosted font adds weight).
-2. Whether U6 is wanted at all.
+## What was answered? (owner, 2026-10-30, #3673)
+- U6 is wanted. No rounded display font: the panel keeps loading no web font; the U1-U5 look and illustrations are enough.
 
 ## Where to start?
-- U6 only if the owner wants it (open question 2); U2 waits for B9j of the Bootstrap 6 plan. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
+- U6 is free to claim (about 150 product lines); U2 waits for B9j of the Bootstrap 6 plan. Check on dev in light and dark, phone width (`14027-14160` phone block), and with `prefers-reduced-motion`.
