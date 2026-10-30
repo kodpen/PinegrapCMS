@@ -50,7 +50,7 @@ Project overview, owner rules, decisions already made, git and branches, sandbox
 - decisions-made-widgets.md: Decisions list, system widget part: conditions and required controls, translated compared text, old blocks equal in look (W16), gallery sources (W5), entity values (W8), the 2026-10-27 answers.
 - decisions-made-workspace-2.md: Decisions list, workspace part 2 (2026-10-29 on): the channel menu holds only the channel's own items; creates in a chat go through /oluştur (/create): its rights and kinds; the sales quote stays
 - decisions-made-workspace-3.md: Decisions list, workspace part 3 (2026-10-29 afternoon on): the Flows list after Scheduled actions goes; the For each loop (D9); what a role-3 member's personal flow may hold
-- decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL digits exception (#2414-1b kept), CRM seams 10: the no-order-in-N-days Flows start, lead_source from referral_sources
+- decisions-made-workspace-4.md: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL digits exception, CRM seams 10 (no-order-in-N-days start, lead_source), "Edit here" on the AI draft card
 - decisions-made-workspace.md: Decisions list, workspace part: a typed @username in /task, a flow change box's rights, bulk product cards, model assistants, the Workspace list, the retired scheduled form
 - decisions-made.md: The decisions list: places reviewed and kept as they are on purpose; how to treat it and who adds to it, then the code and files that look dead or wrong but stay.
 - git-branches-and-shared-files.md: Branch policy (development vs main), who does git work, PR target, commit author, the PR footer (pointer), editing shared files without conflicts, API vs ERP files

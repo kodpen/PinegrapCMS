@@ -1,6 +1,6 @@
 ---
 name: decisions-made-workspace-4
-description: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL digits exception (#2414-1b kept), CRM seams 10: the no-order-in-N-days Flows start, lead_source from referral_sources
+description: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL digits exception, CRM seams 10 (no-order-in-N-days start, lead_source), "Edit here" on the AI draft card
 ---
 
 ## May a thread end in a webhook box's URL? (#3410)
@@ -11,5 +11,8 @@ description: Decisions list, workspace part 4 (2026-10-30 on): the webhook URL d
 
 ## Is `contacts.lead_source` picked from `referral_sources`? (#3416, part 3)
 - Decided (architect, 2026-10-30): yes: a select over `referral_sources` on add and edit contact and validation in the API; old free-text values are kept, shown as they are and stay selectable for that contact until changed. No schema. The visit event's `ws_events.contact_id` (part 1) is in `decisions-made-schema-5.md`.
+
+## What may "Edit here" on the AI draft card change? (#3444)
+- Decided (architect, 2026-10-30, plan `workspace-flows-look.md` V7b): open first, then edit in place. On a waiting card "Edit here" runs the same `ws_flow_draft_open()` as "Open on canvas" (the flow draft is created, or the patch made on the flow's draft; the card becomes applied with `flow_id`), then the picked box's label and settings form opens in the card and saves through `ws_flow_save()` with `draft_rev` (409 on a moved draft); on an opened card it edits directly. The button says it opens the draft. The stored proposal (`ws_ai_changes` snapshot) is never edited: the AI's proposal stays the audit record. Shown only where opening would pass (the asker with `ws_can_schedule()`, `edit` on a patch's flow); box try stays the flow owner's (F4e). No schema.
 
 Related: docs/memory/workflow/decisions-made-workspace-3.md, docs/memory/workflow/decisions-made.md

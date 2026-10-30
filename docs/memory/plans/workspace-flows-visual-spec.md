@@ -24,7 +24,7 @@ description: Plan (owner request 2026-10-27, draft): the Flows canvas look in nu
 - Shown above the flow's last box on the canvas, in the list's last-run column and on the run's card in a channel.
 
 ## Mini window and templates?
-- The AI draft card and Add › Scheduled flow draw the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; clicking a box opens "Edit here" under it; "Open on canvas" opens the same draft.
+- The AI draft card and Add › Scheduled flow draw the same canvas small (boxes 128 × 60 px): the dry run's result is each box's third line; clicking a box opens "Edit here" under it (on a waiting card it opens the draft first, #3444); "Open on canvas" opens the same draft.
 - Template placement: boxes appear one by one (420 ms each, 150 ms apart, rising and scaling up from 92 %), arrows grow (200 ms), threads draw (650 ms, 200 ms apart), then the setup panel slides in. With prefers-reduced-motion it is placed at once.
 
 ## Where are the rules behind it?
