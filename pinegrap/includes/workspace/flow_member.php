@@ -82,7 +82,7 @@ function ws_flow_member($viewer)
 function ws_flow_member_kinds()
 {
     return array(
-        'manual', 'schedule', 'event', 'end',
+        'manual', 'schedule', 'event', 'no_order', 'end',
         'task', 'approval', 'delay', 'condition', 'constants', 'value',
         'post', 'notify', 'task_open', 'report', 'task_digest',
         'row_add', 'row_set', 'change',

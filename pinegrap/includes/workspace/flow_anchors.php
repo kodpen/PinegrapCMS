@@ -21,6 +21,8 @@
  * the lists, on its card and in its history; by hand and by a chain it
  * starts its flow as well, and the run's outcome is written back to the
  * action's run with its news (ws_flow_anchor_run_ended()).
+ * A box on customers who stopped ordering keeps an hourly rule; each run of
+ * its anchor starts the flow once per customer (flow_no_order.php).
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -45,6 +47,7 @@ function ws_flow_anchor_kinds()
         'event'    => array('label' => lang('When something happens'), 'rule' => 'event'),
         'join'     => array('label' => lang('When somebody joins a channel'), 'rule' => 'join'),
         'row'      => array('label' => lang('When a table row changes'), 'rule' => 'row'),
+        'no_order' => array('label' => lang('When a customer stops ordering'), 'rule' => 'at'),
     );
 }
 
@@ -196,6 +199,10 @@ function ws_flow_trigger_outputs($kind, $config = array())
         return ws_flow_row_outputs(ws_flow_row_columns($config));
     }
 
+    if ($kind === 'no_order') {
+        return ws_flow_no_order_outputs();
+    }
+
     if ($kind === 'join') {
         return array(
             $value('newcomer_id', 'number', lang('The person who joined')),
@@ -272,6 +279,7 @@ function ws_flow_event_outputs()
  * row:      table_id, what (created, updated, deleted), column_id (a change
  *           counts only when it writes this column; 0 for any, and 0 for
  *           what is not updated)
+ * no_order: days (1 to WS_FLOW_NO_ORDER_DAYS_MAX) since the last order
  *
  * @param string $kind
  * @param mixed  $config
@@ -325,6 +333,11 @@ function ws_flow_anchor_normalize($kind, $config)
                 'what'      => $what,
                 'column_id' => ($what === 'updated') ? $number($config['column_id'] ?? 0) : 0,
             );
+
+        case 'no_order':
+            $days = array_key_exists('days', $config) ? $number($config['days']) : WS_FLOW_NO_ORDER_DAYS;
+
+            return array('days' => max(1, min(WS_FLOW_NO_ORDER_DAYS_MAX, $days)));
     }
 
     return array();
@@ -375,6 +388,12 @@ function ws_flow_anchor_rule($kind, $config)
         );
     }
 
+    // A box on customers who stopped ordering looks for them every hour;
+    // its days stay in the box (ws_flow_no_order_scan()).
+    if ($kind === 'no_order') {
+        return ws_flow_no_order_rule(time());
+    }
+
     $rule = array('type' => (string) (ws_flow_anchor_kinds()[$kind]['rule'] ?? ''));
 
     foreach ((array) $config as $key => $value) {
@@ -406,6 +425,10 @@ function ws_flow_anchor_check($viewer, $kind, $config)
 
     if ($kind === 'row') {
         return ws_flow_row_check($viewer, $config);
+    }
+
+    if (($kind === 'no_order') && (ws_flow_no_order_refusal($viewer) !== '')) {
+        return array('ok' => false, 'error' => ws_flow_no_order_refusal($viewer), 'rule' => null, 'next_run_at' => 0);
     }
 
     $checked = ws_scheduled_rule_input($viewer, ws_flow_anchor_rule($kind, $config));
@@ -822,6 +845,12 @@ function ws_flow_anchor_start($viewer, $row, $fill)
         if ($refused !== '') {
             return $fail($refused);
         }
+    }
+
+    // A box on customers who stopped ordering starts one run per customer
+    // whose threshold passed, each under a key of its own.
+    if ((string) $trigger['kind'] === 'no_order') {
+        return ws_flow_no_order_scan($viewer, $flow, $version, $trigger, $fill);
     }
 
     $flow_id = (int) $flow['id'];
