@@ -221,6 +221,12 @@ if ($edoc_filter !== '') {
 
 $where = !empty($conditions) ? (' WHERE ' . implode(' AND ', $conditions)) : '';
 
+// The register reads at most $invoice_limit rows, newest first. A list that
+// came back full is counted over the same conditions, so the note and the
+// line under the table name how many invoices the view holds; the badges and
+// the dashboard links that open it count the whole register.
+$invoice_limit = 500;
+
 $invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order_number, o.id AS order_exists,
         " . erp_aging_due_sql('i') . " AS effective_due
     FROM erp_invoices i
@@ -228,14 +234,31 @@ $invoices = (array) db_items("SELECT i.*, a.title AS live_account_title, o.order
     LEFT JOIN orders o ON i.order_id = o.id
     " . $where . "
     ORDER BY i.issue_date DESC, i.id DESC
-    LIMIT 500");
+    LIMIT " . $invoice_limit);
+
+$invoice_total = count($invoices);
+
+if (count($invoices) >= $invoice_limit) {
+    $invoice_total = (int) db_value("SELECT COUNT(*) FROM erp_invoices i" . $where);
+}
+
+$output_invoice_count = ($invoice_total > count($invoices))
+    ? lang(array('string' => '{var:1} of {var:2}', 'vars' => array(pg_format_number(count($invoices), 0), pg_format_number($invoice_total, 0))))
+    : pg_format_number(count($invoices), 0);
+
+$output_cap_note = '';
+
+if ($invoice_total > count($invoices)) {
+    $output_cap_note = '
+                <div class="form-text px-5 pb-5">' . h(lang(array('string' => 'Only the latest {var:1} of the {var:2} matching invoices are shown; pick a due-date or e-document view to narrow the list.', 'vars' => array(pg_format_number(count($invoices), 0), pg_format_number($invoice_total, 0))))) . '</div>';
+}
 
 if (!empty($parts)) {
     $output_filter_note = '
             <div class="alert theme-secondary d-flex align-items-center gap-3 py-3 mb-5" role="status">
                 <i class="bi bi-funnel"></i>
                 <span>' . h(lang(array('string' => 'Showing: {var:1}', 'vars' => implode(' · ', $parts)))) . '</span>
-                <span class="fg-secondary">(' . count($invoices) . ')</span>
+                <span class="fg-secondary">(' . h($output_invoice_count) . ')</span>
                 <a href="erp_invoices.php" class="ms-auto pg-link-body-emphasis">' . lang('Clear the filter') . '</a>
             </div>';
 }
@@ -471,7 +494,7 @@ pg_page_shell([
                         </thead>
                         <tbody>' . $output_rows . '</tbody>
                     </table>
-                </div>
+                </div>' . $output_cap_note . '
             </div>
             ' . ($edoc_bulk ? '</form>' : '') . '
         </div>
