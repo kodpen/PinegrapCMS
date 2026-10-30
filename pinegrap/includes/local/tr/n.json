@@ -1387,6 +1387,7 @@
     "Nothing was missing.": "Eksik bir şey yoktu.",
     "Nothing was saved.": "Hiçbir şey kaydedilmedi.",
     "Nothing was saved: name at least one country to let in.": "Hiçbir şey kaydedilmedi: içeri alınacak en az bir ülke yazın.",
+    "Nothing was saved: the request was {var:1} and this server accepts at most {var:2} in one request. Choose a smaller file, or raise post_max_size and upload_max_filesize on the server.": "Hiçbir şey kaydedilmedi: istek {var:1} idi ve bu sunucu tek istekte en fazla {var:2} kabul ediyor. Daha küçük bir dosya seçin ya da sunucuda post_max_size ve upload_max_filesize değerlerini yükseltin.",
     "Nothing was saved: these are not country codes: {var:1}.": "Hiçbir şey kaydedilmedi: bunlar ülke kodu değil: {var:1}.",
     "Nothing was saved: these blocked IP addresses cover your own address {var:1}: {var:2}. Remove them, or add your address to the allowed IP addresses.": "Hiçbir şey kaydedilmedi: engellenen şu IP adresleri sizin adresinizi ({var:1}) kapsıyor: {var:2}. Bunları kaldırın ya da adresinizi izin verilen IP adreslerine ekleyin.",
     "Nothing was saved: these settings would refuse you, because this request comes from {var:1}. Let your country in, keep the control panel open, or add your address to the allowed IP addresses.": "Hiçbir şey kaydedilmedi: bu ayarlar sizi reddederdi, çünkü bu istek {var:1} ülkesinden geliyor. Ülkenizi içeri alın, yönetim panelini açık tutun ya da adresinizi izin verilen IP adreslerine ekleyin.",

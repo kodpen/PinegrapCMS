@@ -58,6 +58,14 @@ $base = erp_base_currency();
 $page_title = is_array($existing) ? lang('Change the expense') : lang('New expense');
 $back = PATH . SOFTWARE_DIRECTORY . '/add_erp_expense.php' . (($id > 0) ? ('?id=' . $id) : '');
 
+// A receipt photo over post_max_size makes PHP throw the whole request away:
+// nothing typed arrived, so the screen says so instead of drawing a blank
+// form. The id rides in the form's address, so a change lands back on it.
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('_error', h(erp_upload_discarded_message()));
+    go($back);
+}
+
 if (!$_POST) {
 
     if ($liveform->field_in_session('expense_date') == false) {
@@ -333,7 +341,7 @@ if (!$_POST) {
                     <div class="card-body">
                         <label for="receipt_file" class="form-label">' . lang('A picture or a PDF of the receipt') . '</label>
                         <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" />
-                        <div class="form-text">' . h(lang(array('string' => 'Optional; at most {var:1} MB. On a phone the camera can take it.', 'vars' => (int) (ERP_EXPENSE_FILE_MAX_BYTES / 1048576)))) . '</div>
+                        <div class="form-text">' . h(lang(array('string' => 'Optional; at most {var:1} MB. On a phone the camera can take it.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_EXPENSE_FILE_MAX_BYTES))))) . '</div>
                     </div>
                 </div>';
     }
@@ -358,7 +366,7 @@ if (!$_POST) {
             ' . $liveform->get_warnings() . '
             ' . $liveform->output_notices() . '
 
-            <form name="form" action="add_erp_expense.php" method="post" enctype="multipart/form-data" id="erp_expense_form" data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '">
+            <form name="form" action="add_erp_expense.php' . (($id > 0) ? ('?id=' . $id) : '') . '" method="post" enctype="multipart/form-data" id="erp_expense_form" data-decimal-comma="' . (erp_decimal_comma() ? '1' : '0') . '">
                 ' . get_token_field() . '
                 ' . (($id > 0) ? '<input type="hidden" name="id" value="' . $id . '" />' : '') . '
                 <div class="card my-7">

@@ -27,11 +27,15 @@ $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_expenses.php';
 // back arrow, the breadcrumb and every reload and form of this screen keep it.
 $send_to = pg_send_to_url('');
 $send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
-$self_action = h('edit_erp_expense.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 $can_cash = defined('USER_MANAGE_ERP_CASH') && USER_MANAGE_ERP_CASH;
 
 $id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
+
+// The id rides in every form's address as well as its body: a receipt over
+// post_max_size makes PHP throw the body away, and the screen still knows
+// the expense to come back to.
+$self_action = h('edit_erp_expense.php?id=' . $id . $send_to_query);
 $expense = erp_expense($id);
 
 if ($expense === null) {
@@ -43,6 +47,11 @@ if ($expense === null) {
 $self = PATH . SOFTWARE_DIRECTORY . '/edit_erp_expense.php?id=' . $id . $send_to_query;
 
 // ------------------------------------------------------------------ actions
+if (pg_post_body_discarded()) {
+    $liveform->mark_error('_error', h(erp_upload_discarded_message()));
+    go($self);
+}
+
 if ($_POST) {
     validate_token_field();
 
@@ -383,7 +392,7 @@ if ($kept !== null) {
                             <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
                             <button type="submit" class="btn btn-outline theme-primary" data-confirm-content="' . h(lang('Take the new file in place of this one? The earlier file stays with the expense.')) . '"><i class="bi bi-arrow-left-right me-1" aria-hidden="true"></i>' . lang('Replace') . '</button>
                         </div>
-                        <div class="form-text">' . lang('For a blurred picture or the wrong page. The earlier file is not deleted; it stays listed with the expense.') . '</div>
+                        <div class="form-text">' . lang('For a blurred picture or the wrong page. The earlier file is not deleted; it stays listed with the expense.') . ' ' . h(lang(array('string' => 'Up to {var:1} MB.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_EXPENSE_FILE_MAX_BYTES))))) . '</div>
                     </form>
                 </details>';
         } elseif ($open) {
@@ -401,7 +410,7 @@ if ($kept !== null) {
                 <input class="form-control" type="file" id="receipt_file" name="receipt_file" accept="image/jpeg,image/png,image/webp,application/pdf" required />
                 <button type="submit" class="btn btn-outline theme-primary"><i class="bi bi-upload me-1" aria-hidden="true"></i>' . lang('Keep') . '</button>
             </div>
-            <div class="form-text">' . h(lang(array('string' => 'At most {var:1} MB. On a phone the camera can take it.', 'vars' => (int) (ERP_EXPENSE_FILE_MAX_BYTES / 1048576)))) . '</div>
+            <div class="form-text">' . h(lang(array('string' => 'At most {var:1} MB. On a phone the camera can take it.', 'vars' => erp_upload_mb_text(erp_upload_max_bytes(ERP_EXPENSE_FILE_MAX_BYTES))))) . '</div>
         </form>';
 } else {
     $output_receipt = '<p class="fg-secondary mb-0">' . lang('No receipt was kept with this expense.') . '</p>';
