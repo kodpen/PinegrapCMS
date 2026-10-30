@@ -207,7 +207,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref
 - tax-zone-commission-reward-boxes.md: Tax zone rate read through parse_tax_rate() and refused when blank, contact commission rate box sized for decimal(5,2), user reward points bounded to int(10) unsigned
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
-- trendyol-common-label.md: Trendyol common label (#3123, PRs #3257, #3281): by cargo number, ZPL per box, from the card, the order screen and bulk, kept as a shipment_labels row, read again after the sweep
+- trendyol-common-label.md: Trendyol common label (#3123, PRs #3257, #3281, #3594): by cargo number, ZPL per box, card, order screen and bulk, kept as a label row, read again after the sweep; marketplace_carried
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal
 - trendyol-listing-status.md: Trendyol listing approval read onto the mapping row: the two filter calls, what each state writes, which rows are asked about, what is not stored, unverified points.
 - trendyol-listing-update.md: Updating approved Trendyol listings by contentId (content-bulk-update): what is sent, queue operation listing_update, result by content id, the shop view's tick boxes, commission at approval
