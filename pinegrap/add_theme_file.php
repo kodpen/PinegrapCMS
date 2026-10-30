@@ -105,7 +105,7 @@ if (!$_POST) {
                                                                 <div class="popover-body">
                                                                     <div class="row">
                                                                         <div class="col-12 my-1">
-                                                                            <label class="form-label" for="name">' . lang('Local CSV Theme File') . '</label>
+                                                                            <label class="form-label" for="system_theme_csv_file">' . lang('Local CSV Theme File') . '</label>
                                                                             <input name="system_theme_csv_file" id="system_theme_csv_file" type="file" class="form-control">
                                                                         </div>
                                                                     </div>
@@ -121,8 +121,8 @@ if (!$_POST) {
                                                     <div class="row">
                                                         <div class="col-12 my-1">
                                                             <div class="col-12 my-1">
-                                                                <label class="form-label" for="name">' . lang('Local CSS Theme File') . '</label>
-                                                                <input name="custom_css_file" id="custom_css_file" type="file" class="form-control">
+                                                                <label class="form-label" for="custom_css_file">' . lang('Local CSS Theme File') . '</label>
+                                                                <input name="custom_css_file" id="custom_css_file" type="file" accept=".css,text/css" class="form-control" required>
                                                             </div>
                                                         </div>
                                                     </div>
