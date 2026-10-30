@@ -438,7 +438,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     if ($product_feeds_save_ready && array_key_exists('merchant_card', $_POST) && function_exists('pg_merchant_save_from_screen')) {
         $merchant_messages = pg_merchant_save_from_screen(array(
             'account'  => (string) post_value('merchant_account'),
-            'country'  => (string) post_value('merchant_country'),
+            'country'  => (string) post_value('merchant_center_country'),
             'register' => (bool) post_value('merchant_register'),
             'check'    => (bool) post_value('merchant_check'),
             'unlink'   => (bool) post_value('merchant_unlink'),

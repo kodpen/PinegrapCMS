@@ -16,4 +16,4 @@ description: Phone keyboard and auto-capitalisation of the Site Settings and Wor
 ## What broke before?
 - iOS capitalised the first letter: `escape_url()` compares 'https://' case-sensitively, so 'Https://…' was refused, and backup remotes stored 'Backups' or 'Us-east-1' as typed and failed to connect.
 - The attributes stand right after `type="text"`: prep.php's value expressions contain `>=`, which a simple tag regex would stop at.
-- `merchant_country` is not touched: the save upper-cases it and the box shows capitals.
+- The country boxes are not touched: the structured-data `merchant_country` and the Merchant Center card's `merchant_center_country` are upper-cased by their saves and show capitals.

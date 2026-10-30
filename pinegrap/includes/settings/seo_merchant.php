@@ -49,8 +49,8 @@ if (pg_merchant_ready()) {
 
     $merchant_country_field = '
                                             <div class="pg-f-sm">
-                                                <label for="merchant_country" class="form-label">' . lang('Country') . '</label>
-                                                <input type="text" name="merchant_country" id="merchant_country" class="form-control text-uppercase" maxlength="2" pattern="[A-Za-z]{2}" value="' . h($merchant_country) . '" placeholder="TR"/>
+                                                <label for="merchant_center_country" class="form-label">' . lang('Country') . '</label>
+                                                <input type="text" name="merchant_center_country" id="merchant_center_country" class="form-control text-uppercase" maxlength="2" pattern="[A-Za-z]{2}" value="' . h($merchant_country) . '" placeholder="TR"/>
                                                 <div class="form-text">' . lang('Two letters, the country the products are sold in.') . '</div>
                                             </div>';
 
