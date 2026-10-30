@@ -470,6 +470,63 @@ function prepare_file_name($file_name)
     }
     return $file_name;
 }
+
+// Writes $content to $path as a whole and returns true, or returns false
+// with the stored file left as it was. The content goes to a temporary file
+// in the same folder first; only when every byte is written and the file is
+// closed does it take the stored file's place, so a full disk or a folder
+// PHP may not write never leaves a cut-off or empty file behind. A file
+// another account owns cannot always be replaced in place, so when the
+// rename over it fails it is deleted and the rename tried again (the editors
+// deleted the old file before writing for the same reason).
+function pg_file_write_whole($path, $content)
+{
+    $path = (string) $path;
+    $content = (string) $content;
+    $folder = dirname($path);
+
+    if (($path === '') || !is_dir($folder) || is_dir($path)) {
+        return false;
+    }
+
+    $temporary = $folder . '/.' . basename($path) . '.' . bin2hex(random_bytes(6)) . '.tmp';
+    $handle = @fopen($temporary, 'xb');
+
+    if ($handle === false) {
+        return false;
+    }
+
+    $length = strlen($content);
+    $written = 0;
+
+    while ($written < $length) {
+        $bytes = @fwrite($handle, substr($content, $written));
+
+        if (($bytes === false) || ($bytes === 0)) {
+            break;
+        }
+
+        $written += $bytes;
+    }
+
+    $closed = @fclose($handle);
+    clearstatcache(true, $temporary);
+
+    if (($written === $length) && $closed && (@filesize($temporary) === $length)) {
+        if (@rename($temporary, $path)) {
+            return true;
+        }
+
+        if (is_file($path) && @unlink($path) && @rename($temporary, $path)) {
+            return true;
+        }
+    }
+
+    @unlink($temporary);
+
+    return false;
+}
+
 // Create a function that is used in order to determine if a page type
 // requires that "from=control_panel" be added to links to the page so that
 // errors about missing information are not outputted when an editor is simply
