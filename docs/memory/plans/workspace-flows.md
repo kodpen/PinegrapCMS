@@ -13,9 +13,8 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 
 ## What is proposed?
 - One "Flow" ("Akış"): graph JSON (boxes, arrows, notes), draft, versions; engine: plans/workspace-flows-engine.md.
-- Canvas (main): workspace_flows.php, bundle `workspace_flow.min.js`; HTML boxes, SVG arrows, keyboard "Connect to…", phone and screen-reader outline; run view polled (`ws_flow_run_get`, backoff).
+- Canvas (main): workspace_flows.php, `workspace_flow.min.js`.
 - Process template: task boxes on "after" arrows; from a channel template or table rows.
-- Boxes: triggers (Run on a record; time, event, form, join via the anchor; row later), condition, task (waits for done), approval, delay, the `ws_scheduled_do()` steps; later add/set row, start a flow, MCP tool, assistant.
 - Rights: staff build (`ws_can_schedule()`), owner-only (`ws_note_access()`); an optional home channel (public or private) lets its readers Run it and holds runs started there (each keeps its channel); table boxes show only to their readers; runs use the owner's rights at run time; nothing reaches site members.
 - CRM: pipeline = shared workflow table + flows ("Won → start New customer setup"); plans/workspace-crm-seams.md step 6 is shared.
 - Tables T3-T5 came here (workspace/workflow-tables-later.md).
@@ -29,7 +28,7 @@ description: Plan (2026-10-24): one Flows system: process templates, "when X do 
 6. F6 (tables): F6a done #3064 row start box (workspace/workspace-flows-row-box.md); F6b add/set row boxes: F6b-1 server done #3189 (workspace/workspace-flows-table-boxes.md), F6b-2 canvas form done #3359; F6c workflow mode (#3122): F6c-a done #3145, F6c-b #3301, its runs API contact_id done #3351 (workspace/workspace-flows-from-table.md).
 7. F7 shares #1578 (11.0.83; workspace/workspace-flows-shares.md).
 8. F8 MCP box (answer 5): F8a #3000; F8b #3028; F8c (writes propose and wait): F8c-1 #3144, F8c-2 #3321.
-9. Role-3 personal flows (#3345, narrow, no schema): R1 server rules: per-kind allow list at save, publish and run, owner-only (no home, no shares), caps 10 flows and 20 starts an hour, reach re-checked at run; the change box refused until R3 (in progress). R2 canvas: palette hides refused kinds, Flows entry and editor for role 3 (workspace_flow.js, actions.php if needed). R3 the change box as a change card (a proposal) for a role-3 owner.
+9. Role-3 flows (#3345): R1 server: allow list at save, publish, run; no home, no shares; caps; change refused until R3 (in progress). R2 canvas: palette, Flows entry. R3 change box as a change card.
 
 ## Which questions are answered?
 Owner 2026-10-24: 1 a, 2 b, 3 a, 4 a; name "Akışlar". 5-7: recommendations taken (owner: decide); 8 below.
