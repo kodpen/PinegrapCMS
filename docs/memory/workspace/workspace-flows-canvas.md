@@ -21,7 +21,7 @@ description: The flow canvas (workspace_flows.php, workspace_flow.js): who sees 
 - Palette (`drawPalette()`, left column, edit access only; else `wsf-no-palette`): Start from a template while empty, a search, `PALETTE_GROUPS` (start, values, logic, people, message, system) with coloured headings; start says "This flow: <kind>" (`paletteHeading()`). Click or drag; phones: the outline's buttons.
 - Stage: a layer moved by translate+scale; SVG arrows under 208×80 HTML boxes, grid 16. Pan: empty canvas, Space+drag, middle button, wheel. Zoom: Ctrl+wheel, pinch, − % + fit (0.25-2).
 - Run/view access: the live graph read-only, no palette, drag, Publish. Share dialog (⋯): `workspace-flows-shares.md`.
-- Box look, kind icons: `workspace-flows-box-look.md`.
+- Box look, kind icons: `workspace-flows-box-look.md`; titles with values, live-flow hint: `workspace-flows-run-notice.md`.
 
 ## How is it saved?
 - 1.5 s after the last change, on blur, Ctrl+S; Publish, Pause, another flow, "New flow" save first.
