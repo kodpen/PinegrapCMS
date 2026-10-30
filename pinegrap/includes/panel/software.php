@@ -755,6 +755,9 @@ function pg_panel_software_update($request, $action)
             // Zip file name — the channel's package, the same name the download step used.
             $filename = pg_update_package_file();
 
+            $pin = array();
+            $installed_build = '';
+
             // The pin's package, checked again right before extraction: the
             // size, sha256 and in-ZIP version the download step accepted.
             if (PG_VENDOR_API_V1 === true) {
