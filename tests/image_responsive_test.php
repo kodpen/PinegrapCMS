@@ -115,6 +115,19 @@ function test_img_sizes_auto_only_when_asked()
 	pg_assert_false(pg_img_fills_width('w-100x mw-100'), 'not a word of it');
 }
 
+function test_img_height_given()
+{
+	pg_assert_true(pg_img_height_given('<img src="/p.jpg" height="300">'), 'a whole-number height attribute');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" height="0">'), 'height 0');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" height="50%">'), 'not a whole number');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" class="w-100">'), 'no height');
+	pg_assert_true(pg_img_height_given('<img src="/p.jpg" style="height:300px">'), 'style height');
+	pg_assert_true(pg_img_height_given('<img src="/p.jpg" style="color:red; aspect-ratio: 4 / 3">'), 'style aspect-ratio');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" style="max-height:300px">'), 'max-height');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" style="line-height:2;min-height:10px">'), 'line-height and min-height');
+	pg_assert_false(pg_img_height_given('<img src="/p.jpg" style="height:auto">'), 'height auto');
+}
+
 function test_img_tag_attr()
 {
 	$tag = '<img src="/p.jpg?a=1&amp;b=2" alt=\'it\'\'s\' loading=lazy class="w-100 x" data-src="/no.jpg">';
@@ -144,9 +157,19 @@ function test_img_responsive_html_adds_srcset_and_sizes()
 		'added before the end of the tag');
 
 	pg_assert_same(
-		'<img class="card-img-top" loading="lazy" src="/p.jpg" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="auto, (max-width: 1200px) 100vw, 1200px" />',
+		'<img class="card-img-top" loading="lazy" src="/p.jpg" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="(max-width: 1200px) 100vw, 1200px" />',
 		pg_img_responsive_html('<img class="card-img-top" loading="lazy" src="/p.jpg" />', $resolve),
-		'a lazy card image: auto first, self-closing kept');
+		'a lazy card image without a height: no auto, self-closing kept');
+
+	pg_assert_same(
+		'<img class="card-img-top" loading="lazy" style="aspect-ratio:1/1" src="/p.jpg" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="auto, (max-width: 1200px) 100vw, 1200px" />',
+		pg_img_responsive_html('<img class="card-img-top" loading="lazy" style="aspect-ratio:1/1" src="/p.jpg" />', $resolve),
+		'a lazy card image with its ratio: auto first');
+
+	pg_assert_same(
+		'<img src="/p.jpg" class="d-block w-100" alt="" loading="lazy" srcset="/p.jpg?w=480 480w, /p.jpg 1200w" sizes="(max-width: 1200px) 100vw, 1200px">',
+		pg_img_responsive_html('<img src="/p.jpg" class="d-block w-100" alt="" loading="lazy">', $resolve),
+		'a lazy carousel slide without a height: no auto');
 
 	pg_assert_same(
 		'<img src="/p.jpg" width="320" sizes="50vw" srcset="/p.jpg?w=480 480w, /p.jpg 1200w">',
