@@ -17,10 +17,11 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - Pinned by `tests/back_arrow_targets_test.php`.
 
 ## Where does the back arrow go when the screen got send_to?
-- To `send_to` (`pg_send_to_url(<list>)`), like Edit User and Edit Page: Edit/Create/Import Contact, Create/Import User and Edit Ad.
-- Symptom fixed: a contact opened from All Subscribers went back to All My Contacts (`view_contacts.php` and `view_users.php` read their view only from the address); a contact opened from Edit User, or an ad from a site page's Edit chip, went back to the panel list.
+- To `send_to` (`pg_send_to_url(<list>)`), like Edit User and Edit Page: Edit/Create/Import Contact, Create/Import User, Edit Ad (#3358) and Edit Comment.
+- Symptom fixed: a contact opened from All Subscribers went back to All My Contacts (`view_contacts.php` and `view_users.php` read their view only from the address); a contact opened from Edit User, or an ad or comment from a site page's Edit chip (a comment also from the dashboard card), went back to the panel list.
 - The Contacts/Users breadcrumb uses `pg_send_to_list_url(<list>)` (`includes/fn/core.php`): `send_to` only when its path is that same list, else the bare list (Edit Contact is also opened from Edit User and Edit Gift Card). Labelled `Contacts` / `Users`.
-- The Edit Ad breadcrumb stays on All My Ads, so no list link opens a site page.
+- The Edit Ad and Edit Comment breadcrumbs stay on their list, so no list link opens a site page.
+- A refused Edit Comment save redirects with `send_to` in the address, so the arrow keeps it.
 - Pinned by `tests/back_arrow_send_to_test.php`.
 
 ## Which arrows keep their target on purpose?
