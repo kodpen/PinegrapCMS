@@ -237,7 +237,7 @@ if (!defined('PG_SETTINGS_ENTRY')) {
         $merchant_shipping_rate_input = trim(post_value('merchant_shipping_rate'));
         $merchant_shipping_rate_value = ($merchant_shipping_rate_input === '')
             ? -1
-            : max(0, (int) round(((float) str_replace(',', '.', $merchant_shipping_rate_input)) * 100));
+            : max(0, (int) round(pg_parse_amount($merchant_shipping_rate_input) * 100));
 
         $merchant_return_days_input = trim(post_value('merchant_return_days'));
         $merchant_return_days_value = ($merchant_return_days_input === '')

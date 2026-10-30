@@ -556,12 +556,12 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                             <label class="form-label" for="base_rate_' . $number . '">' . lang('or') . '</label>
                                                             <div class="d-flex flex-wrap gap-1">
                                                                 <div class="input-group w-auto flex-grow-1">
-                                                                    <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . ' />
+                                                                    <input value="' . $value('base_rate_' . $number) . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '" id="base_rate_' . $number . '" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' />
                                                                     <label class="input-group-text" for="base_rate_' . $number . '">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 </div>
                                                                 <div class="input-group w-auto flex-grow-1">
                                                                     <label class="input-group-text text-wrap" for="base_rate_' . $number . '_subtotal">' . lang('if recipient subtotal is at least') . '</label>
-                                                                    <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . ' />
+                                                                    <input value="' . $value('base_rate_' . $number . '_subtotal') . '" style="min-width: 90px; text-align: right;" type="text" name="base_rate_' . $number . '_subtotal" id="base_rate_' . $number . '_subtotal" class="form-control" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . ' />
                                                                     <label class="input-group-text" for="base_rate_' . $number . '_subtotal">' . BASE_CURRENCY_SYMBOL . '</label>
                                                                 </div>
                                                             </div>
@@ -583,7 +583,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                 <label class="form-label" id="' . $rate . '_label" for="' . $rate . '">' . $label . '</label>
                                                 <label class="form-control form-adorn form-adorn-end">
                                                     <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                    <input value="' . $value($rate) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                    <input value="' . $value($rate) . '" type="text" name="' . $rate . '" id="' . $rate . '" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                 </label>
                                                 <div class="form-field my-3 ms-5">
                                                     <div class="switch"><input class="" type="checkbox" id="' . $rate . '_first_item_excluded" name="' . $rate . '_first_item_excluded" value="1"' . $checked($rate . '_first_item_excluded') . ' /></div>
@@ -695,7 +695,7 @@ function pg_shipping_method_form_cards($values, $zone_options)
                                                     <label class="form-label" for="base_rate">' . lang('Base Rate') . '</label>
                                                     <label class="form-control form-adorn form-adorn-end">
                                                         <span class="form-adorn-text" aria-hidden="true">' . BASE_CURRENCY_SYMBOL . '</span>
-                                                        <input value="' . $value('base_rate') . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="numeric"' . pg_money_mask_html() . '  style="text-align: right;" />
+                                                        <input value="' . $value('base_rate') . '" type="text" name="base_rate" id="base_rate" class="form-ghost" maxlength="12" inputmode="decimal"' . pg_money_mask_html() . '  style="text-align: right;" />
                                                     </label>
                                                     <div class="form-field my-3 ms-5">
                                                         <div class="switch"><input class="collapse-switcher" type="checkbox" id="variable_base_rate" name="variable_base_rate" value="1"' . $checked('variable_base_rate') . ' data-bs-target="#base_rate_rows"/></div>

@@ -77,6 +77,33 @@ function pg_explorer_bulk_product_new_price($old_price, $method, $value)
     return (int) round($new_price);
 }
 
+// The value of a bulk price change, or null when it is empty, not a number,
+// zero or below. An amount ('increase', 'decrease') is read by
+// pg_normalize_amount(), as on the product screen, and returned in minor
+// units; a percentage is a percentage and is not converted.
+function pg_explorer_bulk_price_value($method, $value)
+{
+    $value = trim((string) $value);
+
+    if (($method === 'increase') || ($method === 'decrease')) {
+        $value = pg_normalize_amount($value);
+    } else {
+        $value = str_replace(',', '.', $value);
+    }
+
+    if (($value === '') || (is_numeric($value) == false) || ((float) $value <= 0)) {
+        return null;
+    }
+
+    $value = (float) $value;
+
+    if (($method === 'increase') || ($method === 'decrease')) {
+        $value = $value * 100;
+    }
+
+    return $value;
+}
+
 // A product's stock quantity after a bulk change: set to the value ('value'),
 // raised by it ('increase') or lowered by it (anything else). Stock does not
 // go negative: a shelf holds none or some.
@@ -193,7 +220,7 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
     // What the panel asked for, read once.
     $bulk_enabled = (isset($set['enabled']) && in_array((string) $set['enabled'], array('0', '1'), true)) ? (string) $set['enabled'] : '';
     $bulk_price_method = isset($set['price_method']) ? (string) $set['price_method'] : '';
-    $bulk_price_value = isset($set['price_value']) ? str_replace(',', '.', trim((string) $set['price_value'])) : '';
+    $bulk_price_value = isset($set['price_value']) ? (string) $set['price_value'] : '';
     $bulk_inventory = (isset($set['inventory']) && in_array((string) $set['inventory'], array('0', '1'), true)) ? (string) $set['inventory'] : '';
     $bulk_quantity_mode = isset($set['quantity_mode']) ? (string) $set['quantity_mode'] : '';
     $bulk_quantity_value = isset($set['quantity_value']) ? trim((string) $set['quantity_value']) : '';
@@ -210,16 +237,10 @@ function pg_explorer_handle_products_bulk_edit($type, $request, $user)
 
     if ($bulk_price_method !== '') {
 
-        if (($bulk_price_value === '') || (is_numeric($bulk_price_value) == false) || ((float) $bulk_price_value <= 0)) {
+        $bulk_price_value = pg_explorer_bulk_price_value($bulk_price_method, $bulk_price_value);
+
+        if ($bulk_price_value === null) {
             respond(array('status' => 'error', 'message' => lang('Enter an amount for the price change.')));
-        }
-
-        $bulk_price_value = (float) $bulk_price_value;
-
-        // A money amount is typed in the currency and stored in kuruş;
-        // a percentage is a percentage and is not converted.
-        if (($bulk_price_method === 'increase') || ($bulk_price_method === 'decrease')) {
-            $bulk_price_value = $bulk_price_value * 100;
         }
     }
 

@@ -423,11 +423,12 @@ function erp_audit_people()
 function erp_audit_csv($filters)
 {
     $out = fopen('php://output', 'w');
+    $delimiter = erp_csv_delimiter();
     fwrite($out, "\xEF\xBB\xBF");
     fputcsv($out, array(
         lang('Date'), lang('Source'), lang('User'), lang('IP address'), lang('Action'),
         lang('Record'), lang('Record ID'), lang('Number or name'), lang('Amount'), lang('Currency'), lang('Details'),
-    ), ';', '"', '\\');
+    ), $delimiter, '"', '\\');
 
     $sources = erp_audit_sources();
     $types = erp_audit_object_types();
@@ -456,7 +457,7 @@ function erp_audit_csv($filters)
                 $is_log ? '' : number_format(((int) $row['amount']) / 100, 2, '.', ''),
                 (string) $row['currency'],
                 $is_log ? '' : (string) $row['detail'],
-            ), ';', '"', '\\');
+            ), $delimiter, '"', '\\');
             $last = (int) $row['id'];
             $written++;
         }

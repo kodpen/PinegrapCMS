@@ -64,6 +64,23 @@ function test_explorer_catalog_quick_price()
 	pg_assert_same(null, pg_explorer_catalog_quick_price('-1'), 'negative');
 }
 
+// The quick price box reads a typed amount the way the product screen does:
+// grouped amounts in either language are accepted, and a single separator
+// with three digits after it is read by the panel language.
+function test_explorer_catalog_quick_price_reads_grouped_amounts()
+{
+	pg_assert_same(125000, pg_explorer_catalog_quick_price('1.250,00'), 'Turkish grouped');
+	pg_assert_same(125000, pg_explorer_catalog_quick_price('1,250.00'), 'English grouped');
+	pg_assert_same(125000, pg_explorer_catalog_quick_price('1250,00'), 'the prefilled value');
+	pg_assert_same(null, pg_explorer_catalog_quick_price('1.250.00x'), 'not an amount');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(125000, pg_explorer_catalog_quick_price('1' . $thousands . '250'), 'three digits after the grouping separator');
+	pg_assert_same(125, pg_explorer_catalog_quick_price('1' . $decimal . '250'), 'three digits after the decimal separator');
+}
+
 // A typed stock count: empty and non-numeric are refused, below zero is zero.
 function test_explorer_catalog_quick_quantity()
 {

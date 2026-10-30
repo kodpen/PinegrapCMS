@@ -3195,6 +3195,76 @@ function parse_tax_rate($raw)
 }
 
 
+
+/**
+ * Site Settings' card surcharge percentage as
+ * config.ecommerce_surcharge_percentage (decimal(6,3) unsigned) stores it:
+ * read like a tax rate (decimal comma, 0..100), and blank or unreadable is no
+ * surcharge, which the settings screen shows as an empty box.
+ *
+ * @param  mixed $raw
+ * @return string
+ */
+function pg_settings_surcharge_percentage($raw)
+{
+    $rate = parse_tax_rate($raw);
+
+    return ($rate === NULL) ? '0' : $rate;
+}
+
+
+/**
+ * A commission rate typed in Site Settings (Default Commission Rate) as a
+ * decimal(5,2) unsigned column stores it. The last "." or "," is the decimal
+ * separator, as on the product screen's commission boxes, so "7,5" and "7.5"
+ * are both 7.50; the value is rounded to two places and held to 0..999.99.
+ *
+ * @param  mixed $raw
+ * @return string
+ */
+function pg_parse_commission_rate($raw)
+{
+    $value = preg_replace('/[^0-9.,]/', '', trim((string) $raw));
+    $rate = 0.0;
+
+    if ($value !== '') {
+        $pos = max(strrpos($value, '.'), strrpos($value, ','));
+
+        if ($pos === false) {
+            $rate = (float) $value;
+        } else {
+            $whole = preg_replace('/[.,]/', '', substr($value, 0, $pos));
+            $fraction = substr($value, $pos + 1);
+            $rate = (float) (($whole === '' ? '0' : $whole) . '.' . ($fraction === '' ? '0' : $fraction));
+        }
+    }
+
+    $rate = min(999.99, max(0, round($rate, 2)));
+
+    return number_format($rate, 2, '.', '');
+}
+
+
+/**
+ * The reward program goal (points) typed in Site Settings as
+ * config.ecommerce_reward_program_points (int(10) unsigned) stores it: read
+ * through pg_parse_amount(), so a goal grouped with the panel's thousands
+ * separator ("1.000" on a Turkish panel) is a thousand, never 1.
+ *
+ * @param  mixed $raw
+ * @return int
+ */
+function pg_parse_reward_goal($raw)
+{
+    $points = round(pg_parse_amount($raw));
+
+    if ($points <= 0) {
+        return 0;
+    }
+
+    return ($points >= 4294967295) ? 4294967295 : (int) $points;
+}
+
 /**
  * A stored rate as an operator should see it.
  *
