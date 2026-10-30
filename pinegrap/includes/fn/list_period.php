@@ -4,7 +4,8 @@
  *
  * The date range of the panel's list screens (orders, contacts, submitted
  * forms, the reports): the month and the week the period navigator's arrows
- * move to, the day a week starts on and the range written as a heading.
+ * move to, the day a week starts on, the range put the right way round and
+ * written as a heading.
  *
  * A range is the six values the screens keep in their session and read from
  * the address: start_month, start_day, start_year, stop_month, stop_day and
@@ -36,6 +37,31 @@ function pg_list_period_month($timestamp)
         'stop_day'    => date('t', $timestamp),
         'stop_year'   => date('Y', $timestamp),
     );
+}
+
+/**
+ * The range with its start and stop the right way round. Start and End are
+ * two separate pickers, so an End before the Start reached the query as
+ * start <= t <= stop and the list came out empty without a word; the range
+ * is swapped instead, as the audit trail and ERP Profit read it.
+ *
+ * @param array $range the six start_/stop_ parts (zero-padded strings);
+ *                     other keys are kept as they are
+ * @return array the range, its start and stop parts swapped when the start
+ *               day comes after the stop day
+ */
+function pg_list_period_ordered(array $range)
+{
+    $start = mktime(0, 0, 0, (int) ($range['start_month'] ?? 0), (int) ($range['start_day'] ?? 0), (int) ($range['start_year'] ?? 0));
+    $stop = mktime(0, 0, 0, (int) ($range['stop_month'] ?? 0), (int) ($range['stop_day'] ?? 0), (int) ($range['stop_year'] ?? 0));
+
+    if ($start > $stop) {
+        foreach (array('month', 'day', 'year') as $part) {
+            list($range['start_' . $part], $range['stop_' . $part]) = array($range['stop_' . $part] ?? '', $range['start_' . $part] ?? '');
+        }
+    }
+
+    return $range;
 }
 
 /**

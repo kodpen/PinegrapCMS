@@ -185,6 +185,8 @@ function pg_contact_list_prepare($user, $groups)
             $state[$key] = $value;
         }
     }
+
+    $state = pg_list_period_ordered($state);
 }
 
 /**
