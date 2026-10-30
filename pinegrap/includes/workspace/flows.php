@@ -136,7 +136,7 @@ function ws_flow_kinds()
             'outputs' => ws_flow_loop_outputs(array()), 'loop' => 'start', 'texts' => array('list'));
         $kinds['for_each_end'] = array('label' => lang('End for each'), 'trigger' => false, 'outcomes' => array('done'), 'step' => false,
             'outputs' => array(
-                array('key' => 'count', 'type' => 'number', 'label' => lang('Items')),
+                array('key' => 'count', 'type' => 'number', 'label' => lang('Item count')),
                 array('key' => 'done', 'type' => 'number', 'label' => lang('Items done')),
                 array('key' => 'failed', 'type' => 'number', 'label' => lang('Items failed')),
                 array('key' => 'list', 'type' => 'text', 'label' => lang('List')),
@@ -737,7 +737,8 @@ function ws_flow_starts_on_join($graph)
  * or a field the box does not give).
  * A reference to a box that may not have run when the reader runs (a branch
  * of a condition, a step's done) is a warning, skippable_reference with
- * warning true, which does not stop publishing: the value is then empty.
+ * warning true, which does not stop publishing: the value is then empty;
+ * so is loop_size, a loop whose items can pass the run's box limit.
  * Notes are never checked. A kind of record a start box names is checked by
  * ws_flow_problems(), which knows the site's records.
  *
@@ -1127,7 +1128,8 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
 
 /**
  * What a graph may be published with but a reader should know: references
- * to a box that may not run before the box reading it. Pure.
+ * to a box that may not run before the box reading it, loops whose items can
+ * pass the run's box limit. Pure.
  *
  * @param array|string $graph
  * @return array[] code, node, edge, text, warning
@@ -2643,7 +2645,7 @@ function ws_flow_js_strings()
         'fl_loop_fields_help' => lang('Up to 10 keys of an item, separated by commas: each becomes a value of this box inside the loop.'),
         'fl_loop_no_list'     => lang('No list chosen'),
         'fl_loop_ends'        => lang('Loop it ends'),
-        'fl_loop_pick'        => lang('Choose a For each box'),
+        'fl_loop_pick'        => lang('Choose a loop'),
         'fl_loop_end_meta'    => ws_js_template('Ends {var:1}', 1),
         'fl_loop_collect'     => lang('Value to collect'),
         'fl_loop_collect_help' => lang('One value of a box inside the loop, gathered for every item into the list this box gives.'),

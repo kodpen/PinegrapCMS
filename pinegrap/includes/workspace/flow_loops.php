@@ -85,7 +85,7 @@ function ws_flow_loop_normalize($kind, $config)
 function ws_flow_loop_outputs($config)
 {
     $out = array(
-        array('key' => 'count', 'type' => 'number', 'label' => lang('Items')),
+        array('key' => 'count', 'type' => 'number', 'label' => lang('Item count')),
         array('key' => 'index', 'type' => 'number', 'label' => lang('Item number')),
         array('key' => 'item', 'type' => 'text', 'label' => lang('Item')),
     );
@@ -232,7 +232,8 @@ function ws_flow_loop_of($loops, $node_id)
  * For each box or leaves it other than into its End box, an End box reached
  * from outside its body; bad_config for a list or a gathered value that is
  * not one value; bad_reference for a box outside a loop reading a box of its
- * body or an item. Pure.
+ * body or an item; loop_size, a warning, for loops whose items can pass the
+ * run's box limit (ws_flow_loop_size_warnings()). Pure.
  *
  * @param array $graph ws_flow_graph_normalize()
  * @param array $nodes node id => box
@@ -251,11 +252,11 @@ function ws_flow_loop_problems($graph, $nodes)
 
     foreach ($nodes as $id => $node) {
         if (((string) $node['kind'] === 'for_each_end') && !isset($loops[(string) $node['config']['for_each']])) {
-            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The box {var:1} ends no For each box: choose the loop it ends.', 'vars' => $name($id))));
+            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The box {var:1} ends no loop: choose the loop it ends.', 'vars' => $name($id))));
         }
 
         if (((string) $node['kind'] === 'for_each_end') && isset($loops[(string) $node['config']['for_each']]) && ($loops[(string) $node['config']['for_each']]['end'] !== (string) $id)) {
-            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The For each box {var:1} has a second End box, {var:2}.', 'vars' => array($name($node['config']['for_each']), $name($id)))));
+            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The loop of {var:1} has a second End box, {var:2}.', 'vars' => array($name($node['config']['for_each']), $name($id)))));
         }
 
         if ((string) $node['kind'] === 'for_each') {
@@ -287,11 +288,11 @@ function ws_flow_loop_problems($graph, $nodes)
         $end = $loop['end'];
 
         if ($end === '') {
-            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The For each box {var:1} has no End for each box: its loop needs one.', 'vars' => $name($id))));
+            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The loop of {var:1} has no End box: add one after the boxes it repeats.', 'vars' => $name($id))));
         }
 
         if (empty($loop['each'])) {
-            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The For each box {var:1} needs an arrow on each into the boxes it repeats.', 'vars' => $name($id))));
+            $problems[] = ws_flow_problem('bad_loop', (string) $id, null, lang(array('string' => 'The loop of {var:1} needs an arrow on each into the boxes it repeats.', 'vars' => $name($id))));
             continue;
         }
 
@@ -374,7 +375,85 @@ function ws_flow_loop_problems($graph, $nodes)
         }
     }
 
-    return $problems;
+    return array_merge($problems, ws_flow_loop_size_warnings($nodes, $loops, $name));
+}
+
+/**
+ * The most boxes a run of a graph can start: each box that runs once (not
+ * the start, not a value box, which never runs), and each box of a loop's
+ * body once per item, up to WS_FLOW_LOOP_ITEMS_MAX items. A box behind a
+ * condition counts as if it ran. Pure.
+ *
+ * @param array $nodes node id => box
+ * @param array $loops ws_flow_loops()
+ * @return array total, loops (for_each id => boxes its items can start)
+ */
+function ws_flow_loop_box_runs($nodes, $loops)
+{
+    $kinds = ws_flow_kinds();
+    $runs = function ($id) use ($nodes, $kinds) {
+        $kind = $kinds[(string) ($nodes[$id]['kind'] ?? '')] ?? null;
+
+        return ($kind && empty($kind['trigger']) && empty($kind['pure'])) ? 1 : 0;
+    };
+    $in_body = array();
+    $out = array('total' => 0, 'loops' => array());
+
+    foreach ($loops as $id => $loop) {
+        $boxes = 0;
+
+        foreach ($loop['body'] as $box) {
+            if (!isset($in_body[$box])) {
+                $in_body[$box] = true;
+                $boxes += $runs($box);
+            }
+        }
+
+        $out['loops'][(string) $id] = array('boxes' => $boxes, 'runs' => $boxes * WS_FLOW_LOOP_ITEMS_MAX);
+        $out['total'] += $boxes * WS_FLOW_LOOP_ITEMS_MAX;
+    }
+
+    foreach (array_keys($nodes) as $id) {
+        if (!isset($in_body[(string) $id])) {
+            $out['total'] += $runs((string) $id);
+        }
+    }
+
+    return $out;
+}
+
+/**
+ * A warning on each loop of a graph whose runs, at the most items a loop
+ * takes, can pass the run's limit of WS_FLOW_MAX_BOX_RUNS boxes. A warning,
+ * not a refusal: a list is often far shorter than the cap, and the flow
+ * works for it; the run otherwise learns of the limit only on its last
+ * items, after the work before them is done. Pure.
+ *
+ * @param array    $nodes node id => box
+ * @param array    $loops ws_flow_loops()
+ * @param callable $name  a box's name by its id
+ * @return array[] ws_flow_problem(), warning true
+ */
+function ws_flow_loop_size_warnings($nodes, $loops, $name)
+{
+    $limit = defined('WS_FLOW_MAX_BOX_RUNS') ? (int) WS_FLOW_MAX_BOX_RUNS : 200;
+    $runs = ws_flow_loop_box_runs($nodes, $loops);
+    $warnings = array();
+
+    if ($runs['total'] <= $limit) {
+        return $warnings;
+    }
+
+    foreach ($runs['loops'] as $id => $loop) {
+        if ($loop['boxes'] > 0) {
+            $warnings[] = ws_flow_problem('loop_size', (string) $id, null, lang(array(
+                'string' => 'The loop of {var:1} can run {var:2} boxes ({var:3} items × {var:4} boxes in it); with the rest of the flow a run can pass its limit of {var:5} boxes, and a long list then fails on its last items.',
+                'vars'   => array($name($id), $loop['runs'], WS_FLOW_LOOP_ITEMS_MAX, $loop['boxes'], $limit),
+            )), true);
+        }
+    }
+
+    return $warnings;
 }
 
 /**
@@ -408,7 +487,7 @@ function ws_flow_loop_items($text, $path = '')
     }
 
     if (count($value) > WS_FLOW_LOOP_ITEMS_MAX) {
-        return $fail(lang(array('string' => 'The list holds {var:1} items; a For each box goes through at most {var:2}.', 'vars' => array(count($value), WS_FLOW_LOOP_ITEMS_MAX))));
+        return $fail(lang(array('string' => 'The list holds {var:1} items; a loop goes through at most {var:2}.', 'vars' => array(count($value), WS_FLOW_LOOP_ITEMS_MAX))));
     }
 
     $json = (string) json_encode($value, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PARTIAL_OUTPUT_ON_ERROR);

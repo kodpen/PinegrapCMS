@@ -459,13 +459,36 @@ function pg_migration_request_options($data)
 }
 
 /**
- * Turn a certificate-related cURL error number into an actionable sentence.
+ * Turn a certificate-related cURL error number into a sentence in the panel
+ * language.
  *
  * Without this the operator sees "cURL error 60" and has no idea that the
  * cause is a stale CA bundle on their own server rather than a fault at the
- * other end.
+ * other end. The data/config.php advice is added only when the caller shows
+ * the text to the person who made the request ($advice) and that person is
+ * an administrator: other callers' texts reach channel readers, customers'
+ * screens or logs, where a server setting means nothing, and many clients
+ * (api_http_request()) never read ALLOW_INSECURE_UPDATE_TLS.
+ *
+ * @param int  $errno
+ * @param bool $advice the caller's request goes through pg_curl_tls() and
+ *                     its text is shown to the person who made it
+ * @return string '' or a sentence with a leading space
  */
-function pg_curl_tls_hint($errno)
+function pg_curl_tls_hint($errno, $advice = false)
+{
+    return pg_curl_tls_hint_text($errno, $advice && defined('USER_ROLE') && ((int) USER_ROLE === 0));
+}
+
+/**
+ * pg_curl_tls_hint() with the reader decided: $admin adds the data/config.php
+ * advice. Pure.
+ *
+ * @param int  $errno
+ * @param bool $admin
+ * @return string
+ */
+function pg_curl_tls_hint_text($errno, $admin)
 {
     $errno = (int) $errno;
 
@@ -475,10 +498,13 @@ function pg_curl_tls_hint($errno)
         return '';
     }
 
-    return ' The certificate could not be verified. This server is most likely'
-        . ' missing an up-to-date CA bundle. Point CURL_CA_BUNDLE at a cacert.pem'
-        . ' in data/config.php, or as a last resort set'
-        . ' ALLOW_INSECURE_UPDATE_TLS to true there.';
+    $text = ' ' . lang('The certificate could not be verified: this server is most likely missing an up-to-date CA bundle.');
+
+    if ($admin) {
+        $text .= ' ' . lang('Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.');
+    }
+
+    return $text;
 }
 
 // ----------------------------------------------------------------------------
@@ -838,7 +864,7 @@ function pg_ca_bundle_update()
             'message' => lang(array(
                 'string' => 'The bundle could not be downloaded from {var:1}: cURL error {var:2}, {var:3}.',
                 'vars'   => array($source, $curl_errno, $curl_error),
-            )) . pg_curl_tls_hint($curl_errno),
+            )) . pg_curl_tls_hint($curl_errno, true),
         );
     }
 

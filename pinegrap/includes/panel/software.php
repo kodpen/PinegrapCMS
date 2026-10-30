@@ -385,7 +385,7 @@ function pg_panel_software_update($request, $action)
                     log_activity('software update check could not communicate with the software update server, so it is not known if there is a software update available. cURL Error Number: ' . $server['curl_errno'] . '. cURL Error Message: ' . $server['curl_error'] . '.');
                     respond(array(
                         'status' => 'error',
-                        'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'])
+                        'message' => lang('No access to the update server.') . pg_curl_tls_hint($server['curl_errno'], true)
                     ));
                 }
 
@@ -615,7 +615,7 @@ function pg_panel_software_update($request, $action)
                 //return error json output
                 $response = array(
                     'status' => 'error',
-                    'message' => lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint($curl_errno))))
+                    'message' => lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint($curl_errno, true))))
                 );
                 echo encode_json($response);
                 exit();

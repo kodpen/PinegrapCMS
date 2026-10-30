@@ -999,6 +999,7 @@
     "Pocket Synth": "Cep Synth'i",
     "Poems after Dark": "Karanlıktan Sonra Şiirler",
     "Poetry Collection": "Şiir Seçkisi",
+    "Point CURL_CA_BUNDLE at a cacert.pem in data/config.php, or as a last resort set ALLOW_INSECURE_UPDATE_TLS to true there.": "data/config.php içinde CURL_CA_BUNDLE ayarını bir cacert.pem dosyasına yönlendirin ya da son çare olarak oradaki ALLOW_INSECURE_UPDATE_TLS ayarını true yapın.",
     "Point at a message to see what it can do: answer it, react to it, pin it to the top, forward it, mark it as a decision or turn it into a task. Every decision is kept in the Decision Timeline.": "Neler yapabildiğini görmek için bir mesajın üzerine gelin: yanıtlayın, tepki verin, en üste sabitleyin, iletin, karar olarak işaretleyin ya da göreve çevirin. Her karar Karar Zaman Çizelgesi'nde saklanır.",
     "Point at a message, or move to it with the Tab key, to see what it can do: answer it, react to it, pin it to the top, forward it, mark it as a decision or turn it into a task. Every decision is kept in the Decision Timeline.": "Neler yapabildiğini görmek için bir mesajın üzerine gelin ya da Tab tuşuyla ona gidin: yanıtlayın, tepki verin, en üste sabitleyin, iletin, karar olarak işaretleyin ya da göreve çevirin. Her karar Karar Zaman Çizelgesi'nde saklanır.",
     "Polarised lenses with full UV protection in a light frame.": "Hafif çerçevede tam UV korumalı polarize camlar.",
