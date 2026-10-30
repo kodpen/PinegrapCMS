@@ -334,7 +334,7 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="pg-f-xs">
                                 <label for="image_resize_quality" class="form-label">' . lang('Quality When Resizing') . '</label>
-                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
                                     <input type="range" name="image_resize_quality" id="image_resize_quality" min="40" max="100" step="1" class="form-range-input" value="' . (int) $image_settings['resize_quality'] . '" />
                                 </div>
                                 <div class="form-text">' . lang('Applies only when an image is actually scaled down. Optimizing without resizing keeps its own quality setting.') . '</div>

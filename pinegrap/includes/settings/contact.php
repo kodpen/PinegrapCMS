@@ -184,7 +184,7 @@ $pg_settings_cards[] = '
                         <div id="pgset-mailchimp" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
-                                    ' . lang('MailChimp') . '
+                                    <span lang="en">' . lang('MailChimp') . '</span>
                                 </div>
                                 <div class="card-body">
                                    <div class="row gy-5">

@@ -394,7 +394,7 @@ $pg_settings_cards[] = '
     <div id="pgset-signin" class="pg-set-card">
         <div class="card">
             <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Sign in with Google, Microsoft and Apple') . '</span>
+                <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang(array('string' => 'Sign in with {var:1}, {var:2} and {var:3}', 'vars' => array('<span lang="en">Google</span>', '<span lang="en">Microsoft</span>', '<span lang="en">Apple</span>'))) . '</span>
             </div>
             <div class="card-body">
                 <div class="row gy-5">

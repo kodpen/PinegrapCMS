@@ -159,7 +159,7 @@ $pg_settings_cards[] = '
                         <div id="pgset-cron" class="pg-set-card">
                             <div class="card">
                                 <div class="card-header bg-reset border-0 d-flex flex-wrap justify-content-between align-items-center">
-                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</span>
+                                    <span class="text-uppercase h5 fg-primary fw-bold mb-0">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</span>
                                     <a href="#!" class="btn btn-sm btn-outline theme-secondary" data-bs-toggle="dialog" data-bs-target="#cron_jobs"><i class="bi bi-clock-history me-1"></i>' . lang('Setup Instructions') . '</a>
                                 </div>
                                 <div class="card-body">
@@ -540,7 +540,7 @@ if ($ops_alerts_ready) {
                             </div>
                             <div class="pg-f-xs">
                                 <label for="ops_alert_disk_percent" class="form-label">' . lang('Free disk space below %') . '</label>
-                                <div class="form-range pg-range-bubble" data-pg-range="%">
+                                <div class="form-range pg-range-bubble" data-pg-range="' . h(lang('{var:1}%')) . '">
                                     <input type="range" name="ops_alert_disk_percent" id="ops_alert_disk_percent" min="0" max="50" step="1" class="form-range-input" value="' . (int) $ops_alert_disk_percent . '" />
                                 </div>
                             </div>
@@ -664,7 +664,7 @@ $pg_settings_cards[] = '
 $pg_settings_modals[] = '
                 <dialog class="dialog dialog-xl" id="cron_jobs" aria-labelledby="cron_jobs_title">
                             <div class="dialog-header">
-                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (' . $output_os_family . ')</h5>
+                                <h5 class="dialog-title" id="cron_jobs_title">' . lang('Cron Jobs') . ' (<span lang="en">' . h($output_os_family) . '</span>)</h5>
                                 <button type="button" title="' . lang('Close') . '" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
                             </div>
                             <div class="dialog-body ">
