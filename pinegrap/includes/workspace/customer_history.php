@@ -5,7 +5,8 @@
  * Workspace - the history of a channel's customer: their orders, invoices,
  * sales quotes and submitted forms, and the messages, tasks, notes and
  * workflow table rows elsewhere in the Workspace that tag them or a record
- * tied to them, as one list, newest first.
+ * tied to them, and the customer visits on the Work Calendar that name them,
+ * as one list, newest first.
  *
  * It is read from the tables those records live in, each time it is asked
  * for; there is no activity table to keep in step, so records from before
@@ -108,6 +109,7 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
 
     if ($rights['workspace']) {
         $data = array_merge($data, ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $read));
+        $data['visits'] = ws_customer_history_visit_rows($identity, $before, $read);
     }
 
     return ws_customer_history_build($rights, $data, 'ws_customer_money_text', OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/', $limit);
@@ -129,7 +131,7 @@ function ws_customer_history($viewer, $channel, $identity, $before, $limit)
  *                         messages (channel_name, sender_name, excerpt),
  *                         tasks (title, status_label), notes (name, excerpt,
  *                         updated_at), rows (table_id, table, title,
- *                         updated_at)
+ *                         updated_at), visits (title, starts_at)
  * @param callable $money  function ($minor, $currency): string
  * @param string   $base   the panel's address, ending in /
  * @param int      $limit  the entries the page holds
@@ -225,6 +227,12 @@ function ws_customer_history_build($rights, $data, $money, $base, $limit)
         foreach ((array) ($data['notes'] ?? array()) as $row) {
             $entries[] = $entry('note', $row['id'], $row['updated_at'] ?? 0, (string) $row['name'], (string) $row['excerpt'], '', null, '',
                 $base . 'workspace_notes.php?note=' . (int) $row['id']);
+        }
+
+        // A customer visit on the Work Calendar, at the time it starts.
+        foreach ((array) ($data['visits'] ?? array()) as $row) {
+            $entries[] = $entry('visit', $row['id'], $row['starts_at'] ?? 0, (string) $row['title'], lang('Customer visit'), '', null, '',
+                $base . 'workspace_calendar.php?month=' . date('Y-m', (int) ($row['starts_at'] ?? 0)) . '&event=' . (int) $row['id']);
         }
 
         foreach ((array) ($data['rows'] ?? array()) as $row) {
@@ -545,4 +553,29 @@ function ws_customer_history_ref_rows($viewer, $channel, $identity, $before, $li
     }
 
     return $out;
+}
+
+/**
+ * The customer visits on the Work Calendar that name the customer's contact
+ * (ws_events.contact_id, 2026.11.0, 11.0.118) and start below the page's
+ * start, latest first. Every member of the Workspace reads the plan, so
+ * nothing more is asked of the reader; nothing before the column is there.
+ *
+ * @param array $identity ws_customer_identity()
+ * @param int   $before   0 for none
+ * @param int   $limit
+ * @return array[] id, title, starts_at
+ */
+function ws_customer_history_visit_rows($identity, $before, $limit)
+{
+    $contact_id = (int) ($identity['contact_id'] ?? 0);
+
+    if (($contact_id <= 0) || !ws_event_contacts_ready()) {
+        return array();
+    }
+
+    return (array) db_items("SELECT id, title, starts_at FROM ws_events
+        WHERE contact_id = '" . $contact_id . "' AND kind = 'visit'" . (($before > 0) ? " AND starts_at < '" . (int) $before . "'" : '') . "
+        ORDER BY starts_at DESC, id DESC
+        LIMIT " . max(1, (int) $limit));
 }

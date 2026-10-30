@@ -239,6 +239,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-unsent-draft.md: The Workspace composer's unsent text kept on the browser (localStorage) per site, viewer, channel and discussion: key, when saved, restored, cleared, limits, what is never kept
 - workspace-upload-refusals.md: What a Workspace channel refuses to take (ws_upload_refused()): the file manager's list, page and script types, Office files with macros (PR #1322); why, every door it covers, the message
 - workspace-variant-set-change.md: A variant set added from a change card (variant_set, PR #1943): fields, variants and price_rules values, checks, writer, events, matrix card, proposers
+- workspace-visit-contact.md: A customer visit on the Work Calendar names its contact (ws_events.contact_id, 11.0.118, CRM seams 10.1, #3517): the pick check, the card section, the history entry, holder and erasure
 - workspace-voice-asks.md: A voice message that asks Claude, Pinegrap AI or an MCP server (V4c): tags beside the mic, a voice answer, asked once transcribed (ws_voice_posted(), ws_voice_ask())
 - workspace-voice-assistants.md: Voice transcripts the assistants, recaps, bells, banners and search read (V4a #2798, V4b): ws_voice_transcripts(), ws_voice_with_transcript(), ws_voice_excerpt(), ws_voice_search_or()
 - workspace-voice-read-aloud.md: Assistants' answers read aloud (V5): the per-person browser switch in the channel menu, off by default, no schema; which answers are read, what is left out, when it stops

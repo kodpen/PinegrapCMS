@@ -140,6 +140,11 @@ function ws_js_strings()
         'estimate'               => lang('Estimate'),
         'estimate_help'          => ws_js_template('Left empty, {var:1} is counted.', 1),
         'estimate_hours'         => lang('Estimate (hours)'),
+        'event_customer'         => lang('Customer (optional)'),
+        'event_customer_clear'   => lang('Remove the customer'),
+        'event_customer_help'    => lang('The contact the visit is with. The visit shows on that customer\'s card and history.'),
+        'event_customer_hidden'  => lang('A customer you cannot open. It stays as it is.'),
+        'event_customer_none'    => lang('No contact found.'),
         'event_title_help'       => lang('Left empty, the kind is used as the title.'),
         'file_too_large'         => ws_js_template('The file is larger than {var:1} MB.', 1),
         'go_to_message'          => lang('Go to the message'),
@@ -793,6 +798,8 @@ function ws_screen_config($viewer, $mode, $extra = array())
         'board_from'   => ws_screen_board_from(),
         'event_kinds'  => ws_event_kinds(),
         'meetings'     => ws_meetings_ready(),
+        // A visit can name its customer (ws_events.contact_id).
+        'event_contacts' => ws_event_contacts_ready(),
         'poll'         => array('active' => 4),
         'open_channel' => 0,
         // The longest message body the server takes (the composer's meter).
