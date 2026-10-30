@@ -41,8 +41,8 @@ function test_dynamic_region_form_labels_point_at_their_fields()
 function test_dynamic_region_form_screens_use_shared_form()
 {
 	$screens = array(
-		'add_dynamic_region.php' => 'pg_dynamic_region_form_card()',
-		'edit_dynamic_region.php' => 'pg_dynamic_region_form_card($dregion_name, $dregion_code)',
+		'add_dynamic_region.php' => 'pg_dynamic_region_form_card($name, $code, $name_taken)',
+		'edit_dynamic_region.php' => 'pg_dynamic_region_form_card($form_name, $form_code, $name_taken)',
 	);
 
 	foreach ($screens as $file => $card) {

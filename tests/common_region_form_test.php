@@ -43,8 +43,8 @@ function test_common_region_form_labels_point_at_their_fields()
 function test_common_region_form_screens_use_shared_form()
 {
 	$screens = array(
-		'add_common_region.php' => 'pg_common_region_form_card()',
-		'edit_common_region.php' => 'pg_common_region_form_card($cregion_name, $cregion_content, ',
+		'add_common_region.php' => 'pg_common_region_form_card($name, $content, \'\', true, $name_taken)',
+		'edit_common_region.php' => 'pg_common_region_form_card($form_name, $form_content, ',
 	);
 
 	foreach ($screens as $file => $card) {
@@ -62,7 +62,7 @@ function test_common_region_form_screens_use_shared_form()
 
 	pg_assert_contains('INSERT INTO cregion', (string) file_get_contents(PG_FUNCTIONS_DIR . '/add_common_region.php'), 'create keeps its INSERT');
 	pg_assert_contains('UPDATE cregion', $edit, 'edit keeps its UPDATE');
-	pg_assert_contains('!$component_id) . \'', $edit, 'a converted region shows no content field');
+	pg_assert_contains('!$component_id, $name_taken) . \'', $edit, 'a converted region shows no content field');
 	pg_assert_contains('disable_shortcut', $edit, 'the convert form keeps out of the save shortcut');
 	pg_assert_contains('pg_common_region_component($id, $user, $warnings)', $edit, 'edit keeps the conversion');
 }
