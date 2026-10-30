@@ -74,7 +74,7 @@ description: Generated from the module field of the memory files: each includes/
 - `shipment_labels`: [[shipment-label-api]], [[shipment-label-pickup]], [[shipment-label-pickup-drivers]], [[shipment-label-returns]], [[shipment-labels]]
 - `shipment_lookup`: [[guest-shipment-lookup]]
 - `shipment_tracking`: [[shipment-tracking]]
-- `shipping`: [[order-address-postcode-note]], [[tr-district-plate-code]]
+- `shipping`: [[order-address-postcode-note]], [[tr-district-carriers]], [[tr-district-plate-code]]
 - `site_datetime`: [[site-datetime-loader]]
 - `site_icon`: [[site-icon]]
 - `site_log_list`: [[site-log-paging]]

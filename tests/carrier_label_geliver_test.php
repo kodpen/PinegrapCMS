@@ -390,3 +390,17 @@ function test_carrier_label_geliver_track_without_status_or_answer()
 	pg_assert_false($answer['unclear']);
 	pg_assert_contains('Operation timed out', implode(' ', $answer['log']));
 }
+
+// districtName is the recipient's district when one was entered, else the city.
+function test_carrier_label_geliver_district_name_is_the_district_else_the_city()
+{
+	pg_label_load('geliver');
+	$shipment = carrier_label_geliver_test_shipment();
+	$body = pg_label_geliver_shipment_body($shipment, carrier_label_geliver_test_account());
+	pg_assert_same('Yunusemre', $body['recipientAddress']['districtName'], 'no district key');
+
+	$shipment['recipient']['district'] = 'Şehzadeler';
+	$body = pg_label_geliver_shipment_body($shipment, carrier_label_geliver_test_account());
+	pg_assert_same('Şehzadeler', $body['recipientAddress']['districtName']);
+	pg_assert_same('Manisa', $body['recipientAddress']['cityName']);
+}

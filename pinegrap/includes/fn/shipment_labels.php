@@ -390,6 +390,8 @@ function pg_shipment_label_shipment($order, $ship_to, $items, $state_code = '', 
             'address_1'  => $text($ship_to, 'address_1'),
             'address_2'  => $text($ship_to, 'address_2'),
             'city'       => $text($ship_to, 'city'),
+            // '' on a site without ship_tos.district or an order without one.
+            'district'   => $text($ship_to, 'district'),
             'state'      => $text($ship_to, 'state'),
             'state_code' => (string) $state_code,
             'zip'        => $text($ship_to, 'zip_code'),

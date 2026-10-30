@@ -60,7 +60,8 @@ require_once(dirname(__FILE__) . '/webhooks.php');
 //   placed_at          unix seconds
 //   customer           array(first_name, last_name, email, phone, company)
 //   billing            array(address_1, address_2, city, state, zip, country)
-//   shipping_address   the same shape, or an empty array
+//   shipping_address   the same shape, plus district (the town, written to
+//                      ship_tos.district), or an empty array
 //   currency           three letters
 //   lines              array of array(remote_line_id, code, name, quantity,
 //                      price, tax, discount, and optionally discount_total
@@ -1043,9 +1044,18 @@ function mp_order_ship_to($order_id, $package) {
 		state           = '" . e(mb_substr(isset($address['state']) ? (string)$address['state'] : '', 0, 50)) . "',
 		zip_code        = '" . e(mb_substr(isset($address['zip']) ? (string)$address['zip'] : '', 0, 50)) . "',
 		country         = '" . e(mb_substr(isset($address['country']) ? (string)$address['country'] : '', 0, 50)) . "',
-		phone_number    = '" . e(mb_substr(isset($address['phone']) ? (string)$address['phone'] : '', 0, 50)) . "'");
+		phone_number    = '" . e(mb_substr(isset($address['phone']) ? (string)$address['phone'] : '', 0, 50)) . "'"
+		. mp_order_ship_to_district_sql($address));
 
 	return (int) mysqli_insert_id(db::$con);
+
+}
+
+// The district part of the recipient's INSERT: the package's district once
+// ship_tos.district exists, nothing before step 11.0.134.
+function mp_order_ship_to_district_sql($address, $ready = null) {
+
+	return pg_ship_to_district_set_sql(isset($address['district']) ? $address['district'] : '', $ready);
 
 }
 

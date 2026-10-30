@@ -4,7 +4,7 @@ description: Basit Kargo label driver and SVG labels (2026.11.0, #3163): create,
 ---
 
 ## What is the driver?
-- `includes/shipping/basitkargo.php`, key `basitkargo` in `pg_label_builtin_drivers()`. Built from the public reference https://basitkargo.com/api (base `https://basitkargo.com/api`, `Authorization: Bearer`). Fields: `api_token` (secret, required), `handler` (a handler code, default `ECONOMIC`; `FAST`, `SURAT`, `SELF_ARAS` …), `address_id`, `brand_id` (optional ids from its panel). Carriers ptt, mng, yurtici, aras, surat (`SELF_` codes map to the same); HEPSIJET and others stay '' (the method decides). Turkey only: an address abroad is refused before a call.
+- `includes/shipping/basitkargo.php`, key `basitkargo` in `pg_label_builtin_drivers()`. Built from the public reference https://basitkargo.com/api (base `https://basitkargo.com/api`, `Authorization: Bearer`). Fields: `api_token` (secret, required), `handler` (a handler code, default `ECONOMIC`; `FAST`, `SURAT`, `SELF_ARAS` …), `address_id`, `brand_id` (optional ids from its panel). Carriers ptt, mng, yurtici, aras, surat (`SELF_` codes too); others stay '' (the method decides). Turkey only. `client.town` = `district`, else `city` (#3654, `tr-district-carriers.md`).
 - No test mode (#3123): every create is a charged order. Built on `tests/fixtures/basitkargo/` shaped from the reference; the first live call is the owner's. Unverified: error bodies (the reference gives none: JSON `message` or a plain Turkish sentence is read), whether `orderPaymentType` OTHER / PAID is accepted, the label's real fonts and barcode scan quality.
 
 ## What do the operations call?

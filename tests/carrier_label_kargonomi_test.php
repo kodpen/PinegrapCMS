@@ -531,3 +531,25 @@ function test_carrier_label_kargonomi_long_refusal_is_cut_on_a_character()
 	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
 	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
 }
+
+// The district is looked up from the recipient's district when one was
+// entered, else from the city as before.
+function test_carrier_label_kargonomi_district_lookup_reads_the_district_first()
+{
+	$shipment = carrier_label_kargonomi_test_shipment();
+	$shipment['recipient']['city'] = 'Polatlı';
+	$shipment['recipient']['district'] = 'Çankaya';
+
+	carrier_label_kargonomi_test_stub(carrier_label_kargonomi_test_places_and_draft());
+	pg_label_call('kargonomi', 'create', array($shipment, carrier_label_kargonomi_test_account()));
+	$sent = $GLOBALS['carrier_label_kargonomi_test_sent'];
+	carrier_label_kargonomi_test_done();
+
+	pg_assert_same('POST /shipments', $sent[2]['request']);
+	pg_assert_same(662, $sent[2]['body']['shipment']['buyer_city_id']);
+
+	$shipment['recipient']['city'] = '';
+	pg_assert_same('', pg_label_kargonomi_shipment_error($shipment), 'a district without a city is enough');
+
+	pg_assert_true(pg_label_kargonomi_needs_district());
+}

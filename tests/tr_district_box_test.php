@@ -225,3 +225,12 @@ function test_tr_district_box_saved_and_shown()
 	pg_assert_contains('(pg_ship_to_district_ready() ? "ship_tos.district," : "")', $view);
 	pg_assert_contains("\$ship_tos[\$key]['district'] . ', '", $view);
 }
+
+// Aras and Kargonomi refuse a shipment without a district, so their
+// carriers ask for the box; the hook is seen before the driver was loaded.
+function test_tr_district_box_asked_by_drivers_that_need_it()
+{
+	pg_assert_true(pg_ship_to_district_carrier_asks('aras'), 'Aras');
+	pg_assert_true(pg_ship_to_district_carrier_asks('surat'), 'a Kargonomi carrier');
+	pg_assert_false(pg_ship_to_district_carrier_asks('ups'), 'no driver asks');
+}

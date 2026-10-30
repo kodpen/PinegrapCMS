@@ -19,12 +19,12 @@ module: shipping
 ## Who reads or writes the district so far?
 - `pg_ship_to_district_ready()` (`includes/fn/shipping.php`) probes the column by exact name; code that reads or writes it asks first (files land before the upgrade runs).
 - A subscription renewal copies it with the rest of the address (`pg_subscription_renewal_order_write()`).
-- Carrier drivers, marketplace imports and the API field (D3): `plans/shipping-tr-district.md`.
+- Carrier drivers and marketplace imports (#3654): `tr-district-carriers.md`; the API field (D3b): `plans/shipping-tr-district.md`.
 
 ## Where is the district box (#3641)?
 - Express order widget (default tree after City, JS starter twins, the server's per-recipient form), the Shipping Address and Arrival widget (starter after City) and the classic page `get_shipping_address_and_arrival.php`. A layout designed before the box gets it after City's column (`pg_ship_to_district_tree_fit()`); one that has it keeps it where it is; while the column is missing the box is dropped.
 - Shown by `pg_ship_to_district_script()` while the country control holds a code that stands for Turkey (`pg_ship_to_district_tr_codes()`) or the recipient's carrier asks (`data-pg-district-asks`). The rule: `pg_ship_to_district_shown()`.
-- Driver hook: `pg_label_<key>_needs_district()` returning true makes `pg_ship_to_district_carrier_asks()` say yes for that driver's carriers; no driver defines it yet (D3 may).
+- Driver hook: `pg_label_<key>_needs_district()` returning true makes `pg_ship_to_district_carrier_asks()` say yes for that driver's carriers (Aras, Kargonomi).
 - Saved by `express_order.php` (`pg_ship_to_district_address_sql()` in its UPDATE) and `shipping_address_and_arrival.php` (`pg_ship_to_district_save()`, apart from its placeholder query): `pg_ship_to_district_clean()` (one line, trimmed, 50 characters, empty allowed), '' when the box does not apply to the posted country, nothing while the column is missing. The address book has no district: a member's next order starts from the recipient's stored one.
 - `view_order.php` puts it before the city in the address line. There is no panel edit of a recipient's address to extend.
 

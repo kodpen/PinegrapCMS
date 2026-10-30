@@ -1295,7 +1295,8 @@ function pg_ship_to_district_tr_codes()
 /**
  * Whether a carrier's label driver asks for the recipient's district. A
  * driver says so by defining pg_label_<key>_needs_district() that answers
- * true; none does yet, so the Turkey rule alone draws the box for now.
+ * true (Aras, Kargonomi). pg_label_info() loads the driver first, so the
+ * hook is seen on a request that has not loaded it yet.
  *
  * @param  string $carrier a pg_shipping_carriers() key, '' when not known
  * @return bool
@@ -1311,7 +1312,7 @@ function pg_ship_to_district_carrier_asks($carrier)
     foreach (array_keys(pg_label_drivers()) as $key) {
         $ask = 'pg_label_' . $key . '_needs_district';
 
-        if (function_exists($ask) && in_array($carrier, (array) pg_label_info($key)['carriers'], true) && $ask()) {
+        if (in_array($carrier, (array) pg_label_info($key)['carriers'], true) && function_exists($ask) && $ask()) {
             return true;
         }
     }

@@ -370,6 +370,26 @@ function pg_label_can($key, $operation)
 }
 
 
+/**
+ * The recipient's district (ilçe) for a carrier that asks for one: the
+ * district entered at checkout (ship_tos.district), else the city, which
+ * held the district before that column existed. Pure.
+ *
+ * @param array $recipient the shipment's recipient
+ * @return string
+ */
+function pg_label_recipient_district($recipient)
+{
+    foreach (array('district', 'city') as $name) {
+        if (is_array($recipient) && isset($recipient[$name]) && is_scalar($recipient[$name]) && (trim((string) $recipient[$name]) !== '')) {
+            return trim((string) $recipient[$name]);
+        }
+    }
+
+    return '';
+}
+
+
 /* ---------------------------------------------------------------------------
    Answers
    --------------------------------------------------------------------------- */

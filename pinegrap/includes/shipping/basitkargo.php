@@ -444,7 +444,7 @@ function pg_label_basitkargo_order_body($shipment, $account, $handler)
             'phone'   => $text($recipient, 'phone'),
             'email'   => $text($recipient, 'email'),
             'city'    => $text($recipient, 'state'),
-            'town'    => $text($recipient, 'city'),
+            'town'    => pg_label_recipient_district($recipient),
             'address' => trim($text($recipient, 'address_1') . ' ' . $text($recipient, 'address_2')),
         ), 'strlen'),
         'orderTotal'         => round(((int) $text($shipment, 'total')) / 100, 2),

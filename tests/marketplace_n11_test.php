@@ -516,10 +516,33 @@ function test_marketplace_n11_address_puts_the_district_in_city_and_the_province
 
 	pg_assert_same('Kadıköy', $address['city']);
 	pg_assert_same('İstanbul', $address['state']);
+	pg_assert_same('Kadıköy', $address['district'], 'the district for ship_tos.district');
 
 	// Their other spellings of the two fields.
 	$other = mp_n11_address(array('billingAddress' => array('cityName' => 'Ankara', 'districtName' => 'Çankaya')), 'billingAddress');
 
 	pg_assert_same('Çankaya', $other['city']);
+	pg_assert_same('Çankaya', $other['district']);
 	pg_assert_same('Ankara', $other['state']);
+}
+
+// An imported recipient gets ship_tos.district once the column exists and
+// nothing new before it (shared by the n11 and Trendyol imports).
+function test_marketplace_import_writes_the_district_when_the_column_is_ready()
+{
+	// escape() needs the connection class; without a database it falls back
+	// to addslashes() once the class exists.
+	if (!class_exists('db')) {
+		class db
+		{
+			public static $con;
+		}
+	}
+
+	pg_assert_same(", district = 'Kadıköy'", mp_order_ship_to_district_sql(array('city' => 'Kadıköy', 'district' => ' Kadıköy '), true));
+	pg_assert_same(", district = ''", mp_order_ship_to_district_sql(array('city' => 'Kadıköy'), true), 'a package without one');
+	pg_assert_same('', mp_order_ship_to_district_sql(array('district' => 'Kadıköy'), false), 'before step 11.0.134');
+
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/api/outbound/orders.php');
+	pg_assert_contains('mp_order_ship_to_district_sql($address)', $source, 'mp_order_ship_to() writes it');
 }

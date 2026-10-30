@@ -410,3 +410,17 @@ function test_carrier_label_basitkargo_long_refusal_is_cut_on_a_character()
 	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
 	pg_assert_contains('A' . str_repeat('ş', 99), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
 }
+
+// The client's town is the recipient's district when one was entered, else the city.
+function test_carrier_label_basitkargo_town_is_the_district_else_the_city()
+{
+	pg_label_load('basitkargo');
+	$shipment = carrier_label_basitkargo_test_shipment();
+	$body = pg_label_basitkargo_order_body($shipment, carrier_label_basitkargo_test_account(), 'ECONOMIC');
+	pg_assert_same('Konak', $body['client']['town'], 'no district key');
+
+	$shipment['recipient']['district'] = 'Karşıyaka';
+	$body = pg_label_basitkargo_order_body($shipment, carrier_label_basitkargo_test_account(), 'ECONOMIC');
+	pg_assert_same('Karşıyaka', $body['client']['town']);
+	pg_assert_same('İzmir', $body['client']['city']);
+}

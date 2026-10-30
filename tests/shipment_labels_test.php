@@ -124,6 +124,9 @@ function test_shipment_label_shipment_shape()
 	pg_assert_same('Ayşe Yılmaz', $shipment['recipient']['name'], 'name');
 	pg_assert_same('TR', $shipment['recipient']['country'], 'country upper case');
 	pg_assert_same('TR-34', $shipment['recipient']['state_code'], 'plate');
+	pg_assert_same('', $shipment['recipient']['district'], 'no district column');
+	$with = pg_shipment_label_shipment(array(), array('city' => 'Kadıköy', 'district' => ' Moda '), array());
+	pg_assert_same('Moda', $with['recipient']['district'], 'ship_tos.district');
 	pg_assert_same(array('length' => 25.4, 'width' => 25.4, 'height' => 15.24, 'weight' => round(2.5 * 0.45359237, 3)), $shipment['parcel'], 'parcel in cm and kg');
 	pg_assert_same(array(array('title' => 'Mug', 'quantity' => 2), array('title' => 'Plate', 'quantity' => 1)), $shipment['items'], 'items');
 	pg_assert_same(array(
