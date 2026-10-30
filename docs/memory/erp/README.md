@@ -127,6 +127,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-parasut-sent-cancel.md: Why Cancel of a Paraşüt e-Fatura handed to GİB is refused from the row, the way out, the company guard on the deleted-record 404, and what is still open
 - erp-parasut-shipped-order.md: The ERP driver's sales invoice for an order the legacy E-Shipment already shipped: sent without shipment and naming the shipment document, so Paraşüt counts the goods out once (#1530)
 - erp-parasut-stale-kept-ids.md: Paraşüt ids Pinegrap sends without a read (product card, default warehouse, buyer card, the driver's shipment document): a create answered 404 naming one forgets it and is sent once more (#1627)
+- erp-percent-shares.md: Whole-percent shares of a set of amounts (erp_percent_shares()) add up to 100; the dashboard's Receivables by age card reads them once for its bar and legend.
 - erp-period-lock.md: ERP period lock (config.erp_lock_date, 4.79): what it refuses, the two checks every ledger or till write meets, which date a cancel, return or payment is judged by, who moves the lock.
 - erp-product-suggestion-list.md: Invoice/waybill line editors: the product suggestion list leaves the lines table for the overlay host while open, fixed placement, keyboard, why (.table-responsive clipping).
 - erp-profit-report.md: ERP profit and loss (includes/erp/profit.php): what counts as revenue and cost, the optional uninvoiced orders, the negative margin text, and where a new cost or revenue source goes.

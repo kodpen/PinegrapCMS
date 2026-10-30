@@ -459,8 +459,8 @@ function test_workspace_command_product_from_a_file()
 	pg_assert_contains("'parent_id' => (int) (\$request['parent_id'] ?? 0),", substr($send, strpos($send, 'ws_command_run('), 600), 'the reply reaches the command');
 
 	$attach = substr($actions, strpos($actions, "case 'ws_attach':"), 3500);
-	pg_assert_true(strpos($attach, '!ws_bulk_file_is_table(') < strpos($attach, 'ws_message_send_file('), 'a file that is no table is refused before it is posted');
-	pg_assert_true(strpos($attach, "!ws_change_allowed(\$viewer, 'product', 0)") < strpos($attach, 'ws_message_send_file('), 'and so is a person without the product right');
+	pg_assert_true(strpos($attach, '!ws_bulk_file_is_table(') < strpos($attach, 'ws_message_send_file_bytes('), 'a file that is no table is refused before it is posted');
+	pg_assert_true(strpos($attach, "!ws_change_allowed(\$viewer, 'product', 0)") < strpos($attach, 'ws_message_send_file_bytes('), 'and so is a person without the product right');
 	pg_assert_contains("ws_command_product_file(\$viewer, \$channel, (int) \$result['message_id'])", $attach, 'the posted file is the source');
 }
 

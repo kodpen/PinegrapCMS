@@ -143,7 +143,7 @@ function test_ws_voice_reply_reaches_the_upload()
 	$screen = ws_voice_test_source('assets/js/workspace.js');
 	$voice = ws_voice_test_source('assets/js/workspace_voice.js');
 
-	pg_assert_true((bool) preg_match("/api\\('ws_attach', \\{[^}]*parent_id: settings\\.parent_id/s", $screen), 'ws_attach carries parent_id');
+	pg_assert_true((bool) preg_match("/apiUpload\\('ws_attach', \\{[^}]*parent_id: settings\\.parent_id/s", $screen), 'ws_attach carries parent_id');
 	pg_assert_contains('parent_id: parent ? parent.id : 0', $screen, 'a recording answers the reply bar\'s message');
 	pg_assert_contains('if (options && options.reply)', ws_voice_test_function($voice, 'player'), 'the reply microphone needs an answer to make');
 }

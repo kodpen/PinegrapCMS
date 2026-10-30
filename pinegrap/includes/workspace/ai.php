@@ -2891,22 +2891,106 @@ function ws_ai_heard_text($viewer, $row, $limit = 0)
 }
 
 /**
- * Who wrote a message, in words.
+ * Who wrote a message, in words for the model (English, like the prompt).
  *
- * @param array $row ws_messages row
+ * @param array      $row  ws_messages row (or a ws_task_notes row)
+ * @param array|null $mail ws_mail_items_map() of the rows being read; null
+ *                         loads the one mail this row names
+ * @param bool       $tags false leaves out the user tag
  * @return string
  */
-function ws_ai_author($row)
+function ws_ai_author($row, $mail = null, $tags = true)
 {
     if ($row['sender_kind'] === 'user') {
-        return ws_person_name($row['sender_id']) . ' <@user:' . (int) $row['sender_id'] . '>';
+        return ws_ai_author_words('user', ws_person_name($row['sender_id']), $tags ? '<@user:' . (int) $row['sender_id'] . '>' : '');
     }
 
     if ($row['sender_kind'] === 'app') {
-        return (string) ws_app_sender((int) $row['sender_id'])['name'];
+        return ws_ai_author_words('app', (string) ws_app_sender((int) $row['sender_id'])['name']);
     }
 
-    return lang('System');
+    if (($row['sender_kind'] === 'guest') && function_exists('ws_guest_sender')) {
+        return ws_ai_author_words('guest', (string) ws_guest_sender((int) $row['sender_id'])['name']);
+    }
+
+    if ($row['sender_kind'] === 'mail') {
+        if (($mail === null) && function_exists('ws_mail_items_map')) {
+            $mail = ws_mail_items_map(array($row));
+        }
+
+        return ws_ai_mail_author(((array) $mail)[(int) $row['sender_id']] ?? null, $tags);
+    }
+
+    return ws_ai_author_words('system', '');
+}
+
+/**
+ * Who wrote a mail's message: the sender the mail names, or the team's
+ * writer of an answer sent by e-mail.
+ *
+ * @param array|null $item ws_mail_items row
+ * @param bool       $tags false leaves out the writer's user tag
+ * @return string
+ */
+function ws_ai_mail_author($item, $tags = true)
+{
+    if (!is_array($item)) {
+        return ws_ai_author_words('mail', '', '');
+    }
+
+    if ((string) ($item['direction'] ?? 'in') !== 'out') {
+        return ws_ai_author_words('mail', (string) $item['from_name'], (string) $item['from_email']);
+    }
+
+    $writer = function_exists('ws_mail_sender') ? ws_mail_sender($item) : array();
+    $writer_id = (int) ($writer['id'] ?? 0);
+
+    return ws_ai_author_words('mail_out', ($writer_id > 0) ? (string) $writer['name'] : '', ($tags && ($writer_id > 0)) ? '<@user:' . $writer_id . '>' : '');
+}
+
+/**
+ * The words for a message's author. A name taken from a mail is the
+ * sender's own text: it is kept to one line of at most 100 characters.
+ *
+ * @param string $kind   user, app, guest, mail (from outside the team),
+ *                       mail_out (an answer the team sent); else System
+ * @param string $name
+ * @param string $detail user / mail_out: written after the name (a tag,
+ *                       "(the reader)"); mail: the sender's address
+ * @return string
+ */
+function ws_ai_author_words($kind, $name, $detail = '')
+{
+    $line = function ($text) {
+        return mb_substr(trim((string) preg_replace('/\s+/u', ' ', (string) $text)), 0, 100);
+    };
+    $name = $line($name);
+    $detail = $line($detail);
+
+    switch ((string) $kind) {
+        case 'user':
+            return $name . (($detail !== '') ? ' ' . $detail : '');
+
+        case 'app':
+            return $name;
+
+        case 'guest':
+            return $name . ' (guest)';
+
+        case 'mail':
+            if (($name === '') || ($name === $detail)) {
+                $name = ($detail !== '') ? $detail : 'Unknown sender';
+            } elseif ($detail !== '') {
+                $name .= ' <' . $detail . '>';
+            }
+
+            return $name . ' (e-mail from outside the team)';
+
+        case 'mail_out':
+            return (($name !== '') ? $name : 'Unknown sender') . (($detail !== '') ? ' ' . $detail : '') . ' (e-mail answer)';
+    }
+
+    return 'System';
 }
 
 /**
@@ -2942,6 +3026,9 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
     // A voice message is read with its transcript once written out.
     $heard = function_exists('ws_voice_transcripts') ? ws_voice_transcripts($rows) : array();
 
+    // The senders of the e-mails among them, in one query.
+    $mail = function_exists('ws_mail_items_map') ? ws_mail_items_map(array_merge($rows, $decided)) : array();
+
     $out = array();
     $out[] = 'Channel: #' . $channel['name'] . ' (' . $channel['kind'] . ', <#channel:' . (int) $channel['id'] . '>)';
 
@@ -2957,7 +3044,7 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
         $out[] = 'Latest decisions and notes:';
 
         foreach ($decided as $row) {
-            $out[] = '- ' . date('Y-m-d', (int) $row['created_at']) . ' · ' . ws_ai_author($row) . ': ' . ws_ai_text($viewer, $row['body'], $refs, ($budget > 0) ? 300 : 600);
+            $out[] = '- ' . date('Y-m-d', (int) $row['created_at']) . ' · ' . ws_ai_author($row, $mail) . ': ' . ws_ai_text($viewer, $row['body'], $refs, ($budget > 0) ? 300 : 600);
         }
     }
 
@@ -2968,7 +3055,7 @@ function ws_ai_channel_context($viewer, $channel, $limit = 40, $per = 800, $budg
             continue;
         }
 
-        $line = '[' . (int) $row['id'] . ' · ' . date('Y-m-d H:i', (int) $row['created_at']) . ' · ' . ws_ai_author($row) . ']';
+        $line = '[' . (int) $row['id'] . ' · ' . date('Y-m-d H:i', (int) $row['created_at']) . ' · ' . ws_ai_author($row, $mail) . ']';
 
         if ((int) $row['parent_id'] > 0) {
             $line .= ' (answers ' . (int) $row['parent_id'] . ')';

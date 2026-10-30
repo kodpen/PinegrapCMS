@@ -2934,11 +2934,11 @@ function pgListServerOptions(options, $table) {
     });
 }
 
-// Lowers text the Turkish way: İ is i and I is ı before toLowerCase(), which
-// pairs I with i only; then the marks stripped as DataTables strips them, so
-// "ş" is "s" and "ç" is "c" on both sides of a comparison.
-function pgListTurkishLower(s) {
-    s = String(s).replace(/İ/g, 'i').replace(/I/g, 'ı').toLowerCase();
+// Folds text for a Turkish list search with window.pgFoldTR (I, İ, ı and i
+// are one letter, ş is s, ç is c), then the other marks stripped as
+// DataTables strips them, the same on both sides of a comparison.
+function pgListTurkishFold(s) {
+    s = window.pgFoldTR(s);
 
     return s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s;
 }
@@ -2948,14 +2948,13 @@ function pgListTurkishLower(s) {
  * reader means it. The words are DataTables' smart search words: split on
  * spaces, a "quoted phrase" is one word, a !word must be missing. A word is
  * found when DataTables' own case-insensitive match finds it (IPHONE finds
- * iPhone, DEMİR finds Demir) or when it occurs lowered the Turkish way
- * (YILDIZ finds Yıldız, IŞIK finds Işık). ı and i stay different letters,
- * so "yildiz" does not find "Yıldız".
+ * iPhone, DEMİR finds Demir) or when it occurs folded the Turkish way
+ * (YILDIZ and yildiz find Yıldız, isik finds Işık).
  */
 function pgListTurkishMatch(term, text) {
     var words = String(term).match(/!?["“][^"”]+["”]|[^ ]+/g) || [];
     var plain = String(text);
-    var lowered = pgListTurkishLower(plain);
+    var folded = pgListTurkishFold(plain);
 
     // DataTables' own match: the text as it is and with its marks stripped,
     // the word with its marks stripped, case-insensitive.
@@ -2979,7 +2978,7 @@ function pgListTurkishMatch(term, text) {
 
         var bare = word.normalize ? word.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : word;
         var found = new RegExp(bare.replace(/[.*+?^${}()|[\]\\\-]/g, '\\$&'), 'i').test(plain)
-            || lowered.indexOf(pgListTurkishLower(word)) !== -1;
+            || folded.indexOf(pgListTurkishFold(word)) !== -1;
 
         if (found === negative) {
             return false;

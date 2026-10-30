@@ -48,7 +48,7 @@ if (!$_POST) {
                 ' . $liveform->get_warnings() . '
                 ' . $liveform->output_notices() . '
                 
-                <form name="form" action="import_zip.php" method="post" class="product_form" enctype="multipart/form-data">
+                <form name="form" id="import_zip_form" action="import_zip.php" method="post" class="product_form" enctype="multipart/form-data">
                     ' . get_token_field() . '
                     <input type="hidden" name="send_to" value="' . h(pg_send_to_url()) . '" />
                     <div class="row">
@@ -79,13 +79,42 @@ if (!$_POST) {
                             <div class=" btn-group flex-wrap justify-content-center">
                                 <button type="submit" id="submit_import" name="submit_import" value="Import" class="btn my-1  btn-solid theme-success "  ><span class="material-icons me-3">file_upload</span><span class="pg-btn-label" >' . lang(array('string'=>'Import') ) . '</span></button>
                             </div>
+                            <p class="small fg-secondary mt-2 mb-0" id="import_zip_status" role="status" aria-live="polite"></p>
                         </div>
                     </nav>
                 </form>
             </div>
         </div>
     
-</main>' .
+</main>
+<script>
+(function () {
+    // The form is sent once: the first submit goes, any later one is
+    // cancelled until the page leaves. Import uploads the archive, unzips it
+    // and writes the folder, pages and files with nothing sent to the
+    // browser, often longer than the window guard\'s 3 seconds; a second
+    // press would import the whole archive again into a second folder. The
+    // button is never disabled, so its value travels.
+    var import_zip_sent = false;
+    var form = document.getElementById("import_zip_form");
+    var status = document.getElementById("import_zip_status");
+    if (!form) { return; }
+    window.addEventListener("submit", function (event) {
+        if (event.target !== form) { return; }
+        if (import_zip_sent) { event.preventDefault(); return; }
+        if (event.defaultPrevented) { return; }
+        import_zip_sent = true;
+        form.setAttribute("aria-busy", "true");
+        if (status) { status.textContent = "' . escape_javascript(lang('Importing…')) . '"; }
+    });
+    window.addEventListener("pageshow", function (event) {
+        if (!event.persisted) { return; }
+        import_zip_sent = false;
+        form.removeAttribute("aria-busy");
+        if (status) { status.textContent = ""; }
+    });
+})();
+</script>' .
     output_footer();
     
     $liveform->remove_form();
