@@ -98,3 +98,49 @@ function test_csv_export_erp_audit_trail_uses_the_store_separator()
 	pg_assert_true(strpos($body, 'erp_csv_delimiter()') !== false, 'audit CSV reads the store separator');
 	pg_assert_true(strpos($body, "';', '\"'") === false, 'audit CSV has no fixed semicolon');
 }
+
+function test_csv_export_formula_guard_keeps_a_formula_as_text()
+{
+	pg_assert_same("'=HYPERLINK(\"x\")", pg_csv_formula_guard('=HYPERLINK("x")'), 'equals sign');
+	pg_assert_same("'+1", pg_csv_formula_guard('+1'), 'plus sign');
+	pg_assert_same("'-1+1", pg_csv_formula_guard('-1+1'), 'minus sign');
+	pg_assert_same("'@SUM(A1)", pg_csv_formula_guard('@SUM(A1)'), 'at sign');
+	pg_assert_same("'\tx", pg_csv_formula_guard("\tx"), 'tab');
+	pg_assert_same("'\rx", pg_csv_formula_guard("\rx"), 'carriage return');
+	pg_assert_same('Acme Ltd = 1', pg_csv_formula_guard('Acme Ltd = 1'), 'a trigger later in the text stays');
+	pg_assert_same('', pg_csv_formula_guard(''), 'empty');
+	pg_assert_same('12', pg_csv_formula_guard(12), 'number as text');
+	pg_assert_same("'=1+1", csv_cell('=1+1'), 'csv_cell() keeps its guard');
+	pg_assert_same("'=\"\"a\"\"", csv_cell('="a"'), 'csv_cell() still doubles quotes');
+}
+
+// The body of function $name in $file, up to the next top-level function.
+function csv_export_test_function_body($file, $name)
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $file);
+	$start = strpos($source, 'function ' . $name . '(');
+	$end = strpos($source, "\nfunction ", $start + 1);
+
+	return substr($source, $start, ($end === false) ? null : $end - $start);
+}
+
+function test_csv_export_erp_audit_trail_guards_its_text_cells()
+{
+	$body = csv_export_test_function_body('includes/erp/audit.php', 'erp_audit_csv');
+
+	foreach (array("(string) \$row['username']", "(string) \$row['description']", 'erp_audit_event_text($row)', "(string) \$row['label']", "(string) \$row['detail']") as $cell) {
+		pg_assert_true(strpos($body, 'pg_csv_formula_guard(' . $cell . ')') !== false, 'audit CSV guards ' . $cell);
+	}
+	pg_assert_true(strpos($body, "pg_csv_formula_guard(number_format(") === false, 'audit CSV leaves the amount a number');
+}
+
+function test_csv_export_erp_aging_guards_the_account_title()
+{
+	$body = csv_export_test_function_body('includes/erp/aging.php', 'erp_aging_csv');
+
+	pg_assert_true(strpos($body, "pg_csv_formula_guard(\$account['title'])") !== false, 'aging CSV guards the account title');
+	pg_assert_true(strpos($body, 'pg_csv_formula_guard(erp_export_amount(') === false, 'aging CSV leaves amounts numbers');
+
+	$export = csv_export_test_function_body('includes/erp/export.php', 'erp_export_write_csv');
+	pg_assert_true(strpos($export, 'pg_csv_formula_guard(') === false, 'the export profile writer stays unguarded');
+}

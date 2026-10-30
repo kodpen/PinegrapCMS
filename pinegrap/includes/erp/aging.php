@@ -390,7 +390,9 @@ function erp_aging_csv($folded)
     $rows = array();
 
     foreach ($folded['accounts'] as $account) {
-        $row = array($account['title'], (int) $account['count']);
+        // The title can come from a storefront billing name: kept as text
+        // in a spreadsheet. Amounts are not guarded, they can be negative.
+        $row = array(pg_csv_formula_guard($account['title']), (int) $account['count']);
         foreach (array_keys($buckets) as $key) {
             $row[] = erp_export_amount($account['buckets'][$key], $profile);
         }

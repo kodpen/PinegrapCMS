@@ -25,4 +25,7 @@ description: Panel CSV exports start with pg_csv_download_start() (UTF-8 charset
 
 ## Which separator does the ERP audit trail CSV use?
 - `erp_audit_csv()` (`includes/erp/audit.php`) uses `erp_csv_delimiter()` like the other ERP CSVs: `;` where the store uses a decimal comma, `,` elsewhere. It used a fixed `;`, so on a point-decimal store Excel put each line in column A. Dates stay `Y-m-d H:i:s`, amounts point-decimal (as in the ERP export profiles).
+
+## Which cells get the formula guard?
+- `pg_csv_formula_guard()` (`includes/fn/core.php`) puts `'` before a leading `= + - @` tab or CR; `csv_cell()` and `pg_audit_view_csv_line()` use it. The ERP audit trail (user, action, number or name, details) and aging (account title) CSVs use it since PR #NNNN: a web order's billing name `=1+1` ran in Excel. Never on amounts (`-12.50`), dates, ids, or in `erp_export_write_csv()` (the ERP importer reads profiles back).
 - Tests: `tests/csv_export_test.php`, `tests/csv_line_endings_test.php`.

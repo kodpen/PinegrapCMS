@@ -443,20 +443,23 @@ function erp_audit_csv($filters)
             break;
         }
 
+        // Text a customer or user typed (an account title from a web order's
+        // billing name, a log line) is guarded against formula injection;
+        // the date, ids and the amount stay as they are.
         foreach ($rows as $row) {
             $is_log = ((string) $row['event'] === 'log');
             fputcsv($out, array(
                 date('Y-m-d H:i:s', (int) $row['created_at']),
                 $sources[(string) $row['source']] ?? (string) $row['source'],
-                (string) $row['username'],
+                pg_csv_formula_guard((string) $row['username']),
                 (string) $row['ip'],
-                $is_log ? (string) $row['description'] : erp_audit_event_text($row),
+                $is_log ? pg_csv_formula_guard((string) $row['description']) : pg_csv_formula_guard(erp_audit_event_text($row)),
                 $is_log ? '' : ($types[(string) $row['object_type']][0] ?? (string) $row['object_type']),
                 $is_log ? '' : (int) $row['object_id'],
-                (string) $row['label'],
+                pg_csv_formula_guard((string) $row['label']),
                 $is_log ? '' : number_format(((int) $row['amount']) / 100, 2, '.', ''),
                 (string) $row['currency'],
-                $is_log ? '' : (string) $row['detail'],
+                $is_log ? '' : pg_csv_formula_guard((string) $row['detail']),
             ), $delimiter, '"', '\\');
             $last = (int) $row['id'];
             $written++;
