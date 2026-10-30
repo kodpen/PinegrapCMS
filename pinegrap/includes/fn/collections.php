@@ -515,12 +515,28 @@ function pg_coll_field_kind($kind, $type)
  */
 function pg_coll_address_source($rows)
 {
-    $title = '';
+    $field = pg_coll_address_field($rows);
+    return ($field === null) ? '' : $field['data'];
+}
+
+/**
+ * The field a record's address name is made from, by the rule of
+ * pg_coll_address_source(): array('id', 'data') of the first non-blank slug
+ * field, else of the first non-blank Title field, else null. Each row may
+ * carry 'id' (form_fields.id); 'data' comes back trimmed.
+ *
+ * @param array $rows
+ * @return array|null
+ */
+function pg_coll_address_field($rows)
+{
+    $title = null;
     foreach ((array)$rows as $row) {
         $data = isset($row['data']) ? trim((string)$row['data']) : '';
         if ($data === '') continue;
-        if (isset($row['kind']) && $row['kind'] === 'slug') return $data;
-        if ($title === '' && isset($row['rss']) && $row['rss'] === 'title') $title = $data;
+        $id = isset($row['id']) ? $row['id'] : null;
+        if (isset($row['kind']) && $row['kind'] === 'slug') return array('id' => $id, 'data' => $data);
+        if ($title === null && isset($row['rss']) && $row['rss'] === 'title') $title = array('id' => $id, 'data' => $data);
     }
     return $title;
 }
