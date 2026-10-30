@@ -365,6 +365,10 @@
             function (box) { return box.getAttribute('data-mp-select'); });
     }
 
+    // The count on load is the baseline; only a change from it is announced.
+    var announcedCount = selected().length;
+    var announceTimer = null;
+
     function updateBulk() {
         if (!bulk) {
             return;
@@ -373,7 +377,29 @@
         var ids = selected();
 
         document.getElementById('mpp-bulk-n').textContent = number(ids.length);
+
+        // Clear (or any step that empties the selection) hides the bar that
+        // holds the focused button; hand the focus to Select all, else the
+        // first row box, so the next Tab does not start at the page top.
+        if (!ids.length && bulk.contains(document.activeElement)) {
+            var target = selectAll || document.querySelector('[data-mp-select]');
+
+            if (target) {
+                target.focus();
+            }
+        }
+
         bulk.classList.toggle('d-none', !ids.length);
+
+        // The bar is not a live region: say its visible count ("3 selected")
+        // once the ticking settles, and only when the count changed.
+        if (ids.length !== announcedCount && typeof window.pgAnnounce === 'function') {
+            announcedCount = ids.length;
+            window.clearTimeout(announceTimer);
+            announceTimer = window.setTimeout(function () {
+                window.pgAnnounce(bulk.querySelector('#mpp-bulk-n').parentNode.textContent.replace(/\s+/g, ' ').trim());
+            }, 400);
+        }
 
         if (selectAll) {
             var boxes = document.querySelectorAll('[data-mp-select]');
