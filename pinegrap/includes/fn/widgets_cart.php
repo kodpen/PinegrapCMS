@@ -35,6 +35,33 @@ function _pg_cart_default_labels($keys)
 }
 
 /**
+ * The empty cart's own block: the message as a plain paragraph and a
+ * Continue Shopping button to the shop, like the legacy cart page prints a
+ * plain paragraph rather than a success alert. A part with no text is left
+ * out; with neither part the block is empty.
+ *
+ * @param string $message  Message text, unescaped.
+ * @param string $shop_url Shop address, unescaped; '' for no link.
+ * @return string
+ */
+function pg_cart_empty_state_html($message, $shop_url)
+{
+    $message = (string)$message;
+    $shop_url = (string)$shop_url;
+    if ($message === '' && $shop_url === '') {
+        return '';
+    }
+    $html = '<div class="pg-cart-empty text-center py-5">';
+    if ($message !== '') {
+        $html .= '<p class="text-body-secondary mb-3">' . h($message) . '</p>';
+    }
+    if ($shop_url !== '') {
+        $html .= '<a class="btn btn-primary" href="' . h($shop_url) . '">' . h(lang('Continue Shopping')) . '</a>';
+    }
+    return $html . '</div>';
+}
+
+/**
  * Walk the cart tree and apply per-node bindings the designer set on btn /
  * input nodes. Recognized bindings:
  *   • component btn _bindings.action='cart_checkout'
@@ -602,8 +629,9 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
     // empty" out of the blue. A tree that does not use the has_items flag
     // has nothing but empty labels, a ₺0.00 summary, a saved-cart link and a
     // checkout button to show for an empty cart; like the legacy cart it
-    // shows the message alone (with any notice the last action left, such
-    // as "the item was removed").
+    // shows the message alone, as a plain paragraph with a Continue Shopping
+    // link to the shop (not as a success notice). The Messages area keeps
+    // only what the last action left, such as "the item was removed".
     $_pg_cart_oid   = (int)($_SESSION['ecommerce']['order_id'] ?? 0);
     $_pg_cart_empty = ($_pg_cart_oid <= 0)
         || ((int)db_value("SELECT COUNT(*) FROM order_items WHERE order_id = '" . $_pg_cart_oid . "'" . pg_order_item_active_sql()) === 0);
@@ -618,8 +646,10 @@ function _render_system_widget_shopping_cart($tree_json, $widget_id, $cfg = arra
                     $cart_action_url,
                     function_exists('get_request_uri') ? get_request_uri() : (isset($_SERVER['REQUEST_URI']) ? $_SERVER['REQUEST_URI'] : '/'))
                 : '';
-            return _pg_sw_render_message_only($tree_decoded, 'shopping_cart', h($_pg_cart_empty_msg), 'notice',
-                $_pg_cart_qa_html !== '' ? '<div class="pg-cart-quick-add-auto mb-3">' . $_pg_cart_qa_html . '</div>' : '');
+            $_pg_cart_shop_url = function_exists('pg_wishlist_widget_shop_url') ? (string)pg_wishlist_widget_shop_url(0) : '';
+            return _pg_sw_render_message_only($tree_decoded, 'shopping_cart', '', 'notice',
+                pg_cart_empty_state_html($_pg_cart_empty_msg, $_pg_cart_shop_url)
+                . ($_pg_cart_qa_html !== '' ? '<div class="pg-cart-quick-add-auto mb-3">' . $_pg_cart_qa_html . '</div>' : ''));
         }
         if ($_pg_cart_form_lf && $_pg_cart_empty_msg !== '') {
             $_pg_cart_form_lf->add_notice(h($_pg_cart_empty_msg));
