@@ -18,14 +18,16 @@ if (!defined('PG_FUNCTIONS_DIR')) {
 }
 
 // A price typed in the currency, in integer minor units, or null when it is
-// empty, not a number or below zero. A comma is read as the decimal point.
+// empty, not a number or below zero. It is read by pg_normalize_amount(),
+// as on the product screen: 1.250,00 and 1,250.00 are both 1250, and a
+// single separator with three digits after it is read by the panel language.
 // round() rather than a cast: the cast truncates and the card and the feed
 // then disagree by a kuruş. Zero is allowed and negative is not: a shop
 // really does carry free articles -- donations, account payments -- but
 // nothing costs less than nothing.
 function pg_explorer_catalog_quick_price($value)
 {
-    $number = str_replace(',', '.', (string) $value);
+    $number = pg_normalize_amount((string) $value);
 
     if (($number === '') || (is_numeric($number) == false)) {
         return null;

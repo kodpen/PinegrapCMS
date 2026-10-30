@@ -44,7 +44,7 @@ function test_csv_export_download_start_writes_the_byte_order_mark()
 
 function test_csv_export_screens_use_the_helpers()
 {
-	$files = array('view_contacts.php', 'view_gift_cards.php', 'view_key_codes.php', 'view_submitted_forms.php', 'view_email_campaign_profiles.php');
+	$files = array('view_contacts.php', 'view_gift_cards.php', 'view_key_codes.php', 'view_submitted_forms.php', 'view_email_campaign_profiles.php', 'view_orders.php');
 
 	foreach ($files as $file) {
 		$source = file_get_contents(dirname(__DIR__) . '/pinegrap/' . $file);
@@ -65,4 +65,36 @@ function test_csv_export_words_in_the_panel_language()
 	pg_assert_true(strpos($forms, "\$status = 'Complete'") === false, 'form status translated');
 	pg_assert_true(strpos($forms, "\$status = 'Incomplete'") === false, 'form status translated');
 	pg_assert_true(strpos($forms, '\'", "\' . $address_name') === false, 'no space before the address name cell');
+}
+
+function test_csv_export_orders_zip_files_start_with_the_byte_order_mark()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/view_orders.php');
+
+	foreach (array('orders.csv', 'ship_tos.csv', 'order_items.csv', 'shipping_tracking_numbers.csv') as $file) {
+		pg_assert_true(preg_match('/add_file\\("\\\\xEF\\\\xBB\\\\xBF" \\. \\$\\w+, \'' . preg_quote($file, '/') . '\'\\)/', $source) === 1, $file . ' in the zip starts with the byte order mark');
+	}
+
+	pg_assert_true(strpos($source, "lang('One file per order')") === false, 'the zip choice is named for what it holds');
+}
+
+function test_csv_export_products_csv_starts_with_the_byte_order_mark()
+{
+	require_once(PG_FUNCTIONS_DIR . '/export_products_f.php');
+
+	ob_start();
+	@pg_products_export_csv(array('headings' => array('name'), 'rows' => array(array('Çay'))));
+	$output = ob_get_clean();
+
+	pg_assert_same("\xEF\xBB\xBF\"name\"\n\"Çay\"\n", $output);
+}
+
+function test_csv_export_erp_audit_trail_uses_the_store_separator()
+{
+	$source = file_get_contents(dirname(__DIR__) . '/pinegrap/includes/erp/audit.php');
+	$start = strpos($source, 'function erp_audit_csv(');
+	$body = substr($source, $start, strpos($source, 'fclose($out);', $start) - $start);
+
+	pg_assert_true(strpos($body, 'erp_csv_delimiter()') !== false, 'audit CSV reads the store separator');
+	pg_assert_true(strpos($body, "';', '\"'") === false, 'audit CSV has no fixed semicolon');
 }

@@ -107,7 +107,7 @@ function pg_gift_card_form_card($liveform, $mode, $options)
                                             <label for="' . $field . '" class="form-label">' . $output_label . '</label>
                                             <label class="form-control form-adorn form-adorn-end">
                                                 <span class="form-adorn-text" aria-hidden="true">' . ($options['symbol'] ?? '') . '</span>
-                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()) . '
+                                                ' . $liveform->output_field(array('type' => 'text', 'id' => $field, 'name' => $field, 'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()) . '
                                             </label>
                                             ' . $output_help . '
                                         </div>

@@ -176,7 +176,7 @@ function test_bs6_form_adorn_keeps_the_input_attributes()
 	$mcp = (string) file_get_contents($root . 'includes/workspace/mcp.php');
 	$catalogue = (string) file_get_contents($root . 'includes/workspace/mcp_catalogue.php');
 
-	pg_assert_contains("'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'numeric', 'required'=>'required') + pg_money_mask_attributes()", $gift);
+	pg_assert_contains("'class' => 'form-ghost text-end', 'maxlength'=>'12', 'inputmode'=>'decimal', 'required'=>'required') + pg_money_mask_attributes()", $gift);
 	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off"\' . $disabled . \'>', $mcp);
 	pg_assert_contains('pattern="[A-Za-z][A-Za-z0-9_\-]{1,31}" required autocomplete="off">', $catalogue);
 }
