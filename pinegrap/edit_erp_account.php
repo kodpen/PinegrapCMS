@@ -308,6 +308,8 @@ if (!$_POST) {
     $liveform->validate_required_field('title', lang(array('string' => '{var:1} is required', 'vars' => lang('Name'))));
     $country_code = erp_account_form_country($liveform);
     erp_account_form_check_formats($liveform, $country_code);
+    // Before the contact relink below, which writes.
+    erp_account_form_check_tax_number_taken($liveform, $country_code, $account_id, (string) $account['tax_number']);
 
     list($payment_days, $overdue_notify_days) = erp_account_form_check_days($liveform);
 
