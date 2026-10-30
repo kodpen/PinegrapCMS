@@ -160,4 +160,14 @@ function test_submitted_form_list_row()
 	pg_assert_same('', $row['cells'][5]['html'], 'no contact, no contacts access');
 	pg_assert_contains(lang('Incomplete'), $row['cells'][4]['html']);
 	pg_assert_same('sam', $row['cells'][6]['html']);
+
+	// A submission whose contact is missing or deleted reads contacts.id as
+	// NULL: no empty, nameless link even with contacts access.
+	$row = pg_submitted_form_list_row(array(
+		'id' => '5', 'complete' => '1', 'form_name' => 'F', 'reference_code' => '',
+		'contact_id' => null, 'contact_name' => null, 'submitted_username' => 'sam',
+		'submitted_timestamp' => time(), 'last_modified_username' => '', 'last_modified_timestamp' => time(),
+	), true);
+
+	pg_assert_same('', $row['cells'][5]['html'], 'no contact, contacts access');
 }

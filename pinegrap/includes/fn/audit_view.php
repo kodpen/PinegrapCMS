@@ -462,7 +462,7 @@ function pg_audit_view_labels($kind)
             'audit'        => lang('Audit trail'),
         ),
         'action' => array(
-            'create'  => lang('Created'),
+            'create'  => lang('Record created'),
             'update'  => lang('Updated'),
             'delete'  => lang('Deleted'),
             'recycle' => lang('Moved to the Recycle Bin'),

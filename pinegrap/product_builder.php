@@ -6279,6 +6279,84 @@ function pg_pb_posted_product_names($post, $product_id = 0)
 
 
 /**
+ * The barcodes a Create Product post types, read the way the save applies
+ * them: the Barcode field for a single product, each row's own code for a
+ * variant set. Blank codes are left out (they mean "generate one", or none).
+ * The edit screen has its own barcode card, so an edit post types none here.
+ *
+ * @param array $post
+ * @param int   $product_id the product being edited, 0 on create
+ * @return array
+ */
+function pg_pb_posted_barcodes($post, $product_id = 0)
+{
+    if ($product_id) {
+        return array();
+    }
+
+    $variants = pg_pb_decode_variants(isset($post['variants_json']) ? $post['variants_json'] : '');
+
+    $barcodes = array();
+
+    if (pg_pb_mode($variants) === 'group') {
+        foreach ($variants as $variant) {
+            $barcodes[] = isset($variant['barcode']) ? trim((string) $variant['barcode']) : '';
+        }
+    } else {
+        $barcodes[] = isset($post['pg_pb_barcode']) ? trim((string) $post['pg_pb_barcode']) : '';
+    }
+
+    return array_values(array_filter($barcodes, function ($barcode) {
+        return $barcode !== '';
+    }));
+}
+
+
+/**
+ * Why typed barcodes cannot be stored, as page HTML; '' when they can.
+ *
+ * pg_assign_product_barcode() refuses such a code by writing nothing, after
+ * the product row exists, so the screen checks first and says why.
+ *
+ * @param array         $barcodes from pg_pb_posted_barcodes()
+ * @param string        $type     the barcode type they are stored as
+ * @param callable|null $is_taken barcode => bool; absent: product_barcodes
+ * @return string
+ */
+function pg_pb_barcodes_problem($barcodes, $type, $is_taken = NULL)
+{
+    if ($is_taken === NULL) {
+        $is_taken = function ($barcode) {
+            $result = db_q("SELECT id FROM product_barcodes WHERE barcode = ? LIMIT 1", array($barcode));
+
+            return $result && (mysqli_num_rows($result) > 0);
+        };
+    }
+
+    foreach ($barcodes as $barcode) {
+        if (!pg_barcode_matches_format($barcode, $type)) {
+            return h($barcode) . ': ' . lang(array('string' => 'The barcode does not match the site\'s barcode format ({var:1}).', 'vars' => array(h($type))));
+        }
+    }
+
+    // Compared case aside, as the column compares them.
+    $repeated = pg_product_names_repeated($barcodes);
+
+    if ($repeated !== '') {
+        return lang(array('string' => 'Two variants have the barcode {var:1}.', 'vars' => array(h($repeated))));
+    }
+
+    foreach ($barcodes as $barcode) {
+        if ($is_taken($barcode)) {
+            return h($barcode) . ': ' . lang('Another product already carries this barcode.');
+        }
+    }
+
+    return '';
+}
+
+
+/**
  * The checks add_product.php and edit_product.php run before they write
  * anything.
  *
@@ -6356,6 +6434,21 @@ function pg_pb_validate_product_post($user, $product_id = 0)
 
         if ($problem !== '') {
             output_error(lang($problem) . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
+        }
+    }
+
+    // A typed barcode the save would drop (wrong format, another product's,
+    // or two rows of one code) is refused here: the product would otherwise
+    // be created without it, and the automatic switch does not replace a
+    // typed code.
+    if (defined('BARCODE_ENABLED') && BARCODE_ENABLED) {
+
+        $barcode_problem = pg_pb_barcodes_problem(
+            pg_pb_posted_barcodes($_POST, $product_id),
+            defined('BARCODE_DEFAULT_TYPE') ? BARCODE_DEFAULT_TYPE : 'CODE128');
+
+        if ($barcode_problem !== '') {
+            output_error($barcode_problem . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
         }
     }
 
