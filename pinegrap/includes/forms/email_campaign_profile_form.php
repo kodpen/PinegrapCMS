@@ -368,7 +368,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                     <div class="row">
                                         <div class="col-12 sm:col-6 xl:col-12 my-3">
                                             <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','value'=>h(ORGANIZATION_NAME), 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
+                                            ' . $liveform->output_field(array('type'=>'text','value'=>ORGANIZATION_NAME, 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12">
@@ -380,12 +380,12 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="from_email_address">' . lang('From E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>h($user['email_address']), 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
+                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'from_email_address', 'id'=>'from_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 sm:col-6 xl:col-4 my-3">
                                                     <label class="form-label" for="reply_email_address">' . lang('Reply to E-mail Address') . '</label>
-                                                    ' . $liveform->output_field(array('type'=>'text','value'=>h($user['email_address']), 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
+                                                    ' . $liveform->output_field(array('type'=>'text','value'=>$user['email_address'], 'name'=>'reply_email_address', 'id'=>'reply_email_address', 'class'=>'form-control text-end', 'maxlength'=>'100', 'inputmode'=>'email', 'data-inputmask-alias'=>'email')) . '
                                                     <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
