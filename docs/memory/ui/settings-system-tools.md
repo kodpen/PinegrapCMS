@@ -22,7 +22,7 @@ description: The System tools screen (system_tools.php): the screens beside Site
 - A tool with a `confirm` opens `system_tools.php`, where the question is asked: the palette follows a row without asking. A screen the palette already lists (Currencies) is not repeated. No tool, no rows.
 
 ## What is still to do?
-- R1b, after #3141 (which holds the files): a System tools row under the main menu's System heading (`includes/fn/output.php`, where `pg_menu_settings_entries()` still lists the tool groups, so nothing goes missing meanwhile) and the screen's help mapping in `get_help_url.php`.
+- R1b, after #3141 (which holds the files): a System tools row under the main menu's System heading (`includes/fn/output.php`, where `pg_menu_settings_entries()` still lists the tool groups, so nothing goes missing meanwhile) and a help row for the screen in `get_help_url.php`; until then the screen passes `'help' => 'site-settings#site-settings-intro'` itself.
 
 ## Where is it tested?
 - `tests/settings_system_tools_test.php`: no group heading in `modal.php`, the row only with tools, every administrator tool on the screen with its confirm, the palette's tools and gates.

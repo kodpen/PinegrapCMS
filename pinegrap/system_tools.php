@@ -38,6 +38,7 @@ pg_page_shell(array(
         'icon'                => 'setting',
         'heading'             => lang('System tools'),
         'heading_description' => lang('Logs, connections, maintenance jobs and backups, beside Site Settings.'),
+        'help'                => 'site-settings#site-settings-intro',
         'cancel'              => array('enable' => 'true', 'url' => pg_settings_link(), 'title' => lang('Site Settings')),
         'breadcrumb'          => array(
             array('label' => lang('Site Settings'), 'url' => pg_settings_link()),
