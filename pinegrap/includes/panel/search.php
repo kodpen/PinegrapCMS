@@ -177,21 +177,8 @@ function pg_panel_backend_search($request, $action)
 
     $s = escape(pg_list_like_pattern($search));
 
-    // Relevance score: exact=100, starts-with=60, contains=30, secondary=15
     $score_fn = function ($name, $secondary = '') use ($search) {
-        $n = mb_strtolower((string) ($name ?? ''));
-        $q = mb_strtolower($search);
-        $sc = mb_strtolower((string) ($secondary ?? ''));
-        $score = 0;
-        if ($n === $q)
-            $score += 100;
-        elseif (mb_strpos($n, $q) === 0)
-            $score += 60;
-        elseif (mb_strpos($n, $q) !== false)
-            $score += 30;
-        if ($sc !== '' && mb_strpos($sc, $q) !== false)
-            $score += 15;
-        return $score;
+        return pg_panel_search_score($name, $search, $secondary);
     };
 
     $add = function ($type, $id, $name, $sub, $score, $extra = array ()) use (&$results) {
@@ -355,7 +342,8 @@ function pg_panel_backend_search($request, $action)
         }
 
         // Orders — search by order_number, customer name, email
-        $s_order_num = escape('%' . ltrim($search, '#') . '%');
+        $order_query = ltrim($search, '#');
+        $s_order_num = escape(pg_list_like_pattern($order_query));
         $rows = db_items(
             "SELECT
                 orders.id,
@@ -377,7 +365,7 @@ function pg_panel_backend_search($request, $action)
                 $r['id'],
                 '#' . $r['order_number'],
                 $r['customer'],
-                $score_fn($r['order_number'], $r['customer'])
+                pg_panel_search_score($r['order_number'], $order_query, $r['customer'])
             );
         }
     }
@@ -483,4 +471,28 @@ function pg_panel_backend_search($request, $action)
 
     echo encode_json(array('status' => 'success', 'results' => $results, 'actions' => $actions, 'has_more' => $has_more));
     exit();
+}
+
+// Relevance score of one result: exact=100, starts-with=60, contains=30, plus
+// 15 when the secondary text contains the query. Both sides are folded with
+// fold_keyword_for_duplicates() (I, İ and ı read as i): mb_strtolower() turns
+// İ into i + U+0307, so "iade" never matched "İade" although the database,
+// being utf8mb4_unicode_ci, had found it.
+function pg_panel_search_score($name, $query, $secondary = '')
+{
+    $n = fold_keyword_for_duplicates((string) ($name ?? ''));
+    $q = fold_keyword_for_duplicates((string) $query);
+    $sc = fold_keyword_for_duplicates((string) ($secondary ?? ''));
+    $score = 0;
+    if ($q === '')
+        return $score;
+    if ($n === $q)
+        $score += 100;
+    elseif (mb_strpos($n, $q) === 0)
+        $score += 60;
+    elseif (mb_strpos($n, $q) !== false)
+        $score += 30;
+    if ($sc !== '' && mb_strpos($sc, $q) !== false)
+        $score += 15;
+    return $score;
 }
