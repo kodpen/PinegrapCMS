@@ -16,4 +16,4 @@ description: The jQuery Scanner Detection listener on the barcode stock screens 
 ## What stays as is?
 - The minified plugin line, the Read button busy state (`button-busy-state.md`), the server lookup and the decrease screen's answers.
 
-PR: see git history (fix/barcode-scan-fields). Test: `tests/barcode_scanner_fields_test.php` (source pins).
+PR #3377. Test: `tests/barcode_scanner_fields_test.php` (source pins).
