@@ -17,12 +17,12 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 6. Counts: a mention count in the workspace accent, an unread count neutral; a closed section still shows the open entry and its unread sum.
 
 ## What are the steps?
-- M1 Head, places, Channels, My discussions: `draw()`, `ws_nav_groups()` `top`, tour targets that moved, tests, memory `workspace/workspace-menu-list.md`.
+- M1 Head, places, Channels, My discussions: `draw()`, `ws_nav_groups()` `top`, tour targets that moved, tests, memory `workspace/workspace-menu-list.md`. Done in #3794 (settings gear in a new `head` group, `foot` gone).
 
-- M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory.
+- M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory. Also in M2: drop the `search` hook of `sideHooks()` in `workspace.js` (draw() no longer calls it; the file was held by #3787 during M1), and the tour hook's `openSections(['work', 'records'])` follows the new group keys.
 
 ## What is still open?
 1. My Tasks count: none for now; a count of overdue and today's tasks needs one more query in `ws_side_payload()`.
 
 ## Where to start?
-- M1. Check on dev in light and dark, with the rail narrowed and on a phone (Channels pill, `PGWsSide.reveal()`), on the channel screen (hooks) and on another panel page (links).
+- M2. Check M1 and M2 on dev in light and dark, with the rail narrowed and on a phone (Channels pill, `PGWsSide.reveal()`), on the channel screen (hooks) and on another panel page (links).
