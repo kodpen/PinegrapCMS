@@ -35,12 +35,12 @@ function test_panel_dates_site_order_no_fixed_day_month_dates()
 function test_panel_dates_site_order_screens_use_get_absolute_time()
 {
 	pg_assert_same(3, substr_count(panel_dates_site_order_source('api_settings.php'), "get_absolute_time(array('timestamp' => (int)"));
-	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$connection['created_timestamp'], 'type' => 'date'))", panel_dates_site_order_source('connected_apps.php'));
-	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$account['created_timestamp'], 'type' => 'date'))", panel_dates_site_order_source('connections.php'));
+	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$connection['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))", panel_dates_site_order_source('connected_apps.php'));
+	pg_assert_contains("get_absolute_time(array('timestamp' => (int)\$account['created_timestamp'], 'type' => 'date', 'format' => 'plain_text'))", panel_dates_site_order_source('connections.php'));
 
 	$chat = panel_dates_site_order_source('chat.php');
-	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'type' => 'date'))", $chat);
-	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp))", $chat);
+	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'type' => 'date', 'format' => 'plain_text'))", $chat);
+	pg_assert_contains("get_absolute_time(array('timestamp' => \$timestamp, 'format' => 'plain_text'))", $chat);
 }
 
 function test_panel_dates_site_order_chat_window_reads_site_clock()

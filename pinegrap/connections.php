@@ -210,7 +210,7 @@ foreach ($providers as $provider_key => $provider) {
 		}
 
 		$meta = array(
-			lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$account['created_timestamp'], 'type' => 'date')))),
+			lang(array('string' => 'Connected on {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int)$account['created_timestamp'], 'type' => 'date', 'format' => 'plain_text')))),
 			lang('Last used') . ' ' . connections_ago($account['last_used_timestamp']),
 		);
 

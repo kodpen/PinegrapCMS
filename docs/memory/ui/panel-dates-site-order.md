@@ -16,4 +16,9 @@ description: Application Access, Connected applications, Connections, the chat w
 ## Where does the barcode scan log time come from?
 - `update_inventory_quantity` in `barcode_decrease_inventory.php` and `barcode_increase_inventory.php` returns `data.scanned_at`, `get_absolute_time(array('timestamp' => time()))`, and the log row prints it. The page built it by hand as "29/10/2026 9:5:3" (unpadded, neither the site's order nor its clock). The endpoint's success answer is unchanged otherwise.
 
-Test: `tests/panel_dates_site_order_test.php`.
+## Why do some dates take format plain_text?
+- `get_absolute_time()` returns `<time datetime="…">…</time>` unless it gets `'format' => 'plain_text'`. A date that stands alone in HTML prints the element unescaped; a date that goes into a `lang()` var, an attribute, a string later passed through `h()`/`esc()`, JSON drawn as `textContent`/`title`, or CSV takes `plain_text` and is still escaped where printed.
+- Symptom: screens showed `<time datetime="…">Pzt 19 Eki 2026</time>` as text (#3605): Sessions, Edit User, the location database note (Languages and WAF Country Restriction cards), Connected applications, Connections, chat "Last seen", the storefront Order Preview and Shipping Method arrival dates, the printed order's arrival date, the visitor report CSV (#3675). The screens moved to `get_absolute_time()` kept their `h()`.
+- Still open: `view_order.php` (two dates) and `api_settings.php` ("since", created, "Registered on"); `tests/absolute_time_text_test.php` skips both files by name until they are fixed.
+
+Tests: `tests/panel_dates_site_order_test.php`, `tests/absolute_time_text_test.php`.

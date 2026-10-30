@@ -790,8 +790,8 @@ if (!$_POST) {
                 . '<div class="pg-session-text">'
                 . '<div class="pg-session-name">' . h(pg_user_agent_label($edit_user_session['user_agent'])) . $edit_user_session_tags . '</div>'
                 . '<div class="pg-session-meta">' . h((string) $edit_user_session['ip_address'])
-                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['created_at'])))))
-                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['expires_at'])))))
+                . ' &middot; ' . h(lang(array('string' => 'Opened {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['created_at'], 'format' => 'plain_text')))))
+                . ' &middot; ' . h(lang(array('string' => 'Expires {var:1}', 'vars' => get_absolute_time(array('timestamp' => (int) $edit_user_session['expires_at'], 'format' => 'plain_text')))))
                 . '</div></div>'
                 . '<div class="pg-session-actions">' . $edit_user_session_pin_button
                 . '<form method="post" action="view_sessions.php" style="margin:0">' . get_token_field()
@@ -920,7 +920,7 @@ if (!$_POST) {
         : 0;
 
     $output_password_note = ($password_changed_at > 0)
-        ? lang(array('string' => 'Last changed {var:1}', 'vars' => get_absolute_time(array('timestamp' => $password_changed_at, 'type' => 'date'))))
+        ? lang(array('string' => 'Last changed {var:1}', 'vars' => get_absolute_time(array('timestamp' => $password_changed_at, 'type' => 'date', 'format' => 'plain_text'))))
         : lang('Change date not recorded');
 
     $output_identity_rows = $user_identities

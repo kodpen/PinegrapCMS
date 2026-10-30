@@ -359,7 +359,7 @@ function _pg_op_recipients_html($d)
                 . '<div class="small text-muted">' . h(trim((string)$r['name'])) . ($r['name'] !== '' ? '<br>' : '') . h((string)$r['address']) . '</div>';
             if (!empty($d['arrival_dates']) && !empty($r['arrival_date_name'])) {
                 $arrival = !empty($r['arrival_date_custom'])
-                    ? get_absolute_time(array('timestamp' => strtotime((string)$r['arrival_date']), 'type' => 'date', 'size' => 'long'))
+                    ? get_absolute_time(array('timestamp' => strtotime((string)$r['arrival_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))
                     : (string)$r['arrival_date_name'];
                 $html .= '<div class="small">' . h(lang('Requested Arrival Date')) . ': ' . h($arrival) . '</div>';
             }
@@ -391,7 +391,7 @@ function _pg_op_recipients_html($d)
             if (!empty($item['recurring'])) {
                 $html .= '<div class="small text-muted">' . h(lang('Payment Period')) . ': ' . h(lang((string)$item['recurring_payment_period']))
                     . ((int)$item['recurring_number_of_payments'] > 0 ? ', ' . h(lang('Number of Payments')) . ': ' . (int)$item['recurring_number_of_payments'] : '')
-                    . (!empty($d['start_date']) && (string)$item['recurring_start_date'] !== '' ? ', ' . h(lang('Start Date')) . ': ' . h(get_absolute_time(array('timestamp' => strtotime((string)$item['recurring_start_date']), 'type' => 'date', 'size' => 'long'))) : '') . '</div>';
+                    . (!empty($d['start_date']) && (string)$item['recurring_start_date'] !== '' ? ', ' . h(lang('Start Date')) . ': ' . h(get_absolute_time(array('timestamp' => strtotime((string)$item['recurring_start_date']), 'type' => 'date', 'size' => 'long', 'format' => 'plain_text'))) : '') . '</div>';
             }
             foreach ((array)($item['gift_cards'] ?? array()) as $n => $card) {
                 if (!is_array($card) || (string)$card['recipient_email_address'] === '') continue;
