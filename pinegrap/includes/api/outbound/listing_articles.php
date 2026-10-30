@@ -154,7 +154,9 @@ function mp_articles_page($articles, $filter, $search, $page, $per_page) {
 
 	$states = mp_articles_filter_states($filter);
 
-	$search = trim((string) $search);
+	// Folded on both sides (İ/I/ı/i and accents), as the Shop and Remote
+	// tabs' LIKE under utf8mb4_unicode_ci matches.
+	$search = fold_keyword_for_matching($search);
 
 	$found = array();
 
@@ -166,8 +168,8 @@ function mp_articles_page($articles, $filter, $search, $page, $per_page) {
 
 		}
 
-		if (($search !== '') && (mb_stripos((string) $article['name'], $search) === false)
-			&& (mb_stripos((string) $article['title'], $search) === false)) {
+		if (($search !== '') && (mb_strpos(fold_keyword_for_matching($article['name']), $search) === false)
+			&& (mb_strpos(fold_keyword_for_matching($article['title']), $search) === false)) {
 
 			continue;
 
