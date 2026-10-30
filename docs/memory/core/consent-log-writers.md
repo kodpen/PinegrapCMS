@@ -1,13 +1,13 @@
 ---
 name: consent-log-writers
-description: Who writes consent_log rows: own e-mail marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581), accepted checkout documents as contract rows (PR #2000)
+description: Who writes consent_log rows: own e-mail and SMS marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581, #3660), accepted checkout documents as contract rows (PR #2000)
 ---
 
 ## What is recorded?
-- A person's own answer to a marketing question they were shown (PR #1581). Staff, API, import, Workspace, job and marketplace writers add none. Channel `email` only (no SMS consent field exists): purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. The opt-in writes themselves are unchanged.
+- A person's own answer to a marketing question they were shown (PR #1581). Staff, API, import, Workspace, job and marketplace writers add none. Channel `email`: purpose `marketing` for `contacts.opt_in`, `group:<id>` for a list's `opt_in` row. Channel `sms`, `marketing`: the SMS box, the log being its only record (`sms-consent-box.md`).
 
 ## When is a row written?
-- `pg_consent_log_answers()` (`includes/fn/privacy.php`) reads the person's rows once and writes only the answers that differ from the last recorded one (`pg_consent_log_changes()`; none or `pending` counts as no answer). A re-sent form, a second one-click POST or a save that only changed the address writes nothing. The baseline is the log, never `contacts.opt_in`.
+- `pg_consent_log_answers()` (`includes/fn/privacy.php`) reads the person's rows once and writes only the answers that differ from the last recorded one (`pg_consent_log_changes()`; none or `pending` counts as no answer). A re-sent form or a second one-click POST writes nothing. The baseline is the log, never `contacts.opt_in`.
 - Person: `email` after the save (the token), `user_id`, `contact_id`; activation and the preferences form add `previous_email`, the address before the save, read with them but never stored. ip and user agent are the request's.
 
 ## Which writers?

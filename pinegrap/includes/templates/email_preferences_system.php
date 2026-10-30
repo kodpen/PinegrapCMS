@@ -29,6 +29,15 @@ if (!defined('PG_INIT_LOADED')) {
 		<?=h(OPT_IN_LABEL)?>
 		</label>
 	</div>
+	<?php if ($sms_opt_in): ?>
+	<div style="margin-bottom: 15px">
+		<label>
+		<input type="checkbox" name="opt_in_sms" value="1" class="software_input_checkbox">
+		<?=lang('I want to receive campaign and offer messages by SMS.')?>
+		</label>
+		<input type="hidden" name="opt_in_sms_shown" value="1">
+	</div>
+	<?php endif ?>
 	<?php if ($contact_groups): ?>
 	<div class="contact_groups" style="display: none; padding-left: 25px; margin-bottom: 15px">
 		<div style="margin-bottom: 10px"><?=lang('Opt me in or out of the following lists')?>:</div>

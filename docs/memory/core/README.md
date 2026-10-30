@@ -44,7 +44,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - consent-log-and-audit-trail.md: consent_log and audit_log (11.0.16): the person token, consent row rules, what pg_audit() keeps (changed fields, masked secrets, size limits), who writes them
 - consent-log-cookie-notice.md: How the cookie notice's answers reach consent_log: consent_answer.php, the cookie as baseline, the same-origin check instead of a token, rate limit, signed-in and ghosting visitors
 - consent-log-writer-gaps.md: What the e-mail consent log writers leave unrecorded or record unasked (custom layouts without the box), what was run against them, open questions for the owner (PR #1581)
-- consent-log-writers.md: Who writes consent_log rows: own e-mail marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581), accepted checkout documents as contract rows (PR #2000)
+- consent-log-writers.md: Who writes consent_log rows: own e-mail and SMS marketing answers (sign-up, preferences, one-click, checkout, custom form; PR #1581, #3660), accepted checkout documents as contract rows (PR #2000)
 - contact-holders.md: pg_contact_holders(): the one list of every place a contact id is kept, shared by merge_contacts() and the erasure; what the merge does with each, the ERP refusal, the drift test
 - contact-lead-source.md: contacts.lead_source picked from referral_sources on the add/edit contact screens (#3427, decided #3416 3(a)); old free text kept; the check the API will use; writers left as they were
 - content-translation-html-pieces.md: Translating stored HTML (custom HTML block, product description, form message): how a block is cut into texts so images, form controls, buttons and data-* attributes stay on the translated page
@@ -113,6 +113,7 @@ Code rules, file layout, translation, JavaScript twins and bundles, roles and ac
 - sign-in-one-message.md: The sign-in screens give one message for an unknown name and a wrong password, and an unknown name costs the same password_verify() (pg_login_refused_message(), pg_password_dummy_verify())
 - site-log-client-address.md: Which address a site log row records: pg_auth_request_address(), the visitor behind a trusted proxy, in both log_activity() copies and the e-mail-a-friend limit (#2044)
 - site-path-detection.md: How a request finds the site path (PATH) from SCRIPT_NAME and the software folder, in any case; when config.path is written and when it is not (cron reads it)
+- sms-consent-box.md: The SMS marketing box beside the e-mail box (PR #3660): when it is drawn, how it starts, the consent_log sms rows it writes, where it is not yet
 - social-sign-in-address-match.md: Social sign-in ties a verified provider address only to an account whose stored address is the same apart from letter case; accent-folded look-alikes are refused, not tied and not opened (#1196)
 - social-sign-in-buttons.md: Where the social sign-in buttons come from (pg_signin_buttons()), when a provider shows, the Settings and designer hints, starter layouts, and what an old browser does.
 - social-sign-in-connect.md: Connecting Google, Microsoft or Apple to an account that is already signed in ("Connect with ..." buttons), whatever its e-mail address, and the rules that refuse it

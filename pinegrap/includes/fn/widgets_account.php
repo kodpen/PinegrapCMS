@@ -776,7 +776,8 @@ function _render_system_widget_account_profile($tree_json, $widget_id, $cfg = ar
 // from a campaign's "email preferences" link - the contact the link's signed
 // ?id=&sig= names. Anyone else is asked to sign in.
 //
-// Controls by name: email_address, opt_in. loop_area: one row per mailing
+// Controls by name: email_address, opt_in, opt_in_sms (drawn only while SMS
+// is on and the contact has a mobile number). loop_area: one row per mailing
 // list the contact may see (open lists, and closed ones the contact is on);
 // the row's checkbox, named contact_group, becomes contact_group_<list id>
 // and is checked by the server. Trees saved before that carry the name
@@ -847,14 +848,27 @@ function _render_system_widget_email_preferences($tree_json, $widget_id, $cfg = 
         $groups[] = $g;
     }
 
+    // The SMS box (opt_in_sms) beside the opt-in, while SMS is on and the
+    // contact has a mobile number; it starts from the person's last SMS
+    // answer in the consent log, ticked when there is none.
+    $sms_offered = ($mode === 'edit')
+        || pg_consent_sms_offered(pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id)));
+
     $lf = new liveform('email_preferences');
     $submitted = $lf->field_in_session('token');
     if ($submitted) {
         _pg_member_fill_control($tree, 'email_address', (string)$lf->get_field_value('email_address'));
         _pg_member_fill_control($tree, 'opt_in', '1', (bool)$lf->get_field_value('opt_in'));
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', (bool)$lf->get_field_value('opt_in_sms'));
     } else {
+        $sms_on = $sms_offered && pg_consent_sms_start_for(array(
+            'email' => $email, 'user_id' => $signed_in ? (int)USER_ID : 0, 'contact_id' => $contact_id));
         _pg_member_fill_control($tree, 'email_address', $email);
         _pg_member_fill_control($tree, 'opt_in', '1', $opt_in === 1);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', $sms_on);
+    }
+    if (!$sms_offered) {
+        _pg_member_drop_control($tree, 'opt_in_sms');
     }
 
     $account_url = $signed_in ? _pg_acct_page_url(isset($cfg['my_account_page_id']) ? $cfg['my_account_page_id'] : 0, 'my account') : '';

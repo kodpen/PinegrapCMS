@@ -97,6 +97,11 @@ function get_email_preferences($properties = array()) {
         
     }
 
+    // The SMS box beside the opt-in, while SMS is on and the contact has a
+    // mobile number. Its answer lives in the consent log, so it starts from
+    // the person's last SMS answer, ticked when there is none.
+    $sms_opt_in = pg_consent_sms_offered(pg_consent_sms_number_known(pg_consent_sms_contact_number($contact_id)));
+
     $attributes =
         'action="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/email_preferences.php" ' .
         'method="post"';
@@ -110,6 +115,12 @@ function get_email_preferences($properties = array()) {
 
         if ($opt_in == 1) {
             $form->set('opt_in', 'value', 1);
+        }
+
+        if ($sms_opt_in && pg_consent_sms_start_for(array(
+                'email' => $email_address,
+                'contact_id' => (int) $contact_id))) {
+            $form->set('opt_in_sms', 'value', 1);
         }
     }
 
@@ -221,6 +232,7 @@ function get_email_preferences($properties = array()) {
         'form' => $form,
         'attributes' => $attributes,
         'contact_groups' => $contact_groups,
+        'sms_opt_in' => $sms_opt_in,
         'my_account_url' => $my_account_url,
         'system' => $system));
 
