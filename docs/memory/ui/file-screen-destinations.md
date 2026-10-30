@@ -23,3 +23,8 @@ description: Where Edit File, Upload File and Upload Design Files go after Save 
 ## What does Edit File's Duplicate copy?
 - The file on disk and its folder, description, design flag, `optimized`, `image_width`, `image_height` and `optimization_percent` (empty size or saving as NULL), like the File Manager's copy (`includes/explorer/handle_files.php`).
 - Symptom fixed: a copy of an optimised picture had `optimized = 0`, so the dashboard File Manager card offered it, View Files showed a saving for it and `optimize_image.php` compressed it again; the resize hint stayed off until a file screen measured it. Pinned by `tests/file_style_duplicate_test.php`.
+
+## Is a blank name refused?
+- Edit File (after the Delete branch, so Delete works with an empty box), Edit Design File (save branch only) and the File Manager's file window (before the blocked-name check) refuse a name that is empty or only spaces with "Please enter a name.", like the File Manager's rename (`handle_items.php`).
+- `prepare_file_name()` keeps turning a blank name into `file`; uploads and imports need that default.
+- Symptom fixed: a rename to spaces renamed the stored file, on disk and in its record, to `file` with no extension; links to it returned 404 and a theme CSS file lost its stylesheet. Pinned by `tests/file_rename_blank_test.php`.

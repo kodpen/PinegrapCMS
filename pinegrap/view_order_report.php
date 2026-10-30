@@ -279,7 +279,6 @@ if (!$_POST) {
     
     // initialize variables
     $order_date_filter_exists = false;
-    $incomplete_orders_included = false;
     $output_filters_for_javascript = '';
     $count = 0;
     
@@ -288,21 +287,6 @@ if (!$_POST) {
         // if the field for this filter is order date, then remember that an order date filter exists
         if ($filter['field'] == 'order_date') {
             $order_date_filter_exists = true;
-        }
-        
-        // if the field for this filter is order status, then determine if incomplete orders are included
-        if ($filter['field'] == 'order_status') {
-            // if operator is "is equal to" or "contains" and value is "Incomplete", then incomplete orders are included
-            if (
-                (($filter['operator'] == 'is equal to') || ($filter['operator'] == 'contains')) && ($filter['value'] == 'incomplete')
-                || (($filter['operator'] == 'is not equal to') || ($filter['operator'] == 'does not contain')) && ($filter['value'] != 'incomplete')
-            ) {
-                $incomplete_orders_included = true;
-                
-            // else incomplete orders are not included
-            } else {
-                $incomplete_orders_included = false;
-            }
         }
         
         // if dynamic value attribute is equal to 0, then set to empty string
@@ -789,34 +773,27 @@ if (!$_POST) {
         $number_of_summarize_bys = 0;
     }
     
-    // if incomplete orders are included in this report,
-    // then get data for incomplete orders first because we have to calculate
-    // subtotal, tax, shipping and total differently for incomplete orders
-    if ($incomplete_orders_included == true) {
-        // get all incomplete orders
-        $query =
-            "SELECT
-                orders.id,
-                SUM(order_items.price * CAST(order_items.quantity AS signed)) as subtotal,
-                SUM(order_items.tax_total) as tax,
-                SUM(order_items.shipping * order_items.quantity) as shipping
-            FROM order_items
-            LEFT JOIN orders on order_items.order_id = orders.id
-            $join_ship_tos
-            $where AND (orders.status = 'incomplete')
-            GROUP BY orders.id";
-        $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
-        
-        $incomplete_orders = array();
-        
-        while ($row = mysqli_fetch_assoc($result)) {
-            // store data for incomplete order in array
-            $incomplete_orders[$row['id']] = array(
-                'subtotal' => $row['subtotal'],
-                'tax' => $row['tax'],
-                'shipping' => $row['shipping'],
-                'total' => $row['subtotal'] + $row['tax'] + $row['shipping']);
-        }
+    // A cart's figures come from its active lines (a line saved for later
+    // counts in no total), as the orders list shows its cart total: the
+    // orders.* figures are written only when the order is placed. The report's
+    // own filters decide whether any cart is left.
+    $incomplete_orders = array();
+
+    $query =
+        "SELECT
+            orders.id,
+            SUM(order_items.price * CAST(order_items.quantity AS signed)) as subtotal,
+            SUM(order_items.tax_total) as tax,
+            SUM(order_items.shipping * order_items.quantity) as shipping
+        FROM order_items
+        LEFT JOIN orders on order_items.order_id = orders.id
+        $join_ship_tos
+        " . (($where === '') ? 'WHERE ' : $where . ' AND ') . "(orders.status = 'incomplete')" . pg_order_item_active_sql('order_items') . "
+        GROUP BY orders.id";
+    $result = mysqli_query(db::$con, $query) or output_error('Query failed.');
+
+    while ($row = mysqli_fetch_assoc($result)) {
+        $incomplete_orders[$row['id']] = $row;
     }
 
     // get all orders
@@ -832,6 +809,9 @@ if (!$_POST) {
             orders.discount,
             orders.tax,
             orders.shipping,
+            orders.gift_card_discount,
+            orders.surcharge,
+            orders.installment_charges,
             orders.total,
             orders.status
         FROM orders
@@ -849,8 +829,6 @@ if (!$_POST) {
     
     $results = array();
 
-    // Grand totals are accumulated with ++ and += inside the cases below, and
-    // printed after the switch regardless of which case ran.
     // Group keys and the previous-name trackers the cases below compare against.
     // The first row of every report reads them before anything has written one.
     $summarize_by_1_key = 0;
@@ -860,36 +838,18 @@ if (!$_POST) {
     $previous_summarize_by_2_name = '';
     $previous_summarize_by_3_name = '';
 
-    $grand_count = 0;
-    $grand_subtotal = 0;
-    $grand_discount = 0;
-    $grand_tax = 0;
-    $grand_shipping = 0;
-    $grand_total = 0;
+    // Every order is counted into its groups and the grand total with the
+    // same figures (includes/fn/order_report.php), whatever the summarize-by.
+    $grand = pg_order_report_bucket('');
+    $orders = array();
 
     switch ($number_of_summarize_bys) {
         case 0:
-            $orders = array();
-            
             while ($row = mysqli_fetch_array($result)) {
-                // store data for order in array
-                $orders[] = array(
-                    'id' => $row['id'],
-                    'order_number' => $row['order_number'],
-                    'order_date' => $row['order_date'],
-                    'subtotal' => $row['subtotal'],
-                    'discount' => $row['discount'],
-                    'tax' => $row['tax'],
-                    'shipping' => $row['shipping'],
-                    'total' => $row['total']);
-                
-                // update grand totals
-                $grand_count++;
-                $grand_subtotal += $row['subtotal'];
-                $grand_discount += $row['discount'];
-                $grand_tax += $row['tax'];
-                $grand_shipping += $row['shipping'];
-                $grand_total += $row['total'];
+                $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
+
+                $orders[] = $order;
+                $grand = pg_order_report_add($grand, $order);
             }
             break;
         
@@ -901,59 +861,14 @@ if (!$_POST) {
                 // if we have a new summarize by in summarize by 1, increment key and store name
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['total'] = 0;
+                    $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                 }
                 
-                // if order is complete, use values from query
-                if ($row['status'] != 'incomplete') {
-                    $subtotal = $row['subtotal'];
-                    $tax = $row['tax'];
-                    $shipping = $row['shipping'];
-                    $total = $row['total'];
-                
-                // else order is incomplete, so use values from incomplete orders array
-                } else {
-                    $subtotal = $incomplete_orders[$row['id']]['subtotal'];
-                    $tax = $incomplete_orders[$row['id']]['tax'];
-                    $shipping = $incomplete_orders[$row['id']]['shipping'];
-                    $total = $incomplete_orders[$row['id']]['total'];
-                }
-                
-                // store data for order in array
-                $results[$summarize_by_1_key]['orders'][] = array(
-                    'id' => $row['id'],
-                    'order_number' => $row['order_number'],
-                    'order_date' => $row['order_date'],
-                    'subtotal' => $subtotal,
-                    'discount' => $row['discount'],
-                    'tax' => $tax,
-                    'shipping' => $shipping,
-                    'total' => $total);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['total'] += $total;
-                
-                // update grand totals
-                $grand_count++;
-                $grand_subtotal += $subtotal;
-                $grand_discount += $row['discount'];
-                $grand_tax += $tax;
-                $grand_shipping += $shipping;
-                $grand_total += $total;
+                $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
+
+                $results[$summarize_by_1_key]['orders'][] = $order;
+                $results[$summarize_by_1_key] = pg_order_report_add($results[$summarize_by_1_key], $order);
+                $grand = pg_order_report_add($grand, $order);
                 
                 $previous_summarize_by_1_name = $summarize_by_1_name;
             }
@@ -968,93 +883,23 @@ if (!$_POST) {
                 // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['total'] = 0;
+                    $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                     
                     $summarize_by_2_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name
                 } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                 }
                 
-                // if order is complete, use values from query
-                if ($row['status'] != 'incomplete') {
-                    $subtotal = $row['subtotal'];
-                    $tax = $row['tax'];
-                    $shipping = $row['shipping'];
-                    $total = $row['total'];
-                
-                // else order is incomplete, so use values from incomplete orders array
-                } else {
-                    $subtotal = $incomplete_orders[$row['id']]['subtotal'];
-                    $tax = $incomplete_orders[$row['id']]['tax'];
-                    $shipping = $incomplete_orders[$row['id']]['shipping'];
-                    $total = $incomplete_orders[$row['id']]['total'];
-                }
-                
-                // store data for order in array
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['orders'][] = array(
-                    'id' => $row['id'],
-                    'order_number' => $row['order_number'],
-                    'order_date' => $row['order_date'],
-                    'subtotal' => $subtotal,
-                    'discount' => $row['discount'],
-                    'tax' => $tax,
-                    'shipping' => $shipping,
-                    'total' => $total);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['total'] += $total;
-                
-                // update totals for summarize by 2
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] += $total;
-                
-                // update grand totals
-                $grand_count++;
-                $grand_subtotal += $subtotal;
-                $grand_discount += $row['discount'];
-                $grand_tax += $tax;
-                $grand_shipping += $shipping;
-                $grand_total += $total;
+                $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
+
+                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['orders'][] = $order;
+                $results[$summarize_by_1_key] = pg_order_report_add($results[$summarize_by_1_key], $order);
+                $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key], $order);
+                $grand = pg_order_report_add($grand, $order);
                 
                 $previous_summarize_by_1_name = $summarize_by_1_name;
                 $previous_summarize_by_2_name = $summarize_by_2_name;
@@ -1071,139 +916,35 @@ if (!$_POST) {
                 // if we have a new summarize by in summarize by 1, increment key and store name, and reset key and store name for summarize by 2 and summarize by 3
                 if (mb_strtolower($summarize_by_1_name) !== mb_strtolower($previous_summarize_by_1_name)) {
                     $summarize_by_1_key++;
-                    $results[$summarize_by_1_key]['name'] = $summarize_by_1_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['total'] = 0;
+                    $results[$summarize_by_1_key] = pg_order_report_bucket($summarize_by_1_name);
                     
                     $summarize_by_2_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                     
                     $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                     
                 // else if we have a new summarize by in summarize by 2, increment key and store name and reset key and store name for summarize by 3
                 } elseif (mb_strtolower($summarize_by_2_name) !== mb_strtolower($previous_summarize_by_2_name)) {
                     $summarize_by_2_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['name'] = $summarize_by_2_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_bucket($summarize_by_2_name);
                     
                     $summarize_by_3_key = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                     
                 // else if we have a new summarize by in summarize by 3, increment key and store name
                 } elseif (mb_strtolower($summarize_by_3_name) !== mb_strtolower($previous_summarize_by_3_name)) {
                     $summarize_by_3_key++;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['name'] = $summarize_by_3_name;
-                    // Seed the running totals for this bucket. They are only ever reached
-                    // with += and ++ below, and a bucket is created exactly once, so seeding
-                    // here is what the accumulation was already assuming.
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] = 0;
-                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] = 0;
+                    $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_bucket($summarize_by_3_name);
                 }
                 
-                // if order is complete, use values from query
-                if ($row['status'] != 'incomplete') {
-                    $subtotal = $row['subtotal'];
-                    $tax = $row['tax'];
-                    $shipping = $row['shipping'];
-                    $total = $row['total'];
-                
-                // else order is incomplete, so use values from incomplete orders array
-                } else {
-                    $subtotal = $incomplete_orders[$row['id']]['subtotal'];
-                    $tax = $incomplete_orders[$row['id']]['tax'];
-                    $shipping = $incomplete_orders[$row['id']]['shipping'];
-                    $total = $incomplete_orders[$row['id']]['total'];
-                }
-                
-                // store data for order in array
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['orders'][] = array(
-                    'id' => $row['id'],
-                    'order_number' => $row['order_number'],
-                    'order_date' => $row['order_date'],
-                    'subtotal' => $subtotal,
-                    'discount' => $row['discount'],
-                    'tax' => $tax,
-                    'shipping' => $shipping,
-                    'total' => $total);
-                
-                // update totals for summarize by 1
-                $results[$summarize_by_1_key]['count']++;
-                $results[$summarize_by_1_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['total'] += $total;
-                
-                // update totals for summarize by 2
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['total'] += $total;
-                
-                // update totals for summarize by 3
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['count']++;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['subtotal'] += $subtotal;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['discount'] += $row['discount'];
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['tax'] += $tax;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['shipping'] += $shipping;
-                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['total'] += $total;
-                
-                // update grand totals
-                $grand_count++;
-                $grand_subtotal += $subtotal;
-                $grand_discount += $row['discount'];
-                $grand_tax += $tax;
-                $grand_shipping += $shipping;
-                $grand_total += $total;
+                $order = pg_order_report_order($row, $incomplete_orders[$row['id']] ?? null);
+
+                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key]['orders'][] = $order;
+                $results[$summarize_by_1_key] = pg_order_report_add($results[$summarize_by_1_key], $order);
+                $results[$summarize_by_1_key]['results'][$summarize_by_2_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key], $order);
+                $results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key] = pg_order_report_add($results[$summarize_by_1_key]['results'][$summarize_by_2_key]['results'][$summarize_by_3_key], $order);
+                $grand = pg_order_report_add($grand, $order);
                 
                 $previous_summarize_by_1_name = $summarize_by_1_name;
                 $previous_summarize_by_2_name = $summarize_by_2_name;
@@ -1211,6 +952,33 @@ if (!$_POST) {
             }
             break;
     }
+
+    $grand_count = $grand['count'];
+    $grand_total = $grand['total'];
+
+    // The gift card, card surcharge and installment charge columns, shown
+    // when the report holds such money, so that every row adds up to Total.
+    $charge_column_labels = array(
+        'gift_card_discount' => lang('Gift card'),
+        'surcharge' => lang('Card surcharge'),
+        'installment_charges' => lang('Installment Charge'),
+    );
+    $charge_columns = pg_order_report_charge_columns($grand);
+    $output_charge_headers = '';
+
+    foreach ($charge_columns as $charge_column) {
+        $output_charge_headers .= '<th class="text-end">' . $charge_column_labels[$charge_column] . '</th>';
+    }
+
+    $output_charge_cells = function ($figures) use ($charge_columns) {
+        $output = '';
+
+        foreach ($charge_columns as $charge_column) {
+            $output .= '<td class="align-middle text-end">' . pg_format_money($figures[$charge_column] / 100, BASE_CURRENCY_SYMBOL) . '</td>';
+        }
+
+        return $output;
+    };
     
     // The corner cell heads the group-name column, so it names the chosen
     // summarize-by levels; with none chosen there is no such column to head.
@@ -1398,6 +1166,7 @@ if (!$_POST) {
                                     <th class="text-end">' . lang('Discount') . '</th>
                                     <th class="text-end">' . lang('Tax') . '</th>
                                     <th class="text-end">' . lang('Shipping') . '</th>
+                                    ' . $output_charge_headers . '
                                     <th class="text-end">' . lang('Total') . '</th>
                                     <th class="text-end">' . lang('Total') . ' %</th>
                                 </tr>
@@ -1438,6 +1207,7 @@ if (!$_POST) {
                     <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                     <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                     <td class="align-middle text-end">' . pg_format_money($summarize_by_1_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                    ' . $output_charge_cells($summarize_by_1_result) . '
                     <td class="align-middle text-end">' . prepare_amount($summarize_by_1_result['total'] / 100) . '</td>
                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                 </tr>';
@@ -1479,6 +1249,7 @@ if (!$_POST) {
                             <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                             <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                             <td class="align-middle text-end">' . pg_format_money($summarize_by_2_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                            ' . $output_charge_cells($summarize_by_2_result) . '
                             <td class="align-middle text-end">' . prepare_amount($summarize_by_2_result['total'] / 100) . '</td>
                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                         </tr>';
@@ -1519,6 +1290,7 @@ if (!$_POST) {
                                     <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                     <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                     <td class="align-middle text-end">' . pg_format_money($summarize_by_3_result['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    ' . $output_charge_cells($summarize_by_3_result) . '
                                     <td class="align-middle text-end">' . prepare_amount($summarize_by_3_result['total'] / 100) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                                 </tr>';
@@ -1549,6 +1321,7 @@ if (!$_POST) {
                                             <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                             <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                             <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                            ' . $output_charge_cells($order) . '
                                             <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
                                             <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                                         </tr>';
@@ -1584,6 +1357,7 @@ if (!$_POST) {
                                         <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                         <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                         <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                        ' . $output_charge_cells($order) . '
                                         <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
                                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                                     </tr>';
@@ -1620,6 +1394,7 @@ if (!$_POST) {
                                 <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                 <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                                 <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                ' . $output_charge_cells($order) . '
                                 <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
                                 <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                             </tr>';
@@ -1656,6 +1431,7 @@ if (!$_POST) {
                         <td class="align-middle text-end">' . pg_format_money($order['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                         <td class="align-middle text-end">' . pg_format_money($order['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
                         <td class="align-middle text-end">' . pg_format_money($order['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                        ' . $output_charge_cells($order) . '
                         <td class="align-middle text-end">' . prepare_amount($order['total'] / 100) . '</td>
                         <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number($total_percentage, 2)))) . '</td>
                     </tr>';
@@ -1669,10 +1445,11 @@ if (!$_POST) {
                                     ' . $output_report_detail_cells . '
                                     <td class="align-middle text-end">' . pg_format_number($grand_count, 0) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
-                                    <td class="align-middle text-end">' . prepare_amount($grand_subtotal / 100) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_money($grand_discount / 100, BASE_CURRENCY_SYMBOL) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_money($grand_tax / 100, BASE_CURRENCY_SYMBOL) . '</td>
-                                    <td class="align-middle text-end">' . pg_format_money($grand_shipping / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . prepare_amount($grand['subtotal'] / 100) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand['discount'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand['tax'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    <td class="align-middle text-end">' . pg_format_money($grand['shipping'] / 100, BASE_CURRENCY_SYMBOL) . '</td>
+                                    ' . $output_charge_cells($grand) . '
                                     <td class="align-middle text-end">' . prepare_amount($grand_total / 100) . '</td>
                                     <td class="align-middle text-end">' . h(lang(array('string' => '{var:1}%', 'vars' => pg_format_number(100, 2)))) . '</td>
                                 </tr>

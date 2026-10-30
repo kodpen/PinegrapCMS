@@ -25,4 +25,4 @@ description: Order, visitor and shipping report tables: group names and Grand To
 
 Tests: `tests/report_tables_links_test.php`, `tests/report_screens_bs6_test.php`.
 
-Related: docs/memory/ui/report-screen-controls.md, docs/memory/ui/dashboard-keyboard.md
+Related: docs/memory/ui/report-screen-controls.md, docs/memory/ui/dashboard-keyboard.md, docs/memory/ui/order-report-totals.md

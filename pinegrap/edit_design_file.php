@@ -310,6 +310,12 @@ if (empty($_POST['name'])) {
     }
     else
     {
+        // A blank name would become 'file' in prepare_file_name() and break
+        // every link to the stored file.
+        if (trim((string) ($_POST['name'] ?? '')) === '') {
+            output_error(lang('Please enter a name.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+        }
+
         // if file name is invalid, output error
         if ($name == '.htaccess') {
             output_error(lang('File name is invalid') . '. <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
