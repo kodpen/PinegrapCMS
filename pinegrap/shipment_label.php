@@ -133,7 +133,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $liveform->mark_error('_error', h($error));
         }
 
-        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . ($ship_to_id ? '/view_order.php?id=' . $order_id : '/view_orders.php'));
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . ($ship_to_id ? '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url('')) : '/view_orders.php'));
     }
 
     if (!preg_match('/^(create|return|cancel|marketplace)-([1-9][0-9]*)$/', $request, $match)) {
@@ -174,7 +174,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $liveform->mark_error('_error', h($result['error']));
     }
 
-    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id);
+    go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode(pg_send_to_url('')));
 }
 
 $id = is_scalar($_GET['id'] ?? null) ? (int) $_GET['id'] : 0;
