@@ -893,7 +893,7 @@ function pg_product_list_row($product, $view, $context)
                 break;
 
             case 'last_modified':
-                $cells[] = pg_list_cell(get_relative_time(array('timestamp' => $product['timestamp'])) . ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($product['user'] ?? '')))));
+                $cells[] = pg_list_cell(pg_list_when($product['timestamp'], $product['user'] ?? ''));
                 break;
 
             case 'out_of_stock_date':

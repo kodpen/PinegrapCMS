@@ -16,6 +16,9 @@ module: product_list
 - Name (SKU), short description, the user in "Last Modified", product form, custom fields shown, default quantity, tracked stock, selection type (by label), allowed zones, payment period, start page, private folder, order receipt BCC, e-mail page and BCC, contact group, as each view shows them.
 - An amount: a word of digits, `.` and `,` is matched as the stored minor-unit digits against the price and the compare-at price (`pg_product_list_amount_term()`, a column with a `term` callable in `pg_list_search_where()`). Disallowed zones, check marks and dates are not searched.
 
+## What does Last Modified show without a user?
+- The time alone ("15 days ago"), not "15 days ago by" with no name: `pg_list_when()` (`list_paging.php`) adds "by {var:1}" only for a non-blank user. The products list, Duplicate Products and commissions use it (PR #3677).
+
 ## What else changed with the paging?
 - Counts and the page read join only one-row lookups (user, contact group, start and e-mail page, folder); the traffic join behind the impact score joins the page read only. Zones are read once per page (`pg_product_list_zones()`), not two queries per row.
 - The barcode button carries its label data in `data-pg-barcode-product`; `pgPrintProductBarcode(id, button)` reads it (the page-wide `productMap` is gone).
