@@ -20,7 +20,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
   - D8c canvas (done, #2725, workspace/workspace-flow-ai-drafts.md): patch boxes marked until publish; `?flow=<id>&box=<id>` for D8b.
 
 - D9a webhook answer as a body output (#2414-2, done #2985, workspace/workspace-flows-webhook-body.md): `body` (16 KB, UTF-8) of the webhook kind, kept on the run row without a schema change, held back from readers who may not change the flow. Files: includes/workspace/scheduled.php, steps.php, flow_runs.php, api_flows.php, flow_run_events.php.
-- D9 For each (#3312): server half done #3323 (workspace/workspace-flows-for-each.md); canvas half (workspace_flow.js KINDS, palette, form, body drawing) next.
+- D9 For each (#3312): server half done #3323 (workspace/workspace-flows-for-each.md); canvas half in progress.
 
 ## What rules does D8 keep?
 - The model gets the kinds and their outputs (`ws_flow_js_config()`) as its tool schema: no invented kind, field or reference.
