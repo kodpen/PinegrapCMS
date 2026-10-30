@@ -56,6 +56,10 @@ if (!$_POST) {
         output_error(lang('Sorry, the item could not be found.'), 404);
     }
 
+    // Notices from Duplicate and Save wait for this screen.
+    include_once('liveform.class.php');
+    $liveform = new liveform('edit_custom_style');
+
     $style_id = $row['style_id'];
     $style_name = $row['style_name'];
     $style_timestamp = $row['style_timestamp'];
@@ -128,6 +132,7 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 <h2 class="d-inline-block text-break header-content-for-add-page">[' . h($style_name) . ']</h2>
+                        ' . $liveform->output_notices() . '
                         <p class="form-text mt-0">' . lang('Update this HTML template that is applied to all associated pages.') . '</p>
                         <p>' . lang('Last Modified') . ': ' . get_relative_time(array('timestamp' => $style_timestamp)) . ' ' . h($user_username) . '</p>
                         
@@ -158,6 +163,7 @@ if (!$_POST) {
     
 </main>' .
         output_footer();
+    $liveform->remove_form();
 }
 else
 {
@@ -244,6 +250,8 @@ else
         if (($_POST['send_to'] ?? '') != '') {
             $send_to = '&send_to=' . urlencode($_POST['send_to']);
         }
+
+        (new liveform('edit_custom_style'))->add_notice($notice);
 
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_custom_style.php?id=' . urlencode($_POST['id']) . $send_to);
         exit();
