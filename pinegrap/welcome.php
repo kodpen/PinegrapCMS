@@ -989,7 +989,7 @@ $output_header_includes .
 <script src="assets/lib/sortablejs/Sortable.min.js"></script>
 <style>
     /* Widget drag (SortableJS): the card left behind is an empty slot and the
-       copy under the pointer stays fully opaque. The grip's own look is in
+       copy under the pointer stays fully opaque. The look of the grip is in
        backend.src.css (.pg-widget-move). */
     .pg-widget-ghost { opacity: 0; }
     .pg-widget-drag { opacity: 1 !important; cursor: move; }
