@@ -39,6 +39,6 @@ description: Button recipes, menu colour rule, shared toolbar CSS classes, card 
 
 ## Which screens keep their own phone toolbar rules?
 - `editor_select_image.php` (`#esi_toolbar`) and the prototype viewer bar (`includes/fn/prototype.php`, `.pg-proto-bar`) do not use the shared classes.
-- Their phone rules give the filter pill / page navigation a full-width line but no `order`: the bar wraps at markup position (title, filters or Prev/Pages/Next, then the buttons), so Tab and screen readers follow the rows as drawn (WCAG 2.4.3). Pinned by `tests/toolbar_local_order_test.php` (PR #NNNN).
+- Their phone rules give the filter pill / page navigation a full-width line but no `order`: the bar wraps at markup position (title, filters or Prev/Pages/Next, then the buttons), so Tab and screen readers follow the rows as drawn (WCAG 2.4.3). Pinned by `tests/toolbar_local_order_test.php` (PR #3483).
 
 Related: docs/memory/ui/admin-screen-toolbar.md
