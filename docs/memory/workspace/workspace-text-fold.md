@@ -16,6 +16,7 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 - Ctrl+K palette (`palette.php`): `ws_palette_snippet()` cuts its excerpt at `ws_text_position()`, the channel filter (name, topic) and the people filter (name, username).
 - Channel board search (`channel_board.php`): message bodies, file names, pins, thread summaries.
 - Person and department pickers (`ws_ref_search()` in `refs.php`).
+- Tables file and note import (#3747): `wtable_import.php` keys for header deduplication, the status guess and choices, status label to key, the column match and the people map (`ws_wtable_import_people()` and the person lookup fold alike). Stored values and labels keep their spelling; the checkbox words keep their own list.
 - Tests: `tests/workspace_text_fold_test.php` (the issue's pairs, plain ASCII, positions, the palette excerpt).
 
 - Comparisons (#3500, part 2 of #3400): `ws_scheduled_compare()` in `scheduled.php` folds both sides for eq and neq (`ws_fold()`) and contains (`ws_text_contains()`): the Flows condition box, the derived "compare" value, scheduled record conditions. "AYDIN" is "Aydın", "İzmir" contains "izmir". Tests in tests/workspace_flow_site_numbers_test.php.

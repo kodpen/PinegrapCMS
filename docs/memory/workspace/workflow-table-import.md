@@ -10,10 +10,10 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 
 ## How is the kept file found again, on Windows too?
 - `kept()` and `drop()` both use `ws_wtable_import_kept_path()`: `realpath()` directly in the temp folder, a file, a name `ws_wtable_import_temp_name()` takes (`\` read as `/`; `pg_wtimport_*` or Windows' `pg_<1–4 hex>.tmp`, as Windows `tempnam()` keeps 3 prefix characters).
-- Before #3447 (#3390) a prefix check on `pg_basename()` failed on IIS (no confirmation, JSON kept).
+- Before #3447 a prefix check failed on IIS.
 
 ## How is the file read?
-- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's most used separator, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read, the screen says so). The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
+- `ws_wtable_import_file_table($path, $name, $max)`: a spreadsheet via `pg_products_import_to_csv()`, a CSV with its first line's most used separator, BOM and blank lines dropped; `more` when longer than 5000 rows + header (only those are read). The one table-file reader: `ws_bulk_file_table()` (bulk_sources.php) calls it with a product card's 200 rows + 2 (#3044).
 - First row = column names (`ws_wtable_import_names()`: empty → "Column N", a repeat gets " 2"). Over 50 columns is refused before the confirmation.
 
 ## How is a new table's column type guessed?
@@ -23,7 +23,7 @@ description: A CSV/xlsx/xls/ods file into a workflow table (T6a, #3022): a new t
 ## How are rows written?
 - Every row through `ws_wtable_row_create()` (rights, cell checks, the 5000 limit stay the store's). `ws_wtable_import_cell()` turns a value into what the cell check takes (money to minor units with `round()`, status by label, person by name or user name, link `kind:id`); what it cannot read goes as written, so the store's code answers. A row whose cells are all empty is skipped.
 - New table: `ws_wtable_create()` and `ws_wtable_column_create()` per column; a refused column deletes the new table.
-- Appending: file columns matched to table columns by name, case and spaces aside, a formula column never (`ws_wtable_import_match()`); another column or "(not imported)" may be chosen.
+- Appending: file columns matched to table columns by name, case and spaces aside, a formula column never (`ws_wtable_import_match()`); another column or "(not imported)" may be chosen. Name, status, person keys: `ws_fold()` (`workspace-text-fold.md`).
 - Report (`#ws-wt-import-report`, once): rows added, rows refused with row number (header = 1) and each cell's code, first 100. At `too_many_rows` or any non-cell refusal the rest counts as refused and the import stops.
 - `ws_wtable_row_announce_quiet(true)` for the run: no `workspace.wtable.row.*` event per row (api/ key rule); the catalogue says so.
 

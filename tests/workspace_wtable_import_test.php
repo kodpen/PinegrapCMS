@@ -18,6 +18,16 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
+if (!defined('PG_MCP_ENTRY')) {
+	define('PG_MCP_ENTRY', true);
+}
+
+if (!defined('PG_API_PANEL')) {
+	define('PG_API_PANEL', true);
+}
+
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/refs.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/commands.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtables.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/wtable_screen.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/render.php');
@@ -194,6 +204,37 @@ function test_workspace_wtable_import_cell()
 	// Every converted value passes the store's own check.
 	pg_assert_true(ws_wtable_cell_check($money, ws_wtable_import_cell($money, '€ 1.250,75'))['ok']);
 	pg_assert_true(ws_wtable_cell_check($status, ws_wtable_import_cell($status, 'open'))['ok']);
+}
+
+// A Turkish file written in capitals: İ, I, ı and i are one letter in the
+// keys, so statuses, column names and people match the other spelling.
+function test_workspace_wtable_import_turkish_fold()
+{
+	pg_assert_same(array('Açık', 'AÇIK 2', 'Isı', 'ISI 2'), ws_wtable_import_names(array('Açık', 'AÇIK', 'Isı', 'ISI')), 'a name met before, I and ı aside, gets a number');
+
+	$status = array('type' => 'status', 'options' => array('choices' => array(array('key' => 's1', 'label' => 'Açık', 'color' => ''))));
+	pg_assert_same('s1', ws_wtable_import_cell($status, 'AÇIK'), 'a status by its label in capitals');
+	pg_assert_same('s1', ws_wtable_import_cell($status, 'açik'));
+
+	$columns = array(
+		7 => array('name' => 'İsim', 'type' => 'text'),
+		8 => array('name' => 'Açıklama', 'type' => 'text'),
+	);
+	$match = ws_wtable_import_match(array('İSİM', 'AÇIKLAMA'), $columns);
+	pg_assert_same(array(0 => 7, 1 => 8), $match['map'], 'column names across I/ı and İ/i');
+	pg_assert_same(array(), $match['unmatched']);
+
+	$people = array(ws_fold('Can Yıldız') => 5);
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'CAN YILDIZ', $people), 'a person in capitals');
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'can yildiz', $people));
+
+	$guess = ws_wtable_import_guess(array('Açık', 'AÇIK', 'Kapalı', 'KAPALI', 'açık', 'Kapalı'));
+	pg_assert_same('status', $guess['type']);
+	pg_assert_same(array('Açık', 'Kapalı'), array_column($guess['options']['choices'], 'label'), 'the first spelling met is the label');
+
+	// Plain ASCII keys as before.
+	pg_assert_same(array('Name', 'NAME 2'), ws_wtable_import_names(array('Name', 'NAME')));
+	pg_assert_same(5, ws_wtable_import_cell(array('type' => 'person'), 'Ada Lovelace', array(ws_fold('Ada Lovelace') => 5)));
 }
 
 function test_workspace_wtable_import_row_cells()
