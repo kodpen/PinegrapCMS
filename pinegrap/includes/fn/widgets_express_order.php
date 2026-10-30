@@ -735,8 +735,6 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
                 if ($current === '') {
                     $current = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
                 }
-                $rows = db_items("SELECT code, name FROM countries ORDER BY name ASC");
-                if (!is_array($rows)) $rows = array();
                 // Build child nodes: first an empty "Select…" option, then one per country.
                 $opts = array(array(
                     'type'  => 'semantic',
@@ -744,12 +742,12 @@ function _eo_apply_field_bindings(&$tree, $lf, $ship_rid = 0)
                                      '_attrs' => array(array('name' => 'value', 'value' => ''))),
                     'children' => array(),
                 ));
-                foreach ($rows as $r) {
-                    $attrs = array(array('name' => 'value', 'value' => (string)$r['code']));
-                    if ((string)$r['code'] === $current) $attrs[] = array('name' => 'selected', 'value' => '');
+                foreach (_eo_country_rows() as $r) {
+                    $attrs = array(array('name' => 'value', 'value' => $r['code']));
+                    if ($r['code'] === $current) $attrs[] = array('name' => 'selected', 'value' => '');
                     $opts[] = array(
                         'type'  => 'semantic',
-                        'props' => array('tag' => 'option', 'text' => (string)$r['name'], '_attrs' => $attrs),
+                        'props' => array('tag' => 'option', 'text' => $r['label'], '_attrs' => $attrs),
                         'children' => array(),
                     );
                 }
@@ -2280,17 +2278,9 @@ function _eo_render_billing_country_select($lf)
     if ($current === '') {
         $current = (string)db_value("SELECT code FROM countries WHERE default_selected = 1 ORDER BY id ASC LIMIT 1");
     }
-    // countries table has no `status` column — all rows are considered active.
-    // Named and ordered in the site's language (pg_geo_country_label()).
-    $rows = db_items("SELECT code, name FROM countries");
-    if (!is_array($rows)) $rows = array();
-    $options = array();
-    foreach ($rows as $r) {
-        $options[] = array('code' => (string)$r['code'], 'label' => pg_geo_country_label($r['name'], $r['code']));
-    }
     $html = '<select class="form-select" id="billing_country" name="billing_country" required>'
           . '<option value="">' . h(lang('Select...')) . '</option>';
-    foreach (pg_geo_sort_by_label($options) as $r) {
+    foreach (_eo_country_rows() as $r) {
         $sel = ((string)$r['code'] === $current) ? ' selected' : '';
         $html .= '<option value="' . h($r['code']) . '"' . $sel . '>' . h($r['label']) . '</option>';
     }
@@ -3417,6 +3407,28 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
     }
 }
 
+// ── Helper: countries as the express order lists them ──────────────────────
+// Every country select of the widget (the design-tree select, the billing
+// select and _eo_country_options()) reads this one list, so they cannot
+// drift apart: rows of code and label (pg_geo_country_label(), the stored
+// name in the site's language), ordered by the label
+// (pg_geo_sort_by_label()). The countries table has no `status` column, so
+// all rows are active. Cached per request so a multi-recipient form does
+// not re-query countries once per recipient.
+function _eo_country_rows()
+{
+    static $rows = null;
+    if ($rows === null) {
+        $found = db_items("SELECT code, name FROM countries");
+        $rows = array();
+        foreach (is_array($found) ? $found : array() as $c) {
+            $rows[] = array('code' => (string)$c['code'], 'label' => pg_geo_country_label($c['name'], $c['code']));
+        }
+        $rows = pg_geo_sort_by_label($rows);
+    }
+    return $rows;
+}
+
 // ── Helper: country <option> list keyed by countries.code (NOT id) ──────────
 // CRITICAL: every shipping / billing path downstream — `validate_product_for_destination`,
 // `get_shipping_methods`, `get_tax_rate_for_address`, `ship_tos.country` storage,
@@ -3424,34 +3436,25 @@ function _eo_prefill_shipping_fields($lf, $recipient, $ghost)
 // NOT `countries.id`. The default `select_country()` helper uses ID for value
 // which silently breaks every shipping API call (cart says "this product can't
 // be shipped to your address" because the validator looks up code='233' instead
-// of code='TR'). This helper produces the correct value=CODE markup. Cached
-// statically per request so a multi-recipient form doesn't re-query countries
-// once per recipient.
+// of code='TR'). This helper produces the correct value=CODE markup.
 function _eo_country_options($selected_code = '')
 {
-    static $cache = null;
-    if ($cache === null) {
-        $cache = db_items(
-            "SELECT id, name, code, default_selected
-             FROM countries
-             ORDER BY name"
+    static $default_code = null;
+    if ($default_code === null) {
+        // When no explicit selection, fall back to the country flagged
+        // default_selected — same fallback `select_country()` uses, so the
+        // picker is pre-populated with the site's default country. With more
+        // than one flagged row the first by stored name wins.
+        $default_code = (string)db_value(
+            "SELECT code FROM countries WHERE default_selected = 1 ORDER BY name LIMIT 1"
         );
-        if (!is_array($cache)) $cache = array();
     }
     $sel_code = (string)$selected_code;
-    // When no explicit selection, fall back to the country flagged
-    // default_selected — same fallback `select_country()` uses, so the picker
-    // is pre-populated with the site's default country.
-    $default_code = '';
-    foreach ($cache as $c) {
-        if (!empty($c['default_selected'])) { $default_code = (string)$c['code']; break; }
-    }
     if ($sel_code === '') $sel_code = $default_code;
     $out = '';
-    foreach ($cache as $c) {
-        $code = (string)$c['code'];
-        $out .= '<option value="' . h($code) . '"' . ($code === $sel_code ? ' selected' : '') . '>'
-              . h((string)$c['name'])
+    foreach (_eo_country_rows() as $c) {
+        $out .= '<option value="' . h($c['code']) . '"' . ($c['code'] === $sel_code ? ' selected' : '') . '>'
+              . h($c['label'])
               . '</option>';
     }
     return $out;
