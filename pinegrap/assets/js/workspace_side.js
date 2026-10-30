@@ -617,11 +617,14 @@
             }
 
             // A pin at the end of the line, shown on hover (and always on a
-            // pinned channel), where the screen can pin.
+            // pinned channel), where the screen can pin. It sits inside the
+            // link, so it is a mouse shortcut only, hidden from the link's
+            // name; the keyboard pins from the channel's context menu
+            // (Shift+F10 or the menu key on the link).
             if (channel.joined && (typeof hooks.pin === 'function')) {
                 var pin = el('span', 'ws-pin no-popover' + (channel.pinned ? ' ws-pinned' : ''));
 
-                pin.setAttribute('role', 'button');
+                pin.setAttribute('aria-hidden', 'true');
                 pin.title = channel.pinned ? t('unpin') : t('pin');
                 pin.appendChild(icon(channel.pinned ? 'bi-pin-angle-fill' : 'bi-pin-angle'));
                 pin.addEventListener('click', function (event) {
