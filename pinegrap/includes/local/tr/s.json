@@ -2598,6 +2598,7 @@
     "Subscriptions": "Abonelikler",
     "Subscriptions (filled by the backend — the member's subscriptions with pause, resume, cancel and card update)": "Abonelikler (sunucu doldurur — üyenin abonelikleri; duraklatma, devam ettirme, iptal ve kart güncelleme ile)",
     "Subscriptions (shop sites; hidden when there are none)": "Abonelikler (mağaza siteleri; abonelik yoksa gizlenir)",
+    "Subscriptions are not installed yet: the database has to be updated first.": "Abonelikler henüz kurulmadı: önce veritabanının güncellenmesi gerekiyor.",
     "Subscriptions renew by charging the card stored at the first payment, without 3D Secure. iyzico allows this only after it has approved it for your merchant account: ask iyzico first, then switch this on. While it is off, iyzico takes no subscriptions.": "Abonelikler, ilk ödemede kaydedilen karttan 3D Secure olmadan çekim yapılarak yenilenir. iyzico buna yalnızca üye iş yeri hesabınız için onay verdikten sonra izin verir: önce iyzico'ya başvurun, sonra bunu açın. Kapalıyken iyzico abonelik almaz.",
     "Subtitle": "Alt başlık",
     "Subtle": "Soluk",
