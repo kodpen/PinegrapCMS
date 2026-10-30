@@ -2117,6 +2117,10 @@ function ws_flow_graph_present($graph, $edit = false)
                 $node['config'] = ws_flow_condition_masked($node['config']);
             }
 
+            if (!$edit && in_array((string) $node['kind'], array('row_add', 'row_set'), true)) {
+                $node['config'] = ws_flow_row_box_masked($node['config']);
+            }
+
             $node['config'] = (object) $node['config'];
 
             return $node;
@@ -2124,6 +2128,29 @@ function ws_flow_graph_present($graph, $edit = false)
         'edges' => $graph['edges'],
         'notes' => $graph['notes'],
     );
+}
+
+/**
+ * A table box's settings as a reader who may not change the flow reads
+ * them: the table and the columns it writes, never the row it names nor
+ * the values, which may be a customer's data, as a change box's. Cells the
+ * server cannot read as a JSON object keep nothing. Pure.
+ *
+ * @param array $config ws_step_config_normalize() of row_add or row_set
+ * @return array
+ */
+function ws_flow_row_box_masked($config)
+{
+    if (array_key_exists('row', $config)) {
+        $config['row'] = '';
+    }
+
+    $cells = json_decode((string) ($config['cells'] ?? ''), true);
+    $config['cells'] = is_array($cells)
+        ? (string) json_encode((object) array_fill_keys(array_map('strval', array_keys($cells)), ''), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+        : '';
+
+    return $config;
 }
 
 /**
