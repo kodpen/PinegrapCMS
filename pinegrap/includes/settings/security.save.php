@@ -75,6 +75,14 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // asked about, before anything is written, like Apple's application.
     $captcha_settings_post = function_exists('pg_captcha_settings_check') ? pg_captcha_settings_check($_POST, $liveform) : null;
 
+    // The registration and membership notices go to one address each.
+    foreach (pg_email_field_errors(array(
+        'registration_email_address' => post_value('registration_email_address'),
+        'membership_email_address' => post_value('membership_email_address'),
+    )) as $email_field => $email_error) {
+        $liveform->mark_error($email_field, $email_error);
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }

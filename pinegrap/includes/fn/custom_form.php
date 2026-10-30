@@ -754,8 +754,9 @@ function pg_cf_confirmation_message_or_default($message)
 
 /**
  * What the legacy page screen refuses to save for a custom form: an e-mail
- * that is switched on with nothing to send (plain text without a body, HTML
- * without a page) and a "Next Page" confirmation without a page. Only the
+ * that is switched on with a broken address or with nothing to send (plain
+ * text without a body, HTML without a page) and a "Next Page" confirmation
+ * without a page. Only the
  * 'page' confirmation type needs a page: an empty or missing type is the
  * message, as on submit (pg_cf_confirmation_shows_message()).
  *
@@ -772,8 +773,20 @@ function pg_cf_legacy_settings_errors($settings, $page_exists)
         return isset($settings[$key]) ? (string)$settings[$key] : '';
     };
 
+    // The addresses of each e-mail, one address per box (a blank box is allowed).
+    $addresses = array(
+        'submitter' => array('submitter_email_from_email_address'),
+        'administrator' => array('administrator_email_to_email_address', 'administrator_email_bcc_email_address'),
+    );
+
     foreach (array('submitter' => lang('E-mail Submitter'), 'administrator' => lang('E-mail Administrator')) as $who => $label) {
         if ($value($who . '_email') !== '1') continue;
+
+        $typed = array();
+        foreach ($addresses[$who] as $key) {
+            $typed['custom_form_' . $key] = $value($key);
+        }
+        $errors += pg_email_field_errors($typed);
 
         // custom_form.php sends plain text only for 'plain_text'; anything else is the page.
         if ($value($who . '_email_format') === 'plain_text') {
