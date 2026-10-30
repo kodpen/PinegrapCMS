@@ -1975,13 +1975,6 @@ function get_relative_time($properties)
         $timezone_type = 'site';
     }
     $current_timestamp = time();
-    // If the time format is twelve hour system, then use that format.
-    if (TIME_FORMAT == 'twelve_hours') {
-        $hour_system_format = 'g:i A';
-        // Otherwise the time format is twenty hour system, so use that format.
-    } else {
-        $hour_system_format = 'H:i';
-    }
     // if the timestamp is in the past or right now, then prepare values for the past
     if ($current_timestamp >= $timestamp) {
         $difference_in_seconds = $current_timestamp - $timestamp;
@@ -2081,31 +2074,18 @@ function get_relative_time($properties)
         return $relative_time;
         // Otherwise the format is html, so add time tag with tooltip for absolute time around relative time.
     } else {
-        // If the date format is month and then day, then use that format.
-        if (DATE_FORMAT == 'month_day') {
-            $month_and_day_format = 'M j';
-            // Otherwise the date format is day and then month, so use that format.
-        } else {
-            $month_and_day_format = 'j M';
-        }
-        // If the type is just date, then prepare datetime and title attributes with just the date.
+        // The tooltip is the absolute time for the same moment, drawn by
+        // get_absolute_time() so its day and month names follow the panel
+        // language and its zone follows the same pg_time_uses_user_zone() rule.
+        $title = get_absolute_time(array_merge($properties, array('timestamp' => $timestamp, 'format' => 'plain_text', 'type' => (($type == 'date') ? 'date' : 'date_and_time'), 'size' => 'short', 'year' => true)));
+        // If the type is just date, then the datetime attribute holds just the date.
         if ($type == 'date') {
             $datetime = date('Y-m-d', $timestamp);
-            $title = date('D ' . $month_and_day_format . ' Y', $timestamp);
-            // Otherwise the type is date & time, so prepare datetime and title attributes with both the date and time.
+            // Otherwise the type is date & time, so the datetime attribute holds both.
         } else {
             $datetime = gmdate('Y-m-d\TH:i:s\Z', $timestamp);
-            // If we should output time for site's timezone, then do that.
-            if ($timezone_type == 'site') {
-                $title = date('D ' . $month_and_day_format . ' Y ' . $hour_system_format . ' T', $timestamp);
-                // Otherwise we should output time for user's timezone, so do that.
-            } else {
-                $date = new DateTime('@' . $timestamp);
-                $date->setTimezone(pg_timezone_object(USER_TIMEZONE));
-                $title = $date->format('D ' . $month_and_day_format . ' Y ' . $hour_system_format . ' T');
-            }
         }
-        return '<time datetime="' . $datetime . '" title="' . $title . '">' . $relative_time . '</time>';
+        return '<time datetime="' . $datetime . '" title="' . h($title) . '">' . $relative_time . '</time>';
     }
 }
 // Create function that will allow us to get an absolute time (e.g. Mon Feb 3 2020 12:00 PM CST).
