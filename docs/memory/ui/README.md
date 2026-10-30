@@ -88,6 +88,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - dark-theme-fixed-fills.md: Fixed light colours in panel markup and scripts (label designer, tracks, Chart.js ink, SEO band, chat dot, order tick, menu pictures, comment stars) moved onto theme colours
 - dark-theme-panel-css.md: backend.src.css swept for fixed light fills and dark text after Bootstrap 6: .pg-table-light on tokens (black head text in dark), tone rows' band under the card fill, what stays fixed
 - dark-theme-text-colour.md: Panel text on the page background is fg-body, never fg-black (black in both themes); a menu inside a scrolling table gets data-bs-strategy="fixed"
+- dashboard-card-drag.md: Dashboard card drag: the grip pinned to the right of the header is the only handle, mouse drags at once, touch keeps a short hold, keyboard unchanged
 - dashboard-card-figures.md: Dashboard card figures: the brief's "this week", visitor "Last 12 Months", open-ended offers, currency rates, Activity job rows, job summaries kept out of the site log
 - dashboard-hover-figures.md: Dashboard figures and states printed as text instead of a native title: shipped state, firewall request count and score limit, address and request counts, Search Console basis, Away
 - dashboard-keyboard.md: Dashboard keyboard and screen-reader access: Online Engagement rows, focusable System Status chips and their links, focus kept across the refresh
@@ -287,6 +288,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
+- system-status-gauge-layers.md: System Status gauge (widget 2) as five stacked SVGs: paint order, which layer animates, will-change, the off-screen pause and its redraw guard, reduced motion
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
 - theme-screens.md: Edit Theme, the themes list and Private Label Branding on cards: labelled fields, theme tools in the toolbar, named list marks, the private label switch
 - time-zone-list-labels.md: How the time zone pick lists label and order their zones (offsets computed from the time zone database, renamed places, values unchanged)
