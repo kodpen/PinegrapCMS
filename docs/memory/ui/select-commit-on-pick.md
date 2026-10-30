@@ -16,6 +16,9 @@ description: Selects that save or ask the moment they change (Translations engin
 ## Where does focus go while the AI panel asks?
 - `setBusy(panel, true)` disables the tone and "Try again", which drops focus to the page. It remembers the control inside the panel that had focus and `setBusy(panel, false)` focuses it again, unless focus moved elsewhere meanwhile or the panel was closed.
 
+## Where does focus go after a switch that posts on change?
+- Back to the switch. Cloudflare Tools redirects with `?focus=<switch id>` and draws that switch `autofocus`. Site Log's Show Error Logs switch (`view_log.php`, administrators only) does the same: a POST with neither Delete button redirects with `?focus=error_log_toggle` and the switch prints `autofocus`. Before, focus fell to the page top after every toggle. Pinned by `tests/developer_lock_hint_test.php`.
+
 ## Related
 - Cloudflare Tools switches submit on change too; Ctrl+S is kept off them with `disable_shortcut` (`panel-save-shortcut.md`).
 - Panel-wide filter selects (`pg_filter_select()`) are not covered here.
