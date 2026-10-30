@@ -3298,7 +3298,7 @@ function submit_order($type) {
                 pg_login_set_device_cookie((int) $_SESSION['sessionuserid'], false);
 
                 log_activity(
-                    'user was auto-logged in by order auto-registration',
+                    pg_log_lang(array('string' => 'user was auto-logged in by order auto-registration')),
                     $_SESSION['sessionusername'] ?? '');
             }
         }

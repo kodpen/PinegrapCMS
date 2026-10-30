@@ -964,7 +964,7 @@ function pg_dashboard_activity_logs($limit)
             'sort'  => 'log:' . (int) $row['log_id'],
             'href'  => 'view_log.php',
             'badge' => '<i class="bi bi-journal-text"></i>',
-            'name'  => h(pg_dashboard_log_actor($row['log_user'], $row['log_ip'])),
+            'name'  => h(pg_log_actor($row['log_user'], $row['log_ip'])),
             'meta'  => pg_dashboard_log_meta($row['log_description'], $row['log_ip']),
         );
     }

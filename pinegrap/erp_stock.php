@@ -84,7 +84,7 @@ foreach ($moves as $move) {
             <td class="align-middle text-nowrap"><a class="pg-link-body-emphasis" href="edit_erp_invoice.php?id=' . (int) $move['invoice_id'] . '">' . h($document) . '</a></td>
             <td class="align-middle">' . h($kinds[(string) $move['kind']] ?? (string) $move['kind']) . '</td>
             <td class="align-middle"><a class="pg-link-body-emphasis" href="erp_stock.php?product_id=' . (int) $move['product_id'] . '#erp_stock_moves">' . h($name) . '</a></td>
-            <td class="align-middle">' . h(erp_stock_effect_text($move)) . '</td>
+            <td class="align-middle" data-sort="' . sprintf('%.4F', (((string) $move['direction'] === 'in') ? 1 : -1) * (float) $move['quantity']) . '">' . h(erp_stock_effect_text($move)) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['unit_cost'] . '">' . h(erp_money_out((int) $move['unit_cost'])) . '</td>
             <td class="align-middle text-end text-nowrap" data-sort="' . (int) $move['cost_total'] . '">' . h(erp_money_out((int) $move['cost_total'])) . '</td>
         </tr>';

@@ -91,7 +91,7 @@ $row = mysqli_fetch_row($result);
 $all_comments = $row[0];
 
 
-$search_query = mb_strtolower(($_SESSION['software']['comments']['query'] ?? ''));
+$search_query = pg_search_lower($_SESSION['software']['comments']['query'] ?? '');
 
 // create where clause for sql
 $sql_search = "(LOWER(CONCAT_WS(',',  comments.name,comments.message,user.user_username)) LIKE '" . escape(pg_list_like_pattern($search_query)) . "')";

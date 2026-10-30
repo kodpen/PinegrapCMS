@@ -1,6 +1,6 @@
 ---
 name: site-log-paging
-description: The Site Log (view_log.php) database view paged and searched on the server; the error_log view stays printed whole; what is left of issue #2054
+description: The Site Log (view_log.php): database view paged and searched on the server, the error_log view printed whole, who a row without a user is, the language log lines are written in
 module: site_log_list
 ---
 
@@ -13,7 +13,15 @@ module: site_log_list
 - With "Show Error Logs" on (administrators), entries of the `error_log` files are merged with the database rows and sorted in PHP, and the type buttons filter in the browser; that view prints every row through the same row builder (`pg_site_log_list_row()`), with no `data-pg-list-action`.
 
 ## What does the search box find?
-- Every word in the user, the description or the IP address. The type badge, relative time and "UNKNOWN" (no user) are not searched.
+- Every word in the user, the description or the IP address. The type badge, relative time and the label of a row without a user are not searched.
+
+## Who is a row without a user?
+- `pg_log_actor()` (`includes/fn/forms.php`), the one rule for the Site Log and the dashboard's Activity card: no user (or the literal `UNKNOWN` older writers stored) and no address reads "Scheduled job" (jobs run from the command line, so `log_activity()` stores no address); with an address "Unknown". A row with a user, `[SYSTEM]` error_log entries included, shows it as stored (#3642, issue #3332; before, the list printed a fixed English `UNKNOWN`).
+
+## Which language is a log line written in?
+- The software language, at the time it is written: the description is stored as text, so it is wrapped in `lang()` before `log_activity()` gets it, never passed as bare English (`core/lang-function-syntax.md`: values go in as `{var:N}`).
+- A writer a visitor's request can reach (sign-in, password, cart, checkout, order cancel, photo gallery) uses `pg_log_lang()` with lang()'s array form: on a page drawn in another site language (`FRONTEND_LANGUAGE`) it holds `pg_tr_suspend()` so the line still takes the software language. Panel screens and jobs use `lang()`.
+- `tests/site_log_language_test.php` lists the writers moved over and fails on a bare literal in them; the rest is `plans/site-log-language.md`.
 
 ## What is left of #2054?
 - The main menu panels' markup (`data-bs-content`, about 170 KB on every panel screen), the Repair Software permission scan (`pg_update_permissions_block()`, 3.4 s on each visit), `sitemap.xml` built on every request, and serving minified panel JS/CSS.

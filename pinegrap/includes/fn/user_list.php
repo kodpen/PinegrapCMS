@@ -162,7 +162,7 @@ function pg_user_list_view($user, $filter)
         'member_user'   => 'contacts.member_id',
         'site_manager'  => 'user.user_role',
         'site_designer' => 'user.user_role',
-        'start_page'    => 'user.user_home',
+        'start_page'    => 'start_page.page_name',
         'last_modified' => 'user.user_timestamp',
         'last_online'   => 'user.user_online_timestamp',
     );

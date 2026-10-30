@@ -89,9 +89,9 @@ if (defined('VERSION') && VERSION === '2026') {
         // 4. Layouts
         copy_and_verify($baseDir . '/layouts', $dataDir . '/layouts');
 
-        log_activity("Pre-upgrade preparation completed and verified", $_SESSION['sessionusername']);
+        log_activity(lang('Pre-upgrade preparation completed and verified'), $_SESSION['sessionusername']);
     } catch (Exception $e) {
-        log_activity("Pre-upgrade preparation failed: " . $e->getMessage(), $_SESSION['sessionusername']);
+        log_activity(lang(array('string' => 'Pre-upgrade preparation failed: {var:1}', 'vars' => array($e->getMessage()))), $_SESSION['sessionusername']);
         $liveform->remove_form();
 	    include_once('liveform.class.php');
 	    $liveform = new liveform('settings');

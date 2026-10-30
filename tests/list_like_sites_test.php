@@ -34,7 +34,7 @@ function test_list_like_sites_bind_no_raw_pattern()
 		$source = file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
 
 		pg_assert_same(0, preg_match('/LIKE \'%" \. escape\(/', $source), $file . ': raw LIKE pattern in the query');
-		pg_assert_same(0, preg_match('/\'%\' \. (?:mb_strtolower\()?\$[a-z_]+\)? \. \'%\'/', $source), $file . ': raw LIKE pattern as a value');
+		pg_assert_same(0, preg_match('/\'%\' \. (?:\$[a-z_]+|[a-z_]+\(.*?\)) \. \'%\'/', $source), $file . ': raw LIKE pattern as a value');
 		pg_assert_true(strpos($source, 'pg_list_like_pattern(') !== false, $file . ': pattern from pg_list_like_pattern()');
 	}
 }

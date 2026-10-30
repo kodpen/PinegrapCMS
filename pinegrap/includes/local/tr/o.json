@@ -945,6 +945,8 @@
     "Order #": "Sipariş #",
     "Order #{var:1}": "Sipariş #{var:1}",
     "Order #{var:1} already has delivery note {var:2}.": "#{var:1} numaralı siparişin zaten {var:2} numaralı irsaliyesi var.",
+    "Order #{var:1} cancelled by admin (user ID {var:2}).": "#{var:1} numaralı sipariş yönetici tarafından iptal edildi (kullanıcı kimliği {var:2}).",
+    "Order #{var:1} cancelled by customer (user ID {var:2}).": "#{var:1} numaralı sipariş müşteri tarafından iptal edildi (kullanıcı kimliği {var:2}).",
     "Order #{var:1} has been cancelled.": "#{var:1} numaralı sipariş iptal edildi.",
     "Order #{var:1} · {var:2}": "Sipariş #{var:1} · {var:2}",
     "Order #{var:1}: {var:2}": "Sipariş #{var:1}: {var:2}",

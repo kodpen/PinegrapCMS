@@ -716,7 +716,7 @@ foreach ($email_campaigns as $email_campaign_id) {
 
 // if e-mail campaign job e-mailed at least 1 recipient, then log action
 if ($count > 0) {
-    log_activity('e-mail campaign job sent e-mail(s) to ' . $count . ' recipient(s)', $_SESSION['sessionusername']);
+    log_activity(lang(array('string' => 'e-mail campaign job sent e-mail(s) to {var:1} recipient(s)', 'vars' => array($count))), $_SESSION['sessionusername']);
 }
 
 // Scheduled-task health: record that this job finished. See pg_cron_ran().

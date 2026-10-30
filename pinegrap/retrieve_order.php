@@ -140,6 +140,6 @@ function retrieve_order($request) {
                 AND (order_retrieved = '0')");
     }
 
-    log_activity('The ' . $order_label . ' was retrieved (' . $reference_code . ').');
+    log_activity(pg_log_lang(array('string' => 'The {var:1} was retrieved ({var:2}).', 'vars' => array($order_label, $reference_code))));
     return success_response('The ' . $order_label . ' was retrieved.');
 } 

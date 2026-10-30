@@ -136,9 +136,9 @@ function update_product_group_status($properties) {
         WHERE id = '" . e($id) . "'");
 
     if ($status == 'enabled') {
-        log_activity('product group (' . $product_group['name'] . ') and all items in it were enabled');
+        log_activity(lang(array('string' => 'product group ({var:1}) and all items in it were enabled', 'vars' => array($product_group['name']))));
     } else {
-        log_activity('product group (' . $product_group['name'] . ') and all appropriate items in it were disabled');
+        log_activity(lang(array('string' => 'product group ({var:1}) and all appropriate items in it were disabled', 'vars' => array($product_group['name']))));
     }
 
     return $items;

@@ -727,7 +727,7 @@ function pg_iys_run()
         pg_audit_as_job($was);
 
         if ($push['pushed'] > 0) {
-            log_activity('İYS dry run: ' . $push['pushed'] . ' e-mail consent answer(s) would be pushed (consent log rows ' . ($app['push_id'] + 1) . '-' . $push['last_id'] . ').', 'UNKNOWN');
+            log_activity(lang(array('string' => 'İYS dry run: {var:1} e-mail consent answer(s) would be pushed (consent log rows {var:2}-{var:3}).', 'vars' => array($push['pushed'], $app['push_id'] + 1, $push['last_id']))), 'UNKNOWN');
         }
 
         return array('ran' => true, 'reason' => 'dry_run', 'push' => $push, 'pull' => null);
@@ -737,8 +737,9 @@ function pg_iys_run()
     pg_audit_as_job($was);
 
     if ($push['rejected'] || ($push['error'] !== '') || ($pull['error'] !== '')) {
-        log_activity('İYS: ' . $push['pushed'] . ' consent(s) pushed, ' . $push['rejected'] . ' refused by İYS, '
-            . $pull['refused'] . ' refusal(s) pulled. ' . trim($push['error'] . ' ' . $pull['error']), 'UNKNOWN');
+        log_activity(lang(array(
+            'string' => 'İYS: {var:1} consent(s) pushed, {var:2} refused by İYS, {var:3} refusal(s) pulled. {var:4}',
+            'vars' => array($push['pushed'], $push['rejected'], $pull['refused'], trim($push['error'] . ' ' . $pull['error'])))), 'UNKNOWN');
     }
 
     return array('ran' => true, 'reason' => 'live', 'push' => $push, 'pull' => $pull);

@@ -305,7 +305,7 @@ function pg_delete_page_record($page_id, $user)
             if ($still_used == 0) {
                 db("DELETE FROM files WHERE id = '" . e($attachment['id']) . "'");
                 @unlink(FILE_DIRECTORY_PATH . '/' . $attachment['name']);
-                log_activity('file attachment (' . $attachment['name'] . ') for a comment was deleted because the page (' . $page_name . ') was deleted', $_SESSION['sessionusername']);
+                log_activity(lang(array('string' => 'file attachment ({var:1}) for a comment was deleted because the page ({var:2}) was deleted', 'vars' => array($attachment['name'], $page_name))), $_SESSION['sessionusername']);
             }
         }
     }

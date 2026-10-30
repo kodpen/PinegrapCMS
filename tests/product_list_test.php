@@ -181,3 +181,34 @@ function test_product_list_zone_cells()
 	pg_assert_contains('Asia,<br />US', $html);
 	pg_assert_same(substr_count(pg_product_list_headings($view), '<th'), count($row['cells']));
 }
+
+function test_product_list_sort_sql_needs_no_join()
+{
+	// The export reads products alone, so no sort may name a join alias or
+	// a SELECT alias of the list query.
+	foreach (pg_product_list_sort_sql() as $code => $sql) {
+		if ($code === 'impact') {
+			continue;
+		}
+
+		$outside = preg_replace('/\(SELECT [^()]* FROM (page|contact_groups|folder) WHERE [a-z_]+\.[a-z_]+ = products\.[a-z_]+\)/', '', $sql);
+		pg_assert_false((bool) preg_match('/(?<![\w.])(user|contact_groups|email_page|page|folder)\./', $outside), $code . ' names a joined table');
+		pg_assert_false(in_array($sql, array('contact_group_name', 'start_page', 'private_folder', 'email_page', 'user'), true), $code . ' names a SELECT alias');
+	}
+}
+
+function test_product_list_sort_sql_follows_the_cell()
+{
+	$sql = pg_product_list_sort_sql();
+	pg_assert_same("IF(products.inventory = '1', products.inventory_quantity, NULL)", $sql['inventory_quantity'], 'an untracked product shows a dash and sorts as none');
+	pg_assert_same('(SELECT page_name FROM page WHERE page.page_id = products.email_page)', $sql['email_page'], 'the page name the cell shows');
+	pg_assert_same('(SELECT name FROM contact_groups WHERE contact_groups.id = products.contact_group_id)', $sql['contact_group']);
+	pg_assert_same('(SELECT page_name FROM page WHERE page.page_id = products.send_to_page)', $sql['set_start_page']);
+	pg_assert_same('(SELECT folder_name FROM folder WHERE folder.folder_id = products.private_folder)', $sql['grant_private_access']);
+}
+
+function test_user_list_start_page_sorts_by_name()
+{
+	$source = file_get_contents(PG_FUNCTIONS_DIR . '/includes/fn/user_list.php');
+	pg_assert_true(strpos($source, "'start_page'    => 'start_page.page_name'") !== false, 'the Start Page heading sorts by the page name it shows');
+}

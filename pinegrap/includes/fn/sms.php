@@ -54,12 +54,25 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  *               (the provider's refusal code => 'password' or 'user', the
  *               field a refused account check marks; 'user' when not
  *               listed), user_sends (the user code is a sender name too,
- *               listed or not)
+ *               listed or not), sender_label, sender_maxlength,
+ *               sender_pattern (a regular expression a sender must match, ''
+ *               for a sender name of up to sender_maxlength characters),
+ *               sender_error (the sentence a sender that does not fit gets),
+ *               sender_compact (spaces, dashes, dots and brackets are
+ *               dropped from a typed sender, as in a copied phone number)
  */
 function pg_sms_providers()
 {
     $netgsm = pg_sms_portal_link('Netgsm', 'https://www.netgsm.com.tr/');
     $iletimerkezi = pg_sms_portal_link('İleti Merkezi', 'https://www.iletimerkezi.com/');
+    $twilio = pg_sms_portal_link('Twilio', 'https://www.twilio.com/');
+    $sender_name = array(
+        'sender_label'     => lang('Sender Name'),
+        'sender_maxlength' => 11,
+        'sender_pattern'   => '',
+        'sender_error'     => lang('A sender name has at most 11 characters.'),
+        'sender_compact'   => false,
+    );
 
     return array(
         'netgsm' => array(
@@ -73,7 +86,7 @@ function pg_sms_providers()
                 'vars'   => array($netgsm))),
             'refused_fields' => array('30' => 'password'),
             'user_sends'     => true,
-        ),
+        ) + $sender_name,
         'iletimerkezi' => array(
             'label'          => 'İleti Merkezi',
             'file'           => 'iletimerkezi.php',
@@ -85,6 +98,23 @@ function pg_sms_providers()
                 'vars'   => array($iletimerkezi))),
             'refused_fields' => array('401' => 'password'),
             'user_sends'     => false,
+        ) + $sender_name,
+        'twilio' => array(
+            'label'            => 'Twilio',
+            'file'             => 'twilio.php',
+            'portal'           => 'https://www.twilio.com/',
+            'user_label'       => lang('Account SID'),
+            'password_label'   => lang('Auth Token'),
+            'help'             => lang(array(
+                'string' => 'Enter the Account SID and Auth Token of your {var:1} account (Console › Account Info) and, as the sender, one of its phone numbers in international form (+14155550100) or a Messaging Service SID (MG…). Saving checks them with {var:1}. {var:1} sends to every country its geographic permissions allow; a number typed without a country code is read as a Turkish one. To remove the account from this site, switch SMS off and empty the Account SID.',
+                'vars'   => array($twilio))),
+            'refused_fields'   => array('20003' => 'password'),
+            'user_sends'       => false,
+            'sender_label'     => lang('Sender'),
+            'sender_maxlength' => 34,
+            'sender_pattern'   => '/^(\+[1-9]\d{6,14}|MG[0-9a-fA-F]{32})$/D',
+            'sender_error'     => lang('The sender is a phone number of the Twilio account in international form (+14155550100) or a Messaging Service SID (MG followed by 32 characters).'),
+            'sender_compact'   => true,
         ),
     );
 }
@@ -1105,17 +1135,44 @@ function pg_sms_post($post, $name)
 }
 
 /**
- * Whether a sender name can be one: at most eleven characters, no control
- * characters. The provider's list is what says it is approved.
+ * Whether a sender can be one on a provider: the provider's pattern (Twilio:
+ * a phone number or a Messaging Service SID), otherwise a sender name of at
+ * most eleven characters with no control characters. The provider's list is
+ * what says it is approved.
  *
  * @param string $sender
+ * @param string $provider a pg_sms_providers() key; '' for a sender name
  * @return bool
  */
-function pg_sms_sender_valid($sender)
+function pg_sms_sender_valid($sender, $provider = '')
 {
     $sender = (string) $sender;
+    $definition = pg_sms_provider_definition($provider);
+
+    if (($definition !== null) && ($definition['sender_pattern'] !== '')) {
+        return (bool) preg_match($definition['sender_pattern'], $sender);
+    }
 
     return ($sender !== '') && (mb_strlen($sender, 'UTF-8') <= 11) && !preg_match('/[\x00-\x1F\x7F]/', $sender);
+}
+
+/**
+ * A typed sender as it is checked and stored: a phone number copied with
+ * spaces or dashes loses them where the provider says so (sender_compact).
+ *
+ * @param string $sender
+ * @param string $provider
+ * @return string
+ */
+function pg_sms_sender_typed($sender, $provider)
+{
+    $definition = pg_sms_provider_definition($provider);
+
+    if (($definition !== null) && $definition['sender_compact']) {
+        return (string) preg_replace('/[\s\-.()]+/u', '', (string) $sender);
+    }
+
+    return (string) $sender;
 }
 
 /**
@@ -1290,8 +1347,8 @@ function pg_sms_settings_account_fields($provider, $definition, $app)
                                                             <input type="password" name="' . h($name) . 'password" id="' . h($name) . 'password" class="form-control" value="" maxlength="255" autocomplete="new-password"' . $placeholder . '/>
                                                         </div>
                                                         <div class="pg-f-sm">
-                                                            <label for="' . h($name) . 'sender" class="form-label">' . lang('Sender Name') . '</label>
-                                                            <input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="form-control" value="' . h($app['sender']) . '" maxlength="11" autocomplete="off"/>
+                                                            <label for="' . h($name) . 'sender" class="form-label">' . h($definition['sender_label']) . '</label>
+                                                            <input type="text" name="' . h($name) . 'sender" id="' . h($name) . 'sender" class="form-control" value="' . h($app['sender']) . '" maxlength="' . (int) $definition['sender_maxlength'] . '" autocomplete="off"/>
                                                         </div>';
 }
 
@@ -1346,7 +1403,7 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
         'provider'           => $provider,
         'user'               => pg_sms_post($post, $name . 'user'),
         'password'           => pg_sms_post($post, $name . 'password'),
-        'sender'             => pg_sms_post($post, $name . 'sender'),
+        'sender'             => pg_sms_sender_typed(pg_sms_post($post, $name . 'sender'), $provider),
         'enabled'            => !empty($post['sms_enabled']),
         'action'             => 'none',
         'ask'                => false,
@@ -1420,9 +1477,9 @@ function pg_sms_settings_decide($post, $provider, $before, $refusal)
     }
 
     if ($decision['sender'] === '') {
-        $decision['marks'][$name . 'sender'] = lang(array('string' => '{var:1} is required.', 'vars' => array(lang('Sender Name'))));
-    } elseif (!pg_sms_sender_valid($decision['sender'])) {
-        $decision['marks'][$name . 'sender'] = lang('A sender name has at most 11 characters.');
+        $decision['marks'][$name . 'sender'] = lang(array('string' => '{var:1} is required.', 'vars' => array(h($definition['sender_label']))));
+    } elseif (!pg_sms_sender_valid($decision['sender'], $provider)) {
+        $decision['marks'][$name . 'sender'] = $definition['sender_error'];
     }
 
     $decision['ask'] = !$decision['marks'];

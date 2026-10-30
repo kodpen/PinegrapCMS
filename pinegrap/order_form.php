@@ -60,7 +60,7 @@ $folder_id = $row['folder_id'];
 
 // If visitor does not have view access to the order that he/she claimed they submitted, log and output error.
 if (check_view_access($folder_id) == false) {
-    log_activity('access denied to submit order form (' . $page_name . ') because visitor does not have access to view order form', $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string' => 'access denied to submit order form ({var:1}) because visitor does not have access to view order form', 'vars' => array($page_name))), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to submit this order form.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
