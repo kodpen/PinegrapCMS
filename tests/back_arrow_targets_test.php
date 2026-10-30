@@ -75,3 +75,44 @@ function test_back_arrow_referral_sources_has_none()
 {
 	pg_assert_same('', back_arrow_targets_cancel_line('view_referral_sources.php'), 'a Site Settings list prints no arrow, like All Currencies');
 }
+
+// Every 'cancel' line of a screen (Edit Field prints one per branch).
+function back_arrow_targets_cancel_lines($file)
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+	preg_match_all("/'cancel'\\s*=>[^\\n]*/", $source, $matches);
+
+	return $matches[0];
+}
+
+function test_back_arrow_fields_keep_form_type_and_send_to()
+{
+	foreach (array('edit_field.php' => 2, 'add_field.php' => 1) as $file => $count) {
+		$lines = back_arrow_targets_cancel_lines($file);
+
+		pg_assert_same($count, count($lines), $file . ' prints its arrow in every branch');
+
+		foreach ($lines as $line) {
+			pg_assert_contains("'url' => \$pg_back_arrow_url", $line, $file . ' arrow uses the url built like its Save');
+		}
+
+		$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+
+		pg_assert_contains("\$pg_back_arrow_url = 'view_fields.php?' . \$form_type_identifier_id . '=' . urlencode(", $source, $file . ' goes back to the fields of its form');
+		pg_assert_contains(". pg_field_form_express_query(\$page_type, \$form_type) . '&send_to=' . urlencode(", $source, $file . ' keeps the Express Order form type and send_to like its Save');
+	}
+}
+
+function test_back_arrow_visit_details_goes_to_its_report()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/view_visitor.php');
+
+	pg_assert_contains("'url' => \$pg_back_arrow_url", back_arrow_targets_cancel_line('view_visitor.php'), 'Visit Details arrow goes to its breadcrumb parent');
+	pg_assert_contains("\$pg_back_arrow_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_visitor_report.php?id=' . (int) \$_GET['visitor_report_id']", $source, 'Visit Details goes back to the Visitor Report that opened it');
+}
+
+function test_back_arrow_edit_calendar_goes_to_the_calendar()
+{
+	pg_assert_contains("'url' => 'calendars.php?calendar_id=' . (int) \$_GET['id']", back_arrow_targets_cancel_line('edit_calendar.php'), 'Edit Calendar Properties goes back to that calendar like its Save');
+}
