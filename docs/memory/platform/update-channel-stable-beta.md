@@ -15,6 +15,6 @@ description: Update channel (stable/beta): config key, the three channel functio
 ## How is the channel switched?
 - Via Settings -> General (the updater screen redirects back to settings when there is no update, so it cannot be changed from there). On change: reset `software_update_available` + `last_software_update_check_timestamp` and delete the pending `software_update` notification (the old answer came from the other channel).
 - Beta -> stable does NOT download a version: schema cannot be rolled back, writing files back would leave the DB ahead. The site stays on its installed version; the update appears once the stable release passes it.
-- Version comparison is three-part numeric (`explode('.')`), so beta packages must also be numbered `major.minor.maintenance`; `2026.4.5-beta1` cannot be compared.
+- Version comparison is three-part numeric (`explode('.')`), so beta packages must also be numbered `major.minor.maintenance`; `2026.4.5-beta1` cannot be compared. With the Kodpen API a beta build carries its release's number and a build id; which build runs is in `data/update_build.json` (`update-beta-builds.md`).
 
 Related: docs/memory/platform/update-package-extraction.md

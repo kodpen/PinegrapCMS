@@ -567,6 +567,10 @@ function pg_panel_software_update($request, $action)
                     ));
                 }
 
+                // The verified manifest's git_ref, for the build file the
+                // replace step writes.
+                $_SESSION['software']['update'] = $download['pin'];
+
                 respond(array(
                     'status' => 'success',
                     'message' => lang('Files overwriting...')
@@ -770,6 +774,9 @@ function pg_panel_software_update($request, $action)
                 }
 
                 $filename = pg_vendor_update_package_path($pin['package_file']);
+
+                // Read before the new files can change what counts.
+                $installed_build = pg_update_build_read()['build'];
             }
             // Unzip path
             $path = _PATH . "/../";
@@ -819,6 +826,20 @@ function pg_panel_software_update($request, $action)
 
             if (!$pg_update_opcache['cleared'] && ($pg_update_opcache['running'] === true)) {
                 log_activity(lang('software update: the bytecode cache could not be cleared - run Purge Cache if the update does not take effect'));
+            }
+
+            // Another build of the running version runs its upgrade steps
+            // again; the build file then names what is installed.
+            if (PG_VENDOR_API_V1 === true) {
+                $build_error = pg_vendor_update_record_build($pin, $installed_build);
+
+                if ($build_error !== '') {
+                    log_activity(lang(array('string' => 'software update {var:1}: {var:2}', 'vars' => array($pin['version'], $build_error))));
+                    respond(array(
+                        'status' => 'error',
+                        'message' => $build_error
+                    ));
+                }
             }
 
             $query = "DELETE FROM notifications WHERE action = 'software_update'";
