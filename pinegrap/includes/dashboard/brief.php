@@ -1093,7 +1093,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     // arrives every time is an instruction.
     $greeting_tips = array_map('h', array(
         lang('Search opens on Ctrl+K from anywhere, if you would rather not reach for the mouse.'),
-        lang('Did you know the widgets can be dragged around by their headers?'),
+        lang('Did you know the widgets can be dragged by the grip at the right of their headers?'),
         lang('If you prefer the light theme, choose Light under Appearance in My Menu at the top right.'),
     ));
 

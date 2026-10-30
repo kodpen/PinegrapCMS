@@ -19,6 +19,6 @@ description: The panel loads no jQuery UI (#2762): what is undefined on panel sc
 
 ## What keeps it out?
 - `tests/bs6_jquery_ui_panel_test.php`: the header prints no `Jquery/ui/` file, and no PHP or JS file outside its site and theme designer list calls a jQuery UI widget chained off a call (`).dialog(`, `).effect(` …) or `$.ui` / `$.widget`. A new site renderer that uses jQuery UI joins the list.
-- The same test keeps `assets/css/backend.src.css` free of `.ui-*` / `#ui-*` selectors (comments ignored). The dashboard widget's grab cursor is welcome.php's own `.pg-widget-handle`.
+- The same test keeps `assets/css/backend.src.css` free of `.ui-*` / `#ui-*` selectors (comments ignored). The dashboard grip's grab cursor is `.pg-widget-move` in `backend.src.css`.
 
 Related: docs/memory/ui/bootstrap-6.md, docs/memory/ui/pg-ui-adapter.md, docs/memory/ui/sortable-init-pitfall.md

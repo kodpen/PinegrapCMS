@@ -1133,7 +1133,20 @@ function pg_dashboard_widget_2($request, $user)
             <div class="pg-split-half pg-split-pinned">
                 <div class="pg-health" style="' . $health_vars . '">
                     <div class="pg-health-dial">
-                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $health_score))) . '">
+                        <!--
+                            Five SVGs stacked in one box, all on the same
+                            viewBox, painted in this order: the groove with
+                            the shared defs, the bloom, the glow, the static
+                            halo, and on top the cells and the hairline. A
+                            filter in the same SVG as animating content is
+                            redrawn with it every frame, so the three blurs
+                            live in layers of their own and only the top SVG,
+                            which holds no filter, repaints as the cells
+                            twinkle. url(#id) resolves across inline SVGs of
+                            one document, so the layers above use the defs
+                            written here.
+                        -->
+                        <svg class="pg-health-layer pg-health-layer-base" viewBox="8 8 124 72" aria-hidden="true" focusable="false">
                             <defs>
                                 <!--
                                     userSpaceOnUse so the axis can sit
@@ -1185,20 +1198,12 @@ function pg_dashboard_widget_2($request, $user)
                                     <stop offset="' . $health_marks[3] . '%" stop-color="var(--pg-health-s4)"/>
                                 </linearGradient>
                                 <!--
-                                    The bar itself, as a shape rather
-                                    than as a stroke, so the grid of
-                                    squares can be cut by it.
-                                -->
-                                <clipPath id="pg_health_cell_clip" clipPathUnits="userSpaceOnUse">
-                                    <path d="' . $health_clip . '"/>
-                                </clipPath>
-                                <!--
                                     The glow is a blurred copy of the arc
                                     rather than a drop-shadow, because a
                                     drop-shadow takes one colour and the arc
                                     has four: blurring the stroke itself
                                     keeps the glow the colour of whatever it
-                                    is under. .pg-health-gauge is
+                                    is under. .pg-health-layer is
                                     overflow:visible so the blur is not
                                     clipped at the viewBox edge.
                                 -->
@@ -1233,12 +1238,18 @@ function pg_dashboard_widget_2($request, $user)
                                 </filter>
                             </defs>
                             ' . $health_groove . '
+                        </svg>
+                        <svg class="pg-health-layer pg-health-layer-bloom" viewBox="8 8 124 72" aria-hidden="true" focusable="false">
                             <circle class="pg-health-bloom" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
                                     filter="url(#pg_health_bloom)"
                                     stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                        </svg>
+                        <svg class="pg-health-layer pg-health-layer-glow" viewBox="8 8 124 72" aria-hidden="true" focusable="false">
                             <circle class="pg-health-glow" cx="70" cy="70" r="52" stroke-width="10" stroke="url(#pg_health_gradient)"
                                     filter="url(#pg_health_glow)"
                                     stroke-dasharray="' . round($health_arc * $health_score / 100, 2) . ' 326.73"></circle>
+                        </svg>
+                        <svg class="pg-health-layer pg-health-layer-halo" viewBox="8 8 124 72" aria-hidden="true" focusable="false">
                             <!--
                                 The halo, and it is NOT clipped: this is
                                 the light the squares throw PAST the bar,
@@ -1246,18 +1257,28 @@ function pg_dashboard_widget_2($request, $user)
                                 showing through it rather than as tiles
                                 sitting on it.
 
-                                It does not breathe with them either. A
-                                filter is recomputed whenever what it
-                                filters changes, so a blurred copy of
-                                three hundred animating squares would
+                                It does not breathe with them either: a
+                                blurred copy of the animating squares would
                                 re-run a blur over the whole bar every
-                                frame. Held still, the blur is computed
-                                once and reused, and what it gives --
-                                light in the gaps -- is ambient anyway:
-                                it is the panel being lit, not the pixel.
+                                frame. Held still, in its own SVG, it is
+                                drawn once, and what it gives -- light in
+                                the gaps -- is ambient anyway: it is the
+                                panel being lit, not the pixel.
                             -->
                             <g class="pg-health-cell-glow" fill="url(#pg_health_gradient_m)"
                                filter="url(#pg_health_cell_glow)">' . $health_glow_cells . '</g>
+                        </svg>
+                        <svg class="pg-health-gauge" viewBox="8 8 124 72" role="img" aria-label="' . h(lang('Overall System Health')) . ' ' . h(lang(array('string' => '{var:1}%', 'vars' => (int) $health_score))) . '">
+                            <defs>
+                                <!--
+                                    The bar itself, as a shape rather
+                                    than as a stroke, so the grid of
+                                    squares can be cut by it.
+                                -->
+                                <clipPath id="pg_health_cell_clip" clipPathUnits="userSpaceOnUse">
+                                    <path d="' . $health_clip . '"/>
+                                </clipPath>
+                            </defs>
                             <g class="pg-health-cells" fill="url(#pg_health_gradient_m)"
                                clip-path="url(#pg_health_cell_clip)">' . $health_cells . '</g>
                             <!--
@@ -1275,6 +1296,22 @@ function pg_dashboard_widget_2($request, $user)
                         </div>
                     </div>
                 </div>
+                <script>(function(){
+                  // An off-screen dial stops its twinkle and breathing. One
+                  // observer for the page: a redraw of this widget disconnects
+                  // the old one before watching the new markup. A hidden tab
+                  // gets no animation frames anyway.
+                  if (!("IntersectionObserver" in window)) { return; }
+                  if (window.pgHealthObserver) { window.pgHealthObserver.disconnect(); }
+                  window.pgHealthObserver = new IntersectionObserver(function(entries){
+                    entries.forEach(function(entry){
+                      entry.target.classList.toggle("is-paused", !entry.isIntersecting);
+                    });
+                  });
+                  document.querySelectorAll(".pg-health-dial").forEach(function(dial){
+                    window.pgHealthObserver.observe(dial);
+                  });
+                })();</script>
                 <div class="pg-checks pg-split-scroll">
                     ' . $output_checks . '
                 </div>

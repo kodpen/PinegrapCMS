@@ -5742,6 +5742,38 @@ div#software_image_picker_container {
   opacity: 1;
 }
 
+/* The drag grip (welcome.php, role < 2) sits at the right end of every header,
+   in the same place on every card, and is the only place a drag starts. Out of
+   the flow, so the centred title is centred on the card, not on what is left
+   beside the grip. Faint until the card is hovered or the grip has focus, but
+   never hidden: a touch screen has no hover. A header action moves left of it. */
+.widget .card-header .pg-widget-move {
+  position: absolute;
+  top: 50%;
+  right: 0.5rem;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--pg-radius);
+  line-height: 1;
+  opacity: 0.45;
+  cursor: grab;
+  touch-action: none;
+}
+.widget .card-header .pg-widget-move:active {
+  cursor: grabbing;
+}
+.widget:hover .card-header .pg-widget-move,
+.widget .card-header .pg-widget-move:focus-visible {
+  opacity: 1;
+}
+.widget .card-header .pg-widget-move ~ .pg-widget-action {
+  right: 2.25rem;
+}
+
 .pg-row-heading .pg-row-aside {
   margin-left: auto;
   font-weight: 400;
@@ -6038,7 +6070,7 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
   padding: 0.875rem 1rem 0.125rem;
   text-align: center;
 }
-.pg-health-gauge circle,
+.pg-health-dial circle,
 .pg-health-gauge {
   overflow: visible;
 }
@@ -6056,16 +6088,32 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
   max-width: 12.5rem;
   margin: 0 auto;
 }
+/* The top SVG -- cells and hairline, no filter -- stays in the flow and gives
+   the dial its height; position:relative paints it over the absolute layers
+   that precede it. Its own compositing layer means the cells repainting every
+   frame never invalidate the blurred layers under it. */
 .pg-health-gauge {
+  position: relative;
   display: block;
   width: 100%;
+  will-change: transform;
+}
+/* The four SVGs under it (groove and defs, bloom, glow, halo) cover the same
+   box on the same viewBox, so they line up with the top one unit for unit. */
+.pg-health-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
 }
 /* No transform here any more. The half turn that puts the drawn half on top is
    folded into the coordinates api.php writes, because a clip on a transformed
    element is resolved in the space the element was WRITTEN in, not the space it
    ends up in -- and the squares are clipped by the bar now. The gradient is
    mirrored there for the same reason. */
-.pg-health-gauge circle {
+.pg-health-dial circle {
   fill: none;
   stroke-linecap: round;
   /* A circle path starts at 3 o'clock and runs clockwise, so half a turn puts
@@ -6103,17 +6151,14 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
    which is exactly where the squares are. Whatever light is under a square is
    light that stays lit while the square dims, so the twinkle was being read
    against a lamp rather than against the card. */
-/* Each carries the two ends of its own breath as well as the value it rests
-   at. The still value is what a reduced-motion visitor sees, and it sits
-   between the two rather than at either end. */
-.pg-health-glow {
-  --pg-glow-lo: 0.52;
-  --pg-glow-hi: 0.72;
+/* The strength sits on the layer SVG that holds each one, not on the filtered
+   circle, so the breathing below changes a composited layer's opacity and the
+   blur inside is drawn once. The rest value is what a reduced-motion visitor
+   sees, and it sits between the two ends of the breath rather than at either. */
+.pg-health-layer-glow {
   opacity: 0.62;
 }
-.pg-health-bloom {
-  --pg-glow-lo: 0.31;
-  --pg-glow-hi: 0.5;
+.pg-health-layer-bloom {
   opacity: 0.4;
 }
 html[data-bs-theme="light"] .pg-health-track {
@@ -6133,15 +6178,13 @@ html[data-bs-theme="light"] .pg-health-track {
    So on white the same bar is drawn rather than lit: no bloom at all, a
    quarter of the glow, a wash thin enough that the gaps read as page, and a
    cell that never fades below half. */
-html[data-bs-theme="light"] .pg-health-bloom {
+html[data-bs-theme="light"] .pg-health-layer-bloom {
   /* Not merely faint -- absent. A wide blur on white is fog whatever its
      opacity, and it is fog sitting exactly where the four hues have to be
      told apart. */
   display: none;
 }
-html[data-bs-theme="light"] .pg-health-glow {
-  --pg-glow-lo: 0.11;
-  --pg-glow-hi: 0.21;
+html[data-bs-theme="light"] .pg-health-layer-glow {
   opacity: 0.16;
 }
 /* A cell at a tenth over a white page is gone. The floor comes up so the cell
@@ -6422,32 +6465,62 @@ html[data-bs-theme="light"] .pg-health {
      never comes back into step -- a swell the squares twinkle inside of,
      rather than a second rhythm to notice.
 
-     These two are filtered, and a filter is re-run when what it filters
-     changes. What changes here is the opacity of the RESULT, which is applied
-     after the blur, so the blur itself is computed once and reused. */
-  .pg-health-glow,
-  .pg-health-bloom {
-    animation-name: pg-health-breathe;
+     A filter in the same SVG as animating content is redrawn every frame, so
+     the breath runs on the layer SVG around each blurred circle: the layer is
+     composited (will-change) and only its opacity changes, the blur inside it
+     is drawn once. Literal values per layer and theme, so nothing in the
+     keyframes has to be resolved again each frame. */
+  .pg-health-layer-glow,
+  .pg-health-layer-bloom {
+    will-change: opacity;
     animation-timing-function: ease-in-out;
     animation-iteration-count: infinite;
   }
-  .pg-health-glow {
+  .pg-health-layer-glow {
+    animation-name: pg-health-glow-breathe;
     animation-duration: 5.1s;
     animation-delay: -2.4s;
   }
-  .pg-health-bloom {
+  .pg-health-layer-bloom {
+    animation-name: pg-health-bloom-breathe;
     animation-duration: 7.1s;
     animation-delay: -6.1s;
   }
+  html[data-bs-theme="light"] .pg-health-layer-glow {
+    animation-name: pg-health-glow-breathe-light;
+  }
 }
-@keyframes pg-health-breathe {
+@keyframes pg-health-glow-breathe {
   0%,
   100% {
-    opacity: var(--pg-glow-lo);
+    opacity: 0.52;
   }
   50% {
-    opacity: var(--pg-glow-hi);
+    opacity: 0.72;
   }
+}
+@keyframes pg-health-bloom-breathe {
+  0%,
+  100% {
+    opacity: 0.31;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+@keyframes pg-health-glow-breathe-light {
+  0%,
+  100% {
+    opacity: 0.11;
+  }
+  50% {
+    opacity: 0.21;
+  }
+}
+/* An off-screen dial (widget_2.php's IntersectionObserver) holds its frame. */
+.pg-health-dial.is-paused .pg-health-cells > rect,
+.pg-health-dial.is-paused .pg-health-layer {
+  animation-play-state: paused;
 }
 /* How dark a square gets at the bottom of its breath. This is the whole
    amplitude of the animation, and at 0.28 -- with a lit arc under it -- the
@@ -8792,6 +8865,14 @@ html:has(.mpp-bulk:not(.d-none)) {
     visibility: hidden;
     pointer-events: none;
     transition: opacity .26s ease, visibility 0s linear .26s;
+}
+/* A done curtain stops its loops rather than running them unseen. Paused, not
+   animation:none: pgPreloaderShow() takes is-done off again on a link click,
+   and the bar and dots then carry on at once, while the mark, which rests at
+   opacity 0 until its own delayed fade-in, is left alone. */
+.pg-preloader.is-done .pg-preloader-bar i,
+.pg-preloader.is-done .pg-preloader-dots i {
+    animation-play-state: paused;
 }
 
 .pg-preloader-bar {
