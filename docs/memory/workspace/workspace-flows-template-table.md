@@ -1,6 +1,6 @@
 ---
 name: workspace-flows-template-table
-description: Saved flow templates ask the table of a row box (PR #TBD): the table setting, the setup panel's picker, the reach refused at Use, the fields a changed table clears
+description: Saved flow templates ask the table of a row box (PR #3597): the table setting, the setup panel's picker, the reach refused at Use, the fields a changed table clears
 ---
 
 ## Which table does a row box ask?
