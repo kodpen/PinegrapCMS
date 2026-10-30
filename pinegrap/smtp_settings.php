@@ -236,6 +236,8 @@ if (!$_POST) {
 				
                 <form name="form" action="smtp_settings.php" method="post" autocomplete="off"  submitshortcut="submit_save">
                     ' . get_token_field() . '
+                    <!-- Return in a box presses the first submit button: this one saves, not Send Test or Generate DKIM Key -->
+                    <button type="submit" name="submit_save" value="Save" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <div class="row">
                         <!-- System SMTP -->
                         <div class="col-12 md:col-6">
