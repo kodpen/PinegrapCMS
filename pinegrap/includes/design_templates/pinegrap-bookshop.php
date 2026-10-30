@@ -1524,7 +1524,8 @@ $pages[] = array(
     'title'    => lang('Conversation'),
     'search'   => false,
     'sitemap'  => false,
-    'comments' => array('label' => lang('Reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
+    // The label is the lower-case noun key: the shared 'Reply' is a verb button.
+    'comments' => array('label' => lang('reply'), 'allow_new' => true, 'auto_publish' => true, 'show_date' => true, 'login' => true,
                         'email_page' => '{{tab:email_reply}}', 'email_subject' => lang('There is a new reply to your conversation'),
                         'notify_email' => '{{site_email}}'),
     'tree'     => $page(array(
