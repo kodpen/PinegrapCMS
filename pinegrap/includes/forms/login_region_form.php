@@ -43,7 +43,7 @@ function pg_login_region_form_card($liveform, $defaults = false)
                                             <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Login Region'))) . '</label>
                                             <div class="input-group">
                                                 <div class="input-group-text">' . h('<login>') . '</div>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                                 <div class="input-group-text">' . h('</login>') . '</div>
                                             </div>
                                         </div>

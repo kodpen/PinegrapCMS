@@ -38,12 +38,12 @@ function pg_ad_form_cards($liveform)
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang(array('string'=>'{var:1} Name','vars'=>lang('Ad'))) . '</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                                ' . $liveform->output_field(array('type'=>'text', 'id'=>'name', 'name'=>'name', 'size'=>'60', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="ad_region_id" class="form-label">' . lang('Ad Region') . '</label>
-                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options())) . '
+                                                ' . $liveform->output_field(array('type'=>'select', 'name'=>'ad_region_id', 'id'=>'ad_region_id', 'class'=>'form-control', 'options'=>get_ad_region_options(), 'required'=>'required')) . '
                                                 <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 <div class="form-text">' . lang('Assign to Ad Region') . '</div>
                                             </div>

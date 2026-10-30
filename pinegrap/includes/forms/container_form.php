@@ -39,7 +39,7 @@ function pg_container_form_card($liveform)
                                         <div class="row">
                                             <div class="col-12 md:col-6 lg:col-4 my-3">
                                                 <label for="name" class="form-label">' . lang('Name') . '</label>
-                                                <input type="text" name="name" id="name" maxlength="100" value="' . h($liveform->get_field_value('name')) . '" class="form-control' . ($liveform->check_field_error('name') ? ' is-invalid' : '') . '" />
+                                                <input type="text" name="name" id="name" maxlength="100" required value="' . h($liveform->get_field_value('name')) . '" class="form-control' . ($liveform->check_field_error('name') ? ' is-invalid' : '') . '" />
                                             </div>
                                             <div class="col-12 md:col-6 lg:col-4 my-3 d-flex align-items-end">
                                                 <div class="form-field">

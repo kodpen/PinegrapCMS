@@ -4,7 +4,8 @@ description: Boxes the server refuses blank carry required (Delete in the same f
 ---
 
 ## Which boxes carry required although the save checks them on the server?
-- Every box `validate_required_field()` refuses blank carries `'required'=>'required'`, so `pgInjectAriaAndRequiredMarkers()` marks its label (`panel-accessible-names.md`). Added for Order Report Name, Visitor Report Name, theme file Name, Edit Comment's Comment and Find & Replace's Find; before, people learned it only from the error after Save.
+- Every box `validate_required_field()` refuses blank carries `'required'=>'required'`, so `pgInjectAriaAndRequiredMarkers()` marks its label (`panel-accessible-names.md`). Added for Order Report Name, Visitor Report Name, theme file Name, Edit Comment's Comment and Find & Replace's Find; later for the shared create/edit forms of ads (Name, Ad Region), login regions (Name), verified shipping addresses (Address 1, City, Zip Code), containers (Name), ship date adjustments (Zip Code Prefix, Shipping Method, Adjustment days) and campaign profiles (Name, Subject, From Name). Before, people learned it only from the error after Save.
+- Left without required although the server checks them: a box that can be hidden when the form is saved. The container's Length/Width/Height sit in inch/cm groups swapped with `d-none`; the verified address State is a `data-pg-combobox` select; the campaign profile's calendar event, custom form, product, page and schedule rows are checked only for some choices and sit in collapse rows.
 - A Delete submit button in the same form carries `formnovalidate`: the `data-confirm-content` handler lets it submit natively, and a blank required box would otherwise block the delete.
 
 ## How is the Form Editor box on Edit Submitted Form named?
@@ -15,4 +16,4 @@ description: Boxes the server refuses blank carry required (Delete in the same f
 - A `visually-hidden` sentence says the count, the target range and the state: "No text yet. Aim for {var:1} to {var:2} characters." or "{var:1} characters, too short / good length / too long. Aim for {var:2} to {var:3}.". The keys sit in the panel translate map (`includes/fn/output.php`) and are read with `pgLang()`.
 - Used by Edit Page, the product screen, Mass Edit, Site Settings > SEO and the designer's page settings; none needed its own edit.
 
-Test: `tests/required_markers_and_seo_counter_test.php`.
+Tests: `tests/required_markers_and_seo_counter_test.php`, `tests/required_boxes_forms_test.php`.
