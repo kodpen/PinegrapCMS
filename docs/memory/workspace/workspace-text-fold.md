@@ -19,4 +19,9 @@ They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I`
 - Tests: `tests/workspace_text_fold_test.php` (the issue's pairs, plain ASCII, positions, the palette excerpt).
 
 - Comparisons (#3500, part 2 of #3400): `ws_scheduled_compare()` in `scheduled.php` folds both sides for eq and neq (`ws_fold()`) and contains (`ws_text_contains()`): the Flows condition box, the derived "compare" value, scheduled record conditions. "AYDIN" is "Aydın", "İzmir" contains "izmir". Tests in tests/workspace_flow_site_numbers_test.php.
-- The browser side already uses `toLocaleLowerCase('tr')`.
+
+## What folds in the browser?
+- `foldText()` in `workspace.js` (shared as `window.PGWsKit.foldText`) lowers with `toLocaleLowerCase('tr')`, then folds `ı`, the U+0307 dot and ş, ğ, ü, ö, ç, â, î, û to plain letters. A search folds both the typed text and every compared text with it: the slash-command and value pickers, the @ picker (people, departments, Claude, Pinegrap AI, MCP aliases, apps), the # picker (record prefixes, the people of a note) and the saved-reply ; list (`match()` in `workspace_replies.js`, with a local copy until the kit is shared). Fixed for the pickers in #NNNN.
+- Never `toLocaleLowerCase()` without a locale in a search: on a non-Turkish browser `İsmail` became `i̇smail`, so "@ism" found nobody; on a Turkish browser a typed `I` became `ı`, so "@AI" missed Pinegrap AI and ";iban" missed a shortcut stored as `ıban` (`ws_lower()`).
+- Workspace Settings › MCP tool filter: `data-ws-mcp-tool` is written with `ws_fold()` and the inline script folds both sides with `window.pgFoldTR` (backend.src.js).
+- Left as they are: the command-name match (`ws_lower()` rules keep ı and i apart) and `quickEditChanged()`'s keyword compare.
