@@ -1,6 +1,6 @@
 ---
 name: upload-refusal-answers
-description: Upload Design Files (add_design_file.php) and Upload File (add_file.php) answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; why an HTML 200 refusal looked like success; per-file error codes on design uploads
+description: Upload Design Files and Upload File answer a Dropzone refusal in JSON with a 4xx status and show it in a role=alert line; per-file upload error codes on design uploads
 ---
 
 ## Why did a refused design upload look like it worked?
