@@ -91,6 +91,7 @@ Workspace module: channels, tasks, plan board, rights, Claude in channels.
 - workspace-command-status.md: /status (/durum) in a Workspace channel (PR #1896): the status words it reads, ws_task_set_status(), the lines it posts, its live line and the statuses popup
 - workspace-composer-expanded.md: The composer's "Aa" expanded box (Editor.expand()): Enter a new line, Ctrl/Cmd+Enter sends, every tool shown, the per-viewer choice in localStorage, how the switch gets on the row without workspace.js
 - workspace-composer-later.md: Workspace writing-box tools (toolbar, lists, headings, highlight, slash inserts, smart paste, saved replies, AI rewrite): the owner's answers that still bind and what is left for later
+- workspace-context-menu.md: Workspace messages take focus (one roving Tab stop); the own context menu and floating boxes give focus back, Tab closes a menu, radio entries, aria-haspopup openers
 - workspace-create-commands.md: /create (/oluştur) product|group and its alias /product (/ürün) in a channel: kind word, parsers, the single-create card through ws_quick_create_input()/_save(), what Create sends
 - workspace-crm-lead-intake.md: Lead step and box (CRM seams 6, PR #2092): a submitted form's customer into their channel or a new New customer channel; contact by forms.contact_id or e-mail, hourly cap
 - workspace-customer-card.md: The customer card on a Workspace channel's Summary tab (CRM seams 3, #1666): the customer summary via the ws_channel_customer action, addresses per row, ids kept back, New cart quote (#3197)

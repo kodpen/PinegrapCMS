@@ -1054,12 +1054,57 @@
 
     var ctxNode = null;
     var ctxOpenedAt = 0;
+    var ctxOpener = null;
+    var ctxKeyAt = 0;
+    var messageMetaSeq = 0;
 
+    // Focus inside the menu (or already lost to the page) goes back to what
+    // opened it: removing a focused node drops focus to the body.
     function closeCtx() {
         if (ctxNode) {
+            var opener = ctxOpener;
+            var active = document.activeElement;
+            var inside = !active || (active === document.body) || ctxNode.contains(active);
+
             ctxNode.remove();
             ctxNode = null;
+            ctxOpener = null;
+
+            if (opener && opener.hasAttribute('aria-haspopup')) {
+                opener.setAttribute('aria-expanded', 'false');
+            }
+
+            if (inside) {
+                giveFocusBack(opener);
+            }
         }
+    }
+
+    function giveFocusBack(opener) {
+        if (opener && opener.isConnected && opener.focus) {
+            opener.focus({ preventScroll: true });
+        }
+    }
+
+    // What has focus when a menu or a box opens is where focus returns.
+    function takeOpener() {
+        var active = document.activeElement;
+
+        ctxOpener = (active && active !== document.body) ? active : null;
+
+        if (ctxOpener && ctxOpener.hasAttribute('aria-haspopup')) {
+            ctxOpener.setAttribute('aria-expanded', 'true');
+        }
+
+        return ctxOpener;
+    }
+
+    // A button that opens a context menu says so.
+    function menuButton(node) {
+        node.setAttribute('aria-haspopup', 'menu');
+        node.setAttribute('aria-expanded', 'false');
+
+        return node;
     }
 
     // An open dialog or drawer sits in the top layer over an inert page, so a
@@ -1092,6 +1137,7 @@
             return;
         }
 
+        var opener = takeOpener();
         var menu = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop');
         var body = el('div', 'popover-body');
 
@@ -1107,8 +1153,17 @@
                 return;
             }
 
+            // The header names the menu; the row itself is only its look.
             if (item.header) {
-                body.appendChild(el('div', 'ws-ctx-header', item.header));
+                var header = el('div', 'ws-ctx-header', item.header);
+
+                header.setAttribute('role', 'none');
+                body.appendChild(header);
+
+                if (!menu.hasAttribute('aria-label')) {
+                    menu.setAttribute('aria-label', item.header);
+                }
+
                 return;
             }
 
@@ -1154,7 +1209,14 @@
 
             var entry = el('button', 'btn btn-link pg-link-body-emphasis text-start text-decoration-none text-truncate ws-ctx-item' + (item.danger ? ' ws-ctx-danger' : '') + (item.checked ? ' ws-ctx-checked' : ''));
             entry.type = 'button';
-            entry.setAttribute('role', 'menuitem');
+            // One of a set of choices (a notification level): which one is on
+            // is said, not only drawn.
+            entry.setAttribute('role', ('checked' in item) ? 'menuitemradio' : 'menuitem');
+
+            if ('checked' in item) {
+                entry.setAttribute('aria-checked', item.checked ? 'true' : 'false');
+            }
+
             entry.appendChild(icon(item.checked ? 'bi-check2' : (item.icon || 'bi-dot'), 'me-3'));
             entry.appendChild(document.createTextNode(item.label));
             entry.disabled = !!item.disabled;
@@ -1163,6 +1225,10 @@
                 event.stopPropagation();
                 closeCtx();
                 item.action();
+
+                if (document.activeElement === document.body || !document.activeElement) {
+                    giveFocusBack(opener);
+                }
             });
             body.appendChild(entry);
         });
@@ -1208,22 +1274,43 @@
         }
     }, true);
 
+    // ContextMenu or Shift+F10 raises the browser's contextmenu event on the
+    // focused node; onContext() then opens the menu at the node.
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10')) {
+            ctxKeyAt = Date.now();
+        }
+    }, true);
+
     document.addEventListener('keydown', function (event) {
         if (!ctxNode) {
             return;
         }
 
+        // A floating box (the emoji picker, the table picker) keeps Tab,
+        // Home and End for its own fields.
+        var isMenu = ctxNode.getAttribute('role') === 'menu';
+
+        if (event.key === 'Tab' && isMenu) {
+            event.preventDefault();
+            closeCtx();
+            return;
+        }
+
+        var entries = Array.prototype.slice.call(ctxNode.querySelectorAll('.ws-ctx-item:not([disabled])'));
+        var index = entries.indexOf(document.activeElement);
+
+        if (!entries.length) {
+            return;
+        }
+
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-            var entries = Array.prototype.slice.call(ctxNode.querySelectorAll('.ws-ctx-item:not([disabled])'));
-            var index = entries.indexOf(document.activeElement);
-
-            if (!entries.length) {
-                return;
-            }
-
             event.preventDefault();
             index = (index + (event.key === 'ArrowDown' ? 1 : -1) + entries.length) % entries.length;
             entries[index].focus();
+        } else if (isMenu && (event.key === 'Home' || event.key === 'End')) {
+            event.preventDefault();
+            entries[(event.key === 'Home') ? 0 : entries.length - 1].focus();
         }
     });
 
@@ -2025,6 +2112,8 @@
     function floatBox(x, y, content, className, above) {
         closeCtx();
 
+        takeOpener();
+
         var box = el('div', 'ws-ctx contextmenu popover shadow-lg backdrop ws-float' + (className ? ' ' + className : ''));
 
         box.setAttribute('data-pg-menu-hold', '');
@@ -2228,7 +2317,19 @@
                 return;
             }
 
-            ctxMenu(event.clientX, event.clientY, build(event));
+            var x = event.clientX;
+            var y = event.clientY;
+
+            // Raised from the keyboard: at the node, not where the pointer
+            // happens to be.
+            if ((Date.now() - ctxKeyAt) < 1000) {
+                var rect = node.getBoundingClientRect();
+
+                x = rect.left + 8;
+                y = rect.bottom;
+            }
+
+            ctxMenu(x, y, build(event));
         });
 
         node.addEventListener('touchstart', function (event) {
@@ -2273,6 +2374,74 @@
                 event.stopImmediatePropagation();
             }
         }, true);
+    }
+
+    // One Tab stop over the messages of a pane, the newest until another is
+    // focused: Up and Down move between messages, Home and End go to the
+    // first and the last. A focused message shows its tools (:focus-within)
+    // and opens its menu with ContextMenu or Shift+F10 (onContext()). Keys
+    // act only on the message itself, so a control inside keeps its own.
+    function messageKeys(pane) {
+        function messages() {
+            return Array.prototype.slice.call(pane.querySelectorAll('.ws-msg'));
+        }
+
+        function moveStop(target) {
+            messages().forEach(function (node) {
+                node.tabIndex = (node === target) ? 0 : -1;
+            });
+        }
+
+        function keepStop() {
+            var all = messages();
+
+            if (all.length && !all.some(function (node) { return node.tabIndex === 0; })) {
+                all[all.length - 1].tabIndex = 0;
+            }
+        }
+
+        pane.addEventListener('focusin', function (event) {
+            var node = event.target.closest ? event.target.closest('.ws-msg') : null;
+
+            if (node && pane.contains(node) && node.tabIndex !== 0) {
+                moveStop(node);
+            }
+        });
+
+        pane.addEventListener('keydown', function (event) {
+            if (!event.target.classList || !event.target.classList.contains('ws-msg') || event.altKey || event.ctrlKey || event.metaKey) {
+                return;
+            }
+
+            var all = messages();
+            var index = all.indexOf(event.target);
+            var next = null;
+
+            if (event.key === 'ArrowUp') {
+                next = all[index - 1];
+            } else if (event.key === 'ArrowDown') {
+                next = all[index + 1];
+            } else if (event.key === 'Home') {
+                next = all[0];
+            } else if (event.key === 'End') {
+                next = all[all.length - 1];
+            } else {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (next) {
+                moveStop(next);
+                next.focus();
+            }
+        });
+
+        if (window.MutationObserver) {
+            new MutationObserver(keepStop).observe(pane, { childList: true, subtree: true });
+        }
+
+        keepStop();
     }
 
     // Tags inside a message, and the head of a lone tag's card: open the
@@ -5736,7 +5905,7 @@
                     onContext(link, function () { return self.channelActions(channel); });
                 },
                 decorateGroup: function (head, group) {
-                    var more = button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more'));
+                    var more = menuButton(button('btn btn-sm btn-text theme-secondary ws-group-more', '', 'bi-three-dots', t('more')));
 
                     more.addEventListener('click', function (event) {
                         event.stopPropagation();
@@ -7920,6 +8089,7 @@
             var pane = el('div', 'ws-pane ws-pane-' + self.tab);
             center.appendChild(pane);
             self.pane = pane;
+            messageKeys(pane);
 
             // A picture that finishes loading under the newest line pushes
             // it out of view; whoever was reading at the end stays there.
@@ -8431,6 +8601,11 @@
                 + ((message.kind === 'decision' || message.kind === 'note') ? ' ws-msg-' + message.kind : ''));
             node.setAttribute('data-ws-message', message.id);
 
+            // A Tab stop of the pane's one (messageKeys()), named by its
+            // sender and time row.
+            node.tabIndex = -1;
+            node.setAttribute('role', 'article');
+
             var face = el('div', 'ws-msg-avatar');
             var person = (message.sender_kind === 'user') ? message.sender : null;
             face.appendChild(personLink(avatar(message.sender), person));
@@ -8438,6 +8613,8 @@
 
             var main = el('div', 'ws-msg-main');
             var meta = el('div', 'ws-msg-meta');
+            meta.id = 'ws-msg-meta-' + (++messageMetaSeq);
+            node.setAttribute('aria-labelledby', meta.id);
             meta.appendChild(personLink(el('b', '', message.sender ? message.sender.name : ''), person));
 
             if (message.sender_kind === 'guest') {
@@ -8604,7 +8781,7 @@
                 fileBox.appendChild(self.filePreview(message));
 
                 if (message.file.versions) {
-                    var versions = button('ws-file-versions', t('file_versions', message.file.versions), 'bi-clock-history');
+                    var versions = menuButton(button('ws-file-versions', t('file_versions', message.file.versions), 'bi-clock-history'));
                     versions.addEventListener('click', function (event) {
                         event.stopPropagation();
                         self.fileVersions(message, versions);
@@ -9010,7 +9187,7 @@
                 tools.appendChild(tool);
             });
 
-            var more = button('', '', 'bi-three-dots', t('more'));
+            var more = menuButton(button('', '', 'bi-three-dots', t('more')));
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
                 event.stopPropagation();
@@ -11711,6 +11888,7 @@
             content.appendChild(caption);
             content.appendChild(grid);
             floatBox(x, y, content, 'ws-table-picker', true);
+            cells[0].focus({ preventScroll: true });
         },
 
         replaceTaskCard: function (taskId, markup) {
@@ -12070,6 +12248,11 @@
 
             // A file from this device, or one of the file manager's.
             var attach = button('btn btn-sm btn-text theme-secondary', '', 'bi-paperclip', t('attach'));
+
+            if (CFG.library) {
+                menuButton(attach);
+            }
+
             attach.addEventListener('click', function (event) {
                 var box = attach.getBoundingClientRect();
 
@@ -12109,7 +12292,7 @@
 
             // A table, a calculation, a checklist or a poll: the things that are
             // more than a line.
-            var insert = button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert'));
+            var insert = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-plus-circle', t('insert')));
             insert.addEventListener('click', function (event) {
                 var box = insert.getBoundingClientRect();
 
@@ -12191,7 +12374,7 @@
             // (scheduled_messages.php).
             if (CFG.scheduled_messages && !self.era) {
                 var sendGroup = el('div', 'btn-group ws-send-group');
-                var later = button('btn btn-sm btn-solid theme-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later'));
+                var later = menuButton(button('btn btn-sm btn-solid theme-primary rounded-end-pill ws-send-later', '', 'bi-clock', t('sm_send_later')));
 
                 send.classList.remove('rounded-pill');
                 send.classList.add('rounded-start-pill');
@@ -15865,6 +16048,7 @@
             var pane = el('div', 'ws-pane ws-pane-messages ws-thread-pane');
             center.appendChild(pane);
             self.pane = pane;
+            messageKeys(pane);
             self.atEnd = true;
             self.unseenBelow = 0;
             pane.addEventListener('scroll', function () {
@@ -15892,7 +16076,7 @@
             var self = this;
             var channel = self.channel;
             var thread = channel.thread || {};
-            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more'));
+            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots-vertical', t('more')));
 
             more.addEventListener('click', function (event) {
                 var place = more.getBoundingClientRect();
@@ -20040,7 +20224,7 @@
 
                 top.appendChild(el('span', 'ws-nb-item-time', note.updated));
 
-                var more = button('ws-nb-item-more', '', 'bi-three-dots', t('more'));
+                var more = menuButton(button('ws-nb-item-more', '', 'bi-three-dots', t('more')));
                 more.addEventListener('click', function (event) {
                     var box = more.getBoundingClientRect();
 
@@ -20526,7 +20710,7 @@
             setStatus(dirty ? 'unsaved' : (current.id && editable() ? 'saved' : ''));
 
             if (current.access === 'owner' || !current.id) {
-                var share = button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send');
+                var share = menuButton(button('btn btn-sm btn-text theme-secondary', t('notes_share'), 'bi-send'));
                 share.disabled = !current.id;
                 share.addEventListener('click', function (event) {
                     var box = share.getBoundingClientRect();
@@ -20559,7 +20743,7 @@
                 headNode.appendChild(versions);
             }
 
-            var more = button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more'));
+            var more = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('more')));
             more.disabled = !current.id;
             more.addEventListener('click', function (event) {
                 var box = more.getBoundingClientRect();
