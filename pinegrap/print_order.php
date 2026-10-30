@@ -35,6 +35,7 @@ $query = "SELECT
             orders.*,
             INET_NTOA(ip_address) AS ip_address,
             user.user_username AS username,
+            user.user_role AS username_role,
             contacts.id AS contact_id,
             contacts.first_name AS contact_first_name,
             contacts.last_name AS contact_last_name,
@@ -79,6 +80,7 @@ $currency_code = $row['currency_code'];
 $http_referer = $row['http_referer'];
 $user_id = $row['user_id'];
 $username = $row['username'];
+$username_role = $row['username_role'];
 $contact_id = $row['contact_id'];
 $contact_image = $row['contact_image'];
 $contact_file_id = $row['contact_file_id'];
@@ -450,7 +452,7 @@ if ($username != '') {
     $output_user_row =
         '<div class="row" >
             <span class="translateable col fg-secondary">' . lang('User') . ':</span>
-            <span class="col text-end"><a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a></span>
+            <span class="col text-end">' . (pg_can_open_user($user, $username_role) ? '<a class="pg-link-secondary" href="edit_user.php?id=' . $user_id . '">' . h($username) . '</a>' : h($username)) . '</span>
         </div>';
 }
 $output_contact_row = '';
@@ -486,7 +488,7 @@ if ($contact_id != '') {
     $output_contact_row =
         '<div class="row" >
             <span class="translateable col fg-secondary">' . lang('Contact') . ':</span>
-            <span class="col text-end"><a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . $output_contact . '</a></span>
+            <span class="col text-end">' . (pg_can_open_contact($user, $contact_id) ? '<a class="pg-link-secondary" href="edit_contact.php?id=' . $contact_id . '">' . $output_contact . '</a>' : $output_contact) . '</span>
         </div>';
 }
 $output_member_id_row = '';
@@ -524,7 +526,9 @@ if (AFFILIATE_PROGRAM and $affiliate_code) {
         $affiliate_name = $row['affiliate_name'];
         
         if ($affiliate_name) {
-            $output_affiliate_name = '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>';
+            $output_affiliate_name = pg_can_open_contact($user, $affiliate_contact_id)
+                ? '<a href="edit_contact.php?id=' . $affiliate_contact_id . '">' . h($affiliate_name) . '</a>'
+                : h($affiliate_name);
         }
     }
     

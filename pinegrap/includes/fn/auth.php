@@ -1029,6 +1029,67 @@ function pg_user_role_name($role)
 }
 
 /**
+ * Whether edit_user.php would let $user open an account of $target_role: an
+ * administrator opens any, a designer or manager only a strictly lower role
+ * (not their own), role 3 none. Screens print the name without a link when
+ * this says no.
+ *
+ * @param array      $user        validate_user() row
+ * @param int|string $target_role user_role of the account
+ * @return bool
+ */
+function pg_can_open_user($user, $target_role)
+{
+    $role = (int) $user['role'];
+
+    return ($role === 0) || (($role <= 2) && ($role < (int) $target_role));
+}
+
+/**
+ * Whether edit_contact.php would let $user open a contact: roles below 3
+ * always, role 3 with contacts access and the contact in one of their groups.
+ * A list passes $contacts_access, validate_contacts_access($user, true) run
+ * once per screen, so each row costs only the group lookup. Code that has no
+ * user row at hand (the ERP drawer and order flow) passes null for the
+ * signed-in viewer, loaded once and only for role 3.
+ *
+ * @param array|null $user            validate_user() row, or null for the viewer
+ * @param int        $contact_id
+ * @param bool|null  $contacts_access precomputed contacts access, or null
+ * @return bool
+ */
+function pg_can_open_contact($user, $contact_id, $contacts_access = null)
+{
+    static $viewer = null;
+
+    if ((int) $contact_id < 1) {
+        return false;
+    }
+
+    if ($user === null) {
+        if (defined('USER_ROLE') && ((int) USER_ROLE < 3)) {
+            return true;
+        }
+
+        if ($viewer === null) {
+            $viewer = validate_user();
+        }
+
+        $user = $viewer;
+    }
+
+    if ((int) $user['role'] < 3) {
+        return true;
+    }
+
+    if ($contacts_access === null) {
+        $contacts_access = validate_contacts_access($user, true);
+    }
+
+    return $contacts_access && validate_contact_access($user, (int) $contact_id);
+}
+
+/**
  * How an account signs in, as short badges: one per connected provider, a
  * warning when one provider is the only way in (removing it would lock the
  * account out), or nothing connected. Shared by the sessions table and the

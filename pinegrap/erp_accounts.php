@@ -102,6 +102,9 @@ $kind_labels = array(
 
 $output_rows = '';
 
+// Asked once for the whole list; each row then only checks the contact's groups.
+$contacts_access = validate_contacts_access($user, true);
+
 foreach ($accounts as $account) {
     $id = (int) $account['id'];
 
@@ -151,11 +154,16 @@ foreach ($accounts as $account) {
     $output_link_url = h('edit_erp_account.php?id=' . $id . '&send_to=' . urlencode(REQUEST_URL));
 
     // The contact behind the card, when there is one: the link is where the
-    // orders come from.
+    // orders come from. A viewer edit_contact.php would refuse sees the mark
+    // without the link.
     $contact_id = (int) ($account['contact_id'] ?? 0);
-    $output_contact = ($contact_id > 0)
-        ? '<a href="edit_contact.php?id=' . $contact_id . '" class="pg-link-body-emphasis d-inline-flex align-items-center justify-content-center p-1" style="min-width:1.5rem;min-height:1.5rem" title="' . h(lang('Contact')) . '" aria-label="' . h(lang('Contact')) . '"><i class="bi bi-person-check" aria-hidden="true"></i></a>'
-        : '<span class="fg-secondary" title="' . h(lang('No contact is linked to this account.')) . '">—</span>';
+    if ($contact_id < 1) {
+        $output_contact = '<span class="fg-secondary" title="' . h(lang('No contact is linked to this account.')) . '">—</span>';
+    } elseif (pg_can_open_contact($user, $contact_id, $contacts_access)) {
+        $output_contact = '<a href="edit_contact.php?id=' . $contact_id . '" class="pg-link-body-emphasis d-inline-flex align-items-center justify-content-center p-1" style="min-width:1.5rem;min-height:1.5rem" title="' . h(lang('Contact')) . '" aria-label="' . h(lang('Contact')) . '"><i class="bi bi-person-check" aria-hidden="true"></i></a>';
+    } else {
+        $output_contact = '<span class="fg-secondary d-inline-flex align-items-center justify-content-center p-1" title="' . h(lang('Contact')) . '"><i class="bi bi-person-check" aria-hidden="true"></i><span class="visually-hidden">' . h(lang('Contact')) . '</span></span>';
+    }
 
     $output_rows .=
         '<tr' . erp_drawer_row_attributes($id) . '>

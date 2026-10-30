@@ -273,7 +273,7 @@ function erp_order_flow_state($order_id)
                 $step['links'][] = array('label' => lang('Edit the account'), 'url' => $account_url);
             }
 
-            if (!empty($difference['own'])) {
+            if (!empty($difference['own']) && pg_can_open_contact(null, (int) $difference['contact_id'])) {
                 $step['links'][] = array('label' => lang('Edit Contact'), 'url' => 'edit_contact.php?id=' . (int) $difference['contact_id']);
             }
         }
