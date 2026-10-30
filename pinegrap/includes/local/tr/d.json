@@ -593,7 +593,7 @@
     "Display Name": "Görüntüleme Adı",
     "Display Summary": "Özet Göster",
     "Display Type": "Görüntüleme Türü",
-    "Display Up-sell Message": "Yukarı Satış (<span title='Up-sell: müşterileri satın aldıkları ürün veya hizmete yükseltme yapmaya veya eklentiler eklemeye teşvik etme sürecidir'>bu nedir</span>) Mesajını Görüntüle",
+    "Display Up-sell Message": "Yukarı Satış Mesajını Görüntüle",
     "Display contents for browsing on catalog page": "Katalog sayfasında göstermek için tüm içeriğini göster",
     "Display contents for browsing on catalog page (this top-level product group must be set to this)": "Katalog sayfasında göstermek için tüm içeriğini gösterir (bu en üst seviye ürün grubu olduğu için buna ayarlanır)",
     "Display contents for selection on catalog detail page": "Katalog ürün görünüm/detay sayfasından seçim için ayarla",
