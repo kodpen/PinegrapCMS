@@ -78,7 +78,7 @@ print
 10046,1Z999AA10123456784,</pre>
                         <div class="my-5">
                             <label for="file" class="form-label">' . h(lang('CSV File')) . '</label>
-                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto">
+                            <input name="file" id="file" type="file" accept=".csv,text/csv,text/plain" class="form-control w-auto" required>
                         </div>
                         <div class="form-field my-5">
                             <div class="switch"><input type="checkbox" name="notify" id="notify" value="1" class="" checked></div>
