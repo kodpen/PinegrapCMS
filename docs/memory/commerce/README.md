@@ -36,8 +36,9 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-label-drivers.md: Carrier label driver layer (2026.11.0): pg_label_<key>_ contract, pg_label_call() answers, what reaches the shipment row, connect_apps label_<key>, Shipping card and test
 - carrier-label-geliver.md: Geliver label driver (2026.11.0, #3096): two-step flow, offers, barcode as tracking number, PDF only, statuses, TRACK_UPDATED webhook (#3245), what is unverified
 - carrier-label-kargonomi.md: Kargonomi label driver (2026.11.0, #3286), Turkish aggregator, no test mode: draft, prices, confirmation as the charge, carrier number read after it, PDF label, cancel in 36 h, unverified points
+- carrier-label-sendcloud-customs.md: Sendcloud customs data (2026.11.0, #3474, decided #3408): route opened only by a filled shop block, parcel_items and customs_information of API v3, incoterm through the option, what is unverified
 - carrier-label-sendcloud-returns.md: Sendcloud customer return labels (#3409): Returns API announce from the customer to the sender address, live mode and EU only, r-<return>-<parcel> reference, cancel request
-- carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, no customs (EU or domestic only), cancel, tracking phases
+- carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, customs once filled, cancel, tracking
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers
 - carrier-webhook-drivers.md: The carrier webhook's Shippo (#3407) and Sendcloud (#3431) sides: what each reader takes, Sendcloud's signature check, how each registers and removes its webhook
 - carrier-webhook.md: carrier_webhook.php (2026.11.0, #3245): a label service's parcel status messages written through the tracking write-back, key in the URL, optional signature check, registration, answers, firewall
@@ -181,6 +182,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - shipment-api-fields.md: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
 - shipment-label-bulk.md: Bulk carrier labels from the orders list (create, one merged PDF, one .zpl), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #3137)
+- shipment-label-pickup.md: Carrier pickup requests (2026.11.0, 11.0.131, #3415): pickup_ref/pickup_at, the driver pickup answer, Shippo POST /pickups/, list and label card dialog, double-booking warning
 - shipment-label-returns.md: Customer return labels (#3178): Create Return Label on an approved request, one per request, code into carrier_code, a short mail (#3194); the customer's download (#3239, widget #3268)
 - shipment-labels.md: Carrier label storage and order actions (2026.11.0, PR #3117): shipment_labels table, data/shipping_labels/ files and retention sweep, Create Label and reprint on the order, erasure and order delete
 - shipment-mail-fields.md: Tracking mail-merge fields of the order_shipped and order_delivered e-mails, which addresses they cover, and step 11.0.42 widening email_campaigns.action

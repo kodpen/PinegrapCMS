@@ -1,0 +1,41 @@
+{
+  "data": [
+    {
+      "code": "sendcloud:letter",
+      "name": "Unstamped letter",
+      "carrier": {"code": "sendcloud", "name": "Sendcloud"},
+      "functionalities": {"returns": false, "incoterm": null},
+      "requirements": {"fields": [], "export_documents": false, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "0.00", "currency": "EUR"}}, "lead_time": 24}]
+    },
+    {
+      "code": "ups:express_saver/incoterm=ddp",
+      "name": "UPS Express Saver DDP",
+      "carrier": {"code": "ups", "name": "UPS"},
+      "functionalities": {"returns": false, "incoterm": "ddp"},
+      "requirements": {"fields": [], "export_documents": true, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "21.40", "currency": "EUR"}}, "lead_time": 48}]
+    },
+    {
+      "code": "dhl_express:worldwide/incoterm=dap",
+      "name": "DHL Express Worldwide",
+      "carrier": {"code": "dhl_express", "name": "DHL Express"},
+      "functionalities": {"returns": false, "incoterm": "dap"},
+      "requirements": {"fields": [], "export_documents": true, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "28.15", "currency": "EUR"}}, "lead_time": 48}]
+    },
+    {
+      "code": "postnl:worldwide",
+      "name": "PostNL Worldwide",
+      "carrier": {"code": "postnl", "name": "PostNL"},
+      "functionalities": {"returns": false, "incoterm": null},
+      "requirements": {"fields": [], "export_documents": true, "is_service_point_required": false},
+      "quote_error": null,
+      "quotes": [{"price": {"total": {"value": "24.90", "currency": "EUR"}}, "lead_time": 120}]
+    }
+  ],
+  "message": null
+}

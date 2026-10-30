@@ -114,6 +114,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys
 - explorer-picker-state.md: File and Catalog Manager pickers and menu ticks expose their state (aria-pressed, aria-current); transfer and channel picks keep focus; empty lists announced
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; what is still open (#2053)
+- explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label
 - field-shared-form.md: The form field create and edit screens share includes/forms/field_form.php
@@ -138,6 +139,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - key-code-shared-form.md: The key code create and edit screens share includes/forms/key_code_form.php: the checks, the offer-code clash, the values, the generator, what stays in the screens
 - lazy-picture-failure.md: Panel lazy pictures (img.lazy, jQuery Lazy) that fail to load show a still picture mark instead of the endlessly spinning loading.gif; reduced motion gets a still square while loading
 - list-and-table-screens.md: Panel list and table rules: the DataTables list markup, which lists must stay plain tables, no form inside a table row, card-prefixed variables in long screen files, unclosed divs.
+- list-heading-copies.md: The copies DataTables (scrollX) and FixedHeader make of a panel list's heading: which leave the Tab order, why the sizing copy stays readable, the floating heading no longer aria-hidden
 - list-label-sort.md: List columns that show a label for a stored code sort by that label (pg_list_label_order(), FIELD()); the link picker sorts in PHP with pg_list_sort_items()
 - list-page-state.md: A paged panel list (table.chart) comes back on its page, length and search after Back (history.state, pgListState/pgListKeep); the pager landmark named from the DataTables language
 - list-period-navigator-and-clock.md: List screens: the month arrows step from the last shown month, the range heading follows the date order (list_period.php), pickers and times follow the 24-hour setting (#2039, #2040, #2058)
@@ -237,7 +239,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - screen-focus-rings.md: Focus rings drawn by a screen's own styles use the 2px --pg-primary-ink outline, inset inside clipping boxes; which screens were moved and which still wait
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
 - scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
-- select-commit-on-pick.md: Selects that save or ask the moment they change (Translations engine, "Write with AI" tone) wait for a keyboard pick; the AI panel gives focus back after a request
+- select-commit-on-pick.md: Selects that save, ask or move focus on change (Translations engine, AI tone, list quick edit, Edit Comment Publish) wait for a keyboard pick; the AI panel gives focus back after a request
 - server-paged-lists.md: DataTables lists paged on the server (users, submitted forms, contacts, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.
 - settings-card-field-widths.md: Settings card control width classes pg-f-xs/sm/md/lg, how to pick one from field attributes, and why not to write style width or malformed col classes.

@@ -109,7 +109,7 @@ function ws_step_kinds()
             'outputs' => array($number('told', lang('People told')))),
         'task_open' => array('label' => lang('Open a task without waiting'), 'type' => 'task', 'texts' => array('title', 'description'), 'lines' => array('title'),
             'outputs' => array($number('task_id', lang('Task')))),
-        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(),
+        'webhook'   => array('label' => lang('Call a webhook'), 'type' => 'webhook', 'texts' => array('text'), 'lines' => array(), 'urls' => array('url'),
             'outputs' => array($number('status_code', lang('Status code')), $number('duration_ms', lang('Time taken (ms)')), $text('body', lang('Answer')))),
         'web_check' => array('label' => lang('Check a web address'), 'type' => 'web_check', 'texts' => array(), 'lines' => array(),
             'outputs' => array($number('status_code', lang('Status code'), 'status'), $number('duration_ms', lang('Time taken (ms)'), 'status'),
@@ -594,6 +594,10 @@ function ws_step_config_problems($kind, $config, $name, $joined = false)
         case 'web_check':
             if (!preg_match('#^https://\S+$#i', $config['url'])) {
                 $problems[] = lang(array('string' => 'The box {var:1} needs an address that starts with https://.', 'vars' => $name));
+            }
+
+            if (($kind === 'webhook') && (ws_step_url_host_refs($config['url']) !== array())) {
+                $problems[] = lang(array('string' => 'The box {var:1} may take a value only in the path or query of its address, never in its host or scheme.', 'vars' => $name));
             }
 
             if (($kind === 'webhook') && ($config['format'] !== 'generic') && ($config['text'] === '')) {
@@ -1117,7 +1121,137 @@ function ws_step_fill_action($kind, $action, $values)
         }
     }
 
+    foreach ($info['urls'] ?? array() as $key) {
+        if (isset($action[$key]) && is_string($action[$key])) {
+            $action[$key] = ws_step_url_fill($action[$key], $values)['url'];
+        }
+    }
+
     return $action;
+}
+
+/**
+ * Where the host of an https address ends: the length of its scheme and
+ * authority (user, host, port), up to the first "/", "?" or "#" after
+ * "://"; the whole address when it has none. Pure.
+ *
+ * @param string $url
+ * @return int
+ */
+function ws_step_url_host_end($url)
+{
+    $url = (string) $url;
+    $at = strpos($url, '://');
+
+    if ($at === false) {
+        return strlen($url);
+    }
+
+    $end = strcspn($url, '/?#', $at + 3);
+
+    return $at + 3 + $end;
+}
+
+/**
+ * The {{node.*}} and {{trigger.*}} references in an address's scheme or
+ * host, where no value may go: a value there would choose the system the
+ * call goes to. Pure.
+ *
+ * @param string $url
+ * @return string[]
+ */
+function ws_step_url_host_refs($url)
+{
+    $url = (string) $url;
+
+    if (strpos($url, '{{') === false) {
+        return array();
+    }
+
+    $head = substr($url, 0, ws_step_url_host_end($url));
+
+    // A reference that starts in the host and runs past its end is in it
+    // as well: "https://example.com{{node.a.b}}" has no "/" before it.
+    $refs = array();
+
+    if (preg_match_all(WS_STEP_VALUE_PATTERN, $url, $matches, PREG_OFFSET_CAPTURE)) {
+        foreach ($matches[0] as $match) {
+            if ($match[1] < strlen($head)) {
+                $refs[] = $match[0];
+            }
+        }
+    }
+
+    // A brace pair the pattern does not read is no value, yet it is no
+    // host either.
+    if (empty($refs) && (strpos($head, '{{') !== false)) {
+        $refs[] = '{{';
+    }
+
+    return $refs;
+}
+
+/**
+ * A webhook address with the values of its run filled into its path or
+ * query (decision #3410): each must be digits only and goes in
+ * URL-encoded. A value in the scheme or host, or one that is not digits
+ * (a text, a negative or decimal number, a box that did not run), is the
+ * error, and that reference is filled in empty. Pure.
+ *
+ * @param string $url
+ * @param array  $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @return array url, error ('' when every value fits)
+ */
+function ws_step_url_fill($url, $values)
+{
+    $url = (string) $url;
+
+    if (ws_step_url_host_refs($url) !== array()) {
+        return array('url' => $url, 'error' => lang('A value may go only into the path or query of the address, never into its host or scheme.'));
+    }
+
+    $error = '';
+    $filled = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$error) {
+        $value = $values[ws_step_value_box($match)][$match[2]] ?? '';
+        $value = is_scalar($value) ? (string) $value : '';
+
+        if (!preg_match('/^[0-9]+$/', $value)) {
+            if ($error === '') {
+                $error = lang(array('string' => 'The address takes only a whole number for {var:1}, and the run gave none.', 'vars' => $match[0]));
+            }
+
+            return '';
+        }
+
+        return rawurlencode($value);
+    }, $url);
+
+    return array('url' => $filled, 'error' => $error);
+}
+
+/**
+ * Why a box's address may not be called with the values of its run, ''
+ * when it may (ws_step_url_fill()); only the kinds whose `urls` take a
+ * value (ws_step_kinds()) are read. Pure.
+ *
+ * @param string $kind
+ * @param array  $action ws_scheduled_action_input()
+ * @param array  $values ws_step_node_values()
+ * @return string
+ */
+function ws_step_url_refusal($kind, $action, $values)
+{
+    foreach (ws_step_kinds()[$kind]['urls'] ?? array() as $key) {
+        if (isset($action[$key]) && is_string($action[$key])) {
+            $error = ws_step_url_fill($action[$key], $values)['error'];
+
+            if ($error !== '') {
+                return $error;
+            }
+        }
+    }
+
+    return '';
 }
 
 /**
@@ -1488,6 +1622,16 @@ function ws_step_run($run, $step, $node, $graph, $owner)
     $anchor = ws_step_run_anchor($context);
     $row = ws_step_action_row($run, $context, $anchor);
 
+    // A webhook address takes only digits from the values of its run.
+    $refusal = ws_step_url_refusal($kind, $check['action'], $values);
+
+    if ($refusal !== '') {
+        $end = ws_step_settlement(false, $routed);
+        ws_flow_step_settle($step, 'running', $end['status'], $end['outcome'], $refusal);
+
+        return;
+    }
+
     $action = ws_step_fill_action($kind, $check['action'], $values);
 
     // A line in somebody's inbox names the flow it comes from: the notice
@@ -1672,6 +1816,14 @@ function ws_flow_box_try($viewer, $flow, $data)
 
         if (!$check['ok']) {
             return array('outcome' => 'failed', 'refusal' => (string) $check['error']) + $answer;
+        }
+
+        // Without a run the address's values are only empty, as the texts'
+        // are; with one, it is refused as the run would refuse it.
+        $refusal = ($run_id > 0) ? ws_step_url_refusal($kind, $check['action'], $values) : '';
+
+        if ($refusal !== '') {
+            return array('outcome' => 'failed', 'refusal' => $refusal) + $answer;
         }
 
         $tried = ws_step_try_texts($kind, $check['action'], $values);

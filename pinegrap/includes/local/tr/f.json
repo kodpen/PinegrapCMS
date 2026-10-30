@@ -767,6 +767,7 @@
     "From {var:1} · {var:2} · {var:3}": "Kaynak: {var:1} · {var:2} · {var:3}",
     "From {var:1}'s message": "Mesajı yazan: {var:1}",
     "From {var} up": "{var} ve üstü",
+    "Front Door": "Ön Kapı",
     "Front end": "Ön yüz",
     "Front page placement": "Ana sayfadaki yeri",
     "Frontend": "Ön Yüz",

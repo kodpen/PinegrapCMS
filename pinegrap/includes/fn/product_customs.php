@@ -423,11 +423,13 @@ function pg_label_customs_in_use($goods, $account)
  * lines that have one, at least 10 g a unit. Pure.
  *
  * @param array $goods         list of name, quantity, price (minor units),
- *                             weight (kg a unit), hs_code, origin_country
+ *                             weight (kg a unit), hs_code, origin_country,
+ *                             optional sku
  * @param array $defaults      hs_code, origin_country of the shop
  * @param float $parcel_weight kg, 0 when unknown
  * @return array ok, error (translated, '' when ok), lines (list of name,
- *               quantity, unit_price, unit_weight, hs_code, origin_country)
+ *               quantity, unit_price, unit_weight, hs_code, origin_country,
+ *               sku: '' when none)
  */
 function pg_label_customs_lines($goods, $defaults, $parcel_weight = 0.0)
 {
@@ -486,6 +488,7 @@ function pg_label_customs_lines($goods, $defaults, $parcel_weight = 0.0)
             'unit_weight'    => $weight,
             'hs_code'        => $hs_code,
             'origin_country' => $origin,
+            'sku'            => substr(trim($value($line, 'sku')), 0, 100),
         );
     }
 

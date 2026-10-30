@@ -57,8 +57,8 @@ function test_label_customs_lines_product_values_first()
 	pg_assert_true($built['ok']);
 	pg_assert_same('', $built['error']);
 	pg_assert_same(array(
-		array('name' => 'Mug', 'quantity' => 2, 'unit_price' => 1250, 'unit_weight' => 0.4, 'hs_code' => '6912.00', 'origin_country' => 'CN'),
-		array('name' => 'Plate', 'quantity' => 1, 'unit_price' => 900, 'unit_weight' => 0.4, 'hs_code' => '9999.99', 'origin_country' => 'DE'),
+		array('name' => 'Mug', 'quantity' => 2, 'unit_price' => 1250, 'unit_weight' => 0.4, 'hs_code' => '6912.00', 'origin_country' => 'CN', 'sku' => ''),
+		array('name' => 'Plate', 'quantity' => 1, 'unit_price' => 900, 'unit_weight' => 0.4, 'hs_code' => '9999.99', 'origin_country' => 'DE', 'sku' => ''),
 	), $built['lines']);
 }
 

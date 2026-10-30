@@ -820,8 +820,11 @@ $explorer_lang = array(
 //
 // The two areas walk the same controls, but those controls do different things
 // in each, so each area gets its own sentences instead of one set hedged to
-// cover both.  Raise the number after the dot in the key when a tour's own
-// words change, and everyone watches it once more.
+// cover both.  Raise the number after the dot in the key when a tour gains or
+// loses a step, and everyone watches it once more; rewording a step keeps the
+// key.  A step names the control it points at by the label the screen prints
+// (Filters, Grid view, More actions), never by its place or shape alone: the
+// bubble is read aloud, and "the sliders beside it" names nothing to look for.
 $explorer_tour_key = ($explorer_area == 'catalog') ? 'explorer_catalog.4' : 'explorer_files.4';
 
 $explorer_tour = ($explorer_area == 'catalog')
@@ -829,7 +832,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'tree',
             'title' => lang('The product group tree'),
-            'text' => lang('Every product group in the store is here, in the Catalog Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
+            'text' => lang('Every product group in the store is here, in the Catalog Manager panel of the main menu (on the left). Clicking one opens it now, where the old screen only expanded it. Right-click a group to publish or unpublish it, edit it, rename it or send it to the Recycle Bin, and drag one onto another to move it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The product group menu'),
@@ -841,7 +844,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('This narrows what is on screen as you type, over the name and the short description both. The sliders beside it narrow by what things are instead: out of stock, not published, no picture, no price. The two buttons on the right switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type, over the name and the short description both. The Filters button narrows by what things are instead: out of stock, not published, no picture, no price. Grid view and List view switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'all_row',
             'title' => lang('The whole store at once'),
@@ -849,11 +852,11 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'menu',
             'title' => lang('Right-click an item'),
-            'text' => lang('Anything in the middle of the screen answers the right mouse button, and this is the menu it opens -- shown here on the group beside it. Publish and unpublish, edit, rename, cut, copy, paste and duplicate all live in it. A product also has Remove from this group, which takes it out of the group you are looking at without deleting it. Select several items first and the menu acts on all of them.')),
+            'text' => lang('Right-click a group or product in the listing, or press the Menu key or Shift+F10 on it (a long press on a touch screen), and this menu opens -- shown here on the group beside it. Publish and unpublish, edit, rename, cut, copy, paste and duplicate all live in it. A product also has Remove from this group, which takes it out of the group you are looking at without deleting it. Select several items first and the menu acts on all of them.')),
         array(
             'at' => 'selection',
             'title' => lang('What you have picked'),
-            'text' => lang('Pick something and the bar along the bottom becomes what can be done with it: edit it, publish or unpublish it, move it into another group, delete it, and the rest behind the three dots. Move to... opens the group list with a search box, and asks the two things separately -- moving a product takes it out of the group you are looking at, adding leaves it there as well. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
+            'text' => lang('Pick something and the status bar under the listing says how many items are selected and becomes what can be done with them: edit, publish or unpublish, move into another group, delete, and the rest under More actions (the three dots). Move to... opens the group list with a search box, and asks the two things separately -- moving a product takes it out of the group you are looking at, adding leaves it there as well. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
         array(
             'at' => 'bin',
             'title' => lang('The Recycle Bin'),
@@ -861,12 +864,12 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The preview panel is switched on and off in this menu, and Commerce Management Rights lives here too. So does Watch the tour, if you would like to see this again.')))
+            'text' => lang('More, the three dots at the end of the toolbar, is where the preview panel is switched on and off, and Commerce Management Rights lives there too. So does Watch the tour, if you would like to see this again.')))
     : array(
         array(
             'at' => 'tree',
             'title' => lang('The folder tree'),
-            'text' => lang('Every folder on the site is here, in the File Manager panel of the menu on the left. Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
+            'text' => lang('Every folder on the site is here, in the File Manager panel of the main menu (on the left). Clicking one opens it now, where the old screen only expanded it. Right-click a folder for its own menu: a new folder, rename, access rules, settings and delete. Dragging one onto another moves it.')),
         array(
             'at' => 'tree_menu',
             'title' => lang('The folder menu'),
@@ -878,15 +881,15 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('This narrows what is on screen as you type. The sliders beside it narrow by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and says along the top what it is hiding. The two buttons on the right switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type. The Filters button narrows by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and while one is on, a line above the listing says how many are on and what is shown, with Clear filters to bring everything back. Grid view and List view switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'menu',
             'title' => lang('Right-click an item'),
-            'text' => lang('Anything in the middle of the screen answers the right mouse button, and this is the menu it opens -- shown here on the folder beside it. Cut, copy, paste, duplicate, rename and delete all live in it, along with Copy address and the things that only fit one kind of item, such as optimising a picture or extracting an archive. Select several items first and the menu acts on all of them.')),
+            'text' => lang('Right-click a folder, page or file in the listing, or press the Menu key or Shift+F10 on it (a long press on a touch screen), and this menu opens -- shown here on the folder beside it. Cut, copy, paste, duplicate, rename and delete all live in it, along with Copy address and the things that only fit one kind of item, such as optimising a picture or extracting an archive. Select several items first and the menu acts on all of them.')),
         array(
             'at' => 'selection',
             'title' => lang('What you have picked'),
-            'text' => lang('Pick something and the bar along the bottom becomes what can be done with it: open it, move it, download it, delete it, and the rest behind the three dots. Move to... opens a list of every folder with a search box, so a folder four levels down needs no dragging at all. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
+            'text' => lang('Pick something and the status bar under the listing says how many items are selected and becomes what can be done with them: open, move, download, delete, and the rest under More actions (the three dots). Move to... opens a list of every folder with a search box, so a folder four levels down needs no dragging at all. Picking works from the keyboard too: the arrow keys walk the listing, Shift takes everything in between, and typing the first letters of a name jumps to it.')),
         array(
             'at' => 'bin',
             'title' => lang('The Recycle Bin'),
@@ -894,7 +897,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'more',
             'title' => lang('Everything else'),
-            'text' => lang('The preview panel is switched on and off in this menu, and the views across everything are here too. So is Watch the tour, if you would like to see this again.')));
+            'text' => lang('More, the three dots at the end of the toolbar, is where the preview panel is switched on and off, and the views across everything are there too. So is Watch the tour, if you would like to see this again.')));
 
 echo
     pg_page_shell(
@@ -1543,7 +1546,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         </div>
         <button type="button" id="recycle_bin_button" class="btn btn-sm btn-text theme-secondary no-popover position-relative d-none" title="<?php echo lang('Recycle Bin'); ?>"><span class="bi bi-trash3"></span><span id="recycle_bin_count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill theme-danger d-none" style="font-size:.6rem;"></span></button>
         <div class="pg-menu-wrap" id="explorer_more_wrap">
-            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false"><span class="bi bi-three-dots-vertical"></span></button>
+            <button type="button" id="explorer_more_button" class="btn btn-sm btn-text theme-secondary no-popover" data-bs-toggle="menu" data-bs-placement="bottom-end" data-bs-display="static" aria-expanded="false" title="<?php echo lang('More'); ?>" aria-label="<?php echo lang('More'); ?>"><span class="bi bi-three-dots-vertical"></span></button>
             <ul class="menu pg-menu-end shadow" style="border-radius:.75rem;">
                 <li class="d-none lg:d-block"><button type="button" class="menu-item" id="preview_toggle_button" aria-pressed="false"><span class="bi bi-check2 me-3 opacity-0" data-role="check" aria-hidden="true"></span><?php echo lang('Preview panel'); ?></button></li>
                 <li class="d-none lg:d-block"><hr class="menu-divider" /></li>
