@@ -2368,3 +2368,72 @@ JS
 	pg_assert_same(array('done', 'always'), $result['outcomes']['end'], 'an End box leaves as any box');
 	pg_assert_same(array('x' => 480 - 16, 'y' => 100 - 28, 'width' => (240 * 5 + 208 + 16) - (240 * 2 - 16), 'height' => 80 + 28 + 32), array('x' => $result['frame']['x'], 'y' => $result['frame']['y'], 'width' => $result['frame']['width'], 'height' => $result['frame']['height']), 'the frame around For each, the body and the End box');
 }
+
+// The body of one function of the flow canvas script, for source checks.
+function ws_flows_canvas_test_function($name)
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	return preg_match('/\n    function ' . preg_quote($name, '/') . '\(.*?\n    \}\n/s', $source, $match) ? $match[0] : '';
+}
+
+// A value box writes no step of its own, so a run shown gives it no state
+// (it used to say "not reached" even after the run ended) and lists it
+// after the steps, under its own heading.
+function test_workspace_flows_canvas_run_skips_value_boxes()
+{
+	$paint = ws_flows_canvas_test_function('paintRun');
+	$badge = ws_flows_canvas_test_function('stepBadge');
+	$list = ws_flows_canvas_test_function('stepList');
+	$order = ws_flows_canvas_test_function('runOrder');
+
+	pg_assert_contains('if (!state.run || kindOf(node).pure) {', $paint, 'a value box on the canvas takes no run badge');
+	pg_assert_contains("if (kindOf(node).pure) {", $badge, 'a value box in words gets a neutral mark');
+	pg_assert_contains("t('fl_group_values')", $badge, 'the neutral mark names the values group');
+	pg_assert_contains('runOrder().forEach', $list, 'the side list puts the steps first');
+	pg_assert_contains("t('fl_group_values')", $list, 'the value boxes come under their own heading');
+	pg_assert_contains('if (!pure) {', $list, 'a value box row carries no state');
+	pg_assert_contains('.concat(nodes.filter(function (node) { return kindOf(node).pure; }))', $order, 'value boxes go after the steps');
+	pg_assert_contains("(state.run ? runOrder() : orderedNodes())", ws_flows_canvas_test_function('drawOutline'), 'the run outline puts the steps first');
+	pg_assert_contains('stepBadge(node, step)', ws_flows_canvas_test_function('outlineRun'), 'the run outline marks a value box neutrally');
+}
+
+// Typing in a big flow: each key updates the box's face and name only;
+// the data threads, the outline's reads and the undo step wait until the
+// typing pauses (settle()), once. Each key used to redraw every thread and
+// write the whole graph as JSON.
+function test_workspace_flows_canvas_typing_settles_once()
+{
+	$refresh = ws_flows_canvas_test_function('refreshNode');
+	$changed = ws_flows_canvas_test_function('changed');
+	$settle = ws_flows_canvas_test_function('settle');
+
+	pg_assert_true($refresh !== '' && $changed !== '' && $settle !== '', 'the functions are in the script');
+	pg_assert_true(strpos($refresh, 'drawData()') === false && strpos($refresh, 'dataThreads()') === false, 'a key draws no thread');
+	pg_assert_contains('state.settleThreads = true;', $refresh, 'the threads wait for the pause');
+	pg_assert_contains('state.settleTimer = window.setTimeout(settle, SETTLE_DELAY);', $changed, 'a folding change waits for the pause');
+	pg_assert_true(substr_count($changed, 'JSON.stringify(state.graph)') === 1, 'only a step of its own is written at once');
+	pg_assert_contains('drawData();', $settle, 'the threads are drawn at the pause');
+	pg_assert_contains('drawReads(dataThreads());', $settle, 'the reads are drawn at the pause');
+	pg_assert_contains('historyRecord(state.history, JSON.stringify(state.graph), true, Date.now());', $settle, 'one undo step per pause');
+	pg_assert_true((bool) preg_match('/var SETTLE_DELAY = (\d+);/', (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'), $delay) && $delay[1] >= 150 && $delay[1] <= 300, 'the pause is 150-300 ms');
+
+	foreach (array('undo', 'show', 'showRun') as $name) {
+		pg_assert_contains('settle();', ws_flows_canvas_test_function($name), $name . '() settles what waits first');
+	}
+
+	pg_assert_contains('state.settleHistory', ws_flows_canvas_test_function('undoable'), 'a waiting change can be undone');
+}
+
+// The outline draws the form of the open (selected) box only: a flow of 97
+// boxes drew 686 controls at once.
+function test_workspace_flows_canvas_outline_draws_the_open_form_only()
+{
+	$outline = ws_flows_canvas_test_function('drawOutline');
+	$select = ws_flows_canvas_test_function('select');
+
+	pg_assert_contains('} else if (node.id === open) {', $outline, 'only the open box gets its form');
+	pg_assert_true(substr_count($outline, 'nodeForm(node)') === 1, 'no other form is drawn');
+	pg_assert_contains("label.setAttribute('aria-expanded'", $outline, 'the heading says whether the box is open');
+	pg_assert_contains('drawOutline();', $select, 'selecting another box opens its form');
+}

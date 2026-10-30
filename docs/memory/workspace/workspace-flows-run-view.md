@@ -14,6 +14,7 @@ description: The run view of the flow canvas (workspace_flow.js, PR #1555): Run,
 ## How is a run shown?
 - A run picked: its button disabled meanwhile, only the last pick shown (`openSeq`). Its version's graph read-only; draft, selection, view wait in `state.stash`, saves keep sending the draft (`draftOf()`).
 - Each box: `wsf-run-<state>` tone, mark and word (none = not reached), result, a waiting task's link (`?task=`, `K.openTask()`, then `ws_tick`). Taken arrows marked; outline in words.
+- A value box (`KINDS[kind].pure`) writes no step: no badge on the canvas, a neutral "Values" mark in words (`stepBadge()`); side list and run outline put it after the steps (`runOrder()`). It showed "Not reached" after the run ended, listed first (#3497).
 - Cancel (`can_cancel`) asks. Close and "All runs" bring the flow back as it was.
 
 ## What did a box receive? (T4, PR #2650)
