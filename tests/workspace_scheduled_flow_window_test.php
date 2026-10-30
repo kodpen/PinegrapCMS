@@ -117,7 +117,7 @@ function test_workspace_scheduled_flow_window_rights()
 	pg_assert_contains("'publish'   => !empty(\$request['publish'])", $route);
 
 	// The store's own checks stay the gate.
-	pg_assert_contains('ws_can_schedule($viewer)', ws_scheduled_flow_window_test_source('ws_flow_save_check'));
+	pg_assert_contains('ws_flow_builder($viewer)', ws_scheduled_flow_window_test_source('ws_flow_save_check'));
 	pg_assert_contains('ws_flow_share_manager($viewer, $flow)', ws_scheduled_flow_window_test_source('ws_flow_publish_check'));
 }
 
