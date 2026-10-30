@@ -35,7 +35,8 @@ if (!defined('PG_INIT_LOADED')) {
 							<li class="breadcrumb-item active" aria-current="page"><?=lang('Duplicate Folder')?></li>
 						</ol>
 					</nav>
-					<h2 class="d-inline-block text-break header-content-for-add-page" data-bs-content="<?=lang('Press Duplicate to duplicate this folder and pages directly inside of it.  Optionally, you may configure content that you want the system to find and replace in the new duplicated items.')?>" title="<?=lang('Duplicate Folder')?>">[<?=h($folder['name'])?>]</h2>
+					<h2 class="d-inline-block text-break header-content-for-add-page">[<?=h($folder['name'])?>]</h2>
+					<p class="form-text mt-0"><?=lang('Press Duplicate to duplicate this folder and pages directly inside of it.  Optionally, you may configure content that you want the system to find and replace in the new duplicated items.')?></p>
 				</div>
 			</div>
 			<form method="post">

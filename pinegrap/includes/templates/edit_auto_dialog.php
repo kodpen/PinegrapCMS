@@ -29,12 +29,10 @@ if (!defined('PG_INIT_LOADED')) {
                             <li class="breadcrumb-item active" aria-current="page"><?php if ($screen == 'create'): ?><?=lang('Create Auto Dialog')?><?php else: ?><?=lang('Edit Auto Dialog')?><?php endif ?></li>
                         </ol> 
                     </nav>
-                    <h2 
-						class="d-inline-block text-break header-content-for-add-page" 
-						data-bs-content="<?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?>" 
-						title="<?php if ($screen == 'create'): ?><?=lang('Create Auto Dialog')?><?php else: ?><?=lang('Edit Auto Dialog')?><?php endif ?>">
+                    <h2 class="d-inline-block text-break header-content-for-add-page">
 						[<?php if ($screen == 'create'): ?><?=lang('Auto Dialog Name')?><?php else: ?><?=h($auto_dialog['name'])?><?php endif ?>]
 					</h2>
+					<p class="form-text mt-0"><?php if ($screen == 'create'): ?><?=lang('Create a new auto dialog that can automatically popup for visitors. You may preview the auto dialog on the next screen and then enable it for all visitors when desired.')?><?php else: ?><?=lang('Edit an auto dialog that can automatically popup for visitors.')?><?php endif ?></p>
 					<?php if ($screen == 'edit'): ?>
 						<nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
                 			<div class=" btn-group btn-group-sm flex-wrap">
