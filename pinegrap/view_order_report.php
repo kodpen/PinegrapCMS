@@ -721,7 +721,7 @@ if (!$_POST) {
             
         // else a dynamic value was entered, so use dynamic value
         } else {
-            $operand_2 = get_dynamic_value($filter['dynamic_value'], $filter['dynamic_value_attribute']);
+            $operand_2 = pg_report_dynamic_value($filter['dynamic_value'], $filter['dynamic_value_attribute'], $field_type);
         }
         
         // if where is blank, then add the start of the where clause
