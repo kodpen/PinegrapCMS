@@ -418,38 +418,23 @@ function get_search_results($properties) {
 
             $sql_boolean_mode = "";
 
-            // Start the filter search query off with the search query that the customer entered.
-            // This will be the query that is used in the where condition to filter results.
-            $filter_search_query = $query;
+            // The search text as a valid fulltext string: boolean operators a
+            // word does not carry are dropped, so no input is a syntax error
+            // (pg_search_boolean_terms()). A single word or a word with a
+            // joining character (e.g. multi-recipient) is an exact phrase.
+            $filter_search_query = pg_search_boolean_terms($query);
 
-            // If the search query does not contain a space (i.e. does not contain multiple keywords)
-            // and does not already contain a quote, then add quotes around search query,
-            // so that it is treated as a boolean exact phrase query.  We do this so that if a search query
-            // contains a dash or possibly other connecting characters (e.g. multi-recipient) then
-            // MySQL will only return results where the exact full query existed (e.g. "multi-recipient"
-            // instead of results that contain "multi" and "recipient" in separate areas).
-            if (
-                (mb_strpos($filter_search_query, ' ') === false)
-                && (mb_strpos($filter_search_query, '"') === false)
-            ) {
-                $filter_search_query = '"' . $filter_search_query . '"';
-            }
+            // The score is a natural language search even for a boolean
+            // search, because the boolean relevancy is bad.
+            $score_search_query = pg_search_score_terms($filter_search_query);
 
-            // Start the score search query off with the filter search query.
-            $score_search_query = $filter_search_query;
-
-            // If the search query contains boolean characters, then turn boolean mode on,
-            // and remove the boolean characters for the score query, because we use a natural language search for the score,
-            // even if it is a boolean search, because the boolean relevancy is bad.
-            if (
-                (mb_strpos($filter_search_query, '"') !== false)
-                || (mb_strpos($filter_search_query, '+') !== false)
-            ) {
+            if (pg_search_needs_boolean_mode($filter_search_query)) {
                 $sql_boolean_mode = " IN BOOLEAN MODE";
-
-                $score_search_query = str_replace('"', '', $score_search_query);
-                $score_search_query = str_replace('+', '', $score_search_query);
             }
+
+            // Pages binned, archived or removed since the index was built
+            // stay out of the results.
+            $sql_where_live = pg_search_items_live_sql(pg_recycle_bin_folder_ids());
 
             $sql_where_and = "";
 
@@ -460,20 +445,25 @@ function get_search_results($properties) {
 
             // Do a fulltext search for the keywords column first in order to get
             // featured items.
-            $featured_items = db_items(
-                "SELECT
-                    id,
-                    url,
-                    title,
-                    description,
-                    MATCH(keywords) AGAINST ('" . e($score_search_query) . "') AS score
-                FROM search_items
-                WHERE
-                    $sql_where_folders
-                    $sql_where_and
-                    (MATCH(keywords) AGAINST('" . e($filter_search_query) . "'$sql_boolean_mode))
-                ORDER BY score DESC
-                LIMIT 100");
+            // A search MySQL refuses lists nothing instead of the error page.
+            $featured_items = array();
+            if ($filter_search_query != '') {
+                $featured_items = pg_search_fulltext_items(
+                    "SELECT
+                        id,
+                        url,
+                        title,
+                        description,
+                        MATCH(keywords) AGAINST (?) AS score
+                    FROM search_items
+                    WHERE
+                        $sql_where_folders
+                        $sql_where_and
+                        (MATCH(keywords) AGAINST(?$sql_boolean_mode))
+                        $sql_where_live
+                    ORDER BY score DESC
+                    LIMIT 100", array($score_search_query, $filter_search_query));
+            }
 
             // Prepare where filter in order to prevent getting results that
             // already appeared in featured area.
@@ -503,24 +493,28 @@ function get_search_results($properties) {
             }
 
             // Now do a fulltext search to get the normal results.
-            $results = db_items(
-                "SELECT
-                    url,
-                    title,
-                    description,
-                    (
-                        (3 * (MATCH(title) AGAINST ('" . e($score_search_query) . "')))
-                        + (2 * (MATCH(description) AGAINST ('" . e($score_search_query) . "')))
-                        + (1 * (MATCH(content) AGAINST ('" . e($score_search_query) . "')))
-                    ) AS score
-                FROM search_items
-                WHERE
-                    $sql_where_folders
-                    $sql_where_not_featured
-                    $sql_where_and
-                    (MATCH(content) AGAINST('" . e($filter_search_query) . "'$sql_boolean_mode))
-                ORDER BY score DESC
-                LIMIT 100");
+            $results = array();
+            if ($filter_search_query != '') {
+                $results = pg_search_fulltext_items(
+                    "SELECT
+                        url,
+                        title,
+                        description,
+                        (
+                            (3 * (MATCH(title) AGAINST (?)))
+                            + (2 * (MATCH(description) AGAINST (?)))
+                            + (1 * (MATCH(content) AGAINST (?)))
+                        ) AS score
+                    FROM search_items
+                    WHERE
+                        $sql_where_folders
+                        $sql_where_not_featured
+                        $sql_where_and
+                        (MATCH(content) AGAINST(?$sql_boolean_mode))
+                        $sql_where_live
+                    ORDER BY score DESC
+                    LIMIT 100", array($score_search_query, $score_search_query, $score_search_query, $filter_search_query));
+            }
         }
     }
 
