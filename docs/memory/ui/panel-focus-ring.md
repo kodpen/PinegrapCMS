@@ -18,3 +18,8 @@ description: The panel's focus ring on Bootstrap 6's focus-ring tokens (step B9k
 ## Which rings wait for B10?
 - Their size differs from v6's 3px outline with 1px offset, so moving them changes pixels; that is B10 token tuning, which needs the owner's visual approval: the global WCAG rule (2px outline, 2px offset, 0.2rem shadow), `.no-popover` links, the skip link (3px, 2px), `.pg-role-card` (0.25rem shadow) and the designer home's `.sdh-start`, `.sdh-card`, `.sdh-page` (0.2rem shadow). Their colour is already on the token.
 - Workspace rings use the Workspace accent (`--ws-accent`), not the panel ring (`workspace/workspace-ui-scale.md`).
+
+## Which colour does a screen's own ring use?
+- `--pg-primary-ink` (2px outline), like the global ring, never `--pg-primary` (`#64b5f6`, about 2.2:1 on white) or the 35% `--pg-focus-ring-color` alone. Inside a box that clips (a scroll box, a card), the outline is inset (`outline-offset: -2px`).
+- #PR moved the API application rows (`api_settings.php`, the row had `outline: 0` and only the hover tint), the dashboard card lists (`welcome.php`), the guided tour's text and buttons (`pg_tour.css`; on Next the light ring matched the button fill) and the File Manager tree and list-heading rings (`view_folders.php`). `tests/faint_focus_rings_test.php` pins them.
+- Still on `--pg-primary`: `.pg-sort-btn` and `td[data-pg-edit]` in `backend.src.js`, and the chat launcher in `chat.php`.
