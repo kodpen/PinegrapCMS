@@ -23,4 +23,7 @@ description: Trendyol Invoiced status push: "Mark invoiced" form on the Imported
 - No live call. The success body; the 400 body for a package not Picking, already Invoiced or past it; whether every line must be sent (the docs' examples send lines, as Picking does).
 - Whether Trendyol checks the number against GİB e-documents.
 
+## Is it ever sent by itself?
+- Yes, after the ERP's automatic invoice of a marketplace order, for a package already `Picking` (`erp/erp-auto-invoice-marketplace.md`); never an accept first. The form comes with the invoice number filled in.
+
 Related: docs/memory/commerce/trendyol-invoice-link.md, docs/memory/commerce/trendyol-orders.md

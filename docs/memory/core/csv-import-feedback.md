@@ -1,6 +1,6 @@
 ---
 name: csv-import-feedback
-description: Contacts and Users CSV import: separator from the header line, a file with no known column refused, blank rows passed over, rows named 'Line n: reason'
+description: Contacts, Users, Products, Submitted Forms and Campaign Profiles CSV import: separator from the header line, unknown headings and unused rows named 'Line n: reason'
 ---
 
 ## Which separator do the contacts and users imports read?
@@ -15,6 +15,13 @@ description: Contacts and Users CSV import: separator from the header line, a fi
 - A file without an e-mail column is refused with that reason and the headings found.
 - Blank rows (empty, or separators only) are passed over. A row with values but no e-mail address still refuses the file, now with its line in the error list.
 - A second row of the file with the same e-mail address or user name passes the database pre-check and is skipped at insert time; it is named in a warning on View Users.
+
+## What do Import Products, Submitted Forms and Campaign Profiles name?
+- All three read the separator with `pg_csv_read_separator()`; Import Products only for a .csv upload (a converted spreadsheet is written with commas). Before, a `;` file gave products "No product have been imported or updated." with no reason.
+- Unknown headings are a warning on the result screen (View Products, View Campaign Profiles, the Import Submitted Forms screen); for submitted forms an unknown heading is one that names no field of the chosen form.
+- Products: with Update Existing Products off, the row of a product already on file is named ('Line n', n counted among the rows read as in `commerce/product-import-prices.md`). Before, it was dropped uncounted.
+- Submitted forms: a file-upload cell naming no file, or a file in a folder the user cannot edit, is named with its field ('Line n' is the file line). An empty file cell is not mentioned.
+- Tests: `tests/import_unused_named_test.php` (source checks; the loops need a database), `tests/import_headings_test.php` (heading case, blank rows).
 
 ## How is the list capped?
 - `pg_csv_problem_list($problems)` turns `array(line, reason)` pairs into texts: the first 20, then 'and n more line(s) that could not be used.'. Not escaped: callers `h()` each line. Also `pg_csv_row_lines()`, `pg_csv_row_blank()`, `pg_csv_headings_text()`.

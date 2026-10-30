@@ -77,6 +77,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-invoice-document-pdf.md: ERP invoice document layer (includes/erp/document.php): template syntax, placeholders, HTML/PDF endpoint, template editor, seller identity, dompdf traps.
 - erp-invoice-editor-catalog-offers.md: Invoice/waybill editor catalogue read (product name rule, erp_product_for_line shape), zone rate on a new account, product offers, two-discount order, field-level errors, barcode box.
 - erp-invoice-mail.md: E-mailing an issued ERP invoice (4.97): the attachment, erp_document_mails rows, the automatic send decided at the invoice's announcement and sent after the response, testing on dev.
+- erp-invoice-public-link.md: Public address of an invoice PDF (#3743, step 11.0.65, PR #3780): erp_invoices.public_token_hash, erp_invoice.php, token rules, revoke, 404s, WAF; what n11 and Trendyol require of the link
 - erp-invoice-register-cap.md: The ERP invoice register reads at most 500 rows; a full list is counted over the same conditions and the note and a line under the table name both numbers
 - erp-invoice-settlement.md: ERP invoice closing by settlement (erp_settlements): why it posts no money, derived paid_total, no auto matching, transaction nesting, and why balance caches never feed a report.
 - erp-isbasi-driver.md: Logo İşbaşı e-document driver (edoc/isbasi.php): source document, fields and environments, login without getplatform, session and quota, request helper, success envelope, test limits.

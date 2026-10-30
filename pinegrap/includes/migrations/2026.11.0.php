@@ -123,6 +123,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
 	upgrade_2026_11_0_erp_quote_templates();    // 11.0.63
 	upgrade_2026_11_0_erp_quote_links();        // 11.0.64
+	upgrade_2026_11_0_erp_invoice_public_link(); // 11.0.65
 	upgrade_2026_11_0_form_field_rules();       // 11.0.135
 
 }
@@ -1112,6 +1113,19 @@ function upgrade_2026_11_0_erp_quote_links() {
 	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
 
 	install_note('ERP: a sales quote can be sent as a link the customer opens without an account, to read the quote and accept it with a signature. Nothing changes until a link is made on the quote screen.');
+
+}
+
+// The public address of an invoice's PDF (includes/erp/invoice_public_link.php,
+// erp_invoice.php), which a marketplace keeps with the order and the buyer
+// opens without signing in. Only the SHA-256 of the address's token is kept;
+// empty means the invoice has no public address. A token is made the first
+// time one is needed, and clearing the hash takes the address back.
+function upgrade_2026_11_0_erp_invoice_public_link() {
+
+	install_add_column('erp_invoices', 'public_token_hash', "CHAR(64) NOT NULL DEFAULT ''");
+
+	install_note('ERP: an issued invoice can have a public address for its PDF, which marketplace orders (Trendyol, n11) receive on their own when Site Settings, Ecommerce, ERP invoices marketplace orders. Nothing changes while that switch is off.');
 
 }
 
