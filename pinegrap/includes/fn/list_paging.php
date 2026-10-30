@@ -156,6 +156,39 @@ function pg_list_like_pattern($term)
 }
 
 /**
+ * The charset a list search matches I and ı in under Turkish case rules:
+ * the connection's ('utf8' for a utf8/utf8mb3 connection, else 'utf8mb4')
+ * when the panel or the pages are in Turkish, '' otherwise or without a
+ * connection.
+ *
+ * @return string
+ */
+function pg_list_search_turkish_charset()
+{
+    $turkish = (strtolower(substr((string) lang(array('info' => '')), 0, 2)) === 'tr')
+        || (function_exists('pg_tr_source_language') && (strtolower(substr((string) pg_tr_source_language(), 0, 2)) === 'tr'));
+
+    if (!$turkish || !class_exists('db', false) || !isset(db::$con) || !db::$con) {
+        return '';
+    }
+
+    $charset = strtolower((string) @mysqli_character_set_name(db::$con));
+
+    return in_array($charset, array('utf8', 'utf8mb3'), true) ? 'utf8' : 'utf8mb4';
+}
+
+/**
+ * A text in lower case under Turkish rules: I is ı and İ is i.
+ *
+ * @param string $text
+ * @return string
+ */
+function pg_list_turkish_lower($text)
+{
+    return mb_strtolower(strtr((string) $text, array('İ' => 'i', 'I' => 'ı')), 'UTF-8');
+}
+
+/**
  * The search condition of a list: every word must be found in one of the
  * columns, or name one of the labels a column shows for a stored value (a
  * role number shown as "Manager"). Answers '' and no values when there is
@@ -171,11 +204,21 @@ function pg_list_like_pattern($term)
  *                       cannot be in that column
  * @param array $labels  list of array('expr' => SQL expression,
  *                       'labels' => stored value => shown label)
+ * @param string|null $turkish the connection charset ('utf8mb4' or 'utf8')
+ *                       when a word with I or ı is also matched under
+ *                       Turkish case rules (I = ı, İ = i), '' when it is
+ *                       not; null asks pg_list_search_turkish_charset()
  * @return array array('sql' => '(…) AND (…)' or '', 'params' => values for
  *               its placeholders, in order)
  */
-function pg_list_search_where($terms, $columns, $labels = array())
+function pg_list_search_where($terms, $columns, $labels = array(), $turkish = null)
 {
+    if ($turkish === null) {
+        $turkish = pg_list_search_turkish_charset();
+    }
+
+    $turkish = (string) $turkish;
+
     $parts = array();
     $params = array();
 
@@ -185,6 +228,7 @@ function pg_list_search_where($terms, $columns, $labels = array())
 
         foreach ($columns as $column) {
             $column_term = $term;
+            $plain = !is_array($column);
 
             if (is_array($column)) {
                 $column_term = (string) call_user_func($column['term'], $term);
@@ -195,15 +239,25 @@ function pg_list_search_where($terms, $columns, $labels = array())
                 }
             }
 
+            // utf8mb4_unicode_ci folds I with i, not with ı, so "YILDIZ" missed
+            // "Yıldız". The plain LIKE stays: turkish_ci alone loses the ş/s and
+            // ç/c folding and finds "iPhone" for "IPHONE" no more. CONVERT, not
+            // COLLATE alone, so a numeric or utf8 (mb3) expression takes it too.
             $alternatives[] = $column . ' LIKE ?';
             $params[] = pg_list_like_pattern($column_term);
+
+            if ($plain && ($turkish !== '') && preg_match('/[Iı]/u', $column_term)) {
+                $alternatives[] = 'CONVERT(' . $column . ' USING ' . $turkish . ') COLLATE ' . $turkish . '_turkish_ci LIKE ?';
+                $params[] = pg_list_like_pattern($column_term);
+            }
         }
 
         foreach ($labels as $label_column) {
             $values = array();
 
             foreach ($label_column['labels'] as $value => $label) {
-                if (mb_stripos((string) $label, $term, 0, 'UTF-8') !== false) {
+                if ((mb_stripos((string) $label, $term, 0, 'UTF-8') !== false)
+                    || (($turkish !== '') && (mb_strpos(pg_list_turkish_lower($label), pg_list_turkish_lower($term), 0, 'UTF-8') !== false))) {
                     $values[] = (string) $value;
                 }
             }
@@ -347,6 +401,25 @@ function pg_list_cell($html, $class = 'align-middle', $attributes = array())
     }
 
     return $cell;
+}
+
+/**
+ * When a record was last changed and, when known, by whom ("15 days ago by
+ * ali"); an unknown user leaves the time alone instead of a dangling "by".
+ *
+ * @param mixed  $timestamp
+ * @param string $username
+ * @return string escaped HTML
+ */
+function pg_list_when($timestamp, $username)
+{
+    $html = get_relative_time(array('timestamp' => $timestamp));
+
+    if (trim((string) $username) !== '') {
+        $html .= ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username))));
+    }
+
+    return $html;
 }
 
 /**

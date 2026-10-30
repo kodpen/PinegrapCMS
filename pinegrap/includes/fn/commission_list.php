@@ -200,8 +200,7 @@ function pg_commission_list_from()
  */
 function pg_commission_list_when($timestamp, $username)
 {
-    return get_relative_time(array('timestamp' => $timestamp))
-        . (((string) $username !== '') ? ' ' . lang(array('string' => 'by {var:1}', 'vars' => array(h($username)))) : '');
+    return pg_list_when($timestamp, $username);
 }
 
 /**
