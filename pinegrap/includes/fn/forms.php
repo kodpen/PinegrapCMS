@@ -1700,9 +1700,11 @@ function validate_date_and_time($date_and_time)
         return false;
     }
 }
+// The top-level domain is 2 to 63 letters (.istanbul, .digital) or an
+// xn-- punycode label, the lengths a DNS label allows.
 function validate_email_address($email_address)
 {
-    if (preg_match("/^([-!#\$%&'*+.\/0-9=?A-Z^_`a-z{|}~])+@([-!#\$%&'*+\/0-9=?A-Z^_`a-z{|}~]+\\.)+[a-zA-Z]{2,6}\$/i", $email_address) == 1) {
+    if (preg_match("/^([-!#\$%&'*+.\/0-9=?A-Z^_`a-z{|}~])+@([-!#\$%&'*+\/0-9=?A-Z^_`a-z{|}~]+\\.)+([a-zA-Z]{2,63}|xn--[a-zA-Z0-9-]{1,59})\$/i", $email_address) == 1) {
         return true;
     } else {
         return false;
