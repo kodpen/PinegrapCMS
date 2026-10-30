@@ -21,11 +21,11 @@ description: Plan (collections half of designer-interactions-collections, steps 
   - **C7a — table, writes, retention, erasure. Done, #3068:** step 11.0.123; the edit, API and Workspace writers; trim and the daily `job.php` sweep; erasure (`designer/collection-revisions.md`).
   - **C7b — History and restore. Done, #3099:** a History section on `edit_submitted_form.php` under that record's edit rights (list, compare with the current values, load); saving a loaded revision goes through the edit save with source `restore`; a file whose `file_id` is gone is not restored and the screen says so. No API endpoints.
 
-- Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns unless the owner wants them (Q4).
+- Item scheduling: templates already do it with a `publish_date` field and a live filter (`design-template-news-publishing.md`); no columns (Q4 decided #3746).
 
 ## Which schema changes are approved?
 - Approved in #2393 and done at C2 (step 11.0.43): Q1 `custom_form_pages.collection`, Q2 `form_fields.collection_kind` and `reference_page_id` (`designer/collection-fields.md`); Q3 table `record_revisions` approved in #3051 (`decisions-made-schema-3.md`).
-- Q4 `forms.publish_at` / `unpublish_at`: not added; the templates' `publish_date` field and live filter cover it.
+- Q4 `forms.publish_at` / `unpublish_at`: refused (#3746, `decisions-made-schema-6.md`); the templates' `publish_date` field and live filter cover it.
 
 ## Where to start?
-- C1–C7 are done; what is left is Q4 (item scheduling), only if the owner wants columns for it.
+- C1–C7 are done and Q4 is decided (#3746): the plan closes; a memory-only PR moves its lasting decisions to `docs/memory/designer/` and deletes this file.

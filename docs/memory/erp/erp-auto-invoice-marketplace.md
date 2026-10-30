@@ -19,7 +19,7 @@ description: Marketplace orders (Trendyol, n11) in the automatic invoice: config
 
 ## What stays manual?
 - The invoice link (number/URL) is still typed by hand on the Imported orders card and the Invoiced push still needs the operator's invoice number (#3624).
-- A public signed invoice-PDF address and the automatic link/Invoiced push are a separate step (signing, expiry, revocation, rate limits) that comes back as its own architect question.
+- Decided (#3743, `workflow/decisions-made-product-10.md`), not built: a public token address for the invoice PDF (`erp_invoices.public_token_hash`) and the automatic link and Invoiced push behind the same switch.
 - Not verified against a live marketplace account.
 
 Related: docs/memory/erp/erp-auto-invoice.md, docs/memory/commerce/marketplace-order-import.md

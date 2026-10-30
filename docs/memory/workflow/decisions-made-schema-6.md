@@ -16,4 +16,8 @@ description: Decisions list, schema part 6 (2026-10-30 midday on): district and 
 - Sales quote guest links (#3671, architect, the next free ERP label when pushed): `erp_quote_links` by `install_create_table()`, in `get_tables()`: `quote_id`, `token_hash CHAR(64)` (unique), `token_hint VARCHAR(8)`, `expires_at`, `used_at`, `revoked_at`, `created_at`, `created_by`; the `short_links` token shape. One live link per issue, a new link revokes the earlier ones, expiry is the quote's `valid_until`.
 - Sales quote templates and the follow-up switch (#3672, architect, the next free ERP label when pushed): `erp_quote_templates` (`name VARCHAR(100)`, `scope VARCHAR(16)` personal | site, `user_id`, `form_data MEDIUMTEXT NULL`, `created_at`, `updated_at`; KEY scope, user_id) in `get_tables()`, and `config.erp_quote_expiry_followup TINYINT(1) NOT NULL DEFAULT 0` for the Settings checkbox (the config.php constant still turns it on).
 
+## Which schema was approved on 2026-10-30 (evening)?
+- Public invoice PDF address (#3743, architect, the next free ERP label when pushed): `erp_invoices.public_token_hash CHAR(64) NOT NULL DEFAULT ''` by `install_add_column()`; the SHA-256 of a 32-byte token made on first need, cleared to revoke; empty means no public address (`decisions-made-product-10.md`).
+- Refused (#3746): `forms.publish_at` / `unpublish_at` for collection items; the templates' `publish_date` field and live filter stay the way (`designer/design-template-news-publishing.md`).
+
 Related: docs/memory/workflow/decisions-made-schema.md, docs/memory/workflow/decisions-made-schema-5.md
