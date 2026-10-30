@@ -213,13 +213,13 @@ $pg_settings_cards[] = '
                                                             <label for="mailchimp_sync_days" class="form-label">' . lang('Historical Sync') . '</label>
                                                             <label class="form-control form-adorn form-adorn-end">
                                                                 <span class="form-adorn-text" aria-hidden="true">' . lang('days in the past') . '</span>
-                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                                <input type="text" name="mailchimp_sync_days" id="mailchimp_sync_days" class="form-ghost text-end" value="' . h($mailchimp_sync_days ? $mailchimp_sync_days : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
                                                             </label>
                                                             <div class="form-text">' . lang('Set how far in the past to sync orders. Leave blank to sync all historical orders.') . '</div>
                                                         </div>
                                                         <div class="pg-f-xs">
                                                             <label for="mailchimp_sync_limit" class="form-label">' . lang('Limit Sync') . '</label>
-                                                            <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit) . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
+                                                            <input type="text" name="mailchimp_sync_limit" id="mailchimp_sync_limit" class="form-control text-end" value="' . h($mailchimp_sync_limit ? $mailchimp_sync_limit : '') . '" maxlength="6" inputmode="numeric" data-inputmask-alias="decimal"/>
                                                             <div class="form-text">' . lang('max number of orders to sync each time cron job runs') . '</div>
                                                         </div>
                                                         <div class="col-12">
