@@ -82,10 +82,10 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
-        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'required'=>'required')) . '
+        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>';
     } else {
-        $output_name = '<input type="text" name="name" id="name" class="form-control" value="' . h($v['name']) . '"/>';
+        $output_name = '<input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v['name']) . '"/>';
     }
 
     $enabled_checked = $v['enabled'] ? ' checked="checked"' : '';
@@ -222,7 +222,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" value="' . h($v['title']) . '" />
+                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($v['title']) . '" />
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
