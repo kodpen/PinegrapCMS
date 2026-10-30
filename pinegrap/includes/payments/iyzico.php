@@ -574,7 +574,7 @@ function pg_payment_iyzico_authorize_with($order, $amount, $payment, $settings, 
             return pg_payment_failure_logged(pg_payment_iyzico_start_error($error_message, $raw), $log);
         }
 
-        $log[] = lang(array(
+        $log[] = pg_log_lang(array(
             'string' => 'The 3D Security process has been started by {var:1} {var:2} ({var:3}).',
             'vars'   => $billing_name,
         ));
@@ -832,7 +832,7 @@ function pg_payment_iyzico_complete_with($order, $amount, $return, $state, $sett
         return pg_payment_failure_logged(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'The 3D Security process has been completed by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -921,7 +921,7 @@ function pg_payment_pay_with_iyzico_authorize_with($order, $amount, $payment, $s
         return pg_payment_failure_logged(pg_payment_iyzico_start_error($error_message, $raw), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'Pay with Iyzico has been started by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),
@@ -1024,7 +1024,7 @@ function pg_payment_pay_with_iyzico_complete_with($order, $amount, $return, $sta
         return pg_payment_failure_logged(lang('The order total changed while the payment was being verified. The payment was cancelled. Please review your order and try again.'), $log);
     }
 
-    $log[] = lang(array(
+    $log[] = pg_log_lang(array(
         'string' => 'Pay with Iyzico has been completed by {var:1} {var:2} ({var:3}).',
         'vars'   => array(
             pg_payment_iyzico_order_value($order, 'billing_first_name'),

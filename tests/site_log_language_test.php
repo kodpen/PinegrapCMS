@@ -111,6 +111,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/fn/update.php',
 		'includes/iys/client.php',
 		'includes/panel/commerce.php',
+		'includes/payments/callback.php',
 		'includes/panel/software.php',
 		'membership_entrance.php',
 		'membership_job.php',
@@ -120,6 +121,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'preview_style.php',
 		'recurring_payment_job.php',
 		'remove_item_from_cart.php',
+		'registration_entrance.php',
 		'reset_password.php',
 		'retrieve_order.php',
 		'set_password.php',
@@ -147,17 +149,63 @@ function test_site_log_writers_pass_no_bare_english()
 }
 
 // A writer without a user stores the literal UNKNOWN pg_log_actor() knows,
-// not its translation.
+// not its translation. view_waf_log.php only reads it: its filter still
+// skips the translated UNKNOWN older rows hold.
 function test_site_log_writers_store_untranslated_unknown()
 {
-	$files = array(
-		'includes/api/resources/account.php',
-		'includes/fn/captcha.php',
-		'includes/fn/passkeys.php',
-		'index.php',
-	);
+	$found = array();
+	$files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator(PG_FUNCTIONS_DIR, FilesystemIterator::SKIP_DOTS));
 
 	foreach ($files as $file) {
-		pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('UNKNOWN')"), $file);
+		$path = str_replace('\\', '/', substr($file->getPathname(), strlen(PG_FUNCTIONS_DIR) + 1));
+
+		if ((substr($path, -4) !== '.php') || (strpos($path, 'assets/lib/') === 0) || ($path === 'view_waf_log.php')) {
+			continue;
+		}
+
+		if (strpos((string) file_get_contents($file->getPathname()), "lang('UNKNOWN')") !== false) {
+			$found[] = $path;
+		}
+	}
+
+	pg_assert_same(array(), $found);
+}
+
+// A payment message's line is built from its parts in the software language;
+// a finished line is never rewritten by searching its English text.
+function test_site_log_payment_notice_line_from_parts()
+{
+	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/payments/callback.php');
+
+	pg_assert_false(preg_match('/str_replace\(\s*\'[A-Z][a-z]/', $source) === 1, 'no str_replace() on English text');
+
+	$order = array('id' => '438', 'status' => 'incomplete', 'transaction_id' => '');
+	$answer = array('success' => true, 'status' => 'paid', 'transaction_id' => 'pi_1', 'amount' => 1000, 'log' => array('Stripe reports that payment pi_1 succeeded'), 'raw' => array());
+	$outcome = pg_payment_notify_outcome('stripe', $answer, array('total' => '2000') + $order, 'TRY');
+
+	pg_assert_same('Stripe reports that payment pi_1 succeeded', $outcome['source'], 'the service\'s own line is kept for the caller');
+	pg_assert_same(pg_payment_notify_line('stripe', $outcome['source'], 438, 'not_matching'), $outcome['log'][0]);
+	pg_assert_same(
+		pg_log_lang(array('string' => '{var:1} for order #{var:2}, which was still incomplete. The order was not completed: {var:3}. Check the payment on {var:4}\'s own screen.', 'vars' => array('X', 438, 'why', pg_payment_log_name('stripe')))),
+		pg_payment_notify_line('stripe', 'X', 438, 'not_completed', array('reason' => 'why')));
+}
+
+// The payment drivers' own log lines, the cancellation's, the cart
+// retrieval's and the shipping method refusals' are built with pg_log_lang(), never from bare English.
+function test_site_log_payment_driver_lines_translated()
+{
+	$patterns = array(
+		'includes/payments/stripe.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\')/',
+		'includes/payments/paypal.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\'|^\s*\'PayPal capture)/m',
+		'includes/payments/paytr.php'   => '/(\'log\'\s*=>\s*array\(\s*\'|_logged\([^;]*\), array\(\s*\'|\? \' \(test mode\)\')/',
+		'includes/payments/iyzico.php'  => '/\$log\[\] = lang\(/',
+		'includes/fn/payments.php'      => '/\$log\[\] = \'Auto-refund/',
+		'retrieve_order.php'            => '/\$message = \'/',
+		'shipping_method.php'           => '/\' \(Order ID: \'/',
+		'express_order.php'             => '/\' \(Order ID: \'/',
+	);
+
+	foreach ($patterns as $file => $pattern) {
+		pg_assert_same(0, preg_match($pattern, (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file)), $file);
 	}
 }

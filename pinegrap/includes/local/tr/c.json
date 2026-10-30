@@ -2180,6 +2180,7 @@
     "cURL Error Message:": "cURL Hata Mesajı:",
     "cURL Error Number": "cURL Hata Numarası",
     "cURL Error Number:": "cURL Hata Numarası:",
+    "cURL Error Number: {var:1}. cURL Error Message: {var:2}.": "cURL Hata Numarası: {var:1}. cURL Hata Mesajı: {var:2}.",
     "cURL is not available on this server.": "Bu sunucuda cURL kullanılamıyor.",
     "cache, page cache, cdn, proxy, varnish, nginx, cloudflare, speed, performance, s-maxage, cache-control": "önbellek, sayfa önbelleği, cdn, vekil, proxy, varnish, nginx, cloudflare, hız, performans, s-maxage, cache-control",
     "cafés in the city": "şehirdeki kafe",

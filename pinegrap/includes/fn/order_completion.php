@@ -473,7 +473,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     }
 
     if ((string) $order['payment_method'] === '') {
-        return array('status' => 'refused', 'reason' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)');
+        return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the order keeps no checkout values (the visitor was sent to pay before they were kept)')));
     }
 
     // The payment's amount against the total the order holds now.
@@ -483,7 +483,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
         $paid_totals = pg_payment_paid_totals($paid['amount'] ?? null, $paid['installments'] ?? 0, $order['total']);
 
         if ($paid_totals === null) {
-            return array('status' => 'refused', 'reason' => 'the amount paid is not the order\'s total');
+            return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the amount paid is not the order\'s total')));
         }
     }
 
@@ -497,7 +497,7 @@ function pg_order_complete_from_payment($order_id, $status, array $paid = array(
     $charged = pg_order_lines_charged($lines, date('Y-m-d'), (ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'ClearCommerce'));
 
     if (($lines === array()) || ($charged['subtotal'] !== (int) $order['subtotal'])) {
-        return array('status' => 'refused', 'reason' => 'the order\'s items changed after the visitor was sent to pay');
+        return array('status' => 'refused', 'reason' => pg_log_lang(array('string' => 'the order\'s items changed after the visitor was sent to pay')));
     }
 
     $settings = pg_order_payment_page_settings(pg_order_checkout_page_row($page_column ? $order['checkout_page_id'] : 0));
