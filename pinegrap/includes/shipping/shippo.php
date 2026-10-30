@@ -24,6 +24,12 @@
  * which Shippo makes for USPS, UPS and FedEx only. $reference is Shippo's
  * transaction id.
  *
+ * A parcel that leaves the customs area carries a customs declaration
+ * created with the shipment, its lines from the shipment's goods (name,
+ * quantity, price in minor units, weight in kg a unit, hs_code,
+ * origin_country) and the shop-defaults block of the account
+ * (pg_label_customs_fields(), pg_label_customs_lines()).
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -92,7 +98,7 @@ function pg_label_shippo_fields()
         );
     }
 
-    return $fields;
+    return array_merge($fields, pg_label_customs_fields());
 }
 
 /**
@@ -407,6 +413,79 @@ function pg_label_shippo_shipment_body($shipment, $account)
 }
 
 /**
+ * The customs declaration of a shipment, created with it: null when the
+ * route needs none (pg_label_customs_needed()) or the shop declares no
+ * customs yet (pg_label_customs_in_use()), so such a shipment goes as it
+ * did before the block existed. Shippo takes the total value and net weight
+ * of each line, not a unit's. A return is declared as returned goods.
+ * Pure.
+ *
+ * @param array $shipment see the header of this file; goods for the lines
+ * @param array $account
+ * @return array declaration (array or null), error ('' or the translated
+ *               reason no label can be made)
+ */
+function pg_label_shippo_customs($shipment, $account)
+{
+    $shipment = is_array($shipment) ? $shipment : array();
+    $text = 'pg_label_shippo_text';
+    $recipient = isset($shipment['recipient']) ? $shipment['recipient'] : array();
+    $goods = isset($shipment['goods']) ? $shipment['goods'] : array();
+    $none = array('declaration' => null, 'error' => '');
+
+    if (!pg_label_customs_needed($text($account, 'sender_country'), $text($recipient, 'country')) || !pg_label_customs_in_use($goods, $account)) {
+        return $none;
+    }
+
+    $parcel = isset($shipment['parcel']) ? $shipment['parcel'] : array();
+    $built = pg_label_customs_lines($goods, array(
+        'hs_code'        => $text($account, 'customs_hs_code'),
+        'origin_country' => $text($account, 'customs_origin_country'),
+    ), (float) $text($parcel, 'weight'));
+
+    if (!$built['ok']) {
+        return array('declaration' => null, 'error' => $built['error']);
+    }
+
+    $currency = strtoupper($text($shipment, 'currency'));
+
+    if (preg_match('/^[A-Z]{3}$/', $currency) !== 1) {
+        return array('declaration' => null, 'error' => lang('The order has no currency to declare its goods in.'));
+    }
+
+    $items = array();
+
+    foreach ($built['lines'] as $line) {
+        $items[] = array(
+            'description'    => $line['name'],
+            'quantity'       => $line['quantity'],
+            'net_weight'     => pg_label_shippo_number($line['unit_weight'] * $line['quantity'], 3),
+            'mass_unit'      => 'kg',
+            // Prices are kept in hundredths of the currency.
+            'value_amount'   => number_format(($line['unit_price'] * $line['quantity']) / 100, 2, '.', ''),
+            'value_currency' => $currency,
+            'origin_country' => $line['origin_country'],
+            'tariff_number'  => $line['hs_code'],
+        );
+    }
+
+    $contents = array('merchandise' => 'MERCHANDISE', 'gift' => 'GIFT', 'sample' => 'SAMPLE', 'documents' => 'DOCUMENTS', 'return' => 'RETURN_MERCHANDISE');
+    $contents_type = $text($account, 'customs_contents');
+    $contents_type = !empty($shipment['return']) ? 'RETURN_MERCHANDISE' : (isset($contents[$contents_type]) ? $contents[$contents_type] : 'MERCHANDISE');
+    $incoterm = strtoupper($text($account, 'customs_incoterm'));
+    $signer = ($text($account, 'customs_signer') !== '') ? $text($account, 'customs_signer') : $text($account, 'sender_name');
+
+    return array('declaration' => array(
+        'contents_type'       => $contents_type,
+        'non_delivery_option' => ($text($account, 'customs_non_delivery') === 'abandon') ? 'ABANDON' : 'RETURN',
+        'incoterm'            => in_array($incoterm, array('DDU', 'DAP', 'DDP'), true) ? $incoterm : 'DDU',
+        'certify'             => true,
+        'certify_signer'      => function_exists('mb_substr') ? mb_substr($signer, 0, 100, 'UTF-8') : substr($signer, 0, 100),
+        'items'               => $items,
+    ), 'error' => '');
+}
+
+/**
  * The rate to buy: the one of the service level asked for, else the
  * cheapest (by its amount in the account's currency). Pure.
  *
@@ -614,6 +693,18 @@ function pg_label_shippo_create($shipment, $account)
 
     if (empty($body['address_to']['country'])) {
         return array('success' => false, 'error' => lang('Shippo needs the country of the shipping address.'));
+    }
+
+    // A parcel that leaves the customs area carries its declaration, made
+    // with the shipment; a line that cannot be declared stops it here.
+    $customs = pg_label_shippo_customs($shipment, $account);
+
+    if ($customs['error'] !== '') {
+        return array('success' => false, 'error' => $customs['error'], 'log' => array('Shippo shipment not opened: the customs declaration is incomplete.'));
+    }
+
+    if ($customs['declaration'] !== null) {
+        $body['customs_declaration'] = $customs['declaration'];
     }
 
     // A shipment and its rates cost nothing: a failure here buys nothing.

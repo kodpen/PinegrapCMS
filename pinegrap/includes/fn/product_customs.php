@@ -246,3 +246,262 @@ function pg_product_customs_import_row($row, $positions)
 
     return $row;
 }
+
+/* ---------------------------------------------------------------------------
+   Customs declaration of a carrier label
+   --------------------------------------------------------------------------- */
+
+/**
+ * The member states of the EU customs union: goods move between them with
+ * no declaration.
+ *
+ * @return string[]
+ */
+function pg_label_customs_eu_countries()
+{
+    return array(
+        'AT', 'BE', 'BG', 'HR', 'CY', 'CZ', 'DK', 'EE', 'FI', 'FR', 'DE', 'GR', 'HU', 'IE',
+        'IT', 'LV', 'LT', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SK', 'SI', 'ES', 'SE',
+    );
+}
+
+/**
+ * Whether a parcel between two countries needs a customs declaration: every
+ * route that crosses a border, except one within the EU customs union. A
+ * route with a country missing needs none here; the driver refuses it for
+ * the missing country. Pure.
+ *
+ * @param string $from ISO 3166-1 alpha-2
+ * @param string $to
+ * @return bool
+ */
+function pg_label_customs_needed($from, $to)
+{
+    $from = strtoupper(trim((string) $from));
+    $to = strtoupper(trim((string) $to));
+
+    if (($from === '') || ($to === '') || ($from === $to)) {
+        return false;
+    }
+
+    $eu = pg_label_customs_eu_countries();
+
+    return !(in_array($from, $eu, true) && in_array($to, $eu, true));
+}
+
+/**
+ * The shop-defaults block of a label driver's settings, in the field shape
+ * of pg_payment_fields_normalize(): what a declaration says beside its
+ * lines, and the HS code and country of origin of a product that has none.
+ * Values are carrier-neutral; each driver maps them to its service's words.
+ *
+ * @return array
+ */
+function pg_label_customs_fields()
+{
+    $countries = array('' => lang('None'));
+    $rows = array();
+
+    foreach (pg_product_origin_countries() as $code => $name) {
+        $rows[] = array('code' => (string) $code, 'label' => pg_geo_country_name($code));
+    }
+
+    foreach (pg_geo_sort_by_label($rows) as $row) {
+        $countries[$row['code']] = $row['label'] . ' (' . $row['code'] . ')';
+    }
+
+    return array(
+        array(
+            'name'    => 'customs_contents',
+            'type'    => 'select',
+            'label'   => lang('Customs: Contents Type'),
+            'help'    => lang('Declared for parcels that leave the customs area, such as from Turkey or the EU to the US or Great Britain.'),
+            'options' => array(
+                'merchandise' => lang('Merchandise'),
+                'gift'        => lang('Gift'),
+                'sample'      => lang('Sample'),
+                'documents'   => lang('Documents'),
+                'return'      => lang('Returned goods'),
+            ),
+            'default' => 'merchandise',
+        ),
+        array(
+            'name'    => 'customs_incoterm',
+            'type'    => 'select',
+            'label'   => lang('Customs: Incoterm'),
+            'help'    => lang('Who pays duties and import taxes. DDU and DAP: the recipient. DDP: the shop, where the carrier account offers it.'),
+            'options' => array('DDU' => 'DDU', 'DAP' => 'DAP', 'DDP' => 'DDP'),
+            'default' => 'DDU',
+        ),
+        array(
+            'name'    => 'customs_non_delivery',
+            'type'    => 'select',
+            'label'   => lang('Customs: If Undeliverable'),
+            'options' => array('return' => lang('Return to the sender'), 'abandon' => lang('Abandon')),
+            'default' => 'return',
+        ),
+        array(
+            'name'       => 'customs_hs_code',
+            'label'      => lang('Customs: Default HS Code'),
+            'help'       => lang('Used for a product with no HS code of its own. With neither, a parcel that needs customs gets no label.'),
+            'max_length' => PG_PRODUCT_HS_CODE_MAX,
+        ),
+        array(
+            'name'    => 'customs_origin_country',
+            'type'    => 'select',
+            'label'   => lang('Customs: Default Country of Origin'),
+            'help'    => lang('Used for a product with no country of origin of its own.'),
+            'options' => $countries,
+            'default' => '',
+        ),
+        array(
+            'name'       => 'customs_signer',
+            'label'      => lang('Customs: Signer Name'),
+            'help'       => lang('The person who certifies the declaration. Empty uses the sender name.'),
+            'max_length' => 100,
+        ),
+    );
+}
+
+/**
+ * The block's values the settings form refuses: field name => sentence.
+ * Pure.
+ *
+ * @param array $values field => text
+ * @return array
+ */
+function pg_label_customs_settings_problems($values)
+{
+    $problems = array();
+
+    if (isset($values['customs_hs_code']) && (pg_product_hs_code_parse($values['customs_hs_code']) === false)) {
+        $problems['customs_hs_code'] = lang('The HS code may hold only digits and dots, up to 16 characters.');
+    }
+
+    if (isset($values['customs_origin_country']) && (pg_product_origin_country_parse($values['customs_origin_country']) === false)) {
+        $problems['customs_origin_country'] = lang('The country of origin is not a known country.');
+    }
+
+    return $problems;
+}
+
+/**
+ * Whether a shop declares customs: a default of the block or a line's own
+ * HS code or country of origin is filled. Until then a label driver sends
+ * what it sent before the block existed. Pure.
+ *
+ * @param array $goods   the shipment's goods (pg_label_customs_lines())
+ * @param array $account the driver's account
+ * @return bool
+ */
+function pg_label_customs_in_use($goods, $account)
+{
+    foreach (array('customs_hs_code', 'customs_origin_country', 'customs_signer') as $name) {
+        if (isset($account[$name]) && is_scalar($account[$name]) && (trim((string) $account[$name]) !== '')) {
+            return true;
+        }
+    }
+
+    foreach (is_array($goods) ? $goods : array() as $line) {
+        foreach (array('hs_code', 'origin_country') as $name) {
+            if (is_array($line) && isset($line[$name]) && is_scalar($line[$name]) && (trim((string) $line[$name]) !== '')) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+/**
+ * The declared lines of a parcel. Each order line is declared with its
+ * product name, quantity, unit price in the order's currency (whole minor
+ * units) and unit weight; its HS code and country of origin are the
+ * product's, else the shop default. A line with no HS code or country of
+ * origin anywhere refuses the declaration with its reason: no code is
+ * guessed. A line with no weight shares what the parcel weighs beyond the
+ * lines that have one, at least 10 g a unit. Pure.
+ *
+ * @param array $goods         list of name, quantity, price (minor units),
+ *                             weight (kg a unit), hs_code, origin_country
+ * @param array $defaults      hs_code, origin_country of the shop
+ * @param float $parcel_weight kg, 0 when unknown
+ * @return array ok, error (translated, '' when ok), lines (list of name,
+ *               quantity, unit_price, unit_weight, hs_code, origin_country)
+ */
+function pg_label_customs_lines($goods, $defaults, $parcel_weight = 0.0)
+{
+    $value = function ($source, $name) {
+        return (is_array($source) && isset($source[$name]) && is_scalar($source[$name])) ? (string) $source[$name] : '';
+    };
+
+    $default_hs = pg_product_hs_code_parse($value($defaults, 'hs_code'));
+    $default_origin = pg_product_origin_country_parse($value($defaults, 'origin_country'));
+    $lines = array();
+    $known = 0.0;
+    $weightless = 0;
+
+    foreach (is_array($goods) ? $goods : array() as $line) {
+        $name = trim(preg_replace('/\s+/u', ' ', $value($line, 'name')));
+        $name = function_exists('mb_substr') ? mb_substr($name, 0, 100, 'UTF-8') : substr($name, 0, 100);
+        $hs_code = pg_product_hs_code_parse($value($line, 'hs_code'));
+        $origin = pg_product_origin_country_parse($value($line, 'origin_country'));
+        $hs_code = (($hs_code === false) || ($hs_code === '')) ? $default_hs : $hs_code;
+        $origin = (($origin === false) || ($origin === '')) ? $default_origin : $origin;
+        $label = ($name === '') ? '?' : $name;
+
+        if (($hs_code === false) || ($hs_code === '')) {
+            return array('ok' => false, 'lines' => array(), 'error' => lang(array(
+                'string' => '{var:1} has no HS code, neither on the product nor as the shop default of the label service.',
+                'vars'   => array($label),
+            )));
+        }
+
+        if (($origin === false) || ($origin === '')) {
+            return array('ok' => false, 'lines' => array(), 'error' => lang(array(
+                'string' => '{var:1} has no country of origin, neither on the product nor as the shop default of the label service.',
+                'vars'   => array($label),
+            )));
+        }
+
+        if ($name === '') {
+            return array('ok' => false, 'lines' => array(), 'error' => lang('A line of the parcel has no product name to declare.'));
+        }
+
+        $quantity = max(1, (int) $value($line, 'quantity'));
+        $price = $value($line, 'price');
+        $weight = $value($line, 'weight');
+        $weight = (is_numeric($weight) && ((float) $weight > 0)) ? round((float) $weight, 3) : 0.0;
+
+        if ($weight > 0) {
+            $known += $weight * $quantity;
+        } else {
+            $weightless += $quantity;
+        }
+
+        $lines[] = array(
+            'name'           => $name,
+            'quantity'       => $quantity,
+            'unit_price'     => is_numeric($price) ? max(0, (int) round((float) $price)) : 0,
+            'unit_weight'    => $weight,
+            'hs_code'        => $hs_code,
+            'origin_country' => $origin,
+        );
+    }
+
+    if (!$lines) {
+        return array('ok' => false, 'lines' => array(), 'error' => lang('The parcel has no line to declare to customs.'));
+    }
+
+    if ($weightless > 0) {
+        $share = max(0.01, round(max(0.0, (float) $parcel_weight - $known) / $weightless, 3));
+
+        foreach ($lines as $index => $line) {
+            if ($line['unit_weight'] <= 0) {
+                $lines[$index]['unit_weight'] = $share;
+            }
+        }
+    }
+
+    return array('ok' => true, 'error' => '', 'lines' => $lines);
+}

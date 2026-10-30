@@ -908,6 +908,12 @@ function pg_label_settings_decide($key, $fields, $post, $stored)
         }
     }
 
+    // The customs block's codes are read with the product screen's rules
+    // (pg_label_customs_fields()).
+    foreach (pg_label_customs_settings_problems($values) as $name => $sentence) {
+        $marks[pg_label_input_name($key, $name)] = $sentence;
+    }
+
     if (!empty($stored['exists'])) {
         $compare = isset($stored['values']) ? $stored['values'] : array();
         $changed = ($enabled !== !empty($stored['enabled']));
