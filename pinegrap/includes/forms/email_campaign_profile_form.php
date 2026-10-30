@@ -266,7 +266,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'size'=>'60', 'maxlength'=>'100', 'placeholder'=>lang('Campaign Profile Name'), 'class'=>'form-control', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
@@ -304,7 +304,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                     <div class="row">
                                         <div class="col-12 my-3">
                                             <label for="subject" class="form-label">' . lang('Subject') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control')) . '
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'subject', 'id'=>'subject', 'placeholder'=>lang('Subject'), 'maxlength'=>'255', 'class'=>'form-control', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12 my-1">
@@ -368,7 +368,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
                                     <div class="row">
                                         <div class="col-12 sm:col-6 xl:col-12 my-3">
                                             <label class="form-label" for="from_name">' . lang('From Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text','value'=>h(ORGANIZATION_NAME), 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100')) . '
+                                            ' . $liveform->output_field(array('type'=>'text','value'=>h(ORGANIZATION_NAME), 'name'=>'from_name', 'id'=>'from_name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                             <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                         </div>
                                         <div class="col-12">
