@@ -107,10 +107,6 @@ if (!$_POST) {
     $show_image = (bool) ECOMMERCE_SHOW_PRODUCT_IMAGES;
     $output_image_header = $show_image ? '<th>' . lang('Image') . '</th>' : '';
 
-    // initialize arrays that will store data for sorting
-    $item_sort_orders = array();
-    $item_names = array();
-    
     // get all product groups currently in this product group
     //
     // Groups and products in the Recycle Bin are not listed or counted here, as
@@ -134,9 +130,6 @@ if (!$_POST) {
     while ($row = mysqli_fetch_assoc($result)) {
         $row['type'] = 'product_group';
         $items[] = $row;
-        
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
     
     // if there are product groups inside of this product group
@@ -168,13 +161,10 @@ if (!$_POST) {
         
         $selected_products[] = $row['id'];
         $items[] = $row;
-        
-        $item_sort_orders[] = $row['sort_order'];
-        $item_names[] = mb_strtolower($row['name']);
     }
 
     // sort the items by sort order and then by name
-    array_multisort($item_sort_orders, $item_names, $items);
+    $items = pg_list_sort_by_order_and_name($items);
 
     // The pictures behind each product's cover, for the image viewer.
     $more_images = $show_image ? pg_product_more_images($selected_products) : array();

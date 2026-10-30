@@ -284,6 +284,25 @@ function pg_list_sort_items(array $items, array $levels, array $keys, array $num
 }
 
 /**
+ * Product groups and products in their sort order, ties by name the way the
+ * panel language orders it (pg_geo_label_compare(): "Çanta" before "D").
+ * An empty sort order counts as 0, as the forms save it.
+ *
+ * @param array $items list of arrays with 'sort_order' and 'name'
+ * @return array the items, renumbered
+ */
+function pg_list_sort_by_order_and_name(array $items)
+{
+    usort($items, function ($a, $b) {
+        $result = ((int) ($a['sort_order'] ?? 0)) <=> ((int) ($b['sort_order'] ?? 0));
+
+        return ($result !== 0) ? $result : pg_geo_label_compare((string) ($a['name'] ?? ''), (string) ($b['name'] ?? ''));
+    });
+
+    return $items;
+}
+
+/**
  * One cell of a list row.
  *
  * @param string $html       the cell's content, already escaped

@@ -401,8 +401,8 @@ if (!$_POST) {
         $all_entries = array_merge($db_logs, $error_logs);
 
         // The error_log entries have no rows in the database, so the merged
-        // list is sorted here, by the same levels. Text is compared without
-        // regard to case, as the database does.
+        // list is sorted here, by the same levels. Text is compared in the
+        // panel language's order without regard to case, as the database does.
         usort($all_entries, function ($a, $b) use ($sort_levels, $sort_keys, $tie_direction) {
             foreach ($sort_levels as $level) {
                 $key = $sort_keys[$level['sort']];
@@ -412,7 +412,7 @@ if (!$_POST) {
                 if ($key === 'log_timestamp') {
                     $result = ((int) $a_value) <=> ((int) $b_value);
                 } else {
-                    $result = strcasecmp((string) $a_value, (string) $b_value);
+                    $result = pg_geo_label_compare((string) $a_value, (string) $b_value);
                 }
 
                 if ($result !== 0) {
