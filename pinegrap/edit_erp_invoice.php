@@ -1288,7 +1288,7 @@ if (($mail_invoice !== null) && ((string) $invoice['direction'] === 'sales') && 
                 <input type="hidden" name="erp_action" value="mail" />
                 <div class="col-12 md:col-6">
                     <label class="form-label" for="mail_to">' . lang('Recipient e-mail') . '</label>
-                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $mail_defaults['to']) . '" maxlength="500" autocomplete="off" required />
+                    <input type="text" class="form-control" id="mail_to" name="mail_to" value="' . h((string) $mail_defaults['to']) . '" maxlength="500" inputmode="email" spellcheck="false" autocapitalize="off" autocomplete="off" required />
                     <div class="form-text">' . (((string) $mail_defaults['to'] === '')
                         ? lang('The account has no e-mail address. Type one, or add it to the account.')
                         : lang('More than one address: separate them with commas.')) . '</div>

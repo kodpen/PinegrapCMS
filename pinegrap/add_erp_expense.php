@@ -382,7 +382,7 @@ if (!$_POST) {
                         <div class="row">
                             <div class="col-12 sm:col-6 lg:col-3 my-3">
                                 <label for="supplier_tax_number" class="form-label">' . h(erp_tax_id_label()) . '</label>
-                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'supplier_tax_number', 'name' => 'supplier_tax_number', 'class' => 'form-control', 'maxlength' => '32', 'autocomplete' => 'off')) . '
+                                ' . $liveform->output_field(array('type' => 'text', 'id' => 'supplier_tax_number', 'name' => 'supplier_tax_number', 'class' => 'form-control', 'maxlength' => '32', 'autocomplete' => 'off', 'inputmode' => ((pg_erp_store_country() === 'TR') ? 'numeric' : ''))) . '
                                 <div class="form-text">' . lang('The supplier\'s, as printed on the receipt.') . '</div>
                             </div>
                             <div class="col-12 sm:col-6 lg:col-3 my-3">

@@ -198,3 +198,22 @@ function test_liveform_output_field_aria_describedby()
 		}
 	});
 }
+
+// A field given autocapitalize prints it, escaped, beside spellcheck; one
+// without prints none, so site forms do not change.
+function test_liveform_output_field_autocapitalize()
+{
+	_test_liveform_with_session(function ($form) {
+		foreach (array('text', 'textarea') as $type) {
+			$field = array('type' => $type, 'name' => 'c_' . $type);
+			pg_assert_false(strpos($form->output_field($field), 'autocapitalize') !== false, $type . ' without one');
+
+			$field['autocapitalize'] = 'characters"';
+			$field['spellcheck'] = 'false';
+			$html = $form->output_field($field);
+			pg_assert_contains(' autocapitalize="characters&quot;"', $html, $type . ' with one');
+			pg_assert_contains(' spellcheck="false"', $html, $type . ' keeps spellcheck');
+			pg_assert_same(1, substr_count($html, 'autocapitalize='), $type . ': written once');
+		}
+	});
+}
