@@ -479,14 +479,19 @@ if (($_SESSION['software']['ecommerce']['view_orders']['advanced_filters'] ?? ''
 //output export for parasut.
 $output_generate_xlsl_button = '';
 
-// Carrier labels of the selected orders (shipment_label.php): open the
-// missing ones, print them all as one PDF in a new tab, or download the
+// Carrier labels of the selected orders (shipment_label.php), shown for a
+// carrier label service or a marketplace account whose labels it makes:
+// open the missing ones, print them all as one PDF in a new tab, or download the
 // ZPL ones as one .zpl file for a thermal printer.
 $output_shipment_label_buttons = '';
 
-if (pg_shipment_labels_ready() && pg_shipment_label_drivers()) {
+if (pg_shipment_labels_ready() && (pg_shipment_label_drivers() || pg_shipment_label_marketplace_offers())) {
+    // Only a marketplace account: no shipment is bought, Trendyol's label is fetched.
+    $shipment_label_confirm = pg_shipment_label_drivers()
+        ? lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')
+        : lang('A Trendyol common label is fetched for every qualifying package of the selected orders that has no label yet, 20 at a time. Continue?');
     $output_shipment_label_buttons =
-        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h(lang('A shipment is opened and its label bought at the carrier label service for every address of the selected orders that has no label yet, 20 at a time. Continue?')) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
+        '<button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_create" class="btn mb-1 mt-1 btn-solid theme-secondary disabled" data-confirm-content="' . h($shipment_label_confirm) . '"><i class="bi bi-upc-scan me-3" aria-hidden="true"></i>' . lang('Create Labels') . '</button>
         <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>
         <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download ZPL Labels') . '</button>';
 }

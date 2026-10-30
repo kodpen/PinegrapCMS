@@ -139,6 +139,30 @@ function test_marketplace_labels_read_done_needs_a_label()
 	pg_assert_false(mp_label_read_done(null));
 }
 
+// Whether any account has its labels fetched from the marketplace, which
+// shows the orders list's bulk label buttons without a carrier label service.
+function test_marketplace_labels_accounts_offer()
+{
+	$trendyol = array('provider' => 'trendyol', 'status' => 'active', 'credentials' => array('delivery' => 'marketplace'));
+
+	pg_assert_false(mp_label_accounts_offer(array()), 'no accounts');
+	pg_assert_true(mp_label_accounts_offer(array($trendyol)));
+	pg_assert_true(mp_label_accounts_offer(array(array_merge($trendyol, array('credentials' => array())))), 'saved before the choice existed');
+	pg_assert_false(mp_label_accounts_offer(array(array_merge($trendyol, array('credentials' => array('delivery' => 'own'))))), 'ships itself');
+	pg_assert_false(mp_label_accounts_offer(array(array_merge($trendyol, array('provider' => 'n11')))), 'a provider without labels');
+	pg_assert_false(mp_label_accounts_offer(array(array_merge($trendyol, array('status' => 'paused')))), 'paused');
+	pg_assert_true(mp_label_accounts_offer(array(array_merge($trendyol, array('status' => 'paused')), $trendyol)), 'any one is enough');
+}
+
+// A package of an account that does not ship itself travels on the
+// marketplace's carrier: carried when its label is not made now.
+function test_marketplace_labels_carried()
+{
+	pg_assert_true(mp_label_carried(array('offer' => '', 'label_id' => 0), false), 'another carrier or no longer open');
+	pg_assert_false(mp_label_carried(array('offer' => 'create', 'label_id' => 0), false), 'covered by the common label');
+	pg_assert_false(mp_label_carried(array('offer' => '', 'label_id' => 0), true), 'the account ships itself');
+}
+
 function test_marketplace_labels_carrier_through_the_connector()
 {
 	pg_assert_true(mp_label_can('trendyol'));
@@ -196,9 +220,10 @@ function test_marketplace_labels_order_screen_bulk_and_reprint()
 	$document = substr($labels, (int) strpos($labels, 'function pg_shipment_label_document('), 2000);
 	pg_assert_true(strpos($document, 'mp_label_document($row)') < strpos($document, "pg_label_can(\$driver, 'label')"), 'a removed marketplace label is read from the marketplace');
 
-	$check = substr($labels, (int) strpos($labels, 'function pg_shipment_label_create_check('), 2800);
+	$check = substr($labels, (int) strpos($labels, 'function pg_shipment_label_create_check('), 3200);
 	pg_assert_contains('$marketplace = $return ? null : pg_shipment_label_marketplace((int) $ship_to[\'id\']);', $check, 'outbound labels only');
-	pg_assert_contains('pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name)', $check);
+	pg_assert_contains('pg_shipment_label_create_refusal($ready, $order, $active, $driver, $return, $marketplace_name, $carried_name)', $check);
+	pg_assert_contains('$carried_name = ($marketplace && !empty($marketplace[\'carried\'])) ? $marketplace[\'name\'] : \'\';', $check, 'carried by the marketplace');
 
 	$endpoint = (string) file_get_contents(PG_FUNCTIONS_DIR . '/shipment_label.php');
 	pg_assert_contains("'/^(create|return|cancel|marketplace)-([1-9][0-9]*)\$/'", $endpoint);
