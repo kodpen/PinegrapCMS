@@ -23,4 +23,4 @@ description: Plan (owner, 2026-10-29): bring the Flows editor and list to the ow
 
 ## Where to start?
 - V7b "Edit here" in the mini window, decided #3444 (`workflow/decisions-made-workspace-4.md`): open the draft first (the same path as "Open on canvas"), then the box form in the card saving through the canvas's `draft_rev` path; the proposal snapshot is never edited; shown only where opening would pass. Files: flow_draft.php, workspace/actions.php, workspace.js; CSS after #3434.
-- V1-V7a are done, V7b is free. Next: compare the drawing's other boards (run view, channel, templates, AI draft, the parts map) with the screens before this plan closes; each finding becomes a step here, else the plan closes.
+- V1-V7a are done, V7b is being built (branch feature/flows-v7b-edit-here). Next: compare the drawing's other boards (run view, channel, templates, AI draft, the parts map) with the screens before this plan closes; each finding becomes a step here, else the plan closes.
