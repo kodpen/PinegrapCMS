@@ -1235,6 +1235,102 @@ function pg_shipping_postcode_province($country, $state, $postcode)
 }
 
 /**
+ * Whether step 11.0.134 has run: ship_tos.district exists. Until it has, an
+ * address is written and copied without its district, as before.
+ *
+ * @return bool
+ */
+function pg_ship_to_district_ready()
+{
+    return function_exists('pg_schema_has') && pg_schema_has('ship_tos', 'district');
+}
+
+/**
+ * A Turkish province's licence plate number from its name ('İstanbul' ->
+ * '34'), or '' for a name no province carries. Accents, case and spacing are
+ * folded the way the sales map folds them, so 'IĞDIR', 'Iğdır' and the older
+ * spellings the states table ships ('Afyon', 'Hakkari') all match.
+ *
+ * @param  string $name a states.name value
+ * @return string two digits or ''
+ */
+function pg_state_plate_code($name)
+{
+    $name = is_scalar($name) ? trim((string) $name) : '';
+
+    if ($name === '') {
+        return '';
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $code = pg_sales_map_match_region('TR', $name);
+
+    return ($code === '') ? '' : substr($code, 3);
+}
+
+/**
+ * The plate codes to write into Turkish states rows: id => plate number for
+ * each row whose plate_code is empty and whose name is a province. A row
+ * that already has a plate code, whoever wrote it, is left out.
+ *
+ * @param  array $rows each: id, name, plate_code (missing reads as empty)
+ * @return array int id => string plate number
+ */
+function pg_state_plate_codes($rows)
+{
+    $codes = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+
+        if (isset($row['plate_code']) && (trim((string) $row['plate_code']) !== '')) {
+            continue;
+        }
+
+        $plate = pg_state_plate_code(isset($row['name']) ? $row['name'] : '');
+
+        if ($plate !== '') {
+            $codes[(int) $row['id']] = $plate;
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * The ids of the countries rows that stand for Turkey, read the way the sales
+ * map reads a row: its code when that is a country code, else its name, else
+ * its code as a name (a row whose code is 'TÜRKİYE').
+ *
+ * @param  array $rows each: id, name, code
+ * @return array int ids
+ */
+function pg_state_plate_country_ids($rows)
+{
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    $ids = array();
+
+    foreach ((array) $rows as $row) {
+        if (!is_array($row) || !isset($row['id'])) {
+            continue;
+        }
+
+        $code = isset($row['code']) ? $row['code'] : '';
+        $name = isset($row['name']) ? $row['name'] : '';
+
+        if (pg_sales_map_canonical_country($code, $name) === 'TR') {
+            $ids[] = (int) $row['id'];
+        }
+    }
+
+    return $ids;
+}
+
+/**
  * The note under an address whose postcode belongs to another province.
  *
  * @param  string $province the province the postcode points to

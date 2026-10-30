@@ -119,6 +119,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_subscription_price_notice(); // 11.0.132
 	upgrade_2026_11_0_workspace_visit_contact(); // 11.0.118
 	upgrade_2026_11_0_starter_addthis();        // 11.0.133
+	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
 
 }
 
@@ -3799,5 +3800,61 @@ function upgrade_2026_11_0_starter_addthis() {
 		WHERE BINARY social_networking_code IN ('" . e($stock[0]) . "', '" . e($stock[1]) . "')");
 
 	install_note('Sharing: the AddThis script the starter sites came with is removed where it was never changed, since AddThis closed in 2023 and the script only failed. A sharing code written on the site stays.');
+
+}
+
+// Turkish addresses (2026.11.0, 11.0.134; includes/fn/shipping.php).
+//
+// ship_tos.district is the recipient's district (ilçe) as typed, free text
+// and optional; until now it was squeezed into city, which Turkish carriers
+// and marketplaces read as the district while state holds the province.
+// states.plate_code is a Turkish province's licence plate number ('34'),
+// filled here for the states of every countries row that stands for Turkey
+// by matching the province name (pg_state_plate_codes(): accents and case
+// folded, older spellings such as Afyon known). A name no province carries
+// stays empty, and only empty plate codes are written, so a code the
+// operator set by hand survives and a second run changes nothing. Both
+// columns default to '', which changes nothing on a running site.
+function upgrade_2026_11_0_tr_district_plate() {
+
+	install_add_column('ship_tos', 'district', "VARCHAR(50) NOT NULL DEFAULT ''");
+	install_add_column('states', 'plate_code', "VARCHAR(4) NOT NULL DEFAULT ''");
+
+	if (!function_exists('pg_state_plate_codes') || !install_column_exists('states', 'plate_code')) {
+
+		install_skipped('states: the plate codes of the Turkish provinces were not filled in, because includes/fn/shipping.php is out of date. Upload the files of this version again and run the upgrade.');
+
+	} else {
+
+		$country_ids = pg_state_plate_country_ids((array) db_items("SELECT id, name, code FROM countries ORDER BY id"));
+
+		$filled = 0;
+
+		if (!empty($country_ids)) {
+
+			$rows = (array) db_items("SELECT id, name, plate_code FROM states
+				WHERE country_id IN (" . implode(', ', array_map('intval', $country_ids)) . ") AND (plate_code = '')
+				ORDER BY id");
+
+			foreach (pg_state_plate_codes($rows) as $id => $plate) {
+
+				db("UPDATE states SET plate_code = '" . e($plate) . "'
+					WHERE (id = '" . (int) $id . "') AND (plate_code = '')");
+
+				$filled += max(0, (int) mysqli_affected_rows(db::$con));
+
+			}
+
+		}
+
+		if ($filled > 0) {
+			install_ran('states: the plate code of ' . $filled . ' Turkish province(s) filled in');
+		} else {
+			install_skipped('states: no Turkish province without its plate code, nothing to fill in');
+		}
+
+	}
+
+	install_note('Addresses: a recipient can carry a district, and the Turkish provinces in the states list now carry their plate numbers.');
 
 }

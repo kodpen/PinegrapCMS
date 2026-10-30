@@ -571,6 +571,10 @@ function pg_subscription_renewal_order_write($row, $first, $answer, $now)
     if ((int) $item['ship_to_id'] > 0) {
         $copied = 'ship_to_name, salutation, first_name, last_name, company, address_1, address_2, city, state, zip_code, country, phone_number, address_verified, address_type';
 
+        if (pg_ship_to_district_ready()) {
+            $copied .= ', district';
+        }
+
         if (db_q("INSERT INTO ship_tos (order_id, " . $copied . ")
             SELECT ?, " . $copied . " FROM ship_tos WHERE id = ?", array($order_id, (int) $item['ship_to_id']))) {
             $ship_to_id = (int) mysqli_insert_id(db::$con);

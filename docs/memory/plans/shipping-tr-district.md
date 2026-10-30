@@ -5,7 +5,7 @@ description: Shipping plan step 8 (decision #3569): ship_tos.district and states
 
 ## What state is it in?
 - Step 8 of `plans/shipping-management.md`, decided in #3569 (`workflow/decisions-made-schema-6.md`). One PR at a time, each from `development` after the previous one merged.
-- D1 - in progress: step 11.0.134 adds `ship_tos.district` and `states.plate_code` and fills the plate codes of the Turkish states; `pg_ship_to_district_ready()`; a subscription renewal copies the district. No UI (`commerce/tr-district-plate-code.md`).
+- D1 - done (#3600): step 11.0.134 adds `ship_tos.district` and `states.plate_code` and fills the plate codes of the Turkish states; `pg_ship_to_district_ready()`; a subscription renewal copies the district. No UI (`commerce/tr-district-plate-code.md`).
 
 ## What does D2 do?
 - The optional district box on checkout (express order widget and the classic shipping address page) and on the order screens (`view_order.php`, the address edit), shown when the country is Turkey or the chosen method's driver asks for a district.
