@@ -621,6 +621,7 @@
     "Where the \"Already have an account?\" link goes. Token: ^^__login_url^^": "\"Zaten hesabınız var mı?\" bağlantısının hedefi. Token: ^^__login_url^^",
     "Where the \"Back to sign-in\" link goes. Token: ^^__back_url^^": "\"Girişe dön\" bağlantısının hedefi. Token: ^^__back_url^^",
     "Where the ERP's invoices and delivery notes go to become e-Invoice, e-Archive or e-Delivery note documents. One provider at a time; the choice can be changed later and every document remembers which provider carried it.": "ERP'nin fatura ve irsaliyelerinin e-Fatura, e-Arşiv ya da e-İrsaliye olmak için gittiği yer. Aynı anda tek sağlayıcı; seçim sonradan değiştirilebilir ve her belge hangi sağlayıcının taşıdığını hatırlar.",
+    "Where the list sits in it": "Listenin içindeki yeri",
     "Where the page type shows its built-in content: catalog, cart, forms and the like.": "Sayfa türünün yerleşik içeriğini gösterdiği yer: katalog, sepet, formlar ve benzerleri.",
     "Where the platform query goes; the API address itself comes back from that query. Leave empty for {var:1}.": "Platform sorgusunun gittiği adres; API adresinin kendisi bu sorgunun yanıtından gelir. {var:1} için boş bırakın.",
     "Where the seller is named and how the printed documents look.": "Satıcının nerede tanımlandığı ve basılı belgelerin nasıl göründüğü.",

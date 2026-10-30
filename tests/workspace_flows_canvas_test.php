@@ -1091,7 +1091,7 @@ JS
 function test_workspace_flows_canvas_value_picker_offers_the_boxes_before()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     event: { into: false, out: ['next'] },
@@ -1158,7 +1158,7 @@ JS
 function test_workspace_flows_canvas_condition_value_rule()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources', 'valueNames',
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources', 'valueNames',
 			'field', 'textInput', 'changeInput', 'conditionValue', 'conditionCompare', 'conditionValueRule', 'conditionMeta'),
 		<<<'JS'
 var uid = 0;
@@ -1256,7 +1256,7 @@ function test_workspace_flows_canvas_data_threads_come_from_the_fields()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1324,8 +1324,8 @@ function test_workspace_flows_canvas_thread_binds_into_the_fields_after()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
-			'openFields', 'bindTargets', 'bindValue'),
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+			'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'bindValue'),
 		$constants . <<<'JS'
 var KINDS = {
     event: { name: 'Event', into: false, out: ['next'] },
@@ -1400,7 +1400,7 @@ JS
 function test_workspace_flows_canvas_constants_are_offered_to_every_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups'),
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups'),
 		<<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1442,7 +1442,7 @@ JS
 function test_workspace_flows_canvas_derived_box_reads_any_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'derivedRule', 'openFields'),
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'derivedRule', 'openFields'),
 		"var VALUE_FIELDS = { post: [['body', 'fl_post_body', 4000]], value: [['a', 'fl_derived_a', 500], ['b', 'fl_derived_b', 500]] };\n" . <<<'JS'
 var KINDS = {
     manual: { name: 'Manual', into: false, out: ['next'] },
@@ -1507,7 +1507,7 @@ function test_workspace_flows_canvas_run_lists_the_values_received()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'valueGroups', 'valueSources',
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
 			'fieldTexts', 'dataThreads', 'toneClass', 'stepOf', 'runValue', 'runFilled', 'runReads'),
 		$constants . <<<'JS'
 var KINDS = {
@@ -1807,7 +1807,7 @@ function ws_flows_canvas_test_groups()
 	return array(
 		'start' => array('#6fdca6', array('manual', 'schedule', 'event', 'join', 'row')),
 		'values' => array('#e58fd0', array('constants', 'value')),
-		'logic' => array('#e9b44c', array('condition', 'delay', 'end')),
+		'logic' => array('#e9b44c', array('condition', 'delay', 'end', 'for_each', 'for_each_end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
 		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set'))
@@ -2234,4 +2234,107 @@ JS
 	pg_assert_contains("'ws_flow_template_update'", $script, 'the change goes through the panel action');
 	pg_assert_contains("'ws_flow_template_bin'", $script, 'the delete goes through the panel action');
 	pg_assert_contains("'template_save'", (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/workspace/flows.php'), 'the config says whether templates may be saved');
+}
+
+// For each / End for each on the canvas (data-passing D9): the canvas finds
+// a loop's body as ws_flow_loops() does; a box outside the loop is offered
+// neither the body's values nor the item; a For each box's list takes only a
+// list (a webhook's answer, an End box's list), the End box's gathered value
+// only a body box's, each field one value; a For each box never leaves on
+// always; the frame goes around the loop's boxes.
+function test_workspace_flows_canvas_for_each_loop()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+
+	pg_assert_true((bool) preg_match('/\n    var KINDS = \{\n.*?\n    \};\n/s', $source, $kinds), 'KINDS is in the script');
+	pg_assert_true((bool) preg_match('/\n    var VALUE_FIELDS = \{\n.*?\n    \};\n/s', $source, $fields), 'VALUE_FIELDS is in the script');
+	pg_assert_contains("loopFields(box, node);", $source, 'a For each box has its form');
+	pg_assert_contains("loopEndFields(box, node);", $source, 'an End for each box has its form');
+	pg_assert_contains("drawLoops();", $source, 'the loops are drawn with the arrows');
+
+	$graph = array(
+		'nodes' => array(
+			array('id' => 'manual_1', 'kind' => 'manual', 'config' => array()),
+			array('id' => 'webhook_1', 'kind' => 'webhook', 'config' => array()),
+			array('id' => 'for_each_1', 'kind' => 'for_each', 'config' => array('list' => '', 'path' => '', 'fields' => array('sku'))),
+			array('id' => 'post_1', 'kind' => 'post', 'config' => array()),
+			array('id' => 'email_1', 'kind' => 'email', 'config' => array()),
+			array('id' => 'for_each_end_1', 'kind' => 'for_each_end', 'config' => array('for_each' => 'for_each_1', 'collect' => '')),
+			array('id' => 'notify_1', 'kind' => 'notify', 'config' => array()),
+		),
+		'edges' => array(
+			array('from' => 'manual_1', 'to' => 'webhook_1', 'on' => 'next'),
+			array('from' => 'webhook_1', 'to' => 'for_each_1', 'on' => 'done'),
+			array('from' => 'for_each_1', 'to' => 'post_1', 'on' => 'each'),
+			array('from' => 'post_1', 'to' => 'email_1', 'on' => 'done'),
+			array('from' => 'email_1', 'to' => 'for_each_end_1', 'on' => 'done'),
+			array('from' => 'for_each_end_1', 'to' => 'notify_1', 'on' => 'done'),
+			array('from' => 'for_each_1', 'to' => 'notify_1', 'on' => 'failed'),
+		),
+	);
+	$nodes = array();
+
+	foreach ($graph['nodes'] as $index => $node) {
+		$nodes[] = $node + array('label' => '', 'x' => 240 * $index, 'y' => 100);
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'titleOf', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf',
+			'valueGroups', 'valueSources', 'openFields', 'listValue', 'fieldTakes', 'bindTargets', 'arrowOutcomes', 'loopFrame'),
+		$kinds[0] . $fields[0] . 'var BOX_W = 208; var BOX_H = 80; var LOOP_PAD = { side: 16, top: 28, bottom: 32 };' . "\n"
+		. 'var FL = { outputs: ' . json_encode(array_map(function ($kind) { return $kind['outputs']; }, ws_flow_kinds())) . ', trigger_outputs: { kinds: {} }, steps: {} };' . "\n"
+		. 'state = { graph: { nodes: ' . json_encode($nodes) . ', edges: ' . json_encode($graph['edges']) . ' } };' . "\n" . <<<'JS'
+function keys(id) {
+    return valueGroups(nodeById(id)).map(function (group) {
+        return group.node.id + ':' + group.values.map(function (value) { return value.key; }).join(',');
+    });
+}
+function targets(from, token) {
+    return bindTargets(from, token).map(function (item) { return item.node.id + '.' + item.key; });
+}
+var loops = flowLoops();
+var out = {
+    loops: loops,
+    inside: keys('email_1'),
+    end: keys('for_each_end_1'),
+    after: keys('notify_1'),
+    list: targets('webhook_1', '{{node.webhook_1.body}}'),
+    status: targets('webhook_1', '{{node.webhook_1.status}}'),
+    collect: targets('post_1', '{{node.post_1.message_id}}'),
+    outcomes: { start: arrowOutcomes(nodeById('for_each_1')), end: arrowOutcomes(nodeById('for_each_end_1')) },
+    frame: loopFrame(loops.for_each_1, 'for_each_1')
+};
+nodeById('for_each_end_1').config.collect = '{{node.post_1.message_id}}';
+out.full = openFields(nodeById('for_each_end_1')).length;
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	$server = ws_flow_loops($graph);
+
+	pg_assert_same(array_keys($server), array_keys($result['loops']), 'the same loops as the server');
+	pg_assert_same($server['for_each_1']['end'], $result['loops']['for_each_1']['end'], 'the same End box');
+	pg_assert_same($server['for_each_1']['each'], $result['loops']['for_each_1']['each'], 'the same each arrows');
+	pg_assert_same($server['for_each_1']['body'], $result['loops']['for_each_1']['body'], 'the same body');
+	pg_assert_same(array('post_1', 'email_1'), $result['loops']['for_each_1']['body'], 'the body: between For each and its End');
+
+	pg_assert_contains('for_each_1:text,outcome,status,count,index,item,sku', implode(' ', $result['inside']), 'inside, the item and its fields');
+	pg_assert_contains('post_1:', implode(' ', $result['inside']), 'inside, the boxes before in the body');
+	pg_assert_contains('for_each_1:text,outcome,status,count', implode(' ', $result['end']), 'the End box: no item');
+	pg_assert_contains('post_1:', implode(' ', $result['end']), 'the End box reads the body');
+	pg_assert_false(strpos(implode(' ', $result['after']), 'post_1:') !== false, 'after the loop, no body box');
+	pg_assert_contains('for_each_end_1:text,outcome,status,count,done,failed,list', implode(' ', $result['after']), 'after the loop, the End box\'s outputs');
+
+	pg_assert_true(in_array('for_each_1.list', $result['list'], true), 'a webhook\'s answer goes into the list');
+	pg_assert_false(in_array('for_each_1.list', $result['status'], true), 'a status is no list');
+	pg_assert_same(array('for_each_end_1.collect'), array_values(array_filter($result['collect'], function ($target) { return strpos($target, 'for_each') === 0; })), 'a body value is gathered');
+	pg_assert_same(0, $result['full'], 'a gathered value is one value');
+
+	pg_assert_same(array('each', 'failed'), $result['outcomes']['start'], 'a For each box never leaves on always');
+	pg_assert_same(array('done', 'always'), $result['outcomes']['end'], 'an End box leaves as any box');
+	pg_assert_same(array('x' => 480 - 16, 'y' => 100 - 28, 'width' => (240 * 5 + 208 + 16) - (240 * 2 - 16), 'height' => 80 + 28 + 32), array('x' => $result['frame']['x'], 'y' => $result['frame']['y'], 'width' => $result['frame']['width'], 'height' => $result['frame']['height']), 'the frame around For each, the body and the End box');
 }
