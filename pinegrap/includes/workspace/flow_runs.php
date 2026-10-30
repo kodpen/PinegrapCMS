@@ -2216,7 +2216,8 @@ function ws_flow_run_refresh($run_id)
 /**
  * Tells the flow's owner that a run ended, in their inbox. The sentence sits
  * beside the inbox row as a scheduled action's notice does
- * (ws_scheduled_notices), so the line names the flow and the run. Every run
+ * (ws_scheduled_notices), so the line names the flow and the run; the
+ * notice's action_id holds the run, which the line opens. Every run
  * that ends gets a line of its own ('separate'): the inbox keys a line by its
  * channel, message and task, all 0 here, so a line still unread would
  * otherwise take the sentence of any later run of any of the owner's flows,
@@ -2252,9 +2253,12 @@ function ws_flow_run_tell_owner($run, $state)
 
     $inbox_id = ws_notify($owner_id, 'flow_finished', array('channel_id' => 0, 'message_id' => 0, 'actor_id' => 0, 'separate' => true));
 
+    // The notice keeps the run's id where a scheduled action's notice keeps
+    // the action's, so the line opens that run on the canvas
+    // (ws_inbox_flow_run()).
     if (($inbox_id > 0) && ws_scheduled_chains_ready()) {
         db("REPLACE INTO ws_scheduled_notices (inbox_id, action_id, text, created_at)
-            VALUES ('" . (int) $inbox_id . "', 0, '" . e(mb_substr($text, 0, 1000)) . "', '" . time() . "')");
+            VALUES ('" . (int) $inbox_id . "', '" . (int) $run['id'] . "', '" . e(mb_substr($text, 0, 1000)) . "', '" . time() . "')");
     }
 
     return $inbox_id;
@@ -3518,15 +3522,26 @@ function ws_flow_run_cancel($viewer, $run)
 
     ws_flow_anchor_run_ended($run, 'cancelled');
 
-    // A box waiting for its task says that the task stays.
+    // A box that opened a task says that the task stays, a box that asked
+    // for an approval that its request stays open; any other box only that
+    // it was cancelled. A box another request made ready meanwhile is
+    // skipped by the last UPDATE.
     $name = ws_person_name($viewer['id']);
+    $kinds = array();
+
+    foreach (ws_flow_run_steps($run['id']) as $step) {
+        if (ws_flow_step_open($step['status'])) {
+            $kinds[ws_flow_cancel_result($step['effect'], $name)][] = (int) $step['id'];
+        }
+    }
+
+    foreach ($kinds as $result => $ids) {
+        db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "', result = '" . e(ws_flow_result_pack($result)) . "'
+            WHERE id IN ('" . implode("', '", $ids) . "') AND status IN ('ready', 'running', 'waiting')");
+    }
 
     db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "',
-            result = '" . e(ws_flow_result_pack(lang(array('string' => 'Cancelled with the run by {var:1}; its task stays as it is.', 'vars' => $name)))) . "'
-        WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('ready', 'running', 'waiting') AND effect <> ''");
-
-    db("UPDATE ws_flow_run_steps SET status = 'skipped', finished_at = '" . $now . "',
-            result = '" . e(ws_flow_result_pack(lang(array('string' => 'Cancelled with the run by {var:1}.', 'vars' => $name)))) . "'
+            result = '" . e(ws_flow_result_pack(ws_flow_cancel_result('', $name))) . "'
         WHERE run_id = '" . (int) $run['id'] . "' AND status IN ('ready', 'running', 'waiting')");
 
     $flow = ws_flow($run['flow_id']);
@@ -3537,6 +3552,29 @@ function ws_flow_run_cancel($viewer, $run)
     ws_flow_run_announce_cancelled((int) $run['id'], (int) $viewer['id']);
 
     return $check;
+}
+
+/**
+ * What an open box of a cancelled run says: a box that opened a task, that
+ * the task stays as it is; a box that asked for an approval, that the
+ * request stays open (ws_flow_approval_settlement()); any other box (a
+ * delay, a box not yet carried out) only that it was cancelled.
+ *
+ * @param string $effect the box's effect (task:<id>, approval:<id>, …)
+ * @param string $name   who cancelled the run
+ * @return string
+ */
+function ws_flow_cancel_result($effect, $name)
+{
+    if (ws_flow_effect_task_id($effect) > 0) {
+        return lang(array('string' => 'Cancelled with the run by {var:1}; its task stays as it is.', 'vars' => $name));
+    }
+
+    if (ws_flow_effect_approval_id($effect) > 0) {
+        return lang(array('string' => 'Cancelled with the run by {var:1}; its approval request stays open.', 'vars' => $name));
+    }
+
+    return lang(array('string' => 'Cancelled with the run by {var:1}.', 'vars' => $name));
 }
 
 /**
