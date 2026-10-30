@@ -232,6 +232,11 @@ $query =
             (function_exists('pg_cf_form_fields_has_column') && pg_cf_form_fields_has_column('validation_regex'))
                 ? ",\n        validation_regex,\n        validation_message"
                 : ",\n        '' AS validation_regex,\n        '' AS validation_message"
+        ) . (
+            // The visitor rules (2026.11.0), probed the same way.
+            (function_exists('pg_schema_has') && pg_schema_has('form_fields', 'rules'))
+                ? ",\n        rules"
+                : ",\n        NULL AS rules"
         ) . "
     FROM form_fields
     WHERE (page_id = ?) AND (type != 'information')
@@ -423,6 +428,11 @@ foreach ($fields as $field_key => $field) {
 
         // A number, an image or a reference of a collection's field.
         pg_coll_check_field($liveform, $field, $collection_kinds);
+
+        // The field's visitor rules: a date not before today, a field required
+        // for some answers of another. Checked here only; staff editing a
+        // submission in the panel, the API and MCP are not held to them.
+        pg_cf_check_rules($liveform, $field, $fields, $action == 'submit');
 
         // If this field is a title field and there is not already an error for this field,
         // and the visitor entered a value for this field, and pretty URLs are enabled,

@@ -1593,6 +1593,9 @@ const StyleDesigner = (function () {
      *                       left out of translation (icon names, codes,
      *                       JSON); absent, the field row keeps its own flag
      *                       (form_fields.translate_values, new fields on)
+     *   rules               visitor rules (form_fields.rules): min_date
+     *                       'today' on a day picker, required_when {field,
+     *                       answers}; on the field's first control
      *   url_param           the page-address parameter the field starts with
      *                       (?topic=…), on the field's first control
      *                       (_cfFieldLeadOf); read when the page is drawn
@@ -2512,6 +2515,34 @@ const StyleDesigner = (function () {
                 _cfHint(_sdT('A regular expression; the whole value must match (e.g. <code>[0-9]{10}</code>). The browser checks before submitting, the server on submit.')));
         }
 
+        // The visitor rules (form_fields.rules, pg_cf_rules_clean()): kept on
+        // the field's first control, the one the server reads. A site
+        // submission is checked against them; staff editing a record are not.
+        var ruleLead = _cfFieldLeadOf(node, w.tree);
+        var rules    = _cfRulesOf(ruleLead);
+        if (_cfInputType(ruleLead) === 'date') {
+            html += '<div class="sd-prop-row"><div class="sd-prop-control">' +
+                    _cfSwitch('sd-cf-mindate', rules.min_date === 'today', _sdT('Not before today')) +
+                    _cfHint(esc(_sdT('A visitor cannot pick a day before today (in the site\'s time zone). Staff can still record a past date in the panel.'))) +
+                    '</div></div>';
+        }
+        var ruleWhen   = (rules.required_when && typeof rules.required_when === 'object') ? rules.required_when : {};
+        var ruleOthers = _cfFieldsOf(w.tree).filter(function (f) { return f.lead !== ruleLead && f.members.indexOf(node) === -1; })
+            .map(function (f) { return [f.name, f.label && f.label !== f.name ? f.label + ' (' + f.name + ')' : f.name]; });
+        if (ruleWhen.field && !ruleOthers.some(function (o) { return String(o[0]).toLowerCase() === String(ruleWhen.field).toLowerCase(); })) {
+            ruleOthers.push([ruleWhen.field, _sdT('{var} (not on this form)', ruleWhen.field)]);
+        }
+        if (ruleOthers.length) {
+            html += row(_sdT('Required when'),
+                _cfSel('sd-cf-when-field', ruleWhen.field || '', ruleOthers, _sdT('— No condition —')) +
+                (ruleWhen.field
+                    ? '<textarea class="form-control form-control-sm mt-1 sd-cf-when-answers" rows="2" spellcheck="false"' +
+                          ' aria-label="' + esc(_sdT('Answers')) + '" placeholder="' + esc(_sdT('one answer per line')) + '">' +
+                          esc((Array.isArray(ruleWhen.answers) ? ruleWhen.answers : []).join('\n')) + '</textarea>' +
+                      _cfHint(esc(_sdT('The field is required when that field\'s answer is one of these (as the option\'s value, upper and lower case alike).')))
+                    : _cfHint(esc(_sdT('Make the field required only for some answers of another field.')))));
+        }
+
         if (c.itype === 'file' && folders.length) {
             html += row(_sdT('Upload to'),
                 _cfSel('sd-cf-folder', rec.upload_folder_id || 0, folders, _sdT('— Default —')));
@@ -2532,6 +2563,20 @@ const StyleDesigner = (function () {
 
         html += '</div>';
         return sect('bi-ui-checks', _sdT('Form Field'), html);
+    }
+
+    // A control's visitor rules (`_cf.rules`), always an object.
+    function _cfRulesOf(n) {
+        var r = (n && n.props && n.props._cf && n.props._cf.rules) || null;
+        return (r && typeof r === 'object' && !Array.isArray(r)) ? r : {};
+    }
+
+    // Write a control's visitor rules; none left removes the key, and an
+    // empty `_cf` with it (it turns into an array on the server's round trip).
+    function _cfWriteRules(n, rules) {
+        var rec = _cfRec(n);
+        if (Object.keys(rules).length) rec.rules = rules; else delete rec.rules;
+        if (!Object.keys(rec).length) delete n.props._cf;
     }
 
     // Write the label where it lives (see _cfLabelSource).
@@ -2752,6 +2797,29 @@ const StyleDesigner = (function () {
         });
         on('sd-cf-message', 'change', function (el) {
             _cfRec(lead).validation_message = el.value.trim();
+            commit(false);
+        });
+        on('sd-cf-mindate', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            if (el.checked) r.min_date = 'today'; else delete r.min_date;
+            _cfWriteRules(fl, r);
+            commit(false);
+        });
+        on('sd-cf-when-field', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            var was = (r.required_when && Array.isArray(r.required_when.answers)) ? r.required_when.answers : [];
+            if (el.value) r.required_when = { field: el.value, answers: was }; else delete r.required_when;
+            _cfWriteRules(fl, r);
+            commit(true);
+        });
+        on('sd-cf-when-answers', 'change', function (el) {
+            var fl = _cfFieldLeadOf(node, w.tree), r = _cfRulesOf(fl);
+            if (!r.required_when) return;
+            var seen = {};
+            r.required_when.answers = String(el.value || '').split(/\r\n|\r|\n/)
+                .map(function (a) { return a.trim(); })
+                .filter(function (a) { if (!a || seen[a]) return false; seen[a] = true; return true; });
+            _cfWriteRules(fl, r);
             commit(false);
         });
         on('sd-cf-folder', 'change', function (el) {
