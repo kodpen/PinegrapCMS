@@ -141,7 +141,6 @@ function pg_short_link_form_cards($liveform, $form)
                                         <div class="col-12">
                                             <label for="destination_type" class="form-label visually-hidden">' . lang('Destination Type') . '</label>
                                             ' . $liveform->output_field(array('type'=>'select', 'id'=>'destination_type', 'class'=>'form-control collapse-if-selected', 'name'=>'destination_type', 'options'=>pg_short_link_form_destination_options(), 'onchange'=>'change_short_link_destination_type(this.options[this.selectedIndex].value)', 'data-bs-target'=>'#options_row', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                             <script>
                                                 $(document).ready(function() {
                                                     change_short_link_destination_type($("select#destination_type option:selected").val());
@@ -187,12 +186,10 @@ function pg_short_link_form_cards($liveform, $form)
                                                 <div class="col-12 md:col-6 lg:col-4 my-3" id="page_id_row"' . $style['page_id'] . '>
                                                     <label for="page_id" class="form-label">' . lang('Page') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'page_id', 'id'=>'page_id', 'class'=>'form-control', 'options'=>get_page_options('', '', 'edit', FALSE, $keep['page_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_page_id_row"' . $style['catalog_page_id'] . '>
                                                     <label for="catalog_page_id" class="form-label">' . lang('Catalog Page') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_page_id', 'id'=>'catalog_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_detail_page_id\').selectedIndex = 0}' )) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 lg:col-2 my-3 lg:text-center" id="or_row"' . $style['or'] . '>
                                                 -' . lang('or') . '-
@@ -200,22 +197,18 @@ function pg_short_link_form_cards($liveform, $form)
                                                 <div class="col-12 md:col-6 lg:col-5 my-3" id="catalog_detail_page_id_row"' . $style['catalog_detail_page_id'] . '>
                                                     <label for="catalog_detail_page_id" class="form-label">' . lang('Catalog Detail Page') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'catalog_detail_page_id', 'id'=>'catalog_detail_page_id', 'class'=>'form-control', 'options'=>get_page_options('', 'catalog detail', 'edit', FALSE, $keep['page_id']), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'catalog_page_id\').selectedIndex = 0}' )) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6 lg:col-5 my-3" id="product_group_id_row"' . $style['product_group_id'] . '>
                                                     <label for="product_group_id" class="form-label">' . lang('Product Group') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_group_id', 'id'=>'product_group_id', 'class'=>'form-control', 'options'=>get_product_group_options(0, 0, 0, 0, array(), TRUE, 'array', TRUE, TRUE, FALSE, $keep['product_group_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6 lg:col-7 my-3" id="product_id_row"' . $style['product_id'] . '>
                                                     <label for="product_id" class="form-label">' . lang('Product') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'product_id', 'id'=>'product_id', 'class'=>'form-control', 'options'=>get_product_options(true, $keep['product_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-8 lg:col-6 my-3" id="url_row"' . $style['url'] . '>
                                                     <label for="url" class="form-label">' . lang('Destination URL') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'class'=>'form-control', 'maxlength'=>pg_short_link_url_max(), 'placeholder' => lang('Enter URL that visitor should be redirected to'))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                     <div class="form-text">' . lang('With a * in the name, $1 to $9 put here what each * matched, after the host name.') . '</div>
                                                 </div>
                                                 <div class="col-12 md:col-6 lg:col my-3" id="tracking_code_row"' . $style['tracking_code'] . '>
@@ -225,7 +218,6 @@ function pg_short_link_form_cards($liveform, $form)
                                                 <div class="col-12 md:col-6 lg:col-4 my-3" id="file_row"' . $style['file'] . '>
                                                      <label for="file" class="form-label">' . lang('File') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'file', 'id'=>'file', 'class'=>'form-control', 'options'=>get_file_options(true, $keep['file_id']))) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                             </div>
                                         </div>

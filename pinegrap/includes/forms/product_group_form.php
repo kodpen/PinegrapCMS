@@ -82,8 +82,7 @@ function pg_product_group_form_cards($liveform, $values, $form)
 
     // A new group's name is a liveform field, so a refused save keeps it.
     if ($form['is_new']) {
-        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>';
+        $output_name = $liveform->output_field(array('type'=>'text','id'=>'name','name'=>'name', 'class'=>'form-control ', 'maxlength'=>'100', 'required'=>'required'));
     } else {
         $output_name = '<input type="text" name="name" id="name" class="form-control" maxlength="100" required value="' . h($v['name']) . '"/>';
     }

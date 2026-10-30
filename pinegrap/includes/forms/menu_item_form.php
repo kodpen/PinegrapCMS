@@ -46,8 +46,7 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                     <div class="row">
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="name" class="form-label">' . lang('Menu Item Name') . '</label>
-                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100')) . '
-                                            <div class="invalid-feedback">' . lang('Required Area') . '</div>
+                                            ' . $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required')) . '
                                         </div>
                                         <div class="col-12 md:col-6 lg:col-4 my-3">
                                             <label for="link_target" class="form-label">' . lang('Link Target') . '</label>

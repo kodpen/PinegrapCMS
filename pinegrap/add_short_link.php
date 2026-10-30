@@ -67,7 +67,6 @@ if (!$_POST) {
                                                 <div class="col-12 md:col-4 lg:col-3 my-3" id="duration_row" style="display: none">
                                                     <label for="duration" class="form-label">' . lang('Valid for') . '</label>
                                                     ' . $liveform->output_field(array('type'=>'select', 'name'=>'duration', 'id'=>'duration', 'class'=>'form-control', 'options'=>$duration_options)) . '
-                                                    <div class="invalid-feedback">' . lang('Required Area') . '</div>
                                                 </div>
                                                 <script>
                                                     // A one-time link has no name: its address is made for it.

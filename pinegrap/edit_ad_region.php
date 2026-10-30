@@ -109,7 +109,7 @@ if (!$_POST) {
     if ($user['role'] <= 1) {
         $output_subheading = '<p>' . lang('Page Style Body Tag') . ': <strong>' . h('<ad>' . $output_name . '</ad>') . '</strong></p>';
         
-        $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100'));
+        $output_name_field_or_value = $liveform->output_field(array('type'=>'text', 'name'=>'name', 'id'=>'name', 'class'=>'form-control', 'maxlength'=>'100', 'required'=>'required'));
 
     // else the user is a manager, so prepare to just display name value,
     // because we don't want a manager to have access to update the name
@@ -129,7 +129,7 @@ if (!$_POST) {
 
         // else there are no ads assigned to this ad region, so prepare active delete button with warning
         } else {
-            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
+            $output_delete_button = '<button type="submit" name="submit_delete" value="Delete" formnovalidate class="btn my-1  btn-solid theme-danger " data-confirm-content="' . lang(array('string'=>'WARNING: This {var:1} will be permanently deleted.','vars'=>array(lang('ad region')))) . '"><span class="material-icons me-3">delete</span><span class="pg-btn-label" >' . lang(array('string'=>'Delete') ) . '</span></button>';
 
         }
     }
