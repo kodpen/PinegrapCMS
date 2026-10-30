@@ -57,6 +57,7 @@ if ($_POST) {
         $paid_date = trim((string) ($_POST['paid_date'] ?? ''));
 
         if (($paid_date !== '') && (validate_date($paid_date) == false)) {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('paid_date', lang('Please enter a valid date.'));
             go($self);
         }
@@ -68,6 +69,8 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$result['success']) {
+            // Keep the chosen till and method for the next try.
+            $liveform->add_fields_to_session();
             $liveform->mark_error('_error', h($result['error']));
             go($self);
         }
@@ -96,6 +99,7 @@ if ($_POST) {
         $repeat_end = trim((string) ($_POST['repeat_end'] ?? ''));
 
         if (($repeat_end !== '') && (validate_date($repeat_end) == false)) {
+            $liveform->add_fields_to_session();
             $liveform->mark_error('repeat_end', lang('Please enter a valid date.'));
             go($self);
         }
@@ -110,6 +114,8 @@ if ($_POST) {
         ), (int) $user['id']);
 
         if (!$repeat['success']) {
+            // Keep the period, due days and the paid switch for the next try.
+            $liveform->add_fields_to_session();
             $liveform->mark_error('_error', h($repeat['error']));
             go($self);
         }
@@ -259,6 +265,12 @@ $till_options = function ($selected = 0) use ($currency) {
     return array($options, $count);
 };
 
+// After a refused Pay or Repeat, only the form that was sent reads back
+// what was chosen; the other keeps its defaults.
+$kept = function ($form) use ($liveform) {
+    return !$liveform->prefill() && ((string) $liveform->get_field_value('erp_action') === $form);
+};
+
 $method_options = function ($selected = '') use ($method_words) {
     $options = '';
 
@@ -280,7 +292,7 @@ if ($status === 'paid') {
         </dl>';
 } elseif ($can_pay) {
     // Only the tills kept in the expense's currency can pay it.
-    list($pay_till_options, $till_count) = $till_options();
+    list($pay_till_options, $till_count) = $till_options($kept('pay') ? (int) $liveform->get_field_value('cash_account_id') : 0);
 
     $output_payment = '
         <p class="mb-3">' . (((string) $expense['due_date'] > '0000-00-00') ? h(lang(array('string' => 'To pay by {var:1}.', 'vars' => prepare_form_data_for_output((string) $expense['due_date'], 'date', false)))) : lang('Not paid yet.')) . '</p>
@@ -295,7 +307,7 @@ if ($status === 'paid') {
             </div>
             <div class="col-6 md:col-3">
                 <label class="form-label small mb-1" for="payment_method">' . lang('Payment Method') . '</label>
-                <select class="form-control form-control-sm" id="payment_method" name="payment_method">' . $method_options('cash') . '</select>
+                <select class="form-control form-control-sm" id="payment_method" name="payment_method">' . $method_options($kept('pay') ? (string) $liveform->get_field_value('payment_method') : 'cash') . '</select>
             </div>
             <div class="col-6 md:col-2">
                 <label class="form-label small mb-1" for="paid_date">' . lang('Paid on') . '</label>
@@ -460,6 +472,18 @@ if (erp_expense_recurring_ready()) {
         // Started again, the repeat goes on from where it stopped, at the
         // period it had unless another is chosen.
         $repeat_every = is_array($recurrence) ? (int) $recurrence['every_months'] : 1;
+        $repeat_due_days = '';
+        $repeat_pay = false;
+
+        if ($kept('repeat')) {
+            // Only a period the list offers; it also dates the restart note.
+            if (isset($periods[(int) $liveform->get_field_value('repeat_every')])) {
+                $repeat_every = (int) $liveform->get_field_value('repeat_every');
+            }
+
+            $repeat_due_days = (string) $liveform->get_field_value('repeat_due_days');
+            $repeat_pay = ((string) $liveform->get_field_value('repeat_pay') !== '');
+        }
         $repeat_note = lang('The next one is written on the same day of the month, with this amount and tax.');
 
         if (is_array($recurrence)) {
@@ -487,7 +511,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_due_days">' . lang('Due after (days)') . '</label>
-                    <input type="number" class="form-control form-control-sm" id="repeat_due_days" name="repeat_due_days" min="0" max="365" placeholder="0" />
+                    <input type="number" class="form-control form-control-sm" id="repeat_due_days" name="repeat_due_days" value="' . h($repeat_due_days) . '" min="0" max="365" placeholder="0" />
                 </div>
                 <div class="col-6 md:col-3">
                     <label class="form-label small mb-1" for="repeat_end">' . lang('Until (optional)') . '</label>
@@ -498,7 +522,7 @@ if (erp_expense_recurring_ready()) {
                 </div>
                 ' . (($can_cash && ($status === 'paid')) ? '<div class="col-12">
                     <div class="form-field">
-                        <div class="switch"><input class="" type="checkbox" id="repeat_pay" name="repeat_pay" value="1" /></div>
+                        <div class="switch"><input class="" type="checkbox" id="repeat_pay" name="repeat_pay" value="1"' . ($repeat_pay ? ' checked' : '') . ' /></div>
                         <label class="small" for="repeat_pay">' . h(lang(array('string' => 'Write the next ones as paid from {var:1}', 'vars' => (string) $expense['till_name']))) . '</label>
                     </div>
                 </div>' : '') . '
