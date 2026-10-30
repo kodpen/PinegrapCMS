@@ -1633,7 +1633,7 @@ function test_workspace_flows_canvas_mcp_box()
 	}
 
 	$result = ws_flows_canvas_test_node(
-		array('stepLists', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
+		array('stepLists', 'rowWriteTables', 'paletteItems', 'mcpServer', 'mcpToolAsks', 'mcpToolProblem', 'mcpArgumentsProblem'),
 		$constants . <<<'JS'
 var FL = { steps: {} };
 var none = paletteItems().map(function (item) { return item[0]; }).indexOf('mcp');
@@ -1696,7 +1696,7 @@ JS
 function test_workspace_flows_canvas_row_box()
 {
 	$result = ws_flows_canvas_test_node(
-		array('nodeById', 'kindOf', 'stepLists', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
+		array('nodeById', 'kindOf', 'stepLists', 'rowWriteTables', 'paletteItems', 'rowTable', 'rowMeta', 'rowCellValues', 'boxValues'),
 		<<<'JS'
 var KINDS = { row: { into: false, out: ['next'] }, mcp: { into: true, out: ['done', 'failed'] }, post: { into: true, out: ['done', 'failed'] } };
 var PALETTE = [['row', 'fl_kind_row'], ['post', 'fl_add_post'], ['mcp', 'fl_kind_mcp']];
@@ -1734,6 +1734,72 @@ JS
 	pg_assert_same(array('trigger.table_id=Table:text', 'trigger.row_id=Row:text'), $result['goneValues']);
 }
 
+// The boxes that add or change a row: offered while the person may change
+// rows of a table, the tables to pick only those; their cells kept as the
+// JSON object the server reads, one column at a time, money typed as an
+// amount and kept in minor units, a value from a box before kept as a text;
+// cells the form cannot read (null) are left to their JSON field. A value
+// is threaded from the cells but never dropped into them.
+function test_workspace_flows_canvas_table_write_boxes()
+{
+	$result = ws_flows_canvas_test_node(
+		array('kindOf', 'stepLists', 'rowWriteTables', 'rowWriteTable', 'rowWriteColumns', 'paletteItems', 'rowTable', 'rowCells', 'rowWriteMeta', 'cellPlaces', 'cellShown', 'cellKept', 'setCell', 'fieldTexts', 'openFields'),
+		<<<'JS'
+var KINDS = { row: { into: false, out: ['next'] }, row_add: { into: true, out: ['done', 'failed'] }, row_set: { into: true, out: ['done', 'failed'] } };
+var PALETTE = [['row', 'fl_kind_row'], ['row_add', 'fl_kind_row_add'], ['row_set', 'fl_kind_row_set']];
+var VALUE_FIELDS = { row_set: [['row', 'fl_rows_row', 200]] };
+var FL = { steps: { tables: [
+    { id: 4, name: 'Deals', edit: true, columns: [{ id: 7, name: 'Customer', type: 'text' }, { id: 9, name: 'Amount', type: 'money', options: { decimals: 2 } }, { id: 11, name: 'Total', type: 'formula' }] },
+    { id: 5, name: 'Read only', edit: false, columns: [] }
+] } };
+function valueNames() { return { '{{node.add.row_id}}': { label: 'Add › Row' } }; }
+function refreshNode() {}
+var amount = { id: 9, type: 'money', options: { decimals: 2 } };
+var node = { id: 'set', kind: 'row_set', config: { table_id: 4, row: '{{node.add.row_id}}', cells: '{"7":"Ada","15":"kept"}' } };
+setCell(node, '9', cellKept(amount, '12.5'));
+var afterMoney = node.config.cells;
+setCell(node, '7', cellKept({ id: 7, type: 'text' }, ' '));
+var out = {
+    palette: paletteItems().map(function (item) { return item[0]; }),
+    tables: rowWriteTables().map(function (table) { return table.id; }),
+    columns: rowWriteColumns(rowWriteTable({ table_id: 4 })).map(function (column) { return column.id; }),
+    readOnly: rowWriteTable({ table_id: 5 }),
+    cells: [rowCells(''), rowCells('{"3": {{trigger.x}}}'), rowCells('[1]'), rowCells('{"3":"a"}')],
+    afterMoney: afterMoney,
+    afterEmpty: node.config.cells,
+    kept: [cellKept(amount, '{{trigger.amount}}'), cellKept({ type: 'number' }, '3.5'), cellKept({ type: 'person' }, '12'), cellKept({ type: 'date' }, ' 2026-11-02 '), cellKept({ type: 'text' }, ' a b ')],
+    shown: [cellShown(amount, 1250), cellShown(amount, '{{trigger.amount}}'), cellShown({ type: 'number' }, null)],
+    meta: [rowWriteMeta(node), rowWriteMeta({ kind: 'row_set', config: { table_id: 4, row: '12' } }), rowWriteMeta({ kind: 'row_add', config: { table_id: 8, cells: '' } }), rowWriteMeta({ kind: 'row_add', config: { table_id: 0 } })],
+    texts: fieldTexts(node).map(function (item) { return item.key; }),
+    open: openFields(node).map(function (item) { return item.key; }),
+    openAdd: openFields({ kind: 'row_add', config: { cells: '' } }).length
+};
+FL.steps.tables[0].edit = false;
+out.noEdit = paletteItems().map(function (item) { return item[0]; });
+console.log(JSON.stringify(out));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same(array('row', 'row_add', 'row_set'), $result['palette']);
+	pg_assert_same(array('row'), $result['noEdit'], 'no table to change: no box that writes one');
+	pg_assert_same(array(4), $result['tables'], 'only tables the person may change');
+	pg_assert_same(array(7, 9), $result['columns'], 'a formula column is not written');
+	pg_assert_same(null, $result['readOnly']);
+	pg_assert_same(array(array(), null, null, array('3' => 'a')), $result['cells'], 'a value outside quotes or a list is no object');
+	pg_assert_same('{"7":"Ada","9":1250,"15":"kept"}', $result['afterMoney'], 'money in minor units; a column the form does not show is kept');
+	pg_assert_same('{"9":1250,"15":"kept"}', $result['afterEmpty'], 'an empty field leaves its column out');
+	pg_assert_same(array('{{trigger.amount}}', 3.5, 12, '2026-11-02', ' a b '), $result['kept']);
+	pg_assert_same(array('12.50', '{{trigger.amount}}', ''), $result['shown']);
+	pg_assert_same(array('fl_rows_meta Deals Add › Row', 'fl_rows_meta Deals 12', '#8', 'fl_row_none'), $result['meta']);
+	pg_assert_same(array('row', 'cells'), $result['texts'], 'the cells\' values are threaded');
+	pg_assert_same(array('row'), $result['open'], 'a value is never dropped into the JSON');
+	pg_assert_same(0, $result['openAdd']);
+}
+
 // The groups of the flow boxes and their colours (dark theme as the visual
 // spec gives them; workspace-flows-look.md V1), in their listing order.
 function ws_flows_canvas_test_groups()
@@ -1744,7 +1810,7 @@ function ws_flows_canvas_test_groups()
 		'logic' => array('#e9b44c', array('condition', 'delay', 'end')),
 		'people' => array('#b49cff', array('task', 'task_open', 'checkin', 'approval', 'task_digest', 'lead')),
 		'message' => array('#6ea8ff', array('post', 'email', 'notify', 'report')),
-		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp'))
+		'system' => array('#45c4d6', array('web_check', 'webhook', 'change', 'start_flow', 'start_action', 'mcp', 'row_add', 'row_set'))
 	);
 }
 

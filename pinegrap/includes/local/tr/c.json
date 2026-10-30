@@ -476,6 +476,8 @@
     "Cell Options": "Hücre Seçenekleri",
     "Cell {var:1} on sheet {var:2} cannot be changed here.": "{var:2} sayfasındaki {var:1} hücresi burada değiştirilemez.",
     "Cell {var:1} on sheet {var:2} is not in the file.": "{var:2} sayfasındaki {var:1} hücresi dosyada yok.",
+    "Cells": "Hücreler",
+    "Cells as JSON": "JSON olarak hücreler",
     "Center": "Orta",
     "Centered": "Ortalanmış",
     "Central": "Merkez",

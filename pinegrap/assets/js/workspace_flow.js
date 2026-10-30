@@ -137,6 +137,8 @@
         change: { name: 'fl_kind_change', group: 'system', into: true, out: ['done', 'failed'] },
         lead: { name: 'fl_kind_lead', group: 'people', into: true, out: ['done', 'failed'] },
         mcp: { name: 'fl_kind_mcp', group: 'system', into: true, out: ['done', 'failed', 'rejected', 'expired', 'withdrawn'] },
+        row_add: { name: 'fl_kind_row_add', group: 'system', into: true, out: ['done', 'failed'] },
+        row_set: { name: 'fl_kind_row_set', group: 'system', into: true, out: ['done', 'failed'] },
         approval: { name: 'fl_kind_approval', group: 'people', into: true, out: ['approved', 'rejected', 'expired', 'withdrawn', 'failed'] },
         condition: { name: 'fl_kind_condition', group: 'logic', into: true, out: ['yes', 'no'] },
         delay: { name: 'fl_kind_delay', group: 'logic', into: true, out: ['done'] },
@@ -192,6 +194,8 @@
         ['change', 'fl_kind_change'],
         ['lead', 'fl_kind_lead'],
         ['mcp', 'fl_kind_mcp'],
+        ['row_add', 'fl_kind_row_add'],
+        ['row_set', 'fl_kind_row_set'],
         ['approval', 'fl_kind_approval'],
         ['constants', 'fl_kind_constants'],
         ['value', 'fl_kind_value'],
@@ -665,6 +669,10 @@
 
         if (node.kind === 'row') {
             return rowMeta(config);
+        }
+
+        if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
+            return rowWriteMeta(node);
         }
 
         if (node.kind === 'join') {
@@ -2938,6 +2946,7 @@
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
         webhook: [['text', 'fl_post_body', 4000]],
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
+        row_set: [['row', 'fl_rows_row', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
         report: [['title', 'fl_report_title', 160]],
         checkin: [['question', 'fl_checkin_question', 500]],
@@ -3042,11 +3051,17 @@
             return ((rule.type === 'value') && (typeof rule.ref === 'string') && rule.ref) ? [{ key: 'rule', label: t('fl_cond_value_ref'), text: rule.ref }] : [];
         }
 
+        // A table box's cells read values too; a value goes into one of
+        // them through its column's field, never by a thread dropped on the
+        // box, which would write it outside the JSON (openFields()).
+        var cells = ((node.kind === 'row_add') || (node.kind === 'row_set')) && (typeof config.cells === 'string')
+            ? [{ key: 'cells', label: t('fl_rows_cells'), text: config.cells }] : [];
+
         return (VALUE_FIELDS[node.kind] || []).filter(function (item) {
             return typeof config[item[0]] === 'string';
         }).map(function (item) {
             return { key: item[0], label: t(item[1]), text: config[item[0]] };
-        });
+        }).concat(cells);
     }
 
     // The fields of a box one more value may go into: every one of its
@@ -3589,13 +3604,16 @@
 
     // What the palette offers: an MCP box only while there is a server the
     // person may call with a tool that reads (ws_step_mcp_form_servers()), a
-    // row box only while there is a table they read (ws_flow_row_tables()).
+    // row box only while there is a table they read (ws_flow_row_tables()),
+    // a box that adds or changes a row only while there is one they change.
     function paletteItems() {
         var mcp = stepLists().mcp.length > 0;
         var tables = stepLists().tables.length > 0;
+        var writable = rowWriteTables().length > 0;
 
         return PALETTE.filter(function (item) {
-            return ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables);
+            return ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
+                && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
     }
 
@@ -4811,6 +4829,10 @@
 
         if (node.kind === 'mcp') {
             mcpFields(box, node);
+        }
+
+        if ((node.kind === 'row_add') || (node.kind === 'row_set')) {
+            rowWriteFields(box, node);
         }
 
         if (node.kind === 'condition') {
@@ -6095,6 +6117,252 @@
         box.appendChild(field(t('fl_row_column'), column, t('fl_row_column_help')));
     }
 
+    // ── Boxes that add or change a row ─────────────────────────────────
+
+    // The tables such a box may write in: those the person may change rows
+    // of (ws_flow_row_tables(), edit), as ws_step_row_check() asks.
+    function rowWriteTables() {
+        return stepLists().tables.filter(function (table) { return !!table.edit; });
+    }
+
+    function rowWriteTable(config) {
+        return rowWriteTables().filter(function (table) { return table.id === config.table_id; })[0] || null;
+    }
+
+    // The columns it writes: all but formulas, which are worked out.
+    function rowWriteColumns(table) {
+        return table ? table.columns.filter(function (column) { return column.type !== 'formula'; }) : [];
+    }
+
+    // A box's cells as an object, column id => value; null for a text that
+    // is no JSON object (a value outside quotes, written over the API).
+    function rowCells(text) {
+        var cells;
+
+        if (!text) {
+            return {};
+        }
+
+        try {
+            cells = JSON.parse(text);
+        } catch (error) {
+            return null;
+        }
+
+        return (cells && (typeof cells === 'object') && !Array.isArray(cells)) ? cells : null;
+    }
+
+    // Its table, and the row a change names by its number or its value.
+    function rowWriteMeta(node) {
+        var config = node.config;
+        var table = rowTable(config);
+        var row = (config.row || '').trim();
+
+        if (!config.table_id) {
+            return t('fl_row_none');
+        }
+
+        var name = table ? table.name : '#' + config.table_id;
+        var named = /^\d+$/.test(row) ? null : valueNames(node)[row];
+
+        return ((node.kind === 'row_set') && row) ? t('fl_rows_meta', name, named ? named.label : row) : name;
+    }
+
+    // Money's decimals, as the table keeps its column (2 unless it says).
+    function cellPlaces(column) {
+        var places = parseInt((column.options || {}).decimals, 10);
+
+        return isNaN(places) ? 2 : Math.max(0, Math.min(places, 6));
+    }
+
+    // A cell as its field shows it: money in minor units as an amount.
+    function cellShown(column, value) {
+        if ((value === null) || (value === undefined)) {
+            return '';
+        }
+
+        if ((column.type === 'money') && (typeof value === 'number')) {
+            return (value / Math.pow(10, cellPlaces(column))).toFixed(cellPlaces(column));
+        }
+
+        return (typeof value === 'object') ? JSON.stringify(value) : String(value);
+    }
+
+    // What a field typed keeps, as the table takes it: nothing for an empty
+    // field, a number typed as a number (money in minor units, rounded), a
+    // text otherwise; a value from a box before stays a text the run fills.
+    function cellKept(column, text) {
+        var typed = text.trim();
+
+        if (typed === '') {
+            return undefined;
+        }
+
+        if (((column.type === 'number') && /^-?\d+(\.\d+)?$/.test(typed)) || ((column.type === 'person') && /^\d+$/.test(typed))) {
+            return Number(typed);
+        }
+
+        if ((column.type === 'money') && /^-?\d+([.,]\d+)?$/.test(typed)) {
+            return Math.round(parseFloat(typed.replace(',', '.')) * Math.pow(10, cellPlaces(column)));
+        }
+
+        return (column.type === 'text') ? text : typed;
+    }
+
+    // One cell written, or left out; the other cells stay as they are, so
+    // a column of another table, kept from the API, is never lost.
+    function setCell(node, id, value) {
+        var cells = rowCells(node.config.cells) || {};
+
+        if (value === undefined) {
+            delete cells[id];
+        } else {
+            cells[id] = value;
+        }
+
+        node.config.cells = Object.keys(cells).length ? JSON.stringify(cells) : '';
+        refreshNode(node);
+    }
+
+    // The field of one column: a choice for a checkbox and a status, a kind
+    // and a number for a record link, else a text taking values.
+    function cellField(node, column, value) {
+        var id = String(column.id);
+        var options = column.options || {};
+
+        if ((column.type === 'checkbox') || (column.type === 'status')) {
+            var current = ((value === null) || (value === undefined)) ? '' : String(value);
+            var choices = (column.type === 'checkbox') ? [['true', t('fl_change_yes')], ['false', t('fl_change_no')]]
+                : (options.choices || []).map(function (choice) { return [String(choice.key), choice.label]; });
+
+            if (current && !choices.some(function (choice) { return choice[0] === current; })) {
+                choices.push([current, current]);
+            }
+
+            var pick = K.select([['', t('fl_rows_unset')]].concat(choices), current);
+
+            pick.setAttribute('data-refocus', 'rows-cell-' + node.id + '-' + id);
+            pick.addEventListener('change', function () {
+                setCell(node, id, (pick.value === '') ? undefined : ((column.type === 'checkbox') ? (pick.value === 'true') : pick.value));
+            });
+
+            return field(column.name, pick);
+        }
+
+        if (column.type === 'link') {
+            return linkField(node, column, value);
+        }
+
+        var help = { money: t('fl_rows_money_help'), date: t(options.time ? 'fl_rows_time_help' : 'fl_rows_date_help'), person: t('fl_rows_person_help') }[column.type] || '';
+
+        return valueField(node, column.name, cellShown(column, value), 4000, function (text) {
+            setCell(node, id, cellKept(column, text));
+        }, column.type === 'text', help);
+    }
+
+    // A record link: its kind (one of the column's, when it names any) and
+    // its number, kept once both are given.
+    function linkField(node, column, value) {
+        var id = String(column.id);
+        var link = { kind: (value && value.kind) ? String(value.kind) : '', id: (value && (value.id !== undefined)) ? String(value.id) : '' };
+        var kinds = (column.options || {}).kinds || [];
+        var wrap = el('fieldset', 'mb-5');
+        var keep = function () {
+            setCell(node, id, (link.kind && link.id.trim()) ? { kind: link.kind, id: /^\d+$/.test(link.id.trim()) ? Number(link.id.trim()) : link.id.trim() } : undefined);
+        };
+        var kind;
+
+        if (kinds.length) {
+            kind = K.select([['', t('fl_rows_unset')]].concat(kinds.map(function (item) { return [item, item]; })
+                .concat(((link.kind !== '') && (kinds.indexOf(link.kind) === -1)) ? [[link.kind, link.kind]] : [])), link.kind);
+            kind.addEventListener('change', function () {
+                link.kind = kind.value;
+                keep();
+            });
+        } else {
+            kind = textInput(link.kind, 32, function (text) {
+                link.kind = text.trim();
+                keep();
+            });
+        }
+
+        kind.setAttribute('data-refocus', 'rows-link-' + node.id + '-' + id);
+        wrap.appendChild(el('legend', 'form-label small fw-semibold mb-1', column.name));
+        wrap.appendChild(field(t('fl_rows_link_kind'), kind));
+        wrap.appendChild(valueField(node, t('fl_rows_link_id'), link.id, 200, function (text) {
+            link.id = text;
+            keep();
+        }, false));
+
+        return wrap;
+    }
+
+    // A box that adds or changes a row: its table, the row a change names,
+    // then a field per column. Cells the form cannot show (a table not
+    // among those the person changes, or a text that is no JSON object)
+    // are shown as their JSON, so a box built over the API saves unchanged.
+    function rowWriteFields(box, node) {
+        var config = node.config;
+        var table = rowWriteTable(config);
+        var read = rowTable(config);
+        var options = [[0, t('fl_row_table_pick')]].concat(rowWriteTables().map(function (item) { return [item.id, item.name]; }));
+
+        if (config.table_id && !table) {
+            options.push([config.table_id, read ? read.name : '#' + config.table_id]);
+        }
+
+        var pick = K.select(options, config.table_id || 0);
+
+        pick.setAttribute('data-refocus', 'rows-table-' + node.id);
+        pick.addEventListener('change', function () {
+            config.table_id = parseInt(pick.value, 10) || 0;
+            // Column ids are one table's: its cells do not fit another.
+            config.cells = '';
+            refreshNode(node);
+            drawSettings();
+        });
+        box.appendChild(field(t('fl_row_table'), pick, t('fl_rows_table_help')));
+
+        if (node.kind === 'row_set') {
+            box.appendChild(valueField(node, t('fl_rows_row'), config.row, 200, function (value) {
+                config.row = value;
+                refreshNode(node);
+            }, false, t('fl_rows_row_help')));
+        }
+
+        if (!config.table_id) {
+            return;
+        }
+
+        var cells = rowCells(config.cells);
+
+        if (!table || (cells === null)) {
+            var bad = el('div', 'small fg-danger mb-5');
+
+            bad.setAttribute('role', 'status');
+            bad.textContent = (cells === null) ? t('fl_rows_json_bad') : '';
+            box.appendChild(el('div', 'small fg-secondary mb-2', t('fl_rows_json_why')));
+            box.appendChild(valueField(node, t('fl_rows_json'), config.cells, 20000, function (value) {
+                config.cells = value;
+                bad.textContent = (rowCells(value) === null) ? t('fl_rows_json_bad') : '';
+                refreshNode(node);
+            }, true, t('fl_rows_json_help')));
+            box.appendChild(bad);
+
+            return;
+        }
+
+        var columns = rowWriteColumns(table);
+        var group = el('fieldset', 'wsf-rows-cells');
+
+        group.appendChild(el('legend', 'form-label small fw-semibold mb-1', t('fl_rows_cells')));
+        group.appendChild(el('div', 'form-text mt-0 mb-2', columns.length ? t((node.kind === 'row_set') ? 'fl_rows_set_help' : 'fl_rows_add_help') : t('fl_rows_no_columns')));
+        columns.forEach(function (column) {
+            group.appendChild(cellField(node, column, cells[column.id]));
+        });
+        box.appendChild(group);
+    }
+
     // The days of the week by number, 1 Monday - 7 Sunday.
     var DAYS = { 1: 'fl_day_mon', 2: 'fl_day_tue', 3: 'fl_day_wed', 4: 'fl_day_thu', 5: 'fl_day_fri', 6: 'fl_day_sat', 7: 'fl_day_sun' };
 
@@ -7107,6 +7375,14 @@
             var tables = stepLists().tables;
 
             config = { table_id: (tables.length === 1) ? tables[0].id : 0, what: 'created', column_id: 0 };
+        } else if ((kind === 'row_add') || (kind === 'row_set')) {
+            var writable = rowWriteTables();
+
+            config = { table_id: (writable.length === 1) ? writable[0].id : 0, cells: '' };
+
+            if (kind === 'row_set') {
+                config.row = '';
+            }
         }
 
         var node = { id: freeId(kind, state.graph.nodes), kind: kind, label: '', x: place.x, y: place.y, config: config };

@@ -4,7 +4,7 @@ description: How a flow box looks (V1, V2 of plans/workspace-flows-look.md, PRs 
 ---
 
 ## Which group is a box in?
-- `KINDS[kind].group` in workspace_flow.js: start (manual, schedule, event, join, row), values (constants, value), logic (condition, delay, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp). The owner's plan lists them so; the add column (V4) lists them in that order.
+- `KINDS[kind].group` in workspace_flow.js: start (manual, schedule, event, join, row), values (constants, value), logic (condition, delay, end), people (task, task_open, checkin, approval, task_digest, lead), message (post, email, notify, report), system (web_check, webhook, change, start_flow, start_action, mcp, row_add, row_set). The owner's plan lists them so; the add column (V4) lists them in that order.
 - `kindClasses(kind)` gives a box and its outline entry `wsf-node-<kind> wsf-group-<group>`; an unknown kind `wsf-node-unknown`, no group (grey).
 - A new kind needs its group, or `test_workspace_flows_canvas_every_kind_has_one_group` fails.
 
