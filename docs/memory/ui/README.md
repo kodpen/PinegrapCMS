@@ -117,7 +117,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-locale-order.md: File and Catalog Manager (view_folders.php) sort text keys with the panel language's Intl.Collator and match with foldText() (İ/I/ı/i alike); the Shared view's groups sort by pg_geo_label_compare()
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys
 - explorer-picker-state.md: File and Catalog Manager pickers and menu ticks expose their state (aria-pressed, aria-current); transfer and channel picks keep focus; empty lists announced
-- explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; what is still open (#2053)
+- explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
 - explorer-tour-texts.md: File and Catalog Manager tour steps name the control they ring by its printed label; the toolbar More button is named; keys stay .4 on rewording
 - explorer-tree-keyboard.md: The File and Catalog Manager tree on the explorer's own screen (in the main menu panel) from the keyboard: focusable link rows with aria-current, arrows with aria-expanded, Enter/Space
 - field-caption-links.md: Captions tied to their fields on the code-field screens, Generate Layout, Create File and the order tracking numbers; why chips need a label, not an aria-label

@@ -1,6 +1,6 @@
 ---
 name: explorer-search-state
-description: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; what is still open (#2053)
+description: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; the hover bubble's check after a delete (#2053)
 ---
 
 ## What happens when the search box narrows the listing?
@@ -13,5 +13,6 @@ description: File manager (view_folders.php) search and filters: status bar coun
 - `#explorer_toasts` is `aria-live="polite"`, so a notice added to it (move, rename, delete) is read; `toast()` gives a failure (`ok === false`) `role="alert"` and a success no role of its own, since a status region nested in the live container could be read twice. Before, each toast was a `role="status"` inserted already holding its text, which screen readers skip.
 - Same pass: Page Designer keeps an unsaved edit as unsaved when `api.php` answers `status: "error"` (expired session, changed token, missing style or file) or the request fails, and says why in its `role="alert"` footer line; the picture picker's `#unsplash_status` and the picture editor's `#pgImageEditorHint` are status regions, and the editor's server message goes through `_footError()` (escaped). Test: `tests/panel_live_status_local_test.php`.
 
-## What is still open?
-- #2053 item 3: after a folder is deleted from its context menu, the reporter saw the mark move to the next item. The listing reload clears `state.selection` and drops a cursor whose item is gone; the path that moves the mark was not found without a running site.
+## Why did the next tile look marked after a delete?
+- #2053 item 3: the selection was already cleared (the reload sets `state.selection = {}`, and `renderContent()` drops a cursor whose item is gone). The mark was the grid tile's hover bubble: `.sel-dot` drew its check in `#fff` on the body colour, invisible in light, a white check in dark, so the tile that moved under the resting pointer looked selected.
+- Now the hover bubble's check is `color: transparent`; only `.explorer-item.selected .sel-dot` draws it, in `--pg-on-accent` (PR #3598). Test: `test_file_manager_contrast_selection_bubble`.
