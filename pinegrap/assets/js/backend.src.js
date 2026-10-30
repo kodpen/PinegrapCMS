@@ -5207,6 +5207,7 @@ function change_email_campaign_profile_action() {
         case 'subscription_renewed':
         case 'subscription_failed':
         case 'subscription_cancelled':
+        case 'subscription_price_changed':
             $('#subscription_fields_row').addClass('show');
             $('#standard_schedule_period_and_base').addClass('show');
             break;

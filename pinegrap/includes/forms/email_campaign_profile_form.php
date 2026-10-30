@@ -36,12 +36,14 @@ function pg_email_campaign_profile_commerce_actions()
         'subscription_renewed',
         'subscription_failed',
         'subscription_cancelled',
+        'subscription_price_changed',
     );
 }
 
 /**
  * The mail-merge fields the subscription actions fill in, as the form lists
- * them (pg_subscription_mail_fields()).
+ * them (pg_subscription_mail_fields(), then the two of
+ * pg_subscription_price_mail_fields() only the price change mail fills in).
  *
  * @return array field name => what it holds
  */
@@ -54,6 +56,8 @@ function pg_email_campaign_profile_subscription_fields()
         'subscription_card_url' => lang('a link where the customer updates the card (failed charges)'),
         'subscription_confirm_url' => lang('a link where the customer confirms the charge with the bank (failed charges)'),
         'order_number' => lang('the number of the renewal order (renewed)'),
+        'subscription_new_amount' => lang('the new amount of each charge (price change)'),
+        'subscription_new_date' => lang('the date the new amount takes effect (price change)'),
     );
 }
 
@@ -228,6 +232,7 @@ function pg_email_campaign_profile_form_cards($liveform, $user, $product_id = 0)
         $action_options[lang('Subscription Renewed')] = 'subscription_renewed';
         $action_options[lang('Subscription Payment Failed')] = 'subscription_failed';
         $action_options[lang('Subscription Cancelled')] = 'subscription_cancelled';
+        $action_options[lang('Subscription Price Changed')] = 'subscription_price_changed';
 
         $output_subscription_fields = '';
 

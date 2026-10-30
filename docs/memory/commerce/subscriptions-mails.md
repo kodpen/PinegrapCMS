@@ -14,7 +14,7 @@ module: subscription_renewal
 
 ## Which fields does a profile get?
 - `pg_subscription_mail_fields()`, always all six (empty when unknown, so `[[...||...]]` takes its else part): `^^subscription_product^^` (the first order line's name), `^^subscription_amount^^` (site number format + currency code), `^^subscription_next_date^^` (type date, `%%format%%` works; empty while held), `^^subscription_card_url^^` (failed only), `^^subscription_confirm_url^^` (confirm_needed only: the event's link), `^^order_number^^` (the renewal order).
-- The profile form lists them under the action (`pg_email_campaign_profile_subscription_fields()`, `#subscription_fields_row`); the three actions are commerce actions (after the action, `action_item_id` 0). The two links are in `pg_mail_merge_address_hrefs()`'s defaults, so the Link dialog's `http://` comes off.
+- The profile form lists them under the action (`pg_email_campaign_profile_subscription_fields()`, `#subscription_fields_row`); the four actions (with `subscription_price_changed`, #3519) are commerce actions (after the action, `action_item_id` 0); the list also names the two price-change fields. The two links are in `pg_mail_merge_address_hrefs()`'s defaults, so the Link dialog's `http://` comes off.
 
 ## What is the card update link?
 - `subscription_card.php?s=<id>&t=<time>&k=<hmac>`: `pg_subscription_card_token()` = HMAC-SHA256 of `subscription-card:<id>:<t>` with `ENCRYPTION_KEY` (no key → no link). Open 30 days (`pg_subscription_card_link_ttl()`, past the 1/3/7 ladder), for an active, past_due or paused row (`pg_subscription_card_link_state()`).

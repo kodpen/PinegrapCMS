@@ -18,12 +18,12 @@ module: subscription_renewal
 ## Which mail?
 - `pg_subscription_mail_action('price_notice')` → `subscription_price_changed`, sent by `pg_subscription_mail_send()` like the other subscription mails (no profile → no mail). Fields: the six of `pg_subscription_mail_fields()` plus `^^subscription_new_amount^^` and `^^subscription_new_date^^` (type date) from `pg_subscription_price_mail_fields()`.
 - Step 11.0.132 `upgrade_2026_11_0_subscription_price_notice()` appends the action to `email_campaign_profiles.action` and `email_campaigns.action` (read first, appended at the end, null rule and default kept, skipped when present).
-- Not yet: the profile form's action list, commerce-action list and field list (`includes/forms/email_campaign_profile_form.php`) do not name the action; until they do, no profile of it can be made. The Campaign Profiles list names it.
+- The profile form offers it as a commerce action beside the other three (#3519): `action_item_id` 0, the fields row lists all eight fields (the two price ones marked "price change"), `backend.src.js` opens the row for it. The Campaign Profiles list names it.
 
 ## Where is it shown?
 - `pg_subscription_price_pending()`: the latest notice whose amount is not the row's. My Account: "New amount from <date>: <amount>"; operator row page: fact "New amount"; both event lists label `price_notice` "Price change notice".
 
 ## Tested?
-- `tests/subscriptions_renewal_test.php` (amount, 14 days, one period later, decrease, once, applied on/after the date, line figures, mail action and fields), `tests/subscription_mails_test.php` (step twice on an in-memory schema, label). Not run on a database.
+- `tests/subscriptions_renewal_test.php` (amount, 14 days, one period later, decrease, once, applied on/after the date, line figures, mail action and fields), `tests/subscription_mails_test.php` (step twice on an in-memory schema, label, the form offers the action and lists its eight fields, saved with `action_item_id` 0). Not run on a database.
 
 Related: commerce/subscriptions-renewal.md, commerce/subscriptions-mails.md, plans/subscriptions-iyzico-stripe.md

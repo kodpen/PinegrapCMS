@@ -207,7 +207,7 @@ function test_subscription_mails_campaign_row_copies_the_profile_action()
 	pg_assert_contains("AND (email_campaign_profiles.action = '\$action')", $mail, 'the profiles of the action');
 	pg_assert_true((bool) preg_match("~INSERT INTO email_campaigns \\(.*?action,.*?VALUES \\(\\s*'automatic',\\s*'\" \\. \\\$email_campaign_profile\\['id'\\] \\. \"',\\s*'\" \\. \\\$action \\. \"'~s", $mail), 'the action copied into the campaign row');
 
-	foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled') as $action) {
+	foreach (array('subscription_renewed', 'subscription_failed', 'subscription_cancelled', 'subscription_price_changed') as $action) {
 		pg_assert_contains("case '" . $action . "':", $mail, $action . ' named in the log');
 		pg_assert_true(in_array($action, pg_email_campaign_profile_commerce_actions(), true), $action . ' is a commerce action');
 
@@ -219,7 +219,28 @@ function test_subscription_mails_campaign_row_copies_the_profile_action()
 	pg_assert_same('', pg_email_campaign_profile_action_rows('order_shipped')['subscription_fields']);
 	pg_assert_same(array_keys(pg_email_campaign_profile_subscription_fields()), array_map(function ($field) {
 		return $field['name'];
-	}, pg_subscription_mail_fields(array(), array())), 'the form lists the fields the mail fills in');
+	}, array_merge(pg_subscription_mail_fields(array(), array()), pg_subscription_price_mail_fields(array(), null))), 'the form lists the fields the mails fill in');
+}
+
+// The price change mail is sent only to a profile of its action, so the form
+// offers that action, shows its fields when it is picked and lets it be saved.
+function test_subscription_mails_profile_form_offers_the_price_change_action()
+{
+	$action = pg_subscription_mail_action('price_notice', 'active', 'active');
+	pg_assert_same('subscription_price_changed', $action);
+
+	$form = (string) file_get_contents(PG_FUNCTIONS_DIR . '/includes/forms/email_campaign_profile_form.php');
+	pg_assert_contains("\$action_options[lang('Subscription Price Changed')] = '" . $action . "';", $form, 'offered among the commerce actions');
+
+	$js = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
+	pg_assert_true((bool) preg_match("~case 'subscription_price_changed':\\s*\\$\\('#subscription_fields_row'\\)\\.addClass\\('show'\\)~", $js), 'the fields open when it is picked');
+
+	$fields = array_keys(pg_email_campaign_profile_subscription_fields());
+	pg_assert_same(8, count($fields), 'eight fields listed');
+	pg_assert_true(in_array('subscription_new_amount', $fields, true) && in_array('subscription_new_date', $fields, true), 'the two price fields listed');
+
+	$values = pg_email_campaign_profile_action_values($action, array('product_id' => '7'));
+	pg_assert_same('0', $values['action_item_id'], 'saved tied to no record');
 }
 
 // The Link dialog's http:// comes off the two link fields.
