@@ -4,9 +4,10 @@
  *
  * Tests for the Turkish search of panel lists searched in the browser:
  * pgListTurkishMatch() in backend.src.js, run under Node, finds a row when
- * every search word is found either as DataTables finds it or lowered the
- * Turkish way (I to ı, İ to i), so "YILDIZ" finds "Yıldız" while "yildiz"
- * still does not; words in any order and quoted phrases keep working.
+ * every search word is found either as DataTables finds it or folded with
+ * window.pgFoldTR (I, İ, ı and i are one letter), so "YILDIZ" and "yildiz"
+ * find "Yıldız" and "isik" finds "Işık"; words in any order and quoted
+ * phrases keep working.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -18,19 +19,22 @@ if (!defined('PG_TEST_RUNNER')) {
 	exit;
 }
 
-// The matcher of backend.src.js: from the Turkish lowering to the function
-// that installs it on a table.
+// The matcher of backend.src.js: window.pgFoldTR, then from the Turkish fold
+// to the function that installs the matcher on a table.
 function pg_list_turkish_search_test_source()
 {
 	$source = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/backend.src.js');
-	$start = strpos($source, 'function pgListTurkishLower(');
+	$fold_start = strpos($source, 'window.pgFoldTR = function');
+	$fold_end = strpos($source, "};\n", (int) $fold_start);
+	$start = strpos($source, 'function pgListTurkishFold(');
 	$end = strpos($source, 'function pgListTurkishSearch(', (int) $start);
 
-	if ($start === false || $end === false) {
+	if ($fold_start === false || $fold_end === false || $start === false || $end === false) {
 		return '';
 	}
 
-	return substr($source, $start, $end - $start);
+	return 'var window = {};' . "\n" . substr($source, $fold_start, $fold_end + 3 - $fold_start)
+		. substr($source, $start, $end - $start);
 }
 
 // Runs the cases with Node and returns their JSON; null without Node,
@@ -77,6 +81,10 @@ function pg_list_turkish_search_test_run()
 		array('"yıldız can"', 'Can Yıldız'),
 		array('YILDIZ ahmet', 'Can Yıldız'),
 		array('', 'Can Yıldız'),
+		array('isik', 'Işık'),
+		array('İSİM', 'isim'),
+		array('ismail', 'İsmail'),
+		array('yildiz !can', 'Can Yıldız'),
 	);
 
 	$script = 'var PG_SOURCE = ' . json_encode(pg_list_turkish_search_test_source()) . ";\n"
@@ -121,13 +129,17 @@ function test_list_turkish_client_search_matcher()
 	pg_assert_same(true, $r[5], 'demir finds Demir');
 	pg_assert_same(true, $r[6], 'ışık finds Işık');
 	pg_assert_same(true, $r[7], 'IŞIK finds Işık');
-	pg_assert_same(false, $r[8], 'yildiz does not find Yıldız: ı and i stay different letters');
+	pg_assert_same(true, $r[8], 'yildiz finds Yıldız: I, İ, ı and i are one letter');
 	pg_assert_same(true, $r[9], 'two words, row order');
 	pg_assert_same(true, $r[10], 'two words, other order');
 	pg_assert_same(true, $r[11], 'quoted phrase found as a phrase');
 	pg_assert_same(false, $r[12], 'quoted phrase in the wrong order is not found');
 	pg_assert_same(false, $r[13], 'every word must be found');
 	pg_assert_same(true, $r[14], 'an empty search finds every row');
+	pg_assert_same(true, $r[15], 'isik finds Işık');
+	pg_assert_same(true, $r[16], 'İSİM finds isim');
+	pg_assert_same(true, $r[17], 'ismail finds İsmail');
+	pg_assert_same(false, $r[18], 'a !word found folded leaves the row out');
 }
 
 // The matcher is installed only on Turkish panels and never on a list paged
