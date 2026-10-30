@@ -109,17 +109,51 @@ function ws_calc_error_help($code)
 /**
  * Does the site write 1.234,5 (Turkish) rather than 1,234.5?
  *
+ * @param bool|null $set a value to use from now on (tests read both ways)
  * @return bool
  */
-function ws_calc_decimal_comma()
+function ws_calc_decimal_comma($set = null)
 {
     static $comma = null;
 
-    if ($comma === null) {
+    if ($set !== null) {
+        $comma = (bool) $set;
+    } elseif ($comma === null) {
         $comma = (lang(array('info' => '')) === 'tr');
     }
 
     return $comma;
+}
+
+/**
+ * The figure that starts at $at in a formula, read the way the site writes
+ * it, as ws_calc_number() reads a lone figure: in Turkish 15.000 is fifteen
+ * thousand and 1.250,50 has decimals (one comma per figure, so the one after
+ * is an argument separator); elsewhere a dot is the decimal and a comma
+ * groups thousands only outside a function's brackets, where it cannot
+ * separate arguments.
+ *
+ * @param string $formula
+ * @param int    $at
+ * @param bool   $top    outside every bracket
+ * @return array|null value (float) and length, or null when it cannot be read
+ */
+function ws_calc_figure_at($formula, $at, $top)
+{
+    if (ws_calc_decimal_comma()) {
+        preg_match('/\G[0-9]*(?:\.[0-9]+)*(?:,[0-9]+)?/', $formula, $match, 0, $at);
+        $value = ws_calc_number((substr($match[0], 0, 1) === '.') ? '0' . $match[0] : $match[0]);
+
+        return ($value === null) ? null : array($value, strlen($match[0]));
+    }
+
+    if ($top && preg_match('/\G[0-9]{1,3}(?:,[0-9]{3})+(?:\.[0-9]+)?(?![0-9])/', $formula, $match, 0, $at)) {
+        return array((float) str_replace(',', '', $match[0]), strlen($match[0]));
+    }
+
+    preg_match('/\G[0-9]*(?:\.[0-9]+)?/', $formula, $match, 0, $at);
+
+    return array((float) $match[0], strlen($match[0]));
 }
 
 /**
@@ -467,9 +501,11 @@ function ws_calc_tokens($formula)
     // and the comparison signs of a keyboard that has them.
     $formula = str_replace(array('×', '÷', '−', '–', '≤', '≥', '≠'), array('*', '/', '-', '-', '<=', '>=', '<>'), $formula);
     $length = strlen($formula);
+    $depth = 0;
 
     while ($i < $length) {
         $char = $formula[$i];
+        $last = empty($tokens) ? null : $tokens[count($tokens) - 1][0];
 
         if (ctype_space($char)) {
             $i++;
@@ -483,10 +519,21 @@ function ws_calc_tokens($formula)
             continue;
         }
 
-        if (ctype_digit($char) || (($char === '.') && ($i + 1 < $length) && ctype_digit($formula[$i + 1]))) {
-            preg_match('/\G[0-9]*(?:[.,][0-9]+)?/', $formula, $match, 0, $i);
-            $tokens[] = array('num', (float) str_replace(',', '.', $match[0]));
-            $i += strlen($match[0]);
+        // A % where a value is due starts a share (%20, as Turkish writes
+        // it); after a value it is that value's percent sign.
+        $percent = ($char === '%') && !in_array($last, array('num', 'ref', 'range', 'var', ')', '%'), true)
+            && preg_match('/\G%\.?[0-9]/', $formula, $match, 0, $i);
+        $at = $percent ? $i + 1 : $i;
+
+        if ($percent || ctype_digit($char) || (($char === '.') && ($i + 1 < $length) && ctype_digit($formula[$i + 1]))) {
+            $figure = ws_calc_figure_at($formula, $at, ($depth === 0));
+
+            if ($figure === null) {
+                return 'syntax';
+            }
+
+            $tokens[] = array('num', $percent ? $figure[0] / 100 : $figure[0]);
+            $i = $at + $figure[1];
             continue;
         }
 
@@ -507,12 +554,20 @@ function ws_calc_tokens($formula)
             $tokens[] = array('func', ws_calc_fold($match[1]));
             $tokens[] = array('(');
             $i += strlen($match[0]);
+            $depth++;
             continue;
         }
 
         if (strpos('+-*/^%();', $char) !== false) {
             $tokens[] = array($char);
             $i++;
+
+            if ($char === '(') {
+                $depth++;
+            } elseif ($char === ')') {
+                $depth = max(0, $depth - 1);
+            }
+
             continue;
         }
 
@@ -1918,8 +1973,9 @@ function ws_calc_plain($body)
  * A line that ends with "=": the figures in it worked out, the words around
  * them left out ("Rent 15.000 + dues 750 =" comes to 15.750). x and × multiply
  * and : and ÷ divide between figures; a figure is read the way a cell is
- * (15.000 is fifteen thousand in Turkish). An "=" earlier in the line starts
- * what is worked out ("Total = 3 * 450 =").
+ * (15.000 is fifteen thousand in Turkish, %20 a fifth). A % or a figure
+ * that cannot be read makes the line an error rather than being dropped. An
+ * "=" earlier in the line starts what is worked out ("Total = 3 * 450 =").
  *
  * @param string $line
  * @return array|null source (what was worked out), value, display, error
@@ -1948,24 +2004,34 @@ function ws_calc_inline($line)
         $text = substr($text, $at + 1);
     }
 
-    if (!preg_match_all('/[0-9][0-9.,]*%?|(?<=[0-9\s)])[xX:](?=\s*[0-9(])|[+\-*\/^()×÷−–]|\p{L}+|\S/u', $text, $match)) {
+    if (!preg_match_all('/%?[0-9][0-9.,]*%?|(?<=[0-9\s)])[xX:](?=\s*[0-9(])|[+\-*\/^()×÷−–]|\p{L}+|\S/u', $text, $match)) {
         return null;
     }
 
     $parts = array();
     $figures = 0;
     $operators = 0;
+    $unread = false;
 
     foreach ($match[0] as $piece) {
-        if (preg_match('/^[0-9]/', $piece)) {
+        if (preg_match('/^%?[0-9]/', $piece)) {
             $value = ws_calc_number($piece);
+            $figures++;
 
+            // A figure the site cannot read makes the line an error.
             if ($value === null) {
-                return null;
+                $unread = true;
+                $parts[] = $piece;
+                continue;
             }
 
-            $parts[] = rtrim(rtrim(sprintf('%.10F', $value), '0'), '.');
-            $figures++;
+            // Written back the site's way, as the formula reader reads it.
+            $figure = rtrim(rtrim(sprintf('%.10F', $value), '0'), '.');
+            $parts[] = ws_calc_decimal_comma() ? str_replace('.', ',', $figure) : $figure;
+        } elseif ($piece === '%') {
+            // A % on its own belongs to no figure: an error, not dropped.
+            $unread = true;
+            $parts[] = $piece;
         } elseif (in_array($piece, array('x', 'X', '×'), true)) {
             $parts[] = '*';
             $operators++;
@@ -1994,7 +2060,7 @@ function ws_calc_inline($line)
         return null;
     }
 
-    $result = ws_calc_evaluate($expression, function () {
+    $result = $unread ? array('ok' => false, 'value' => null, 'error' => 'syntax') : ws_calc_evaluate($expression, function () {
         return 'ref';
     });
 
