@@ -4397,25 +4397,48 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         document.getElementById('explorer_breadcrumb').innerHTML = html;
     }
 
+    // Lowers a text for matching so İ, I, ı and i are one letter: the Turkish
+    // rules turn İ into i and I into ı, and ı is then written as i. Every
+    // character stays one character, so an index into the folded text is an
+    // index into the original (bulkRenameReplace() slices by it).
+    function foldText(text) {
+        return String(text || '').toLocaleLowerCase('tr').replace(/\u0131/g, 'i');
+    }
+
+    // Text sort keys follow the panel language's order (Ç after C, not after
+    // Z) and read digits as numbers, as the panel table sorter does. Null
+    // where the browser has no Intl, and sortItems() compares code units.
+    var sortCollator;
+
+    function textCollator() {
+        if (sortCollator === undefined) {
+            sortCollator = (typeof Intl !== 'undefined' && Intl.Collator)
+                ? new Intl.Collator(document.documentElement.lang || undefined, { numeric: true, sensitivity: 'base' })
+                : null;
+        }
+        return sortCollator;
+    }
+
     function sortItems(list) {
         var key = state.sort.key;
         var dir = state.sort.dir === 'desc' ? -1 : 1;
+        var collator = textCollator();
 
         return list.slice().sort(function (a, b) {
             var va, vb;
             if (key === 'size') { va = a.size || 0; vb = b.size || 0; }
             else if (key === 'timestamp') { va = a.timestamp || 0; vb = b.timestamp || 0; }
-            else if (key === 'type') { va = (a.type || '').toLowerCase(); vb = (b.type || '').toLowerCase(); }
+            else if (key === 'type') { va = (a.type || ''); vb = (b.type || ''); }
             // Keys the table has and the menu does not: a heading can be
             // clicked for any column that holds something worth ordering by.
-            else if (key === 'folder') { va = (a.folder_name || '').toLowerCase(); vb = (b.folder_name || '').toLowerCase(); }
+            else if (key === 'folder') { va = (a.folder_name || ''); vb = (b.folder_name || ''); }
             // The ERP columns. A date is ISO, so it sorts as written; a
             // letter carries a balance where an invoice carries a total.
             else if (key === 'date') { va = a.date || ''; vb = b.date || ''; }
             else if (key === 'total') { va = (typeof a.total === 'number') ? a.total : (a.balance || 0); vb = (typeof b.total === 'number') ? b.total : (b.balance || 0); }
-            else if (key === 'account') { va = (a.account_title || a.recipient || '').toLowerCase(); vb = (b.account_title || b.recipient || '').toLowerCase(); }
-            else if (key === 'status') { va = (a.status_label || '').toLowerCase(); vb = (b.status_label || '').toLowerCase(); }
-            else if (key === 'access') { va = (a.access_control_type || '').toLowerCase(); vb = (b.access_control_type || '').toLowerCase(); }
+            else if (key === 'account') { va = (a.account_title || a.recipient || ''); vb = (b.account_title || b.recipient || ''); }
+            else if (key === 'status') { va = (a.status_label || ''); vb = (b.status_label || ''); }
+            else if (key === 'access') { va = (a.access_control_type || ''); vb = (b.access_control_type || ''); }
             else if (key === 'enabled') { va = (a.enabled === false) ? 0 : 1; vb = (b.enabled === false) ? 0 : 1; }
             else if (key === 'quantity') { va = (a.kind === 'product') ? (a.quantity || 0) : ((a.counts && a.counts.products_deep) || 0); vb = (b.kind === 'product') ? (b.quantity || 0) : ((b.counts && b.counts.products_deep) || 0); }
             else if (key === 'impact') { va = ((a.impact === null || a.impact === undefined) ? -1 : a.impact); vb = ((b.impact === null || b.impact === undefined) ? -1 : b.impact); }
@@ -4423,7 +4446,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // A group has no price of its own, so it sorts by the cheapest
             // thing under it -- the same figure its tile already shows.
             else if (key === 'price') { va = (a.kind === 'group') ? (a.price_min || 0) : (a.price || 0); vb = (b.kind === 'group') ? (b.price_min || 0) : (b.price || 0); }
-            else { va = (a.name || '').toLowerCase(); vb = (b.name || '').toLowerCase(); }
+            else { va = (a.name || ''); vb = (b.name || ''); }
+            if (collator && (key !== 'date') && (typeof va === 'string') && (typeof vb === 'string')) {
+                return collator.compare(va, vb) * dir;
+            }
+            if (!collator && (typeof va === 'string') && (typeof vb === 'string')) { va = va.toLowerCase(); vb = vb.toLowerCase(); }
             if (va < vb) { return -1 * dir; }
             if (va > vb) { return 1 * dir; }
             return 0;
@@ -4587,7 +4614,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     }
 
     function visibleItems() {
-        var filter = state.filter.toLowerCase();
+        var filter = foldText(state.filter);
         var narrowing = activeFilters();
 
         function match(item) {
@@ -4599,9 +4626,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             // The ERP folders are searched on the server, over fields a
             // document's name does not carry; what came back already matched.
             if ((!filter) || insideErp()) { return true; }
-            return (item.name || '').toLowerCase().indexOf(filter) !== -1
-                || (item.description || '').toLowerCase().indexOf(filter) !== -1
-                || (item.short_description || '').toLowerCase().indexOf(filter) !== -1;
+            return foldText(item.name).indexOf(filter) !== -1
+                || foldText(item.description).indexOf(filter) !== -1
+                || foldText(item.short_description).indexOf(filter) !== -1;
         }
 
         return sortItems(state.items.folders.filter(match))
@@ -6301,9 +6328,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
     // Typing letters jumps to the row that starts with them.
     //
-    // The comparison is Turkish-aware: toLocaleLowerCase('tr') is what folds
-    // İ onto i and I onto ı, and an ASCII fold would send someone typing "İs"
-    // past every name they were aiming at.
+    // The comparison folds through foldText(): İ, I, ı and i are one letter,
+    // so "İs" finds "is" and "img" typed with the i key finds IMG_0001.JPG,
+    // where an ASCII fold would send someone past every name they aimed at.
     var typeAheadBuffer = '';
     var typeAheadAt = 0;
 
@@ -6314,7 +6341,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         typeAheadBuffer = ((now - typeAheadAt) > 900) ? character : (typeAheadBuffer + character);
         typeAheadAt = now;
 
-        var needle = typeAheadBuffer.toLocaleLowerCase('tr');
+        var needle = foldText(typeAheadBuffer);
         var count = state.ordered.length;
 
         if (count === 0) { return; }
@@ -6323,7 +6350,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         // stays put while the word is still being typed.
         var repeated = (typeAheadBuffer.length > 1) && (typeAheadBuffer.split('').every(function (each) { return each === typeAheadBuffer.charAt(0); }));
 
-        if (repeated) { needle = typeAheadBuffer.charAt(0).toLocaleLowerCase('tr'); }
+        if (repeated) { needle = foldText(typeAheadBuffer.charAt(0)); }
 
         var start = (state.cursor >= 0) ? state.cursor : -1;
 
@@ -6340,7 +6367,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             for (var step = 1; step <= count; step++) {
 
                 var index = (scanFrom + step + count * 2) % count;
-                var name = (state.ordered[index].name || '').toLocaleLowerCase('tr');
+                var name = foldText(state.ordered[index].name);
 
                 if (test(name)) { return index; }
             }
@@ -8858,14 +8885,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (!transferState) { return; }
 
         var container = document.getElementById('transfer_targets');
-        var filter = (document.getElementById('transfer_filter').value || '').trim().toLocaleLowerCase('tr');
+        var filter = foldText((document.getElementById('transfer_filter').value || '').trim());
         var here = insideCatalog() ? (state.groupId || 0) : state.folderId;
         var html = '';
         var shown = 0;
 
         transferState.targets.forEach(function (target) {
 
-            if (filter && ((target.name || '').toLocaleLowerCase('tr').indexOf(filter) === -1)) { return; }
+            if (filter && (foldText(target.name).indexOf(filter) === -1)) { return; }
 
             var blocked = !!transferState.blocked[target.id];
             var indent = 'padding-left:' + (0.75 + (Math.min(target.depth, 8) * 0.9)) + 'rem;';
@@ -9031,11 +9058,11 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         if (!wsSendState) { return; }
 
         var container = document.getElementById('ws_send_channels');
-        var filter = (document.getElementById('ws_send_filter').value || '').trim().toLocaleLowerCase('tr');
+        var filter = foldText((document.getElementById('ws_send_filter').value || '').trim());
         var html = '';
 
         wsSendState.channels.forEach(function (channel) {
-            if (filter && (String(channel.name || '').toLocaleLowerCase('tr').indexOf(filter) === -1)) { return; }
+            if (filter && (foldText(channel.name).indexOf(filter) === -1)) { return; }
 
             var tint = /^#[0-9a-f]{3,8}$/i.test(channel.hex || '') ? (' style="color:' + channel.hex + '"') : '';
             var iconName = /^bi-[a-z0-9-]+$/.test(channel.icon || '') ? channel.icon : 'bi-hash';
@@ -10155,8 +10182,8 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         if (caseSensitive) { return text.split(find).join(replace); }
 
-        var haystack = text.toLocaleLowerCase('tr');
-        var needle = find.toLocaleLowerCase('tr');
+        var haystack = foldText(text);
+        var needle = foldText(find);
         var out = '';
         var at = 0;
 

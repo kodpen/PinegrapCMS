@@ -532,10 +532,11 @@ function pg_explorer_compare_backup_entries($a, $b)
     return ($a['timestamp'] > $b['timestamp']) ? -1 : 1;
 }
 
-// Shared groups sort by their path so a subtree reads together.
+// Shared groups sort by their path so a subtree reads together, in the
+// panel language's order (pg_geo_label_compare(): Çalışanlar before Z…).
 function pg_explorer_compare_shared_groups($a, $b)
 {
-    return strcasecmp($a['path'], $b['path']);
+    return pg_geo_label_compare($a['path'], $b['path']);
 }
 
 function pg_explorer_page_payload($page, $user)
