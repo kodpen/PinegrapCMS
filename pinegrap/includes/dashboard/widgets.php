@@ -125,6 +125,31 @@ function pg_dashboard_widgets_run_many($request, $user)
     );
 }
 
+// Midnight $days calendar days before $midnight. A day is not always 86,400
+// seconds: across a clock change it is 23 or 25 hours, and subtracting
+// seconds lands on 23:00 of the day before or 01:00, so a window would start
+// on the wrong date or an hour off.
+function pg_dashboard_days_back($midnight, $days)
+{
+    return (int) strtotime('-' . (int) $days . ' days', (int) $midnight);
+}
+
+// The address of a list screen opened on the period a dashboard figure
+// counted. The list screens copy every request value into their session, so
+// the start_/stop_ date parts replace whatever range an earlier visit left
+// there; $query carries the list's other filters.
+function pg_dashboard_list_url($screen, $query, $start, $stop)
+{
+    $query['start_month'] = date('m', $start);
+    $query['start_day']   = date('d', $start);
+    $query['start_year']  = date('Y', $start);
+    $query['stop_month']  = date('m', $stop);
+    $query['stop_day']    = date('d', $stop);
+    $query['stop_year']   = date('Y', $stop);
+
+    return $screen . '?' . http_build_query($query);
+}
+
 // Eight daily counts -- seven days ago through today -- for one timestamp
 // column, in ONE query.
 //
@@ -144,7 +169,7 @@ function pg_activity_daily($table, $column, $extra = '')
     // order the chart draws them.
     $edges = array();
     for ($day = 7; $day >= 0; $day--) {
-        $edges[] = $midnight - ($day * 86400);
+        $edges[] = pg_dashboard_days_back($midnight, $day);
     }
 
     $sums = array();

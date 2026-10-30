@@ -22,10 +22,10 @@ function pg_dashboard_widget_5($request, $user)
     if (($user['role'] < 3) || ($user['manage_visitors'] == true)) {
         $now = time();
         $today_start = strtotime(date('Y-m-d'));
-        $yesterday_start = $today_start - 86400;
+        $yesterday_start = strtotime('-1 day', $today_start);
         $month_start = mktime(0, 0, 0, (int) date('n'), 1, (int) date('Y'));
-        $week_ago = $now - 7 * 86400;
-        $two_weeks_ago = $now - 14 * 86400;
+        $week_ago = strtotime('-7 days', $now);
+        $two_weeks_ago = strtotime('-14 days', $now);
 
         // Get current hour (0-23) to limit today's data display
         $current_hour = (int) date('G');
@@ -167,15 +167,17 @@ function pg_dashboard_widget_5($request, $user)
         // on a timestamp, so a range expressed as "the last seven
         // times 86,400 seconds" would pull in part of an eighth
         // day and the headline figure would not match the bars
-        // underneath it.
-        $w_tw_map = $vs5_daily($now - 6 * 86400, $now);
-        $w_lw_map = $vs5_daily($week_ago - 6 * 86400, $week_ago);
+        // underneath it. Days are stepped with strtotime(): across a
+        // clock change a day is 23 or 25 hours, and N * 86,400 seconds
+        // back can skip a date or land on the one before it.
+        $w_tw_map = $vs5_daily(strtotime('-6 days', $now), $now);
+        $w_lw_map = $vs5_daily(strtotime('-6 days', $week_ago), $week_ago);
 
         $w_tw_labels = $w_tw_data = $w_lw_labels = $w_lw_data = '';
         $has_tw = $has_lw = false;
         for ($i = 6; $i >= 0; $i--) {
-            $ts_tw = $now - $i * 86400;
-            $ts_lw = $week_ago - $i * 86400;
+            $ts_tw = strtotime('-' . $i . ' days', $now);
+            $ts_lw = strtotime('-' . $i . ' days', $week_ago);
             $d_tw = date('Y-m-d', $ts_tw);
             $d_lw = date('Y-m-d', $ts_lw);
             $c_tw = isset($w_tw_map[$d_tw]) ? $w_tw_map[$d_tw] : 0;
@@ -193,8 +195,8 @@ function pg_dashboard_widget_5($request, $user)
         $kpi_lw = array_sum($w_lw_map);
 
         // Top content — this week / last week
-        $tp_tw = $vs5_top(date('Y-m-d', $now - 6 * 86400), date('Y-m-d', $now));
-        $tp_lw = $vs5_top(date('Y-m-d', $week_ago - 6 * 86400), date('Y-m-d', $week_ago));
+        $tp_tw = $vs5_top(date('Y-m-d', strtotime('-6 days', $now)), date('Y-m-d', $now));
+        $tp_lw = $vs5_top(date('Y-m-d', strtotime('-6 days', $week_ago)), date('Y-m-d', $week_ago));
 
         // ── PANEL 3 : Monthly peaks — this month (daily) vs prev 12 months ───
         $m_tm_map = $vs5_daily($month_start, $now);
@@ -373,7 +375,7 @@ function pg_dashboard_widget_5($request, $user)
         // the week's most visited content, with today's busiest one marked.
         // It opens in place of the chart from the strip's last cell, so the
         // card keeps its size and the chart keeps its width.
-        $vs5_week_from = date('Y-m-d', $now - 6 * 86400);
+        $vs5_week_from = date('Y-m-d', strtotime('-6 days', $now));
         $vs5_top_pages = pg_visitor_top_content($vs5_week_from, $today_date, 8);
         $vs5_trend = pg_visitor_top_content($today_date, $today_date, 1);
         $vs5_trend_label = !empty($vs5_trend) ? (string) $vs5_trend[0]['label'] : '';

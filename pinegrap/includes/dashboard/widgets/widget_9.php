@@ -123,7 +123,7 @@ function pg_dashboard_ops_shipping()
     // and bury this week's real work under last year's. Anchored to midnight
     // so a row does not drop off mid-morning.
     $window_days = 30;
-    $since = strtotime(date('Y-m-d')) - ($window_days * 86400);
+    $since = pg_dashboard_days_back(strtotime(date('Y-m-d')), $window_days);
     $sql_window = " AND (orders.order_date >= " . (int) $since . ")";
 
     // Per order rather than per recipient: orders.total must be summed once
@@ -304,15 +304,20 @@ function pg_dashboard_ops_refunds()
     // would be a made-up number, so a total is only shown when every waiting
     // refund is in one currency.
     $groups = db_items(
-        "SELECT currency_code, COUNT(*) AS orders_count, SUM(total) AS orders_total
+        "SELECT currency_code, COUNT(*) AS orders_count, SUM(total) AS orders_total, MIN(order_date) AS oldest
          FROM orders
          WHERE refund_status IN " . $states . "
          GROUP BY currency_code");
 
     $count = 0;
+    $oldest = 0;
 
     foreach ($groups as $group) {
         $count += (int) $group['orders_count'];
+
+        if (($oldest === 0) || ((int) $group['oldest'] < $oldest)) {
+            $oldest = (int) $group['oldest'];
+        }
     }
 
     // Oldest first: the customer who has waited longest is the one closest
@@ -359,7 +364,15 @@ function pg_dashboard_ops_refunds()
     if ($output_rows === '') {
         $output_rows = pg_widget_empty('bi-check2-circle', lang('No refunds are waiting.'), 'good');
     } elseif ($count > count($rows)) {
-        $output_rows .= '<a class="pg-filter-more" href="view_orders.php?reset=true&amp;status=refund_pending">'
+        // Every type of order and from the oldest one waiting: the list's own
+        // range is the last month of online orders, which would leave some of
+        // the ones counted here off it.
+        $more_url = pg_dashboard_list_url('view_orders.php', array(
+            'reset'  => 'true',
+            'status' => 'refund_pending',
+            'type'   => 'any'), ($oldest > 0) ? $oldest : time(), time());
+
+        $output_rows .= '<a class="pg-filter-more" href="' . h($more_url) . '">'
             . lang(array('string' => '{var:1} more waiting', 'vars' => pg_format_number($count - count($rows), 0)))
             . ' <i class="bi bi-arrow-right-short"></i></a>';
     }

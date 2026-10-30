@@ -37,8 +37,8 @@ function pg_dashboard_widget_3($request, $user)
         // and the week inside the month, which is what a reader
         // assumes when four periods are stacked.
         $midnight   = strtotime(date('Y-m-d'));
-        $from_week  = $midnight - (6 * 86400);
-        $from_month = $midnight - (29 * 86400);
+        $from_week  = pg_dashboard_days_back($midnight, 6);
+        $from_month = pg_dashboard_days_back($midnight, 29);
 
         $order_summary = db_item(
             "SELECT
@@ -204,7 +204,7 @@ function pg_dashboard_widget_3($request, $user)
         // days says what is selling now and reads a month of lines.
         // A shop with no sales in the month falls back to all time, so
         // a quiet season still shows what the shop is known for.
-        $best_since = $midnight - (29 * 86400);
+        $best_since = pg_dashboard_days_back($midnight, 29);
         $best_sellers = pg_dashboard_best_sellers($best_since, 6);
         $best_window = lang('Last 30 days');
 

@@ -35,6 +35,10 @@ if (!defined('PG_FUNCTIONS_DIR')) {
  */
 function pg_dashboard_brief($user, $changelog_sections)
 {
+    // pg_dashboard_days_back() and pg_dashboard_list_url(), shared with the
+    // cards.
+    require_once(PG_FUNCTIONS_DIR . '/includes/dashboard/widgets.php');
+
     // Which part of the day it is. The old split called 19:00 night, which is when
     // most people are still working; evening now runs to 23:00 and only the small
     // hours are night.
@@ -138,7 +142,7 @@ function pg_dashboard_brief($user, $changelog_sections)
     // "This week" is today and the six days before it from midnight, the
     // window the E-Commerce Summary card counts as its last week, so a sentence
     // and the card beside it never give two numbers for the same week.
-    $greeting_week_start = strtotime(date('Y-m-d', $greeting_now)) - (6 * 86400);
+    $greeting_week_start = pg_dashboard_days_back(strtotime(date('Y-m-d', $greeting_now)), 6);
 
     $sig = array(
         'orders_today'    => null,
@@ -161,7 +165,9 @@ function pg_dashboard_brief($user, $changelog_sections)
         'orders_prev_week'  => null,
         'pending_shipments' => null,
         'pending_shipments_oldest' => null,
+        'pending_shipments_since' => null,
         'refunds_pending'   => null,
+        'refunds_oldest'    => null,
         'low_stock'         => null,
         'forms_today'       => null,
         'forms_week'        => null,
@@ -479,7 +485,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             $greeting_saved_sql = " AND (order_items.saved_for_later = 0)";
         }
 
-        $greeting_ship_since = strtotime(date('Y-m-d')) - (30 * 86400);
+        $greeting_ship_since = pg_dashboard_days_back(strtotime(date('Y-m-d')), 30);
 
         $greeting_ship = db_item(
             "SELECT COUNT(*) AS pending_count, MIN(order_date) AS oldest FROM (
@@ -497,6 +503,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             ) AS pending");
 
         $sig['pending_shipments'] = (int) ($greeting_ship['pending_count'] ?? 0);
+        $sig['pending_shipments_since'] = $greeting_ship_since;
 
         // When the longest waiting of them was placed, so the advice can tell a
         // normal day's packing from a parcel that has been left behind.
@@ -509,10 +516,16 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         // Cancelled orders whose money has not gone back yet: the same three
         // states the orders list files under "Refund Pending". The column came
-        // with a later schema step, so it is asked about first.
+        // with a later schema step, so it is asked about first. The oldest of
+        // them sets where the list's range starts, so every order counted here
+        // is on it.
         if (pg_schema_has('orders', 'refund_status')) {
-            $sig['refunds_pending'] = (int) db_value(
-                "SELECT COUNT(*) FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
+            $greeting_refunds = db_item(
+                "SELECT COUNT(*) AS pending_count, MIN(order_date) AS oldest
+                 FROM orders WHERE refund_status IN ('manual_required', 'failed', 'pending')");
+
+            $sig['refunds_pending'] = (int) ($greeting_refunds['pending_count'] ?? 0);
+            $sig['refunds_oldest']  = (int) ($greeting_refunds['oldest'] ?? 0);
         }
 
         // Running low but not out yet -- the out of stock count above already
@@ -758,7 +771,11 @@ function pg_dashboard_brief($user, $changelog_sections)
         // nothing wrong with it, and "nothing is wrong" is not the same as "there
         // is nothing worth doing".
         $greeting_people_one = (((int) $sig['new_contacts']) === 1);
-        $greeting_people_link = $greeting_link('view_contacts.php', $greeting_people_one
+        // The list keeps its range and group in the session, so the link sets
+        // the week that was counted and clears the group and advanced filters.
+        $greeting_people_link = $greeting_link(pg_dashboard_list_url('view_contacts.php', array(
+                'advanced_filters' => 'false',
+                'contact_group'    => '[' . lang('All') . ']'), $greeting_week_start, $greeting_now), $greeting_people_one
             ? lang(array('string' => '{var:1} person', 'vars' => pg_format_number($sig['new_contacts'], 0)))
             : lang(array('string' => '{var:1} people', 'vars' => pg_format_number($sig['new_contacts'], 0))));
 
@@ -853,22 +870,29 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         $greeting_refunds_count = (int) $sig['refunds_pending'];
 
+        // Every type of order and from the oldest one waiting: the list's own
+        // range is the last month of online orders.
+        $greeting_refunds_url = pg_dashboard_list_url('view_orders.php', array(
+            'reset'  => 'true',
+            'status' => 'refund_pending',
+            'type'   => 'any'), ($sig['refunds_oldest'] > 0) ? $sig['refunds_oldest'] : $greeting_now, $greeting_now);
+
         $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
             'string' => 'Money is still owed on {var:1}; the customers are waiting.',
-            'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'vars' => $greeting_link($greeting_refunds_url, lang(array(
                 'string' => 'the {var:1} cancelled order{suffix:1}',
                 'vars'   => pg_format_number($greeting_refunds_count, 0),
                 'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
         $greeting_options[] = array('tier' => 1, 'topic' => 'refunds', 'text' => lang(array(
             'string' => 'Customers are waiting on {var:1}, and it is worth settling before anything new.',
-            'vars' => $greeting_link('view_orders.php?reset=true&status=refund_pending', lang(array(
+            'vars' => $greeting_link($greeting_refunds_url, lang(array(
                 'string' => '{var:1} refund{suffix:1}',
                 'vars'   => pg_format_number($greeting_refunds_count, 0),
                 'suffix' => array(($greeting_refunds_count == 1) ? '' : 's')))))));
     }
 
-    // Orders waiting to leave. The orders list has no shipping filter, so the link
-    // opens the list itself, cleared of whatever was left in the session.
+    // Orders waiting to leave. The link opens the orders list on the same
+    // thirty days with its "Unshipped" filter.
     //
     // A shop with orders has orders to pack on any given day, and an order that
     // came in this morning and is not boxed yet is the ordinary state of things,
@@ -881,7 +905,10 @@ function pg_dashboard_brief($user, $changelog_sections)
         $greeting_ship_tier = (($sig['pending_shipments_oldest'] !== null)
             && ($sig['pending_shipments_oldest'] < ($greeting_now - 172800))) ? 1 : 2;
 
-        $greeting_ship_link = $greeting_link('view_orders.php?reset=true', lang(array(
+        $greeting_ship_link = $greeting_link(pg_dashboard_list_url('view_orders.php', array(
+                'reset'            => 'true',
+                'advanced_filters' => 'true',
+                'shipping_status'  => 'unshipped'), $sig['pending_shipments_since'], $greeting_now), lang(array(
             'string' => '{var:1} order{suffix:1}',
             'vars'   => pg_format_number($greeting_ship_count, 0),
             'suffix' => array(($greeting_ship_count == 1) ? '' : 's'))));
@@ -979,7 +1006,12 @@ function pg_dashboard_brief($user, $changelog_sections)
 
         $greeting_forms_count = (int) $sig['forms_week'];
 
-        $greeting_forms_link = $greeting_link('view_submitted_forms.php', lang(array(
+        // The list keeps its range, form and search in the session; the link
+        // sets the week that was counted and clears the other two.
+        $greeting_forms_link = $greeting_link(pg_dashboard_list_url('view_submitted_forms.php', array(
+                'advanced_filters' => 'false',
+                'custom_form'      => '[All]',
+                'query'            => ''), $greeting_week_start, $greeting_now), lang(array(
             'string' => '{var:1} form{suffix:1}',
             'vars'   => pg_format_number($greeting_forms_count, 0),
             'suffix' => array(($greeting_forms_count == 1) ? '' : 's'))));
