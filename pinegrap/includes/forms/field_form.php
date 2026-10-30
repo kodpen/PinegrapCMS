@@ -986,13 +986,13 @@ function pg_field_form_cards($liveform, $field, $context)
                                 </div>
                             </div>
                             <div class="card my-7 collapse" id="information_row">
-                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">
+                                <h2 class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold" id="information_heading">
                                 ' . lang('Information') . '
                                 </h2>
                                 <div class="card-body p-0">
                                     <div class="row">
                                         <div class="col-12">
-                                            <textarea id="information" name="information">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
+                                            <textarea id="information" name="information" aria-labelledby="information_heading">' . h(prepare_rich_text_editor_content_for_output($field['information'])) . '</textarea>
                                         </div>
                                     </div>
                                 </div>

@@ -2368,7 +2368,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
         $output_forms_page_type_properties .=
             '<div class="col-12 my-1" id="custom_form_confirmation_type_row" style="' . $custom_form_confirmation_type_row_style . '">
                 <fieldset>
-                    <legend class="form-label fs-md">' . lang('Confirmation Type') . '</legend>
+                    <legend class="form-label fs-md" id="custom_form_confirmation_type_legend">' . lang('Confirmation Type') . '</legend>
                     <div class="form-field  d-inline-grid me-5">
                         <input class="radio collapse-switcher" type="radio" id="custom_form_confirmation_type_message" name="custom_form_confirmation_type"' . $custom_form_confirmation_type_message_checked . ' value="message" onclick="show_or_hide_custom_form_confirmation_type()" data-bs-target="#custom_form_confirmation_type_message_row" />
                         <label for="custom_form_confirmation_type_message">' . lang('Message') . '</label> 
@@ -2383,8 +2383,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
-                              <label for="custom_form_confirmation_message" class="form-label">' . lang('Message') . '</label>
-                              <textarea class="form-control" id="custom_form_confirmation_message" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['confirmation_message'] ?? ''))) . '</textarea>
+                              <label for="custom_form_confirmation_message" class="form-label" id="custom_form_confirmation_message_label">' . lang('Message') . '</label>
+                              <textarea class="form-control" id="custom_form_confirmation_message" aria-labelledby="custom_form_confirmation_type_legend custom_form_confirmation_message_label" name="custom_form_confirmation_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['confirmation_message'] ?? ''))) . '</textarea>
                             </div>
                         </div>
                     </div>
@@ -2424,7 +2424,7 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
             </div>
             <div class="col-12 my-1" id="custom_form_return_type_row" style="' . $custom_form_return_type_row_style . '">
                 <fieldset>
-                    <legend class="form-label fs-md">' . lang('If User has already submitted form in the past, then show') . '</legend>
+                    <legend class="form-label fs-md" id="custom_form_return_type_legend">' . lang('If User has already submitted form in the past, then show') . '</legend>
                     <div class="form-field d-inline-grid me-5">
                         <input class="radio collapse-switcher" type="radio" id="custom_form_return_type_custom_form" name="custom_form_return_type"' . $custom_form_return_type_custom_form_checked . ' value="custom_form" onclick="show_or_hide_custom_form_return_type()"  />
                         <label for="custom_form_return_type_custom_form">' . lang('Custom Form') . '</label> 
@@ -2443,8 +2443,8 @@ function pg_page_form_type_fields($page_type, $layout_type, $properties, $user, 
                     <div class="popover-body">
                         <div class="row">
                             <div class="col-12 my-1">
-                                <label for="custom_form_return_message" class="form-label">' . lang('Message') . '</label>
-                                <textarea class="form-control" id="custom_form_return_message" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['return_message'] ?? ''))) . '</textarea>
+                                <label for="custom_form_return_message" class="form-label" id="custom_form_return_message_label">' . lang('Message') . '</label>
+                                <textarea class="form-control" id="custom_form_return_message" aria-labelledby="custom_form_return_type_legend custom_form_return_message_label" name="custom_form_return_message" rows="3">' . h(prepare_rich_text_editor_content_for_output(($custom_form_properties['return_message'] ?? ''))) . '</textarea>
                             </div>
                         </div>
                     </div>
