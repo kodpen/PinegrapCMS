@@ -254,9 +254,10 @@ if (!$_POST) {
                                         <div class="col-12 md:col-4 my-3">
                                             <label for="parasut_contact_id" class="form-label fg-secondary small">' . lang('Parasut Contact ID') . '</label>
                                             <div class="input-group">
-                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" id="parasut_contact_id" class="form-control form-control-sm font-monospace fg-secondary" />
-                                                <span class="input-group-text small fg-secondary" title="' . lang('Set automatically when the first invoice is created.') . '"><i class="bi bi-link-45deg"></i></span>
+                                                <input value="' . $parasut_contact_id . '" type="text" name="parasut_contact_id" id="parasut_contact_id" aria-describedby="parasut_contact_id_hint" class="form-control form-control-sm font-monospace fg-secondary" />
+                                                <span class="input-group-text small fg-secondary" aria-hidden="true"><i class="bi bi-link-45deg"></i></span>
                                             </div>
+                                            <div class="form-text fg-secondary" id="parasut_contact_id_hint">' . lang('Set automatically when the first invoice is created.') . '</div>
                                         </div>' : '
                                         <div class="col-12 md:col-4 my-3">
                                             <input type="hidden" name="parasut_contact_id" value="" />

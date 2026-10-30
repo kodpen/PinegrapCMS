@@ -12,7 +12,7 @@ description: Plan (owner request 2026-10-27, draft being refined): the Flows can
 ## What is the fork?
 - Double-clicking an output dot starts one more thread from that dot, never from the middle of another thread; the field chips whose type fits light up; dropping on one binds it. The threads of one output fan out from its dot.
 - Equivalents with the same result: long press, right-click "Fork", the keyboard "Connect…", the side panel's "Add value".
-- A field that decides where data goes (webhook address, recipients) never lights up and takes no thread.
+- A field that decides where data goes (recipients; a webhook address's host and scheme) never lights up and takes no thread. The one exception (#3410): a number output may thread into the path or query part of the URL chip, URL-encoded, refused at run when not digits.
 
 ## What are value boxes?
 - New kinds `value` (derived) and `constants` (hand-written rows: name, type, value). Pure: no side effect, no control arrows, only threads; computed once per run when a reader runs, then reused.

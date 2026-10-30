@@ -215,9 +215,10 @@ function pg_product_group_form_cards($liveform, $values, $form)
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="address_name" class="form-label">' . lang('Catalog Name') . '</label>
                                             <div class="input-group ">
-                                                <label class="input-group-text material-icons" aria-hidden="true" title="' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . '" data-bs-content="' . URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}">public</label>
-                                                <input type="text" name="address_name" id="address_name" class="form-control" value="' . h($v['address_name']) . '" />
+                                                <label class="input-group-text material-icons" aria-hidden="true">public</label>
+                                                <input type="text" name="address_name" id="address_name" aria-describedby="address_name_hint" class="form-control" value="' . h($v['address_name']) . '" />
                                             </div>
+                                            <div class="form-text" id="address_name_hint">' . lang('This option determines the url address of the product. Automatically assigned if left blank.') . ' <code>' . h(URL_SCHEME . HOSTNAME . OUTPUT_PATH . '{' . lang('Catalog Name') . '}') . '</code></div>
                                         </div>
                                         <div class="col-12 mt-1 mb-3">
                                             <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>

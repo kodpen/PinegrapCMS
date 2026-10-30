@@ -6,7 +6,8 @@
  * the shipping report's product names are real links rather than clickable
  * rows, every percent figure goes through the translated '{var:1}%'
  * template (Turkish puts the sign first), and the visitor detail marks are
- * named icons instead of a bare '*'.
+ * named icons instead of a bare '*'. Group names, product names and
+ * Grand Total are row headers, and the corner names the summarize-by levels.
  *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
@@ -71,4 +72,25 @@ function test_report_tables_visitor_marks_are_named()
 
 	pg_assert_false(strpos($source, "? '*' : ''") !== false, 'bare * mark');
 	pg_assert_contains("<span class=\"material-icons\" role=\"img\" aria-label=\"' . h(lang('Yes')) . '\">task_alt</span>", $source, 'named yes mark');
+}
+
+// A figure is read with its row's heading: the group names and Grand Total
+// are row headers, and the corner names the summarize-by levels.
+function test_report_tables_name_their_rows()
+{
+	foreach (array('view_order_report.php', 'view_visitor_report.php') as $screen) {
+		$source = report_tables_links_source($screen);
+
+		pg_assert_false(strpos($source, "<th colspan=\"' . \$number_of_summarize_bys . '\">&nbsp;</th>") !== false, $screen . ': empty corner heading');
+		pg_assert_contains("array_search(\$liveform->get_field_value('summarize_by_' . \$level), \$summarize_by_options, true)", $source, $screen . ': corner reads the chosen levels');
+		pg_assert_contains("'<th colspan=\"' . \$number_of_summarize_bys . '\">' . h(implode(' / ', \$summarize_by_labels)) . '</th>'", $source, $screen . ': named corner');
+		pg_assert_contains("<th scope=\"row\" class=\"align-middle text-nowrap\" colspan=\"' . \$number_of_summarize_bys . '\">' . lang('Grand Total') . '</th>", $source, $screen . ': Grand Total row header');
+		pg_assert_contains("<th scope=\"row\" class=\"align-middle text-nowrap\" colspan=\"' . \$colspan . '\">", $source, $screen . ': level 2 row header');
+		pg_assert_false((bool) preg_match('/<td[^>]*>\' \. (nl2br\()?h\(\$summarize_by_[123]_name/', $source), $screen . ': a group name in a td');
+		pg_assert_same(3, preg_match_all('/<th scope="row"[^>]*>\' \. (nl2br\()?h\(\$summarize_by_[123]_name/', $source), $screen . ': three group-name row headers');
+	}
+
+	$source = report_tables_links_source('view_shipping_report.php');
+	pg_assert_contains("<th scope=\"row\" class=\"chart_label fw-normal\"><a href=\"' . h('edit_product.php?id=", $source, 'shipping product row header');
+	pg_assert_contains("<th scope=\"row\">' . lang('Grand Total') . '</th>", $source, 'shipping Grand Total row header');
 }

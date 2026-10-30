@@ -44,11 +44,12 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                         <div class="card-body">
                             <div class="row">
                                 <div class="col-12 md:col-auto">
-                                    <label for="scanner_input" class="form-label" data-bs-content="' . lang('-Last Scan: shows last readed scan for barcode scanners and no need to any action.</br>-Manuel Scan: if scanner read wrong or dont read, you can input manuel and read it with \'Read\' button.') . '" title="' . lang('Last Scan & Manuel Read') . '">' . lang('Last Scan & Manuel Read') . ' (' . lang('what is this?') . ')</label>
+                                    <label for="scanner_input" class="form-label">' . lang('Last Scan & Manual Read') . '</label>
                                     <label class="form-control form-adorn my-3">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Barcode') . ':</span>
-                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost text-center md:text-start" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" ></input>
+                                        <input type="text" value=""  placeholder="' . lang('Barcode') . '" class="form-ghost text-center md:text-start" id="scanner_input" aria-label="' . h(lang('Barcode')) . '" aria-describedby="scanner_input_hint" ></input>
                                     </label>
+                                    <div class="form-text" id="scanner_input_hint">' . lang('Last Scan shows the last barcode the scanner read; nothing else needs doing.') . '<br>' . lang('Manual Read: if the scanner reads a barcode wrong or not at all, type it and press Read.') . '</div>
                                     <label class="form-control form-adorn my-3">
                                         <span class="form-adorn-text" aria-hidden="true">' . lang('Quantity') . ':</span>
                                         <input type="number" min="1" value="1"  placeholder="' . lang('Quantity') . '" class="form-ghost text-center md:text-start" id="scanner_quantity_input" aria-label="' . h(lang('Quantity')) . '" ></input>

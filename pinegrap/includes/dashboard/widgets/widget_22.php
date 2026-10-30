@@ -35,8 +35,8 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             $output_data = '
             <div class="card-body d-flex align-items-center justify-content-center text-center">
                 <div>
-                    <i class="bi bi-database-exclamation d-block mb-3" style="font-size:22px;opacity:.4"></i>
-                    <p class="fg-secondary mb-0" style="font-size:12px">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
+                    <i class="bi bi-database-exclamation d-block mb-3" style="font-size:1.375rem;opacity:.4"></i>
+                    <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('The firewall tables do not exist yet. Please run the software upgrade to create them.') . '</p>
                 </div>
             </div>';
 
@@ -159,13 +159,13 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
             $td_rows .= '
             <div class="mb-3">
                 <div class="d-flex align-items-center justify-content-between" style="gap:6px">
-                    <span class="text-truncate' . $td_text . '" style="font-size:12px" title="' . h($td_source['category']) . '">' . h($td_label) . '</span>
-                    <span class="fg-secondary flex-shrink-0" style="font-size:11px">' . pg_format_number($td_hits, 0) . '</span>
+                    <span class="text-truncate' . $td_text . '" style="font-size:.75rem" title="' . h($td_source['category']) . '">' . h($td_label) . '</span>
+                    <span class="fg-secondary flex-shrink-0" style="font-size:.6875rem">' . pg_format_number($td_hits, 0) . '</span>
                 </div>
                 <div class="progress mt-1" style="height:4px;background:var(--pg-bg-2)" aria-hidden="true">
                     <div class="progress-bar ' . $td_bar . '" style="width:' . $td_width . '%"></div>
                 </div>
-                <div class="fg-secondary mt-1" style="font-size:10px">' . lang(array(
+                <div class="fg-secondary mt-1" style="font-size:.625rem">' . lang(array(
                     'string' => '{var:1} address{suffix:1}',
                     'vars'   => pg_format_number((int) $td_source['ips'], 0),
                     'suffix' => ((int) $td_source['ips'] == 1 ? '' : 'es'),
@@ -176,8 +176,8 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
         if ($td_rows === '') {
             $td_rows = '
             <div class="text-center py-7">
-                <i class="bi bi-shield-check d-block mb-3" style="font-size:22px;opacity:.35"></i>
-                <p class="fg-secondary mb-0" style="font-size:12px">' . lang('No firewall events were recorded in this period.') . '</p>
+                <i class="bi bi-shield-check d-block mb-3" style="font-size:1.375rem;opacity:.35"></i>
+                <p class="fg-secondary mb-0" style="font-size:.75rem">' . lang('No firewall events were recorded in this period.') . '</p>
             </div>';
         }
 
@@ -186,7 +186,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
         if ($user['role'] < 3) {
             $td_footer = '
             <div class="card-footer border-0 bg-reset py-1 text-center">
-                <a href="view_waf_log.php" class="text-decoration-none" style="font-size:11px">'
+                <a href="view_waf_log.php" class="text-decoration-none" style="font-size:.6875rem">'
                 . lang('Firewall Log') . ' <i class="bi bi-arrow-right-short"></i></a>
             </div>';
         }
@@ -204,7 +204,7 @@ function pg_dashboard_widget_22($request, $user, $waf_panel = '')
         // starts straight away.
         $td_panel = '
             <div class="pg-split-half d-flex flex-column">
-                <div class="px-5 pt-3 pb-1 fg-secondary" style="font-size:11px">' . lang('Top sources') . '</div>
+                <div class="px-5 pt-3 pb-1 fg-secondary" style="font-size:.6875rem">' . lang('Top sources') . '</div>
                 <div class="px-5 pb-3">' . $td_rows . '</div>
             </div>';
 

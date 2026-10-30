@@ -496,7 +496,7 @@ function test_workspace_flow_steps_try_writes_nothing()
 		pg_assert_true(strpos($try, $call) === false, $call);
 	}
 
-	foreach (array('ws_step_check($owner', 'ws_flow_condition_check($owner', 'ws_flow_anchor_check($owner', 'ws_scheduled_rules_hold($owner', 'ws_step_try_texts(', 'ws_step_node_values(', "'edit'", 'ws_can_schedule($owner)') as $call) {
+	foreach (array('ws_step_check($owner', 'ws_flow_condition_check($owner', 'ws_flow_anchor_check($owner', 'ws_scheduled_rules_hold($owner', 'ws_step_try_texts(', 'ws_step_node_values(', "'edit'", 'ws_flow_builder($owner)', 'ws_flow_member_box_refusal(') as $call) {
 		pg_assert_contains($call, $try);
 	}
 

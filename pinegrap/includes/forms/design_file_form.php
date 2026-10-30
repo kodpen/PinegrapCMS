@@ -47,9 +47,10 @@ function pg_design_file_form_access_card($folder_options, $options = array())
         $rows .= '
                                     <div class="col-12 my-5">
                                         <div class="form-field">
-                                            <div class="switch"><input class="" type="checkbox" id="design" name="design" value="1"' . ($options['design_checked'] ? ' checked="checked"' : '') . '></div>
-                                            <label class="" for="design" data-bs-content="' . lang('Check if File is a Design File that is Managed by Site Designers') . '" title="" data-bs-original-title="' . lang('Design File') . '">' . lang('Design File') . ' (?)</label>
+                                            <div class="switch"><input class="" type="checkbox" aria-describedby="design_hint" id="design" name="design" value="1"' . ($options['design_checked'] ? ' checked="checked"' : '') . '></div>
+                                            <label class="" for="design">' . lang('Design File') . '</label>
                                         </div>
+                                        <div class="form-text" id="design_hint">' . lang('Check if File is a Design File that is Managed by Site Designers') . '</div>
                                     </div>';
     }
 
@@ -59,9 +60,10 @@ function pg_design_file_form_access_card($folder_options, $options = array())
         $rows .= '
                                     <div class="col-12 my-5">
                                         <div class="form-field">
-                                            <div class="switch"><input class="" type="checkbox" id="theme" name="theme" value="1"' . ($theme['checked'] ? ' checked="checked"' : '') . ($theme['disabled'] ? ' disabled="disabled"' : '') . '></div>
-                                            <label class="" for="theme" data-bs-content="' . lang('Check if Design File should be included on All Themes screen and in Theme preview') . '" title="" data-bs-original-title="' . lang('Theme') . '">' . lang('Theme') . ' (?)</label>
+                                            <div class="switch"><input class="" type="checkbox" aria-describedby="theme_hint" id="theme" name="theme" value="1"' . ($theme['checked'] ? ' checked="checked"' : '') . ($theme['disabled'] ? ' disabled="disabled"' : '') . '></div>
+                                            <label class="" for="theme">' . lang('Theme') . '</label>
                                         </div>
+                                        <div class="form-text" id="theme_hint">' . lang('Check if Design File should be included on All Themes screen and in Theme preview') . '</div>
                                     </div>';
     }
 

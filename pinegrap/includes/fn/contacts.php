@@ -1458,3 +1458,88 @@ function pg_contact_owner_sql($user_id, $column)
         . " INNER JOIN users_contact_groups_xref ON users_contact_groups_xref.contact_group_id = contacts_contact_groups_xref.contact_group_id"
         . " WHERE users_contact_groups_xref.user_id = '" . (int) $user_id . "')";
 }
+
+/**
+ * The referral sources a contact's lead source is chosen from, in the order
+ * the checkout and the forms show them: rows of name and code. The code is
+ * what is stored, as the billing information already writes it into
+ * contacts.lead_source.
+ *
+ * @return array
+ */
+function pg_referral_sources()
+{
+    $rows = db_items("SELECT name, code FROM referral_sources ORDER BY sort_order, name");
+
+    return is_array($rows) ? $rows : array();
+}
+
+/**
+ * The choices of a contact's lead source: an empty one, then each referral
+ * source (value its code, label its name). A stored value that is no code of
+ * the list (free text kept from before the list was used, or a source since
+ * removed) is one more choice, kept as it is, so saving the contact does not
+ * change it.
+ *
+ * @param array  $sources rows of name and code (pg_referral_sources())
+ * @param mixed  $current the contact's stored lead_source, '' for a new one
+ * @return array of array(value, label, kept)
+ */
+function pg_contact_lead_source_options(array $sources, $current)
+{
+    $current = is_scalar($current) ? (string) $current : '';
+    $options = array(array('value' => '', 'label' => '', 'kept' => false));
+    $listed = false;
+
+    foreach ($sources as $source) {
+        $code = (string) ($source['code'] ?? '');
+        $options[] = array('value' => $code, 'label' => (string) ($source['name'] ?? ''), 'kept' => false);
+        $listed = $listed || ($code === $current);
+    }
+
+    if (($current !== '') && !$listed) {
+        $options[] = array('value' => $current, 'label' => $current, 'kept' => true);
+    }
+
+    return $options;
+}
+
+/**
+ * Checks a new lead source for a contact: '' empties it, a referral source's
+ * code or name (any case, trimmed) is stored as its code, and the contact's
+ * current value is kept as it is even when it is no source. Anything else is
+ * refused, with the value returned as sent.
+ *
+ * @param mixed  $value   the value sent
+ * @param array  $sources rows of name and code (pg_referral_sources())
+ * @param mixed  $current the contact's stored lead_source, '' for a new one
+ * @return array array('value' => string, 'error' => string, '' when accepted)
+ */
+function pg_contact_lead_source_check($value, array $sources, $current)
+{
+    if (!is_scalar($value)) {
+        return array('value' => '', 'error' => lang('The lead source has to be a text.'));
+    }
+
+    $value = (string) $value;
+    $current = is_scalar($current) ? (string) $current : '';
+
+    if (($value === $current) || (trim($value) === '')) {
+        return array('value' => ($value === $current) ? $current : '', 'error' => '');
+    }
+
+    $wanted = mb_strtolower(trim($value), 'UTF-8');
+
+    foreach ($sources as $source) {
+        $code = (string) ($source['code'] ?? '');
+
+        if (($wanted === mb_strtolower($code, 'UTF-8')) || ($wanted === mb_strtolower((string) ($source['name'] ?? ''), 'UTF-8'))) {
+            return array('value' => $code, 'error' => '');
+        }
+    }
+
+    return array(
+        'value' => $value,
+        'error' => lang(array('string' => 'The lead source "{var:1}" is not one of the referral sources.', 'vars' => array($value))),
+    );
+}

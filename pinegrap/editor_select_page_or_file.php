@@ -625,12 +625,7 @@ echo
 output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
 <nav id="header" class="navbar sticky-top rounded-0 navbar-expand border-bottom shadow-sm bg-body">
     <div class="container-fluid">
-        <span 
-            class="navbar-text me-auto" 
-            data-bs-content="' . lang('Select the Page, File, or Short Link that you want to link to.') . '" 
-            title="' . lang('Browse Items') . '">
-            ' . lang('Browse Items') . '
-        </span>
+        <span class="navbar-text me-auto">' . lang('Browse Items') . '</span>
         <ul class="navbar-nav ms-auto">
             <li class="nav-item pg-menu-wrap no-popover"  title="' . lang('Software Theme') . '">
                 <button class="nav-link nav-link-sm position-relative pg-menu-caret d-none" data-bs-toggle="menu" data-bs-placement="bottom-end" id="bd-theme" type="button"><span class="bi bi-circle-half"></span></button>
@@ -649,6 +644,7 @@ output_header_secure(array('title'=>lang('Browse Items'),'icon'=>'folder')) . '
     </div>
 </nav>
 <main class="container">
+    <p class="form-text mt-5 mb-0 text-center md:text-start">' . lang('Select the Page, File, or Short Link that you want to link to.') . '</p>
     <div class="row mb-3 flex-wrap">
         <div class="col-12 sm:col-12 md:col-6 xl:col-9 text-center md:text-start">
             <nav id="button_bar" class="navigation " aria-label="' . h(lang('Button Bar')) . '">

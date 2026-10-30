@@ -23,7 +23,7 @@ if (!defined('PG_INIT_LOADED')) {
 			<?=$liveform->get_messages()?>
 	        <div class="row mb-3 flex-wrap">
                 <div class="col-12 sm:col-12 text-center md:text-start">
-                    <h2 class="d-inline-block " data-bs-content="<?=lang('All dialogs that can automatically popup for visitors.')?>" title="<?=lang('All Auto Dialogs')?>"><?=lang('All Auto Dialogs')?></h2>
+                    <h2 class="d-inline-block "><?=lang('All Auto Dialogs')?></h2>
                     <nav id="button_bar" class="navigation " aria-label="<?= h(lang('Button Bar')) ?>">
                     	<a class="btn btn-sm btn-solid theme-primary m-1 " href="add_auto_dialog.php"><span class="bi bi-plus-circle me-3"></span><?=lang('Create')?></a>
                     	<div class="pg-toolbar-grow"></div>

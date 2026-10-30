@@ -496,9 +496,9 @@ text tone. Every value is a theme colour.
 
 @@ includes/dashboard/widgets/widget_21.php
 <<<
-                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+                        <span class="badge bg-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:.5625rem">' . h($waf_badge[1]) . '</span>
 ===
-                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:9px">' . h($waf_badge[1]) . '</span>
+                        <span class="badge theme-' . h($waf_badge[0]) . ' flex-shrink-0" style="font-size:.5625rem">' . h($waf_badge[1]) . '</span>
 >>>
 
 @@ includes/fn/parasut.php
@@ -528,7 +528,7 @@ data switch of the settings and the custom layout radio's label.
 <<<
                                 <label title="' . $layout_type_custom_label_title . '" class="form-check-label' . $layout_type_custom_label_class . '" for="layout_type_custom">'. lang('Custom') . '</label>
 ===
-                                <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                                <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
 >>>
 
 Selectors on v5 classes in code and style blocks the selector fix does

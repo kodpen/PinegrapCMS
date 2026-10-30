@@ -3572,7 +3572,11 @@ function ws_scheduled_execute($id, $by_hand = false, $context = array())
         ws_event_depth($context['depth']);
     }
 
-    if (!is_array($viewer) || !ws_can_schedule($viewer)) {
+    // A flow's anchor also runs for a role-3 member's own flow
+    // (flow_member.php); a scheduled action is staff's alone.
+    $anchor = ((int) ($row['flow_id'] ?? 0) > 0) && function_exists('ws_flow_builder');
+
+    if (!is_array($viewer) || !($anchor ? ws_flow_builder($viewer) : ws_can_schedule($viewer))) {
         $status = 'failed';
         $steps[] = array('step' => 'rules', 'ok' => false, 'text' => lang('The one who wrote it is no longer on the staff.'));
     } else {
