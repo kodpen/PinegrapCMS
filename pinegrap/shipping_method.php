@@ -92,7 +92,9 @@ if ($liveform->check_form_errors() == false) {
         'arrival_date' => $ship_to_arrival_date));
 
     if ($shipping_method_check['status'] != 'success') {
-        log_activity($shipping_method_check['message'] . ' (Order ID: ' . ($_SESSION['ecommerce']['order_id'] ?? '') . ', Ship To ID: ' . $_POST['ship_to_id'] . ', Shipping Method ID: ' . $liveform->get_field_value('shipping_method') . ')');
+        log_activity(pg_log_lang(array(
+            'string' => '{var:1} (Order ID: {var:2}, Ship To ID: {var:3}, Shipping Method ID: {var:4})',
+            'vars'   => array($shipping_method_check['message'], $_SESSION['ecommerce']['order_id'] ?? '', $_POST['ship_to_id'], $liveform->get_field_value('shipping_method')))));
         output_error(h($shipping_method_check['message']) . ' <a href="javascript:history.go(-1)">Go back</a>.');
     }
 

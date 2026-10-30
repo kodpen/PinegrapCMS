@@ -190,8 +190,8 @@ function test_site_log_payment_notice_line_from_parts()
 		pg_payment_notify_line('stripe', 'X', 438, 'not_completed', array('reason' => 'why')));
 }
 
-// The payment drivers' own log lines, the cancellation's and the cart
-// retrieval's are built with pg_log_lang(), never from bare English.
+// The payment drivers' own log lines, the cancellation's, the cart
+// retrieval's and the shipping method refusals' are built with pg_log_lang(), never from bare English.
 function test_site_log_payment_driver_lines_translated()
 {
 	$patterns = array(
@@ -201,6 +201,8 @@ function test_site_log_payment_driver_lines_translated()
 		'includes/payments/iyzico.php'  => '/\$log\[\] = lang\(/',
 		'includes/fn/payments.php'      => '/\$log\[\] = \'Auto-refund/',
 		'retrieve_order.php'            => '/\$message = \'/',
+		'shipping_method.php'           => '/\' \(Order ID: \'/',
+		'express_order.php'             => '/\' \(Order ID: \'/',
 	);
 
 	foreach ($patterns as $file => $pattern) {

@@ -333,6 +333,8 @@
     "{title}: the title you give the new note": "{title}: yeni nota verdiğiniz başlık",
     "{var:1|c} is required": "{var:1|c} zorunludur",
     "{var:1} % · {var:2} / {var:3}": "%{var:1} · {var:2} / {var:3}",
+    "{var:1} (Order ID: {var:2}, Reference Code: {var:3}, Ship to Name: {var:4}) Request: {var:5}": "{var:1} (Sipariş No: {var:2}, Referans Kodu: {var:3}, Alıcı Adı: {var:4}) İstek: {var:5}",
+    "{var:1} (Order ID: {var:2}, Ship To ID: {var:3}, Shipping Method ID: {var:4})": "{var:1} (Sipariş No: {var:2}, Teslimat Adresi No: {var:3}, Kargo Yöntemi No: {var:4})",
     "{var:1} (application)": "{var:1} (uygulama)",
     "{var:1} (copy)": "{var:1} (kopya)",
     "{var:1} (customer)": "{var:1} (müşteri)",
