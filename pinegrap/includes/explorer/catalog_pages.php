@@ -303,10 +303,18 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
     // carries it: 'featured' and the two orderings are what decide where a
     // product shows up on the storefront, and a copy that dropped them would
     // look right in this screen and wrong on the site.
+    // Products in the Recycle Bin are left out, as the Catalog Manager's own
+    // map leaves them out.
     $members = db_items(
-        "SELECT product, sort_order, featured, featured_sort_order, new_date
+        "SELECT
+            products_groups_xref.product,
+            products_groups_xref.sort_order,
+            products_groups_xref.featured,
+            products_groups_xref.featured_sort_order,
+            products_groups_xref.new_date
         FROM products_groups_xref
-        WHERE product_group = '" . e((int) $group_id) . "'");
+        JOIN products ON products.id = products_groups_xref.product
+        WHERE products_groups_xref.product_group = '" . e((int) $group_id) . "'" . pg_catalog_bin_live_sql('products'));
 
     foreach ((array) $members as $member) {
         db(
@@ -326,18 +334,20 @@ function pg_catalog_copy_group($group_id, $target_id, $user, $depth = 0, &$creat
 
     // The columns here are attribute_id and sort_order, not the
     // product_attribute_id this once guessed at -- that guess made the whole
-    // copy fail on a group that had any attribute at all.
-    foreach ((array) db_items("SELECT attribute_id, sort_order FROM product_groups_attributes_xref WHERE product_group_id = '" . e((int) $group_id) . "'") as $attribute) {
+    // copy fail on a group that had any attribute at all. The default option
+    // is carried too, or the copy shows no option preselected.
+    foreach ((array) db_items("SELECT attribute_id, sort_order, default_option_id FROM product_groups_attributes_xref WHERE product_group_id = '" . e((int) $group_id) . "'") as $attribute) {
         db(
-            "INSERT INTO product_groups_attributes_xref (product_group_id, attribute_id, sort_order)
-            VALUES ('" . e($new_id) . "', '" . e((int) $attribute['attribute_id']) . "', '" . e((int) $attribute['sort_order']) . "')");
+            "INSERT INTO product_groups_attributes_xref (product_group_id, attribute_id, sort_order, default_option_id)
+            VALUES ('" . e($new_id) . "', '" . e((int) $attribute['attribute_id']) . "', '" . e((int) $attribute['sort_order']) . "', '" . e((int) $attribute['default_option_id']) . "')");
     }
 
-    // The children, under the copy rather than the original.
+    // The children, under the copy rather than the original; those in the
+    // Recycle Bin stay behind.
     $children = db_items(
         "SELECT id
         FROM product_groups
-        WHERE parent_id = '" . e((int) $group_id) . "'
+        WHERE parent_id = '" . e((int) $group_id) . "'" . pg_catalog_bin_live_sql('product_groups') . "
         ORDER BY sort_order, name");
 
     foreach ((array) $children as $child) {
