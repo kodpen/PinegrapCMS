@@ -537,7 +537,7 @@ $pg_settings_cards[] = '
                     </div>
                     <div class="pg-f-md' . ((pg_erp_store_country() === 'TR') ? '' : ' d-none') . '">
                         <label class="form-label" for="erp_web_address">' . lang('Address the sale was made at') . '</label>
-                        <input type="text" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" />
+                        <input type="text" inputmode="url" spellcheck="false" autocapitalize="off" class="form-control" id="erp_web_address" name="erp_web_address" value="' . h($erp_web_address) . '" maxlength="255" autocomplete="off" />
                         <div class="form-text">' . lang('Printed on invoices for internet sales, which have to name it. For example www.example.com.') . '</div>
                     </div>
                     <div class="pg-f-md">
@@ -712,7 +712,7 @@ $pg_settings_cards[] = '
                             </div>
                             <div class="col-12">
                                 <label class="form-label" for="erp_overdue_notify_recipients">' . lang('Recipients') . '</label>
-                                <input type="text" class="form-control" id="erp_overdue_notify_recipients" name="erp_overdue_notify_recipients" value="' . h($erp_overdue_notify_recipients) . '" maxlength="500" autocomplete="off" placeholder="' . h($erp_overdue_notify_default_recipient) . '" />
+                                <input type="text" inputmode="email" spellcheck="false" autocapitalize="off" class="form-control" id="erp_overdue_notify_recipients" name="erp_overdue_notify_recipients" value="' . h($erp_overdue_notify_recipients) . '" maxlength="500" autocomplete="off" placeholder="' . h($erp_overdue_notify_default_recipient) . '" />
                                 <div class="form-text">' . lang('Comma-separated. Empty uses the store e-mail address.') . '</div>
                             </div>
                         </div>
