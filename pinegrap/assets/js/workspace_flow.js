@@ -843,7 +843,7 @@
                 return;
             }
 
-            var control = K.button('btn btn-sm btn-ghost', '', item[0], t(item[1]));
+            var control = K.button('btn btn-sm btn-text theme-secondary', '', item[0], t(item[1]));
             control.addEventListener('click', item[2]);
             ui.zoom.appendChild(control);
         });
@@ -1388,7 +1388,7 @@
             ui.gallery.classList.remove('d-none');
 
             if (into) {
-                var back = K.button('btn btn-sm btn-ghost', t('fl_tpl_back'), 'bi-arrow-left');
+                var back = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_back'), 'bi-arrow-left');
 
                 back.setAttribute('data-refocus', 'tpl-back');
                 back.addEventListener('click', function () {
@@ -1577,8 +1577,8 @@
         foot.appendChild(use);
 
         if (template.saved.edit) {
-            var edit = K.button('btn btn-sm btn-ghost', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
-            var bin = K.button('btn btn-sm btn-ghost', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
+            var edit = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-pencil', t('fl_tpl_edit') + ': ' + template.title);
+            var bin = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-trash', t('fl_tpl_delete') + ': ' + template.title);
 
             edit.setAttribute('data-refocus', 'tpl-edit-' + template.key);
             edit.addEventListener('click', function () { templateDialog(template); });
@@ -1622,7 +1622,7 @@
         var cross = el('button', 'btn-close');
         var body = el('div', 'dialog-body');
         var foot = el('div', 'dialog-footer');
-        var cancel = K.button('btn btn-sm btn-ghost', t('fl_tpl_cancel'));
+        var cancel = K.button('btn btn-sm btn-text theme-secondary', t('fl_tpl_cancel'));
         var submit = K.button('btn btn-sm btn-solid theme-primary', '');
         var error = el('div', 'alert theme-danger small py-2 mb-0 d-none');
         var categories = Object.keys(FL.template_categories || {}).filter(function (key) { return key !== 'saved'; });
@@ -2034,7 +2034,7 @@
         var actions = el('div', 'wsf-setup-actions');
         var openIt = K.button('btn btn-sm btn-outline theme-secondary rounded-pill px-5', t('fl_tpl_open'), 'bi-bounding-box');
         var publishIt = K.button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('fl_tpl_publish'), 'bi-send');
-        var close = K.button('btn btn-sm btn-ghost wsf-setup-close', '', 'bi-x-lg');
+        var close = K.button('btn btn-sm btn-text theme-secondary wsf-setup-close', '', 'bi-x-lg');
         var title = el('h2', 'wsf-setup-title', t('fl_tpl_setup'));
 
         closeSetup();
@@ -2161,7 +2161,7 @@
         ui.stage.classList.add('d-none');
         ui.scheduled.classList.remove('d-none');
 
-        var back = K.button('btn btn-sm btn-ghost', t('sa_canvas_back'), 'bi-arrow-left');
+        var back = K.button('btn btn-sm btn-text theme-secondary', t('sa_canvas_back'), 'bi-arrow-left');
         back.setAttribute('data-refocus', 'sa-back');
         back.addEventListener('click', function () {
             state.refocus = 'sched-refused flows-search';
@@ -2425,7 +2425,7 @@
 
     // "Flows ›": back to the flow list.
     function flowsButton() {
-        var back = K.button('btn btn-sm btn-ghost wsf-back', t('fl_nav'));
+        var back = K.button('btn btn-sm btn-text theme-secondary wsf-back', t('fl_nav'));
 
         back.appendChild(el('span', 'ms-1', '›')).setAttribute('aria-hidden', 'true');
         back.setAttribute('aria-label', t('fl_list_back'));
@@ -2486,7 +2486,7 @@
         }
 
         var shown = runsShown();
-        var runs = K.button('btn btn-sm btn-ghost' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
+        var runs = K.button('btn btn-sm btn-text theme-secondary' + (shown ? ' active' : ''), t('fl_runs'), 'bi-clock-history');
 
         runs.setAttribute('aria-pressed', shown ? 'true' : 'false');
         runs.setAttribute('aria-controls', ui.side.id);
@@ -2546,7 +2546,7 @@
         ui.bar.appendChild(ui.save);
         ui.bar.appendChild(el('span', 'pg-toolbar-grow'));
 
-        var outline = K.button('btn btn-sm btn-ghost' + (state.outline ? ' active' : ''), t('fl_outline'), 'bi-list-nested');
+        var outline = K.button('btn btn-sm btn-text theme-secondary' + (state.outline ? ' active' : ''), t('fl_outline'), 'bi-list-nested');
         outline.setAttribute('aria-pressed', state.outline ? 'true' : 'false');
         outline.setAttribute('data-refocus', 'outline');
         outline.addEventListener('click', function () {
@@ -2581,11 +2581,11 @@
             return;
         }
 
-        ui.undo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-counterclockwise', t('fl_undo'));
+        ui.undo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-counterclockwise', t('fl_undo'));
         ui.undo.setAttribute('data-refocus', 'undo redo');
         ui.undo.addEventListener('click', function () { undo(true); });
         ui.bar.appendChild(ui.undo);
-        ui.redo = K.button('btn btn-sm btn-ghost', '', 'bi-arrow-clockwise', t('fl_redo'));
+        ui.redo = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-arrow-clockwise', t('fl_redo'));
         ui.redo.setAttribute('data-refocus', 'redo undo');
         ui.redo.addEventListener('click', function () { undo(false); });
         ui.bar.appendChild(ui.redo);
@@ -2631,7 +2631,7 @@
     function moreMenu() {
         var flow = state.flow;
         var more = el('div', 'pg-menu-wrap');
-        var moreButton = K.button('btn btn-sm btn-ghost', '', 'bi-three-dots', t('fl_more'));
+        var moreButton = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('fl_more'));
         var menu = el('ul', 'menu pg-menu-end');
         var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
@@ -2705,7 +2705,7 @@
         var warned = state.warnings.length;
 
         K.clear(ui.problemButton);
-        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-ghost'));
+        ui.problemButton.className = 'btn btn-sm ' + (count ? 'btn-outline theme-danger' : (warned ? 'btn-outline theme-warning' : 'btn-text theme-secondary'));
         ui.problemButton.appendChild(K.icon(count ? 'bi-exclamation-triangle' : (warned ? 'bi-exclamation-circle' : 'bi-check2-circle'), 'me-1'));
         ui.problemButton.appendChild(document.createTextNode(count ? t('fl_problems', count) : (warned ? t('fl_warnings', warned) : t('fl_no_problems'))));
         ui.problemButton.disabled = !count && !warned;
@@ -3525,7 +3525,7 @@
     }
 
     function threadsButton() {
-        var button = K.button('btn btn-sm btn-ghost' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
+        var button = K.button('btn btn-sm btn-text theme-secondary' + (state.threads ? ' active' : ''), t('fl_threads'), 'bi-bezier2');
 
         button.setAttribute('aria-pressed', state.threads ? 'true' : 'false');
         button.addEventListener('click', function () {
@@ -3716,7 +3716,7 @@
             }
 
             group.items.forEach(function (item) {
-                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-ghost wsf-palette-item', true));
+                wrap.appendChild(paletteButton(item, 'btn btn-sm btn-text theme-secondary wsf-palette-item', true));
             });
             ui.paletteGroups.appendChild(wrap);
         });
@@ -3737,7 +3737,7 @@
             return;
         }
 
-        var pick = K.button('btn btn-sm btn-ghost wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
+        var pick = K.button('btn btn-sm btn-text theme-secondary wsf-palette-item wsf-palette-template', t('fl_tpl_from_template'), 'bi-grid-1x2');
         var into = state.flow.id;
 
         pick.setAttribute('data-refocus', 'palette-template');
@@ -3841,7 +3841,7 @@
 
         ids.forEach(function (id) {
             var node = nodeById(id);
-            var go = K.button('btn btn-sm btn-ghost wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
+            var go = K.button('btn btn-sm btn-text theme-secondary wsf-ai-go', '', state.marks.boxes[id] === 'added' ? 'bi-plus-circle' : 'bi-pencil');
 
             go.appendChild(nameText(node));
             go.title = t(state.marks.boxes[id] === 'added' ? 'fl_ai_added_long' : 'fl_ai_changed_long');
@@ -5691,7 +5691,7 @@
                 row.value = text;
                 refreshNode(node);
             });
-            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
+            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg', t('fl_constants_remove', row.key || String(index + 1)));
 
             name.placeholder = t('fl_constants_name');
             name.setAttribute('aria-label', t('fl_constants_name'));
@@ -6735,7 +6735,7 @@
                 row.appendChild(outcomeSelect(edge));
             }
 
-            var remove = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg');
+            var remove = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
 
             nameLabel(remove, 'fl_remove_arrow_to', nodeById(edge.to));
             remove.title = remove.getAttribute('aria-label');
@@ -7516,7 +7516,7 @@
         var title = el('h2', 'dialog-title fs-md');
         var cross = el('button', 'btn-close');
         var foot = el('div', 'dialog-footer');
-        var close = K.button('btn btn-sm btn-ghost', t('fl_share_close'));
+        var close = K.button('btn btn-sm btn-text theme-secondary', t('fl_share_close'));
 
         modal.id = 'wsf-share';
         modal.tabIndex = -1;
@@ -7660,7 +7660,7 @@
         row.appendChild(level);
 
         if (manage) {
-            var remove = K.button('btn btn-sm btn-ghost wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
+            var remove = K.button('btn btn-sm btn-text theme-secondary wsf-share-remove', '', 'bi-x-lg', t('fl_share_remove', name));
 
             remove.setAttribute('data-share-focus', 'remove-' + share.id);
             remove.addEventListener('click', function () {
@@ -8278,7 +8278,7 @@
         ui.side.appendChild(rows);
 
         if (list.next) {
-            var more = K.button('btn btn-sm btn-ghost', t('fl_runs_more'), 'bi-chevron-down');
+            var more = K.button('btn btn-sm btn-text theme-secondary', t('fl_runs_more'), 'bi-chevron-down');
 
             more.setAttribute('data-refocus', 'runs-more');
             more.disabled = list.loading;
@@ -8493,7 +8493,7 @@
             tools.appendChild(cancel);
         }
 
-        var all = K.button('btn btn-sm btn-ghost', t('fl_run_all'), 'bi-clock-history');
+        var all = K.button('btn btn-sm btn-text theme-secondary', t('fl_run_all'), 'bi-clock-history');
 
         all.setAttribute('data-refocus', 'run-all');
         all.addEventListener('click', function () {
@@ -9031,7 +9031,7 @@
                 return;
             }
 
-            var clear = K.button('btn btn-sm btn-ghost', '', 'bi-x-lg');
+            var clear = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-x-lg');
 
             clear.setAttribute('aria-label', t('fl_run_customer_clear'));
             clear.title = t('fl_run_customer_clear');
