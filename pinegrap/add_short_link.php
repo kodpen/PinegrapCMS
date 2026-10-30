@@ -98,7 +98,7 @@ if (!$_POST) {
             'icon'=>'page',
             'heading'=>lang('Create Short Link'),
             'heading_description' => lang('Create a shortcut alias for a Page, Product Group, Product, or URL.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_short_links.php'),
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php')),
             'breadcrumb' => array(
                 array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'),
                 array('label' => lang('Create Short Link')),
@@ -113,6 +113,7 @@ if (!$_POST) {
                 
                 <form name="form" action="add_short_link.php" method="post">
                     ' . get_token_field() . '
+                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                     ' . pg_short_link_form_cards($liveform, array('extra_rows' => $output_link_mode . '
                                                 ' . pg_short_link_form_redirect_code_row($liveform))) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
@@ -185,7 +186,7 @@ if (!$_POST) {
 
     // If there is an error, forward user back to previous screen.
     if ($liveform->check_form_errors() == TRUE) {
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_short_link.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/add_short_link.php' . ((pg_send_to_url('') !== '') ? '?send_to=' . urlencode(pg_send_to_url('')) : ''));
         exit();
     }
 
@@ -258,7 +259,9 @@ if (!$_POST) {
     log_activity(lang(array('string'=>'short link ({var:1}) was created','vars'=>($link_token !== '') ? substr($link_token, 0, 6) . '…' : $name)), $_SESSION['sessionusername']);
     $liveform->remove_form();
 
-    $liveform_view_short_links = new liveform('view_short_links');
+    // The notice waits on the screen the save lands on: the 404 log when it
+    // opened this screen, else the short link list.
+    $liveform_view_short_links = new liveform(pg_short_link_return_form(pg_send_to_url('')));
 
     // The whole address of a one-time link, this once: only its hash is kept.
     if ($link_token !== '') {
@@ -268,8 +271,8 @@ if (!$_POST) {
         $liveform_view_short_links->add_notice(lang('The short link has been created.'));
     }
 
-    // forward user to view short links screen
-    header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_short_links.php');
+    // Back to send_to (the filtered 404 log), else the short link list.
+    header('Location: ' . URL_SCHEME . HOSTNAME . pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_short_links.php'));
     
     
 }

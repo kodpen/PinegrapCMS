@@ -26,6 +26,7 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - The Edit Ad and Edit Comment breadcrumbs stay on their list, so no list link opens a site page.
 - A refused Edit Comment save redirects with `send_to` in the address, so the arrow keeps it.
 - Pinned by `tests/back_arrow_send_to_test.php`.
+- Create/Edit Short Link opened from the 404 Log get `send_to` = the log with its `who`/`q`; arrow, refused save and Save/Delete keep it, the notice goes on the log's liveform (`pg_short_link_return_form()`). Removing an address posts to the filtered log too. Before, each action lost the search. Pinned by `tests/not_found_log_test.php`.
 
 ## Which arrows keep their target on purpose?
 - `edit_menu.php`: its arrow matches its breadcrumb parent All Menus.

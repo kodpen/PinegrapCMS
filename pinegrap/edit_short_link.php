@@ -169,7 +169,7 @@ if (!$_POST) {
             'icon'=>'page', 
             'heading'=>lang('Edit Short Link'),
             'heading_description' => lang('Update this shortcut alias for a Page, Product Group, Product, or URL.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_short_links.php')
+            'cancel'=>array('enable'=>'true','url'=>pg_send_to_url('view_short_links.php'))
         ,
             'breadcrumb' => array(array('label' => lang('Short Links'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_short_links.php'), array('label' => lang('Edit Short Link'))),
         )
@@ -192,6 +192,7 @@ if (!$_POST) {
                 <form name="form" action="edit_short_link.php" method="post">
                     ' . get_token_field() . '
                     ' . $liveform->output_field(array('type'=>'hidden', 'name'=>'id', 'value'=>$_GET['id'])) . '
+                    <input type="hidden" name="send_to" value="' . h(pg_send_to_url('')) . '">
                     ' . pg_short_link_form_cards($liveform, array(
                         'extra_rows' => pg_short_link_form_redirect_code_row($liveform),
                         'after_main' => $output_short_link_qr_card,
@@ -227,12 +228,16 @@ if (!$_POST) {
     // escaping and the checks below stopped the request on it with a 500.
     pg_liveform_single_values($liveform, array('name', 'destination_type', 'page_id', 'catalog_page_id', 'catalog_detail_page_id', 'product_group_id', 'product_id', 'url', 'file', 'tracking_code', 'redirect_code'));
 
+    // A refused save comes back here with send_to, so its arrow and Save
+    // still lead where the screen was opened from.
+    $short_link_send_to_query = (pg_send_to_url('') !== '') ? '&send_to=' . urlencode(pg_send_to_url('')) : '';
+
     $handle = @fopen(HTACCESS_FILE_PATH, 'a');
 
     // If the rewrite file does not exist or can not be written to, then add error and send user back to previous screen.
     if ($handle == FALSE) {
         $liveform->mark_error('', lang(array('string'=>'{var:1} is not writeable so your request could not be completed.','vars'=>HTACCESS_FILE_NAME)) );
-        header('Location: ' . URL_SCHEME . HOSTNAME . $_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+        header('Location: ' . URL_SCHEME . HOSTNAME . $_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id') . $short_link_send_to_query);
         exit();
 
     // Otherwise the rewrite file is writeable, so close handle.
@@ -261,10 +266,10 @@ if (!$_POST) {
         
         $liveform->remove_form();
 
-        $liveform_view_short_links = new liveform('view_short_links');
+        $liveform_view_short_links = new liveform(pg_short_link_return_form(pg_send_to_url('')));
         $liveform_view_short_links->add_notice($delete_notice);
         
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_short_links.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_short_links.php'));
 
     // Otherwise the user selected to save the short link, so save it.
     } else {
@@ -280,7 +285,7 @@ if (!$_POST) {
 
         // If there is an error, forward user back to previous screen.
         if ($liveform->check_form_errors() == TRUE) {
-            header('Location: ' . URL_SCHEME . HOSTNAME . $_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . $_SERVER['PHP_SELF'] . '?id=' . $liveform->get_field_value('id') . $short_link_send_to_query);
             exit();
         }
 
@@ -328,11 +333,11 @@ if (!$_POST) {
 
 
         $liveform->remove_form();
-        $liveform_view_short_links = new liveform('view_short_links');
+        $liveform_view_short_links = new liveform(pg_short_link_return_form(pg_send_to_url('')));
         $liveform_view_short_links->add_notice(lang('The short link has been saved.'));
 
         // Forward user to view short links screen.
-        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_short_links.php');
+        header('Location: ' . URL_SCHEME . HOSTNAME . pg_send_to_url(PATH . SOFTWARE_DIRECTORY . '/view_short_links.php'));
     }
     
     
