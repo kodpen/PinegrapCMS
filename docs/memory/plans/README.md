@@ -64,7 +64,7 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - shipping-tr-district.md: Shipping plan step 8 (decision #3569): ship_tos.district and states.plate_code in three PRs; D1 schema and model, D2 checkout and order screens, D3 drivers, imports and the API field
 - site-log-language.md: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, after part 4)
 - sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, SMS consent box (7) done; left: first İYS live run, marketing SMS 8-10
-- storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
+- storefront-api-agentic-commerce.md: Plan (approved 2026-10-19; design note first, code after 2026.11.0 ships, #3798): public storefront API (cart, checkout, customer auth), base for OpenAI ACP and Google UCP bindings
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, multi-step checkout done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
 - visitor-ai-assistant.md: Plan (approved 2026-10-19, watch list): visitor-facing AI assistant in the site bubble answering from the site's own content with hand-over to Live Chat; AI disclosure; Premium licence

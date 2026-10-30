@@ -21,3 +21,6 @@ description: Decisions list, schema part 6 (2026-10-30 midday on): district and 
 - Refused (#3746): `forms.publish_at` / `unpublish_at` for collection items; the templates' `publish_date` field and live filter stay the way (`designer/design-template-news-publishing.md`).
 
 Related: docs/memory/workflow/decisions-made-schema.md, docs/memory/workflow/decisions-made-schema-5.md
+
+## A marker column on `log` for the e-mail-a-friend limit? (#3802)
+- Refused (architect, 2026-10-30): no `log.log_kind` column or counter table; the count moves to the WAF rate store (`decisions-made-product-11.md`).

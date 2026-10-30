@@ -18,7 +18,7 @@ description: Plan: the Site Log writers still passing bare English to log_activi
 
 ## What is left?
 - `includes/fn/layouts.php` (136): bare literal. Held by draft #3141; start after it lands.
-- `email_a_friend.php` 158: bare English on purpose: the spam limit at 84 counts rows `LIKE '%e-mailed a link%'`. A count that does not read the log text needs a marker column or table (a schema change, owner's decision); left as it is.
+- `email_a_friend.php` 158: decided #3802 (`workflow/decisions-made-product-11.md`): the limit at 84 moves to the WAF rate store (scope `eaf`, 86400 s in `waf_rate_long_scopes()`; `waf_rate_hits()` before sending, `waf_rate_record()` after), then the line goes through `pg_log_lang()`. After #3780 lands (`waf.php`).
 - `includes/settings/commerce.save.php` 693 logs `parasut_connect_report()`'s line: part of the owner's ERP work, not checked.
 - Not checked, held by other work: `custom_form.php`, `includes/fn/custom_form.php`, `includes/fn/forms.php`, `includes/migrations/*`, `includes/erp/*`, `parasut_connect.php`, `add_erp_quote.php`, `add_erp_receipt.php`, and the files of draft #3298 (`includes/api/*`, `includes/fn/cart_quotes.php`, `add_cart_quote.php`, `view_cart_quotes.php`).
 

@@ -25,7 +25,7 @@ A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools;
 10. Decided #3416 (`workflow/decisions-made-schema-5.md`, `-workspace-4.md`): 3 done #3427 (core/contact-lead-source.md; API param next); 1 done #3517 (workspace/workspace-visit-contact.md; API field next); 2 no-order start done #3522 (workspace/workspace-flows-no-order-start.md); custom fields, pipelines: question 1 [9].
 
 ## Open questions (recommendation)
-1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
+1. CRM shape: decided #3797 (`workflow/decisions-made-product-11.md`): (c) now; later (a), pipelines as workflow tables with status and contact columns, no own module.
 2. Merge (7): answered (#2421), (a), as slice 7 says.
 3. History (4): (a) union read, (b) activity table → a.
 
@@ -34,4 +34,4 @@ A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools;
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 10: the API fields of 3 and 1 (`includes/api/`).
+- 10: the API fields of 3 and 1 (`includes/api/`); when both land the plan closes (#3797).
