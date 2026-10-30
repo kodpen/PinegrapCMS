@@ -147,9 +147,9 @@ if (!$_POST) {
             'icon'=>'account',
             'heading'=>lang('Create User'),
             'heading_description' => lang('Create a new user account, assign privileges, and choose to email login info to User.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_users.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
             'breadcrumb' => array(
-                array('label' => lang('All My Users'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php'),
+                array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
                 array('label' => lang('Create User')),
             ),
         )

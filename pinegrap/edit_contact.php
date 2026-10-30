@@ -273,9 +273,9 @@ if (!$_POST) {
             'icon'=>'contact', 
             'heading'=>lang('Edit Contact'),
             'heading_description' => lang('View or update this contact\'s information, subscriber status, member status, affiliate status, or contact groups.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')),
         
-            'breadcrumb' => array(array('label' => lang('All My Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'), array('label' => lang('Edit Contact'))),
+            'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')), array('label' => lang('Edit Contact'))),
         )
     ) . '
 <main id="content" class="container-fluid">
