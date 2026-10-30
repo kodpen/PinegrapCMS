@@ -236,7 +236,7 @@ function pg_tour_shell_steps()
         array(
             'at' => 'welcome',
             'title' => lang('A look around'),
-            'text' => lang('Every screen sits in the same frame: the menu down the left, the bar across the top, and the chat in the corner. A few short steps and you will know where things are. You can leave at any point, and start this again whenever you like from your own menu at the top right.')),
+            'text' => lang('Every screen sits in the same frame: the menu down the left, the bar across the top, and the chat in the corner. A few short steps and you will know where things are. You can leave at any point, and start this again whenever you like from Interface tour in My Menu at the top right.')),
 
         // The menu is in two different places depending on how wide the
         // window is, so it is explained twice and each version stands down
@@ -250,14 +250,14 @@ function pg_tour_shell_steps()
             'target' => '#menu',
             'placement' => 'right',
             'title' => lang('The menu on the left'),
-            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and the arrow at the top takes you back. The button at the top left changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden. On the Workspace, File Manager and Catalog Manager screens their own way around is in the menu, so there it only narrows it to its icons and back.')),
+            'text' => lang('Everything the software can do is gathered here: the pages and files of your site, the store, visitors and reports. A row with an arrow opens its pages inside the menu, and Back at the top of it takes you back. Menu view, the button at the top left (Ctrl+D), changes how it shows, one click at a time: mini with its icons only, open with its labels, then hidden. On the Workspace, File Manager and Catalog Manager screens their own way around is in the menu, so there it only narrows it to its icons and back.')),
 
         array(
             'at' => 'menu_drawer',
             'when' => 'narrow',
             'placement' => 'right',
             'title' => lang('The menu, on a small screen'),
-            'text' => lang('There is no room for the menu beside the screen here, so it waits behind this button and slides in over the top -- as it has just done. Everything the software can do is in it: pages and files, the store, visitors and reports. Tapping anywhere else puts it away again.')),
+            'text' => lang('There is no room for the menu beside the screen here, so it waits behind Show menu, the button at the top left, and slides in over the top -- as it has just done. Everything the software can do is in it: pages and files, the store, visitors and reports. Hide menu, the same button, or tapping anywhere else puts it away again.')),
 
         array(
             'at' => 'bar',
@@ -265,7 +265,7 @@ function pg_tour_shell_steps()
             'placement' => 'bottom',
             'padding' => 2,
             'title' => lang('The bar across the top'),
-            'text' => lang('The name of the screen you are on sits at the left of it, and the things that belong to you at the right: search, the site settings, notifications and your own menu. It stays where it is while the screen underneath scrolls.')),
+            'text' => lang('The name of the screen you are on sits at the left of it, and the things that belong to you at the right: search, the site settings, notifications and My Menu. It stays where it is while the screen underneath scrolls.')),
 
         array(
             // Wide screens carry the search as a field in the middle of the
@@ -292,7 +292,7 @@ function pg_tour_shell_steps()
             'target' => '#pg_settings_open',
             'placement' => 'bottom',
             'title' => lang('Site Settings'),
-            'text' => lang('The settings of the whole site open here, over whatever you are doing: pick a heading on the left, change what you came for, save, and close. You stay on the screen you were on, so nothing is left half done and there is nothing to find your way back from.')),
+            'text' => lang('The settings of the whole site open here, over whatever you are doing: pick a heading from the list of sections (on a small screen Sections opens the list), change what you came for, save, and close. You stay on the screen you were on, so nothing is left half done and there is nothing to find your way back from.')),
 
         array(
             'at' => 'chat',

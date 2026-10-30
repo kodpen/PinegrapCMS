@@ -4,7 +4,7 @@ description: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who use
 ---
 
 ## Who runs on the engine?
-- `assets/js/pg_tour.js` runs every panel tour: the frame tour on every screen (`includes/fn/tour.php`), the File and Catalog Manager tours (`view_folders.php`) and the Workspace tour (`workspace_tour.js`). Panel only, never site output or the designer. It is served unbundled through `pg_tour_assets()`: no `.min.js`, no `build_js.php` step.
+- `assets/js/pg_tour.js` runs every panel tour: the frame tour on every screen (`includes/fn/tour.php`), the File and Catalog Manager tours (`view_folders.php`) and the Workspace tour (`workspace_tour.js`). Panel only. It is served unbundled through `pg_tour_assets()`: no `.min.js`, no `build_js.php` step.
 - A screen registers its steps (`PgTour.register`); the engine knows nothing about any screen. `tests/tour_engine_test.php` pins the engine rules below; `tests/return_key_buttons_test.php` pins the Enter guard in `onKey` (`return-key-default-button.md`).
 
 ## How are steps counted?
@@ -18,6 +18,7 @@ description: The guided tour engine (assets/js/pg_tour.js, pg_tour.css): who use
 ## How is a step read out?
 - The bubble is a `role=dialog` named by the title and described by the count and the text (`aria-describedby`). Focus moving onto Next on the first step reads both.
 - From the second step on focus is already on Next, so nothing moves: a visually hidden polite `role=status` in the bubble gets "count. title. text" after the step is painted (emptied first in `show()`).
+- So a step names a control by its label (`notice-button-names.md`).
 
 ## Where does focus go when the tour ends?
 - `focusBack()`: to the element that started it, unless that is hidden or gone. The Interface tour row (account menu) and Watch the tour (explorer More menu) sit in menus that close on the click, so focus goes to the `[data-bs-toggle="menu"]` toggle of the closest `.menu`'s parent. Nothing usable: the focused bubble button is blurred. Bootstrap 6 Menu never returns focus to its toggle by itself.

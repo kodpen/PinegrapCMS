@@ -218,7 +218,7 @@ echo pg_page_shell(array(
 				</div>
 				<div class="ms-auto d-flex align-items-end gap-3">
 					<div>
-						<label class="form-label small mb-1">' . lang('Try as') . '</label>
+						<label for="doc_app" class="form-label small mb-1">' . lang('Try as') . '</label>
 						<select class="form-control form-control-sm" id="doc_app" style="min-width:220px">' . $app_options . '</select>
 					</div>
 					<a class="btn btn-sm btn-outline theme-secondary" href="api_docs.php?openapi=1" target="_blank"
@@ -279,7 +279,7 @@ echo pg_page_shell(array(
 		base: BASE,
 		hasCredential: function () { return document.getElementById("doc_app").value !== ""; },
 		getCredential: getCredential,
-		missing: ' . json_encode(lang('Choose an application at the top first — the call is made with its permissions.'), JSON_UNESCAPED_UNICODE) . '
+		missing: ' . json_encode(lang('Choose an application under Try as first — the call is made with its permissions.'), JSON_UNESCAPED_UNICODE) . '
 	});
 
 })();

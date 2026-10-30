@@ -790,6 +790,7 @@
     "Choose an account.": "Bir cari seçin.",
     "Choose an application": "Bir uygulama seçin",
     "Choose an application at the top first — the call is made with its permissions.": "Önce üstten bir uygulama seçin — çağrı onun yetkileriyle yapılır.",
+    "Choose an application under Try as first — the call is made with its permissions.": "Önce “Şununla dene” alanından bir uygulama seçin — çağrı onun yetkileriyle yapılır.",
     "Choose an image first: the AI describes what it shows.": "Önce bir görsel seçin: yapay zekâ görselde ne olduğunu anlatır.",
     "Choose an order": "Bir sipariş seçin",
     "Choose at least one column to fill.": "Doldurulacak en az bir sütun seçin.",

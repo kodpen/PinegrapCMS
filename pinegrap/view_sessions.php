@@ -342,7 +342,7 @@ foreach ($push_subscriptions as $subscription) {
         . '<input type="hidden" name="pg_session_action" value="revoke_push"/>'
         . '<input type="hidden" name="pg_push_id" value="' . (int) $subscription['id'] . '"/>'
         . '<input type="hidden" name="send_back" value="' . h($self_url) . '"/>'
-        . '<button type="submit" class="btn btn-sm btn-outline theme-danger no-popover" data-bs-toggle="tooltip" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from the bell in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
+        . '<button type="submit" class="btn btn-sm btn-outline theme-danger no-popover" data-bs-toggle="tooltip" title="' . h(lang('The device stops receiving notifications. Whoever uses it can turn them on again from Notifications in their own panel.')) . '">' . h(lang('Stop')) . '</button>'
         . '</form>'
         . '</div>'
         . '</td>'
@@ -471,7 +471,7 @@ print '<main id="content" class="container-fluid">
                 </div>
             </div>
             ' . $output_push_test_note . '
-            <div class="alert theme-secondary">' . lang('Every browser an operator turned notifications on in is listed here. A subscription belongs to the browser rather than to the sign-in, so it survives a closed window; signing out of a device ends it, and so does the button below.') . '</div>
+            <div class="alert theme-secondary">' . lang('Every browser an operator turned notifications on in is listed here. A subscription belongs to the browser rather than to the sign-in, so it survives a closed window; signing out of a device ends it, and so does Stop on its row.') . '</div>
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <div class="table-responsive">

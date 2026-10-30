@@ -1953,7 +1953,7 @@ function pg_offer_editor_handle($request)
                     'status'  => 'error',
                     'request' => $type,
                     'errors'  => $checked['errors'],
-                    'message' => lang('Please correct the highlighted rows.')));
+                    'message' => lang('Some entries cannot be saved; the reason is written under each one.')));
             }
             $was_new = (isset($checked['clean']['offer']['id']) && ((int) $checked['clean']['offer']['id'] > 0)) ? false : true;
             $offer_id = _pg_offer_save($checked['clean'], $user);
