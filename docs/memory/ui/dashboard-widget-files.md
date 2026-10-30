@@ -19,5 +19,5 @@ description: Adding a dashboard widget: includes/dashboard/widgets/widget_<id>.p
 
 ## In which unit does a widget print an inline text size?
 - In rem at the 16 px base (`10px` → `.625rem`, `17px` → `1.0625rem`), never px; `tests/dashboard_text_size_test.php` pins it.
-- The panel sets no root font size, so 1rem is the browser's text size. The card's grid track (`--pg-widget-min: 15.5rem`), its square shape and its title follow it; px text inside stayed at 9–22 px in a card twice the size (#PR).
+- The panel sets no root font size, so 1rem is the browser's text size. The card's grid track (`--pg-widget-min: 15.5rem`), its square shape and its title follow it; px text inside stayed at 9–22 px in a card twice the size (#3430).
 - The shared `.pg-row`/`.pg-vs`/`.pg-eg` rules in `backend.src.css` still use px; converting them is separate work.
