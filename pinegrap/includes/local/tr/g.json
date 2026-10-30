@@ -131,6 +131,7 @@
     "Give it a name.": "Bir ad verin.",
     "Give it a title that says what happens, such as \"Reminders arrive an hour late\", rather than \"Help!\". Then say what you tried, what you expected and what happened instead, and which version of the app and which device you use.": "Konuya \"Yardım!\" yerine \"Hatırlatıcılar bir saat geç geliyor\" gibi ne olduğunu anlatan bir başlık verin. Ardından neyi denediğinizi, ne beklediğinizi ve bunun yerine ne olduğunu, uygulamanın hangi sürümünü ve hangi cihazı kullandığınızı yazın.",
     "Give it a title that says what happens.": "Ne olduğunu anlatan bir başlık verin.",
+    "Give it to: {var:1}": "Verilecek kişi: {var:1}",
     "Give options an effect on the price and every variant below is priced from the Unit Price. Order: the base, times the multipliers, plus the amounts, then the percentages one after another. Only one attribute can set the price. A price typed into a row is kept.": "Seçeneklere fiyat etkisi verin; aşağıdaki her varyantın fiyatı Birim fiyatı alanından hesaplanır. Sıra: taban, çarpanlarla çarpılır, tutarlar eklenir, ardından yüzdeler sırayla uygulanır. Fiyatı yalnız bir nitelik belirleyebilir. Bir satıra elle yazılan fiyat korunur.",
     "Give the Cover story a line to set apart and it appears here.": "Kapak yazısına öne çıkarılacak bir cümle verin, burada görünür.",
     "Give the carrier this return code:": "Kargo şubesine bu iade kodunu verin:",
