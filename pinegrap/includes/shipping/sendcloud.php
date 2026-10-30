@@ -239,7 +239,7 @@ function pg_label_sendcloud_api($method, $path, $account, $payload = null, $acce
         $read['message'] = isset($call['error']) ? (string) $call['error'] : '';
     } elseif (!$read['ok']) {
         $words = pg_label_sendcloud_error_texts($decoded);
-        $read['message'] = $words ? substr(implode(' ', $words), 0, 300) : 'HTTP ' . $status;
+        $read['message'] = $words ? mb_substr(implode(' ', $words), 0, 300, 'UTF-8') : 'HTTP ' . $status;
     }
 
     return $read;
@@ -545,7 +545,7 @@ function pg_label_sendcloud_recipient_address($recipient)
     $state = strtoupper($text($recipient, 'state_code'));
 
     return array_filter(array(
-        'name'                => substr($text($recipient, 'name'), 0, 75),
+        'name'                => mb_substr($text($recipient, 'name'), 0, 75, 'UTF-8'),
         'address_line_1'      => $text($recipient, 'address_1'),
         'address_line_2'      => $text($recipient, 'address_2'),
         'postal_code'         => $text($recipient, 'zip'),
@@ -818,7 +818,7 @@ function pg_label_sendcloud_return_body($shipment, $sender, $option)
     $body = array(
         'from_address' => pg_label_sendcloud_recipient_address(isset($shipment['recipient']) ? $shipment['recipient'] : array()),
         'to_address'   => array_filter(array(
-            'name'                => substr($text($sender, 'name'), 0, 75),
+            'name'                => mb_substr($text($sender, 'name'), 0, 75, 'UTF-8'),
             'company_name'        => $text($sender, 'company_name'),
             'address_line_1'      => $text($sender, 'address_line_1'),
             'house_number'        => $text($sender, 'house_number'),
@@ -1078,7 +1078,7 @@ function pg_label_sendcloud_create($shipment, $account)
 
             return array(
                 'success' => false,
-                'error'   => lang('Sendcloud found no shipping option for this shipment.') . (($words !== '') ? ' (' . substr($words, 0, 300) . ')' : ''),
+                'error'   => lang('Sendcloud found no shipping option for this shipment.') . (($words !== '') ? ' (' . mb_substr($words, 0, 300, 'UTF-8') . ')' : ''),
                 'raw'     => $read['raw'],
             );
         }
@@ -1103,7 +1103,7 @@ function pg_label_sendcloud_create($shipment, $account)
 
         return array(
             'success' => false,
-            'error'   => lang('Sendcloud could not make the label.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('Sendcloud could not make the label.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Sendcloud shipment ' . $reference . ' failed with ' . $option . '.'),
             'raw'     => $read['raw'],
         );
@@ -1239,7 +1239,7 @@ function pg_label_sendcloud_return_cancel($id, $reference, $account)
 
     $words = pg_label_sendcloud_text($read['data'], 'message');
 
-    return array('success' => true, 'reference' => $reference, 'log' => array('Sendcloud cancellation of return ' . $id . ': ' . (($words !== '') ? substr($words, 0, 200) : 'requested') . '.'));
+    return array('success' => true, 'reference' => $reference, 'log' => array('Sendcloud cancellation of return ' . $id . ': ' . (($words !== '') ? mb_substr($words, 0, 200, 'UTF-8') : 'requested') . '.'));
 }
 
 function pg_label_sendcloud_track($reference, $account)
@@ -1628,7 +1628,7 @@ function pg_label_sendcloud_pickup_answer($data, $raw)
 
         return array(
             'success' => false,
-            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . substr(implode(' ', $words), 0, 300) . ')' : ''),
+            'error'   => lang('The carrier refused the pickup request.') . ($words ? ' (' . mb_substr(implode(' ', $words), 0, 300, 'UTF-8') . ')' : ''),
             'log'     => array('Sendcloud pickup ' . $id . ' is ' . $status . '.'),
             'raw'     => $raw,
         );

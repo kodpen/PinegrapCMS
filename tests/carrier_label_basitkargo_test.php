@@ -372,3 +372,17 @@ function test_carrier_label_basitkargo_cancel_takes_the_barcode_back()
 	pg_assert_true($answer['success'], $answer['error']);
 	pg_assert_same(array('GET /v2/order/888-6AR-OUP', 'DELETE /order/888-6AR-OUP'), $sent);
 }
+
+// A long plain Turkish refusal is cut on a character, not a byte: a broken
+// last letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_basitkargo_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_basitkargo_test_stub(array('POST /v2/order/barcode' => array(array(400, 'A' . str_repeat('ş', 150)))));
+
+	$answer = pg_label_call('basitkargo', 'create', array(carrier_label_basitkargo_test_shipment(), carrier_label_basitkargo_test_account()));
+	carrier_label_basitkargo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 99), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}
