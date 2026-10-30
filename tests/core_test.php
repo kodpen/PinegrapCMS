@@ -165,19 +165,19 @@ function test_core_timezone_list_follows_the_database()
 	};
 
 	$zones = get_timezones($old_database);
-	pg_assert_same('America/Godthab', $zones['(UTC-03:00) Greenland'], 'an old database: Greenland by the name it has');
+	pg_assert_same('America/Godthab', pg_test_timezone_by_place($zones, 'Greenland'), 'an old database: Greenland by the name it has');
 	pg_assert_false(in_array('America/Nuuk', $zones, true), 'and never by the name it lacks');
 	pg_assert_same('America/New_York', $zones['(UTC-05:00) Eastern Time (US & Canada)'], 'every other zone by its current name');
 
 	$zones = get_timezones($no_links);
-	pg_assert_same('America/Nuuk', $zones['(UTC-03:00) Greenland'], 'no legacy links: Greenland by its current name');
+	pg_assert_same('America/Nuuk', pg_test_timezone_by_place($zones, 'Greenland'), 'no legacy links: Greenland by its current name');
 	pg_assert_same(array(), array_values(array_intersect($zones, array_keys(pg_timezone_legacy_names()))), 'and no old name at all');
 
 	$neither = function ($zone) {
 		return ($zone !== 'America/Nuuk') && ($zone !== 'America/Godthab');
 	};
 
-	pg_assert_false(array_key_exists('(UTC-03:00) Greenland', get_timezones($neither)), 'a zone known by neither name is not offered');
+	pg_assert_same(null, pg_test_timezone_by_place(get_timezones($neither), 'Greenland'), 'a zone known by neither name is not offered');
 
 	pg_assert_same('America/Godthab', pg_timezone_list_value('America/Godthab', $old_database), 'an old database keeps a stored old name selected');
 	pg_assert_same('America/Godthab', pg_timezone_list_value('America/Nuuk', $old_database), 'and selects it for the current name');
@@ -212,6 +212,98 @@ function test_core_timezone_offset_label()
 	pg_assert_same('(UTC-10:00)', pg_timezone_offset_label('Pacific/Honolulu'), 'negative');
 	pg_assert_same('', pg_timezone_offset_label('Nowhere/Atlantis'), 'an unknown zone has none');
 	pg_assert_same('', pg_timezone_offset_label("UTC\0"), 'nor a name with a NUL byte');
+}
+
+// The zone a pick list offers for a place, whatever offset its label shows:
+// Nuuk is -02:00 on current time zone data and -03:00 on PHP 7.1's.
+function pg_test_timezone_by_place($zones, $place)
+{
+	foreach ($zones as $label => $zone) {
+		if (substr($label, -strlen(' ' . $place)) === ' ' . $place) {
+			return $zone;
+		}
+	}
+
+	return null;
+}
+
+// The labels show the offsets of this PHP's database, ordered by them, and
+// the zone values stay the ones stored data and validation were built on.
+function test_core_timezone_list_labels_follow_the_offsets()
+{
+	$zones = get_timezones();
+
+	pg_assert_same('Europe/Moscow', isset($zones['(UTC+03:00) Moscow']) ? $zones['(UTC+03:00) Moscow'] : null, 'Moscow at +03:00');
+	pg_assert_same('America/Caracas', isset($zones['(UTC-04:00) Caracas']) ? $zones['(UTC-04:00) Caracas'] : null, 'Caracas at -04:00');
+	pg_assert_same('America/Noronha', pg_test_timezone_by_place($zones, 'Fernando de Noronha'), 'Noronha by its name');
+	pg_assert_same('Pacific/Kwajalein', pg_test_timezone_by_place($zones, 'Marshall Islands'), 'Kwajalein by its country');
+	pg_assert_same('Pacific/Pago_Pago', pg_test_timezone_by_place($zones, 'American Samoa'), 'Pago Pago by its territory');
+
+	$previous = null;
+
+	foreach ($zones as $label => $zone) {
+		$prefix = pg_timezone_offset_label($zone);
+
+		pg_assert_same($prefix, substr($label, 0, strlen($prefix)), $label . ' shows the offset of ' . $zone);
+
+		$minutes = pg_timezone_label_minutes($label);
+
+		if ($previous !== null) {
+			pg_assert_true($minutes >= $previous, $label . ' is ordered by its offset');
+		}
+
+		$previous = $minutes;
+	}
+
+	pg_assert_same($zones, get_timezones(), 'the cached list is the same');
+
+	$all = function ($zone) {
+		return true;
+	};
+
+	$values = array(
+		'Pacific/Midway', 'Pacific/Pago_Pago', 'Pacific/Honolulu',
+		'America/Anchorage', 'America/Los_Angeles', 'America/Tijuana',
+		'America/Phoenix', 'America/Chihuahua', 'America/Mazatlan',
+		'America/Denver', 'America/Managua', 'America/Chicago',
+		'America/Mexico_City', 'America/Monterrey', 'America/Regina',
+		'America/Bogota', 'America/New_York', 'America/Indiana/Indianapolis',
+		'America/Lima', 'America/Guayaquil', 'America/Halifax',
+		'America/Caracas', 'America/La_Paz', 'America/Santiago',
+		'America/St_Johns', 'America/Sao_Paulo',
+		'America/Argentina/Buenos_Aires', 'America/Nuuk', 'America/Noronha',
+		'Atlantic/Azores', 'Atlantic/Cape_Verde', 'Africa/Casablanca',
+		'Etc/Greenwich', 'Europe/Lisbon', 'Europe/London', 'Africa/Monrovia',
+		'UTC', 'Europe/Amsterdam', 'Europe/Belgrade', 'Europe/Berlin',
+		'Europe/Bratislava', 'Europe/Brussels', 'Europe/Budapest',
+		'Europe/Copenhagen', 'Europe/Ljubljana', 'Europe/Madrid',
+		'Europe/Paris', 'Europe/Prague', 'Europe/Rome', 'Europe/Sarajevo',
+		'Europe/Skopje', 'Europe/Stockholm', 'Europe/Vienna', 'Europe/Warsaw',
+		'Africa/Lagos', 'Europe/Zagreb', 'Europe/Athens', 'Europe/Bucharest',
+		'Africa/Cairo', 'Africa/Harare', 'Europe/Helsinki', 'Asia/Jerusalem',
+		'Europe/Helsinki', 'Africa/Johannesburg', 'Europe/Riga', 'Europe/Sofia',
+		'Europe/Tallinn', 'Europe/Vilnius', 'Europe/Istanbul', 'Asia/Baghdad',
+		'Asia/Kuwait', 'Europe/Minsk', 'Africa/Nairobi', 'Asia/Riyadh',
+		'Europe/Volgograd', 'Asia/Tehran', 'Asia/Baku', 'Europe/Moscow',
+		'Asia/Muscat', 'Asia/Tbilisi', 'Asia/Yerevan', 'Asia/Kabul',
+		'Asia/Karachi', 'Asia/Tashkent', 'Asia/Kolkata', 'Asia/Kathmandu',
+		'Asia/Almaty', 'Asia/Dhaka', 'Asia/Yekaterinburg', 'Asia/Yangon',
+		'Asia/Bangkok', 'Asia/Jakarta', 'Asia/Novosibirsk', 'Asia/Shanghai',
+		'Asia/Hong_Kong', 'Asia/Krasnoyarsk', 'Asia/Kuala_Lumpur',
+		'Australia/Perth', 'Asia/Singapore', 'Asia/Taipei', 'Asia/Ulaanbaatar',
+		'Asia/Urumqi', 'Asia/Irkutsk', 'Asia/Seoul', 'Asia/Tokyo',
+		'Australia/Adelaide', 'Australia/Darwin', 'Australia/Brisbane',
+		'Australia/Sydney', 'Pacific/Guam', 'Australia/Hobart',
+		'Australia/Melbourne', 'Pacific/Port_Moresby', 'Australia/Sydney',
+		'Asia/Yakutsk', 'Asia/Vladivostok', 'Pacific/Noumea',
+		'Pacific/Auckland', 'Pacific/Fiji', 'Pacific/Kwajalein',
+		'Asia/Kamchatka', 'Asia/Magadan', 'Pacific/Tongatapu'
+	);
+	$offered = array_values(get_timezones($all));
+
+	sort($values);
+	sort($offered);
+	pg_assert_same($values, $offered, 'the zone values are unchanged, and no label is lost to a duplicate');
 }
 
 // A stored name is read as this PHP knows it: an old name as its current one,

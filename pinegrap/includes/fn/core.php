@@ -3612,14 +3612,25 @@ function output_gift_card_code($code)
  * 7.3.18 and 7.4 before 7.4.6 embed older databases). A zone this PHP knows
  * by neither name is left out, so no list offers a zone that cannot be used.
  *
+ * Each label's '(UTC±hh:mm)' prefix is the zone's standard offset in this
+ * PHP's database (pg_timezone_offset_label()), the fixed one only where the
+ * zone cannot be built, and the list is ordered by that offset. The zone
+ * values never change: stored names are checked against them.
+ *
  * @param callable|null $known whether this PHP knows a name; pg_timezone_known()
  * @return array
  */
 function get_timezones($known = null)
 {
+    static $cache = null;
+
+    if (($known === null) && ($cache !== null)) {
+        return $cache;
+    }
+
     $zones = array(
         '(UTC-11:00) Midway Island' => 'Pacific/Midway',
-        '(UTC-11:00) Samoa' => 'Pacific/Pago_Pago',
+        '(UTC-11:00) American Samoa' => 'Pacific/Pago_Pago',
         '(UTC-10:00) Hawaii' => 'Pacific/Honolulu',
         '(UTC-09:00) Alaska' => 'America/Anchorage',
         '(UTC-08:00) Pacific Time (US & Canada)' => 'America/Los_Angeles',
@@ -3646,7 +3657,7 @@ function get_timezones($known = null)
         '(UTC-03:00) Brasilia' => 'America/Sao_Paulo',
         '(UTC-03:00) Buenos Aires' => 'America/Argentina/Buenos_Aires',
         '(UTC-03:00) Greenland' => 'America/Nuuk',
-        '(UTC-02:00) Mid-Atlantic' => 'America/Noronha',
+        '(UTC-02:00) Fernando de Noronha' => 'America/Noronha',
         '(UTC-01:00) Azores' => 'Atlantic/Azores',
         '(UTC-01:00) Cape Verde Is.' => 'Atlantic/Cape_Verde',
         '(UTC+00:00) Casablanca' => 'Africa/Casablanca',
@@ -3737,7 +3748,7 @@ function get_timezones($known = null)
         '(UTC+11:00) New Caledonia' => 'Pacific/Noumea',
         '(UTC+12:00) Auckland' => 'Pacific/Auckland',
         '(UTC+12:00) Fiji' => 'Pacific/Fiji',
-        '(UTC+12:00) International Date Line West' => 'Pacific/Kwajalein',
+        '(UTC+12:00) Marshall Islands' => 'Pacific/Kwajalein',
         '(UTC+12:00) Kamchatka' => 'Asia/Kamchatka',
         '(UTC+12:00) Magadan' => 'Asia/Magadan',
         '(UTC+13:00) Nuku\'alofa' => 'Pacific/Tongatapu'
@@ -3748,12 +3759,61 @@ function get_timezones($known = null)
     foreach ($zones as $label => $zone) {
         $zone = pg_timezone_canonical($zone, $known);
 
-        if ($zone !== '') {
-            $offered[$label] = $zone;
+        if ($zone === '') {
+            continue;
         }
+
+        $prefix = pg_timezone_offset_label($zone);
+
+        if ($prefix !== '') {
+            $label = preg_replace('/^\(UTC[^)]*\)/', $prefix, $label);
+        }
+
+        $offered[] = array(
+            'label' => $label,
+            'zone' => $zone,
+            'minutes' => pg_timezone_label_minutes($label),
+            'index' => count($offered),
+        );
     }
 
-    return $offered;
+    // The index breaks ties: usort() is not stable before PHP 8.
+    usort($offered, function ($a, $b) {
+        if ($a['minutes'] !== $b['minutes']) {
+            return ($a['minutes'] < $b['minutes']) ? -1 : 1;
+        }
+
+        return $a['index'] - $b['index'];
+    });
+
+    $list = array();
+
+    foreach ($offered as $entry) {
+        $list[$entry['label']] = $entry['zone'];
+    }
+
+    if ($known === null) {
+        $cache = $list;
+    }
+
+    return $list;
+}
+
+/**
+ * The offset of a '(UTC-03:30) …' label in minutes, 0 without a prefix.
+ *
+ * @param string $label
+ * @return int
+ */
+function pg_timezone_label_minutes($label)
+{
+    if (!preg_match('/^\(UTC([+-])(\d{2}):(\d{2})\)/', (string) $label, $match)) {
+        return 0;
+    }
+
+    $minutes = ((int) $match[2]) * 60 + (int) $match[3];
+
+    return ($match[1] === '-') ? -$minutes : $minutes;
 }
 
 
