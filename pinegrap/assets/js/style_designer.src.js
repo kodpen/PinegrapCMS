@@ -17280,7 +17280,7 @@ const StyleDesigner = (function () {
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('Support Row') }, [
                                             _pcRowHead(_sdT('Support')),
                                             _pcCellText(_sdT('Email'),    false),
-                                            _pcCellText(_sdT('Priority'),  false),
+                                            _pcCellText(_sdT('Priority support'),  false),
                                             _pcCellText(_sdT('Dedicated, around the clock'),  false)
                                         ]),
                                         createNode('semantic', { tag: 'tr', cssClass: '', customName: _sdT('API Row') }, [
@@ -68625,7 +68625,16 @@ const StyleDesigner = (function () {
             window.addEventListener('pagehide', function () { if (_pgTabLayoutTimer) _pgTabsLayoutSave(true); });
         }
         var addNew = document.getElementById('sd-tab-new-page');
-        if (addNew && !addNew._pgBound) { addNew._pgBound = true; addNew.addEventListener('click', _pgTabsAddNew); }
+        if (addNew && !addNew._pgBound) {
+            addNew._pgBound = true;
+            // The menu closes first: left open, it covers the new tab's name box.
+            addNew.addEventListener('click', function () {
+                var wrap = addNew.closest('.sd-tabs-add');
+                var btn = wrap ? wrap.querySelector('[data-bs-toggle="menu"]') : null;
+                if (btn) pgUI.menu.hide(btn);
+                _pgTabsAddNew();
+            });
+        }
         // The draft's Publish button: this page goes on the site with the
         // save it makes.
         var pubPage = document.getElementById('sd-publish-page');
@@ -74947,27 +74956,36 @@ const StyleDesigner = (function () {
         return cl.contains('sd-shared-inner') || cl.contains('sd-loop-area') || cl.contains('sd-system-drop-area');
     }
 
-    // Every node the canvas can show, by id: the page's and those of the
-    // shared components, whose own nodes carry their ids on the canvas.
+    // Every node the canvas can show, by id: the page's in `page`, each
+    // shared component's in `shared[sid]`. Shared trees keep their saved ids,
+    // which collide with the page's (and with each other's), so one map
+    // named a page node after a shared one.
     function _sdCanvasNodeIndex(root) {
-        var index = {};
-        function walk(n) {
-            if (!n) return;
-            if (n._id) index[n._id] = n;
-            if (n.children) n.children.forEach(walk);
+        function build(top) {
+            var map = {};
+            (function walk(n) {
+                if (!n) return;
+                if (n._id) map[n._id] = n;
+                if (n.children) n.children.forEach(walk);
+            })(top);
+            return map;
         }
-        walk(root);
+        var index = { page: build(root), shared: {} };
         Object.keys(_sharedCache).forEach(function (sid) {
             var c = _sharedCache[sid];
-            if (c && c.tree) walk(c.tree);
+            if (c && c.tree) index.shared[sid] = build(c.tree);
         });
         return index;
     }
 
     // The node a canvas element belongs to: the nearest wrapper a tree knows.
+    // A wrapper inside a shared component carries its sid (`data-sw-sid`,
+    // buildSharedRefEl()), so its id is read in that component's tree only.
     function _sdCanvasNodeOf(el, index) {
         for (var w = el.closest('[data-sd-id]'); w; w = w.parentElement ? w.parentElement.closest('[data-sd-id]') : null) {
-            var n = index[w.getAttribute('data-sd-id')];
+            var sid = w.getAttribute('data-sw-sid');
+            var map = sid ? index.shared[sid] : index.page;
+            var n = map ? map[w.getAttribute('data-sd-id')] : null;
             if (n) return n.type === 'root' ? null : n;
         }
         return null;
