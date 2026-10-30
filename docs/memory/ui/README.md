@@ -288,6 +288,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - settings-modal-injected-markup.md: Rules for settings pane markup injected by AJAX: jQuery .html(), pg_settings_scripts, scope-taking initializers, delegated listeners, code fields.
 - settings-modal-layout.md: Settings modal layout and CSS pitfalls: three sizes, min-height 0 scroll chain, dialog margin height, dvh, phone fullscreen width, drawer visibility.
 - settings-modal-navigation.md: Settings modal vs rest of panel: no settings breadcrumbs/back button, pgSettingsGo, preloader curtain, one dialog after another, return URL, notice handoff.
+- settings-system-tools.md: The System tools screen (system_tools.php): the screens beside Site Settings as cards, the dialog's one row to it, the palette rows; gates from pg_settings_tool_groups()
 - ship-date-adjustment-shared-form.md: The ship date adjustment create and edit screens share includes/forms/ship_date_adjustment_form.php: what it holds, what stays in the screens
 - shipping-method-shared-form.md: The shipping method create and edit screens share includes/forms/shipping_method_form.php
 - short-link-shared-form.md: The short link create and edit screens share includes/forms/short_link_form.php: what it holds, what stays in the screens

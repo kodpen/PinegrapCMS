@@ -128,14 +128,14 @@ $double_opt_in = isset($row['double_opt_in']) ? (int) $row['double_opt_in'] : 0;
 if ($auto_registration == 0) {
     // if custom form grants membership access and the user is not logged in, then output error
     if ((($membership == 1) && ($membership_days > 0)) && ((isset($_SESSION['sessionusername']) == false ) || (pg_session_signed_in() == false))) {
-        log_activity(lang(array('string'=>'access denied to submit data to membership trial custom form ({var:1}) because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit data to membership trial custom form ({var:1}) because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
         output_error(lang('You do not have access to submit data to this membership trial form because you are not logged in.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 
     // If the user is not logged in and this form grants private access,
     // then log activity and output error.
     if (!USER_LOGGED_IN && $private && $private_folder_id) {
-        log_activity(lang(array('string'=>'access denied to submit data to custom form ({var:1}) that grants private access because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
+        log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1}) that grants private access because user is not logged in','vars'=>$form_name)), $_SESSION['sessionusername']);
         output_error(lang('You do not have access to submit data to this form because you are not logged in.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
     }
 }
@@ -175,7 +175,7 @@ if (isset($_SESSION['sessionusername']) == TRUE) {
 
 // if user does not have access to form, log and output error
 if (check_view_access($folder_id) == false) {
-    log_activity(lang(array('string'=>'access denied to submit data to custom form ({var:1})','vars'=>$form_name)), $_SESSION['sessionusername']);
+    log_activity(pg_log_lang(array('string'=>'access denied to submit data to custom form ({var:1})','vars'=>$form_name)), $_SESSION['sessionusername']);
     output_error(lang('You do not have access to submit data to this form.') . ' <a href="javascript:history.go(-1);">' . lang('Go back') . '</a>.');
 }
 
@@ -1068,7 +1068,7 @@ if ($liveform->check_form_errors() == false) {
                 require_once(dirname(__FILE__) . '/connect_user_to_order.php');
                 connect_user_to_order();
 
-                log_activity(lang('user was auto-logged in by custom form auto-registration'), $_SESSION['sessionusername']);
+                log_activity(pg_log_lang(array('string' => 'user was auto-logged in by custom form auto-registration')), $_SESSION['sessionusername']);
             }
 
             // Update the submitter for the submitted form, so it matches
@@ -1167,7 +1167,7 @@ if ($liveform->check_form_errors() == false) {
                         '" . USER_ID . "',
                         UNIX_TIMESTAMP())");
 
-                log_activity(lang(array('string'=>'key code ({var:1}) was created because a custom form, that grants an offer, was submitted','vars'=>$reference_code)), $_SESSION['sessionusername']);
+                log_activity(pg_log_lang(array('string'=>'key code ({var:1}) was created because a custom form, that grants an offer, was submitted','vars'=>$reference_code)), $_SESSION['sessionusername']);
             }
         }
     }

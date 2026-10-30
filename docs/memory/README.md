@@ -23,11 +23,8 @@ Open the index of the folder the task needs and follow its key rules, then open 
 
 ## Other documents (docs/)
 
-- _erp_yol_haritasi_adaylari.md: ERP roadmap candidates after phases -1 to 5: legislation, competitor features, building blocks (research, not decisions)
 - _get_file_kopyalar.md: Function copies inside get_file.php: which have an original, how they diverged, which stay as copies (check_copies.php)
-- _innodb_envanter.md: InnoDB inventory (2026.4.8, steps 8.10-8.14): table list and groups behind pg_innodb_table_groups()
 - _isbasi_api_notlari.md: Logo İşbaşı API notes (environments, endpoints, unverified points); read before any İşbaşı driver work
 - _ozellik_adaylari.md: Feature gap research of 2026-10-19 behind the approved plans: competitor tables (global builders, Turkish SaaS, headless CMS), 2025-26 regulation facts, sources (research, not decisions)
 - component-development-guide.md: Mandatory reading before writing a Style Designer palette component: node model, canvas, serialization, checklist
 - erp_malimusavir_sorulacaklar.md: Questions for the accountant about ERP behaviour; answers fill each item
-- workspace-devir-notu-2026-09-26.md: Workspace handover note (2026-09-26): rules, state at hand-over, open items list

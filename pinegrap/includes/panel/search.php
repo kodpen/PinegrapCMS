@@ -148,10 +148,10 @@ function pg_panel_backend_search($request, $action)
                         : array());
             }
         }
-        $actions[] = array('label' => lang('Log'), 'icon' => 'bi-journal-text', 'url' => $base_url . '/view_log.php', 'keys' => array('log', 'kayit', 'journal', 'akt'));
-        $actions[] = array('label' => lang('Backups'), 'icon' => 'bi-database', 'url' => $base_url . '/backups.php', 'keys' => array('yedek', 'backup', 'bak', 'yed'));
-        $actions[] = array('label' => lang('SMTP Settings'), 'icon' => 'bi-envelope-at', 'url' => $base_url . '/smtp_settings.php', 'keys' => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'));
-        $actions[] = array('label' => lang('Connected accounts'), 'icon' => 'bi-link-45deg', 'url' => $base_url . '/connections.php', 'keys' => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'));
+        // The System tools screen and every tool on it, from the groups the
+        // screen draws (pg_settings_tool_groups()), so each tool keeps the
+        // gate it has there.
+        $actions = array_merge($actions, pg_panel_search_tool_actions(pg_settings_tool_groups($user), $base_url, $actions));
     }
 
     // ── Design ────────────────────────────────────────────────────────────
@@ -565,4 +565,89 @@ function pg_panel_search_score($name, $query, $secondary = '')
     if ($sc !== '' && mb_strpos($sc, $q) !== false)
         $score += 15;
     return $score;
+}
+
+// Search words of each tool, by its script, in Turkish and English. A tool
+// missing here is still found by its own label.
+function pg_panel_search_tool_keys()
+{
+    return array(
+        'system_tools.php'          => array('sistem araclari', 'sistem araçları', 'araclar', 'araçlar', 'system tools', 'tools', 'sis'),
+        'view_log.php'              => array('log', 'kayit', 'site log', 'journal', 'akt'),
+        'view_audit_log.php'        => array('denetim', 'denetim izi', 'audit', 'audit trail', 'kim degistirdi', 'den'),
+        'view_sessions.php'         => array('oturum', 'oturumlar', 'session', 'sessions', 'giris yapan', 'otu'),
+        'smtp_settings.php'         => array('smtp', 'mail ayar', 'email ayar', 'smtpayar'),
+        'api_settings.php'          => array('uygulama erisimi', 'uygulama erişimi', 'api anahtar', 'application access', 'api key', 'token', 'uyg'),
+        'connections.php'           => array('bagli hesap', 'connected account', 'google', 'microsoft', 'oauth', 'bagla', 'connect'),
+        'marketplace_settings.php'  => array('pazaryeri', 'pazar yeri', 'marketplace', 'trendyol', 'hepsiburada', 'n11', 'paz'),
+        'view_referral_sources.php' => array('yonlendiren', 'yönlendiren', 'referans kaynak', 'referral', 'referral source', 'yon'),
+        'view_currencies.php'       => array('para', 'doviz', 'döviz', 'currency', 'cur'),
+        'software_update.php'       => array('guncelle', 'güncelle', 'guncelleme', 'güncelleme', 'update', 'updates', 'gun'),
+        'software_repair.php'       => array('onar', 'onarim', 'onarım', 'repair', 'yazilim onar', 'ona'),
+        'si.php'                    => array('sistem bilgi', 'system info', 'php info', 'phpinfo', 'sunucu bilgi', 'server info'),
+        'view_performance_log.php'  => array('performans', 'performance', 'yavas', 'slow', 'per'),
+        'clean_up.php'              => array('temizle', 'temizlik', 'clean', 'clean up', 'eski dosya', 'tem'),
+        'database_engine.php'       => array('veritabani', 'veritabanı', 'database', 'innodb', 'myisam', 'tablo onar', 'motor', 'vt'),
+        'purge_cache.php'           => array('onbellek', 'önbellek', 'cache', 'purge', 'purge cache', 'temizle cache', 'onb'),
+        'mail_queue.php'            => array('posta kuyrugu', 'posta kuyruğu', 'mail kuyruk', 'mail queue', 'queue', 'giden posta', 'kuy'),
+        'install'                   => array('yeniden kur', 'kurulum', 'reinstall', 'upgrade', 'install', 'kur'),
+        'backups.php'               => array('yedek', 'yedekler', 'backup', 'backups', 'bak', 'yed'),
+        'cloudflare.php'            => array('cloudflare', 'cdn', 'clo'),
+    );
+}
+
+// Palette rows for the System tools screen and each of its tools, from
+// pg_settings_tool_groups(). A tool that asks first (a confirm) opens the
+// screen, where the question is asked: the palette follows its row without
+// one. A screen the palette already lists ($actions) is not repeated. No
+// tool, no row, not even the screen's.
+function pg_panel_search_tool_actions($groups, $base_url, $actions)
+{
+    $keys = pg_panel_search_tool_keys();
+    $screen_url = $base_url . '/system_tools.php';
+
+    $listed = array();
+
+    foreach ((array) $actions as $action) {
+        $listed[$action['url']] = true;
+    }
+
+    $rows = array();
+
+    foreach ((array) $groups as $group) {
+
+        foreach ($group['items'] as $item) {
+
+            $script = strtok($item['url'], '?');
+            $url = isset($item['confirm']) ? $screen_url : $base_url . '/' . $item['url'];
+
+            if (isset($listed[$url]) && !isset($item['confirm'])) {
+                continue;
+            }
+
+            $listed[$url] = true;
+
+            $rows[] = array(
+                'label' => $item['label'],
+                'icon'  => $item['icon'],
+                'url'   => $url,
+                'keys'  => array_merge(
+                    array(mb_strtolower($item['label'], 'UTF-8')),
+                    isset($keys[$script]) ? $keys[$script] : array()),
+            );
+        }
+    }
+
+    if (count($rows) === 0) {
+        return array();
+    }
+
+    array_unshift($rows, array(
+        'label' => lang('System tools'),
+        'icon'  => 'bi-tools',
+        'url'   => $screen_url,
+        'keys'  => $keys['system_tools.php'],
+    ));
+
+    return $rows;
 }
