@@ -375,7 +375,7 @@
         var named = true;
         var out = title.replace(VALUE_TOKEN, function (token, id) {
             var from = id ? nodeById(id) : state.graph.nodes.filter(function (other) { return !kindOf(other).into && !kindOf(other).pure; })[0];
-            var value = from ? boxValues(from).filter(function (item) { return item.token === token; })[0] : null;
+            var value = from ? boxValues(from).filter(function (item) { return item.token === tokenBare(token); })[0] : null;
             var own = from ? rawTitle(from) : '';
 
             if (!value) {
@@ -3273,7 +3273,7 @@
             }
 
             openFields(node).forEach(function (item) {
-                if ((item.text.indexOf(token) === -1) && fieldTakes(node, item.key, source)) {
+                if (!holdsToken(item.text, token) && fieldTakes(node, item.key, source)) {
                     out.push({ node: node, key: item.key, label: item.label, text: item.text, max: item.max });
                 }
             });
@@ -3348,23 +3348,26 @@
                 VALUE_TOKEN.lastIndex = 0;
 
                 while ((match = VALUE_TOKEN.exec(item.text)) !== null) {
-                    if (seen[match[0]]) {
+                    var token = tokenBare(match[0]);
+
+                    if (seen[token]) {
                         continue;
                     }
 
-                    seen[match[0]] = true;
+                    seen[token] = true;
 
-                    var source = sources[match[0]];
+                    var source = sources[token];
                     var type = (source && THREAD_TONES[source.value.type]) ? source.value.type : 'text';
 
                     tones[type] = (tones[type] || 0) + 1;
                     threads.push({
-                        token: match[0],
+                        token: token,
+                        fallback: tokenFallback(match[0]),
                         from: source ? source.node.id : '',
                         to: node.id,
                         field: item.key,
                         fieldLabel: item.label,
-                        label: source ? nameOf(source.node) + ' › ' + source.value.label : match[0].slice(2, -2),
+                        label: source ? nameOf(source.node) + ' › ' + source.value.label : token.slice(2, -2),
                         value: source ? source.value.label : '',
                         type: type,
                         tone: (tones[type] - 1) % THREAD_TONES[type],
@@ -3800,6 +3803,8 @@
                     var value = runValue(thread);
 
                     text = t('fl_run_pair', text, value.note || value.text);
+                } else if (thread.fallback) {
+                    text += ' (' + t('fl_values_writes', thread.fallback) + ')';
                 } else if (thread.skipped) {
                     text += ' (' + t('fl_values_skipped') + ')';
                 }
@@ -4291,8 +4296,45 @@
     // ── Values a box writes in ({{node.<id>.<field>}}, {{trigger.<field>}}) ──
 
     // What the server reads as a value (WS_STEP_VALUE_PATTERN, the
-    // reference check): a box's field, or one of what started the run.
-    var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))\}\}/g;
+    // reference check): a box's field, or one of what started the run; it
+    // may end in "|" and what to write when the value is empty (group 4,
+    // its "\", "{", "}" and "|" escaped with "\").
+    var VALUE_TOKEN = /\{\{(?:node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})|trigger\.([a-z_][a-z0-9_]{0,31}))(?:\|((?:[^\\{}\r\n]|\\[\\{}|]){0,400}))?\}\}/g;
+
+    // The longest fallback, in characters (WS_STEP_FALLBACK_LENGTH).
+    var FALLBACK_LENGTH = 100;
+
+    // A token without its fallback: the value it reads. Ids and fields
+    // hold no "|", so the first one starts the fallback.
+    function tokenBare(token) {
+        var at = token.indexOf('|');
+
+        return (at === -1) ? token : token.slice(0, at) + '}}';
+    }
+
+    // What a token writes when its value is empty, unescaped; '' for none.
+    function tokenFallback(token) {
+        var at = token.indexOf('|');
+
+        return (at === -1) ? '' : token.slice(at + 1, -2).replace(/\\([\\{}|])/g, '$1');
+    }
+
+    // A token with a fallback, as ws_step_value_token() writes it: one
+    // line, cut to FALLBACK_LENGTH characters, escaped; none when empty.
+    function tokenWith(token, fallback) {
+        var text = Array.from(String(fallback || '').replace(/[\r\n]+/g, ' ').trim()).slice(0, FALLBACK_LENGTH).join('');
+        var bare = tokenBare(token);
+
+        return text ? bare.slice(0, -2) + '|' + text.replace(/[\\{}|]/g, '\\$&') + '}}' : bare;
+    }
+
+    // Does a text read the value of a (bare) token, with or without a
+    // fallback? Its field ends at "}}" or "|".
+    function holdsToken(text, token) {
+        var head = token.slice(0, -2);
+
+        return (String(text).indexOf(head + '}}') !== -1) || (String(text).indexOf(head + '|') !== -1);
+    }
 
     // The arrows of the graph once each, as ws_flow_graph_check() reads
     // them: id => ids an arrow leads into, and id => id => true for an arrow
@@ -4708,17 +4750,42 @@
         return url + (/[\/?#]/.test(rest) ? '' : '/') + token;
     }
 
-    // A value as the builder reads it; one no box before gives keeps its
-    // token, marked (the reference check names it a problem).
+    // A value as the builder reads it, with what it writes when empty; one
+    // no box before gives keeps its token, marked (the reference check
+    // names it a problem). A skipped box's value is dashed until it has a
+    // fallback.
     function valueChip(token, names) {
-        var name = names[token];
-        var chip = el('span', 'wsf-chip' + (name ? (name.skipped ? ' wsf-chip-skipped' : '') : ' wsf-chip-bad'), name ? name.label : token.slice(2, -2));
+        var name = names[tokenBare(token)];
+        var fallback = tokenFallback(token);
+        var label = name ? name.label : tokenBare(token).slice(2, -2);
+        var chip = el('span', 'wsf-chip' + (name ? ((name.skipped && !fallback) ? ' wsf-chip-skipped' : '') : ' wsf-chip-bad'), fallback ? t('fl_values_else', label, fallback) : label);
+        var title = name ? (fallback ? t('fl_values_writes', fallback) : (name.skipped ? t('fl_values_skipped') : tokenBare(token))) : t('fl_values_missing');
 
         chip.contentEditable = 'false';
         chip.setAttribute('data-token', token);
-        chip.title = name ? (name.skipped ? t('fl_values_skipped') : token) : t('fl_values_missing');
+        chip.title = (name && state.edit) ? title + ' ' + t('fl_values_empty_tap') : title;
 
         return chip;
+    }
+
+    // Asks what a chip's value writes when it is empty, and keeps it in the
+    // chip's token (per thread: each place has its own).
+    function askFallback(chip, names, done) {
+        var body = el('div');
+        var input = el('input', 'form-control');
+        var token = chip.getAttribute('data-token');
+
+        input.type = 'text';
+        input.maxLength = FALLBACK_LENGTH;
+        input.value = tokenFallback(token);
+        body.appendChild(field(t('fl_values_empty_text'), input, t('fl_values_empty_help')));
+
+        K.ask(t('fl_values_empty_ask'), t('fl_values_empty_set'), false, body).then(function (yes) {
+            if (yes && chip.parentNode) {
+                chip.parentNode.replaceChild(valueChip(tokenWith(token, input.value), names), chip);
+                done();
+            }
+        });
     }
 
     function drawValues(input, text, names) {
@@ -4911,6 +4978,13 @@
             }
         });
         input.addEventListener('drop', function (event) { event.preventDefault(); });
+        input.addEventListener('click', function (event) {
+            var chip = (event.target.nodeType === 1) ? event.target.closest('.wsf-chip') : null;
+
+            if (state.edit && chip && input.contains(chip) && names[tokenBare(chip.getAttribute('data-token'))]) {
+                askFallback(chip, names, changed);
+            }
+        });
         input.addEventListener('input', changed);
         input.addEventListener('keyup', keep);
         input.addEventListener('mouseup', keep);
@@ -9673,7 +9747,15 @@
     // value named, not worked out again. A box not
     // reached or skipped gives nothing. What started the run is not in the
     // run's answer: unknown, named rather than given.
-    function runValue(thread) {
+    function runValue(thread, fallback) {
+        var value = runValueOf(thread);
+        var instead = (fallback === undefined) ? thread.fallback : fallback;
+
+        // An empty value is filled by its fallback, as ws_step_value_of().
+        return (thread.from && instead && !value.unknown && (value.text === '')) ? { text: instead } : value;
+    }
+
+    function runValueOf(thread) {
         var match = /^\{\{node\.([a-z0-9_]+)\.([a-z0-9_]+)\}\}$/.exec(thread.token);
 
         if (!thread.from) {
@@ -9723,8 +9805,8 @@
     // named in brackets.
     function runFilled(text, threads) {
         return text.replace(VALUE_TOKEN, function (token) {
-            var thread = threads.filter(function (item) { return item.token === token; })[0];
-            var value = thread ? runValue(thread) : { text: '' };
+            var thread = threads.filter(function (item) { return item.token === tokenBare(token); })[0];
+            var value = thread ? runValue(thread, tokenFallback(token)) : { text: '' };
 
             return value.unknown ? '[' + thread.label + ']' : value.text;
         });

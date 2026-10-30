@@ -4,7 +4,7 @@ description: Plan (owner, 2026-10-29): bring the Flows editor and list to the ow
 ---
 
 ## What is asked?
-- The screens do not look like the owner's drawing of 2026-10-27 (owner, 2026-10-29). Threads (plans/workspace-flows-data-threads.md) and run flags (C1) match; the rest below never became a step. The numbers: workspace-flows-visual-spec.md (dark theme; the light theme takes darker tones of the same hues that keep 4.5:1 on its ground).
+- The screens do not look like the owner's drawing of 2026-10-27 (owner, 2026-10-29). Threads (workspace/workspace-flows-thread-drawing.md) and run flags (C1) match; the rest below never became a step. The numbers: workspace-flows-visual-spec.md (dark theme; the light theme takes darker tones of the same hues that keep 4.5:1 on its ground).
 
 ## Which steps? (one PR each, in this order)
 - V1 boxes and arrows: a group colour per kind, 1.5 px border, selection ring, grey arrows. Done (PR #3118, `workspace/workspace-flows-box-look.md`).

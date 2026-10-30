@@ -68,8 +68,16 @@ define('WS_STEP_MCP_ARGUMENTS_MAX', 20000);
 define('WS_STEP_ROW_CELLS_MAX', 20000);
 
 // A value a box's text reads: {{node.<id>.<field>}}, or {{trigger.<field>}}
-// (group 1 the box id, empty for the trigger; group 2 the field).
-define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})\}\}/');
+// (group 1 the box id, empty for the trigger; group 2 the field). Either
+// may end in "|" and what to write when the value is empty (group 3, the
+// fallback): one line in which "\", "{", "}" and "|" are written escaped
+// with "\" (ws_step_value_token()), so "}}" never ends it early. Group 3
+// counts bytes, so its limit leaves room for WS_STEP_FALLBACK_LENGTH
+// characters of any script.
+define('WS_STEP_VALUE_PATTERN', '/\{\{(?:node\.([a-z][a-z0-9_]{0,31})|trigger)\.([a-z_][a-z0-9_]{0,31})(?:\|((?:[^\\\\{}\r\n]|\\\\[\\\\{}|]){0,400}))?\}\}/');
+
+// The longest fallback of a value, in characters.
+define('WS_STEP_FALLBACK_LENGTH', 100);
 
 /**
  * The kinds of step box: their name, the scheduled action's step they are
@@ -1012,8 +1020,71 @@ function ws_step_fill_nodes($text, $values, $target = 'text')
     }
 
     return (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, $target) {
-        return ws_step_fill_value((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), $target);
+        return ws_step_fill_value(ws_step_value_of($match, $values), $target);
     }, $text);
+}
+
+/**
+ * The value a match of WS_STEP_VALUE_PATTERN reads among a run's values as
+ * text; its fallback when the run gives none or an empty one (a box that
+ * was skipped or did not run yet). Pure.
+ *
+ * @param string[] $match
+ * @param array    $values ws_step_node_values(), the trigger's under WS_STEP_TRIGGER
+ * @return string
+ */
+function ws_step_value_of($match, $values)
+{
+    $value = $values[ws_step_value_box($match)][$match[2]] ?? '';
+    $value = is_scalar($value) ? (string) $value : '';
+
+    return ($value === '') ? ws_step_value_fallback($match) : $value;
+}
+
+/**
+ * The fallback a match of WS_STEP_VALUE_PATTERN writes when its value is
+ * empty, unescaped; '' for none. Pure.
+ *
+ * @param string[] $match
+ * @return string
+ */
+function ws_step_value_fallback($match)
+{
+    return (string) preg_replace('/\\\\([\\\\{}|])/', '$1', (string) ($match[3] ?? ''));
+}
+
+/**
+ * A reference as a text writes it: {{node.<id>.<field>}} ($box '' for
+ * {{trigger.<field>}}), with "|" and the fallback escaped when one is given;
+ * the fallback is kept on one line and cut to WS_STEP_FALLBACK_LENGTH
+ * characters. Pure.
+ *
+ * @param string $box
+ * @param string $field
+ * @param string $fallback
+ * @return string
+ */
+function ws_step_value_token($box, $field, $fallback = '')
+{
+    $fallback = mb_substr(trim((string) preg_replace('/[\r\n]+/', ' ', (string) $fallback)), 0, WS_STEP_FALLBACK_LENGTH);
+    $tail = ($fallback === '') ? '' : '|' . preg_replace('/[\\\\{}|]/', '\\\\$0', $fallback);
+
+    return '{{' . (((string) $box === '') ? 'trigger' : 'node.' . $box) . '.' . $field . $tail . '}}';
+}
+
+/**
+ * Is a text one reference alone, with no fallback? A condition's value,
+ * a loop's list and an End box's gathered value read a value as it is.
+ * Pure.
+ *
+ * @param string $text
+ * @return bool
+ */
+function ws_step_value_single($text)
+{
+    $text = trim((string) $text);
+
+    return (preg_match(WS_STEP_VALUE_PATTERN, $text, $match) === 1) && ($match[0] === $text) && (ws_step_value_fallback($match) === '');
 }
 
 /**
@@ -1282,8 +1353,8 @@ function ws_step_url_fill($url, $values)
 
     $error = '';
     $filled = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$error) {
-        $value = $values[ws_step_value_box($match)][$match[2]] ?? '';
-        $value = is_scalar($value) ? (string) $value : '';
+        // A fallback stands in for an empty value and obeys the same rule.
+        $value = ws_step_value_of($match, $values);
 
         if (!preg_match('/^[0-9]+$/', $value)) {
             if ($error === '') {
@@ -1340,7 +1411,7 @@ function ws_step_fill_missing($text, $values)
 
     if (preg_match_all(WS_STEP_VALUE_PATTERN, (string) $text, $matches, PREG_SET_ORDER)) {
         foreach ($matches as $match) {
-            if (!isset($values[ws_step_value_box($match)][$match[2]]) && !in_array($match[0], $missing, true)) {
+            if (!isset($values[ws_step_value_box($match)][$match[2]]) && (ws_step_value_fallback($match) === '') && !in_array($match[0], $missing, true)) {
                 $missing[] = $match[0];
             }
         }

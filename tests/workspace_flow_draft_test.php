@@ -756,3 +756,26 @@ function test_ws_flow_ai_sketch_wiring()
 	pg_assert_contains("K.api('ws_flow_ai_sketch'", $js, 'card asks the route');
 	pg_assert_contains('FL.ai_sketch', $js, 'card behind the flag');
 }
+
+// A value with a fallback draws its thread and reads its value like one
+// without.
+function test_ws_flow_card_threads_with_a_fallback()
+{
+	$graph = ws_flow_graph_normalize(array(
+		'nodes' => array(
+			array('id' => 'start', 'kind' => 'manual', 'x' => 96, 'y' => 96),
+			array('id' => 'call', 'kind' => 'task', 'x' => 384, 'y' => 96, 'config' => array('title' => 'Call')),
+			array('id' => 'near', 'kind' => 'notify', 'x' => 672, 'y' => 96, 'config' => array('text' => 'Task {{node.call.task_id|none \\}\\} yet}}')),
+		),
+		'edges' => array(
+			array('from' => 'start', 'to' => 'call', 'on' => 'next'),
+			array('from' => 'call', 'to' => 'near', 'on' => 'done'),
+		),
+	));
+	$card = ws_flow_card_graph($graph);
+
+	pg_assert_same('Task {{node.call.task_id|none \\}\\} yet}}', $graph['nodes'][2]['config']['text'], 'the token is kept as written');
+	pg_assert_same(array(array('call', 'near', 'text', 'task_id', 'number')), array_map(function ($thread) {
+		return array($thread['from'], $thread['to'], $thread['key'], $thread['value'], $thread['type']);
+	}, $card['threads']));
+}

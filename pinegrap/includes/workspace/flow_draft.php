@@ -675,9 +675,13 @@ function ws_flow_card_threads($graph, $nodes)
         $value = '';
 
         foreach ($texts as $text) {
-            if (is_string($text) && preg_match('/\{\{node\.' . preg_quote($thread['from'], '/') . '\.([a-z_][a-z0-9_]*)\}\}/', $text, $match)) {
-                $value = $match[1];
-                break;
+            if (is_string($text) && preg_match_all(WS_STEP_VALUE_PATTERN, $text, $found, PREG_SET_ORDER)) {
+                foreach ($found as $match) {
+                    if ($match[1] === $thread['from']) {
+                        $value = $match[2];
+                        break 2;
+                    }
+                }
             }
         }
 
