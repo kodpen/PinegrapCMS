@@ -117,12 +117,66 @@ function test_seo_score_toolbar_maps_bands_to_panel_tokens()
 	pg_assert_true(strpos($toolbar, '--pg-sp-orange: color-mix(') !== false, 'the toolbar maps --pg-sp-orange');
 }
 
-// The button box follows the panel theme like the SEO panel does.
-function test_seo_score_button_box_follows_the_panel_theme()
+// The button box and the site SEO panel follow the site page, not the panel.
+function test_seo_score_button_box_follows_the_site_page()
 {
 	$page = seo_score_contrast_source('get_page.php');
+	$seo = seo_score_contrast_source('seo.php');
 
 	pg_assert_true(strpos($page, 'background: var(--pg-sp-bg, #fff);') !== false, 'the box ground reads the palette');
 	pg_assert_true(strpos($page, 'button_container.classList.toggle("pg_seo_tb_dark"') !== false, 'the box takes the dark set');
 	pg_assert_true(strpos($page, 'background: #fff url(') === false, 'no button keeps a fixed white ground');
+
+	foreach (array('get_page.php' => $page, 'seo.php' => $seo) as $file => $source) {
+		pg_assert_true(strpos($source, 'getAttribute("data-bs-theme")') !== false, $file . ' reads the page data-bs-theme');
+		pg_assert_true(strpos($source, '.colorScheme') !== false, $file . ' reads the page color-scheme');
+		pg_assert_true(strpos($source, 'new MutationObserver(') !== false, $file . ' follows a runtime theme change');
+		pg_assert_true(strpos($source, 'pinegrap backend color scheme') === false, $file . ' no longer reads the panel theme');
+	}
+}
+
+// The fill of the first SVG in the base64 data URL that follows $selector.
+function seo_score_contrast_icon_fill($source, $selector)
+{
+	$start = strpos($source, $selector);
+
+	if ($start === false || preg_match('/base64,([A-Za-z0-9+\/=]+)/', substr($source, $start, 4000), $m) !== 1) {
+		return '';
+	}
+
+	return (preg_match('/fill="(#[0-9a-f]{3}(?:[0-9a-f]{3})?)"/i', (string) base64_decode($m[1]), $f) === 1) ? $f[1] : '';
+}
+
+// Every icon of the box reads 3:1 on the light and the dark ground.
+function test_seo_score_button_box_icons_read_in_both_sets()
+{
+	$page = seo_score_contrast_source('get_page.php');
+	$seo = seo_score_contrast_source('seo.php');
+	$light = seo_score_contrast_var($seo, "#software_pinegrap_button_container,\n            #software_seo_panel{", 'bg');
+	$dark = seo_score_contrast_var($seo, "#software_pinegrap_button_container.pg_seo_tb_dark,\n            #software_seo_panel.pg_seo_tb_dark{", 'bg');
+
+	pg_assert_true($light !== '' && $dark !== '', 'both grounds are found');
+
+	$light_icons = array(
+		'full-screen arrow' => seo_score_contrast_icon_fill($page, ".up_button,\n        \t.down_button{"),
+		'pencil' => seo_score_contrast_icon_fill($page, ".toggle_button_off,\n\t\t\t.toggle_button_on {"),
+		'close mark' => seo_score_contrast_icon_fill($page, ".toggle_button_on {\n\t\t\t\tbackground:"),
+	);
+	$dark_icons = array(
+		'full-screen arrow' => $light_icons['full-screen arrow'],
+		'pencil' => seo_score_contrast_icon_fill($page, '.pg_seo_tb_dark .toggle_button_off{'),
+		'close mark' => seo_score_contrast_icon_fill($page, '.pg_seo_tb_dark .toggle_button_on{'),
+	);
+	$arrow = (preg_match('/#softwareminimizebuttons\{[^}]*color: (#[0-9a-f]{6});/i', $page, $m) === 1) ? $m[1] : '';
+
+	$light_icons['collapse arrow'] = $arrow;
+	$dark_icons['collapse arrow'] = $arrow;
+
+	foreach (array('light' => array($light, $light_icons), 'dark' => array($dark, $dark_icons)) as $set => $pair) {
+		foreach ($pair[1] as $name => $fill) {
+			pg_assert_true($fill !== '', 'the ' . $name . ' colour is found (' . $set . ')');
+			pg_assert_true($fill !== '' && seo_score_contrast_ratio($fill, $pair[0]) >= 3,
+				'the ' . $name . ' reads 3:1 on the ' . $set . ' ground');
+		}
+	}
 }

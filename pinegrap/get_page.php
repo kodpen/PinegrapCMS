@@ -2770,22 +2770,20 @@ else
 		$output_css = '
         <style>
 		
-			/* A strip on the right edge, centred: the top corner is where themes
-			   put the account menu, cart and language switch, the bottom one the
-			   back-to-top and chat buttons. Centred with both insets and auto
-			   margins, not a transform: a transform would become the containing
-			   block of the fixed save/cancel pair inside it. */
+			/* A row in the top-right corner, where editors look for it; the SEO
+			   panel and the save/cancel pair open under it. Where a theme keeps
+			   its account menu, cart or language switch in that corner, the
+			   collapse arrow folds the box away so they stay reachable. No
+			   transform here: it would become the containing block of the fixed
+			   arrow and save/cancel pair inside it. */
 			#software_pinegrap_button_container{
     			position: fixed;
 				display:flex;
-				flex-direction:column;
-				align-items:center;
+				flex-direction:row;
 				overflow:hidden;
     			right: 0px;
     			top: 0px;
-				bottom: 0px;
-				margin: auto 0;
-				height: fit-content;
+				height:50px;
     			z-index: 9999999;
     			width: auto;
 			}
@@ -2794,13 +2792,16 @@ else
 			#software_pinegrap_button_container:not(.collapsed){
 				background: var(--pg-sp-bg, #fff);
     			border: 1px solid var(--pg-sp-border, #00000033);
+				border-top: 0px;
     			border-right: 0px;
-				border-radius: 3px 0 0 3px;
-				padding: 4px 0 2px;
+				border-radius: 0 0 0 3px;
 			}
 			.up_button,
         	.down_button{
-				margin: 2px 7px;
+				margin-bottom:0;
+				margin-top: 6px;
+				margin-left:auto;
+				margin-right:7px;
         	    width: 32px;
 				height: 40px;
 				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktYXJyb3ctYmFyLWRvd24iIHZpZXdCb3g9IjAgMCAxNiAxNiI+DQogIDxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzE5NzZkMiIgZD0iTTEgMy41YS41LjUgMCAwIDEgLjUtLjVoMTNhLjUuNSAwIDAgMSAwIDFoLTEzYS41LjUgMCAwIDEtLjUtLjV6TTggNmEuNS41IDAgMCAxIC41LjV2NS43OTNsMi4xNDYtMi4xNDdhLjUuNSAwIDAgMSAuNzA4LjcwOGwtMyAzYS41LjUgMCAwIDEtLjcwOCAwbC0zLTNhLjUuNSAwIDAgMSAuNzA4LS43MDhMNy41IDEyLjI5M1Y2LjVBLjUuNSAwIDAgMSA4IDZ6Ii8+DQo8L3N2Zz4NCg==") no-repeat center;
@@ -2812,7 +2813,10 @@ else
 
 			.toggle_button_off,
 			.toggle_button_on {
-				margin: 2px 7px;
+				margin-bottom:0;
+				margin-top: 6px;
+				margin-left:7px;
+				margin-right:0px;
         	    width: 32px;
 				height: 40px;
 				background: var(--pg-sp-bg, #fff) url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNiIgaGVpZ2h0PSIxNiIgZmlsbD0iY3VycmVudENvbG9yIiBjbGFzcz0iYmkgYmktcGVuY2lsLXNxdWFyZSIgdmlld0JveD0iMCAwIDE2IDE2Ij4NCiAgPHBhdGggZmlsbD0iI2MyMTg1YiIgZD0iTTE1LjUwMiAxLjk0YS41LjUgMCAwIDEgMCAuNzA2TDE0LjQ1OSAzLjY5bC0yLTJMMTMuNTAyLjY0NmEuNS41IDAgMCAxIC43MDcgMGwxLjI5MyAxLjI5M3ptLTEuNzUgMi40NTYtMi0yTDQuOTM5IDkuMjFhLjUuNSAwIDAgMC0uMTIxLjE5NmwtLjgwNSAyLjQxNGEuMjUuMjUgMCAwIDAgLjMxNi4zMTZsMi40MTQtLjgwNWEuNS41IDAgMCAwIC4xOTYtLjEybDYuODEzLTYuODE0eiIvPg0KICA8cGF0aCBmaWxsPSIjYzIxODViIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xIDEzLjVBMS41IDEuNSAwIDAgMCAyLjUgMTVoMTFhMS41IDEuNSAwIDAgMCAxLjUtMS41di02YS41LjUgMCAwIDAtMSAwdjZhLjUuNSAwIDAgMS0uNS41aC0xMWEuNS41IDAgMCAxLS41LS41di0xMWEuNS41IDAgMCAxIC41LS41SDlhLjUuNSAwIDAgMCAwLTFIMi41QTEuNSAxLjUgMCAwIDAgMSAyLjV2MTF6Ii8+DQo8L3N2Zz4=") no-repeat center;
@@ -2835,10 +2839,12 @@ else
 			}
 
 			.grid_toggle_button_vh{
-				width: 28px;
-				height: 0;
-				margin: 3px auto;
-				border-top: 1px solid var(--pg-sp-border, #00000033);
+				height: 28px;
+				padding-left: .25rem;
+				padding-right: .25rem;
+				margin-top: auto;
+				margin-bottom: auto;
+				border-right: 1px solid var(--pg-sp-border, #00000033);
 			}
 
 
@@ -2851,7 +2857,7 @@ else
 				display:none;
 			}
 
-			/* Beside the strip, at its middle. */
+			/* Under the box, beside the arrow. */
 			#software_inline_editing_buttons{			
 				display: inline-flex;
 				position: fixed;
@@ -2859,15 +2865,15 @@ else
 				border: 1px solid #00000033;
     			border-radius: 3px;
     			overflow: hidden;
-    			right: 52px;
-				top: 50%;
-				transform: translateY(-50%);
+    			right: 35px;
+				top: 46px;
 				transition: right .3s ease;
 			}
 
 			#software_pinegrap_button_container.collapsed #software_inline_editing_buttons{
-				right: 24px;
+				right: 1px;
 				transition: right .3s ease;
+				top: 68px;
 			}
 
 			#software_inline_editing_save_button,
@@ -2891,23 +2897,30 @@ else
 			}
 
 
-			/* The last button of the strip, and all that is left of it once
-			   collapsed: pointing left (open) or right (into the edge). */
+			/* Fixed at the corner under the box, and all that is left of it once
+			   collapsed: pointing up (open) or down (collapsed). */
 			#softwareminimizebuttons{
 				padding: 0;
-				margin: 3px auto 2px;
+				right: 0px;
+				top: 49px;
+				position: fixed;
 				height: 18px;
 				width: 18px;
+				z-index: 99999999;
 				background: var(--pg-sp-bg, #fff);
 				color: #898989;
 				border-radius: 3px;
 				line-height: 16px;
-				transform: rotate(180deg);
-				transition: transform .3s ease;
+				transform: rotate(90deg);
+				transition: all .3s ease;
 				border: 1px solid var(--pg-sp-border, #00000033);
 			}
 			#softwareminimizebuttons.active{
-				transform: none;
+				transform: rotate(-90deg);
+				border-right: 0;
+    			border-bottom: 0;
+				border-radius: 0;
+				border-top-left-radius: 3px;
 			}
 			.software_pinegrap_inline_edit_button {
 				cursor: pointer !important;
@@ -3091,7 +3104,7 @@ else
 		// prepare to add toolbar and buttons below toolbar
 		$output_toolbar = '
 			<iframe id="software_toolbar" scrolling="no" src="' . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/toolbar.php?page_id=' . $page_id . '&amp;style_id=' . STYLE_ID . '&amp;send_to=' . h(urlencode(REQUEST_URL)) . '" style="position: fixed; top: 0; right: 0; left: 0; z-index: 999999999; padding: 0; margin: 0; width: 100%; display: none; color-scheme: light;" frameborder="0"></iframe>
-            <div id="software_pinegrap_button_container" role="toolbar" aria-orientation="vertical" aria-label="' . h(lang('Page editing controls')) . '">
+            <div id="software_pinegrap_button_container" role="toolbar" aria-label="' . h(lang('Page editing controls')) . '">
 				' . $output_seo_toolbar['button'] . '
 				' . $output_grid_button . '
 				<button type="button" class="' . $fullscreen_toggle . '" id="software_fullscreen_toggle" title="' . $fullscreen_toggle_title . '" ></button>
@@ -3115,7 +3128,7 @@ else
 						var state = sessionStorage.getItem("toggle_control_buttons");
 
 						// No choice yet: open, except on a narrow screen,
-						// where the strip would sit on the page itself. The
+						// where the box would sit on the page itself. The
 						// default is not stored, so a wider window opens it.
 						if (state !== "show" && state !== "hide") {
 							state = window.matchMedia("(max-width: 767.98px)").matches ? "hide" : "show";
@@ -3133,25 +3146,56 @@ else
 					}
 					toggle_control_buttons();	
 
-					// Dressed like the panel screens and the SEO panel
-					// (seo.php): the theme the admin screens store, or the one
-					// the machine asks for when there is no choice. A fixed
-					// white box sat on dark sites matching neither.
-					function dress_control_buttons() {
-						var stored = null;
+					// Dressed like the site page it sits on, so a dark box does
+					// not stand out on a light page or the other way round:
+					// data-bs-theme on <html>, then on <body>; otherwise the
+					// root color-scheme, where "light dark" follows the machine.
+					var page_dark_query = window.matchMedia("(prefers-color-scheme: dark)");
 
-						try {
-							stored = localStorage.getItem("pinegrap backend color scheme");
-						} catch (error) {
-							stored = null;
+					function page_is_dark() {
+						var nodes = [document.documentElement, document.body];
+
+						for (var i = 0; i < nodes.length; i++) {
+							var theme = nodes[i] ? nodes[i].getAttribute("data-bs-theme") : null;
+
+							if (theme === "dark" || theme === "light") {
+								return theme === "dark";
+							}
 						}
 
-						button_container.classList.toggle("pg_seo_tb_dark", (stored === "dark")
-							|| ((stored !== "light") && window.matchMedia("(prefers-color-scheme: dark)").matches));
+						var scheme = (getComputedStyle(document.documentElement).colorScheme || "").split(/\s+/);
+
+						if (scheme.indexOf("dark") === -1) {
+							return false;
+						}
+
+						return (scheme.indexOf("light") === -1) || page_dark_query.matches;
+					}
+
+					function dress_control_buttons() {
+						button_container.classList.toggle("pg_seo_tb_dark", page_is_dark());
 					}
 
 					dress_control_buttons();
-					window.addEventListener("storage", dress_control_buttons);
+
+					// Themes switch their scheme at runtime (pg_theme_switcher.js
+					// sets data-bs-theme on <html>), and "light dark" follows the
+					// machine, so both are watched.
+					if (window.MutationObserver) {
+						var page_theme_observer = new MutationObserver(dress_control_buttons);
+						var page_theme_options = {attributes: true, attributeFilter: ["data-bs-theme", "class", "style"]};
+
+						page_theme_observer.observe(document.documentElement, page_theme_options);
+						if (document.body) {
+							page_theme_observer.observe(document.body, page_theme_options);
+						}
+					}
+
+					if (page_dark_query.addEventListener) {
+						page_dark_query.addEventListener("change", dress_control_buttons);
+					} else if (page_dark_query.addListener) {
+						page_dark_query.addListener(dress_control_buttons);
+					}
 					
 					toggle_softwareminimizebuttons.onclick = function() {
 						toggle_control_buttons(update = true);

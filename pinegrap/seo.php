@@ -2118,34 +2118,55 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 return;
             }
 
-            // Dressed to match the panel screens rather than the site it is
-            // sitting on: this is an editor surface, and beside a dark toolbar
-            // a white box reads as something that belongs to the page. The
-            // choice is the one the admin screens store - site and toolbar are
-            // one origin, so it is readable from here - and "auto" or no
-            // choice at all falls back to what the machine asks for.
-            //
-            // Watched rather than read once: the toggle lives in the toolbar,
-            // which is a different document, and storage events are how that
-            // document can be heard from.
+            // Dressed like the document it sits on, as the button box it opens
+            // from is (get_page.php): data-bs-theme on <html>, then on <body>;
+            // otherwise the root color-scheme, where "light dark" follows the
+            // machine. A dark panel under a light box would not match either.
+            // In the toolbar frame that document is the panel chrome, and
+            // toolbar.php maps both states to the panel tokens.
+            var dark_query = window.matchMedia("(prefers-color-scheme: dark)");
+
             function dress() {
+                var nodes = [document.documentElement, document.body];
+                var dark = null;
 
-                var stored = null;
+                for (var i = 0; i < nodes.length && dark === null; i++) {
+                    var theme = nodes[i] ? nodes[i].getAttribute("data-bs-theme") : null;
 
-                try {
-                    stored = localStorage.getItem("pinegrap backend color scheme");
-                } catch (error) {
-                    stored = null;
+                    if (theme === "dark" || theme === "light") {
+                        dark = (theme === "dark");
+                    }
                 }
 
-                var dark = (stored === "dark")
-                    || ((stored !== "light") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+                if (dark === null) {
+                    var scheme = (getComputedStyle(document.documentElement).colorScheme || "").split(/\s+/);
+
+                    dark = (scheme.indexOf("dark") !== -1)
+                        && ((scheme.indexOf("light") === -1) || dark_query.matches);
+                }
 
                 panel.classList.toggle("pg_seo_tb_dark", dark);
             }
 
             dress();
-            window.addEventListener("storage", dress);
+
+            // Themes switch their scheme at runtime, and "light dark" follows
+            // the machine, so both are watched.
+            if (window.MutationObserver) {
+                var observer = new MutationObserver(dress);
+                var options = {attributes: true, attributeFilter: ["data-bs-theme", "class", "style"]};
+
+                observer.observe(document.documentElement, options);
+                if (document.body) {
+                    observer.observe(document.body, options);
+                }
+            }
+
+            if (dark_query.addEventListener) {
+                dark_query.addEventListener("change", dress);
+            } else if (dark_query.addListener) {
+                dark_query.addListener(dress);
+            }
 
             panel.addEventListener("click", function (event) {
                 var trigger = event.target.closest(".pg_seo_tb_btn");
@@ -2171,7 +2192,10 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
 
     $css = '
             #software_seo_toggle{
-                margin: 2px 7px;
+                margin-top: 6px;
+                margin-bottom: 0;
+                margin-left: 7px;
+                margin-right: 0;
                 width: 32px;
                 height: 40px;
                 background: var(--pg-sp-bg);
@@ -2189,8 +2213,7 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                the button box (get_page.php) comes from these, so the dark set
                is one override rather than a second copy of the stylesheet. The
                class is put on by the panel script and the box script, which
-               read the same key the admin screens store their choice in - the
-               site and the toolbar are one origin, so they can. */
+               read the data-bs-theme or color-scheme of the site page. */
             #software_pinegrap_button_container,
             #software_seo_panel{
                 --pg-sp-bg: #fff;
@@ -2209,21 +2232,22 @@ function pg_seo_page_toolbar($page_id, $style_id = 0, $user = null, $options = a
                 --pg-sp-orange: #a65200;
                 --pg-sp-danger: #c62828;
             }
-            /* Beside the button strip on the right edge (get_page.php),
-               centred on it; the toolbar places its own copy as a column. */
+            /* Under the button box in the top-right corner (get_page.php); the
+               toolbar places its own copy as a column. */
             #software_seo_panel{
                 position: fixed;
-                top: 50%;
-                right: 48px;
-                transform: translateY(-50%);
+                top: 50px;
+                right: 0;
                 width: 330px;
-                max-width: calc(100vw - 56px);
+                max-width: calc(100vw - 8px);
                 max-height: 70vh;
                 overflow-y: auto;
                 background: var(--pg-sp-bg);
                 color: var(--pg-sp-fg);
                 border: 1px solid var(--pg-sp-border);
-                border-radius: 3px;
+                border-top: 0;
+                border-right: 0;
+                border-radius: 0 0 0 3px;
                 z-index: 9999999;
                 font-family: system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
                 font-size: 12px;
