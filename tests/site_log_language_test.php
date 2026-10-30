@@ -198,7 +198,7 @@ function test_site_log_payment_driver_lines_translated()
 		'includes/payments/stripe.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\')/',
 		'includes/payments/paypal.php'  => '/(\'log\'\s*=>\s*array\(\s*\'|\$line = \'|\[\'log\'\]\[\] = \'|_logged\([^;]*\), array\(\s*\'|^\s*\'PayPal capture)/m',
 		'includes/payments/paytr.php'   => '/(\'log\'\s*=>\s*array\(\s*\'|_logged\([^;]*\), array\(\s*\'|\? \' \(test mode\)\')/',
-		'includes/payments/iyzico.php'  => '/\$log\[\] = lang\(/',
+		'includes/payments/iyzico.php'  => '/(\$log\[\] = (lang\(|"|\')|array\(\s*["\']Iyzipay|\[\'log\'\] = array\(\s*\')/',
 		'includes/fn/payments.php'      => '/\$log\[\] = \'Auto-refund/',
 		'retrieve_order.php'            => '/\$message = \'/',
 		'shipping_method.php'           => '/\' \(Order ID: \'/',
