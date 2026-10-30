@@ -240,8 +240,9 @@ function pg_parasut_credentials_for_save()
         $gateway_secret_values[$gateway_secret_column] = pg_gateway_secret_for_save(post_value($gateway_secret_column), (string) ($gateway_secret_stored[$gateway_secret_column] ?? ''), $gateway_secret_key, $gateway_secret_new_key, $gateway_secret_width);
     }
 
-    // Remove commas from gift card validity days.
-    $gift_card_validity_days = str_replace(',', '', $_POST['ecommerce_gift_card_validity_days']);
+    // Gift card validity days, grouped the panel's way ("1.095" is 1095),
+    // held to the smallint(5) unsigned column.
+    $gift_card_validity_days = pg_parse_whole_number(post_value('ecommerce_gift_card_validity_days'), 65535);
 
     // Determine payment gateway mode.
     if (
@@ -537,7 +538,7 @@ function pg_parasut_credentials_for_save()
             ecommerce_no_shipping_methods_message = '" . escape(post_value('ecommerce_no_shipping_methods_message')) . "',
             ecommerce_end_of_day_time = '" . e(prepare_form_data_for_input(post_value('ecommerce_end_of_day_time'), 'time')) . "',
             ecommerce_gift_card = '" . escape(post_value('ecommerce_gift_card')) . "',
-            ecommerce_gift_card_validity_days = '" . escape($gift_card_validity_days) . "',
+            ecommerce_gift_card_validity_days = '" . $gift_card_validity_days . "',
             ecommerce_givex = '" . escape(post_value('ecommerce_givex')) . "',
             ecommerce_givex_primary_hostname = '" . escape(post_value('ecommerce_givex_primary_hostname')) . "',
             ecommerce_givex_secondary_hostname = '" . escape(post_value('ecommerce_givex_secondary_hostname')) . "',
@@ -546,7 +547,7 @@ function pg_parasut_credentials_for_save()
             ecommerce_reward_program = '" . escape(post_value('ecommerce_reward_program')) . "',
             ecommerce_reward_program_points = '" . pg_parse_reward_goal(post_value('ecommerce_reward_program_points')) . "',
             ecommerce_reward_program_membership = '" . escape(post_value('ecommerce_reward_program_membership')) . "',
-            ecommerce_reward_program_membership_days = '" . escape(post_value('ecommerce_reward_program_membership_days')) . "',
+            ecommerce_reward_program_membership_days = '" . pg_parse_whole_number(post_value('ecommerce_reward_program_membership_days'), 4294967295) . "',
             ecommerce_reward_program_email = '" . escape(post_value('ecommerce_reward_program_email')) . "',
             ecommerce_reward_program_email_bcc_email_address = '" . escape(post_value('ecommerce_reward_program_email_bcc_email_address')) . "',
             ecommerce_reward_program_email_subject = '" . escape(post_value('ecommerce_reward_program_email_subject')) . "',

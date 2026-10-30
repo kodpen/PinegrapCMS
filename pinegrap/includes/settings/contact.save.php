@@ -136,8 +136,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
     $mailchimp_key_post        = trim((string) post_value('mailchimp_key'));
     $mailchimp_list_post       = trim((string) post_value('mailchimp_list_id'));
     $mailchimp_store_post      = trim((string) post_value('mailchimp_store_id'));
-    $mailchimp_days_post       = trim((string) post_value('mailchimp_sync_days'));
-    $mailchimp_limit_post      = trim((string) post_value('mailchimp_sync_limit'));
+    $mailchimp_days_post       = pg_parse_whole_number(post_value('mailchimp_sync_days'), 65535);
+    $mailchimp_limit_post      = pg_parse_whole_number(post_value('mailchimp_sync_limit'), 4294967295);
     $mailchimp_automation_post = post_value('mailchimp_automation') ? 1 : 0;
 
     if ($mailchimp_post) {
@@ -262,8 +262,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/settings.php');
             mailchimp_key = '" . escape($mailchimp_key_post) . "',
             mailchimp_list_id = '" . escape($mailchimp_list_post) . "',
             mailchimp_store_id = '" . escape($mailchimp_store_post) . "',
-            mailchimp_sync_days = '" . escape($mailchimp_days_post) . "',
-            mailchimp_sync_limit = '" . escape($mailchimp_limit_post) . "',
+            mailchimp_sync_days = '" . $mailchimp_days_post . "',
+            mailchimp_sync_limit = '" . $mailchimp_limit_post . "',
             mailchimp_automation = '" . escape($mailchimp_automation_post) . "',
             " . $sql_chat_settings . "
             last_modified_user_id = '" . USER_ID . "',

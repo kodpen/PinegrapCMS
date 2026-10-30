@@ -184,13 +184,13 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             $waf_post_sensitivity = 'medium';
         }
 
-        $waf_post_requests  = max(10, min(60000, (int) post_value('waf_rate_limit_requests')));
-        $waf_post_sensitive = max(3,  min(60000, (int) post_value('waf_rate_limit_sensitive')));
-        $waf_post_api       = max(10, min(60000, (int) post_value('waf_rate_limit_api')));
-        $waf_post_threshold = max(1,  min(1000,  (int) post_value('waf_auto_ban_threshold')));
-        $waf_post_minutes   = max(1,  min(43200, (int) post_value('waf_auto_ban_minutes')));
-        $waf_post_retention = max(1,  min(3650,  (int) post_value('waf_log_retention_days')));
-        $waf_post_max_rows  = max(500, min(5000000, (int) post_value('waf_log_max_rows')));
+        $waf_post_requests  = max(10, min(60000, pg_parse_whole_number(post_value('waf_rate_limit_requests'), 60000)));
+        $waf_post_sensitive = max(3,  min(60000, pg_parse_whole_number(post_value('waf_rate_limit_sensitive'), 60000)));
+        $waf_post_api       = max(10, min(60000, pg_parse_whole_number(post_value('waf_rate_limit_api'), 60000)));
+        $waf_post_threshold = max(1,  min(1000,  pg_parse_whole_number(post_value('waf_auto_ban_threshold'), 1000)));
+        $waf_post_minutes   = max(1,  min(43200, pg_parse_whole_number(post_value('waf_auto_ban_minutes'), 43200)));
+        $waf_post_retention = max(1,  min(3650,  pg_parse_whole_number(post_value('waf_log_retention_days'), 3650)));
+        $waf_post_max_rows  = max(500, min(5000000, pg_parse_whole_number(post_value('waf_log_max_rows'), 5000000)));
 
         // A proxy added or edited here reads X-Forwarded-For only unless its
         // vendor header is named; one already stored keeps its reading.
@@ -258,8 +258,8 @@ if (!defined('PG_SETTINGS_ENTRY')) {
             // for readability, waf_csp_policy() folds them when sending.
             $waf_post_csp_policy = mb_substr(trim((string) post_value('security_csp_policy')), 0, 4000);
 
-            $waf_post_inflight    = max(0, min(50, (int) post_value('waf_inflight_limit')));
-            $waf_post_max_minutes = max($waf_post_minutes, min(525600, (int) post_value('waf_auto_ban_max_minutes')));
+            $waf_post_inflight    = max(0, min(50, pg_parse_whole_number(post_value('waf_inflight_limit'), 50)));
+            $waf_post_max_minutes = max($waf_post_minutes, min(525600, pg_parse_whole_number(post_value('waf_auto_ban_max_minutes'), 525600)));
 
             $sql_waf_settings .=
                 "security_headers = '" . escape(post_value('security_headers') ? 1 : 0) . "',
