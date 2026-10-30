@@ -147,7 +147,7 @@
             url = 'https://' + url;
         }
 
-        return /^https?:\/\/[^\s<>"]+$/i.test(url) ? url : '';
+        return /^https?:\/\/[^\s<>"']+$/i.test(url) ? url : '';
     }
 
     // ── Markup → nodes ─────────────────────────────────────────────────
@@ -173,13 +173,17 @@
 
     // One line of text as nodes: tags, code, links, emphasis.
     //
+    // An address ends where a quote, an angle bracket or an apostrophe
+    // starts, as ws_text_address_char() reads it on the server: a Turkish
+    // suffix (kodpen.com'da) is never part of the link.
+    //
     // A highlight is the server's pair rule, (?<!=)==(?=\S)([^=\n]{1,300}?)
     // (?<=\S)==(?!=): its words hold no =, so the first = after them closes
     // it. The sign before it is a group of its own rather than a lookbehind,
     // which older browsers cannot read (a syntax error stops the whole
     // bundle); the start of what is left of the line is never after a =.
     function inlineNodes(text, labels, parent) {
-        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"]{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])|(^|[^=])==([^=\s](?:[^=\n]{0,298}[^=\s])?)==(?!=)/u;
+        var pattern = /(<[@#][a-z_]+:[0-9]{1,10}>)|`([^`\n]{1,300})`|\[([^\]\n]{1,300})\]\(((?:https?:\/\/|mailto:)[^\s()<>"']{1,1000})\)|\*\*([^*\n]{1,300})\*\*|~~([^~\n]{1,300})~~|(^|[^\p{L}\p{N}_])_([^_\n]{1,300}?)_(?![\p{L}\p{N}_])|(^|[^=])==([^=\s](?:[^=\n]{0,298}[^=\s])?)==(?!=)/u;
         var rest = String(text || '');
         var guard = 0;
 
@@ -797,7 +801,7 @@
     var PASTE_BLOCKS = /^(P|DIV|H[1-6]|LI|BLOCKQUOTE|TR|TD|TH|CAPTION|THEAD|TBODY|TFOOT|SECTION|ARTICLE|ASIDE|HEADER|FOOTER|NAV|MAIN|ADDRESS|FIGURE|FIGCAPTION|DL|DT|DD|HR|BODY|HTML|CENTER|DETAILS|SUMMARY|FIELDSET|LEGEND|FORM)$/;
 
     // The addresses a link may keep: the link rule of inlineNodes().
-    var PASTE_LINK = /^(?:https?:\/\/|mailto:)[^\s()<>"]{1,1000}$/;
+    var PASTE_LINK = /^(?:https?:\/\/|mailto:)[^\s()<>"']{1,1000}$/;
 
     var PASTE_MARKS = ['bold', 'italic', 'strike', 'highlight'];
 
