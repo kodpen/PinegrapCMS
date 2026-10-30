@@ -4226,7 +4226,7 @@ table.chart thead th {
 
 /*NOTIFICATIONS*/
 #notifications {
-  width: 350px;
+  width: 21.875rem;
   right: 2px !important;
   left: auto;
   top: calc(var(--pg-navbar-h) + 2px) !important;
@@ -4252,8 +4252,8 @@ table.chart thead th {
 }
 
 #notifications .list-group-item .notification-description {
-  line-height: 15px;
-  font-size: 13px;
+  line-height: 0.9375rem;
+  font-size: 0.8125rem;
   padding: 0 5px;
   margin: 0;
   margin-bottom: 0.3rem;
@@ -5448,11 +5448,11 @@ div#software_image_picker_container {
 /* Calendar */
 .widget table.monthly_calendar td,
 .widget table.monthly_calendar th {
-  line-height: 20px;
+  line-height: 1.25rem;
   padding: 5px;
   vertical-align: top;
-  min-width: 30px;
-  width: 36px;
+  min-width: 1.875rem;
+  width: 2.25rem;
 }
 
 .widget table.monthly_calendar td:not(.inactive),
@@ -5462,15 +5462,15 @@ div#software_image_picker_container {
   overflow: hidden;
   border-radius: var(--pg-radius-sm);
   white-space: nowrap;
-  height: 33px;
+  height: 2.0625rem;
 }
 
 .widget table.monthly_calendar th {
-  max-width: 33px !important;
+  max-width: 2.0625rem !important;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 
 
@@ -5489,6 +5489,7 @@ div#software_image_picker_container {
 
 
 .widget table.monthly_calendar .calendar-day-wrapper {
+  font-size: 1.25rem;
   text-align: center !important;
   margin-top: 2px;
   margin-bottom: 0 !important;
@@ -5503,10 +5504,10 @@ div#software_image_picker_container {
 
 .widget table.monthly_calendar .calendar-day-wrapper span.today {
   background: #e3e3e300;
-  width: 20px;
-  height: 20px;
+  width: 1.25rem;
+  height: 1.25rem;
   display: inline-block;
-  line-height: 20px;
+  line-height: 1.25rem;
 }
 
 
@@ -5573,8 +5574,8 @@ div#software_image_picker_container {
   align-items: center;
   justify-content: center;
   overflow: hidden;
-  width: 34px;
-  height: 34px;
+  width: 2.125rem;
+  height: 2.125rem;
   border-radius: var(--pg-radius-lg);
   background: var(--pg-accent, #64748b);
   /* The glyph is white on a dark tile and near-black on a light one. Several
@@ -5583,7 +5584,7 @@ div#software_image_picker_container {
      text and wants 4.5:1, and white on #f59e0b is 2.15:1. Each widget declares
      whichever of the two reads better against its own accent. */
   color: var(--pg-accent-ink, #fff);
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 600;
   line-height: 1;
 }
@@ -5595,7 +5596,7 @@ div#software_image_picker_container {
 }
 /* A person's Avatar fills the tile; the tile's corners round it. */
 .pg-row-badge > .avatar {
-  --bs-avatar-size: 34px;
+  --bs-avatar-size: 2.125rem;
   --bs-avatar-border-radius: 0;
 }
 .pg-row-text {
@@ -5612,11 +5613,11 @@ div#software_image_picker_container {
 }
 .pg-row-name {
   min-width: 0;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 600;
 }
 .pg-row-meta {
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-name,
 .pg-row-meta {
@@ -5626,7 +5627,7 @@ div#software_image_picker_container {
 }
 .pg-row-aside {
   flex: 0 0 auto;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-go {
   flex: 0 0 auto;
@@ -5641,13 +5642,13 @@ div#software_image_picker_container {
   padding: 0.25rem 0.375rem;
 }
 .pg-row-sm .pg-row-badge {
-  width: 22px;
-  height: 22px;
+  width: 1.375rem;
+  height: 1.375rem;
   border-radius: var(--pg-radius);
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 .pg-row-sm .pg-row-name {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 500;
 }
 .pg-row-sm .pg-row-go {
@@ -5677,13 +5678,13 @@ div#software_image_picker_container {
 }
 .pg-eg-stat-value {
   flex: 0 0 auto;
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 700;
 }
 .pg-eg-stat-label {
   overflow: hidden;
   min-width: 0;
-  font-size: 11px;
+  font-size: 0.6875rem;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
@@ -5691,7 +5692,7 @@ div#software_image_picker_container {
   flex: 0 0 auto;
   margin-left: auto;
   opacity: 0.6;
-  font-size: 9px;
+  font-size: 0.5625rem;
   white-space: nowrap;
 }
 
@@ -5701,7 +5702,7 @@ div#software_image_picker_container {
   align-items: center;
   gap: 6px;
   padding: 0.25rem 0.375rem;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 600;
 }
 
@@ -5765,12 +5766,12 @@ div#software_image_picker_container {
   gap: 5px;
 }
 .pg-head-num {
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1;
 }
 .pg-head-unit {
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 .pg-head-dir {
   font-size: 9px;
@@ -5779,7 +5780,7 @@ div#software_image_picker_container {
    period total in the same place on every widget. */
 .pg-head-total {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 /* The box owns the height and the canvas fills it. Sizing the canvas itself
    let Chart.js measure the padded parent instead and the line spilled out
@@ -5835,7 +5836,7 @@ div#software_image_picker_container {
   row-gap: 1px;
 }
 .pg-vs-eyebrow {
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -5845,13 +5846,13 @@ div#software_image_picker_container {
   display: flex;
   align-items: baseline;
   gap: 7px;
-  font-size: 22px;
+  font-size: 1.375rem;
   font-weight: 700;
   line-height: 1.15;
   color: var(--pg-vs-accent);
 }
 .pg-vs-unit {
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 500;
   color: var(--pg-fg-2);
 }
@@ -5860,14 +5861,14 @@ div#software_image_picker_container {
   align-items: center;
   gap: 7px;
   margin-top: 0;
-  min-height: 16px;
+  min-height: 1rem;
 }
 /* The badge carries the direction, the sentence beside it says what the
    comparison is against. "dün 119" on its own never said which 119. */
 .pg-vs-pill {
   padding: 2px 7px;
   border-radius: var(--pg-radius-pill);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 700;
   line-height: 1.5;
 }
@@ -5882,19 +5883,19 @@ div#software_image_picker_container {
   color: color-mix(in srgb, var(--pg-danger-fg-emphasis) 80%, var(--pg-fg-emphasis));
 }
 .pg-vs-cmp {
-  font-size: 11.5px;
+  font-size: 0.71875rem;
 }
 .pg-vs-sub {
   margin-top: 0;
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
-  min-height: 16px;
+  min-height: 1rem;
 }
 .pg-vs-legend {
   display: flex;
   gap: 14px;
   padding-top: 4px;
-  font-size: 11px;
+  font-size: 0.6875rem;
   opacity: 0.75;
 }
 .pg-vs-legend.no-prev .pg-vs-key:last-child {
@@ -5967,14 +5968,14 @@ button.pg-vs-cell.is-active {
   background: rgba(var(--pg-vs-accent-rgb), 0.1);
 }
 .pg-vs-cell-label {
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
 }
 .pg-vs-cell-value {
   display: flex;
   align-items: baseline;
   gap: 6px;
-  font-size: 14px;
+  font-size: 0.875rem;
   font-weight: 700;
 }
 .pg-vs-spark {
@@ -5995,14 +5996,14 @@ button.pg-vs-cell.is-active {
 .pg-vs-page {
   overflow: hidden;
   max-width: 100%;
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--pg-vs-accent);
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 .pg-vs-views {
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.7;
 }
 /* Today's busiest page under the period's. Two different questions, so a rule
@@ -6013,7 +6014,7 @@ button.pg-vs-cell.is-active {
   padding-top: 2px;
   border-top: var(--pg-border-width) dashed var(--pg-rule-dashed);
   overflow: hidden;
-  font-size: 10px;
+  font-size: 0.625rem;
   opacity: 0.75;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -6052,7 +6053,7 @@ html[data-bs-theme="dark"] button.pg-vs-cell.is-active {
      The room comes from the chips below, which gave up a point of type and a
      couple of pixels of padding each and lost nothing -- they are read one at
      a time, up close. */
-  max-width: 200px;
+  max-width: 12.5rem;
   margin: 0 auto;
 }
 .pg-health-gauge {
@@ -6183,7 +6184,7 @@ html[data-bs-theme="light"] .pg-health-inner {
    disagreeing about where the site stands is worse than either being wrong. */
 .pg-health-score {
   color: rgb(var(--pg-health-ink-text));
-  font-size: 32px;
+  font-size: 2rem;
   font-weight: 700;
   line-height: 1;
 }
@@ -6191,13 +6192,13 @@ html[data-bs-theme="dark"] .pg-health-score {
   color: rgb(var(--pg-health-ink));
 }
 .pg-health-score span {
-  font-size: 15px;
+  font-size: 0.9375rem;
   font-weight: 600;
 }
 .pg-health-label {
   margin-top: 3px;
   color: var(--pg-fg-2);
-  font-size: 9.5px;
+  font-size: 0.59375rem;
   font-weight: 600;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -6239,7 +6240,7 @@ html[data-bs-theme="dark"] .pg-health-score {
   background: var(--pg-tint);
   color: inherit;
   font: inherit;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   line-height: 1.5;
   text-decoration: none;
@@ -6529,7 +6530,7 @@ html[data-bs-theme="light"] .pg-health {
 .pg-jobs-heading {
   padding: 0.5rem 0.75rem 0.125rem;
   color: var(--pg-fg-2);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -6590,7 +6591,7 @@ button.pg-job-open {
 .pg-job-name {
   flex: 0 1 auto;
   overflow: hidden;
-  font-size: 11.5px;
+  font-size: 0.71875rem;
   font-weight: 600;
   line-height: 1.35;
   white-space: nowrap;
@@ -6600,7 +6601,7 @@ button.pg-job-open {
   flex: 1 1 2.5rem;
   min-width: 0;
   overflow: hidden;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   line-height: 1.35;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -6623,7 +6624,7 @@ button.pg-job-open {
   border-radius: 50rem;
   background: var(--pg-tint-strong);
   color: inherit;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
   font-weight: 600;
   line-height: 1.5;
   text-decoration: none;
@@ -6676,7 +6677,7 @@ button.pg-job-open {
   gap: 8px;
   padding: 3px 6px;
   border-radius: var(--pg-radius-sm);
-  font-size: 10px;
+  font-size: 0.625rem;
 }
 .pg-job-panel-row:nth-child(odd) {
   background: var(--pg-tint-soft);
@@ -6778,7 +6779,7 @@ button.pg-job-open {
      content. balance evens the lines out: without it the longer messages broke
      with a single word stranded on the last line. */
   max-width: 26ch;
-  font-size: 12px;
+  font-size: 0.75rem;
   line-height: 1.4;
   text-wrap: balance;
 }
@@ -6796,7 +6797,7 @@ button.pg-job-open {
    offer, not the point of the card, and several of these sit on one screen. */
 .pg-widget-empty > .btn {
   margin-top: 0.15rem;
-  font-size: 11px;
+  font-size: 0.6875rem;
 }
 
 /* Some cards hand their rows to .pg-list, so the empty state lands one box
@@ -6916,14 +6917,14 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
   flex-wrap: wrap;
 }
 .pg-ec-val {
-  font-size: 19px;
+  font-size: 1.1875rem;
   font-weight: 700;
   letter-spacing: -0.3px;
   line-height: 1.15;
 }
 .pg-ec-lbl,
 .pg-ec-sub {
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 .pg-ec-sub {
   margin-top: 1px;
@@ -6943,11 +6944,11 @@ html[data-bs-theme="dark"] .card.widget ::-webkit-scrollbar-track {
 }
 .pg-ec-fact span {
   display: block;
-  font-size: 10.5px;
+  font-size: 0.65625rem;
 }
 .pg-ec-fact b {
   display: block;
-  font-size: 13px;
+  font-size: 0.8125rem;
   font-weight: 700;
   margin-top: 1px;
   white-space: nowrap;
@@ -7656,11 +7657,11 @@ html[data-bs-theme="dark"] #content[data-panel-backdrop="ember"] {
 .pg-ec-qty {
   background: color-mix(in srgb, var(--pg-accent) 16%, transparent);
   color: var(--pg-fg-body);
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 600;
 }
 .pg-rank {
-  font-size: 12px;
+  font-size: 0.75rem;
   font-weight: 700;
 }
 
@@ -10351,7 +10352,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   border-radius: var(--pg-radius);
   background: var(--pg-bg-body);
   box-shadow: 0 .5rem 1rem rgba(0, 0, 0, .15);
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 1.35;
   /* It follows the pointer, so it must never be under it. */
   pointer-events: none;
@@ -10359,7 +10360,7 @@ body.pg-side-panel-open .pg-chat-launcher {
 .pg-smap-tip.is-on { display: block; }
 .pg-smap-tip b {
   display: block;
-  font-size: 12px;
+  font-size: 0.75rem;
 }
 .pg-smap-tip span { display: block; }
 
@@ -10388,7 +10389,7 @@ body.pg-side-panel-open .pg-chat-launcher {
   background: color-mix(in srgb, var(--pg-bg-body) 72%, transparent);
 }
 .pg-smap-menu .menu {
-  --bs-menu-font-size: 12px;
+  --bs-menu-font-size: 0.75rem;
   --bs-menu-item-padding-y: .25rem;
   --bs-menu-min-width: 9rem;
 }

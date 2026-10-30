@@ -10,7 +10,7 @@ description: Bootstrap 6 changed .placeholder min-height (1em to 1.25em) and .sp
 
 ## Why did the dashboard skeleton jump?
 - The skeleton bars in `welcome.php` sit in 16px text with inline heights of 13px/11px; the v6 min-height turned each into 20px. A list row (`$pg_ph_row`) grew from 52px, the height of a loaded `.pg-row`, to 60px, so row n jumped up 8n px when `api.php` answered, about 40px on a five-row card. The short summary strips (`$pg_ph_blocks`) spilled further over their border.
-- Fixed by one rule in its own `<style>` after the drag rules: `@layer custom { .card-body-placeholder .placeholder { min-height: 1em; } }`. The custom layer comes after components. The skeleton markup and its inline heights stay as measured.
+- Fixed by one rule in its own `<style>` after the drag rules: `@layer custom { .card-body-placeholder .placeholder { min-height: 1em; } }`. The custom layer comes after components. The skeleton markup keeps its measured inline heights, written as rem at the measured px / 16 so the skeleton grows with the browser's text size (`ui/panel-text-size.md`).
 - Rows whose tile sets the height (`$pg_ph_row_sm`), the 13px filter bar and the heading bars were not affected or got closer to the loaded size.
 
 ## Why were drawer spinners half size?

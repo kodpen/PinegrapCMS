@@ -238,56 +238,64 @@ $pg_ph_card = function ($inner) {
 // with the card's accent colour and the skeleton would look already loaded.
 $pg_ph_row = '
 <div class="pg-row">
-    <span class="placeholder rounded-4 flex-shrink-0" style="width:34px;height:34px"></span>
+    <span class="placeholder rounded-4 flex-shrink-0" style="width:2.125rem;height:2.125rem"></span>
     <span class="pg-row-text">
-        <span class="placeholder col-8 d-block" style="height:13px"></span>
-        <span class="placeholder col-5 d-block mt-1" style="height:11px"></span>
+        <span class="placeholder col-8 d-block" style="height:0.8125rem"></span>
+        <span class="placeholder col-5 d-block mt-1" style="height:0.6875rem"></span>
     </span>
 </div>';
 
 // The compact variant, for the widgets that list one line per entry.
 $pg_ph_row_sm = '
 <div class="pg-row pg-row-sm">
-    <span class="placeholder rounded-4 flex-shrink-0" style="width:22px;height:22px"></span>
+    <span class="placeholder rounded-4 flex-shrink-0" style="width:1.375rem;height:1.375rem"></span>
     <span class="pg-row-text">
-        <span class="placeholder col-7 d-block" style="height:12px"></span>
+        <span class="placeholder col-7 d-block" style="height:0.75rem"></span>
     </span>
 </div>';
 
 // Section heading inside a list -- "Top Pages", "Expiring Soon".
 $pg_ph_heading = '
 <div class="pg-row-heading">
-    <span class="placeholder col-5 rounded-4" style="height:11px"></span>
+    <span class="placeholder col-5 rounded-4" style="height:0.6875rem"></span>
 </div>';
+
+// A length measured in px at the 16px default, written in rem so the skeleton
+// grows with the browser's text size like the cards it stands in for. Built
+// with sprintf('%F') because a float cast to string follows LC_NUMERIC on
+// PHP 7 and would print a decimal comma under a Turkish locale.
+$pg_ph_rem = function ($px) {
+    return rtrim(rtrim(sprintf('%.5F', $px / 16), '0'), '.') . 'rem';
+};
 
 // KPI tile strip, in the two sizes api.php ships: compact (widgets 2 and 13,
 // a 12px inline icon) and large (widgets 3 and 4, a 20px block icon). The
 // strip height is pinned rather than left to the contents, because everything
 // below the strip inherits any error in it.
-$pg_ph_tiles = function ($height, $large) {
-    $icon = $large ? 20 : 12;
+$pg_ph_tiles = function ($height, $large) use ($pg_ph_rem) {
+    $icon = $pg_ph_rem($large ? 20 : 12);
     $tile =
         '<div class="flex-fill rounded-4 ' . ($large ? 'p-3' : 'px-1 py-1') . ' text-center d-flex flex-column align-items-center justify-content-center" style="gap:4px">'
-        . '<span class="placeholder rounded-4" style="width:' . $icon . 'px;height:' . $icon . 'px"></span>'
-        . '<span class="placeholder rounded-4" style="width:60%;height:' . ($large ? 15 : 13) . 'px"></span>'
-        . '<span class="placeholder rounded-4" style="width:80%;height:' . ($large ? 12 : 9) . 'px"></span>'
+        . '<span class="placeholder rounded-4" style="width:' . $icon . ';height:' . $icon . '"></span>'
+        . '<span class="placeholder rounded-4" style="width:60%;height:' . $pg_ph_rem($large ? 15 : 13) . '"></span>'
+        . '<span class="placeholder rounded-4" style="width:80%;height:' . $pg_ph_rem($large ? 12 : 9) . '"></span>'
         . '</div>';
-    return '<div class="d-flex ' . ($large ? 'gap-3 p-3' : 'gap-1 px-3 pt-3 pb-1') . '" style="height:' . $height . 'px">' . str_repeat($tile, 3) . '</div>';
+    return '<div class="d-flex ' . ($large ? 'gap-3 p-3' : 'gap-1 px-3 pt-3 pb-1') . '" style="height:' . $pg_ph_rem($height) . '">' . str_repeat($tile, 3) . '</div>';
 };
 
 // Panels of a given height, for the widgets whose body is neither a list nor a
 // tile strip. Anything from 100px up is a chart, calendar or similar, so it
 // gets one soft rectangle; shorter blocks get a couple of lines so they read
 // as a summary strip rather than a slab.
-$pg_ph_blocks = function ($heights) {
+$pg_ph_blocks = function ($heights) use ($pg_ph_rem) {
     $out = '';
     foreach ($heights as $height) {
         if ($height >= 100) {
-            $out .= '<div class="p-3" style="height:' . $height . 'px"><span class="placeholder w-100 h-100 rounded-4"></span></div>';
+            $out .= '<div class="p-3" style="height:' . $pg_ph_rem($height) . '"><span class="placeholder w-100 h-100 rounded-4"></span></div>';
         } else {
-            $out .= '<div class="d-flex flex-column justify-content-center px-3 border-bottom" style="height:' . $height . 'px;gap:6px">'
-                . '<span class="placeholder col-7 rounded-4" style="height:12px"></span>'
-                . '<span class="placeholder col-4 rounded-4" style="height:10px"></span>'
+            $out .= '<div class="d-flex flex-column justify-content-center px-3 border-bottom" style="height:' . $pg_ph_rem($height) . ';gap:6px">'
+                . '<span class="placeholder col-7 rounded-4" style="height:0.75rem"></span>'
+                . '<span class="placeholder col-4 rounded-4" style="height:0.625rem"></span>'
                 . '</div>';
         }
     }
@@ -299,10 +307,10 @@ $pg_ph_blocks = function ($heights) {
 $pg_ph_head = '
 <div class="pg-head">
     <div class="pg-head-line">
-        <span class="placeholder rounded-4" style="width:26px;height:19px"></span>
+        <span class="placeholder rounded-4" style="width:1.625rem;height:1.1875rem"></span>
         <span class="placeholder col-4 rounded-4"></span>
     </div>
-    <span class="placeholder rounded-4 d-block" style="height:20px"></span>
+    <span class="placeholder rounded-4 d-block" style="height:1.25rem"></span>
 </div>';
 
 // Ecommerce summary head: the stock line, its detail line and the two facts
@@ -310,24 +318,25 @@ $pg_ph_head = '
 // The three line boxes carry their measured heights rather than their
 // contents': a placeholder bar is sized from the style attribute, the real
 // line from the font's line-height, and the two do not agree. Measured on the
-// loaded card -- value line 22.8, detail line 15.8, fact column 36.3 -- which
-// puts the separator and every row below it at the same offset in both states.
+// loaded card -- value line 22.8, detail line 15.8, fact column 36.3 px at
+// the 16px default, written as rem -- which puts the separator and every row
+// below it at the same offset in both states.
 $pg_ph_ec = '
 <div class="pg-ec-head">
-    <div class="pg-ec-line" style="height:22.8px">
-        <span class="placeholder rounded-4" style="width:112px;height:19px"></span>
-        <span class="placeholder rounded-4" style="width:54px;height:10px"></span>
+    <div class="pg-ec-line" style="height:1.425rem">
+        <span class="placeholder rounded-4" style="width:7rem;height:1.1875rem"></span>
+        <span class="placeholder rounded-4" style="width:3.375rem;height:0.625rem"></span>
     </div>
-    <div class="pg-ec-sub" style="height:15.8px"><span class="placeholder col-9 rounded-4 d-block" style="height:10px"></span></div>
+    <div class="pg-ec-sub" style="height:0.9875rem"><span class="placeholder col-9 rounded-4 d-block" style="height:0.625rem"></span></div>
 </div>
 <div class="pg-ec-facts">
-    <div class="pg-ec-fact" style="height:36.3px">
-        <span class="placeholder col-9 rounded-4" style="height:10px"></span>
-        <span class="placeholder col-7 rounded-4" style="height:13px;margin-top:6px"></span>
+    <div class="pg-ec-fact" style="height:2.26875rem">
+        <span class="placeholder col-9 rounded-4" style="height:0.625rem"></span>
+        <span class="placeholder col-7 rounded-4" style="height:0.8125rem;margin-top:6px"></span>
     </div>
-    <div class="pg-ec-fact" style="height:36.3px">
-        <span class="placeholder col-8 rounded-4" style="height:10px"></span>
-        <span class="placeholder col-10 rounded-4" style="height:13px;margin-top:6px"></span>
+    <div class="pg-ec-fact" style="height:2.26875rem">
+        <span class="placeholder col-8 rounded-4" style="height:0.625rem"></span>
+        <span class="placeholder col-10 rounded-4" style="height:0.8125rem;margin-top:6px"></span>
     </div>
 </div>';
 
@@ -341,7 +350,7 @@ $placeholder_w1 = $pg_ph_card(
     '<div class="pg-split">'
     . '<div class="pg-split-half d-flex flex-column">'
     . $pg_ph_head
-    . '<div class="p-3 flex-fill d-flex"><span class="placeholder w-100 rounded-4" style="min-height:140px"></span></div>'
+    . '<div class="p-3 flex-fill d-flex"><span class="placeholder w-100 rounded-4" style="min-height:8.75rem"></span></div>'
     . '</div>'
     . '<div class="pg-split-half"><div class="pg-list">' . str_repeat($pg_ph_row, 5) . '</div></div>'
     . '</div>');
@@ -351,7 +360,7 @@ $placeholder_w1 = $pg_ph_card(
 $pg_ph_filter = '
 <div class="pg-filter">
     <span class="placeholder rounded-4 flex-shrink-0" style="width:28px;height:28px"></span>
-    <span class="pg-filter-text"><span class="placeholder col-7 d-block" style="height:12px"></span></span>
+    <span class="pg-filter-text"><span class="placeholder col-7 d-block" style="height:0.75rem"></span></span>
 </div>';
 
 $placeholder_w7  = $pg_ph_card(
@@ -385,24 +394,24 @@ $placeholder_w24 = $pg_ph_card(
     '<div class="pg-split">'
     . '<div class="pg-split-half">'
     . '<div class="pg-health">'
-    . '<span class="placeholder rounded-4 d-block mx-auto" style="width:170px;height:80px"></span>'
-    . '<span class="placeholder rounded-4 d-block mx-auto mt-3" style="width:70px;height:12px"></span>'
+    . '<span class="placeholder rounded-4 d-block mx-auto" style="width:10.625rem;height:5rem"></span>'
+    . '<span class="placeholder rounded-4 d-block mx-auto mt-3" style="width:4.375rem;height:0.75rem"></span>'
     . '</div>'
     . '<div class="pg-checks">'
-    . '<span class="placeholder rounded-4" style="width:74px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:58px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:66px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:88px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:62px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:80px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:54px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:92px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:70px;height:21px"></span>'
-    . '<span class="placeholder rounded-4" style="width:60px;height:21px"></span>'
+    . '<span class="placeholder rounded-4" style="width:4.625rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:3.625rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:4.125rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:5.5rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:3.875rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:5rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:3.375rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:5.75rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:4.375rem;height:1.3125rem"></span>'
+    . '<span class="placeholder rounded-4" style="width:3.75rem;height:1.3125rem"></span>'
     . '</div>'
     . '</div>'
     . '<div class="pg-split-half">'
-    . '<div class="pg-jobs">' . str_repeat('<span class="placeholder rounded-4 d-block" style="height:29px"></span>', 7) . '</div>'
+    . '<div class="pg-jobs">' . str_repeat('<span class="placeholder rounded-4 d-block" style="height:1.8125rem"></span>', 7) . '</div>'
     . '</div>'
     . '</div>'
 );
