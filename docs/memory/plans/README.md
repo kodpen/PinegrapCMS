@@ -76,7 +76,6 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-crm-seams.md: Plan (2026-10-23; 1-9 done, PRs #1621 to #3135; answers 2-4 given): CRM seams: customer summary, history, follow-ups, lead intake, re-pointing merge, more tag sources
 - workspace-flows-channels.md: Plan (owner request 2026-10-27, draft): flows started from a channel's Add menu, a Completed flag with the run's result, scheduled work only as flows, no menu or form of its own
 - workspace-flows-data-passing.md: Plan (owner request 2026-10-27, draft being refined): values carried from one Flows box to the next; output schemas, a value picker, reference checks, trigger values, escaping, then AI drafts
-- workspace-flows-data-threads.md: Plan (owner request 2026-10-27, draft being refined): the Flows canvas side of data passing; thin typed threads from a box's bottom into the field they fill, the double-click fork, pure value boxes
 - workspace-flows-engine.md: Plan (2026-10-24, F1 #1503, F3a #1551, rest open): Flows engine: tables, runs and steps, event wake-ups, drivers, shared steps, idempotency, versions, limits, API
 - workspace-flows-look.md: Plan (owner, 2026-10-29): bring the Flows editor and list to the owner's drawing; box colours, icons, arrows, a palette column, a flow list table, no Scheduled actions section
 - workspace-flows-scheduled-parity.md: Parity rows of workspace/workspace-flows-scheduled-merge.md: every scheduled-action key and rule and the slice that keeps it; the test that maps them is in workspace/workspace-flows-parity-test.md

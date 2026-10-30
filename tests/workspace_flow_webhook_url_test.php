@@ -142,3 +142,20 @@ function test_workspace_flow_webhook_url_canvas()
 	pg_assert_true(strpos($js, 'urlWithValue(target.text, token)') !== false, 'a thread dropped on it never lands in the host');
 	pg_assert_true(isset(ws_flow_js_strings()['fl_hook_url_help']), 'its help is translated');
 }
+
+// A fallback in an address stands in for an empty value under the same
+// rule: digits only, refused at save and at run otherwise.
+function test_workspace_flow_webhook_url_fallback_obeys_the_digits_rule()
+{
+	$url = 'https://example.com/orders/' . ws_step_value_token('post_1', 'message_id', '0');
+
+	pg_assert_same(array('url' => 'https://example.com/orders/0', 'error' => ''), ws_step_url_fill($url, array()), 'the box gave nothing');
+	pg_assert_same(array('url' => 'https://example.com/orders/12', 'error' => ''), ws_step_url_fill($url, array('post_1' => array('message_id' => '12'))), 'the box ran');
+	pg_assert_same(array(), ws_flow_url_test_problems($url), 'a whole number is kept');
+
+	$text = 'https://example.com/orders/' . ws_step_value_token('post_1', 'message_id', '../admin');
+
+	pg_assert_true(ws_step_url_fill($text, array())['error'] !== '', 'refused at run');
+	pg_assert_same('https://example.com/orders/', ws_step_url_fill($text, array())['url'], 'never filled in');
+	pg_assert_same(array('bad_reference'), ws_flow_url_test_problems($text), 'refused at save');
+}

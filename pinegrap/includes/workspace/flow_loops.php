@@ -246,8 +246,9 @@ function ws_flow_loop_problems($graph, $nodes)
     $name = function ($id) use ($nodes) {
         return isset($nodes[$id]) ? ws_flow_box_name($nodes[$id]) : (string) $id;
     };
+    // A list or a gathered value is read as it is: no fallback.
     $single = function ($text) {
-        return (preg_replace(WS_STEP_VALUE_PATTERN, '', trim((string) $text), -1, $count) === '') && ($count === 1);
+        return ws_step_value_single($text);
     };
 
     foreach ($nodes as $id => $node) {

@@ -521,11 +521,11 @@ function ws_flow_template_threads($graph)
             }
 
             foreach ($texts as $text) {
-                if (!is_string($text) || !preg_match_all('/\{\{node\.([a-z][a-z0-9_]*)\.[a-z_][a-z0-9_]*\}\}/', $text, $matches)) {
+                if (!is_string($text) || !preg_match_all(WS_STEP_VALUE_PATTERN, $text, $matches)) {
                     continue;
                 }
 
-                foreach ($matches[1] as $from) {
+                foreach (array_filter($matches[1], 'strlen') as $from) {
                     $thread = array('from' => $from, 'to' => $node['id'], 'key' => (string) $key);
 
                     if (in_array($from, $ids, true) && !in_array($thread, $out, true)) {

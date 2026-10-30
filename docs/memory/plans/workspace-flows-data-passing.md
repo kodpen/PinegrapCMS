@@ -12,7 +12,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 - A filled value is never read again as a placeholder (D2) and is escaped for where it lands (D3), workspace/workspace-flows-outputs.md.
 
 ## Which steps? (one PR each, in this order)
-- Done: D1 outputs (#2111), D2 one-pass fill (#2121), D3 escaping (#2293): workspace/workspace-flows-outputs.md; D4 reference check (#2305): workspace-flows-references.md; D5 trigger values (#2341): workspace-flows-trigger-values.md; D6 value picker (#2461): workspace-flows-value-picker.md (threads, fork, value boxes: plans/workspace-flows-data-threads.md); D7 conditions on values (#2496): workspace-flows-condition-values.md.
+- Done: D1 outputs (#2111), D2 one-pass fill (#2121), D3 escaping (#2293): workspace/workspace-flows-outputs.md; D4 reference check (#2305): workspace-flows-references.md; D5 trigger values (#2341): workspace-flows-trigger-values.md; D6 value picker (#2461): workspace-flows-value-picker.md (threads, fork, value boxes: workspace/workspace-flows-thread-drawing.md, workspace-flows-empty-fallback.md); D7 conditions on values (#2496): workspace-flows-condition-values.md.
 
 - D8 AI drafts: F8 of workspace-flows.md, after D1 and D4 (rules below), in three slices:
   - D8a server (done, #2605, workspace/workspace-flow-ai-drafts.md): `propose_flow` and `read_flow` tools, the A8 draft card (flow_draft.php).

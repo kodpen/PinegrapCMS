@@ -1043,7 +1043,8 @@ function ws_flow_graph_check($graph)
  * The {{node.<id>.<field>}} of each box's texts: bad_reference for a box the
  * flow does not have, one not before the reader, a field that box does not
  * give; a warning for a box that may not have run when the reader runs
- * (ws_flow_sure_before()). Once per reference and box. Pure.
+ * (ws_flow_sure_before()), unless each place reading it writes a fallback.
+ * Once per reference and box. Pure.
  *
  * @param array $nodes  node id => box
  * @param array $kinds  ws_flow_kinds()
@@ -1071,16 +1072,27 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
         $refs = array();
         $trigger_refs = array();
 
+        // A reference is named without its fallback; it is "bare" when
+        // one of its places in the texts writes no fallback.
+        $bare = array();
+
         foreach (ws_flow_node_texts($node) as $text) {
-            if (preg_match_all('/\{\{node\.([a-z][a-z0-9_]{0,31})\.([a-z_][a-z0-9_]{0,31})\}\}/', $text, $found, PREG_SET_ORDER)) {
-                foreach ($found as $match) {
-                    $refs[$match[0]] = array($match[1], $match[2]);
-                }
+            if (!preg_match_all(WS_STEP_VALUE_PATTERN, $text, $found, PREG_SET_ORDER)) {
+                continue;
             }
 
-            if (preg_match_all('/\{\{trigger\.([a-z_][a-z0-9_]{0,31})\}\}/', $text, $found, PREG_SET_ORDER)) {
-                foreach ($found as $match) {
-                    $trigger_refs[$match[0]] = $match[1];
+            foreach ($found as $match) {
+                $ref = ws_step_value_token($match[1], $match[2]);
+
+                if ($match[1] === '') {
+                    $trigger_refs[$ref] = $match[2];
+                    continue;
+                }
+
+                $refs[$ref] = array($match[1], $match[2]);
+
+                if (ws_step_value_fallback($match) === '') {
+                    $bare[$ref] = true;
                 }
             }
         }
@@ -1114,6 +1126,12 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
                 if (($type !== '') && ($type !== 'number')) {
                     $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} puts {var:2} into its address, which takes only a number.', 'vars' => array($name, $match[0]))));
                 }
+
+                $fallback = ws_step_value_fallback($match);
+
+                if (($fallback !== '') && !preg_match('/^[0-9]+$/', $fallback)) {
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} writes "{var:2}" into its address when {var:3} is empty; the address takes only a whole number.', 'vars' => array($name, $fallback, ws_step_value_token($match[1], $match[2])))));
+                }
             }
         }
 
@@ -1143,7 +1161,9 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} does not come before it.', 'vars' => array($name, $ref, ws_flow_box_name($other)))));
             } elseif (!in_array($field, ws_flow_node_fields($other, $kinds), true)) {
                 $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} reads {var:2}, but the box {var:3} gives no value {var:4}.', 'vars' => array($name, $ref, ws_flow_box_name($other), $field))));
-            } elseif (!$pure_reader && empty($kinds[$other['kind']]['pure'])) {
+            } elseif (!$pure_reader && empty($kinds[$other['kind']]['pure']) && isset($bare[$ref])) {
+                // A reference with a fallback at each of its places has
+                // words for the empty value: no warning then.
                 $sure = $sure ?? ws_flow_sure_before($next, $always);
 
                 if (isset($sure[$id]) && !isset($sure[$id][$box])) {
@@ -2936,6 +2956,13 @@ function ws_flow_js_strings()
         'fl_values_outcome'   => lang('Outcome'),
         'fl_values_status'    => lang('Status'),
         'fl_values_skipped'   => lang('Empty if skipped'),
+        'fl_values_else'      => ws_js_template('{var:1}, else "{var:2}"', 2),
+        'fl_values_writes'    => ws_js_template('When empty, writes "{var:1}"', 1),
+        'fl_values_empty_ask' => lang('When empty, write…'),
+        'fl_values_empty_set' => lang('Write this'),
+        'fl_values_empty_text' => lang('Text written when the value is empty'),
+        'fl_values_empty_help' => lang('Written in place of the value when its box gave none, for example because it was skipped. Leave it empty to write nothing.'),
+        'fl_values_empty_tap' => lang('Click to choose what is written when it is empty.'),
         'fl_values_missing'   => lang('No box before this one gives this value.'),
         'fl_values_gone'      => lang('The box that gave this value was deleted.'),
         'fl_values_none'      => lang('No box before this one gives a value yet: connect it after a box or a start.'),

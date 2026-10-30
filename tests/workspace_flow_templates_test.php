@@ -667,3 +667,14 @@ function test_workspace_flow_templates_saved_table_rights()
 	pg_assert_same('', ws_flow_template_table_refusal($start, 'view'));
 	pg_assert_true(ws_flow_template_table_refusal($start, '') !== '');
 }
+
+// A value with a fallback is a thread of a template as one without is.
+function test_workspace_flow_template_threads_with_a_fallback()
+{
+	$graph = array('nodes' => array(
+		array('id' => 'check', 'kind' => 'web_check', 'config' => array('url' => 'https://example.com')),
+		array('id' => 'hook', 'kind' => 'webhook', 'config' => array('text' => 'Down: {{node.check.text|no answer \\| try later}}')),
+	));
+
+	pg_assert_same(array(array('from' => 'check', 'to' => 'hook', 'key' => 'text')), ws_flow_template_threads($graph));
+}

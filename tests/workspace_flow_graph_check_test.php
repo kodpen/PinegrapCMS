@@ -155,3 +155,46 @@ function test_workspace_flow_reference_valid()
 
 	pg_assert_same(array(), $found);
 }
+
+// A fallback for a value of a box that may be skipped gives the empty value
+// its words: no warning, unless one place reads it without one; the token
+// with a fallback passes the publish check.
+function test_workspace_flow_reference_with_an_empty_fallback()
+{
+	$graph = function ($body) {
+		return array(
+			array(
+				ws_flow_ref_test_node('start', 'manual'),
+				ws_flow_ref_test_node('check', 'condition', array('rule' => array('type' => 'workday'))),
+				ws_flow_ref_test_post('post_yes'),
+				ws_flow_ref_test_post('post_no'),
+				ws_flow_ref_test_post('after', $body),
+			),
+			array(
+				ws_flow_ref_test_edge('start', 'check', 'next'),
+				ws_flow_ref_test_edge('check', 'post_yes', 'yes'),
+				ws_flow_ref_test_edge('check', 'post_no', 'no'),
+				ws_flow_ref_test_edge('post_yes', 'after', 'always'),
+				ws_flow_ref_test_edge('post_no', 'after', 'always'),
+			),
+		);
+	};
+
+	list($nodes, $edges) = $graph('Posted {{node.post_yes.message_id|none\\}\\}}}');
+	pg_assert_same(array(), ws_flow_ref_test_found($nodes, $edges), 'a fallback: no warning');
+	pg_assert_same(array(), array_column(ws_flow_graph_check(array('nodes' => $nodes, 'edges' => $edges)), 'code'), 'publishable');
+
+	list($nodes, $edges) = $graph('{{node.post_yes.message_id|none}} and {{node.post_yes.message_id}}');
+	pg_assert_same(array(array('after', 'skippable_reference', true)), ws_flow_ref_test_found($nodes, $edges), 'one place without a fallback');
+
+	list($nodes, $edges) = $graph('{{node.post_yes.ghost|none}} {{node.nobody.text|x}}');
+	pg_assert_same(array(array('after', 'bad_reference', false), array('after', 'bad_reference', false)), ws_flow_ref_test_found($nodes, $edges), 'a fallback does not excuse a bad reference');
+}
+
+// A loop's list and an End box's gathered value read one value as it is.
+function test_workspace_flow_reference_single_has_no_fallback()
+{
+	pg_assert_true(ws_step_value_single(' {{node.a.items}} '));
+	pg_assert_true(!ws_step_value_single('{{node.a.items|[]}}'), 'a fallback');
+	pg_assert_true(!ws_step_value_single('{{node.a.items}} x'), 'more than one value');
+}

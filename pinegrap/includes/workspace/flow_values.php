@@ -555,8 +555,8 @@ function ws_flow_derived_value($config, $a, $b)
 }
 
 /**
- * A derived value box's input with the run's values in it, as they are:
- * the box that reads the value makes it safe where it lands
+ * A derived value box's input with the run's values in it, as they are
+ * (an empty one by its fallback, ws_step_value_of()): the box that reads the value makes it safe where it lands
  * (ws_step_fill_value()). Cut to WS_FLOW_DERIVED_VALUE_LENGTH characters:
  * each value placed takes only the room left, so the text never grows past
  * the limit and the written input's own length. Pure.
@@ -570,7 +570,7 @@ function ws_flow_derived_fill($text, $values)
     $room = WS_FLOW_DERIVED_VALUE_LENGTH;
 
     $text = (string) preg_replace_callback(WS_STEP_VALUE_PATTERN, function ($match) use ($values, &$room) {
-        $value = mb_substr((string) ($values[ws_step_value_box($match)][$match[2]] ?? ''), 0, max(0, $room));
+        $value = mb_substr(ws_step_value_of($match, $values), 0, max(0, $room));
         $room -= mb_strlen($value);
 
         return $value;

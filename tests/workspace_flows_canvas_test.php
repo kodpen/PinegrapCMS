@@ -802,6 +802,9 @@ function ws_flows_canvas_test_node(array $names, $script)
 	preg_match_all('/^ *var POLL_[A-Z_]+ = [0-9.]+;$/m', $source, $timings);
 	$body .= implode("\n", $timings[0]) . "\n";
 
+	// The token helpers every reader of a value token calls.
+	$names = array_unique(array_merge($names, array('tokenBare', 'tokenFallback', 'tokenWith', 'holdsToken'), in_array('runValue', $names, true) ? array('runValueOf') : array()));
+
 	foreach ($names as $name) {
 		$function = ws_flows_canvas_test_script_function($source, $name);
 
@@ -2592,4 +2595,74 @@ JS
 
 	pg_assert_same(array(4, 5), $result['start'], 'a row start reads any table reached');
 	pg_assert_same(array(4), $result['write'], 'a row written: only tables the person may change');
+}
+
+// A value's "When empty, write" fallback is kept in its token: the parser
+// reads it, a thread keeps its from and to, and the token written back is
+// the one the server reads (ws_step_value_token()).
+function test_workspace_flows_canvas_value_token_fallback()
+{
+	$source = str_replace("\r\n", "\n", (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/js/workspace_flow.js'));
+	$constants = '';
+
+	foreach (array('VALUE_TOKEN', 'FALLBACK_LENGTH', 'VALUE_FIELDS', 'THREAD_TONES') as $name) {
+		pg_assert_true((bool) preg_match('/^( *)var ' . $name . ' = (?:[^\n]*;\n|\{\n.*?\n\1\};\n)/ms', $source, $found), 'workspace_flow.js has ' . $name);
+		$constants .= $found[0];
+	}
+
+	$result = ws_flows_canvas_test_node(
+		array('nodeById', 'kindOf', 'rawTitle', 'titleOf', 'namedTitle', 'nameOf', 'orderedNodes', 'stepLists', 'arrowMaps', 'boxesBefore', 'sureBefore', 'boxValues', 'flowLoops', 'loopOf', 'valueGroups', 'valueSources',
+			'fieldTexts', 'dataThreads'),
+		$constants . <<<'JS'
+var KINDS = {
+    manual: { name: 'Manual', into: false, out: ['next'] },
+    condition: { name: 'Condition', into: true, out: ['yes', 'no'] },
+    post: { name: 'Post', into: true, out: ['done', 'failed'] }
+};
+var FL = { outputs: { post: [{ key: 'message_id', type: 'number', label: 'Message' }], condition: [] }, trigger_outputs: { kinds: {}, events: {} }, steps: {} };
+function box(id, kind, config, y) { return { id: id, kind: kind, label: '', config: config || {}, x: 0, y: y }; }
+var odd = tokenWith('{{node.post_1.message_id}}', 'a}} | b \\ {c');
+state = { graph: { nodes: [
+    box('start', 'manual', {}, 0),
+    box('condition_1', 'condition', { rule: { type: 'workday' } }, 1),
+    box('post_1', 'post', { body: 'Hi' }, 2),
+    box('post_2', 'post', { body: 'Id ' + odd + ' and {{node.post_1.message_id}}' }, 3)
+], edges: [
+    { from: 'start', to: 'condition_1', on: 'next' },
+    { from: 'condition_1', to: 'post_1', on: 'yes' },
+    { from: 'condition_1', to: 'post_2', on: 'no' },
+    { from: 'post_1', to: 'post_2', on: 'done' }
+] } };
+VALUE_TOKEN.lastIndex = 0;
+var match = VALUE_TOKEN.exec('x ' + odd + ' y');
+console.log(JSON.stringify({
+    odd: odd,
+    whole: match[0] === odd,
+    groups: [match[1], match[2], match[4]],
+    bare: tokenBare(odd),
+    fallback: tokenFallback(odd),
+    none: tokenWith(odd, '  '),
+    line: tokenWith('{{trigger.count}}', 'a\nb'),
+    cut: Array.from(tokenFallback(tokenWith('{{node.a.b}}', new Array(151).join('ş')))).length,
+    holds: [holdsToken('x ' + odd, '{{node.post_1.message_id}}'), holdsToken('{{node.post_1.message_idx}}', '{{node.post_1.message_id}}')],
+    threads: dataThreads().map(function (thread) { return [thread.from, thread.to, thread.token, thread.fallback, thread.skipped ? 'skipped' : ''].join(' | '); })
+}));
+JS
+	);
+
+	if ($result === null) {
+		return;
+	}
+
+	pg_assert_same('{{node.post_1.message_id|a\\}\\} \\| b \\\\ \\{c}}', $result['odd'], 'escaped as the server writes it');
+	pg_assert_same(ws_step_value_token('post_1', 'message_id', 'a}} | b \\ {c'), $result['odd'], 'the same token as ws_step_value_token()');
+	pg_assert_same(true, $result['whole'], 'the parser reads the whole token');
+	pg_assert_same(array('post_1', 'message_id', 'a\\}\\} \\| b \\\\ \\{c'), $result['groups']);
+	pg_assert_same('{{node.post_1.message_id}}', $result['bare']);
+	pg_assert_same('a}} | b \\ {c', $result['fallback']);
+	pg_assert_same('{{node.post_1.message_id}}', $result['none'], 'an empty fallback is none');
+	pg_assert_same('{{trigger.count|a b}}', $result['line'], 'one line');
+	pg_assert_same(100, $result['cut'], 'cut to its length');
+	pg_assert_same(array(true, false), $result['holds']);
+	pg_assert_same(array('post_1 | post_2 | {{node.post_1.message_id}} | a}} | b \\ {c | skipped'), $result['threads'], 'one thread, from and to kept, the first fallback');
 }
