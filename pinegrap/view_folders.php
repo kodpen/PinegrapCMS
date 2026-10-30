@@ -1721,7 +1721,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      form post in any case, so posting to it is also the plain way to do this.
      send_to brings the operator back to this screen when it is finished. -->
 <dialog class="dialog pg-dialog-centered" id="import_zip_modal" aria-labelledby="import_zip_modal_label">
-        <form class="d-contents" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
+        <form id="import_zip_form" class="d-contents" style="border-radius:.9rem;" action="import_zip.php" method="post" enctype="multipart/form-data">
             <div class="dialog-header">
                 <h5 class="dialog-title" id="import_zip_modal_label"><span class="bi bi-file-earmark-zip me-3"></span><?php echo lang('Import ZIP File'); ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
@@ -1739,6 +1739,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <input type="text" class="form-control" id="import_zip_name" name="import_name" maxlength="100" />
                     <div class="form-text"><?php echo lang('appended to imported items and filenames for easy reference, recommended, e.g. \'mysite\''); ?></div>
                 </div>
+                <p class="small fg-secondary mt-3 mb-0" id="import_zip_status" role="status" aria-live="polite"></p>
             </div>
             <div class="dialog-footer">
                 <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
@@ -1753,7 +1754,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
      the browser lands in the editor on it. The plain Import ZIP above makes
      ordinary pages and files; this one makes a design. -->
 <dialog class="dialog pg-dialog-centered" id="import_design_zip_modal" aria-labelledby="import_design_zip_modal_label">
-        <form class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
+        <form id="import_design_zip_form" class="d-contents" style="border-radius:.9rem;" action="import_design_zip.php" method="post" enctype="multipart/form-data">
             <div class="dialog-header">
                 <h5 class="dialog-title" id="import_design_zip_modal_label"><span class="bi bi-magic me-3"></span><?php echo lang('Import ZIP for the Visual Page Editor'); ?></h5>
                 <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="<?php echo lang('Close'); ?>"></button>
@@ -1771,6 +1772,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     <input type="text" class="form-control" id="import_design_zip_project" name="project_name" maxlength="60" />
                     <div class="form-text"><?php echo lang('Defaults to the file name'); ?></div>
                 </div>
+                <p class="small fg-secondary mt-3 mb-0" id="import_design_zip_status" role="status" aria-live="polite"></p>
             </div>
             <div class="dialog-footer">
                 <button type="button" class="btn btn-solid theme-secondary" data-bs-dismiss="dialog"><?php echo lang('Cancel'); ?></button>
@@ -1778,6 +1780,39 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             </div>
         </form>
 </dialog>
+<script>
+    // Both ZIP imports upload, unzip and write rows before they answer,
+    // often longer than the window guard's 3 seconds, and every run makes a
+    // new folder, design or file rows under unique names. Each form is sent
+    // once: the first submit goes, any later one is cancelled until a page
+    // restored from the cache resets it. The button is never disabled, so
+    // its value travels.
+    (function () {
+        ['import_zip', 'import_design_zip'].forEach(function (id) {
+            var form = document.getElementById(id + '_form');
+            var status = document.getElementById(id + '_status');
+            var sent = false;
+
+            if (!form) { return; }
+
+            window.addEventListener('submit', function (event) {
+                if (event.target !== form) { return; }
+                if (sent) { event.preventDefault(); return; }
+                if (event.defaultPrevented) { return; }
+                sent = true;
+                form.setAttribute('aria-busy', 'true');
+                if (status) { status.textContent = <?php echo encode_json(lang('Importing…')); ?>; }
+            });
+
+            window.addEventListener('pageshow', function (event) {
+                if (!event.persisted) { return; }
+                sent = false;
+                form.removeAttribute('aria-busy');
+                if (status) { status.textContent = ''; }
+            });
+        });
+    })();
+</script>
 
 <!-- Upload.
      add_file.php is still the upload screen and view_files.php still goes
@@ -14552,7 +14587,26 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // with no size of its own gets the size the row remembers, or a sensible
     // square; a JPG gets white behind it, since it has no transparency to
     // keep.
+    //
+    // Every run writes a new file, and the buttons are type=button, which the
+    // window's double-submit guard never sees: one conversion at a time, the
+    // three buttons disabled while it runs, labels left as they are.
+    var rasterizing = false;
+
     function rasterizeSvg(file, type) {
+
+        if (rasterizing) { return; }
+
+        function setBusy(busy) {
+            rasterizing = busy;
+            Array.prototype.forEach.call(document.querySelectorAll('#file_edit_tools [data-file-tool="rasterize"]'), function (button) {
+                button.disabled = busy;
+            });
+        }
+
+        function settle() { setBusy(false); }
+
+        setBusy(true);
 
         var picture = new Image();
 
@@ -14577,7 +14631,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             var mime = { jpg: 'image/jpeg', png: 'image/png', webp: 'image/webp' }[type];
             var data;
 
-            try { data = canvas.toDataURL(mime, 0.92); } catch (e) { toast(L.request_failed, false); return; }
+            try { data = canvas.toDataURL(mime, 0.92); } catch (e) { settle(); toast(L.request_failed, false); return; }
 
             fetch('image_editor_save.php', {
                 method: 'POST',
@@ -14586,15 +14640,17 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 body: JSON.stringify({ token: software_token, file_id: file.id, mode: 'copy', type: type, data: data })
             }).then(function (response) { return response.json(); }).then(function (result) {
 
+                settle();
+
                 if (!result || (result.status !== 'success')) { toast((result && result.message) || L.request_failed, false); return; }
 
                 toast(fmt(L.saved_named, [result.name]), true);
                 reload();
 
-            }).catch(function () { toast(L.request_failed, false); });
+            }).catch(function () { settle(); toast(L.request_failed, false); });
         };
 
-        picture.onerror = function () { toast(L.request_failed, false); };
+        picture.onerror = function () { settle(); toast(L.request_failed, false); };
         picture.src = imageUrl(file);
     }
 
