@@ -348,6 +348,7 @@ function pg_panel_actions()
         'ws_flow_ai_sketch',
         'ws_flow_shares', 'ws_flow_share_set', 'ws_flow_share_remove',
         'ws_flow_from_draft', 'ws_flow_draft_graph', 'ws_flow_scheduled_new', 'ws_flow_scheduled_copy',
+        'ws_flow_draft_box', 'ws_flow_draft_box_save',
         'ws_flow_scheduled_edit',
         'ws_channel_customer', 'ws_channel_customer_history',
         'ws_channel_customer_followup',
