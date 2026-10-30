@@ -142,8 +142,9 @@ function pg_site_log_list_description($text, $is_error, $key)
  */
 function pg_site_log_list_row($entry)
 {
-    $user = ((string) ($entry['log_user'] ?? '') === '') ? 'UNKNOWN' : (string) $entry['log_user'];
     $ip = (string) ($entry['log_ip'] ?? '');
+    // A row without a user is named like the dashboard's Activity card names it.
+    $user = pg_log_actor($entry['log_user'] ?? '', $ip);
     $is_error = (($entry['log_type'] ?? 'Site Log') !== 'Site Log');
     $location = $entry['log_location'] ?? h(lang('Database'));
     $class = 'unselectable';

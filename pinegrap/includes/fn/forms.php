@@ -1633,6 +1633,51 @@ function log_activity($description, $user = '')
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
 }
+/**
+ * Who a site log row names, on the Site Log and in the dashboard's Activity
+ * card. A row with no user, or the literal UNKNOWN older jobs wrote, and no
+ * address came from a scheduled job (they run from the command line); with an
+ * address it is a visitor nobody knows.
+ *
+ * @param string $user The row's log_user.
+ * @param string $ip   The row's log_ip.
+ * @return string Plain text.
+ */
+function pg_log_actor($user, $ip)
+{
+    $user = (string) $user;
+
+    if (($user !== '') && ($user !== 'UNKNOWN')) {
+        return $user;
+    }
+
+    return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
+}
+/**
+ * A site log line written by a request a visitor makes. A page drawn in
+ * another site language (FRONTEND_LANGUAGE) would write the line in that
+ * language; the log is read in the panel, so the line takes the software
+ * language like the panel's own lines.
+ *
+ * @param array $properties lang()'s array form ('string', 'vars', 'suffix').
+ * @return string
+ */
+function pg_log_lang($properties)
+{
+    $held = function_exists('pg_tr_suspend');
+
+    if ($held) {
+        pg_tr_suspend(true);
+    }
+
+    $text = lang($properties);
+
+    if ($held) {
+        pg_tr_suspend(false);
+    }
+
+    return $text;
+}
 function get_number_of_contacts($contact_group, $require_email = false)
 {
     $where_values = array();

@@ -52,7 +52,8 @@ function test_site_log_list_site_row()
 	pg_assert_same(5, count($row['cells']), 'one cell per heading');
 	pg_assert_contains('<tr id="41" class="unselectable">', $html);
 	pg_assert_contains('pglogsite', $html);
-	pg_assert_contains('UNKNOWN', $html, 'a visitor without a user');
+	pg_assert_contains(h(lang('Scheduled job')), $html, 'a row without a user or an address');
+	pg_assert_false(strpos($html, 'UNKNOWN') !== false, 'no fixed UNKNOWN');
 	pg_assert_contains('Page &lt;b&gt; saved', $html);
 	pg_assert_contains('id="pg_log_msg_41"', $html);
 	pg_assert_contains('&mdash;', $html, 'no IP address');

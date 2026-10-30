@@ -555,26 +555,6 @@ function pg_dashboard_workspace_rights($user)
 }
 
 /**
- * Who a site log row names in the Activity card. A row with no user, or the
- * literal UNKNOWN a job writes, and no address came from a scheduled job; with
- * an address it is a visitor nobody knows.
- *
- * @param string $user The row's log_user.
- * @param string $ip   The row's log_ip.
- * @return string Plain text.
- */
-function pg_dashboard_log_actor($user, $ip)
-{
-    $user = (string) $user;
-
-    if (($user !== '') && ($user !== 'UNKNOWN')) {
-        return $user;
-    }
-
-    return ((string) $ip === '') ? lang('Scheduled job') : lang('Unknown');
-}
-
-/**
  * The line under a site log row in the Activity card: the description and,
  * when the row has one, the address it came from.
  *
