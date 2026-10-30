@@ -64,11 +64,12 @@ function pg_menu_item_form_card($liveform, $parent_id_options, $extra = '')
                                                 ' . $liveform->output_field(array('type'=>'select', 'name'=>'link_page_id', 'id'=>'link_page_id', 'class'=>'form-control', 'style'=>'min-width:100px', 'options'=>get_page_options(), 'onclick'=>'if (this.selectedIndex != 0) {document.getElementById(\'link_url\').value = \'\'}')) . '
                                                 <div class="input-group-text">
                                                     <div class="form-field">
-                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs')) . '</div>
-                                                        <label class="" for="security" title="' . lang('Enable Security') . '" data-bs-content="' . lang('only show Menu Item if Visitor has access to view Page') . '">' . lang('Enable Security') . ' (?)</label>
+                                                        <div class="switch">' . $liveform->output_field(array('type'=>'checkbox', 'name'=>'security', 'id'=>'security', 'value'=>'1', 'class'=>'no-bs', 'aria-describedby'=>'security_hint')) . '</div>
+                                                        <label class="" for="security">' . lang('Enable Security') . '</label>
                                                     </div>
                                                 </div>
                                             </div>
+                                            <div class="form-text" id="security_hint">' . lang('only show Menu Item if Visitor has access to view Page') . '</div>
                                         </div>
                                         <div class="col-12 md:col-12 lg:col-2  my-3 lg:text-center">
                                             <label class="form-label">-' . lang('or') . '-</label>

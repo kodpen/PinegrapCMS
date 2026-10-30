@@ -528,7 +528,7 @@ data switch of the settings and the custom layout radio's label.
 <<<
                                 <label title="' . $layout_type_custom_label_title . '" class="form-check-label' . $layout_type_custom_label_class . '" for="layout_type_custom">'. lang('Custom') . '</label>
 ===
-                                <label title="' . $layout_type_custom_label_title . '" class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
+                                <label class="' . trim($layout_type_custom_label_class) . '" for="layout_type_custom">'. lang('Custom') . '</label>
 >>>
 
 Selectors on v5 classes in code and style blocks the selector fix does
