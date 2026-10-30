@@ -474,7 +474,7 @@ function ws_flow_problem($code, $node, $edge, $text, $warning = false)
 
 /**
  * The texts of a box a run fills {{node.<id>.<field>}} into: a step box's
- * texts (ws_step_kinds()), a task box's title and description, the value a
+ * texts and the address that takes numbers (ws_step_kinds()), a task box's title and description, the value a
  * condition box compares, a For each box's list and the value its End box
  * gathers. Pure.
  *
@@ -503,7 +503,8 @@ function ws_flow_node_texts($node)
     } elseif ($kind === 'for_each_end') {
         $keys = array('collect');
     } else {
-        $keys = ($kind === 'task') ? array('title', 'description') : ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind]['texts'] ?? array()) : array()));
+        $info = function_exists('ws_step_kinds') ? (ws_step_kinds()[$kind] ?? array()) : array();
+        $keys = ($kind === 'task') ? array('title', 'description') : array_merge($info['texts'] ?? array(), $info['urls'] ?? array());
     }
 
     $out = array();
@@ -548,6 +549,44 @@ function ws_flow_node_fields($node, $kinds)
 
 
     return array_merge(array('text', 'outcome', 'status'), array_column($outputs, 'key'));
+}
+
+/**
+ * The type of a value {{node.<id>.<field>}} reads of a box (text, outcome
+ * and status are texts), '' for one it does not give. Pure.
+ *
+ * @param array  $node  ws_flow_graph_normalize() box
+ * @param string $field
+ * @param array  $kinds ws_flow_kinds()
+ * @return string number | text | ...
+ */
+function ws_flow_node_field_type($node, $field, $kinds)
+{
+    if (in_array($field, array('text', 'outcome', 'status'), true) && ($node['kind'] !== 'constants') && ($node['kind'] !== 'value')) {
+        return 'text';
+    }
+
+    $kind = (string) $node['kind'];
+
+    if ($kind === 'constants') {
+        $outputs = function_exists('ws_flow_constants_outputs') ? ws_flow_constants_outputs($node['config']) : array();
+    } elseif ($kind === 'value') {
+        $outputs = function_exists('ws_flow_derived_outputs') ? ws_flow_derived_outputs($node['config']) : array();
+    } elseif (!empty($kinds[$kind]['trigger'])) {
+        $outputs = function_exists('ws_flow_trigger_outputs') ? ws_flow_trigger_outputs($kind, (array) $node['config']) : array();
+    } elseif (($kind === 'for_each') && function_exists('ws_flow_loop_outputs')) {
+        $outputs = ws_flow_loop_outputs($node['config']);
+    } else {
+        $outputs = (!empty($kinds[$kind]['step']) && function_exists('ws_step_outputs')) ? ws_step_outputs($kind, $node['config']) : ($kinds[$kind]['outputs'] ?? array());
+    }
+
+    foreach ($outputs as $output) {
+        if ((string) ($output['key'] ?? '') === $field) {
+            return (string) ($output['type'] ?? 'text');
+        }
+    }
+
+    return '';
 }
 
 /**
@@ -997,6 +1036,32 @@ function ws_flow_reference_problems($nodes, $kinds, $next, $always)
         }
 
         $name = ws_flow_box_name($node);
+
+        // An address takes numbers only (decision #3410): a value of any
+        // other type there is refused, as one no box gives.
+        foreach ((function_exists('ws_step_kinds') ? (ws_step_kinds()[$node['kind']]['urls'] ?? array()) : array()) as $key) {
+            $url = (string) ($node['config'][$key] ?? '');
+
+            if ((strpos($url, '{{') === false) || !preg_match_all(WS_STEP_VALUE_PATTERN, $url, $found, PREG_SET_ORDER)) {
+                continue;
+            }
+
+            foreach ($found as $match) {
+                $box = ($match[1] !== '') ? ($nodes[$match[1]] ?? null) : null;
+
+                foreach (($match[1] === '') ? $nodes : array() as $start) {
+                    if (!empty($kinds[(string) $start['kind']]['trigger'])) {
+                        $box = $start;
+                        break;
+                    }
+                }
+                $type = $box ? ws_flow_node_field_type($box, $match[2], $kinds) : '';
+
+                if (($type !== '') && ($type !== 'number')) {
+                    $problems[] = ws_flow_problem('bad_reference', (string) $id, null, lang(array('string' => 'The box {var:1} puts {var:2} into its address, which takes only a number.', 'vars' => array($name, $match[0]))));
+                }
+            }
+        }
 
         // What started the run gives the values its start box declares; a
         // flow without one has its own problem (no_trigger).
@@ -2774,6 +2839,7 @@ function ws_flow_js_strings()
         'fl_task_open_due_help' => lang('Days from when the box runs; empty for no due date. The flow does not wait for the task: a Task box does.'),
         'fl_url'              => lang('Address'),
         'fl_url_help'         => lang('An https address outside this network.'),
+        'fl_hook_url_help'    => lang('An https address outside this network. A number from an earlier box may go into its path or query.'),
         'fl_url_none'         => lang('No address yet'),
         'fl_hook_format'      => lang('What is sent'),
         'fl_hook_generic'     => lang('JSON with the details of the run'),
