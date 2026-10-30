@@ -8904,6 +8904,7 @@ function get_tables() {
 		'erp_parasut_log',
 		'erp_product_costs',
 		'erp_purchase_orders',
+		'erp_quote_templates',
 		'erp_quotes',
 		'erp_reconciliation_log',
 		'erp_settlements',
