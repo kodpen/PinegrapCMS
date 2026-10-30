@@ -19,6 +19,10 @@
 ini_set('max_execution_time', '9999');
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 require('url_to_absolute.php');
 
 $user = validate_user();
@@ -58,6 +62,7 @@ if (!$_POST) {
                                         <div class="col-12 lg:col-auto my-3">
                                             <label for="file" class="form-label">' . lang('Select .zip to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 lg:col my-3">
                                             <label for="name" class="form-label">' . lang('Tag') . '</label>
@@ -92,6 +97,13 @@ if (!$_POST) {
     $liveform->add_fields_to_session();
 
     $import_name = $liveform->get_field_value('import_name');
+
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'] ?? null, $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        output_error(h($upload_refusal) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
+    }
 
     $zip_file_name = $_FILES['file']['name'];
 

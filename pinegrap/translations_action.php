@@ -26,6 +26,13 @@ require('init.php');
 
 $user = validate_user();
 
+// The CSV import is the one form this file takes; a CSV over post_max_size
+// arrives without its 'action' field and would otherwise be read as a JSON
+// call. Only a multipart body is checked: the JSON calls never fill $_POST.
+if (stripos((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data') === 0) {
+    pg_upload_refuse_discarded_body();
+}
+
 $translations_form_action = (isset($_POST['action']) && is_string($_POST['action'])) ? $_POST['action'] : '';
 $translations_is_import = in_array($translations_form_action, array('import', 'glossary_save', 'glossary_delete'), true);
 $translations_is_export = (isset($_GET['action']) && ($_GET['action'] === 'export'));
@@ -522,6 +529,14 @@ if ($translations_form_action === 'glossary_save') {
 
 // ── the import: a posted file, written as reviewed translations, then back
 // to the screen with the counts ──
+
+$upload_limits = pg_upload_limits();
+$upload_refusal = pg_upload_file_refusal($_FILES['csv'] ?? null, $upload_limits['file_max']);
+
+if ($upload_refusal !== '') {
+    $liveform->mark_error('', h($upload_refusal));
+    go($back);
+}
 
 if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
     $liveform->mark_error('', lang('Please choose a CSV file.'));

@@ -32,6 +32,10 @@ ini_set('memory_limit', '512M');
 ignore_user_abort(true);
 
 include('init.php');
+
+// A file over post_max_size empties the whole request; say so instead of
+// drawing the form again as if nothing had been sent.
+pg_upload_refuse_discarded_body();
 include_once('liveform.class.php');
 $liveform = new liveform('import_products');
 $liveform_view_products = new liveform('view_products');
@@ -74,6 +78,7 @@ if (!$_POST) {
                                             <label for="file" class="form-label">' . lang('Select Formatted Text File to Upload') . '</label>
                                             ' . $liveform->output_field(array('type'=>'file', 'id'=>'file', 'name'=>'file', 'size'=>'60', 'class'=>'form-control w-auto', 'required'=>'required')) . '
                                             <div class="form-text">' . lang('A .csv, .xlsx or .ods file. The first row holds the column names.') . '</div>
+                                            ' . pg_upload_limit_hint() . '
                                         </div>
                                         <div class="col-12 my-3">
                                             <div class="form-field">
@@ -110,6 +115,16 @@ if (!$_POST) {
     if (!$_FILES['file']['name']) {
         $liveform->mark_error('file', lang('Please select a file.'));
         
+        header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
+        exit();
+    }
+
+    $upload_limits = pg_upload_limits();
+    $upload_refusal = pg_upload_file_refusal($_FILES['file'], $upload_limits['file_max']);
+
+    if ($upload_refusal !== '') {
+        $liveform->mark_error('file', h($upload_refusal));
+
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/import_products.php');
         exit();
     }
