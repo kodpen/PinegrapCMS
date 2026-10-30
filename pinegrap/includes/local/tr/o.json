@@ -1078,6 +1078,7 @@
     "Order {var:1} was marked invoiced on {var:2} with invoice number {var:3}": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} fatura numarasıyla faturalandı olarak bildirildi",
     "Order {var:1} was marked invoiced on {var:2}.": "{var:1} numaralı sipariş {var:2} üzerinde faturalandı olarak bildirildi.",
     "Order {var:1} was marked shipped on {var:2} with tracking link {var:3}.": "{var:1} numaralı sipariş {var:2} üzerinde {var:3} takip bağlantısıyla kargolandı olarak işaretlendi.",
+    "Order {var:1} was not marked invoiced on {var:2} on its own; mark it on the Imported orders card with invoice number {var:3}: {var:4}": "{var:1} siparişi {var:2} üzerinde kendiliğinden faturalandı olarak işaretlenemedi; İçe aktarılan siparişler kartından {var:3} fatura numarasıyla işaretleyin: {var:4}",
     "Order {var:1} was not marked invoiced: {var:2}": "{var:1} numaralı sipariş faturalandı olarak bildirilemedi: {var:2}",
     "Order {var:1}: {var:2} ({var:3})": "Sipariş {var:1}: {var:2} ({var:3})",
     "Order — identity & status": "Sipariş — kimlik & durum",

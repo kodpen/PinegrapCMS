@@ -54,6 +54,7 @@ function mp_n11_connector() {
 		'categories'       => 'mp_n11_categories',
 		'pull_orders'      => 'mp_n11_pull_orders',
 		'approve_lines'    => 'mp_n11_approve_lines',
+		'send_invoice_link' => 'mp_n11_send_invoice_link',
 		'order_stage'      => 'mp_n11_order_stage',
 		'request_collection' => 'mp_n11_request_collection',
 		'category_tree'    => 'mp_n11_category_tree',
@@ -1207,6 +1208,172 @@ function mp_n11_approve_lines($account, $line_ids, $package = array()) {
 	}
 
 	return mp_ok(array('accepted' => count($lines)));
+
+}
+
+
+/* ---------------------------------------------------------------- invoices */
+
+// Their seller invoice service, the one order call that has no REST form: a
+// SOAP 1.1 service, SaveLinkSellerInvoice, at the address its WSDL
+// (https://api.n11.com/ws/SellerInvoiceService.wsdl, read 2026-10-30) names.
+function mp_n11_invoice_service() {
+
+	return mp_n11_base() . '/ws/sellerInvoiceService/';
+
+}
+
+// What is wrong with an invoice link before n11 sees it, or ''. Their rules:
+// https, at most 2048 characters, and a file named as a PDF, PNG or JPEG.
+function mp_n11_invoice_link_problem($url) {
+
+	$url = is_scalar($url) ? trim((string)$url) : '';
+
+	if ($url === '') {
+
+		return lang('Type the address of the invoice (the e-Archive or e-Invoice PDF) first.');
+
+	}
+
+	if (strlen($url) > 2048 || preg_match('#^https://[^\s/?\#@]+(?:[/?\#]\S*)?$#i', $url) !== 1) {
+
+		return lang('n11 takes only an invoice link that starts with https:// and has no spaces.');
+
+	}
+
+	if (preg_match('#\.(pdf|png|jpe?g)$#i', preg_replace('/\#.*$/', '', $url)) !== 1) {
+
+		return lang('n11 takes only an invoice link that ends in .pdf, .png or .jpeg.');
+
+	}
+
+	return '';
+
+}
+
+// Whether an invoice number has the shape n11 checks: three letters or
+// digits, a year from 2020 to 2099, nine digits. Pure.
+function mp_n11_invoice_number_fits($number) {
+
+	return is_string($number) && (preg_match('/^[A-Za-z0-9]{3}20[2-9][0-9][0-9]{9}$/D', $number) === 1);
+
+}
+
+// The SOAP envelope of SaveLinkSellerInvoice. The number and its day go only
+// when the number has their shape: they are optional for a domestic order,
+// and a number they refuse would refuse the link with it. The day is
+// milliseconds at the start of the invoice day in GMT+3, as they ask.
+function mp_n11_invoice_link_envelope($account, $order_number, $url, $invoice_number = '', $invoice_date = '') {
+
+	$x = function ($value) {
+
+		return htmlspecialchars((string)$value, ENT_XML1 | ENT_QUOTES, 'UTF-8');
+
+	};
+
+	$extra = '';
+
+	if (mp_n11_invoice_number_fits((string)$invoice_number)
+		&& preg_match('/^\d{4}-\d{2}-\d{2}$/', (string)$invoice_date) && ((string)$invoice_date !== '0000-00-00')) {
+
+		$day = new DateTime($invoice_date . ' 00:00:00', new DateTimeZone('Europe/Istanbul'));
+
+		$extra = '<invoiceNumber>' . $x($invoice_number) . '</invoiceNumber>'
+			. '<invoiceDateTime>' . ($day->getTimestamp() * 1000) . '</invoiceDateTime>';
+
+	}
+
+	return '<?xml version="1.0" encoding="UTF-8"?>'
+		. '<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:sch="http://www.n11.com/ws/schemas">'
+		. '<soapenv:Header/><soapenv:Body><sch:SaveLinkSellerInvoiceRequest>'
+		. '<auth><appKey>' . $x($account['credentials']['app_key'] ?? '') . '</appKey>'
+		. '<appSecret>' . $x($account['credentials']['app_secret'] ?? '') . '</appSecret></auth>'
+		. '<url>' . $x(trim((string)$url)) . '</url>'
+		. '<orderNumber>' . $x($order_number) . '</orderNumber>'
+		. $extra
+		. '</sch:SaveLinkSellerInvoiceRequest></soapenv:Body></soapenv:Envelope>';
+
+}
+
+// Their answer: array('ok' => bool, 'error' => string). result.status is
+// "success" or "failure", with errorMessage beside it; a SOAP fault carries
+// faultstring. Pure.
+function mp_n11_invoice_link_answer($body) {
+
+	$read = function ($name) use ($body) {
+
+		return (preg_match('#<(?:[A-Za-z0-9_]+:)?' . $name . '>([^<]*)</#', (string)$body, $match) === 1)
+			? trim(html_entity_decode($match[1], ENT_QUOTES | ENT_XML1, 'UTF-8')) : '';
+
+	};
+
+	if (strtolower($read('status')) === 'success') {
+
+		return array('ok' => true, 'error' => '');
+
+	}
+
+	$message = $read('errorMessage');
+
+	if ($message === '') {
+
+		$message = $read('faultstring');
+
+	}
+
+	return array('ok' => false, 'error' => mb_substr($message, 0, 500));
+
+}
+
+// Save the link of an order's invoice on n11, which then shows it to the
+// buyer. Keyed by their order number, not the package: one active link per
+// order, and a second call replaces the first. $package may carry
+// invoice_number and invoice_date (mp_invoice_push_package()).
+function mp_n11_send_invoice_link($account, $package, $url, $transport = null) {
+
+	$order_number = isset($package['remote_order_id']) ? trim((string)$package['remote_order_id']) : '';
+
+	if ($order_number === '') {
+
+		return mp_error(lang('That order has no order number to send an invoice for.'));
+
+	}
+
+	$problem = mp_n11_invoice_link_problem($url);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$outcome = call_user_func(($transport === null) ? 'api_http_request' : $transport, 'POST', mp_n11_invoice_service(), array(
+		'body'     => mp_n11_invoice_link_envelope($account, $order_number, $url,
+			isset($package['invoice_number']) ? (string)$package['invoice_number'] : '',
+			isset($package['invoice_date']) ? (string)$package['invoice_date'] : ''),
+		'headers'  => array('Content-Type: text/xml; charset=utf-8', 'Accept: text/xml', 'SOAPAction: ""'),
+		'timeout'  => 30,
+		'max_body' => 65536,
+		'agent'    => 'marketplace'
+	));
+
+	if ($outcome['error'] !== '') {
+
+		return mp_error($outcome['error'], true);
+
+	}
+
+	$answer = mp_n11_invoice_link_answer($outcome['body']);
+
+	if ($answer['ok']) {
+
+		return mp_ok(array('sent' => true));
+
+	}
+
+	return mp_error(($answer['error'] !== '') ? $answer['error']
+		: lang(array('string' => 'n11 answered {var:1}.', 'vars' => array($outcome['status']))),
+		api_http_should_retry($outcome));
 
 }
 

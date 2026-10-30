@@ -720,6 +720,7 @@
     "A project, a question, a cat photo: write a few lines and I will get back to you.": "Bir proje, bir soru, bir kedi fotoğrafı: birkaç satır yazın, size dönerim.",
     "A proposed flow is opened as a new flow and published there.": "Önerilen akış yeni bir akış olarak açılır ve orada yayımlanır.",
     "A proposed task needs a title.": "Önerilen görevin bir başlığı olmalı.",
+    "A public address was made for the PDF of invoice {var:1}.": "{var:1} faturasının PDF'i için herkese açık bir adres oluşturuldu.",
     "A public channel is open to the whole team, a private one only to the people invited. Mention people with @ and tag orders, products or customers with #.": "Genel kanalı bütün ekip görür, özel kanalı yalnız davet edilenler. @ ile kişi anılır, # ile sipariş, ürün ya da müşteri etiketlenir.",
     "A purchase invoice is the supplier's document; it is not e-mailed from here.": "Alış faturası tedarikçinin belgesidir; buradan e-postayla gönderilmez.",
     "A purchase invoice keeps the date the supplier gave it.": "Alış faturası tedarikçinin verdiği tarihi korur.",

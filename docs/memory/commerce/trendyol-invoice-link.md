@@ -3,8 +3,8 @@ name: trendyol-invoice-link
 description: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal
 ---
 
-## Why does the operator type the link?
-- The ERP e-document PDF is served only behind the panel login, so the shop has no address the buyer could open; no job sends invoices. Each imported row on the Imported orders card (`marketplace_settings.php`, action `invoice_link`) has a folded "Send invoice link" form.
+## Who sends the link?
+- With the ERP invoicing marketplace orders, the public address of the order's invoice goes by itself (`erp/erp-auto-invoice-marketplace.md`, `erp/erp-invoice-public-link.md`). Each imported row on the Imported orders card (`marketplace_settings.php`, action `invoice_link`) keeps a folded "Send invoice link" form: ticked (`use_public`) it sends the invoice's public address, made anew at the send; unticked it sends a typed address. n11 has the same form (`erp/erp-invoice-public-link.md`).
 - The form shows only when the connector can (`mp_can(…, 'send_invoice_link')`), `mp_invoice_sent_ready()` is true, the row is `imported` with an order, `invoice_sent` is 0 and `mp_order_stage()` is not `cancelled`. A sent row shows the "Invoice sent" pill.
 
 ## Which call?
