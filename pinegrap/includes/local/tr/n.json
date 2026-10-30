@@ -1509,6 +1509,7 @@
     "Number them in order": "Sırayla numaralandır",
     "Number, GİB number, ETTN, account, tax number or order": "Belge no, GİB no, ETTN, cari, VKN/TCKN veya sipariş",
     "Number, name, user or IP": "Numara, ad, kullanıcı ya da IP",
+    "Number: how 1234.56 is written in this language, for example 1.234,56. Date: PHP date letters (j day, n month, Y year; d and m with a leading zero). og:locale: language_COUNTRY, for example tr_TR; any other shape is cleared on save. An empty number or date box uses the language's own format.": "Sayı: 1234.56 bu dilde nasıl yazılır, örneğin 1.234,56. Tarih: PHP tarih harfleri (j gün, n ay, Y yıl; d ve m başında sıfırla). og:locale: dil_ÜLKE, örneğin tr_TR; başka bir biçim kaydederken silinir. Boş bırakılan sayı veya tarih kutusu dilin kendi biçimini kullanır.",
     "Numbered list": "Numaralı liste",
     "Numbered steps in one column": "Tek sütunda numaralı adımlar",
     "Numbering, default accounts and the Parasut connection.": "Numaralandırma, varsayılan hesaplar ve Paraşüt bağlantısı.",
