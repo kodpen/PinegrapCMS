@@ -12,3 +12,7 @@ description: ERP stock count (4.100): scanning and corrections, applying it to p
 - It writes no `erp_stock_moves` row: a shelf correction is not a purchase or a sale and carries no cost, so the average cost does not move.
 - Unlike the document flows, which change counts only after the commit (erp-stock-moves-and-cost.md), it writes `products` inside its transaction: on a `products` table still MyISAM (over the conversion limit) a failed apply keeps the rows it already set, the count stays open, and a second apply reads them as `system_before`.
 - After the commit: `pg_marketplace_product_changed()` for each product whose stock changed, and the `erp.stock_count.applied` event (`line_count`, `changed`).
+
+## How is the quantity beside a scan read?
+- `erp_stock_count_scan_quantity()` (`erp_stock_count.php` → `erp_stock_count_scan()`): an empty box is one piece, otherwise the counted list's rule, `/^\d{1,7}$/`. Anything else (`1.200`, `2,5`, `abc`) is refused on the code field with "A count is a whole number of pieces." and nothing is counted.
+- Before, the box was cast with `(int)`: `1.200` with "Set the count to this quantity" set the count to 1, `abc` set it to 0 and `2,5` added 2. Pinned by `tests/erp_stock_count_quantity_test.php` (#3643).

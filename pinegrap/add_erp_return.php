@@ -237,8 +237,11 @@ if (!$_POST) {
     $quantities = array();
 
     foreach ($returnable as $line) {
-        $raw =str_replace(',', '.', trim((string) $liveform->get_field_value('qty_' . (int) $line['id'])));
-        $quantities[(int) $line['id']] = ($raw === '') ? 0 : (float) $raw;
+        // erp_quantity_in() reads 1.250,5 and 1,250 the way the store writes
+        // them; it drops a minus sign, so a negative figure stays a line
+        // that is not returned.
+        $raw = trim((string) $liveform->get_field_value('qty_' . (int) $line['id']));
+        $quantities[(int) $line['id']] = (($raw === '') || (strpos($raw, '-') !== false)) ? 0 : erp_quantity_in($raw);
     }
 
     $result = erp_invoice_return(array(

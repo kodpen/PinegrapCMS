@@ -1246,6 +1246,452 @@ function pg_ship_to_district_ready()
 }
 
 /**
+ * Whether a country, as a code or a name ('TR', 'Turkey', 'Türkiye'), is
+ * Turkey. Pure.
+ *
+ * @param  string $country countries.code or countries.name
+ * @param  string $name    countries.name when $country is the code
+ * @return bool
+ */
+function pg_ship_to_district_country_is_tr($country, $name = '')
+{
+    $country = is_scalar($country) ? trim((string) $country) : '';
+    $name = is_scalar($name) ? trim((string) $name) : '';
+
+    if (($country === '') && ($name === '')) {
+        return false;
+    }
+
+    require_once(PG_FUNCTIONS_DIR . '/includes/sales_map.php');
+
+    return pg_sales_map_canonical_country($country, ($name !== '') ? $name : $country) === 'TR';
+}
+
+/**
+ * The codes of the shop's countries rows that stand for Turkey, for the
+ * script that shows the box when one of them is picked.
+ *
+ * @return array list of countries.code
+ */
+function pg_ship_to_district_tr_codes()
+{
+    static $codes = null;
+
+    if ($codes !== null) {
+        return $codes;
+    }
+
+    $codes = array();
+
+    foreach ((array) db_items("SELECT code, name FROM countries") as $row) {
+        if (((string) $row['code'] !== '') && pg_ship_to_district_country_is_tr((string) $row['code'], (string) $row['name'])) {
+            $codes[] = (string) $row['code'];
+        }
+    }
+
+    return $codes;
+}
+
+/**
+ * Whether a carrier's label driver asks for the recipient's district. A
+ * driver says so by defining pg_label_<key>_needs_district() that answers
+ * true; none does yet, so the Turkey rule alone draws the box for now.
+ *
+ * @param  string $carrier a pg_shipping_carriers() key, '' when not known
+ * @return bool
+ */
+function pg_ship_to_district_carrier_asks($carrier)
+{
+    $carrier = (string) $carrier;
+
+    if (($carrier === '') || !function_exists('pg_label_drivers') || !function_exists('pg_label_info')) {
+        return false;
+    }
+
+    foreach (array_keys(pg_label_drivers()) as $key) {
+        $ask = 'pg_label_' . $key . '_needs_district';
+
+        if (function_exists($ask) && in_array($carrier, (array) pg_label_info($key)['carriers'], true) && $ask()) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+/**
+ * Whether the optional district box is drawn for an address: only once
+ * ship_tos.district exists, then for a Turkish address or one whose carrier's
+ * driver asks for it.
+ *
+ * @param  string    $country countries.code or countries.name of the address
+ * @param  bool      $carrier_asks pg_ship_to_district_carrier_asks()
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return bool
+ */
+function pg_ship_to_district_shown($country, $carrier_asks = false, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return false;
+    }
+
+    return $carrier_asks || pg_ship_to_district_country_is_tr($country);
+}
+
+/**
+ * A typed district as it is stored: one line, trimmed, at most 50
+ * characters (cut by character, so a Turkish letter is never split). Empty
+ * is allowed: the box is never required. Pure.
+ *
+ * @param  mixed  $value
+ * @return string
+ */
+function pg_ship_to_district_clean($value)
+{
+    $value = is_scalar($value) ? (string) $value : '';
+    // Line breaks and control characters become one space; a value that is
+    // not UTF-8 is dropped rather than stored broken.
+    $value = preg_replace('/[\x00-\x1F\x7F\s]+/u', ' ', $value);
+    $value = ($value === null) ? '' : trim($value);
+
+    if ($value === '') {
+        return '';
+    }
+
+    if (function_exists('mb_substr')) {
+        return trim(mb_substr($value, 0, 50, 'UTF-8'));
+    }
+
+    return trim(substr($value, 0, 50));
+}
+
+/**
+ * The ", district = '…'" part of an UPDATE or INSERT … SET of ship_tos, or ''
+ * while the column is missing, so a save before step 11.0.134 writes the
+ * address without it, as before.
+ *
+ * @param  mixed     $value the typed district
+ * @param  bool|null $ready pg_ship_to_district_ready(), asked when null
+ * @return string
+ */
+function pg_ship_to_district_set_sql($value, $ready = null)
+{
+    if ($ready === null) {
+        $ready = pg_ship_to_district_ready();
+    }
+
+    if (!$ready) {
+        return '';
+    }
+
+    return ", district = '" . escape(pg_ship_to_district_clean($value)) . "'";
+}
+
+/**
+ * Whether the carrier of a shipping method asks for the district
+ * (pg_ship_to_district_carrier_asks()); no for a method without a carrier or
+ * before the carrier column exists.
+ *
+ * @param  int  $method_id shipping_methods.id
+ * @return bool
+ */
+function pg_ship_to_district_method_asks($method_id)
+{
+    $method_id = (int) $method_id;
+
+    if (($method_id <= 0) || !pg_shipment_rows_ready()) {
+        return false;
+    }
+
+    return pg_ship_to_district_carrier_asks((string) db_value("SELECT carrier FROM shipping_methods WHERE id = '" . $method_id . "'"));
+}
+
+/**
+ * The district part of a ship_tos UPDATE for a posted address: the typed
+ * value while the box applies to the address, '' when it does not (a box
+ * left over from another country is not kept), nothing at all while the
+ * column is missing.
+ *
+ * @param  mixed $value     the posted district
+ * @param  string $country  the posted country code
+ * @param  int   $method_id the address's shipping method, 0 when not chosen yet
+ * @return string pg_ship_to_district_set_sql()
+ */
+function pg_ship_to_district_address_sql($value, $country, $method_id = 0)
+{
+    if (!pg_ship_to_district_ready()) {
+        return '';
+    }
+
+    $shown = pg_ship_to_district_shown($country, pg_ship_to_district_method_asks($method_id), true);
+
+    return pg_ship_to_district_set_sql($shown ? $value : '', true);
+}
+
+/**
+ * Writes the district of a posted address on its recipient
+ * (pg_ship_to_district_address_sql(), with the recipient's own shipping
+ * method); nothing while the column is missing.
+ *
+ * @param  int    $ship_to_id
+ * @param  mixed  $value   the posted district
+ * @param  string $country the posted country code
+ * @return void
+ */
+function pg_ship_to_district_save($ship_to_id, $value, $country)
+{
+    $ship_to_id = (int) $ship_to_id;
+
+    if (($ship_to_id <= 0) || !pg_ship_to_district_ready()) {
+        return;
+    }
+
+    $method_id = (int) db_value("SELECT shipping_method_id FROM ship_tos WHERE id = '" . $ship_to_id . "'");
+    $set = pg_ship_to_district_address_sql($value, $country, $method_id);
+
+    if ($set !== '') {
+        db("UPDATE ship_tos SET " . substr($set, 2) . " WHERE id = '" . $ship_to_id . "'");
+    }
+}
+
+/**
+ * The path (child indexes) to the first node of a designer tree $match says
+ * yes to, or null. Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $match receives a node
+ * @return array|null
+ */
+function pg_ship_to_district_tree_path($tree, $match)
+{
+    if (!is_array($tree)) {
+        return null;
+    }
+
+    if ($match($tree)) {
+        return array();
+    }
+
+    if (!empty($tree['children']) && is_array($tree['children'])) {
+        foreach ($tree['children'] as $i => $child) {
+            $path = pg_ship_to_district_tree_path($child, $match);
+
+            if ($path !== null) {
+                return array_merge(array($i), $path);
+            }
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Whether a node only wraps its control and labels (a field's column), so it
+ * goes and is hidden with the control. Pure.
+ *
+ * @param  array $node
+ * @return bool
+ */
+function pg_ship_to_district_tree_is_wrap($node)
+{
+    if (!is_array($node) || empty($node['children']) || !is_array($node['children']) || (count($node['children']) > 3)) {
+        return false;
+    }
+
+    $controls = 0;
+
+    foreach ($node['children'] as $child) {
+        $tag = isset($child['props']['tag']) ? strtolower((string) $child['props']['tag']) : '';
+
+        if (in_array($tag, array('input', 'select', 'textarea'), true)) {
+            $controls++;
+        } elseif (!in_array($tag, array('label', 'small', 'span'), true)) {
+            return false;
+        }
+    }
+
+    return $controls === 1;
+}
+
+/**
+ * Fits the district box into a widget's designer tree. While the column is
+ * missing a district control (and the column that wraps it) is removed. Once
+ * it exists, a tree designed before the box gets $node right after the City
+ * control's column, so every saved checkout page draws it; a tree that has
+ * the control keeps it where the designer put it. Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $is_city     receives a node: the City control
+ * @param  callable $is_district receives a node: the district control
+ * @param  array    $node        the field to add (a column with a label and the control)
+ * @param  bool     $ready       pg_ship_to_district_ready()
+ * @return void
+ */
+function pg_ship_to_district_tree_fit(&$tree, $is_city, $is_district, $node, $ready)
+{
+    $path = pg_ship_to_district_tree_path($tree, $is_district);
+
+    if (!$ready) {
+        if (($path === null) || (count($path) === 0)) {
+            return;
+        }
+
+        $parent_path = array_slice($path, 0, -1);
+        $parent = pg_ship_to_district_tree_node($tree, $parent_path);
+
+        if ((count($parent_path) > 0) && pg_ship_to_district_tree_is_wrap($parent)) {
+            $path = $parent_path;
+        }
+
+        pg_ship_to_district_tree_splice($tree, $path, null);
+
+        return;
+    }
+
+    if ($path !== null) {
+        return;
+    }
+
+    $path = pg_ship_to_district_tree_path($tree, $is_city);
+
+    if (($path === null) || (count($path) === 0)) {
+        return;
+    }
+
+    $parent_path = array_slice($path, 0, -1);
+
+    if ((count($parent_path) > 0) && pg_ship_to_district_tree_is_wrap(pg_ship_to_district_tree_node($tree, $parent_path))) {
+        $path = $parent_path;
+    }
+
+    pg_ship_to_district_tree_splice($tree, $path, $node);
+}
+
+// The node at $path of a tree, null when there is none.
+function pg_ship_to_district_tree_node($tree, $path)
+{
+    foreach ($path as $i) {
+        if (!isset($tree['children'][$i])) {
+            return null;
+        }
+
+        $tree = $tree['children'][$i];
+    }
+
+    return $tree;
+}
+
+// Removes the node at $path ($add null) or puts $add right after it.
+function pg_ship_to_district_tree_splice(&$tree, $path, $add)
+{
+    $last = array_pop($path);
+    $parent = &$tree;
+
+    foreach ($path as $i) {
+        $parent = &$parent['children'][$i];
+    }
+
+    $children = array_values($parent['children']);
+    array_splice($children, $last + (($add === null) ? 0 : 1), ($add === null) ? 1 : 0, ($add === null) ? array() : array($add));
+    $parent['children'] = $children;
+    unset($parent);
+}
+
+/**
+ * Gives the district control its attributes for the show script
+ * (pg_ship_to_district_script()): the name of the country control it
+ * follows, the codes that stand for Turkey, whether the carrier asks for it
+ * anyway, at most 50 characters; its column is marked as what is hidden.
+ * Pure.
+ *
+ * @param  array    $tree
+ * @param  callable $is_district receives a node: the district control
+ * @param  string   $country_name name of the country control
+ * @param  array    $tr_codes     pg_ship_to_district_tr_codes()
+ * @param  bool     $asks         the carrier asks for the district
+ * @return void
+ */
+function pg_ship_to_district_tree_mark(&$tree, $is_district, $country_name, $tr_codes, $asks)
+{
+    $path = pg_ship_to_district_tree_path($tree, $is_district);
+
+    if ($path === null) {
+        return;
+    }
+
+    $attrs = array(
+        'data-pg-district' => (string) $country_name,
+        'data-pg-district-codes' => implode(',', (array) $tr_codes),
+        'maxlength' => '50',
+    );
+
+    if ($asks) {
+        $attrs['data-pg-district-asks'] = '1';
+    }
+
+    $last = array_pop($path);
+    $node = &$tree;
+
+    foreach ($path as $i) {
+        $node = &$node['children'][$i];
+    }
+
+    if ((count($path) > 0) && pg_ship_to_district_tree_is_wrap($node)) {
+        pg_ship_to_district_node_attrs($node, array('data-pg-district-wrap' => ''));
+    }
+
+    pg_ship_to_district_node_attrs($node['children'][$last], $attrs);
+    unset($node);
+}
+
+// Sets attributes on a node (props._attrs), replacing ones of the same name.
+function pg_ship_to_district_node_attrs(&$node, $attrs)
+{
+    $list = (isset($node['props']['_attrs']) && is_array($node['props']['_attrs'])) ? $node['props']['_attrs'] : array();
+    $list = array_values(array_filter($list, function ($a) use ($attrs) {
+        return !(is_array($a) && isset($a['name']) && array_key_exists((string) $a['name'], $attrs));
+    }));
+
+    foreach ($attrs as $name => $value) {
+        $list[] = array('name' => $name, 'value' => (string) $value);
+    }
+
+    $node['props']['_attrs'] = $list;
+}
+
+/**
+ * The script that shows each district box only while its country is Turkey
+ * (or its carrier asks for it), following the country control as the
+ * visitor changes it. Once per page.
+ *
+ * @return string
+ */
+function pg_ship_to_district_script()
+{
+    static $done = false;
+
+    if ($done) {
+        return '';
+    }
+
+    $done = true;
+
+    return '<script>(function(){'
+        . 'function sync(i){var f=i.form,c=f?f.elements[i.getAttribute("data-pg-district")]:null;'
+        .   'var w=i.closest("[data-pg-district-wrap]")||i,codes=(i.getAttribute("data-pg-district-codes")||"").split(",");'
+        .   'var on=i.hasAttribute("data-pg-district-asks")||(c&&codes.indexOf(c.value)!==-1);w.hidden=!on;}'
+        . 'function all(){document.querySelectorAll("[data-pg-district]").forEach(sync);}'
+        . 'document.addEventListener("change",function(e){var t=e.target;if(!t||!t.name||!t.form)return;'
+        .   't.form.querySelectorAll("[data-pg-district]").forEach(function(i){if(i.getAttribute("data-pg-district")===t.name)sync(i);});});'
+        . 'if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",all);else all();'
+        . '})();</script>';
+}
+
+/**
  * A Turkish province's licence plate number from its name ('İstanbul' ->
  * '34'), or '' for a name no province carries. Accents, case and spacing are
  * folded the way the sales map folds them, so 'IĞDIR', 'Iğdır' and the older

@@ -42,13 +42,15 @@ function pg_explorer_catalog_quick_price($value)
     return $number;
 }
 
-// A typed stock count in whole units, or null when it is empty or not a
-// number. Stock does not go negative: a shelf holds none or some.
+// A typed stock count in whole units, or null when it is empty, not a number
+// or not whole. It is read by pg_normalize_amount(), as the price is, so a
+// grouped figure (1.200 on a Turkish panel) is twelve hundred, not 1. Stock
+// does not go negative: a shelf holds none or some.
 function pg_explorer_catalog_quick_quantity($value)
 {
-    $value = (string) $value;
+    $value = pg_normalize_amount((string) $value);
 
-    if (($value === '') || (is_numeric($value) == false)) {
+    if (($value === '') || (is_numeric($value) == false) || ((float) $value != floor((float) $value))) {
         return null;
     }
 

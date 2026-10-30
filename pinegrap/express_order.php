@@ -78,7 +78,7 @@ if (!$is_gateway_return) {
 
     foreach (db_values("SELECT id FROM ship_tos WHERE order_id = '" . e($_SESSION['ecommerce']['order_id'] ?? '') . "'") as $pg_ship_to_id) {
         $pg_prefix = 'shipping_' . $pg_ship_to_id . '_';
-        pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
+        pg_liveform_single_values($liveform, array($pg_prefix . 'salutation', $pg_prefix . 'first_name', $pg_prefix . 'last_name', $pg_prefix . 'company', $pg_prefix . 'address_1', $pg_prefix . 'address_2', $pg_prefix . 'city', $pg_prefix . 'district', $pg_prefix . 'state', $pg_prefix . 'zip_code', $pg_prefix . 'country', $pg_prefix . 'address_type', $pg_prefix . 'phone_number', $pg_prefix . 'arrival_date', $pg_prefix . 'method'));
         pg_liveform_single_values($liveform, array($pg_prefix . 'custom_arrival_date_' . $liveform->get_field_value($pg_prefix . 'arrival_date')));
     }
 
@@ -1876,7 +1876,8 @@ if (ECOMMERCE_SHIPPING) {
                 shipping_method_id = '" . e($shipping_method['id'] ?? '') . "',
                 shipping_method_code = '" . e($shipping_method['code'] ?? '') . "',
                 zone_id = '" . e($zone['id'] ?? '') . "',
-                complete = '$complete'
+                complete = '$complete'"
+                . pg_ship_to_district_address_sql($liveform->get($prefix . 'district'), $liveform->get($prefix . 'country'), $shipping_method['id'] ?? 0) . "
             WHERE id = '" . e($recipient['id']) . "'");
 
         // If the recipient is complete, then update shipping cost for recipient

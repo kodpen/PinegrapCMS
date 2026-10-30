@@ -106,3 +106,23 @@ function test_explorer_bulk_product_new_quantity()
 	pg_assert_same(0, pg_explorer_bulk_product_new_quantity(3, 'decrease', 7), 'not below zero');
 	pg_assert_same(0, pg_explorer_bulk_product_new_quantity(3, 'value', -2), 'a negative value is zero');
 }
+
+// The bulk quantity box reads a grouped figure whole and refuses one that is
+// not a whole count, so 1.200 no longer sets every selected product to 1.
+function test_explorer_bulk_quantity_value()
+{
+	pg_assert_same(7, pg_explorer_bulk_quantity_value('7'), 'number');
+	pg_assert_same(7, pg_explorer_bulk_quantity_value(' 7 '), 'trimmed');
+	pg_assert_same(-2, pg_explorer_bulk_quantity_value('-2'), 'a negative value is kept for the mode to settle');
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1.200,00'), 'Turkish grouped');
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1,200.00'), 'English grouped');
+
+	$decimal = pg_number_separators()['decimal'];
+	$thousands = ($decimal === ',') ? '.' : ',';
+
+	pg_assert_same(1200, pg_explorer_bulk_quantity_value('1' . $thousands . '200'), 'grouped the panel\'s way');
+
+	foreach (array('', 'abc', '3.7', '2,5', '1' . $decimal . '200') as $refused) {
+		pg_assert_same(null, pg_explorer_bulk_quantity_value($refused), 'refused: ' . $refused);
+	}
+}

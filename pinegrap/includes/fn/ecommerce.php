@@ -3256,13 +3256,7 @@ function pg_parse_commission_rate($raw)
  */
 function pg_parse_reward_goal($raw)
 {
-    $points = round(pg_parse_amount($raw));
-
-    if ($points <= 0) {
-        return 0;
-    }
-
-    return ($points >= 4294967295) ? 4294967295 : (int) $points;
+    return pg_parse_whole_number($raw, 4294967295);
 }
 
 /**
@@ -7819,6 +7813,28 @@ function pg_parse_amount($value)
 
     $number = (float) $number;
     return $negative ? -$number : $number;
+}
+
+/**
+ * A whole number a person typed into a settings box, read through
+ * pg_parse_amount(): a figure grouped with the panel's thousands separator
+ * ("2.400" on a Turkish panel) is 2400, never 2. A fraction is rounded; a
+ * blank, unreadable or negative entry is 0; the result is held to $max, the
+ * widest value the column or the caller's clamp accepts.
+ *
+ * @param  mixed     $raw
+ * @param  int|float $max
+ * @return int
+ */
+function pg_parse_whole_number($raw, $max)
+{
+    $number = round(pg_parse_amount($raw));
+
+    if ($number <= 0) {
+        return 0;
+    }
+
+    return ($number >= $max) ? (int) $max : (int) $number;
 }
 
 /**

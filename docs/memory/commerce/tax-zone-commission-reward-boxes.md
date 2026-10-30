@@ -1,6 +1,6 @@
 ---
 name: tax-zone-commission-reward-boxes
-description: Rate, commission and reward point boxes read as their columns store them: tax zone rate, contact commission, user points, Site Settings surcharge, default commission and reward goal
+description: Rate, commission and whole-number boxes read as their columns store them: tax zone rate, commission, reward points and goal, Site Settings whole numbers (pg_parse_whole_number())
 ---
 
 ## How is a tax zone's rate read on save?
@@ -20,4 +20,9 @@ description: Rate, commission and reward point boxes read as their columns store
 - The two percent boxes open `inputmode="decimal"`; the goal box stays `numeric`.
 - The Merchant Center shipping rate (`seo.save.php`) is read through `pg_parse_amount()`; blank stays -1. Before, `1.250,00` became 1.25.
 
-Tests: `tests/rate_boxes_store_typed_test.php`, `tests/settings_commerce_rates_test.php`.
+## How do the Site Settings whole-number boxes read a grouped figure?
+- `pg_parse_whole_number($raw, $max)` (`includes/fn/ecommerce.php`, beside `pg_parse_amount()`): rounded, blank/unreadable/negative is 0, held to `$max`. `pg_parse_reward_goal()` is it with 4294967295.
+- Read through it, before each module's own clamp: image size limits and quality (`features.save.php`), firewall rate limits, ban minutes, log retention and size, in-flight limit (`firewall.save.php`), login throttle and form submission limits (`security.save.php`), gift card validity (65535) and reward membership days (`commerce.save.php`), Mailchimp sync days (65535) and limit (`contact.save.php`).
+- Before, `(int) post_value()` or the raw text was used: on a Turkish panel `2.400` saved 2 and the clamp raised it to its minimum (product images scaled to 200 px, 1.200 requests/min saved 10, Locked Out For 1.440 saved 1), while the dialog reported success. The boxes stay `type="text"`; their unbound `data-inputmask-alias` does nothing.
+
+Tests: `tests/rate_boxes_store_typed_test.php`, `tests/settings_commerce_rates_test.php`, `tests/settings_whole_numbers_test.php`.
