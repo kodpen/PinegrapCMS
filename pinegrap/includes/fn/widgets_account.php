@@ -81,8 +81,46 @@ function pg_sw_page_type_widget_url($page_type)
     if (function_exists('pg_multi_page_design_ready') && !pg_multi_page_design_ready()) return '';
 
     $pages = pg_sw_widget_pages($map[$page_type]);
+    // The order receipt e-mail page carries an order view too, sits in a
+    // private folder and sorts before the public order page by title.
+    if ($page_type === 'view order') $pages = pg_sw_pages_without($pages, _pg_sw_order_receipt_email_page_ids());
     if (!$pages) return '';
     return $cache[$page_type] = (defined('PATH') ? PATH : '/') . encode_url_path((string)$pages[0]['page_name']);
+}
+
+// $pages (rows with page_id) without those whose id is in $skip_ids, in the
+// same order, re-indexed.
+function pg_sw_pages_without(array $pages, array $skip_ids)
+{
+    $skip = array();
+    foreach ($skip_ids as $id) $skip[(int)$id] = true;
+    $left = array();
+    foreach ($pages as $page) {
+        if (!isset($skip[(int)$page['page_id']])) $left[] = $page;
+    }
+    return $left;
+}
+
+// Ids of the pages set as an order receipt e-mail: the express order and
+// order preview page rows, and the widgets' own settings (a template site
+// mirrors the widget value into express_order_pages only once it renders).
+function _pg_sw_order_receipt_email_page_ids()
+{
+    $ids = array();
+    foreach (array('express_order_pages', 'order_preview_pages') as $table) {
+        $rows = db_items("SELECT order_receipt_email_page_id FROM $table WHERE order_receipt_email_page_id > 0");
+        foreach ((is_array($rows) ? $rows : array()) as $row) $ids[] = (int)$row['order_receipt_email_page_id'];
+    }
+    $rows = db_items(
+        "SELECT system_region_config FROM shared_components
+         WHERE system_region_config LIKE '%order_receipt_email_page_id%'");
+    foreach ((array)$rows as $row) {
+        $cfg = json_decode((string)$row['system_region_config'], true);
+        if (!is_array($cfg) || !isset($cfg['regionType'], $cfg['order_receipt_email_page_id'])) continue;
+        if (!in_array($cfg['regionType'], array('express_order', 'order_preview'), true)) continue;
+        if ((int)$cfg['order_receipt_email_page_id'] > 0) $ids[] = (int)$cfg['order_receipt_email_page_id'];
+    }
+    return $ids;
 }
 
 // Where a visitor who has to sign in before a page opens is sent: the

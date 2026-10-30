@@ -10,7 +10,7 @@ module: widgets
 - A tree without `^^__not_found_message^^` shows the message through its message area with a My Account link after it (`pg_sw_order_not_found_message_html($message, $account_url)`: escaped once, no link when the address is `''`). The address comes from `_pg_acct_page_url(0, 'my account')`, built only in the not-found closure, so a found order runs no extra query. A tree that places the token keeps its own design and gets no link.
 
 ## Why?
-- Issue #3457: the page answered 200 with an empty or bare body for every case (a soft 404), while blog post and conversation pages answered 404 with a message. Test: `tests/order_view_not_found_test.php`.
+- Issue #3457, PR #3545: the page answered 200 with an empty or bare body for every case (a soft 404), while blog post and conversation pages answered 404 with a message. Test: `tests/order_view_not_found_test.php`.
 
 ## Which page do the My Account order links open?
 - `pg_sw_page_type_widget_url('view order')` (used by the order history links and `get_page_type_url('view order')`) takes the first page carrying an `order_view` widget, sorted by title. Every design template has the private "Order Receipt E-mail" page beside the public "Order Summary"; the e-mail page sorted first in both languages, so customers landed on a page they could not open.
