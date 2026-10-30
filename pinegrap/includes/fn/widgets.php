@@ -1691,7 +1691,9 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 //   search_enabled      bool (default false)
 //   search_fields       array<string>  form_fields.name tokens to search on
 //   empty_message       string         shown when no records match (default: the
-//                                      translated "No records found.")
+//                                      translated "No records found."); a search
+//                                      that finds nothing says so instead
+//                                      (pg_sw_form_list_empty_message())
 //   order_by_field      string  submitted_date_and_time | submitted_form_id |
 //                               number_of_views | number_of_comments |
 //                               recent_views | newest_activity_date_and_time |
@@ -1741,6 +1743,25 @@ function pg_sw_filter_sql_closed($filter_sql, $record_view = false)
 // uses `$_GET['page']` as the URL slug (set by .htaccess rewrite). A
 // pagination link of the form `?page=2` would overwrite the slug and break
 // routing entirely. Match the legacy form_list_view's `page_number` instead.
+/**
+ * The form list's empty-state words: a search that matched nothing says so
+ * (the list itself may hold records); otherwise the configured message, or
+ * "No records found." when none is set.
+ *
+ * @param  mixed $configured    the widget's empty_message setting
+ * @param  bool  $search_active a search query is applied
+ * @return string Plain text.
+ */
+function pg_sw_form_list_empty_message($configured, $search_active)
+{
+    if ($search_active) {
+        return lang('Nothing matched your search. Try fewer or different words.');
+    }
+    $configured = is_string($configured) ? $configured : '';
+
+    return ($configured !== '') ? $configured : lang('No records found.');
+}
+
 function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widget_id, $cfg = array())
 {
     $custom_form_page_id = (int)$custom_form_page_id;
@@ -1779,9 +1800,7 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
                         ? substr($cfg['search_label'], 0, 100)
                         : (string)lang('Search...');
 
-    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message']) && $cfg['empty_message'] !== '')
-                        ? $cfg['empty_message']
-                        : lang('No records found.');
+    $empty_message  = (isset($cfg['empty_message']) && is_string($cfg['empty_message'])) ? $cfg['empty_message'] : '';
 
     $order_by_field    = isset($cfg['order_by_field']) ? (string)$cfg['order_by_field'] : 'submitted_date_and_time';
     $order_by_direction = (isset($cfg['order_by_direction']) && strtoupper($cfg['order_by_direction']) === 'ASC') ? 'ASC' : 'DESC';
@@ -2078,9 +2097,10 @@ function _render_system_widget_form_list($custom_form_page_id, $tree_json, $widg
             '</form>';
     }
 
-    // Empty-state HTML used when no records match (with or without search
-    // active), as an element the records' parent may hold.
-    $empty_html = pg_sw_state_message_html($empty_message, $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
+    // Empty-state HTML used when no records match, as an element the
+    // records' parent may hold: a search that found nothing says so, not
+    // that the list has no records.
+    $empty_html = pg_sw_state_message_html(pg_sw_form_list_empty_message($empty_message, $search_active), $split['loop_parent'], 'pg-sw-empty', pg_sw_row_cells($loop_template));
 
     // The records go where the loop_area was. The search box and the
     // pagination go there too, except into a list or a table: those may
@@ -6659,6 +6679,32 @@ function pg_sw_item_summary($html, $max = 140)
     return rtrim($cut, " ,.;:-") . "\u{2026}";
 }
 
+// Order view trees saved before the starter's card surcharge row carried
+// has_surcharge printed "Card surcharge 0,00" on every order. The outermost
+// node whose only text-bound token is __order_surcharge, with no
+// eo_visible_if of its own, gets has_surcharge; a node that already has a
+// condition is left alone, and a node holding another figure too is not the
+// row.
+function pg_ov_stamp_surcharge_row(&$node)
+{
+    if (!is_array($node)) return;
+    if (isset($node['props']['_bindings']['eo_visible_if']) && (string)$node['props']['_bindings']['eo_visible_if'] !== '') {
+        return;
+    }
+    $marks = _pg_op_subtree_marks($node);
+    if (array_keys($marks['tokens']) === array('__order_surcharge')) {
+        if (!isset($node['props']) || !is_array($node['props'])) $node['props'] = array();
+        if (!isset($node['props']['_bindings']) || !is_array($node['props']['_bindings'])) $node['props']['_bindings'] = array();
+        $node['props']['_bindings']['eo_visible_if'] = 'has_surcharge';
+        return;
+    }
+    if (!isset($marks['tokens']['__order_surcharge']) || empty($node['children']) || !is_array($node['children'])) return;
+    foreach ($node['children'] as &$child) {
+        pg_ov_stamp_surcharge_row($child);
+    }
+    unset($child);
+}
+
 // Render an 'order_view' system widget. Reads a single completed order via
 // $_GET['order_id'] (or ?oid=) and iterates order_items in loop_area.
 // Security: order must belong to the currently logged-in user (orders.user).
@@ -6981,7 +7027,9 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)$order['billing_address_1'],
         (string)$order['billing_address_2'],
         $billing_city_line,
-        (string)$order['billing_country'],
+        // The address names the country in the site language; the
+        // __billing_country token keeps the stored code.
+        pg_geo_country_label_site($order['billing_country']),
     ));
     $billing_full_address = implode(', ', $billing_full_parts);
 
@@ -7025,7 +7073,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         (string)($ship_to['address_1'] ?? ''),
         (string)($ship_to['address_2'] ?? ''),
         $shipping_city_line,
-        (string)($ship_to['country']   ?? ''),
+        pg_geo_country_label_site($ship_to['country'] ?? ''),
     ));
     $shipping_full_address = implode(', ', $shipping_full_parts);
     $shipping_address_html = implode('<br>', array_map('h', $shipping_full_parts));
@@ -7574,6 +7622,7 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
         'withdrawal_deadline_estimated' => $withdrawal_date !== '' && $withdrawal['estimated'] && $withdrawal['open'],
         'withdrawal_ended'              => $withdrawal_date !== '' && !$withdrawal['open'],
     );
+    pg_ov_stamp_surcharge_row($tree_decoded);
     if (function_exists('_eo_apply_visibility_bindings')) {
         _eo_apply_visibility_bindings($tree_decoded, $_ov_vis_ctx);
     }

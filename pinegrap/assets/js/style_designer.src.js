@@ -61725,10 +61725,13 @@ const StyleDesigner = (function () {
                 ]);
 
                 // Totals breakdown row helper — label left, amount right.
-                var totalRow = function (label, token, cssExtra) {
-                    return createNode('semantic', { tag: 'div',
+                // `visibleIf`: optional eo_visible_if flag that drops the row.
+                var totalRow = function (label, token, cssExtra, visibleIf) {
+                    var rowProps = { tag: 'div',
                         cssClass: 'd-flex justify-content-between mb-1 ' + (cssExtra || ''),
-                        customName: _sdT('{var} Row', label) }, [
+                        customName: _sdT('{var} Row', label) };
+                    if (visibleIf) rowProps._bindings = { eo_visible_if: visibleIf };
+                    return createNode('semantic', rowProps, [
                         createNode('content', { contentType: 'paragraph',
                             text: label, cssClass: 'mb-0 text-muted small' }),
                         createNode('content', { contentType: 'paragraph',
@@ -61872,7 +61875,7 @@ const StyleDesigner = (function () {
                                         totalRow(_sdT('Discount'),     '__order_discount',  'text-success'),
                                         totalRow(_sdT('Tax (VAT)'), '__order_tax',       ''),
                                         totalRow(_sdT('Shipping'),       '__order_shipping',  ''),
-                                        totalRow(_sdT('Card surcharge'),'__order_surcharge',''),
+                                        totalRow(_sdT('Card surcharge'),'__order_surcharge','', 'has_surcharge'),
                                         createNode('semantic', { tag: 'hr', cssClass: 'my-2' }),
                                         createNode('semantic', { tag: 'div',
                                             cssClass: 'd-flex justify-content-between',

@@ -215,6 +215,7 @@ Visual designer, system widgets, data binding, designer forms, member widgets, c
 - form-item-ai-summary.md: AI on a designed form item view (2026.4.8): four assistant links and when they fill, the prompt setting, the in-browser summary wired by bindings, why the box is an aside, the translator bridge.
 - form-list-filters-fail-closed.md: A form list filter on a missing field or unknown operator shows no record (page, feeds, sitemap, index); address filters unchanged; editor warning; unanswered lists use comments less than 1
 - form-list-result-count.md: form_list_view ^^__result_count^^ (records matched, capped at max_results, grouped digits), the flags has_records / no_records, the count strip (empty loop area), canvas and installer preview
+- form-list-search-empty.md: The form list's empty state when a visitor's search matches nothing: "Nothing matched your search", not the configured empty message
 - form-list-url-filters.md: form_list_view filters valued from the page address (author, tag archives): reserved names, value rules, who passes the address, canonical/title/noindex, token, flags, feed
 - form-list-viewer-filter.md: A form list's viewer filter (submitter, editor, watcher, ORed): who counts as which; watchers of the detail page, classic or designed with a record view of the list's form
 - frontend-conventions-layers.md: Palette component vs system widget layers and where each is documented, legacy pages as production and yardstick, no dead code in the widget layer, the invariant principles for system widget work.

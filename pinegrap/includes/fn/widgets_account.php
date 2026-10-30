@@ -1033,7 +1033,8 @@ function _render_system_widget_address_book($tree_json, $widget_id, $cfg = array
         foreach ($recipients as $r) {
             $rid  = (int)$r['id'];
             $name = trim(implode(' ', array_filter(array((string)$r['salutation'], (string)$r['first_name'], (string)$r['last_name']), 'strlen')));
-            $country = isset($countries[(string)$r['country']]) ? $countries[(string)$r['country']] : (string)$r['country'];
+            // The country in the site language, as the address forms list it.
+            $country = isset($countries[(string)$r['country']]) ? pg_geo_country_label($countries[(string)$r['country']], (string)$r['country']) : (string)$r['country'];
             $lines = array_values(array_filter(array(
                 (string)$r['address_1'],
                 (string)$r['address_2'],
