@@ -112,6 +112,14 @@ if ($subscription_id > 0) {
         array(lang('Started'), $output_date($row['created_at'])),
     );
 
+    // A price change told to the customer, charged from its date on.
+    $pending = in_array($status, array('active', 'past_due', 'paused'), true) ? pg_subscription_price_pending($row) : null;
+
+    if ($pending !== null) {
+        $facts[] = array(lang('New amount'), $output_amount($pending['amount'], $row['currency'])
+            . ' <span class="small fg-secondary">' . h(lang(array('string' => 'from {var:1}', 'vars' => array(date('d.m.Y', (int) strtotime($pending['date'])))))) . '</span>');
+    }
+
     if ((int) $row['cancelled_at'] > 0) {
         $facts[] = array(lang('Cancelled'), $output_date($row['cancelled_at']));
     }

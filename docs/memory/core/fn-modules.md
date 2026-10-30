@@ -79,7 +79,7 @@ description: Generated from the module field of the memory files: each includes/
 - `speculation`: [[speculation-prefetch]]
 - `stock_notify`: [[back-in-stock-notices]]
 - `submitted_form_list`: [[server-paged-lists]]
-- `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-renewal]]
+- `subscription_renewal`: [[subscriptions-mails]], [[subscriptions-price-notice]], [[subscriptions-renewal]]
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
 - `subscriptions_operator`: [[subscriptions-operator-screen]]

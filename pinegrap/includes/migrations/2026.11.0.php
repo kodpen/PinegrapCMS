@@ -116,6 +116,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_subscription_campaigns(); // 11.0.129
 	upgrade_2026_11_0_product_customs();       // 11.0.130
 	upgrade_2026_11_0_shipment_label_pickup(); // 11.0.131
+	upgrade_2026_11_0_subscription_price_notice(); // 11.0.132
 
 }
 
@@ -3712,5 +3713,52 @@ function upgrade_2026_11_0_shipment_label_pickup() {
 	install_add_column('shipment_labels', 'pickup_at', "INT UNSIGNED NOT NULL DEFAULT 0");
 
 	install_note('Shipping labels: a carrier pickup can be requested for active labels from the orders list and the order screen; its confirmation is kept on each label.');
+
+}
+
+// The subscription price change mail (2026.11.0, 11.0.132;
+// includes/fn/subscription_renewal.php). A price change is told to the
+// customer at least 14 days before it is charged, through the campaign
+// profiles of the subscription_price_changed action; the campaign row copies
+// the profile's action, so both lists carry it. As in
+// upgrade_2026_11_0_subscription_campaigns(): each list is read first and only
+// widened at its end, the null rule and the default are kept as they are, and
+// a list that has the value already is left alone. The pending amount is a
+// subscription_events row (kind price_notice), no column.
+function upgrade_2026_11_0_subscription_price_notice() {
+
+	foreach (array('email_campaign_profiles', 'email_campaigns') as $table) {
+
+		$action = install_column_info($table, 'action');
+
+		if (!$action) {
+
+			continue;
+
+		}
+
+		preg_match_all("/'((?:[^']|'')*)'/", (string) $action['Type'], $matches);
+
+		$values = $matches[1];
+
+		if (in_array('subscription_price_changed', $values, true)) {
+
+			install_skipped(lang(array('string' => '{var:1} already exists', 'vars' => $table . '.action subscription_price_changed')));
+
+			continue;
+
+		}
+
+		$values[] = 'subscription_price_changed';
+
+		$definition = "ENUM('" . implode("','", $values) . "')"
+			. ((($action['Null'] ?? '') === 'YES') ? ' NULL' : ' NOT NULL')
+			. (($action['Default'] !== null) ? " DEFAULT '" . e((string) $action['Default']) . "'" : '');
+
+		install_modify_column($table, 'action', $definition);
+
+	}
+
+	install_note('Subscriptions: a price change is e-mailed to the customer at least 14 days before it is charged, through campaign profiles of the new subscription price changed action.');
 
 }
