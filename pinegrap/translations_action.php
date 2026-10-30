@@ -546,10 +546,26 @@ if (empty($_FILES['csv']) || !is_uploaded_file($_FILES['csv']['tmp_name'])) {
 $csv = (string) file_get_contents($_FILES['csv']['tmp_name']);
 $summary = pg_tr_csv_import($language, $csv, (int) $user['id'], !empty($_POST['as_machine']));
 
+if ($summary['error'] !== '') {
+    $liveform->mark_error('csv', h($summary['error']));
+    go($back);
+}
+
 log_activity(lang(array('string' => 'translations were imported from a CSV file ({var:1}, {var:2} text(s))', 'vars' => array($language, $summary['written']))), $_SESSION['sessionusername']);
 
 $liveform->add_notice(lang(array(
     'string' => 'CSV import: {var:1} translation(s) written, {var:2} empty row(s) skipped, {var:3} row(s) whose text has since changed, {var:4} row(s) rejected.',
     'vars'   => array($summary['written'], $summary['skipped'], $summary['stale'], $summary['rejected']))));
+
+// The first rejected rows, each with its file line and reason.
+if ($summary['problems']) {
+    $shown = array_map('h', array_slice($summary['problems'], 0, 20));
+
+    if (count($summary['problems']) > 20) {
+        $shown[] = h(lang(array('string' => 'and {var:1} more line(s) that could not be used.', 'vars' => array(count($summary['problems']) - 20))));
+    }
+
+    $liveform->add_error(implode('<br>', $shown));
+}
 
 go($back);

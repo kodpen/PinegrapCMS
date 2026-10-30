@@ -766,14 +766,19 @@ function pg_tr_csv_export($language, $scope = 'all', $only_pending = false)
 /**
  * Reads a CSV written by pg_tr_csv_export() (or one shaped like it) and
  * writes the translations it carries. Rows are matched by hash; a row whose
- * hash no longer exists is counted as stale; an empty translation is skipped.
+ * hash no longer exists is counted as stale; an empty translation and a row
+ * with no cell filled in are skipped. A refused row is counted as rejected
+ * and named in 'problems' with its file line and reason. A file without the
+ * hash or translation column writes nothing and says so in 'error'.
  * Imported texts are written as reviewed unless $as_machine says otherwise.
  *
- * @return array('written' => int, 'skipped' => int, 'stale' => int, 'rejected' => int)
+ * @return array('written' => int, 'skipped' => int, 'stale' => int, 'rejected' => int,
+ *               'problems' => array of string, 'error' => string)
  */
 function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 {
-    $summary = array('written' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0);
+    $summary = array('written' => 0, 'skipped' => 0, 'stale' => 0, 'rejected' => 0, 'problems' => array(), 'error' => '');
+    $missing_columns = lang('The file has no hash and translation columns. Import a file the Export CSV button wrote.');
     $csv = (string) $csv;
 
     if (substr($csv, 0, 3) === "\xEF\xBB\xBF") {
@@ -788,31 +793,47 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 
     if (!is_array($header)) {
         fclose($handle);
+        $summary['error'] = $missing_columns;
         return $summary;
     }
 
     // Accept a comma-separated file too.
     $delimiter = ';';
 
-    if ((count($header) === 1) && (strpos($header[0], ',') !== false)) {
+    if ((count($header) === 1) && (strpos((string) $header[0], ',') !== false)) {
         $delimiter = ',';
         rewind($handle);
         $header = fgetcsv($handle, 0, ',', '"', '\\');
     }
 
-    $columns = array_flip(array_map('strtolower', array_map('trim', $header)));
+    $columns = array_flip(array_map('strtolower', array_map('trim', array_map('strval', $header))));
 
     if (!isset($columns['hash']) || !isset($columns['translation'])) {
         fclose($handle);
+        $summary['error'] = $missing_columns;
         return $summary;
     }
 
+    // The file line a row starts on: a quoted cell can hold line breaks, so a
+    // row can take more than one line.
+    $next_line = 2 + preg_match_all('/\r\n?|\n/', implode('', $header));
+
     while (($row = fgetcsv($handle, 0, $delimiter, '"', '\\')) !== false) {
-        $hash = isset($row[$columns['hash']]) ? trim($row[$columns['hash']]) : '';
+        $line = $next_line;
+        $next_line += 1 + preg_match_all('/\r\n?|\n/', implode('', (array) $row));
+
+        // A blank line, or a row of empty cells a spreadsheet writes.
+        if (trim(implode('', (array) $row)) === '') {
+            $summary['skipped']++;
+            continue;
+        }
+
+        $hash = isset($row[$columns['hash']]) ? trim((string) $row[$columns['hash']]) : '';
         $translation = isset($row[$columns['translation']]) ? (string) $row[$columns['translation']] : '';
 
-        if (($hash === '') || !preg_match('/^[0-9a-f]{40}$/', $hash)) {
+        if (!preg_match('/^[0-9a-f]{40}$/', $hash)) {
             $summary['rejected']++;
+            $summary['problems'][] = pg_tr_csv_import_problem($line, lang('the hash is not one an export wrote (40 characters, 0-9 and a-f)'));
             continue;
         }
 
@@ -834,6 +855,7 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
 
         if (!$check['ok']) {
             $summary['rejected']++;
+            $summary['problems'][] = pg_tr_csv_import_problem($line, pg_tr_csv_import_reason($check['error']));
             continue;
         }
 
@@ -844,4 +866,31 @@ function pg_tr_csv_import($language, $csv, $user_id = 0, $as_machine = false)
     fclose($handle);
 
     return $summary;
+}
+
+/**
+ * One rejected CSV row as the import screen lists it: "Line n: reason".
+ */
+function pg_tr_csv_import_problem($line, $reason)
+{
+    return lang(array('string' => 'Line {var:1}: {var:2}', 'vars' => array((int) $line, $reason)));
+}
+
+/**
+ * The reason pg_tr_result_check() refused a translation, in words.
+ */
+function pg_tr_csv_import_reason($error)
+{
+    switch ((string) $error) {
+        case 'placeholders':
+            return lang('the translation drops or changes a placeholder of the text (a {var:N} or ^^field^^ token)');
+
+        case 'markup':
+            return lang('the translation does not keep the tags of the text');
+
+        case 'empty':
+            return lang('the translation is empty once unsafe markup is removed');
+    }
+
+    return lang('the translation was refused');
 }
