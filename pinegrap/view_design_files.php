@@ -211,10 +211,10 @@ if ($files) {
 print
 pg_page_shell(
     array(
-        'title'=> lang('Design Files'),
+        'title'=> lang('All Design Files'),
         'extra classes'=>'designer',
         'icon'=>'design', 
-        'heading'=> lang('Design Files'),
+        'heading'=> lang('All Design Files'),
         'heading_description' => lang('All design files that can be referenced by any theme, page style, or region, and managed only by site designers.'),
         'cancel'=> false
     )

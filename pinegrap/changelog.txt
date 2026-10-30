@@ -80,7 +80,7 @@
 [NEW] Added Google Merchant Center: the product feed is registered as a daily-fetched data source and Merchant Center's product issues show on System Status.
 [NEW] Added layout starters for system widgets in the widget gallery
 [NEW] Added picking files from Google Drive, OneDrive and Dropbox on the Upload File screen; the server downloads them and stores them through the normal upload rules.
-[NEW] Added subscriptions charged by the store through iyzico's and Stripe's stored cards (renewal, card update, cancel).
+[NEW] Added subscriptions charged by the store through iyzico's and Stripe's stored cards (renewal, and card update, pause and cancel from My Account).
 [NEW] Added a Google Analytics card on the dashboard: the GA4 figures of the last 28 days against the 28 before, with top pages and sources, through a connected Google account.
 [NEW] Added a Google Reviews widget to the Visual Page Editor showing the business's Google rating and up to five reviews.
 [FIX] Miscellaneous bug fixes and new features.

@@ -668,6 +668,8 @@ $explorer_lang = array(
     // Which columns the list draws.
     'columns' => lang('Columns'),
     'columns_reset' => lang('Show every column'),
+    'columns_widths_reset' => lang('Reset column widths'),
+    'column_resize' => lang('Resize column {var:1}'),
     // The two short lists above the tree.
     'pinned' => lang('Pinned'),
     'recent' => lang('Recent'),
@@ -1178,6 +1180,29 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 #explorer_list_table th.th-sortable { cursor: pointer; }
 #explorer_list_table th.th-sortable:hover { color: var(--pg-fg-body); }
 
+/* The label and caret of a sortable heading sit in a button, so the heading
+   takes the focus and sorts on Enter or Space; it looks like plain heading
+   text. */
+#explorer_list_table th .th-sort {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: inherit;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+#explorer_list_table th .th-sort:focus-visible,
+#explorer_list_table th .col-grip:focus-visible {
+    outline: 2px solid var(--pg-primary);
+    outline-offset: -2px;
+    border-radius: 2px;
+}
+
 #explorer_list_table th .col-grip {
     position: absolute;
     top: 0;
@@ -1186,9 +1211,16 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
     height: 100%;
     cursor: col-resize;
     z-index: 2;
+    touch-action: none;
+}
+
+/* A finger needs more than seven pixels to land on an edge. */
+@media (pointer: coarse) {
+    #explorer_list_table th .col-grip { right: -8px; width: 16px; }
 }
 
 #explorer_list_table th .col-grip:hover::after,
+#explorer_list_table th .col-grip:focus-visible::after,
 body.col-resizing #explorer_list_table th .col-grip::after {
     content: '';
     position: absolute;
@@ -2105,6 +2137,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // own folder, whose files already belong to a conversation.
     var wsSend = <?php echo $explorer_ws_send ? 'true' : 'false'; ?>;
     var wsFolderId = <?php echo (int) $explorer_ws_folder_id; ?>;
+
+    // The narrowest and widest a list column may be made.
+    var COLUMN_MIN_WIDTH = 48;
+    var COLUMN_MAX_WIDTH = 1200;
 
     var state = {
         area: '<?php echo $explorer_area; ?>',
@@ -5053,11 +5089,19 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 var cls = (column.cls ? (column.cls + ' ') : '') + (column.at ? ('pg-at-' + column.at) : '');
                 var sorted = (column.key && (state.sort.key === column.key));
 
+                // The order is said by aria-sort on the sorted heading only;
+                // the caret is its picture. The grip stays outside the button:
+                // it is a control of its own.
+                var label = '<span class="th-label" title="' + esc(column.label || '') + '">' + esc(column.label || '') + '</span>' +
+                    (sorted ? ('<span class="bi ' + sortCaret + ' th-caret" aria-hidden="true"></span>') : '');
+
                 html += '<th class="' + cls + (column.key ? ' th-sortable' : '') + '"' +
-                    (column.key ? (' data-sort-key="' + column.key + '"') : '') + '>' +
-                    '<span class="th-label" title="' + esc(column.label || '') + '">' + esc(column.label || '') + '</span>' +
-                    (sorted ? ('<span class="bi ' + sortCaret + ' th-caret"></span>') : '') +
-                    ((column.id !== 'icon') ? ('<span class="col-grip" data-col-id="' + column.id + '"></span>') : '') +
+                    (column.key ? (' data-sort-key="' + column.key + '"') : '') +
+                    (sorted ? (' aria-sort="' + ((state.sort.dir === 'desc') ? 'descending' : 'ascending') + '"') : '') + '>' +
+                    (column.key ? ('<button type="button" class="th-sort" data-sort-key="' + column.key + '">' + label + '</button>') : label) +
+                    ((column.id !== 'icon') ? ('<span class="col-grip" data-col-id="' + column.id + '" role="separator" aria-orientation="vertical" tabindex="0"' +
+                        ' aria-valuemin="' + COLUMN_MIN_WIDTH + '" aria-valuemax="' + COLUMN_MAX_WIDTH + '" aria-valuenow="' + clampColumnWidth(column.w) + '"' +
+                        ' aria-label="' + esc(fmt(L.column_resize, [column.label || ''])) + '"></span>') : '') +
                     '</th>';
             });
 
@@ -5102,15 +5146,12 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             syncListMinWidth(listTable);
             attachColumnResize(listTable);
 
-            listTable.querySelectorAll('th.th-sortable').forEach(function (heading) {
+            // A press from the keyboard (detail 0) redraws the table and
+            // wants its heading focused again; a mouse click does not.
+            listTable.querySelectorAll('button.th-sort').forEach(function (button) {
 
-                heading.addEventListener('click', function (event) {
-
-                    // The grip belongs to the edge, not to the heading: a drag
-                    // that ends on the heading must not also sort it.
-                    if (event.target.classList.contains('col-grip')) { return; }
-
-                    sortByColumn(heading.getAttribute('data-sort-key'));
+                button.addEventListener('click', function (event) {
+                    sortByColumn(button.getAttribute('data-sort-key'), event.detail === 0);
                 });
             });
         }
@@ -5189,7 +5230,9 @@ body.col-resizing { cursor: col-resize; user-select: none; }
         storageSet('pg_explorer_columns', JSON.stringify(widths));
     }
 
-    function listColumnsAll() {
+    // defaults: leave the remembered widths out, for the width a column is
+    // put back to.
+    function listColumnsAll(defaults) {
 
         var catalogColumns = insideCatalog();
         var siteColumns = !insideBackups() && !insideCatalog() && !insideShortLinks() && !insideErp();
@@ -5329,7 +5372,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             cell: function (item) { return (item.modified || '') + (item.username ? ' ' + fmt(L.modified_by, [esc(item.username)]) : ''); }
         });
 
-        var saved = listColumnWidths();
+        var saved = defaults ? {} : listColumnWidths();
 
         columns.forEach(function (column) {
             if (saved[column.id] > 40) { column.w = saved[column.id]; }
@@ -5409,6 +5452,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             html += menuDivider() + menuItem('bi-arrow-counterclockwise', L.columns_reset, 'columns_reset');
         }
 
+        if (Object.keys(listColumnWidths()).length > 0) {
+            html += ((hidden.length > 0) ? '' : menuDivider()) + menuItem('bi-arrows-collapse-vertical', L.columns_widths_reset, 'columns_widths_reset');
+        }
+
         return html;
     }
 
@@ -5421,7 +5468,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
     // not offer, such as the folder or the access rule -- the menu simply shows
     // none of its entries ticked, which is true: the list is sorted by
     // something that is not on that menu.
-    function sortByColumn(key) {
+    function sortByColumn(key, refocus) {
 
         if (!key) { return; }
 
@@ -5434,59 +5481,177 @@ body.col-resizing { cursor: col-resize; user-select: none; }
 
         renderContent();
         applySelectionClasses();
+
+        // renderContent() replaced the heading that had the focus.
+        if (refocus) {
+            var button = document.querySelector('#explorer_list_table button.th-sort[data-sort-key="' + key + '"]');
+            if (button) { button.focus(); }
+        }
     }
 
-    // Dragging the edge of a heading. The width is written onto the <col>, so
-    // one number moves the whole column, and it is remembered per column for
-    // the next visit.
+    // The edge of a heading. A drag from any pointer (mouse, pen, finger)
+    // moves it; on the focused edge Left/Right narrow and widen it by 16 px
+    // (Shift: 64 px) and Home puts the default back; a double click fits the
+    // column to its widest cell. The width is written onto the <col>, so one
+    // number moves the whole column, and it is remembered per column for the
+    // next visit.
     function attachColumnResize(table) {
 
         table.querySelectorAll('.col-grip').forEach(function (grip) {
 
-            grip.addEventListener('mousedown', function (event) {
+            var id = grip.getAttribute('data-col-id');
 
-                event.preventDefault();
-                event.stopPropagation();
+            grip.addEventListener('pointerdown', function (event) {
 
-                var id = grip.getAttribute('data-col-id');
+                if ((event.pointerType === 'mouse') && (event.button !== 0)) { return; }
+
                 var col = table.querySelector('col[data-col-id="' + id + '"]');
 
                 if (!col) { return; }
 
+                // Also keeps the compatibility mousedown away from the band
+                // selection and the row drag.
+                event.preventDefault();
+                event.stopPropagation();
+
+                var pointerId = event.pointerId;
                 var startX = event.clientX;
                 var startWidth = parseInt(col.style.width, 10) || 100;
 
+                try { grip.setPointerCapture(pointerId); } catch (e) { /* the pointer is already gone */ }
+
                 function move(moveEvent) {
-                    var width = Math.max(48, startWidth + (moveEvent.clientX - startX));
-                    col.style.width = width + 'px';
+                    if (moveEvent.pointerId !== pointerId) { return; }
+                    col.style.width = clampColumnWidth(startWidth + (moveEvent.clientX - startX)) + 'px';
                 }
 
-                function up() {
-                    document.removeEventListener('mousemove', move);
-                    document.removeEventListener('mouseup', up);
+                function up(upEvent) {
+                    if (upEvent.pointerId !== pointerId) { return; }
+                    grip.removeEventListener('pointermove', move);
+                    grip.removeEventListener('pointerup', up);
+                    grip.removeEventListener('pointercancel', up);
                     document.body.classList.remove('col-resizing');
-                    saveListColumnWidth(id, parseInt(col.style.width, 10) || 100);
-                    syncListMinWidth(table);
+                    setColumnWidth(table, id, parseInt(col.style.width, 10) || 100);
                 }
 
                 document.body.classList.add('col-resizing');
-                document.addEventListener('mousemove', move);
-                document.addEventListener('mouseup', up);
+                grip.addEventListener('pointermove', move);
+                grip.addEventListener('pointerup', up);
+                grip.addEventListener('pointercancel', up);
             });
 
-            // A double click on the edge puts that column back to its default.
+            // The grip is not inside the heading's button, but a click on it
+            // must never reach anything that sorts or selects.
+            grip.addEventListener('click', function (event) { event.stopPropagation(); });
+
+            grip.addEventListener('keydown', function (event) {
+
+                var col = table.querySelector('col[data-col-id="' + id + '"]');
+
+                if (!col || event.altKey || event.ctrlKey || event.metaKey) { return; }
+
+                var step = event.shiftKey ? 64 : 16;
+                var width = parseInt(col.style.width, 10) || 100;
+
+                if (event.key === 'ArrowLeft') { width -= step; }
+                else if (event.key === 'ArrowRight') { width += step; }
+                else if (event.key === 'Home') { width = defaultColumnWidth(id); }
+                else { return; }
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                setColumnWidth(table, id, width);
+            });
+
             grip.addEventListener('dblclick', function (event) {
 
                 event.preventDefault();
                 event.stopPropagation();
 
-                var widths = listColumnWidths();
-                delete widths[grip.getAttribute('data-col-id')];
-                storageSet('pg_explorer_columns', JSON.stringify(widths));
-                renderContent();
-                applySelectionClasses();
+                setColumnWidth(table, id, fitColumnWidth(table, id));
             });
         });
+    }
+
+    function clampColumnWidth(width) {
+        return Math.max(COLUMN_MIN_WIDTH, Math.min(COLUMN_MAX_WIDTH, Math.round(width)));
+    }
+
+    // One width onto the <col>, the grip's value, the table's minimum and the
+    // remembered widths. The default width is not remembered, so a column put
+    // back follows a later change of its default.
+    function setColumnWidth(table, id, width) {
+
+        var col = table.querySelector('col[data-col-id="' + id + '"]');
+        var grip = table.querySelector('.col-grip[data-col-id="' + id + '"]');
+
+        if (!col) { return; }
+
+        width = clampColumnWidth(width);
+        col.style.width = width + 'px';
+        if (grip) { grip.setAttribute('aria-valuenow', String(width)); }
+
+        if (width === defaultColumnWidth(id)) {
+            var widths = listColumnWidths();
+            delete widths[id];
+            storageSet('pg_explorer_columns', JSON.stringify(widths));
+        } else {
+            saveListColumnWidth(id, width);
+        }
+
+        syncListMinWidth(table);
+    }
+
+    function defaultColumnWidth(id) {
+
+        var width = 100;
+
+        listColumnsAll(true).forEach(function (column) {
+            if (column.id === id) { width = column.w; }
+        });
+
+        return width;
+    }
+
+    // The width the column needs to show its heading and the widest of the
+    // rows drawn without an ellipsis. Cells clip their text in a .cell-clip
+    // or in the cell itself; whichever clips reports the full width as its
+    // scrollWidth.
+    function fitColumnWidth(table, id) {
+
+        var heading = table.querySelector('.col-grip[data-col-id="' + id + '"]');
+        var width = COLUMN_MIN_WIDTH;
+
+        heading = heading ? heading.closest('th') : null;
+
+        if (heading) {
+            var label = heading.querySelector('.th-label');
+            var caret = heading.querySelector('.th-caret');
+            if (label) {
+                // The label is held under the width less 1.4rem for the caret.
+                width = Math.max(width, label.scrollWidth + (caret ? caret.offsetWidth + 8 : 0) + (heading.offsetWidth - label.offsetWidth) + 2);
+            }
+        }
+
+        var cells = table.querySelectorAll('tbody td[data-col-id="' + id + '"]');
+
+        for (var index = 0; (index < cells.length) && (index < 500); index++) {
+
+            var cell = cells[index];
+            var clip = cell.querySelector('.cell-clip');
+
+            width = Math.max(width, cell.scrollWidth + 2);
+            if (clip) { width = Math.max(width, clip.scrollWidth + (cell.clientWidth - clip.clientWidth) + 2); }
+        }
+
+        return width;
+    }
+
+    function columnWidthsReset() {
+        storageSet('pg_explorer_columns', '{}');
+        renderContent();
+        applySelectionClasses();
     }
 
     // The width below which the table stops being readable: the sum of the
@@ -7971,6 +8136,7 @@ body.col-resizing { cursor: col-resize; user-select: none; }
             case 'view_grid': state.viewType = 'grid'; state.viewTypeExplicit = true; reload(); break;
             case 'view_list': state.viewType = 'list'; state.viewTypeExplicit = true; reload(); break;
             case 'columns_reset': columnsReset(); break;
+            case 'columns_widths_reset': columnWidthsReset(); break;
             case 'tile_small': setTileSize('small'); break;
             case 'tile_medium': setTileSize('medium'); break;
             case 'tile_large': setTileSize('large'); break;
