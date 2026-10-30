@@ -11564,6 +11564,73 @@ const StyleDesigner = (function () {
         return place;
     }
 
+    // The Reviews frame of a catalog_item_view (twin of
+    // _pg_civ_drop_comments_frame() in includes/fn/widgets_catalog.php): the
+    // classic comments block draws nothing while the page's comments are off
+    // or a comments widget on the page shows the reviews, and the site leaves
+    // out its tab pane with the tab, else a section holding only headings
+    // beside it, else the region. Those nodes fade here with the reason.
+    var _sdCivFrame = { root: null, nodes: [] };
+    function _sdCivHasClass(n, cls) {
+        return !!(n && n.props && (' ' + String(n.props.cssClass || '').replace(/\s+/g, ' ') + ' ').indexOf(' ' + cls + ' ') !== -1);
+    }
+    function _sdCivAttr(n, name) {
+        var a = (n && n.props && Array.isArray(n.props._attrs)) ? n.props._attrs : [];
+        for (var i = 0; i < a.length; i++) if (a[i] && a[i].name === name) return String(a[i].value || '');
+        return null;
+    }
+    /* @pg-site-output */
+    function _sdCivCommentsFrameNodes(root) {
+        var out = [];
+        var blocks = [];
+        (function walk(n) {
+            if (!n) return;
+            if (n.type === 'region' && n.props && n.props.regionType === 'comments_block') { blocks.push(n); return; }
+            (n.children || []).forEach(walk);
+        })(root);
+        var trigger = function (target) {
+            var hit = null;
+            (function walk(n) {
+                if (hit || !n) return;
+                var href = (n.props && typeof n.props.href === 'string') ? n.props.href : null;
+                if (_sdCivAttr(n, 'data-bs-target') === target || _sdCivAttr(n, 'href') === target || href === target) { hit = n; return; }
+                (n.children || []).forEach(walk);
+            })(root);
+            return hit;
+        };
+        blocks.forEach(function (region) {
+            for (var a = findParent(region, root); a; a = findParent(a, root)) {
+                if (!_sdCivHasClass(a, 'tab-pane')) continue;
+                out.push(a);
+                var t = a.props && a.props.id ? trigger('#' + a.props.id) : null;
+                if (t) {
+                    var li = findParent(t, root);
+                    out.push((li && ((li.props && li.props.tag === 'li') || _sdCivHasClass(li, 'nav-item'))) ? li : t);
+                }
+                return;
+            }
+            var parent = findParent(region, root);
+            var onlyHeadings = !!parent && parent !== root && (parent.children || []).every(function (c) {
+                return c === region || !!(c && c.props && /^h[1-6]$/.test(String(c.props.tag || '')));
+            });
+            out.push(onlyHeadings ? parent : region);
+        });
+        return out;
+    }
+    function _sdCivCommentsFrameOff(node, cfg) {
+        if (!node || !cfg || cfg.regionType !== 'catalog_item_view' || !_sysWidgetRenderTreeRoot) return '';
+        if (_sdCivFrame.root !== _sysWidgetRenderTreeRoot || node === _sysWidgetRenderTreeRoot) {
+            _sdCivFrame = { root: _sysWidgetRenderTreeRoot, nodes: _sdCivCommentsFrameNodes(_sysWidgetRenderTreeRoot) };
+        }
+        if (_sdCivFrame.nodes.indexOf(node) === -1) return '';
+        if (_getCmtVal('pg_comments') !== '1') return _sdT('Off — comments are off in this page\'s comment settings');
+        var p = (typeof _pgActivePage === 'function') ? _pgActivePage() : null;
+        if (p && _swTabHasWidget(p, ['comments'], function (c) { return _swKindOf(c) === 'comments'; })) {
+            return _sdT('Off — the Comments widget on this page shows the reviews');
+        }
+        return '';
+    }
+
     // Comments widget: the canvas twin of _pg_comments_binding_disabled()
     // (widgets_comments.php). A control or section the page's comment
     // settings or the site switch off is left out of the page and fades
@@ -12853,6 +12920,16 @@ const StyleDesigner = (function () {
                 wrapper.setAttribute('data-sd-off-reason', _commentsOff);
             }
         }
+        // Product page: the comments block's frame the site leaves out
+        // (_sdCivCommentsFrameOff()).
+        if (_sysWidgetRenderCfg && !wrapper.classList.contains('sd-binding-off')) {
+            var _civFrameOff = _sdCivCommentsFrameOff(node, _sysWidgetRenderCfg);
+            if (_civFrameOff) {
+                wrapper.classList.add('sd-binding-off');
+                wrapper.setAttribute('data-sd-binding-off', '1');
+                wrapper.setAttribute('data-sd-off-reason', _civFrameOff);
+            }
+        }
 
         // A value condition (Bind Data, "Show only when a value…") is named
         // on the element; the state the band chose decides whether it is
@@ -13863,7 +13940,7 @@ const StyleDesigner = (function () {
                         'color:#6c9bd1;font-size:14px;margin:4px 0;pointer-events:none;">' +
                         '<i class="bi bi-chat-square-text" style="font-size:22px;display:block;margin-bottom:6px;"></i>' +
                         '<strong>' + esc(_sdT('Comments Area')) + '</strong>' +
-                        '<div style="font-size:11px;margin-top:4px;opacity:0.75;">' + esc(_sdT('The page comments will appear here')) + '</div>' +
+                        '<div style="font-size:11px;margin-top:4px;opacity:0.75;">' + esc((typeof _pgActivePage === 'function' && _sdCommentsProductViewPage(_pgActivePage())) ? _sdT('The product\'s reviews will appear here') : _sdT('The page comments will appear here')) + '</div>' +
                         '</div>';
                     return rg;
                 }
@@ -60783,7 +60860,9 @@ const StyleDesigner = (function () {
                 // 3-tab section under add-to-cart row:
                 //   1) Details          — paragraph bound to ^^__details^^ (products.details)
                 //   2) Checkout Options — sample HTML table (Bootstrap .table)
-                //   3) Reviews          — comments_block region (renders page comments)
+                //   3) Reviews          — comments_block region: the product's reviews on a
+                //      designed product page; the site leaves the tab out when the
+                //      block draws nothing (comments off, or a Comments widget on the page)
                 // Random tabPfx prevents collisions when multiple tab widgets coexist.
                 var civTabPfx = 'civtab_' + Math.random().toString(36).substr(2, 5);
                 var tabsSection = createNode('semantic', { tag: 'div', cssClass: 'mt-5', customName: _sdT('Product Information (Tabs)') }, [
@@ -60806,7 +60885,7 @@ const StyleDesigner = (function () {
                         ])
                     ]),
                     createNode('semantic', { tag: 'div', cssClass: 'tab-content p-3 border border-top-0', customName: _sdT('Tab Contents') }, [
-                        // Pane 1 — Detaylar: product details (rich text field)
+                        // Pane 1 — Details: product details (rich text field)
                         createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade show active', id: civTabPfx + '_0', customName: _sdT('Details Pane'),
                             _attrs: [{ name: 'role', value: 'tabpanel' }] }, [
                             createNode('content', { contentType: 'paragraph',
@@ -60865,7 +60944,7 @@ const StyleDesigner = (function () {
                                 ]);
                             })()
                         ]),
-                        // Pane 3 — Reviews: page-comments region (placeholder on canvas, real comments at render time)
+                        // Pane 3 — Reviews: the comments block (placeholder on canvas, the product's reviews at render time)
                         createNode('semantic', { tag: 'div', cssClass: 'tab-pane fade', id: civTabPfx + '_2', customName: _sdT('Reviews Pane'),
                             _attrs: [{ name: 'role', value: 'tabpanel' }] }, [
                             createNode('region', { regionType: 'comments_block', regionName: '' })
