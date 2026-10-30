@@ -156,7 +156,7 @@ function test_workspace_flow_loops_graph_check_refuses()
 		return ($edge['to'] !== 'for_each_end_1') && ($edge['from'] !== 'for_each_end_1');
 	}));
 	$problems = ws_flow_graph_check($graph);
-	pg_assert_true(in_array('The For each box for_each_1 has no End for each box: its loop needs one.', array_column($problems, 'text'), true));
+	pg_assert_true(in_array('The loop of for_each_1 has no End box: add one after the boxes it repeats.', array_column($problems, 'text'), true));
 
 	// A body that never reaches its End box: the arrow leaves the loop.
 	$graph = ws_flow_loops_test_graph(array(), array(array('notify_1', 'notify_2', 'done')));
@@ -202,6 +202,62 @@ function test_workspace_flow_loops_graph_check_refuses()
 	// The End box gathers a value of its body only.
 	$codes = ws_flow_loops_test_codes(ws_flow_loops_test_graph(array(), array(), array('collect' => '{{node.webhook_1.status_code}}')));
 	pg_assert_true(in_array('bad_config', $codes, true), 'a value of a box outside the loop');
+}
+
+// A loop whose items can pass the run's box limit is published with a
+// warning: 50 items x 4 boxes in the body and the boxes outside pass 200.
+function test_workspace_flow_loops_size_warning()
+{
+	pg_assert_same(200, WS_FLOW_MAX_BOX_RUNS);
+
+	// Each box of the body adds 50 box runs.
+	$body = function ($count) {
+		$nodes = array();
+		$edges = array();
+		$from = 'notify_1';
+
+		for ($i = 1; $i < $count; $i++) {
+			$nodes[] = ws_flow_loops_test_node('extra_' . $i, 'notify', array('user_ids' => array(1), 'text' => 'Item ' . $i));
+			$edges[] = array($from, 'extra_' . $i, 'done');
+			$from = 'extra_' . $i;
+		}
+
+		$graph = ws_flow_loops_test_graph($nodes, $edges);
+		$graph['edges'] = array_values(array_filter($graph['edges'], function ($edge) use ($count) {
+			return ($count === 1) || !(($edge['from'] === 'notify_1') && ($edge['to'] === 'for_each_end_1'));
+		}));
+
+		if ($count > 1) {
+			$graph['edges'][] = array('from' => $from, 'to' => 'for_each_end_1', 'on' => 'always');
+		}
+
+		return $graph;
+	};
+	$warnings = function ($graph) {
+		return array_values(array_filter(ws_flow_warnings($graph), function ($problem) {
+			return $problem['code'] === 'loop_size';
+		}));
+	};
+
+	// 3 boxes in the body: 150 + webhook, For each, End, notify after = 154.
+	pg_assert_same(array(), ws_flow_loops_test_codes($body(3)));
+	pg_assert_same(array(), $warnings($body(3)));
+	pg_assert_same(154, ws_flow_loop_box_runs(array_column($body(3)['nodes'], null, 'id'), ws_flow_loops($body(3)))['total']);
+
+	// 4 boxes: 200 + 4 = 204, a warning on the For each box, still no refusal.
+	$graph = $body(4);
+	pg_assert_same(array(), ws_flow_loops_test_codes($graph), 'a warning, not a refusal');
+	$found = $warnings($graph);
+	pg_assert_same(1, count($found));
+	pg_assert_same('for_each_1', $found[0]['node']);
+	pg_assert_true(!empty($found[0]['warning']));
+	pg_assert_same('The loop of for_each_1 can run 200 boxes (50 items × 4 boxes in it); with the rest of the flow a run can pass its limit of 200 boxes, and a long list then fails on its last items.', $found[0]['text']);
+
+	// A value box in the body never runs and is not counted.
+	$graph = $body(3);
+	$graph['nodes'][] = ws_flow_loops_test_node('value_1', 'value', array('text' => '{{node.for_each_1.name}}'));
+	$graph = ws_flow_graph_normalize($graph);
+	pg_assert_same(154, ws_flow_loop_box_runs(array_column($graph['nodes'], null, 'id'), ws_flow_loops($graph))['total']);
 }
 
 // A box outside a loop reads what its items gave through the End box, never
@@ -310,7 +366,7 @@ function test_workspace_flow_loops_items()
 	pg_assert_true(ws_flow_loop_items(json_encode(range(1, 50)))['ok'], '50 items are gone through');
 	$long = ws_flow_loop_items(json_encode(range(1, 51)));
 	pg_assert_false($long['ok']);
-	pg_assert_same('The list holds 51 items; a For each box goes through at most 50.', $long['error']);
+	pg_assert_same('The list holds 51 items; a loop goes through at most 50.', $long['error']);
 	pg_assert_same(array(), $long['items'], 'no item of a longer list');
 }
 

@@ -1097,6 +1097,59 @@ function ws_step_fill_value($value, $target)
 }
 
 /**
+ * The values of a run with each moment a box gives as UTC ISO text (the
+ * delay box's waited_until) written in the site's date and time format and
+ * time zone, for a text people read. Conditions and machine readers keep the
+ * ISO value. Pure but for the site's settings.
+ *
+ * @param array $values ws_step_node_values()
+ * @return array
+ */
+function ws_step_values_local_times($values)
+{
+    $date = defined('DATE_FORMAT') ? (string) DATE_FORMAT : '';
+    $time = defined('TIME_FORMAT') ? (string) TIME_FORMAT : '';
+
+    foreach ($values as $box => $fields) {
+        if (is_array($fields) && isset($fields['waited_until']) && is_string($fields['waited_until'])) {
+            $values[$box]['waited_until'] = ws_step_local_time($fields['waited_until'], $date, $time);
+        }
+    }
+
+    return $values;
+}
+
+/**
+ * A UTC ISO moment ('2026-10-30T00:50:44Z') as the site writes a date and
+ * time, in the time zone PHP runs in (the site's): 30.10.2026 03:50 for day
+ * first, 10/30/2026 for month first, 3:50 AM on a twelve-hour clock.
+ * Anything else comes back as it was. Pure but for the time zone.
+ *
+ * @param string $iso
+ * @param string $date_format DATE_FORMAT: month_day or day_month
+ * @param string $time_format TIME_FORMAT: twelve_hours or twenty_four_hours
+ * @return string
+ */
+function ws_step_local_time($iso, $date_format, $time_format)
+{
+    $iso = (string) $iso;
+
+    if (!preg_match('/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/', $iso)) {
+        return $iso;
+    }
+
+    $moment = DateTime::createFromFormat('Y-m-d\TH:i:s\Z', $iso, new DateTimeZone('UTC'));
+
+    if (!$moment) {
+        return $iso;
+    }
+
+    $moment->setTimezone(new DateTimeZone(date_default_timezone_get()));
+
+    return $moment->format((($date_format === 'month_day') ? 'm/d/Y' : 'd.m.Y') . ' ' . (($time_format === 'twelve_hours') ? 'g:i A' : 'H:i'));
+}
+
+/**
  * A step's texts with the {{node.*}} values of its run filled in, each made
  * safe for where the texts land (ws_step_fill_target()); a line field loses
  * its control characters and line breaks after the fill. Pure.
@@ -1110,6 +1163,13 @@ function ws_step_fill_action($kind, $action, $values)
 {
     $info = ws_step_kinds()[$kind] ?? array('texts' => array(), 'lines' => array());
     $target = ws_step_fill_target($kind, $action);
+
+    // People read a message, a chat post or an e-mail: a moment there is in
+    // the site's own date and time; a webhook's body, an MCP call and a
+    // table cell keep the machine value.
+    if (in_array($target, array('message', 'chat', 'discord'), true) || (($target === 'text') && ($kind !== 'webhook'))) {
+        $values = ws_step_values_local_times($values);
+    }
 
     foreach ($info['texts'] as $key) {
         if (isset($action[$key]) && is_string($action[$key])) {
