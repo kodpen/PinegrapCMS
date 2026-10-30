@@ -1296,3 +1296,23 @@ function pg_files_include_erp_document($file_ids)
 
     return ((int) db_value("SELECT COUNT(*) FROM files WHERE id IN (" . implode(',', $ids) . ") AND erp_doc_type <> ''") > 0);
 }
+
+// The width of the name columns the File and Catalog Manager and the folder
+// screens write: folder.folder_name, page.page_name, products.name,
+// product_groups.name and product_groups.short_description are varchar(100).
+function pg_name_max_length()
+{
+    return 100;
+}
+
+// True when a name is longer than its column. The session is not strict, so
+// a longer value would be cut without an error; the limit is in characters,
+// as a utf8mb4 varchar's is.
+function pg_name_too_long($name, $limit = null)
+{
+    if ($limit === null) {
+        $limit = pg_name_max_length();
+    }
+
+    return mb_strlen((string) $name, 'UTF-8') > (int) $limit;
+}

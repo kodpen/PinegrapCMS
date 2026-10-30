@@ -307,6 +307,11 @@ function pg_explorer_handle_catalog_create_group($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
     }
 
+    // name and short_description are varchar(100).
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
+    }
+
     // The address is derived the way add_product_group.php derives it,
     // and made unique the same way, so a group created here and one
     // created there are the same kind of row.
@@ -386,6 +391,12 @@ function pg_explorer_handle_catalog_rename($type, $request, $user)
 
     if (($item_id <= 0) || ($name == '')) {
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    // products.name, product_groups.name and short_description are
+    // varchar(100).
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
     }
 
     if ($item_kind == 'group') {

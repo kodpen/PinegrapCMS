@@ -90,6 +90,12 @@ function pg_explorer_handle_create_folder($type, $request, $user)
         respond(array('status' => 'error', 'message' => lang('The folder must have a name. Please type in a name for the folder.')));
     }
 
+    // Checked before get_unique_name(), so the '[1]' it may add is not cut
+    // off a name already at the column's width.
+    if (pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
+    }
+
     $name = get_unique_name(array('name' => $name, 'type' => 'folder'));
 
     $parent_level = (int) db_value("SELECT folder_level FROM folder WHERE folder_id = '" . e($parent_id) . "'");
@@ -204,6 +210,12 @@ function pg_explorer_handle_rename($type, $request, $user)
 
     if (($item_id <= 0) || ($name == '')) {
         respond(array('status' => 'error', 'message' => lang('Please enter a name.')));
+    }
+
+    // The folder and page name columns are varchar(100); a cut page name
+    // could also match another page's address the check below never saw.
+    if (($item_kind != 'file') && pg_name_too_long($name)) {
+        respond(array('status' => 'error', 'message' => lang(array('string' => 'The name can be at most {var:1} characters long.', 'vars' => array(pg_name_max_length())))));
     }
 
     switch ($item_kind) {
