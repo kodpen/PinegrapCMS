@@ -81,6 +81,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists_checkout.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_lists_paging.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_express_order.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/fn/site_search.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_account.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_error.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/fn/widgets_language.php');
