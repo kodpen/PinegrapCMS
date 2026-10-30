@@ -125,7 +125,7 @@ function test_express_order_widget_script_carries_the_drawn_totals()
 	pg_assert_true(strpos($js, 'var SHIP_CHARGED = 998;') !== false, 'the shipping charged');
 	pg_assert_true(strpos($js, 'var TOTAL_SHOWN  = 5792;') !== false, 'the total shown');
 	pg_assert_true(strpos($js, 'if (shipCents === SHIP_DRAWN) shipCents = SHIP_CHARGED;') !== false, 'the lower figure kept');
-	pg_assert_true(strpos($js, 'TOTAL_SHOWN + shipCents - SHIP_CHARGED') !== false, 'the total moved by the shipping');
+	pg_assert_true(strpos($js, 'POSTED_TOTAL + shipCents - SHIP_CHARGED') !== false, 'the total moved by the shipping');
 
 	$js = _eo_render_widget_js(7, 'pg-eo-form-w7', false, array(), '/');
 	pg_assert_true(strpos($js, 'var SHIP_DRAWN   = 0;') !== false, 'nothing given');

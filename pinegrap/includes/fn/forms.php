@@ -3023,15 +3023,17 @@ function get_login_region_content($login_region_id)
 }
 function get_salutation_options()
 {
+    // Label => stored value: the label is in the site's language, the value
+    // stays the English abbreviation that orders and addresses keep.
     return array(
         '' => '',
-        'Dr.' => 'Dr.',
-        'Miss' => 'Miss',
-        'Mr.' => 'Mr.',
-        'Mrs.' => 'Mrs.',
-        'Ms.' => 'Ms.',
-        'Prof.' => 'Prof.',
-        'Rev.' => 'Rev.'
+        lang('Dr.') => 'Dr.',
+        lang('Miss') => 'Miss',
+        lang('Mr.') => 'Mr.',
+        lang('Mrs.') => 'Mrs.',
+        lang('Ms.') => 'Ms.',
+        lang('Prof.') => 'Prof.',
+        lang('Rev.') => 'Rev.'
     );
 }
 function get_suffix_options()
