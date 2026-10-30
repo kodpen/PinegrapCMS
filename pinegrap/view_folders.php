@@ -1007,7 +1007,7 @@ echo
 #explorer_tree_pane .tree-toggle { width: .95rem; height: .95rem; display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; color: var(--pg-fg-2); font-size: .58rem; border-radius: .3rem; transition: transform .12s ease; }
 #explorer_tree_pane .tree-toggle.bi-chevron-right:hover { background: var(--pg-bg-1); }
 #explorer_tree_pane .tree-toggle.open { transform: rotate(90deg); }
-#explorer_tree_pane .tree-row:focus-visible, #explorer_tree_pane .tree-toggle:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: -2px; }
+#explorer_tree_pane .tree-row:focus-visible, #explorer_tree_pane .tree-toggle:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: -2px; }
 #explorer_tree_pane .tree-row > .bi-folder-fill, #explorer_tree_pane .tree-row > .bi-file-earmark-image { font-size: .92rem; line-height: 1; }
 #explorer_tree_pane .tree-label { overflow: hidden; text-overflow: ellipsis; }
 #explorer_tree_pane .tree-section-label { font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; color: var(--pg-fg-3); padding: .55rem .45rem .2rem; user-select: none; }
@@ -1199,7 +1199,7 @@ tr.explorer-item.selected > td { background: var(--pg-primary-bg-subtle) !import
 
 #explorer_list_table th .th-sort:focus-visible,
 #explorer_list_table th .col-grip:focus-visible {
-    outline: 2px solid var(--pg-primary);
+    outline: 2px solid var(--pg-primary-ink);
     outline-offset: -2px;
     border-radius: 2px;
 }

@@ -94,7 +94,7 @@
 }
 
 /* Only focusable while its text scrolls (fitBody() in pg_tour.js). */
-.pg-tour-body:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: 2px; }
+.pg-tour-body:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }
 
 /* Read out by screen readers, never seen. */
 .pg-tour-status {
@@ -209,7 +209,7 @@
 
 .pg-tour-primary:hover { filter: brightness(1.08); }
 
-.pg-tour-btn:focus-visible { outline: 2px solid var(--pg-primary); outline-offset: 2px; }
+.pg-tour-btn:focus-visible { outline: 2px solid var(--pg-primary-ink); outline-offset: 2px; }
 
 /* Nothing behind the tour scrolls while it is up: a scroll would move the very
    control the ring is drawn around. */
