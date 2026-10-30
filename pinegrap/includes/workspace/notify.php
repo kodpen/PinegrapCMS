@@ -352,16 +352,12 @@ function ws_inbox_describe($viewer, $row)
 
         // A run of one of the person's flows ended (flow_runs.php): the
         // sentence that names the flow and the run sits beside the inbox row,
-        // as a scheduled action's notice does.
+        // as a scheduled action's notice does, and the line opens that run
+        // on the canvas.
         case 'flow_finished':
             $notice = function_exists('ws_scheduled_notice') ? ws_scheduled_notice((int) ($row['id'] ?? 0)) : null;
 
-            return array(
-                'title' => lang('A run of your flow ended'),
-                'body'  => $notice ? (string) $notice['text'] : '',
-                'url'   => $base . 'workspace_flows.php',
-                'icon'  => 'bi-diagram-3',
-            );
+            return array('body' => $notice ? (string) $notice['text'] : '') + ws_inbox_flow_run_line(ws_inbox_flow_run((int) ($row['id'] ?? 0)), $base);
 
         // A flow was shared with the person (flow_shares.php): the sentence
         // that names the flow and what they may do with it sits beside the
@@ -1232,4 +1228,48 @@ function ws_push_pending($user, $limit = 3)
     }
 
     return $out;
+}
+
+/**
+ * The run a flow_finished line is about: its notice keeps the run's id in
+ * action_id (ws_flow_run_tell_owner()). A line written before it did, or a
+ * run deleted since (its flow binned), has none.
+ *
+ * @param int $inbox_id
+ * @return array|null id, flow_id, status
+ */
+function ws_inbox_flow_run($inbox_id)
+{
+    if (!function_exists('ws_scheduled_chains_ready') || !ws_scheduled_chains_ready() || !function_exists('ws_flows_ready') || !ws_flows_ready()) {
+        return null;
+    }
+
+    $run = db_item("SELECT r.id, r.flow_id, r.status
+        FROM ws_scheduled_notices n
+        JOIN ws_flow_runs r ON r.id = n.action_id
+        WHERE n.inbox_id = '" . (int) $inbox_id . "' AND n.action_id > 0");
+
+    return is_array($run) ? $run : null;
+}
+
+/**
+ * Title, address and icon of a flow_finished line: the run on the canvas
+ * (workspace_flows.php?flow=…&run=…), else the flow list; a failed run has
+ * a title and an icon of its own, so it stands out among the runs that went
+ * well.
+ *
+ * @param array|null $run id, flow_id, status (ws_inbox_flow_run())
+ * @param string     $base the panel's address
+ * @return array title, url, icon
+ */
+function ws_inbox_flow_run_line($run, $base)
+{
+    $known = is_array($run) && ((int) ($run['id'] ?? 0) > 0) && ((int) ($run['flow_id'] ?? 0) > 0);
+    $failed = $known && ((string) ($run['status'] ?? '') === 'failed');
+
+    return array(
+        'title' => $failed ? lang('A run of your flow failed') : lang('A run of your flow ended'),
+        'url'   => $base . 'workspace_flows.php' . ($known ? '?flow=' . (int) $run['flow_id'] . '&run=' . (int) $run['id'] : ''),
+        'icon'  => $failed ? 'bi-exclamation-octagon' : 'bi-diagram-3',
+    );
 }

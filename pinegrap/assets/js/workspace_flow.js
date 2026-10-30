@@ -350,8 +350,41 @@
         return (BOOT.people || []).filter(function (member) { return member.id === id; })[0] || null;
     }
 
-    function titleOf(node) {
+    // The title as written: a task's, a wait-for-task's and an approval's
+    // from its settings, which may hold values ({{node.<id>.<field>}}).
+    function rawTitle(node) {
         return ((node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval')) ? (node.config.title || node.label || '') : (node.label || '');
+    }
+
+    // The title as the canvas, the outline, the Connect to lists and a run
+    // name the box: each value as the value picker names it (the box giving
+    // it › the value), else, for a value no box of the flow gives, the
+    // box's kind name in place of the whole title.
+    function titleOf(node) {
+        var title = rawTitle(node);
+
+        return (title.indexOf('{{') === -1) ? title : (namedTitle(title) || t(kindOf(node).name));
+    }
+
+    // A title's values by name, '' when one of them is given by no box. The
+    // box giving a value is named by its own title only when that holds no
+    // value, so two titles naming each other's values read each other once.
+    function namedTitle(title) {
+        var named = true;
+        var out = title.replace(VALUE_TOKEN, function (token, id) {
+            var from = id ? nodeById(id) : state.graph.nodes.filter(function (other) { return !kindOf(other).into && !kindOf(other).pure; })[0];
+            var value = from ? boxValues(from).filter(function (item) { return item.token === token; })[0] : null;
+            var own = from ? rawTitle(from) : '';
+
+            if (!value) {
+                named = false;
+                return token;
+            }
+
+            return '[' + (((own === '') || (own.indexOf('{{') !== -1)) ? t(kindOf(from).name) : own) + ' › ' + value.label + ']';
+        });
+
+        return named ? out : '';
     }
 
     function nameOf(node) {
@@ -4998,10 +5031,18 @@
             list.appendChild(el('li', '', t('fl_key_' + key)));
         });
         keys.appendChild(list);
-        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
+        box.appendChild(el('p', 'small fg-secondary', state.edit ? flowHelp() : t('fl_read_only')));
         box.appendChild(keys);
 
         return box;
+    }
+
+    // A live flow runs its published version while the draft is changed;
+    // only a flow never published runs nothing yet.
+    function flowHelp() {
+        var flow = state.flow;
+
+        return (flow && (flow.status === 'live') && (flow.version > 0)) ? t('fl_flow_help_live') : t('fl_flow_help');
     }
 
     // The flow's home channel; a role-3 member's own flow has none, said in
@@ -5045,7 +5086,7 @@
         var config = node.config;
 
         var titled = (node.kind === 'task') || (node.kind === 'task_open') || (node.kind === 'approval');
-        var title = textInput(titleOf(node), titled ? 200 : 160, function (value) {
+        var title = textInput(rawTitle(node), titled ? 200 : 160, function (value) {
             if (titled) {
                 config.title = value;
             }
@@ -8787,7 +8828,7 @@
 
     // Stop on a running run's flag: asked first, as Cancel the run is.
     function stopLastRun(run, control) {
-        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+        askCancel().then(function (yes) {
             if (!yes) {
                 refocus();
                 return null;
@@ -9935,10 +9976,24 @@
         });
     }
 
+    // Cancel the run is asked as any question is (K.ask()), but its way out
+    // reads Keep running: a second Cancel beside Cancel the run read as the
+    // same answer. ask() fills its dialog before it returns.
+    function askCancel() {
+        var asked = K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true);
+        var back = document.querySelector('#ws-ask [data-ws-ask-cancel]');
+
+        if (back) {
+            back.textContent = t('fl_run_keep');
+        }
+
+        return asked;
+    }
+
     function cancelRun(control) {
         var run = state.run;
 
-        K.ask(t('fl_run_cancel_ask'), t('fl_run_cancel'), true).then(function (yes) {
+        askCancel().then(function (yes) {
             if (!yes || !state.run || (state.run.id !== run.id)) {
                 state.refocus = 'run-cancel run-title';
                 refocus();

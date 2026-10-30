@@ -890,6 +890,10 @@ if (!$_POST) {
 
     } else {
 
+        // This button is printed inside the main form, and Return in a field
+        // presses the form's first submit button. The form therefore opens
+        // with a hidden nameless submit, which reaches the save branch (the
+        // final else, which reads no button name).
         $output_contact_body =
             '<p class="small fg-secondary mb-3">' . h(lang('This User does not currently have a Contact connected to it. Connecting a Contact to this User is required to use the Membership features. A Contact will be created and connected to this User automatically when the User performs certain actions (e.g. updates his/her profile, submits a Custom Form, submits an Order, and etc.). However, if for any reason, you would like to do this now, you can.')) . '</p>'
             . '<button type="submit" id="submit_create_contact" name="submit_create_contact" value="Create Contact" class="btn btn-sm btn-outline theme-secondary rounded-pill px-5"><i class="bi bi-person-plus me-1"></i><span class="pg-btn-label">' . h(lang('Create Contact')) . '</span></button>';
@@ -1195,6 +1199,7 @@ if (!$_POST) {
                 ' . $output_reset_password_form . '
                 <form name="form" action="edit_user.php" method="post">
                     ' . get_token_field() . '
+                    <button type="submit" class="visually-hidden" tabindex="-1" aria-hidden="true"></button>
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '">
                     ' . $output_hidden_role . '
                     <input type="hidden" id="send_to" name="send_to" value="' . (isset($_REQUEST['send_to']) ? h($_REQUEST['send_to']) : '') . '" />

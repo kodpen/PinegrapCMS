@@ -67,8 +67,10 @@ function ws_wtable_import_names($header)
 /**
  * A number as written in a file, as the store takes it ("1234.5"), or null.
  * Spaces and a thousands separator are dropped; with both "." and "," the
- * last one is the decimal mark, a lone "," is one too (1,5 and 12,50), and
- * the same mark more than once separates thousands.
+ * last one is the decimal mark, and the same mark more than once separates
+ * thousands. A lone mark is the decimal, unless it stands before three
+ * digits and is not the site's decimal mark: in Turkish 1.250 is 1250 and
+ * 1,25 is 1.25, in English 1,250 is 1250 and 1.25 is 1.25.
  *
  * @param string $text
  * @return string|null
@@ -91,6 +93,12 @@ function ws_wtable_import_number($text)
         $mark = ($dot !== false) ? '.' : (($comma !== false) ? ',' : '');
 
         if (($mark !== '') && (substr_count($text, $mark) > 1)) {
+            $text = str_replace($mark, '', $text);
+            $mark = '';
+        } elseif (($mark !== '') && ($mark !== (ws_calc_decimal_comma() ? ',' : '.'))
+            && preg_match('/^[-+]?[1-9][0-9]{0,2}[.,][0-9]{3}$/', $text)) {
+            // A lone mark before three digits that the site does not write
+            // decimals with groups thousands, as ws_calc_number() reads it.
             $text = str_replace($mark, '', $text);
             $mark = '';
         }

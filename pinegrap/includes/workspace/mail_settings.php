@@ -725,7 +725,7 @@ function ws_mail_box_form($self_url, $box, $channels)
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'auth">' . h(lang('Checking server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="auth_server" id="' . $prefix . 'auth" maxlength="255" value="' . h((string) ($settings['auth_server'] ?? '')) . '" placeholder="mx.google.com" autocomplete="off">
                     <div class="form-text">' . h(lang('The server that receives this mailbox\'s mail and writes Authentication-Results. Only its verdict is believed; left empty, every sender stays unverified and no mail is tied to a customer.')) . '</div>
                 </div>
                 ' . ws_mail_route_fields($prefix, $box, $channels) . '
@@ -793,7 +793,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-5">
                     <label class="form-label" for="' . $prefix . 'host">' . h(lang('IMAP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="host" id="' . $prefix . 'host" maxlength="253" value="' . h((string) ($settings['host'] ?? '')) . '" placeholder="imap.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'port">' . h(lang('Port')) . '</label>
@@ -801,7 +801,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'user">' . h(lang('User name')) . '</label>
-                    <input class="form-control form-control-sm" type="text" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
+                    <input class="form-control form-control-sm" type="text" spellcheck="false" autocapitalize="off" name="user" id="' . $prefix . 'user" maxlength="255" value="' . h((string) ($settings['user'] ?? '')) . '" autocomplete="off">
                 </div>
                 <div class="md:col-6">
                     <label class="form-label" for="' . $prefix . 'password">' . h(lang('Password')) . '</label>
@@ -840,7 +840,7 @@ function ws_mail_box_server_fields($prefix, $box, $settings)
                 </div>
                 <div class="md:col-5">
                     <label class="form-label" for="' . $prefix . 'smtp_host">' . h(lang('SMTP server')) . '</label>
-                    <input class="form-control form-control-sm font-monospace" type="text" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
+                    <input class="form-control form-control-sm font-monospace" type="text" inputmode="url" spellcheck="false" autocapitalize="off" name="smtp_host" id="' . $prefix . 'smtp_host" maxlength="253" value="' . h((string) ($settings['smtp_host'] ?? '')) . '" placeholder="smtp.example.com" autocomplete="off">
                 </div>
                 <div class="md:col-3">
                     <label class="form-label" for="' . $prefix . 'smtp_port">' . h(lang('Port')) . '</label>

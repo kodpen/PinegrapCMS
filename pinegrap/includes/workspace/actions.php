@@ -3698,6 +3698,8 @@ function ws_handle_action($action, $request)
             $event['start_time'] = date('H:i', (int) $event['starts_at']);
             $event['end_time'] = date('H:i', (int) $event['ends_at']);
             $event['can_edit'] = ws_can_edit_event($viewer, $event);
+            $event['contact'] = ws_event_contacts_ready() ? ws_event_contact_of($viewer, $event) : null;
+            unset($event['contact_id']);
 
             return ws_action_ok(array('event' => $event));
 
