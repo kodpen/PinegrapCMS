@@ -19,5 +19,8 @@ description: The folder create and edit screens share includes/forms/folder_form
 
 ## What stays in the screens?
 - Create: the parent edit-access check, the parent level, the blank-name error, the INSERT, the log line, the redirect.
-- Edit: the not-found guard, the row load, Duplicate, Delete with the child check, the parent-move cycle walk and `change_level()`, the UPDATE, the log line, the redirect.
+- Edit: the not-found guard, the row load, Duplicate, Delete with the child check, the blank-name refusal (below), the parent-move cycle walk and `change_level()`, the UPDATE, the log line, the redirect.
 - Every query stays in the screens (`db_q_content_screens_test.php`, `db_q_pages_regions_test.php` count them). Tests: `tests/folder_form_test.php`; `panel_steppers_names_test.php` counts the one shared stepper pair.
+
+## Can Edit Folder save a name of only spaces?
+- No. The save branch refuses `trim($_POST['name']) === ''` with Create Folder's 'The folder must have a name. …' and Go back, before the parent move. A name of only spaces passes the browser's `required` and was saved as `folder_name = ''`, a nameless row in All Folders and the File Manager tree. The `empty($_POST['name'])` gate at the top stays: Delete depends on it.
