@@ -14,9 +14,9 @@ description: Plan (2026-10-23; 1-9 done, PRs #1621 to #3135; answers 2-4 given):
 ## Slices
 A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right, row rule.
 1. PR #1621: record-kind registry `ws_record_kinds()` (refs.php; workspace/workspace-record-kind-registry.md): per kind prefixes, right, scope, change kind, audit table, drawer, customer; drift test, lists stay.
-2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
+2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes in the API #3564; its MCP resource: MCP plan.
 3. PR #1666 (workspace/workspace-customer-card.md): a customer card on the channel's Summary tab, the summary through `ws_channel_customer`.
-4. PR #1681 (workspace/workspace-customer-history.md): `ws_customer_history()`, union read; route; History on the card. Cart quotes join with quotes slice 5.
+4. PR #1681 (workspace/workspace-customer-history.md): `ws_customer_history()`, union read; route; History on the card. Cart quotes joined #3564 (kind `cart_quote`).
 5. PR #1790 (workspace/workspace-followups.md): `ws_followup_task_open()`, "Remind me" on the card; next callers: quote expiry (plans/workspace-quotes.md), ERP overdue (erp/erp-overdue-reminders.md).
 6. PR #2092 (workspace/workspace-crm-lead-intake.md): lead step `ws_scheduled_lead()` and box `lead` on `form.submitted`: contact by `forms.contact_id`, else e-mail; reuses a channel from `ws_customer_channels()` or opens one with `builtin:new_customer`; `WS_SCHEDULED_LEAD_HOURLY`; duplicates left to view_contacts.php, `merge_contacts()`.
 7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.

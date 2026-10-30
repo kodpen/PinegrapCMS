@@ -54,7 +54,7 @@ function workspace_customer_history_test_money($minor, $currency)
 // Every source open.
 function workspace_customer_history_test_rights($rights = array())
 {
-	return array_merge(array('orders' => true, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => true), $rights);
+	return array_merge(array('orders' => true, 'cart_quotes' => true, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => true), $rights);
 }
 
 // One row of every source, each a minute apart: the task newest, the order
@@ -90,12 +90,12 @@ function workspace_customer_history_test_data()
 function test_ws_customer_history_rights()
 {
 	pg_assert_same(
-		array('orders' => true, 'invoices' => false, 'sales_quotes' => false, 'forms' => false, 'workspace' => true),
+		array('orders' => true, 'cart_quotes' => true, 'invoices' => false, 'sales_quotes' => false, 'forms' => false, 'workspace' => true),
 		ws_customer_history_rights(array('member' => true, 'ecommerce' => true, 'erp' => false, 'forms' => false)),
 		'the ecommerce right'
 	);
 	pg_assert_same(
-		array('orders' => false, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => false),
+		array('orders' => false, 'cart_quotes' => false, 'invoices' => true, 'sales_quotes' => true, 'forms' => true, 'workspace' => false),
 		ws_customer_history_rights(array('member' => false, 'ecommerce' => false, 'erp' => true, 'forms' => true)),
 		'the ERP and forms rights'
 	);
@@ -143,6 +143,59 @@ function test_ws_customer_history_build_one_list_newest_first()
 		'kind' => 'task', 'id' => 300, 'at' => 1300, 'title' => 'Call back', 'detail' => lang('Task'),
 		'status_label' => 'Open', 'amount' => null, 'amount_text' => '', 'url' => '/p/workspace_tasks.php?task=300',
 	), $by_kind['task'], 'a task that tags the customer');
+}
+
+// A cart quote: its number, how many lines it holds and its state as the
+// cart quote list calls it; no amount, since it is priced when it fills a
+// cart. At the same second it stands with the others by kind, then id.
+function test_ws_customer_history_build_cart_quote()
+{
+	$data = array(
+		'cart_quotes' => array(
+			array('id' => 12, 'line_count' => '3', 'state_label' => 'Expired', 'created_at' => 1000),
+			array('id' => 13, 'line_count' => '1', 'state_label' => 'Open', 'created_at' => 1000),
+		),
+		'orders'      => array(
+			array('id' => 501, 'order_number' => '1042', 'status' => 'complete', 'total' => '12550', 'order_date' => 1000),
+		),
+		'forms'       => array(
+			array('id' => 61, 'form_name' => 'Contact us', 'reference_code' => '', 'complete' => '1', 'submitted_timestamp' => 1000, 'open' => true),
+		),
+	);
+
+	$history = ws_customer_history_build(workspace_customer_history_test_rights(), $data, 'workspace_customer_history_test_money', '/p/', 20);
+
+	pg_assert_same(array('cart_quote:13', 'cart_quote:12', 'form:61', 'order:501'), array_map(function ($entry) {
+		return $entry['kind'] . ':' . $entry['id'];
+	}, $history['entries']), 'one second: by kind, then the newest id');
+
+	pg_assert_same(array(
+		'kind' => 'cart_quote', 'id' => 12, 'at' => 1000, 'title' => lang('Cart quote') . ' #12',
+		'detail' => lang(array('string' => '{var:1} item(s)', 'vars' => array(3))),
+		'status_label' => 'Expired', 'amount' => null, 'amount_text' => '', 'url' => '/p/view_cart_quotes.php?id=12',
+	), $history['entries'][1], 'a cart quote');
+
+	$closed = ws_customer_history_build(workspace_customer_history_test_rights(array('cart_quotes' => false)), $data, 'workspace_customer_history_test_money', '/p/', 20);
+
+	pg_assert_same(array('form', 'order'), array_column($closed['entries'], 'kind'), 'no cart quote without its right');
+}
+
+// The cart quote reader: the contact's quotes in every state, below the
+// page's start, only with the ecommerce right and where the tables are there.
+function test_ws_customer_history_cart_quote_reader()
+{
+	pg_assert_same(array(), ws_customer_history_cart_quote_rows(array('contact_id' => 0), 0, 5), 'no contact, nothing to read');
+
+	$history = workspace_customer_history_test_source('ws_customer_history');
+	pg_assert_contains("if (\$rights['cart_quotes'])", $history, 'read only with its right');
+
+	$reader = workspace_customer_history_test_source('ws_customer_history_cart_quote_rows');
+	pg_assert_contains('pg_cart_quotes_ready()', $reader, 'nothing before the tables are there');
+	pg_assert_contains('FROM cart_quotes', $reader, 'the cart quotes');
+	pg_assert_contains('contact_id =', $reader, 'the customer\'s contact');
+	pg_assert_contains('created_at <', $reader, 'below the page\'s start');
+	pg_assert_contains('pg_cart_quote_state(', $reader, 'its state as the list calls it');
+	pg_assert_false(strpos($reader, 'token') !== false, 'never the token or its hint');
 }
 
 // The other kinds of record write their own words.
