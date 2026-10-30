@@ -151,7 +151,7 @@ if (!empty($_POST['orders'])) {
                 $shipping = $row['shipping'];
                  
 
-                $customer_billing_name = mb_convert_case(mb_strtolower($billing_first_name . ' ' . $billing_last_name,'utf8'), MB_CASE_TITLE, "UTF-8");
+                $customer_billing_name = pg_turkish_title_case($billing_first_name . ' ' . $billing_last_name);
                 $billing_combined_address = $billing_address_1 . $billing_address_2 . ' ' . $billing_zip_code;
                 //PARASUT_TC_IN_FIELD republic of turkey identification number
                 //this is show us where we get republic of turkey identification number (its not required but easy with it.)
