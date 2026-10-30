@@ -25,6 +25,8 @@ description: Plan (owner decision 2026-10-30) for a tidier Workspace list in the
 
 - M2 Tools tiles and More: `tools` and `more` groups replace `work` and `records` (`ws_nav_group_titles()`), tile CSS, tour steps inside More open it first (`PGWsSide.openSections(['more'])`), tests, memory.
 
+- M3 The bell is the one inbox: filters All, Site, Workspace (mentions, approvals, tasks, flows), repeated flow runs folded, a wider panel; the list's Inbox opens the bell on Workspace and its own count goes. `ws_inbox` stays the store (API, sync, push) and keeps its bell rows (`ws_bell_add()`); no schema.
+
 ## What is still open?
 1. My Tasks count: none for now; a count of overdue and today's tasks needs one more query in `ws_side_payload()`.
 
