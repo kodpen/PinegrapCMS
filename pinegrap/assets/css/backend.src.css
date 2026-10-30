@@ -11596,35 +11596,39 @@ button.ws-thread-bar:hover {
 }
 /* Each tone keeps 3:1 on the active row's tint (#ded6ef), not only on the
    sidebar ground. */
-.ws-channel-link[data-ws-nav="home"] > .bi { color: #4679a0; }
-.ws-channel-link[data-ws-nav="inbox"] > .bi { color: #3a8071; }
-.ws-channel-link[data-ws-nav="tasks"] > .bi { color: #498055; }
-.ws-channel-link[data-ws-nav="notes"] > .bi { color: #936e2c; }
-.ws-channel-link[data-ws-nav="board"] > .bi { color: #6b5ca5; }
-.ws-channel-link[data-ws-nav="calendar"] > .bi,
-.ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
-.ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #a7633d; }
-.ws-channel-link[data-ws-nav="timeline"] > .bi { color: #5468a8; }
-.ws-channel-link[data-ws-nav="archived"] > .bi { color: #70757c; }
-.ws-channel-link[data-ws-nav="audit"] > .bi { color: #b5534b; }
-.ws-channel-link[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
-.ws-channel-link[data-ws-nav="flows"] > .bi,
-.ws-channel-link[data-ws-nav="mcp"] > .bi { color: #3b7d90; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="home"] > .bi { color: #4679a0; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="inbox"] > .bi { color: #3a8071; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="tasks"] > .bi { color: #498055; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="notes"] > .bi { color: #936e2c; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="board"] > .bi { color: #6b5ca5; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar"] > .bi,
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar_feed"] > .bi { color: #a5578e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="scheduled"] > .bi { color: #a7633d; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="timeline"] > .bi { color: #5468a8; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="archived"] > .bi { color: #70757c; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="audit"] > .bi { color: #b5534b; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="settings"] > .bi { color: #6f6a5e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="flows"] > .bi,
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mcp"] > .bi { color: #3b7d90; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="wtables"] > .bi { color: #6c7a2e; }
+:is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mail"] > .bi { color: #9b4f6a; }
 /* The same tones lifted for the dark theme, where the ones above sink. */
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="home"] > .bi { color: #8fbde3; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="board"] > .bi { color: #b1a4e0; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar"] > .bi,
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="calendar_feed"] > .bi { color: #dc95c7; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="audit"] > .bi { color: #e08a82; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="flows"] > .bi,
-html[data-bs-theme="dark"] .ws-channel-link[data-ws-nav="mcp"] > .bi { color: #86c4d4; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="home"] > .bi { color: #8fbde3; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="inbox"] > .bi { color: #7fc9b8; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="tasks"] > .bi { color: #8fcf9b; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="notes"] > .bi { color: #e6bb6c; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="board"] > .bi { color: #b1a4e0; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar"] > .bi,
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="calendar_feed"] > .bi { color: #dc95c7; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="scheduled"] > .bi { color: #e9a67f; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="timeline"] > .bi { color: #99a8e0; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="archived"] > .bi { color: #a9aeb5; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="audit"] > .bi { color: #e08a82; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="settings"] > .bi { color: #b3ab9b; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="flows"] > .bi,
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mcp"] > .bi { color: #86c4d4; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="wtables"] > .bi { color: #c3d27a; }
+html[data-bs-theme="dark"] :is(.ws-channel-link, .ws-side-tile)[data-ws-nav="mail"] > .bi { color: #e2a1b8; }
 /* Groups of channels: a heading with its colour, one inside another. */
 .ws-side-group {
   margin-bottom: .2rem;
@@ -17338,9 +17342,9 @@ html[data-bs-theme="dark"] .ws-fd-tone-text-2 { --ws-fd-tone: #f0c060; }
 html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
   color: var(--pg-on-accent);
 }
-/* Tools: two tiles to a row, each the screen's icon in its own colour (the
-   main menu's module colours, lighter in the dark theme) and a short name;
-   More, the last tile, opens the rarer screens as rows under them. */
+/* Tools: two tiles to a row, each the screen's icon in the colour its row
+   had (the [data-ws-nav] rules) and a short name; More, the last tile,
+   opens the rarer screens as rows under them. */
 #ws-menu-side .ws-side-tiles {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -17376,10 +17380,11 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-count.ws-count-mention {
 }
 #ws-menu-side .ws-side-tile > .bi {
   flex: 0 0 auto;
-  color: var(--ws-tile, var(--pg-fg-2));
 }
-html[data-bs-theme="dark"] #ws-menu-side .ws-side-tile > .bi {
-  color: var(--ws-tile-dark, var(--pg-fg-2));
+/* Without a colour of its own (the [data-ws-nav] rules above) a tile's icon
+   takes the secondary ink. */
+.ws-side-tile > .bi {
+  color: var(--pg-fg-2);
 }
 #ws-menu-side .ws-side-tile-name {
   flex: 1 1 auto;
@@ -17391,13 +17396,6 @@ html[data-bs-theme="dark"] #ws-menu-side .ws-side-tile > .bi {
 #ws-menu-side .ws-side-tile > .ws-side-tile-chevron {
   font-size: .7rem;
 }
-#ws-menu-side .ws-side-tile[data-ws-nav="notes"] { --ws-tile: var(--forms-color); --ws-tile-dark: var(--forms-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="wtables"] { --ws-tile: var(--ecommerce-color); --ws-tile-dark: var(--ecommerce-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="flows"] { --ws-tile: var(--workspace-color); --ws-tile-dark: var(--workspace-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="calendar"] { --ws-tile: var(--calendars-color); --ws-tile-dark: var(--calendars-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="board"] { --ws-tile: var(--erp-color); --ws-tile-dark: var(--erp-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="timeline"] { --ws-tile: var(--files-color); --ws-tile-dark: var(--files-color-highlight); }
-#ws-menu-side .ws-side-tile[data-ws-nav="mail"] { --ws-tile: var(--campaigns-color); --ws-tile-dark: var(--campaigns-color-highlight); }
 #ws-menu-side .ws-side-more {
   margin-top: .35rem;
   padding: .2rem;

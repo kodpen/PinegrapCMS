@@ -1,6 +1,6 @@
 ---
 name: workspace-menu-tools
-description: Tools tiles and More in the Workspace list (#3817, M2 of plans/workspace-menu-layout.md): which places, short names, module colours, the More rows, ws-side-open, the tour opening what hides a place
+description: Tools tiles and More in the Workspace list (#3817, M2 of plans/workspace-menu-layout.md): which places, short names, colours, the More rows, ws-side-open, the tour opening what hides a place
 ---
 
 ## Which places are tiles, which wait behind More?
@@ -8,7 +8,7 @@ description: Tools tiles and More in the Workspace list (#3817, M2 of plans/work
 - A tile shows `short` (Calendar, Decisions) or else the label; the full label is its title and `data-pg-menu-label`. `ws_side_nav()` passes `short` on.
 
 ## How is it drawn?
-- `.ws-side-tiles`: a two-column grid of `.ws-side-tile` links (`data-ws-nav`), the icon in the main menu's module colour (`--forms-color`, `--ecommerce-color`, `--workspace-color`, `--calendars-color`, `--erp-color`, `--files-color`, `--campaigns-color`; their `-highlight` tone in the dark theme).
+- `.ws-side-tiles`: a two-column grid of `.ws-side-tile` links (`data-ws-nav`), the icon in the colour its row had (the `:is(.ws-channel-link, .ws-side-tile)[data-ws-nav]` rules, a lighter tone in the dark theme; Tables and E-mails got theirs), else `--pg-fg-2`.
 - The last tile is the More button (`aria-expanded`, `aria-controls="ws-side-more"`); open, `.ws-side-more` lists `more` as ordinary rows under the tiles. Its state is the person's (`ws-side-open` in localStorage) and it opens by itself on one of its screens. A closed Tools section still shows the open screen's tile or row.
 - In the dark theme a mention count's ink is `--pg-on-accent`: white on the light lavender accent read at 2.2:1.
 
