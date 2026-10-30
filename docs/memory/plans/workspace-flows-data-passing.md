@@ -5,7 +5,7 @@ description: Plan (owner request 2026-10-27, draft being refined): values carrie
 
 ## What is there today?
 - `{{node.<id>.<field>}}` (`ws_step_fill_nodes()`, steps.php) reads `text`, `outcome`, `status` and the scalar `result.data` values of the run's settled boxes (`ws_step_node_values()`); arrays read as ''.
-- Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled (the one decided exception, item 1 below, is not built).
+- Filled only into a kind's `texts` (`ws_step_kinds()`): post body, e-mail subject and body, notify text, task title and description, webhook text, check-in question, report title, digest subject and intro. Addresses are never filled (the one decided exception, item 1 below, is being built as step 1b).
 - Ids are `<kind>_<n>` (`freeId()` in workspace_flow.js) and are not shown on the canvas; "Add value" puts them in as chips (D6, workspace/workspace-flows-value-picker.md).
 - A reference to a missing box or field is a problem, one to a box that may not run a warning (D4, workspace/workspace-flows-references.md); at run time it still becomes ''.
 - `{{trigger.<field>}}` reads what started the run (D5, workspace/workspace-flows-trigger-values.md). A condition compares a box's or the trigger's value (D7). A loop's body runs at `pass` = item (D9).
