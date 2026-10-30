@@ -491,7 +491,7 @@ if ($files) {
             <td class="align-middle text-center ' . $output_design_class . '" style="text-align: center">' . $optimized . '</td>
             <td class="align-middle text-start text-wrap ' . $file['folder_access_control_type'] . '">' . pg_folder_list_name($file['folder_name'], $file['folder_access_control_type']) . '</td>
             <td class="align-middle text-wrap ' . $output_design_class . '"><div class="text-wrap text-break" style="max-width:20rem;">' . nl2br(h($file['description'])) . '</div></td>
-            <td class="align-middle ' . $output_design_class . '">' . get_relative_time(array('timestamp' => $file['timestamp'])) . ' ' . lang(array('string'=>'by {var:1}','vars'=>array( h($file['user_username'] ?? '') ) ) ) . '</td>
+            <td class="align-middle ' . $output_design_class . '">' . pg_list_when($file['timestamp'], $file['user_username'] ?? '') . '</td>
         </tr>';
     }
 }
