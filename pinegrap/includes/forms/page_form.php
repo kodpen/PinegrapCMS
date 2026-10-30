@@ -3074,6 +3074,14 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
         return $field($prefix . '_product_description_type', 'full_description');
     };
 
+    // A count box emptied or set below 1 saves the default the form shows:
+    // the INT UNSIGNED column would store 0, which the site reads as none.
+    $count = function ($name, $default) use ($field) {
+        $value = $field($name);
+
+        return ((int) $value < 1) ? $default : $value;
+    };
+
     $properties = array();
 
     switch ($page_type) {
@@ -3098,7 +3106,7 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
         case 'photo gallery':
             $properties = array(
                 'page_id' => $page_id,
-                'number_of_columns' => $field('photo_gallery_number_of_columns'),
+                'number_of_columns' => $count('photo_gallery_number_of_columns', 4),
                 'thumbnail_max_size' => $field('photo_gallery_thumbnail_max_size')
             );
 
@@ -3258,8 +3266,8 @@ function pg_page_form_type_properties_from_post($page_type, $page_id, $source = 
             $properties = array(
                 'page_id' => $page_id,
                 'summary' => $field('form_view_directory_summary', 0),
-                'summary_days' => $field('form_view_directory_summary_days'),
-                'summary_maximum_number_of_results' => $field('form_view_directory_summary_maximum_number_of_results'),
+                'summary_days' => $count('form_view_directory_summary_days', 30),
+                'summary_maximum_number_of_results' => $count('form_view_directory_summary_maximum_number_of_results', 5),
                 'form_list_view_heading' => $form_list_view_heading,
                 'subject_heading' => $subject_heading,
                 'number_of_submitted_forms_heading' => $number_of_submitted_forms_heading
