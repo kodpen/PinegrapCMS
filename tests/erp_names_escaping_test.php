@@ -51,6 +51,6 @@ function test_erp_names_escaping_line_values_raw()
 
 function test_erp_names_escaping_option_labels()
 {
-	pg_assert_contains("\$till_options[h(\$till['name'])] = ", erp_names_escaping_source('add_erp_transfer.php'), 'till names escaped');
+	pg_assert_contains("\$till_options[h(\$till['name'] . (\$fx_on ? ", erp_names_escaping_source('add_erp_transfer.php'), 'till names escaped');
 	pg_assert_contains("\$country_options[h((string) \$country_row['name'])] = ", erp_names_escaping_source('includes/erp/account_form.php'), 'country names escaped');
 }

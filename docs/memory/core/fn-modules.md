@@ -37,7 +37,7 @@ description: Generated from the module field of the memory files: each includes/
 - `events`: [[workspace-flows-event-depth]]
 - `explorer_side`: [[explorer-menu-tree]]
 - `files`: [[name-length-refusal]]
-- `forms`: [[form-data-output-escape-flag]]
+- `forms`: [[form-data-output-escape-flag]], [[report-dynamic-date-filter]]
 - `geo`: [[country-names-in-addresses]], [[panel-script-number-format]]
 - `google_analytics`: [[google-analytics-card]]
 - `google_reviews`: [[google-reviews-widget]]
