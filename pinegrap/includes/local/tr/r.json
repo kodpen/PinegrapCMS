@@ -1278,6 +1278,7 @@
     "remove_option_ids must be a list of option ids.": "remove_option_ids, seçenek kimliklerinden oluşan bir liste olmalı.",
     "removed from": " den kaldırıldı",
     "removed from a product group": "ürün grubundan çıkarıldı",
+    "removed from sitemap.xml": "sitemap.xml dosyasından kaldırıldı",
     "removed the firewall ban on {var:1} from the command line": "{var:1} üzerindeki güvenlik duvarı yasağını komut satırından kaldırdı",
     "removed their own calendar from their Work Calendar": "kendi takvimini İş Takviminden kaldırdı",
     "repair, recycling": "onarım, geri dönüşüm",

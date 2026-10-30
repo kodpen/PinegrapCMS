@@ -32,7 +32,7 @@ function test_message_values_commerce_are_escaped()
 		array('cart_action.php', '$lf->mark_error(\'quick_add_product_id\', lang(array(\'string\' => \'Sorry, {var:1} is not currently available.\', \'vars\' => h($qa_desc))));', 1),
 		array('edit_page.php', '$liveform->mark_error(\'canonical_url\', pg_page_canonical_url_message($canonical_check[\'error\'], h($current_page_name)));', 1),
 		array('edit_page.php', '$liveform->mark_error(\'max_snippet\', pg_page_max_snippet_message(h($current_page_name)));', 1),
-		array('edit_pages.php', '$liveform->add_notice(lang(array(\'string\'=>\'{var:1} page(s) {var:2}\',\'vars\'=>array($number_of_pages,h($log_message)) )) );', 1),
+		array('edit_pages.php', '$liveform->add_notice(h($message));', 1),
 		array('edit_product.php', '$liveform_target->add_notice(lang(array(\'string\' => $deleted_message[\'string\'], \'vars\' => array(h($deleted_name)))));', 1),
 		array('edit_product.php', '$notice = lang(array(\'string\' => \'product ({var:1}) was updated\', \'vars\' => array(h($result[\'name\']))));', 1),
 		array('edit_product.php', 'log_activity(lang($deleted_message), $_SESSION[\'sessionusername\']);', 1),

@@ -315,45 +315,37 @@ if (!$_POST) {
                     
                     // if more than 0 files were modified, then log activity
                     if ($number_of_files) {
-                        $log_message = '';
-                        
-                        // if a folder was selected to move the files(s) to, then output message for log
+                        // Each change is a verb-free phrase; they are joined with ', ' inside one sentence key.
+                        $changes = array();
+
+                        // if a folder was selected to move the files(s) to, then name the folder
                         if ($_POST['move_to_folder']) {
-                            // get folder name for log
                             $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
                             $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
                             $row = mysqli_fetch_assoc($result);
-                            
-                            // output message for log
-                            $log_message = lang(array('string'=>'were moved to {var:1}','vars'=>$row['folder_name']));
+
+                            $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($row['folder_name'])));
                         }
-                        
+
                         // if the design property was selected to be edited and the user is a design or administrator,
-                        // then set message for log
+                        // then say which way
                         if (
                             ($_POST['edit_design'] != '')
                             && ($user['role'] <= 1)
                         ) {
-                            // if the log message is not blank, then add separator
-                            if ($log_message != '') {
-                                $log_message .= ', ' . lang('and') . ' ';
-                            }
-                            
-                            // prepare design value for log
-                            if ($_POST['edit_design'] == '1') {
-                                $on_off = lang('on');
-                            } else {
-                                $on_off = lang('off');
-                            }
-                            
-                            // output message for log
-                            $log_message .= lang(array('string'=>'had design turned {var:1}','vars'=>$on_off));
+                            $changes[] = ($_POST['edit_design'] == '1') ? lang('design turned on') : lang('design turned off');
                         }
-                        
-                        // if there is a log message, then log it and add notice
-                        if ($log_message != '') {
-                            log_activity($number_of_files . ' ' . lang('file(s)') . ' ' . $log_message, $_SESSION['sessionusername']);
-                            $liveform->add_notice($number_of_files . ' ' . lang('file(s)') . ' ' . h($log_message) . '.');
+
+                        // if there is a change, then log it and add notice
+                        if ($changes) {
+                            if ($number_of_files == 1) {
+                                $message = lang(array('string' => '{var:1} file was changed: {var:2}.', 'vars' => array($number_of_files, implode(', ', $changes))));
+                            } else {
+                                $message = lang(array('string' => '{var:1} files were changed: {var:2}.', 'vars' => array($number_of_files, implode(', ', $changes))));
+                            }
+
+                            log_activity($message, $_SESSION['sessionusername']);
+                            $liveform->add_notice(h($message));
                         }
                     }
 
@@ -429,8 +421,14 @@ if (!$_POST) {
 
                 // if more than 0 files were deleted, then log activity
                 if ($number_of_files > 0) {
-                    log_activity(lang(array('string'=>'{var:1} file(s) were deleted','vars'=>$number_of_files)), $_SESSION['sessionusername']);
-                    $liveform->add_notice(lang(array('string'=>'{var:1} file(s) were deleted','vars'=>$number_of_files)));
+                    if ($number_of_files == 1) {
+                        $deleted_message = lang(array('string' => '{var:1} file was deleted.', 'vars' => $number_of_files));
+                    } else {
+                        $deleted_message = lang(array('string' => '{var:1} files were deleted.', 'vars' => $number_of_files));
+                    }
+
+                    log_activity($deleted_message, $_SESSION['sessionusername']);
+                    $liveform->add_notice($deleted_message);
                 }
                 
                 break;

@@ -45,6 +45,28 @@ function test_panel_sentence_keys_no_verb_built_keys()
 	pg_assert_true(strpos(panel_sentence_keys_source('duplicate_products.php'), "' exported'") === false, 'duplicate_products.php: the export log line goes through lang()');
 }
 
+function test_panel_sentence_keys_pages_and_files_notices_are_sentences()
+{
+	foreach (array('edit_pages.php', 'edit_files.php') as $path) {
+		$source = panel_sentence_keys_source($path);
+
+		pg_assert_true(strpos($source, "'were moved to {var:1}'") === false, $path . ': no "were moved to {var:1}" piece');
+		pg_assert_true(!preg_match("/lang\\(\\s*'and'\\s*\\)/", $source), $path . ': changes are not joined with lang(\'and\')');
+		pg_assert_true(strpos($source, "'{var:1} page(s)") === false, $path . ': no "{var:1} page(s)" count key');
+		pg_assert_true(strpos($source, "'{var:1} file(s)") === false, $path . ': no "{var:1} file(s)" count key');
+		pg_assert_true(strpos($source, "lang('file(s)')") === false, $path . ': no count glued outside lang()');
+	}
+
+	$edit_pages = panel_sentence_keys_source('edit_pages.php');
+
+	foreach (array("lang('preview ')", 'page style changed to {var:2}', 'had site search turned', "'were {var:1} sitemap.xml'", "lang('removed from')") as $piece) {
+		pg_assert_true(strpos($edit_pages, $piece) === false, 'edit_pages.php: no "' . $piece . '" piece');
+	}
+
+	pg_assert_true(strpos(panel_sentence_keys_source('edit_files.php'), 'had design turned') === false, 'edit_files.php: no "had design turned" piece');
+	pg_assert_true(strpos(panel_sentence_keys_source('view_fields.php'), "'Add fields to this {var:1}'") === false, 'view_fields.php: the subheading names its form in one key');
+}
+
 function test_panel_sentence_keys_relative_times_have_singular()
 {
 	foreach (array('api_settings.php', 'chat.php', 'marketplace_settings.php') as $path) {
@@ -81,6 +103,30 @@ function test_panel_sentence_keys_new_keys_are_translated()
 		'stock tracking on',
 		'stock tracking off',
 		'Option for Track Inventory',
+		'{var:1} page was changed: {var:2}.',
+		'{var:1} pages were changed: {var:2}.',
+		'moved to the folder {var:1}',
+		'page style set to {var:1}',
+		'preview page style set to {var:1}',
+		'mobile page style set to {var:1}',
+		'mobile preview page style set to {var:1}',
+		'site search turned on',
+		'site search turned off',
+		'added to sitemap.xml',
+		'removed from sitemap.xml',
+		'{var:1} page was moved to the Recycle Bin.',
+		'{var:1} pages were moved to the Recycle Bin.',
+		'{var:1} page was deleted.',
+		'{var:1} pages were deleted.',
+		'{var:1} file was changed: {var:2}.',
+		'{var:1} files were changed: {var:2}.',
+		'design turned on',
+		'design turned off',
+		'{var:1} file was deleted.',
+		'{var:1} files were deleted.',
+		'Add fields to this custom form.',
+		'Add fields to this custom shipping form.',
+		'Add fields to this custom billing form.',
 	);
 
 	foreach ($keys as $key) {

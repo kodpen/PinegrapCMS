@@ -374,42 +374,29 @@ if (!$_POST) {
                 
                 // if more than 0 pages were modified, then log activity
                 if ($number_of_pages > 0) {
-                    $log_message = '';
-                    
-                    // if a folder was selected to move the page(s) to, then output message for log
+                    // Each change is a verb-free phrase; they are joined with ', ' inside one sentence key.
+                    $changes = array();
+
+                    // While a theme other than the activated one is previewed, the styles were set for the preview.
+                    $previewing = (
+                        (!empty($_SESSION['software']['preview_theme_id']))
+                        && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
+                        && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
+                    );
+
+                    // if a folder was selected to move the page(s) to, then name the folder
                     if ($_POST['move_to_folder']) {
-                        // get folder name for log
                         $query = "SELECT folder_name FROM folder WHERE folder_id = ?";
                         $result = db_q($query, array((string) ($_POST['move_to_folder'] ?? ''))) or output_error('Query failed.');
                         $row = mysqli_fetch_assoc($result);
-                        
-                        // output message for log
-                        $log_message = lang(array('string' => 'were moved to {var:1}', 'vars' => array($row['folder_name'])));
-                    }
-                    
-                    // if a page style was selected to be applied to the page(s), then set message for log
-                    if ($_POST['edit_page_style'] != '') {
-                        // if the log message is not blank, then add separator
-                        if ($log_message != '') {
-                            $log_message .= ', ' . lang('and') . ' ';
-                        }
-                        
-                        // If page style is equal to 0 then output default
-                        if ($_POST['edit_page_style'] == '0') {
-                            // If the user is currently previewing a theme that is not the activated theme,
-                            // then set default label in a certain way.
-                            if (
-                                (!empty($_SESSION['software']['preview_theme_id']))
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                            ) {
-                                $style = '[' . lang('Activated') . ']';
 
-                            } else {
-                                $style = lang('Default') . ' (' . lang('inherit') . ')';
-                            }
-                        
-                        // else get style name for log
+                        $changes[] = lang(array('string' => 'moved to the folder {var:1}', 'vars' => array($row['folder_name'])));
+                    }
+
+                    // if a page style was selected to be applied to the page(s), then name the style
+                    if ($_POST['edit_page_style'] != '') {
+                        if ($_POST['edit_page_style'] == '0') {
+                            $style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                         } else {
                             $query = "SELECT style_name FROM style WHERE style_id = ?";
                             $result = db_q($query, array((string) ($_POST['edit_page_style'] ?? ''))) or output_error('Query failed.');
@@ -417,46 +404,17 @@ if (!$_POST) {
                             $style = $row['style_name'];
                         }
 
-                        $preview = '';
-
-                        // If the user is currently previewing a theme that is not the activated theme,
-                        // then add preview label to log message.
-                        if (
-                            (!empty($_SESSION['software']['preview_theme_id']))
-                            && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                            && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                        ) {
-                            $preview = lang('preview ');
-
+                        if ($previewing) {
+                            $changes[] = lang(array('string' => 'preview page style set to {var:1}', 'vars' => array($style)));
+                        } else {
+                            $changes[] = lang(array('string' => 'page style set to {var:1}', 'vars' => array($style)));
                         }
-                        
-                        // output message for log
-                        $log_message .= lang(array('string' => 'had {var:1}page style changed to {var:2}', 'vars' => array($preview, $style)));
                     }
 
-                    // if a mobile page style was selected to be applied to the page(s), then set message for log
+                    // if a mobile page style was selected to be applied to the page(s), then name the style
                     if ($_POST['edit_mobile_style_id'] != '') {
-                        // if the log message is not blank, then add separator
-                        if ($log_message != '') {
-                            $log_message .= ', ' . lang('and') . ' ';
-                        }
-                        
-                        // if mobile page style is equal to 0 then output default
                         if ($_POST['edit_mobile_style_id'] == '0') {
-                            // If the user is currently previewing a theme that is not the activated theme,
-                            // then set default label in a certain way.
-                            if (
-                                (!empty($_SESSION['software']['preview_theme_id']))
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                                && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                            ) {
-                                $mobile_style = '[' . lang('Activated') . ']';
-
-                            } else {
-                                $mobile_style = lang('Default') . ' (' . lang('inherit') . ')';
-                            }
-                        
-                        // else get mobile style name for log
+                            $mobile_style = $previewing ? '[' . lang('Activated') . ']' : lang('Default') . ' (' . lang('inherit') . ')';
                         } else {
                             $query = "SELECT style_name FROM style WHERE style_id = ?";
                             $result = db_q($query, array((string) ($_POST['edit_mobile_style_id'] ?? ''))) or output_error('Query failed.');
@@ -464,65 +422,33 @@ if (!$_POST) {
                             $mobile_style = $row['style_name'];
                         }
 
-                        $preview = '';
-
-                        // If the user is currently previewing a theme that is not the activated theme,
-                        // then add preview label to log message.
-                        if (
-                            (!empty($_SESSION['software']['preview_theme_id']))
-                            && ($_SESSION['software']['preview_theme_id'] != $activated_desktop_theme_id)
-                            && ($_SESSION['software']['preview_theme_id'] != $activated_mobile_theme_id)
-                        ) {
-                            $preview = lang('preview ');
-
+                        if ($previewing) {
+                            $changes[] = lang(array('string' => 'mobile preview page style set to {var:1}', 'vars' => array($mobile_style)));
+                        } else {
+                            $changes[] = lang(array('string' => 'mobile page style set to {var:1}', 'vars' => array($mobile_style)));
                         }
-                        
-                        // output message for log
-                        $log_message .= lang(array('string'=>'had mobile {var:1}page style changed to {var:2}','vars'=>array($preview,$mobile_style) ));
-               
                     }
-                    
-                    // if the site search was selected to be edited, then set message for log
+
+                    // if the site search was selected to be edited, then say which way
                     if ($_POST['edit_site_search'] != '') {
-                        // if the log message is not blank, then add separator
-                        if ($log_message != '') {
-                            $log_message .= ', ' . lang('and') . ' ';
-                        }
-                        
-                        // prepare site search value for log
-                        if ($_POST['edit_site_search'] == '1') {
-                            $on_off = lang('on');
-                        } else {
-                            $on_off = lang('off');
-                        }
-                        
-                        // output message for log
-                        $log_message .= lang(array('string'=>'had site search turned {var:1}','vars'=>array($on_off) ));
+                        $changes[] = ($_POST['edit_site_search'] == '1') ? lang('site search turned on') : lang('site search turned off');
+                    }
 
-                    }
-                    
-                    // if sitemap was selected to be edited, then set message for log
+                    // if sitemap was selected to be edited, then say which way
                     if ($_POST['edit_sitemap'] != '') {
-                        // if the log message is not blank, then add separator
-                        if ($log_message != '') {
-                            $log_message .= ', ' . lang('and') . ' ';
-                        }
-                        
-                        // prepare sitemap value for log
-                        if ($_POST['edit_sitemap'] == '1') {
-                            $added_to_or_removed_from = lang('added to');
-                        } else {
-                            $added_to_or_removed_from = lang('removed from');
-                        }
-                        
-                        // output message for log
-                        $log_message .= lang(array('string'=>'were {var:1} sitemap.xml','vars'=>array($added_to_or_removed_from) ));
+                        $changes[] = ($_POST['edit_sitemap'] == '1') ? lang('added to sitemap.xml') : lang('removed from sitemap.xml');
                     }
-                    
-                    // if there is a log message, then log it and add notice
-                    if ($log_message != '') {
-                        log_activity(lang(array('string'=>'{var:1} page(s) {var:2}','vars'=>array($number_of_pages,$log_message) )), $_SESSION['sessionusername']);
-                        $liveform->add_notice(lang(array('string'=>'{var:1} page(s) {var:2}','vars'=>array($number_of_pages,h($log_message)) )) );
+
+                    // if there is a change, then log it and add notice
+                    if ($changes) {
+                        if ($number_of_pages == 1) {
+                            $message = lang(array('string' => '{var:1} page was changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
+                        } else {
+                            $message = lang(array('string' => '{var:1} pages were changed: {var:2}.', 'vars' => array($number_of_pages, implode(', ', $changes))));
+                        }
+
+                        log_activity($message, $_SESSION['sessionusername']);
+                        $liveform->add_notice(h($message));
                     }
                 }
                 
@@ -789,8 +715,14 @@ if (!$_POST) {
                 }
 
                 if ($number_of_binned_pages > 0) {
-                    log_activity(lang(array('string' => '{var:1} page(s) were moved to the Recycle Bin.', 'vars' => $number_of_binned_pages)), $_SESSION['sessionusername']);
-                    $liveform->add_notice(lang(array('string' => '{var:1} page(s) were moved to the Recycle Bin.', 'vars' => $number_of_binned_pages))
+                    if ($number_of_binned_pages == 1) {
+                        $binned_message = lang(array('string' => '{var:1} page was moved to the Recycle Bin.', 'vars' => $number_of_binned_pages));
+                    } else {
+                        $binned_message = lang(array('string' => '{var:1} pages were moved to the Recycle Bin.', 'vars' => $number_of_binned_pages));
+                    }
+
+                    log_activity($binned_message, $_SESSION['sessionusername']);
+                    $liveform->add_notice($binned_message
                         . ($binned_home_page ? ' ' . lang('The home page was among them: the site has no home page until another page is marked as home.') : ''));
                 }
 
@@ -800,8 +732,14 @@ if (!$_POST) {
 
                 // if more than 0 pages were deleted, then log activity
                 if ($number_of_pages > 0) {
-                    log_activity(lang(array('string'=>'{var:1} page(s) were deleted','vars'=>$number_of_pages)), $_SESSION['sessionusername']);
-                    $liveform->add_notice( lang(array('string'=>'{var:1} page(s) were deleted','vars'=>$number_of_pages)) );
+                    if ($number_of_pages == 1) {
+                        $deleted_message = lang(array('string' => '{var:1} page was deleted.', 'vars' => $number_of_pages));
+                    } else {
+                        $deleted_message = lang(array('string' => '{var:1} pages were deleted.', 'vars' => $number_of_pages));
+                    }
+
+                    log_activity($deleted_message, $_SESSION['sessionusername']);
+                    $liveform->add_notice($deleted_message);
                 }
                 
                 if ($access_error_exists == true) {
