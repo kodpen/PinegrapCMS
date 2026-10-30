@@ -15,6 +15,10 @@ description: Editor screen code, save flow, JSON api.php body, the dirty check a
 - New work in the page save that depends on anything besides the page's tree and settings adds that condition to `_pgPageUnchanged()`, or the change never reaches that page.
 - The dirty check `_pgBaselineOf()` serialises the tree with `_pgBaselineTreeKey()`, which skips `_expanded` (the Layers panel's open state, set on the selection's ancestors) and an empty `_attrs`; the settings and form settings count. Panel drawing writes nothing to a node; a new UI state kept on the node gets its key skipped there, or selecting an element shows the page as unsaved.
 
+## What does Undo/Redo mark?
+- Undo and Redo restore every cached shared component tree (`_restoreShared()`). A component is marked `_sharedDirty` only on a real difference: from its snapshot when it has one (an equal tree drops the mark), else from the tree it replaces. `_sdSharedCatchEdits()` at Save also deletes a mark on a tree equal to its snapshot (`delete`, never `= false`: the draft/live check counts the keys).
+- Symptom fixed (#3595, PR #3681): Publish after an undo sent every page with its tree (48 of 48, 421 KB), because the header and footer were marked on every page; untouched form pages also showed "sends no notification" warnings.
+
 ## How do tabs work in JS?
 - Tab switch (`_pgTabsSwitch`) parks/loads the module-level `tree` / `undoStack` / `redoStack`; the rest of the file sees a single tree.
 - Tab DOM is redrawn on every switch: do not hold references.
