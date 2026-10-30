@@ -58,9 +58,10 @@ if (!$_POST) {
                                         <div class="col-12 md:col-8 my-3">
                                             <label for="url" class="form-label">' . lang('API URL') . '</label>
                                             <div class="input-group ">
-                                                <label class="input-group-text material-icons" title="' . lang('API URL') . '" data-bs-content="' . lang('Example') . ': https://www.example.com/software_directory/api.php">public</label>
-                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'value' => 'https://', 'class'=>'form-control', 'required'=>'required')) . '
+                                                <label class="input-group-text material-icons" aria-hidden="true">public</label>
+                                                ' . $liveform->output_field(array('type'=>'text', 'name'=>'url', 'id'=>'url', 'value' => 'https://', 'class'=>'form-control', 'required'=>'required', 'aria-describedby'=>'url_hint')) . '
                                             </div>
+                                            <div class="form-text" id="url_hint">' . lang('Example') . ': <code>https://www.example.com/software_directory/api.php</code></div>
                                             <div class="form-text text-end">' . lang('If source site supports it, make sure to use \'https\' URL so login info is sent securely.') . '</div>
                                         </div>
                                         <div class="col-12"></div>
