@@ -1,6 +1,6 @@
 ---
 name: focus-after-removal
-description: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, product group Load More)
+description: Where focus goes when a panel control removes, hides or replaces the focused element (ERP lines, bundle rows, contact photo, API sheet, Modify Selected, marketplace bulk bar, product group Load More)
 ---
 
 ## What is the rule?
@@ -15,6 +15,8 @@ description: Where focus goes when a panel control removes, hides or replaces th
 - API application drawer delete confirm: Delete this application focuses Yes, delete; Cancel focuses Delete this application again.
 - Modify Selected (`includes/templates/edit_products.php`): the Price Change Method select keeps the focus; the price box below it is already shown.
 - Load More Products on Create/Edit Product Group (`pg_product_group_form_products_card()` in `includes/forms/product_group_form.php`): focus moves to the first new row's tick box ('Select {product}'); when the batch is empty and the last, the strip holding the button is hidden and focus goes to `#select_all`. Every success, empty rows included, hides the strip (`has_more` false) or enables the button again; before, an empty batch (products binned, deleted or grouped elsewhere since the screen opened) left it disabled with its hourglass. A refused answer, a network error or the sign-in page of an expired session enables it again and shows `response.message`, else 'Query failed.', in a danger `pgToast`. New rows go through `pgInitInjected()`. Pinned by `tests/product_group_load_more_test.php`.
+
+- Marketplace products bulk bar (`updateBulk()` in `assets/js/marketplace_products.js`): before the bar hides, focus inside it goes to `#mpp-select-all`, else the first row box (`ui/marketplace-products-names.md`).
 
 ## When was it done?
 - PR "[iş] Removed lines and closed panels give focus on…" (October 2026), pinned by `tests/focus_after_removal_test.php`.

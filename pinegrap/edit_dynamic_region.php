@@ -46,7 +46,7 @@ if (!isset($_POST['name'])) {
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Edit {var:1}','vars'=>lang('Dynamic Region'))),
         'heading_description' => lang('Update this dynamic region of shared content. (A rename will require its tag to be updated in any page styles.)'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php'),
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_dynamic_regions'),
         'breadcrumb' => array(
             array('label' => lang('All Dynamic Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions'),
             array('label' => lang(array('string'=>'Edit {var:1}','vars'=>lang('Dynamic Region')))),

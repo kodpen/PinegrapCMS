@@ -33,7 +33,7 @@ if (!$_POST) {
         'icon'=>'page',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))),
         'heading_description' => lang('Create the messages displayed in the login region before and after users log in.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_login_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Login Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_login_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Login Region'))))),
         ]) . '

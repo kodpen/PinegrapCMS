@@ -29,7 +29,7 @@ if (!isset($_POST['name'])) {
         'icon'=>'design',
         'heading'=>lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))),
         'heading_description' => lang('Create a new dynamic region that contains PHP code and can be added to any page style.'),
-        'cancel'=>array('enable'=>'true','url'=>'view_regions.php')
+        'cancel'=>array('enable'=>'true','url'=>'view_regions.php?filter=all_dynamic_regions')
     ,
             'breadcrumb' => array(array('label' => lang('All Dynamic Regions'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_regions.php?filter=all_dynamic_regions'), array('label' => lang(array('string'=>'Create {var:1}','vars'=>lang('Dynamic Region'))))),
         ]) . '
