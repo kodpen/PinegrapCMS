@@ -485,7 +485,7 @@ function test_carrier_label_sendcloud_return_announces_from_the_customer()
 		),
 		'ship_with'       => array('type' => 'shipping_option_code', 'shipping_option_code' => 'dpd:return/return'),
 		'weight'          => array('value' => 1.25, 'unit' => 'kg'),
-		'dimensions'      => array('length' => 30.0, 'width' => 20.0, 'height' => 10.5, 'unit' => 'cm'),
+		'dimensions'      => array('length' => 30, 'width' => 20, 'height' => 10.5, 'unit' => 'cm'),
 		'delivery_option' => 'drop_off_point',
 		'order_number'    => '10042',
 	), $sent[2]['body'], 'the outgoing option, a service point and a non-return option are passed over; no customs');

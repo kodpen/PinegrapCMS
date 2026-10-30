@@ -786,6 +786,7 @@
     "A restore of the backup {var:1} is unfinished ({var:2}, last step {var:3}). The site runs on its own tables until it is finished.": "{var:1} yedeğinin geri yüklemesi yarım kaldı ({var:2}, son adım {var:3}). Bitene kadar site kendi tablolarıyla çalışır.",
     "A retired schoolteacher has volunteered to read them all. She comes in three days a week, opens the next book where she left off, and copies anything interesting onto index cards.": "Emekli bir öğretmen hepsini okumaya gönüllü oldu. Haftada üç gün geliyor, sıradaki defteri kaldığı yerden açıyor ve ilginç bulduğu her şeyi fiş kartlarına geçiriyor.",
     "A return can be requested": "İade talep edilebiliyor",
+    "A return from {var:1} to {var:2} needs a customs declaration, which is not sent to Sendcloud yet.": "{var:1} ülkesinden {var:2} ülkesine bir iade gümrük beyannamesi gerektirir; gümrük beyannamesi henüz Sendcloud'a gönderilmiyor.",
     "A return has been written against this invoice, so its date is not moved.": "Bu faturaya iade kesilmiş, bu yüzden tarihi değiştirilmez.",
     "A return is issued as a return invoice against the original, not as an invoice of type İADE.": "İade, İADE tipli bir fatura olarak değil, asıl faturaya karşı iade faturası olarak düzenlenir.",
     "A return is requested": "İade talep edildi",

@@ -5,8 +5,8 @@ module: shipment_labels
 ---
 
 ## Where is the button?
-- `view_return.php`, card "Return Label": on an approved request while a label driver is on (`pg_shipment_label_drivers()`), or once the request has labels (listed with Print Label, `shipment_label.php?id=`). Pressed by staff (`action=label`, the screen's token and `status_was`); the label may cost money. Bulk approval makes none. Cancel stays on the order screen.
-- No driver for the approval's carrier: the card says why, the approval goes on by hand (`pg_shipment_label_return_plan()`, pure; an empty carrier takes the first driver).
+- `view_return.php`, card "Return Label": on an approved request while a label driver is on (`pg_shipment_label_drivers()`), or once the request has labels (listed with Print Label, `shipment_label.php?id=`). Staff press it (`action=label`, token, `status_was`); it may cost money. No bulk; Cancel stays on the order screen.
+- Return-capable drivers: Geliver, Basit Kargo, Shippo, Sendcloud (live, EU only, #3409). None for the approval's carrier: the card says why, the approval goes on by hand (`pg_shipment_label_return_plan()`, pure; an empty carrier takes the first driver).
 
 ## How is one label per request kept?
 - `shipment_labels.order_return_id` (step `upgrade_2026_11_0_shipment_label_returns()`, 11.0.126, `KEY idx_shipment_label_return`); 0 for order-screen labels, whose one-active-return-label check stays per address and now counts only rows with 0 (`pg_shipment_label_create()`). The column is written only by a request label (`pg_shipment_label_row()` with `$order_return_id`), so a label made before the upgrade still saves.
