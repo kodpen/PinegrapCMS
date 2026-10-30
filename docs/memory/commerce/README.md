@@ -189,6 +189,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - product-screen-units-and-commission.md: Product screen weight and dimensions (lb/in stored, metric keeps four places), the commission rate limit (decimal(5,2), #2056), stored "no limit" zeros shown blank, boxes sized to their columns
 - product-tax-rate.md: How product tax_rate and tax_zones combine, NULL vs 0.000 semantics, line-total tax in order_items.tax_total, deprecated order_items.tax, PayPal Express tax field.
 - products-variant-model.md: products/product_groups access and price units, the no-separate-variant-table model and its xref tables, external API field source, and the no per-row queries list rule.
+- refund-amounts-base-currency.md: Refund and cancel amounts on the dashboard 'To refund' lane and the order screen are printed with BASE_CURRENCY_SYMBOL, never orders.currency_code
 - shipment-api-fields.md: The parcels block of GET /orders/{id} shipments and of the order.shipped / order.delivered payloads (pg_shipment_api_parcel), and the carrier POST /orders/{id}/shipment keeps on the parcel
 - shipment-label-api.md: Carrier labels in the external API (2026.11.0, PR #3220): POST /orders/{id}/shipments/label with a dry run, labels per shipment in GET /orders/{id}, the document route, the create check split
 - shipment-label-bulk.md: Bulk carrier labels from the orders list (create, one merged PDF, one .zpl), Cancel Label and return labels on the order, and the PDF merger they use (2026.11.0, PR #3137)

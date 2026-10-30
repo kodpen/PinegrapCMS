@@ -300,25 +300,16 @@ function pg_dashboard_ops_refunds()
     // off idx_refund_status for nothing.
     $states = "('manual_required', 'failed', 'pending')";
 
-    // Grouped by currency on purpose: summing 500 TRY and 40 EUR into "540"
-    // would be a made-up number, so a total is only shown when every waiting
-    // refund is in one currency.
-    $groups = db_items(
-        "SELECT currency_code, COUNT(*) AS orders_count, SUM(total) AS orders_total, MIN(order_date) AS oldest
+    // One sum: orders.total is kept in the store's base currency, the unit
+    // every payment driver charges. orders.currency_code is only the currency
+    // the visitor was shown prices in, so it does not split the money.
+    $summary = db_item(
+        "SELECT COUNT(*) AS orders_count, SUM(total) AS orders_total, MIN(order_date) AS oldest
          FROM orders
-         WHERE refund_status IN " . $states . "
-         GROUP BY currency_code");
+         WHERE refund_status IN " . $states);
 
-    $count = 0;
-    $oldest = 0;
-
-    foreach ($groups as $group) {
-        $count += (int) $group['orders_count'];
-
-        if (($oldest === 0) || ((int) $group['oldest'] < $oldest)) {
-            $oldest = (int) $group['oldest'];
-        }
-    }
+    $count = (int) ($summary['orders_count'] ?? 0);
+    $oldest = (int) ($summary['oldest'] ?? 0);
 
     // Oldest first: the customer who has waited longest is the one closest
     // to opening a dispute.
@@ -329,7 +320,6 @@ function pg_dashboard_ops_refunds()
             orders.billing_first_name,
             orders.billing_last_name,
             orders.total,
-            orders.currency_code,
             orders.cancelled_at,
             orders.refund_status
          FROM orders
@@ -357,7 +347,7 @@ function pg_dashboard_ops_refunds()
             'aside' => '<span class="' . ($late ? 'fg-danger' : 'fg-emphasis-warning') . '">'
                 . get_relative_time(array('timestamp' => (int) $row['cancelled_at'])) . '</span>',
             'meta'  => '#' . h($number) . ' &middot; '
-                . pg_format_number(((float) $row['total']) / 100, 2) . ' ' . h($row['currency_code']),
+                . pg_format_money(((float) $row['total']) / 100, BASE_CURRENCY_SYMBOL),
         ));
     }
 
@@ -379,10 +369,8 @@ function pg_dashboard_ops_refunds()
 
     $sub = h(lang('Nothing owed'));
 
-    if (($count > 0) && (count($groups) === 1)) {
-        $sub = h(pg_format_number(((float) $groups[0]['orders_total']) / 100, 2) . ' ' . $groups[0]['currency_code']);
-    } elseif ($count > 0) {
-        $sub = h(lang('In several currencies'));
+    if ($count > 0) {
+        $sub = pg_format_money(((float) $summary['orders_total']) / 100, BASE_CURRENCY_SYMBOL);
     }
 
     return array(

@@ -2448,8 +2448,9 @@ if (!$_POST) {
     // again. Each part gets its own instruction: the provider sentence only
     // when payment money is left, the gift card one only when cards paid.
     $refund_payment_left_cents = max(0, $total_cents - $refunded_amount_cents);
-    $refund_currency_text = ($currency_code != '' ? ' ' . h($currency_code) : '');
-    $refund_amount_text   = pg_format_number(($refund_payment_left_cents + $gift_card_discount_cents) / 100, 2) . $refund_currency_text;
+    // The amounts are in the store's base currency, the unit they were
+    // charged in; orders.currency_code is only what the visitor was shown.
+    $refund_amount_text   = pg_format_money(($refund_payment_left_cents + $gift_card_discount_cents) / 100, BASE_CURRENCY_SYMBOL);
 
     $refund_instructions = '';
     if ($refund_payment_left_cents > 0 || $gift_card_discount_cents <= 0) {
@@ -2458,7 +2459,7 @@ if (!$_POST) {
     if ($gift_card_discount_cents > 0) {
         $refund_instructions .= '<div class="small">' . lang(array(
             'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-            'vars'   => array(pg_format_number($gift_card_discount_cents / 100, 2) . $refund_currency_text))) . '</div>';
+            'vars'   => array(pg_format_money($gift_card_discount_cents / 100, BASE_CURRENCY_SYMBOL)))) . '</div>';
     }
 
     if (in_array($refund_state, array('manual_required', 'failed', 'pending'), true)) {
@@ -2530,8 +2531,8 @@ if (!$_POST) {
             $cancel_payment_note = '<p class="fg-warning small">' . lang(array(
                 'string' => '{var:1} of the payment was refunded already. The remaining {var:2} will NOT be refunded automatically. Process the refund in your payment provider dashboard.',
                 'vars'   => array(
-                    pg_format_number($cancel_payment_plan['refunded'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : ''),
-                    pg_format_number($cancel_payment_plan['remaining'] / 100, 2) . ($currency_code != '' ? ' ' . h($currency_code) : '')))) . '</p>';
+                    pg_format_money($cancel_payment_plan['refunded'] / 100, BASE_CURRENCY_SYMBOL),
+                    pg_format_money($cancel_payment_plan['remaining'] / 100, BASE_CURRENCY_SYMBOL)))) . '</p>';
         } elseif ($cancel_payment_plan['remaining'] > 0) {
             $cancel_payment_note = '<p class="fg-warning small">' . lang('The payment will NOT be refunded automatically. Process the refund in your payment provider dashboard.') . '</p>';
         } elseif ($cancel_payment_plan['refunded'] > 0) {
@@ -3121,8 +3122,7 @@ if (!$_POST) {
         if ($cancelled_gift_card_cents > 0) {
             $liveform->add_notice(lang(array(
                 'string' => 'Gift cards paid {var:1} of this order. Return the amounts to the cards; the site log names them.',
-                'vars'   => array(pg_format_number($cancelled_gift_card_cents / 100, 2)
-                    . ((string) ($cancelled_amounts['currency_code'] ?? '') !== '' ? ' ' . h($cancelled_amounts['currency_code']) : '')))));
+                'vars'   => array(pg_format_money($cancelled_gift_card_cents / 100, BASE_CURRENCY_SYMBOL)))));
         }
 
         go(URL_SCHEME . HOSTNAME . OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_order.php?id=' . $order_id . '&send_to=' . urlencode($liveform->get_field_value('send_to')));
