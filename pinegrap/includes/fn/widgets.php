@@ -4375,6 +4375,18 @@ function _pg_member_drop_controls(&$tree, $match)
     }
 }
 
+// The SMS marketing box (opt_in_sms) stays only while SMS is on and the
+// form asks for the mobile number (pg_consent_sms_offered()); otherwise it
+// goes with its label, so a site without SMS shows nothing new. The editor
+// keeps it, so it can be placed before SMS is set up.
+function _pg_member_sms_box(&$tree, $mode)
+{
+    if ($mode === 'edit' || !is_array($tree)) return;
+    if (!pg_consent_sms_offered(pg_member_tree_asks_mobile($tree))) {
+        _pg_member_drop_control($tree, 'opt_in_sms');
+    }
+}
+
 // Drop the control named $name (see _pg_member_drop_controls).
 function _pg_member_drop_control(&$tree, $name)
 {
@@ -6525,6 +6537,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     if (!$submitted) {
         $remembered = ((isset($_COOKIE['software']['remember_me']) ? (string)$_COOKIE['software']['remember_me'] : '') === 'true');
         _pg_member_fill_control($tree, 'opt_in', '1', true);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', true);
         _pg_member_fill_control($tree, 'register_remember_me', '1', $remembered);
         _pg_member_fill_control($tree, 'remember_me', '1', $remembered);
     } else {
@@ -6532,6 +6545,7 @@ function _render_system_widget_registration($tree_json, $widget_id, $cfg = array
     }
 
     // Features that are off leave nothing behind.
+    _pg_member_sms_box($tree, $mode);
     if (!(defined('PASSWORD_HINT') && PASSWORD_HINT)) {
         _pg_member_drop_control($tree, 'password_hint');
     }
@@ -8002,6 +8016,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
     if (!$submitted) {
         $remembered = ((isset($_COOKIE['software']['remember_me']) ? (string)$_COOKIE['software']['remember_me'] : '') === 'true');
         _pg_member_fill_control($tree, 'opt_in', '1', true);
+        _pg_member_fill_control($tree, 'opt_in_sms', '1', true);
         _pg_member_fill_control($tree, 'register_remember_me', '1', $remembered);
         _pg_member_fill_control($tree, 'remember_me', '1', $remembered);
         if ($google_signup) {
@@ -8023,6 +8038,7 @@ function _render_system_widget_membership($tree_json, $widget_id, $cfg = array()
         }
     }
 
+    _pg_member_sms_box($tree, $mode);
     if (!(defined('PASSWORD_HINT') && PASSWORD_HINT)) {
         _pg_member_drop_control($tree, 'password_hint');
     }

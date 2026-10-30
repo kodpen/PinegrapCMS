@@ -204,6 +204,11 @@ if (!$_POST) {
             ? pg_member_widget_asks_opt_in((int) $_POST['pg_widget_id'], 'membership')
             : true;
 
+        // The SMS question is drawn only by a widget that asks for the mobile
+        // number, while SMS is on; the legacy screen asks for no number.
+        $activate_opts['sms_opt_in_asked'] = isset($_POST['pg_widget_id'])
+            && pg_member_widget_asks_opt_in((int) $_POST['pg_widget_id'], 'membership', 'opt_in_sms');
+
         $kvkk = pg_legal_kvkk_settings();
         $activate_opts['kvkk_consent'] = pg_legal_kvkk_consent_given($_POST['legal_kvkk'] ?? null, $kvkk['consent']);
 
