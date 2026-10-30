@@ -264,6 +264,7 @@ function get_help_url($properties = array())
         'view_return'                        => 'commerce#view-return',
         'add_return'                         => 'commerce#returns',
         'view_cart_quotes'                   => 'commerce#cart-quotes',
+        'view_subscriptions'                 => 'commerce#subscriptions',
         'add_cart_quote'                     => 'commerce#cart-quotes',
         'view_order_reports'                 => 'commerce#order-reports',
         'view_order_report'                  => 'commerce#create-edit-order-report',
