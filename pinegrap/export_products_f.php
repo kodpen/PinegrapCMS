@@ -327,6 +327,10 @@ function pg_products_export_csv($table, $file_name = 'products.csv')
     header('Content-type: text/csv; charset=utf-8');
     header('Content-Disposition: ' . pg_products_export_disposition($file_name));
 
+    // The UTF-8 byte order mark, so Excel keeps Turkish letters; the importers
+    // step over it (pg_csv_open()).
+    echo "\xEF\xBB\xBF";
+
     $out = array();
 
     foreach ($table['headings'] as $heading) {
