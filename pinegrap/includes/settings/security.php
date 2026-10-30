@@ -82,8 +82,8 @@ $pg_settings_cards[] = '
                                         </div>
                                         <div class="col-12 ">
                                             <div class="form-field">
-                                                <div class="switch"><input value="1"' . $password_hint_checked . ' class="" type="checkbox" id="password_hint" name="password_hint"/></div>
-                                                <label class="" for="password_hint">' . lang('Allow Password Hint') . '</label>
+                                                <div class="switch"><input value="1"' . $password_hint_checked . ' class="" type="checkbox" id="setting_password_hint" name="password_hint"/></div>
+                                                <label class="" for="setting_password_hint">' . lang('Allow Password Hint') . '</label>
                                             </div>
                                         </div>
                                         <div class="col-12 ">

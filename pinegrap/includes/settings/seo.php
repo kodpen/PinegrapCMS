@@ -29,14 +29,14 @@ $pg_settings_cards[] = '
                                 <div class="card-body">
                                    <div class="row gy-5">
                                         <div class="pg-f-lg">
-                                            <label for="title" class="form-label">' . lang('Web Browser Title') . '</label>
-                                            <input type="text" name="title" id="title" class="form-control" maxlength="255" value="' . h($title) . '"/>
-                                            <div id="seo_c_title"></div>
+                                            <label for="setting_title" class="form-label">' . lang('Web Browser Title') . '</label>
+                                            <input type="text" name="title" id="setting_title" class="form-control" maxlength="255" value="' . h($title) . '"/>
+                                            <div id="setting_seo_c_title"></div>
                                         </div>
                                         <div class="pg-f-lg">
-                                            <label for="meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
-                                            <textarea name="meta_description" id="meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
-                                            <div id="seo_c_meta_description"></div>
+                                            <label for="setting_meta_description" class="form-label">' . lang('Web Browser Description') . '</label>
+                                            <textarea name="meta_description" id="setting_meta_description" class="form-control" maxlength="255" >' . h($meta_description) . '</textarea>
+                                            <div id="setting_seo_c_meta_description"></div>
                                         </div>
                                         <div id="pgsub-sitemap" class="col-12  mb-0"><h6 class="fg-secondary text-uppercase">' . lang('Site Map and Crawling') . '</h6></div>
                                         <div class="pg-f-lg">
@@ -94,8 +94,8 @@ $pg_settings_scripts[] = '
     <script>
         // SEO character counters — logic in assets/js/backend.src.js
         initSeoCounters([
-            { sel: "#title",            counterId: "seo_c_title",            min: 50,  max: 60  },
-            { sel: "#meta_description", counterId: "seo_c_meta_description", min: 150, max: 160 }
+            { sel: "#setting_title",            counterId: "setting_seo_c_title",            min: 50,  max: 60  },
+            { sel: "#setting_meta_description", counterId: "setting_seo_c_meta_description", min: 150, max: 160 }
         ]);
 
         // Fills the additional robots.txt field with the rule that blocks every crawler.
