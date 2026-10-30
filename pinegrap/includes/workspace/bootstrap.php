@@ -84,6 +84,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_member.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_draft.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_runs.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_events.php');
+require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_chain_notice.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_run_cards.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/steps.php');
 require_once(PG_FUNCTIONS_DIR . '/includes/workspace/flow_conditions.php');

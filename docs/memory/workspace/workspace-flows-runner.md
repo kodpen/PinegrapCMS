@@ -32,7 +32,7 @@ description: Workspace flow runs (flow_runs.php): start, run channel, walk, task
 - 200 boxes a run, result 16 KB JSON `{text, data}`, ended runs swept at 30 days (`ws_flow_runs_sweep()`, recurring job).
 
 ## End and cancel?
-- End: owner told once, inbox `flow_finished`, a line per run, run id kept: `workspace-flows-run-notice.md`; webhooks: `workspace-flows-run-events.md`.
+- End: owner told once, inbox `flow_finished`, one line per chain of runs, run id kept: `workspace-flows-run-notice.md`; webhooks: `workspace-flows-run-events.md`.
 - Cancel: flow editors and the starter; open boxes skipped (`ws_flow_cancel_result()`). A task box rereads the run before `ws_task_create()`; a task opened mid-cancel goes on its box if skipped or failed (a ready one's retry finds it).
 
 ## Which routes?
