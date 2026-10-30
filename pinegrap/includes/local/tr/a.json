@@ -708,6 +708,7 @@
     "A product in the bundle could not be found.": "Paketteki bir ürün bulunamadı.",
     "A product is named twice in the bundle.": "Pakette bir ürün iki kez yazılmış.",
     "A product manager of 15+ years who has scaled three technology startups. Sets the team's north star and runs the strategic partnerships.": "Üç teknoloji girişimi ölçeklendirmiş, 15+ yıllık ürün yöneticisi. Ekibin kuzey yıldızını belirliyor ve stratejik ortaklıkları yönetiyor.",
+    "A product named \"{var:1}\" already exists and was left as it is, because Update Existing Products is off.": "\"{var:1}\" adlı ürün zaten var ve olduğu gibi bırakıldı, çünkü Mevcut Ürünleri Güncelle kapalı.",
     "A product out of stock by purchased.": "Bir ürün satın alınarak stokta tükendi.",
     "A product runs low in stock": "Ürünün stoğu azaldı",
     "A product that falls to the site's low-stock threshold becomes a task to restock it.": "Sitenin düşük stok eşiğine inen ürün için stok yenileme görevi açılır.",
