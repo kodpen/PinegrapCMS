@@ -3039,7 +3039,7 @@
         email: [['subject', 'fl_email_subject', 250], ['body', 'fl_email_body', 20000]],
         notify: [['text', 'fl_notify_text', 500]],
         task_open: [['title', 'fl_title', 200], ['description', 'fl_description', 8000]],
-        webhook: [['text', 'fl_post_body', 4000]],
+        webhook: [['text', 'fl_post_body', 4000], ['url', 'fl_url', 2000]],
         mcp: [['arguments', 'fl_mcp_arguments', 20000]],
         row_set: [['row', 'fl_rows_row', 200]],
         task_digest: [['subject', 'fl_email_subject', 250], ['intro', 'fl_digest_intro', 2000]],
@@ -3229,7 +3229,8 @@
                 node.config.rule.op = 'eq';
             }
         } else {
-            var text = target.text + ((target.text && !/\s$/.test(target.text)) ? ' ' : '') + token;
+            var text = ((node.kind === 'webhook') && (key === 'url')) ? urlWithValue(target.text, token)
+                : target.text + ((target.text && !/\s$/.test(target.text)) ? ' ' : '') + token;
 
             if (text.length > target.max) {
                 K.toast(t('fl_thread_full'), 'secondary');
@@ -4582,7 +4583,20 @@
             return !!loop && (loop.body.indexOf(source.node.id) !== -1);
         }
 
+        // A webhook's address takes a number only, in its path or query.
+        if ((node.kind === 'webhook') && (key === 'url')) {
+            return source.value.type === 'number';
+        }
+
         return true;
+    }
+
+    // An address with a value put at its end: after its path's "/" when it
+    // has only a host, so the value never lands in the host.
+    function urlWithValue(url, token) {
+        var rest = url.replace(/^[a-z][a-z0-9+.-]*:\/\//i, '');
+
+        return url + (/[\/?#]/.test(rest) ? '' : '/') + token;
     }
 
     // A value as the builder reads it; one no box before gives keeps its
@@ -5463,10 +5477,25 @@
     function urlFields(box, node) {
         var config = node.config;
 
-        box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
-            config.url = value.trim();
-            refreshNode(node);
-        }), t('fl_url_help')));
+        if (node.kind === 'webhook') {
+            // A number of a box before may go into the path or query; only
+            // numbers are offered, and the host takes none (the server
+            // refuses one there).
+            var address = valueField(node, t('fl_url'), config.url, 2000, function (value) {
+                config.url = value.trim();
+                refreshNode(node);
+            }, false, null, function (item) {
+                return item.value.type === 'number';
+            });
+
+            address.querySelector('.form-text').textContent = t('fl_hook_url_help');
+            box.appendChild(address);
+        } else {
+            box.appendChild(field(t('fl_url'), textInput(config.url, 2000, function (value) {
+                config.url = value.trim();
+                refreshNode(node);
+            }), t('fl_url_help')));
+        }
 
         if (node.kind === 'webhook') {
             var format = K.select([['generic', t('fl_hook_generic')], ['text', t('fl_hook_text')], ['discord', t('fl_hook_discord')]], config.format || 'generic');

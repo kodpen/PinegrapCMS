@@ -25,7 +25,7 @@ description: Values a flow box gives later boxes (data-passing D1-D3): outputs p
 - chat (webhook format text: Slack, Teams, Google Chat): `<` too (`<!channel>`, `<url|label>`); discord: `<` and `@everyone`/`@here`.
 - text (e-mail box, plain text; task e-mail; notify; generic webhook): as given. The task e-mail escapes subject and intro where it writes its HTML (`h()`, `nl2br(h())`); `json_encode()` makes the text one JSON string (values come from `json_decode()`, valid UTF-8). Escaping in the fill would show `&amp;lt;`.
 - json (MCP arguments, a table box's cells and row): the inside of a JSON string, nothing added.
-- Line fields (`lines` of `ws_step_kinds()`): control characters and line breaks become a space after the fill. Addresses are never filled (decided exception #3410, unbuilt: digits in a webhook URL's path or query).
+- Line fields (`lines` of `ws_step_kinds()`): control characters and line breaks become a space after the fill. Addresses are never filled, but for one exception (#3410, PR #3471): a number in a webhook URL's path or query, `workspace-flows-webhook-url.md`.
 - Not covered: `ws_scheduled_fill()` values (`{{form_fields}}`, `{{result}}`) and Markdown marks in a message.
 
 ## What does the canvas get?
