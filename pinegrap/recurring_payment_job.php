@@ -27,6 +27,10 @@ pg_audit_as_job(true);
 // stops the job below never holds them up.
 pg_subscription_renewals_run(time());
 
+// A subscription the customer cancelled runs until the end of the period
+// already paid, then ends here (includes/fn/subscriptions_account.php).
+pg_subscription_cancelled_ends_run(time());
+
 // if credit/debit card payment method is enabled and payment gateway is PayPal Payments Pro, then check status of recurring profiles
 if ((ECOMMERCE_CREDIT_DEBIT_CARD == true) && (ECOMMERCE_PAYMENT_GATEWAY == 'PayPal Payments Pro')) {
     // if cURL is not installed, then output error
