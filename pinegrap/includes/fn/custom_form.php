@@ -119,6 +119,114 @@ function pg_cf_contact_fields()
     return $out;
 }
 
+// Bindings in pg_cf_contact_fields() that are no contacts column: opt_in_sms
+// is the SMS marketing answer, kept only as a consent_log row, so every path
+// that reads or writes contacts.<contact_field> skips it.
+function pg_cf_contact_column($contact_field)
+{
+    $contact_field = (string)$contact_field;
+    return $contact_field !== '' && $contact_field !== 'opt_in_sms';
+}
+
+/**
+ * Whether a custom form asks a mobile number: a field bound to mobile_phone
+ * that is not office use only and not hidden by ?show_<id>=false in $query.
+ * Pure.
+ *
+ * @param array $fields form_fields rows (id, contact_field, office_use_only)
+ * @param array $query  the form page's query parameters
+ * @return bool
+ */
+function pg_cf_fields_ask_mobile($fields, $query = array())
+{
+    foreach ((array)$fields as $field) {
+        if (!is_array($field) || !isset($field['contact_field']) || (string)$field['contact_field'] !== 'mobile_phone') continue;
+        if (!empty($field['office_use_only'])) continue;
+        $id = isset($field['id']) ? (string)$field['id'] : '';
+        if (is_array($query) && isset($query['show_' . $id]) && $query['show_' . $id] === 'false') continue;
+        return true;
+    }
+    return false;
+}
+
+/**
+ * Whether a custom form draws its SMS question (a field bound to
+ * opt_in_sms) for a visitor: while SMS is ready and the form asks a mobile
+ * number or the visitor's contact holds one. No SMS, no number, no box. The
+ * editor always draws it. Pure when $sms_ready is given.
+ *
+ * @param bool       $asks_mobile    pg_cf_fields_ask_mobile()
+ * @param mixed      $contact_number the visitor's contacts.mobile_phone, or ''
+ * @param bool|null  $sms_ready      pg_sms_ready(), read when null
+ * @return bool
+ */
+function pg_cf_sms_question_drawn($asks_mobile, $contact_number, $sms_ready = null)
+{
+    return pg_consent_sms_offered($asks_mobile || pg_consent_sms_number_known($contact_number), $sms_ready);
+}
+
+/**
+ * The fields of a custom form a visitor is shown: an opt_in_sms field goes
+ * when pg_cf_sms_question_drawn() says no. Keys are kept.
+ *
+ * @param array $fields  form_fields rows (id, contact_field, office_use_only)
+ * @param array $contact the visitor's contacts row, or none
+ * @param array $query   the form page's query parameters
+ * @return array
+ */
+function pg_cf_drop_sms_question($fields, $contact, $query = array())
+{
+    $fields = (array)$fields;
+    $number = (is_array($contact) && isset($contact['mobile_phone'])) ? $contact['mobile_phone'] : '';
+    $drawn  = null;
+    foreach ($fields as $key => $field) {
+        if (!is_array($field) || !isset($field['contact_field']) || pg_cf_contact_column($field['contact_field'])
+            || (string)$field['contact_field'] === '') continue;
+        if ($drawn === null) $drawn = pg_cf_sms_question_drawn(pg_cf_fields_ask_mobile($fields, $query), $number);
+        if (!$drawn) unset($fields[$key]);
+    }
+    return $fields;
+}
+
+/**
+ * The value an opt_in_sms field starts with for the visitor's contact:
+ * '1' (ticked) unless the person's last sms:marketing row is a refusal,
+ * then '0'. '' without a contact: the field's own default applies.
+ *
+ * @param array $contact the visitor's contacts row, or none
+ * @return string
+ */
+function pg_cf_sms_start_value($contact)
+{
+    if (!is_array($contact) || empty($contact['id'])) return '';
+    $person = array(
+        'email'      => isset($contact['email_address']) ? (string)$contact['email_address'] : '',
+        'contact_id' => (int)$contact['id'],
+    );
+    return pg_consent_sms_start_for($person) ? '1' : '0';
+}
+
+/**
+ * The sms:marketing answer of a custom form submission, for
+ * pg_consent_log_answers(): only when the visitor was asked and the contact
+ * has a mobile number after the save. Ticked is a posted 1, as the opt_in
+ * column stores it; a check box group counts when one of its boxes posted
+ * 1. Pure.
+ *
+ * @param bool  $asked  a visible choice field bound to opt_in_sms
+ * @param mixed $number the contact's mobile_phone after the save
+ * @param mixed $posted the field's posted value
+ * @return array
+ */
+function pg_cf_sms_answers($asked, $number, $posted)
+{
+    if (is_array($posted)) {
+        $posted = in_array('1', array_map('strval', array_filter($posted, 'is_scalar')), true) ? '1' : '0';
+    }
+    $ticked = is_scalar($posted) && ((int)$posted === 1);
+    return pg_consent_sms_answers($asked, pg_consent_sms_number_known($number), $ticked ? '1' : '0');
+}
+
 /**
  * Whether a signed-in person's form submission is about somebody else: the
  * e-mail address the form writes to the contact (a field wired to the
@@ -1588,7 +1696,12 @@ function pg_cf_field_initial_value($field, $lf, $folder_id = 0, $url_value = '')
     if (!empty($field['contact_field'])) {
         $contact = pg_cf_submitter_contact();
         $key     = (string)$field['contact_field'];
-        if (isset($contact[$key]) && $contact[$key] !== '') return (string)$contact[$key];
+        if (!pg_cf_contact_column($key)) {
+            $start = pg_cf_sms_start_value($contact);
+            if ($start !== '') return $start;
+        } elseif (isset($contact[$key]) && $contact[$key] !== '') {
+            return (string)$contact[$key];
+        }
     }
     if (!empty($field['use_folder_name_for_default_value']) && (int)$folder_id > 0) {
         $name = (string)db_value("SELECT folder_name FROM folder WHERE folder_id = '" . (int)$folder_id . "' LIMIT 1");
@@ -1916,7 +2029,8 @@ function pg_cf_apply_field_bindings(&$tree, $map, $lf = null, $cf_folder_id = 0,
                 if (!in_array($ct, array('input', 'select', 'textarea'), true)) continue;
                 $ca = _pg_cf_node_attrs($child);
                 $ck = mb_strtolower(pg_cf_clean_field_name(isset($ca['name']) ? $ca['name'] : ''), 'UTF-8');
-                if ($ck === '' || !isset($map[$ck]) || empty($map[$ck]['office_use_only'])) continue;
+                if ($ck === '' || !isset($map[$ck])
+                    || (empty($map[$ck]['office_use_only']) && empty($map[$ck]['_pg_cf_sms_dropped']))) continue;
                 $drop_ids[] = array('node' => $child, 'id' => isset($ca['id']) ? (string)$ca['id'] : '');
             }
             if (!empty($drop_ids)) {

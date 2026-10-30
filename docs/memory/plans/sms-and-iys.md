@@ -1,6 +1,6 @@
 ---
 name: sms-and-iys
-description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, marketing SMS 7-10
+description: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, SMS consent box (7) done; left: first İYS live run, marketing SMS 8-10
 ---
 
 ## Why?
@@ -22,7 +22,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
 - Drivers done: İleti Merkezi (PR #3623), Twilio (PR #3647); `platform/sms-iletimerkezi-driver.md`, `sms-twilio-driver.md`.
 7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
-- 7 is cut: ~~7a writers, member widgets, e-mail preferences box~~ (PR #3660, `core/sms-consent-box.md`); ~~7b1 checkout and its widgets, designer default trees and help~~ (PR #3694); 7b2 custom forms (a choice field bound to `opt_in_sms`, `core/sms-consent-box.md`).
+- 7 is cut: ~~7a writers, member widgets, e-mail preferences box~~ (PR #3660, `core/sms-consent-box.md`); ~~7b1 checkout and its widgets, designer default trees and help~~ (PR #3694); ~~7b2 custom forms~~ (PR #3715).
 
 ## Open questions?
 - İYS test credentials: owner provides; until then the client runs dry (logs only). Answered 2026-10-26: the contact status column is approved (`contacts.iys_email_status`, 11.0.39).
@@ -32,4 +32,4 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - DEFAULT-1 contacts (forms, imports, API, profile) have no consent row and are never pushed.
 
 ## Where to start?
-- Steps 7b2-10 (#3570) in order, 7b2 first. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.
+- Steps 8-10 (#3570) in order, 8 first. First İYS live run: once credentials exist, fill the card in test environment and live mode (`platform/iys-settings-card.md`), run `iys_job.php`.

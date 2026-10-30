@@ -5,7 +5,7 @@
  * Scheduled job: low stock and quote notices. Tells the panel bell and the
  * subscribed devices about the products that have dropped to or below their
  * minimum since the last run, and about the open quotes about to run out,
- * when the ERP settings ask for it, and, with ERP_QUOTE_EXPIRY_FOLLOWUP on,
+ * when the ERP settings ask for it, and, with the follow-up switched on,
  * opens a Workspace follow-up for each of those quotes. The work lives in
  * includes/erp/alerts.php; this script only decides who may start it.
  *
@@ -48,7 +48,7 @@ if (function_exists('pg_cron_ran')) {
 if ((php_sapi_name() === 'cli') && !defined('PG_CRON_DISPATCH')) {
     print 'low stock notices: ' . ($result['ran'] ? ((int) $result['count'] . ' product(s) announced') : 'off') . "\n";
     print 'quote notices: ' . ($quotes['ran'] ? ((int) $quotes['count'] . ' quote(s) announced') : 'off') . "\n";
-    print 'quote follow-ups: ' . ((defined('ERP_QUOTE_EXPIRY_FOLLOWUP') && ERP_QUOTE_EXPIRY_FOLLOWUP) ? ((int) ($quotes['followups'] ?? 0) . ' opened') : 'off') . "\n";
+    print 'quote follow-ups: ' . ((function_exists('erp_quote_expiry_followup_on') && erp_quote_expiry_followup_on()) ? ((int) ($quotes['followups'] ?? 0) . ' opened') : 'off') . "\n";
 } elseif (!pg_cron_is_background_run()) {
     go(PATH . SOFTWARE_DIRECTORY . '/erp_stock_minimums.php?show=low');
 }

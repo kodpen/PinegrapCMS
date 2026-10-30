@@ -403,6 +403,12 @@ function pg_parasut_credentials_for_save()
             erp_notify_quote_expiry_days = '" . min(30, max(1, (int) post_value('erp_notify_quote_expiry_days'))) . "',";
     }
 
+    // A quote the bell announces also opens a Workspace follow-up.
+    if (waf_table_has_column('config', 'erp_quote_expiry_followup')) {
+        $sql_erp_due .= "
+            erp_quote_expiry_followup = '" . ((post_value('erp_quote_expiry_followup') == 1) ? 1 : 0) . "',";
+    }
+
     // How an order's shipping and surcharge are taxed on its invoice (4.76):
     // 'included', 'none', or empty for the store's country to decide.
     if (waf_table_has_column('config', 'erp_shipping_tax')) {

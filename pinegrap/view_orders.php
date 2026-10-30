@@ -115,6 +115,8 @@ foreach ($date_defaults as $key => $value) {
     }
 }
 
+$_SESSION['software']['ecommerce']['view_orders'] = pg_list_period_ordered($_SESSION['software']['ecommerce']['view_orders']);
+
 if (isset($_SESSION['software']['ecommerce']['view_orders']['status']) == false) {
     $_SESSION['software']['ecommerce']['view_orders']['status'] = 'complete_or_exported';
 }

@@ -393,6 +393,13 @@ function get_custom_form_screen_content($properties) {
                             WHERE user.user_id = '" . e(USER_ID) . "'");
                     }
 
+                    // No SMS, no number, no box: outside edit mode the SMS
+                    // question goes when the visitor cannot be asked it. A
+                    // generated layout draws it only while it is in $field.
+                    if (!$editable) {
+                        $fields = pg_cf_drop_sms_question($fields, $contact, $_GET);
+                    }
+
                     $office_use_only_target_options = array();
 
                     // If office use only fields will not appear on form, then get triggers for them,
@@ -488,8 +495,15 @@ function get_custom_form_screen_content($properties) {
                             // Otherwise if edit mode is off and a contact was found for user
                             // and this field is connected to a contact field,
                             // then set the default value to the contact field's value.
-                            } else if (!$editable && $contact && $field['contact_field']) {
+                            } else if (!$editable && $contact && pg_cf_contact_column($field['contact_field'])) {
                                 $attributes['value'] = $contact[$field['contact_field']];
+
+                            // The SMS question has no contacts column: it
+                            // starts from the person's last answer in the
+                            // consent log.
+                            } else if (!$editable && $field['contact_field'] && !pg_cf_contact_column($field['contact_field'])
+                                && (($sms_start_value = pg_cf_sms_start_value($contact)) !== '')) {
+                                $attributes['value'] = $sms_start_value;
                                 
                             // Otherwise, if field is set to use folder name for default value,
                             // then use it.

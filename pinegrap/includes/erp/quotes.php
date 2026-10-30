@@ -33,8 +33,46 @@ if (!defined('ERP_QUOTE_VALID_DAYS')) {
 
 // true in config.php: a sales quote the hourly bell announces as about to
 // run out also opens a Workspace follow-up (erp_quote_expiry_followups()).
+// The Settings checkbox (config.erp_quote_expiry_followup) does the same;
+// either one is enough (erp_quote_expiry_followup_on()).
 if (!defined('ERP_QUOTE_EXPIRY_FOLLOWUP')) {
     define('ERP_QUOTE_EXPIRY_FOLLOWUP', false);
+}
+
+/**
+ * Whether the follow-up runs: the Settings column is 1 or the config.php
+ * constant is true.
+ *
+ * @param mixed $column    config.erp_quote_expiry_followup, null before the update
+ * @param mixed $constant  ERP_QUOTE_EXPIRY_FOLLOWUP
+ * @return bool
+ */
+function erp_quote_expiry_followup_switch($column, $constant)
+{
+    return ((int) $column === 1) || !empty($constant);
+}
+
+/**
+ * The follow-up switch as the site has it, read once per request.
+ *
+ * @return bool
+ */
+function erp_quote_expiry_followup_on()
+{
+    static $on = null;
+
+    if ($on === null) {
+        $column = null;
+
+        if (function_exists('waf_table_has_column') && waf_table_has_column('config', 'erp_quote_expiry_followup')) {
+            $row = db_item("SELECT erp_quote_expiry_followup FROM config LIMIT 1");
+            $column = is_array($row) ? $row['erp_quote_expiry_followup'] : null;
+        }
+
+        $on = erp_quote_expiry_followup_switch($column, defined('ERP_QUOTE_EXPIRY_FOLLOWUP') ? ERP_QUOTE_EXPIRY_FOLLOWUP : false);
+    }
+
+    return $on;
 }
 
 /**

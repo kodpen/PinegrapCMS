@@ -291,10 +291,12 @@ function mp_products_thumb($image_name) {
 
 }
 
-// The shop's price as the marketplace is sent it, tax included.
+// The shop's price as the marketplace is sent it, tax included: a
+// base-currency figure under the base symbol, as the panel prints prices,
+// never converted to the currency the operator's browser picked for the shop.
 function mp_products_price($product) {
 
-	return prepare_price_for_output(mp_product_price($product), false, 0, 'html', false);
+	return pg_format_money(mp_product_price($product) / 100, BASE_CURRENCY_SYMBOL);
 
 }
 
@@ -486,7 +488,7 @@ function mp_products_row_html($account, $row) {
 
 	if ((int) $row['price'] > 0) {
 
-		$meta[] = '<span>' . prepare_price_for_output((int) $row['price'], false, 0, 'html', false) . '</span>';
+		$meta[] = '<span>' . pg_format_money(((int) $row['price']) / 100, BASE_CURRENCY_SYMBOL) . '</span>';
 
 	}
 

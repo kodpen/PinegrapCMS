@@ -100,6 +100,8 @@
     "Quote rejected": "Teklif reddedildi",
     "Quote sent": "Teklif gönderildi",
     "Quote signed": "Teklif imzalandı",
+    "Quote templates": "Teklif şablonları",
+    "Quote templates come with the software update; run the update to use them.": "Teklif şablonları yazılım güncellemesiyle gelir; kullanmak için güncellemeyi çalıştırın.",
     "Quote turned into an invoice draft": "Teklif fatura taslağına dönüştürüldü",
     "Quote written": "Teklif yazıldı",
     "Quote {var:1}": "Teklif {var:1}",

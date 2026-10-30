@@ -51,6 +51,8 @@ function pg_commission_list_range()
         }
     }
 
+    $state = pg_list_period_ordered($state);
+
     return array(
         'start' => mktime(0, 0, 0, (int) $state['start_month'], (int) $state['start_day'], (int) $state['start_year']),
         'stop' => mktime(23, 59, 59, (int) $state['stop_month'], (int) $state['stop_day'], (int) $state['stop_year']),

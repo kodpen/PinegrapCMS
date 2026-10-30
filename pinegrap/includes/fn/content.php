@@ -991,6 +991,11 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
     while ($row = mysqli_fetch_assoc($result)) {
         $fields[] = $row;
     }
+    // No SMS, no number, no box: outside edit mode the SMS question goes
+    // when the visitor cannot be asked it.
+    if (($form_type == 'custom') && ($editable == false)) {
+        $fields = pg_cf_drop_sms_question($fields, $contact, $_GET);
+    }
     $label_column_width_added = false;
     $form_info['wysiwyg_fields'] = array();
     // Picker kinds of the hooked fields (backend only), for picker_scripts.
@@ -1047,8 +1052,13 @@ function get_form_info($page_id, $product_id, $order_item_id, $quantity_number, 
             // Otherwise if edit mode is off and the form is a custom form and a contact was found for user
             // and this field is connected to a contact field, then set the default value for the field
             // to the contact field's value
-        } else if (($editable == false) && ($form_type == 'custom') && ($contact) && ($field['contact_field'] != '')) {
+        } else if (($editable == false) && ($form_type == 'custom') && ($contact) && pg_cf_contact_column($field['contact_field'])) {
             $default_value = $contact[$field['contact_field']];
+            // The SMS question has no contacts column: it starts from the
+            // person's last answer in the consent log.
+        } else if (($editable == false) && ($form_type == 'custom') && ($field['contact_field'] != '')
+            && !pg_cf_contact_column($field['contact_field']) && (($sms_start_value = pg_cf_sms_start_value($contact)) !== '')) {
+            $default_value = $sms_start_value;
             // Otherwise, if field is set to use folder name for default value, then use it.
         } else if ($field['use_folder_name_for_default_value'] == 1) {
             $default_value = db_value("SELECT folder_name FROM folder WHERE folder_id = '" . escape($folder_id_for_default_value) . "'");

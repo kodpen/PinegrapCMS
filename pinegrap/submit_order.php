@@ -3189,19 +3189,20 @@ function submit_order($type) {
                 if (!$response || (isset($response['L_ERRORCODE0']) == true)) {
                     // if there was a response from PayPal
                     if ($response) {
-                        $paypal_express_checkout_error_message = 'Error message from PayPal: ' . $response['L_LONGMESSAGE0'];
-                        
+                        $paypal_express_checkout_error = array('string' => 'Error message from PayPal: {var:1}', 'vars' => array($response['L_LONGMESSAGE0']));
+
                     // else there was no response, so there was a communication problem
+                    } elseif ($curl_errno) {
+                        // A cURL error adds its number and message.
+                        $paypal_express_checkout_error = array('string' => 'An error occurred while trying to communicate with PayPal. cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error));
                     } else {
-                        $paypal_express_checkout_error_message = 'An error occurred while trying to communicate with PayPal.';
-                        
-                        // if there was a cURL error, add error number and error message to PayPal error message
-                        if ($curl_errno) {
-                            $paypal_express_checkout_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
-                        }
+                        $paypal_express_checkout_error = array('string' => 'An error occurred while trying to communicate with PayPal.');
                     }
 
-                    log_activity($paypal_express_checkout_error_message);
+                    // The visitor reads it in the page's language, the site log in the software language.
+                    $paypal_express_checkout_error_message = lang($paypal_express_checkout_error);
+
+                    log_activity(pg_log_lang($paypal_express_checkout_error));
                     
                     $liveform->mark_error('paypal_express_checkout', h($paypal_express_checkout_error_message));
 
@@ -4374,11 +4375,11 @@ function submit_order($type) {
                     
                     // if there was an error then prepare error message
                     if (($response_data === FALSE) || (mb_strpos($response_data, '<CUSTOMER_ID>') === FALSE)) {
-                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_CUSTOMER transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_CUSTOMER')));
                         
                         // if there was a cURL error, add error number and error message to payment gateway error message
                         if ($curl_errno) {
-                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                         }
                         
                         // if the response was not empty, then add response to the end of the error message
@@ -4441,11 +4442,11 @@ function submit_order($type) {
                             
                             // if there was an error then prepare error message
                             if (($response_data === FALSE) || (mb_strpos($response_data, '<GROUP_ID>') === FALSE)) {
-                                $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_GROUP transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_GROUP')));
                                 
                                 // if there was a cURL error, add error number and error message to payment gateway error message
                                 if ($curl_errno) {
-                                    $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                    $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                 }
                                 
                                 // if the response was not empty, then add response to the end of the error message
@@ -4543,11 +4544,11 @@ function submit_order($type) {
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
-                                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_MONTHLY_SCHEDULE transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_MONTHLY_SCHEDULE')));
                                         
                                         // if there was a cURL error, add error number and error message to payment gateway error message
                                         if ($curl_errno) {
-                                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                         }
                                         
                                         // if the response was not empty, then add response to the end of the error message
@@ -4636,11 +4637,11 @@ function submit_order($type) {
                                     
                                     // if there was an error then prepare error message
                                     if (($response_data === FALSE) || (mb_strpos($response_data, '<SCHEDULE_ID>') === FALSE)) {
-                                        $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_DAILY_SCHEDULE transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                        $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_DAILY_SCHEDULE')));
                                         
                                         // if there was a cURL error, add error number and error message to payment gateway error message
                                         if ($curl_errno) {
-                                            $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                            $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                         }
                                         
                                         // if the response was not empty, then add response to the end of the error message
@@ -4741,11 +4742,11 @@ function submit_order($type) {
                                 
                                 // if there was an error then prepare error message
                                 if (($response_data === FALSE) || (mb_strpos($response_data, '<RECURRING_ID>') === FALSE)) {
-                                    $payment_gateway_error_message = 'A recurring profile could not be created for order number ' . $order_number . ' due to a communication problem with the payment gateway. The CREATE_RECURRING_BANKCARD_PAYER_AND_TRANSACTION transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.';
+                                    $payment_gateway_error_message = pg_log_lang(array('string' => 'A recurring profile could not be created for order number {var:1} due to a communication problem with the payment gateway. The {var:2} transaction failed. The recurring profile will need to be setup manually in your payment gateway\'s control panel. The order was still accepted.', 'vars' => array($order_number, 'CREATE_RECURRING_BANKCARD_PAYER_AND_TRANSACTION')));
                                     
                                     // if there was a cURL error, add error number and error message to payment gateway error message
                                     if ($curl_errno) {
-                                        $payment_gateway_error_message .= ' cURL Error Number: ' . $curl_errno . '. cURL Error Message: ' . $curl_error . '.';
+                                        $payment_gateway_error_message .= ' ' . pg_log_lang(array('string' => 'cURL Error Number: {var:1}. cURL Error Message: {var:2}.', 'vars' => array($curl_errno, $curl_error)));
                                     }
                                     
                                     // if the response was not empty, then add response to the end of the error message

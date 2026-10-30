@@ -1650,17 +1650,18 @@ if (!$_POST) {
         // products.hs_code and origin_country (2026.11.0) the same way.
         $customs = pg_product_customs_copy_sql($row);
 
-        // products.ai_fields (2026.11.0) likewise: the copy keeps the marks of
-        // the texts it writes unchanged; the short description, whose last
-        // letters are replaced, keeps its mark only if it is still the same.
-        $ai_fields = pg_ai_fields_copy('product', $row, array(
+        // products.ai_fields, vat_exemption_code and the bundle columns the
+        // same way (pg_product_copy_extra_sql(), shared with
+        // duplicate_product()): the copy keeps the marks of the texts it
+        // writes unchanged; the short description, whose last letters are
+        // replaced, keeps its mark only if it is still the same.
+        $extra = pg_product_copy_extra_sql($row, pg_ai_fields_copy('product', $row, array(
             'short_description' => $short_description,
             'full_description'  => $row['full_description'],
             'title'             => $row['title'],
             'meta_description'  => $row['meta_description'],
-        ));
-        $ai_fields_column = ($ai_fields !== false) ? 'ai_fields,' : '';
-        $ai_fields_value  = ($ai_fields !== false) ? (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',' : '';
+        )));
+        $is_bundle = !empty($row['bundle']);
 
         // insert row into product table
         $query        = "INSERT INTO products (
@@ -1849,7 +1850,7 @@ if (!$_POST) {
     
                 " . $customs['columns'] . "
     
-                " . $ai_fields_column . "
+                " . $extra['columns'] . "
     
                 user,
     
@@ -2041,7 +2042,7 @@ if (!$_POST) {
 
                 " . $customs['values'] . "
     
-                " . $ai_fields_value . "
+                " . $extra['values'] . "
     
                 '" . USER_ID . "',
     
@@ -2307,8 +2308,23 @@ if (!$_POST) {
                     '" . $products_group['product_group'] . "')");
         }
     
+        // The gallery pictures beside the cover, in the order they were
+        // written: the table has no order column and is read back in that order.
+        $images = db_values("SELECT file_name FROM products_images_xref WHERE product = '" . (int) $id . "' AND file_name != ''");
+
+        foreach ($images as $image) {
+            db_q("INSERT INTO products_images_xref (product, file_name) VALUES (?, ?)", array((int) $new_product_id, (string) $image));
+        }
+
         // The copy starts a price history of its own at the original's price.
         pg_price_history_record($new_product_id, 'panel');
+
+        // A bundle copy takes the same contents, then its stock and price are
+        // derived from them like any bundle's instead of kept from the copied row.
+        if ($is_bundle && pg_bundles_ready()) {
+            pg_bundle_items_save($new_product_id, pg_bundle_items($id));
+            pg_bundle_refresh($new_product_id);
+        }
 
         pg_audit_record('create', 'products', (int) $new_product_id);
     

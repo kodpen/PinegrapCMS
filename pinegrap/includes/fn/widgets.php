@@ -4637,7 +4637,7 @@ function pg_member_widget_register_opts($widget_id, $form, $type = 'registration
     if (!is_array($tree)) return $opts;
 
     foreach (_pg_member_controls($tree) as $c) {
-        if ($c['contact_field'] === '' || !$form->field_in_session($c['name'])) continue;
+        if (!pg_cf_contact_column($c['contact_field']) || !$form->field_in_session($c['name'])) continue;
         $opts['contact_fields'][$c['contact_field']] = $form->get_field_value($c['name']);
     }
     if (!empty($cfg['contact_group_id']) && (int)$cfg['contact_group_id'] > 0) {
@@ -8201,6 +8201,14 @@ function _render_system_widget_custom_form($tree_json, $widget_id, $cfg = array(
         $cf_url_values = (strpos((string)$tree_json, '"url_param"') !== false)
             ? pg_cf_url_prefill_values(_pg_cf_controls($tree_decoded, $form_page_id), $cf_field_map, pg_sw_filter_request())
             : array();
+        // No SMS, no number, no box: outside the editor an SMS question the
+        // visitor cannot be asked is dropped as an office-use-only field is.
+        if ($mode !== 'edit') {
+            $cf_sms_kept = pg_cf_drop_sms_question($cf_field_map, pg_cf_submitter_contact(), $_GET);
+            foreach (array_diff_key($cf_field_map, $cf_sms_kept) as $cf_sms_key => $cf_sms_row) {
+                $cf_field_map[$cf_sms_key]['_pg_cf_sms_dropped'] = 1;
+            }
+        }
         pg_cf_apply_field_bindings($tree_decoded, $cf_field_map, $cf_liveform, $cf_folder, $cf_staff, $cf_url_values);
     }
     // Ids are final now, including the ones invented above, so a label that

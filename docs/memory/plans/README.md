@@ -64,8 +64,8 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - shipping-carrier-labels.md: Plan (approved 2026-10-19; 1-4, 6-8 partly done): carrier APIs for labels and barcodes, bulk labels, status write-back; aggregator first, then Yurtiçi and Aras direct, then abroad
 - shipping-management.md: Shipping plan (2026-10-08; phases 1-7 and the phase 8 postcode check done): single write path, panel, customer e-mail and guest tracking, bulk CSV, API fields, more carriers
 - shipping-tr-district.md: Shipping plan step 8 (decision #3569): ship_tos.district and states.plate_code in three PRs; D1 schema and model, D2 checkout and order screens, D3 drivers, imports and the API field
-- site-log-language.md: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, part 3)
-- sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API done; left: first İYS live run, marketing SMS 7-10
+- site-log-language.md: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, part 4)
+- sms-and-iys.md: Plan (approved 2026-10-19): SMS layer, order messages, consent writers, İYS client and card, consents API, SMS consent box (7) done; left: first İYS live run, marketing SMS 8-10
 - storefront-api-agentic-commerce.md: Plan (approved 2026-10-19, watch list): public storefront API (cart, checkout, customer auth) as the base for agentic commerce bindings (OpenAI ACP checkout_sessions, Google UCP manifest)
 - subscriptions-iyzico-stripe.md: Plan (approved 2026-10-19, watch list, after payment-driver-layer): recurring billing for iyzico and Stripe through drivers, membership renewals, customer pause/cancel; legacy profiles untouched
 - system-widget-missing-types.md: Plan (2026-10-19, multi-step checkout done): classic page types with no designer system widget (multi-step checkout, order form, folder view, photo gallery, confirmations, affiliate…)
@@ -87,5 +87,5 @@ Unfinished and shelved plans: remaining work, decisions made, open questions, wh
 - workspace-growth-terms.md: Shared names and single owners across the Workspace growth plans (2026-10-23): workflow tables, Workspace canvas, the two quote kinds, registries, engine words, agent keys, one proposal route
 - workspace-mcp-capabilities.md: Plan (2026-10-23, steps 1-6 done, answers 1-2 given): an AI app on MCP in the Workspace: fewer dead tools, one proposal route, resources and prompts, API gaps
 - workspace-mcp-connectors.md: Plan (2026-10-23, 1, 3-6 #1463, 9, 13a #1471, 11-12 #1511, 2 #1521, 13 #1800, 7-8 #1815, 10 #1829; answers 1, 3, 4): MCP client like Claude's connectors: protocol, card, catalogue, add, API
-- workspace-quotes.md: Plan (2026-10-23; 1-3 and 6 built, 4 and 7 approved): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+- workspace-quotes.md: Plan (2026-10-23; 1-3, 4 panel and 6 built, 7 approved): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 - workspace-slash-commands.md: Plan (2026-10-23, 1 done #1440, 2-3 #1499, 4 #1731, 5 #1991, 6 #1896 #1938, answer 2a): /task fixes, command registry, Tab suggestions, live line, more commands, GET /workspace/commands

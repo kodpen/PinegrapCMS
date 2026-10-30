@@ -13,14 +13,13 @@ module: auth
 - `pg_can_open_contact($user, $contact_id, $contacts_access = null)`: no contact id -> false; role < 3 -> true with no query; role 3 -> `validate_contacts_access($user, true)` and `validate_contact_access()` (contact in one of their groups), as `edit_contact.php`. A list passes `$contacts_access` computed once per screen (`erp_accounts.php`). `$user = null` means the signed-in viewer (`USER_ROLE` short-circuit, else `validate_user()` once): used by `includes/erp/drawer.php` and `includes/erp/order_flow.php`, which get no user row.
 
 ## Which screens use them?
-- `print_order.php` (User, Contact, affiliate), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button).
+- `view_order.php` and `print_order.php` (User, Contact, affiliate; both read `user_role AS username_role` in the order query), `edit_gift_card.php` (From: user link, else contact link, else plain), `erp_accounts.php` (the contact icon shows unlinked with a hidden "Contact" label), ERP account drawer contact name, ERP order flow "Edit Contact" step link (left out), `view_sessions.php` (names, Manage button).
 - Older guards of the same kind: `includes/fn/contact_list.php`, `includes/dashboard/widgets/widget_4.php`, `chat.php`.
-- `view_order.php` has the same links (User, Contact, affiliate); left for a later change.
 
 ## What changed on Sessions besides the links?
 - Rows the POST rule refuses (not own account, not administrator, role >= target role) are drawn without Lock/Unlock, Sign out, Test and Stop. Own sessions keep their actions though the name is not linked: the POST rule admits self, `edit_user.php` does not.
 
 ## How is it tested?
-- `tests/panel_link_rights_test.php`: the role matrix of `pg_can_open_user()` and the paths of `pg_can_open_contact()` that need no database.
+- `tests/panel_link_rights_test.php`: the role matrix of `pg_can_open_user()` and the paths of `pg_can_open_contact()` that need no database, and a source pin that every `edit_user.php` / `edit_contact.php` link in `view_order.php` sits next to its helper.
 
 Related: docs/memory/core/permission-columns.md, docs/memory/ui/main-menu-entry-gates.md

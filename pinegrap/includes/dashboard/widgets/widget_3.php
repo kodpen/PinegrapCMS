@@ -65,14 +65,16 @@ function pg_dashboard_widget_3($request, $user)
         // Products card, which does not filter on it either. A
         // product can be marked out of stock without inventory
         // tracking, and the operator who reads both cards should
-        // not have to know that.
+        // not have to know that. Products in the Recycle Bin are left
+        // out, as the products list leaves them out.
         $stock_summary = db_item(
             "SELECT
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN 1 ELSE 0 END), 0) AS product_count,
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.inventory_quantity ELSE 0 END), 0) AS quantity_total,
                 COALESCE(SUM(CASE WHEN products.inventory = 1 THEN products.price * products.inventory_quantity ELSE 0 END), 0) AS stock_value,
                 COALESCE(SUM(CASE WHEN products.out_of_stock = '1' THEN 1 ELSE 0 END), 0) AS out_of_stock_count
-            FROM products"
+            FROM products
+            WHERE (1 = 1)" . pg_catalog_bin_live_sql('products')
         );
 
         $all_count          = (int) ($order_summary['all_count'] ?? 0);

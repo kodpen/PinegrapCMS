@@ -121,6 +121,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_starter_addthis();        // 11.0.133
 	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
 	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
+	upgrade_2026_11_0_erp_quote_templates();    // 11.0.63
 
 }
 
@@ -1047,6 +1048,38 @@ function upgrade_2026_11_0_erp_auto_invoice_marketplace() {
 	install_add_column('config', 'erp_auto_invoice_marketplace', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('ERP: the invoice the ERP issues on its own for a paid or shipped order can now be issued for marketplace orders (Trendyol, n11) too, under Site Settings, Ecommerce, ERP. It is off until ticked there.');
+
+}
+
+// Sales quote templates and the switch for the quote expiry follow-up
+// (includes/erp/quote_templates.php, includes/erp/quotes.php).
+//
+// erp_quote_templates keeps the lines of the quote editor under a name, as
+// JSON in form_data: never an account, a date or a number. scope is
+// 'personal' (seen only by user_id, its owner) or 'site' (seen by everyone
+// with the ERP right); a VARCHAR rather than an ENUM, so a later scope needs
+// no migration. KEY (scope, user_id) serves the one list the editor reads.
+//
+// config.erp_quote_expiry_followup is the Settings checkbox for the Workspace
+// follow-up of a quote about to run out. It starts at 0, so a site keeps the
+// behaviour of the ERP_QUOTE_EXPIRY_FOLLOWUP constant it may already have.
+function upgrade_2026_11_0_erp_quote_templates() {
+
+	install_create_table('erp_quote_templates', "CREATE TABLE erp_quote_templates (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		name VARCHAR(100) NOT NULL DEFAULT '',
+		scope VARCHAR(16) NOT NULL DEFAULT 'personal',
+		user_id INT UNSIGNED NOT NULL DEFAULT 0,
+		form_data MEDIUMTEXT NULL,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		updated_at INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		KEY idx_scope_user (scope, user_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_add_column('config', 'erp_quote_expiry_followup', "TINYINT(1) NOT NULL DEFAULT 0");
+
+	install_note('ERP: the lines of a sales quote can be kept as a personal or a site-wide template and filled into a new quote. A sales quote about to run out can open a Workspace follow-up, switched on under Site Settings, Ecommerce, ERP.');
 
 }
 

@@ -48,7 +48,7 @@ if ($filter === 'cancelled') {
     $where[] = "w.status <> 'cancelled' AND (i.id IS NULL OR i.status = 'cancelled')";
 }
 
-$waybills = (array) db_items("SELECT w.*, a.title AS account_title, o.order_number,
+$waybills = (array) db_items("SELECT w.*, a.title AS account_title, o.order_number, o.id AS order_exists,
         i.full_number AS invoice_number, i.status AS invoice_status,
         (SELECT COUNT(*) FROM erp_waybill_items l WHERE l.waybill_id = w.id) AS line_count
     FROM erp_waybills w
@@ -101,9 +101,7 @@ foreach ($waybills as $waybill) {
             : '<a href="edit_erp_invoice.php?id=' . (int) $waybill['invoice_id'] . '">' . h($waybill['invoice_number']) . '</a>';
     }
 
-    $output_order = ((int) $waybill['order_id'] > 0)
-        ? '<a href="view_order.php?id=' . (int) $waybill['order_id'] . '">' . h($waybill['order_number'] ?: ('#' . (int) $waybill['order_id'])) . '</a>'
-        : '';
+    $output_order = erp_order_link_html($waybill['order_id'], $waybill['order_number'], $waybill['order_exists'] !== null);
 
     $ship_to = trim((string) $waybill['ship_to_city']);
     if (trim((string) $waybill['ship_to_title']) !== '' && trim((string) $waybill['ship_to_title']) !== trim((string) $waybill['account_title'])) {

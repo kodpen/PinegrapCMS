@@ -392,8 +392,9 @@ function pg_dashboard_ops_stock()
 {
     // Not filtered on inventory, so it agrees with the products list's own
     // out of stock filter: a product can be marked out of stock without
-    // inventory tracking.
-    $count = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'");
+    // inventory tracking. Products in the Recycle Bin are left out, as that
+    // list leaves them out of its rows and its count.
+    $count = (int) db_value("SELECT COUNT(*) FROM products WHERE out_of_stock = '1'" . pg_catalog_bin_live_sql('products'));
 
     $rows = db_items(
         "SELECT
@@ -404,7 +405,7 @@ function pg_dashboard_ops_stock()
             products.price,
             products.out_of_stock_timestamp AS timestamp
         FROM products
-        WHERE products.out_of_stock = '1'
+        WHERE products.out_of_stock = '1'" . pg_catalog_bin_live_sql('products') . "
         ORDER BY products.out_of_stock_timestamp DESC
         LIMIT 8");
 
@@ -420,13 +421,13 @@ function pg_dashboard_ops_stock()
         $low_where = "inventory = '1' AND backorder != '1'
             AND inventory_quantity BETWEEN 1 AND " . (int) ECOMMERCE_LOW_STOCK_THRESHOLD;
 
-        $low_count = (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where);
+        $low_count = (int) db_value("SELECT COUNT(*) FROM products WHERE " . $low_where . pg_catalog_bin_live_sql('products'));
 
         if ($low_count > 0) {
             $low_rows = db_items(
                 "SELECT id, name, short_description, image_name, inventory_quantity
                  FROM products
-                 WHERE " . $low_where . "
+                 WHERE " . $low_where . pg_catalog_bin_live_sql('products') . "
                  ORDER BY inventory_quantity ASC, id ASC
                  LIMIT 5");
         }

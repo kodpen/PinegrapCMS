@@ -192,6 +192,8 @@ if (!$_POST) {
             }
         }
 
+        $date_range = pg_list_period_ordered($date_range);
+
         $start_month = $date_range['start_month'];
         $start_day = $date_range['start_day'];
         $start_year = $date_range['start_year'];
@@ -435,8 +437,8 @@ if (!$_POST) {
     $today_timestamp = mktime(0, 0, 0, date('m'), date('d'), date('Y'));
     $quick_ranges = array(
         array('label' => lang('Today'),        'from' => $today_timestamp),
-        array('label' => lang('Last 7 Days'),  'from' => $today_timestamp - (6 * 86400)),
-        array('label' => lang('Last 30 Days'), 'from' => $today_timestamp - (29 * 86400)),
+        array('label' => lang('Last 7 Days'),  'from' => strtotime('-6 days', $today_timestamp)),
+        array('label' => lang('Last 30 Days'), 'from' => strtotime('-29 days', $today_timestamp)),
     );
     $output_quick_ranges = '';
     foreach ($quick_ranges as $quick_range) {
