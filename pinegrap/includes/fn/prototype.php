@@ -1209,7 +1209,7 @@ body.pg-proto { display: flex; flex-direction: column; margin: 0; overflow: hidd
 @media (max-width: 575.98px) {
   .pg-proto-bar { padding: .375rem .75rem; }
   .pg-proto-tools .pg-proto-label { display: none; }
-  .pg-proto-nav { order: 3; flex: 1 1 100%; }
+  .pg-proto-nav { flex: 1 1 100%; }
   .pg-proto-nav select.form-control { flex: 1 1 auto; max-width: none; }
 }
 </style>

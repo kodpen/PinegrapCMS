@@ -734,8 +734,9 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
 }
 
 /* A phone ignores the window size the picker asks for and does not zoom, so
-   the bar splits into rows: title and buttons on the first, the filter pill
-   full width below, its fields sharing what is left. */
+   the bar splits into rows at markup position: title, then the filter pill
+   full width with its fields sharing what is left, then Refresh and Close at
+   the right end. No `order`, so Tab follows the rows as drawn. */
 @media (max-width: 767.98px) {
     #esi_toolbar {
         flex-wrap: wrap;
@@ -743,10 +744,11 @@ output_header_secure(array('title'=>lang('Browse Images'),'icon'=>'file')) . '
     }
 
     #files_nav_controls {
-        order: 1;
         flex-basis: 100%;
         margin-left: 0 !important;
     }
+
+    #files_nav_controls + .navbar-nav { margin-left: auto; }
 
     #files_nav_controls > .nav-item,
     #files_nav_controls form { flex: 1 1 auto; min-width: 0; }

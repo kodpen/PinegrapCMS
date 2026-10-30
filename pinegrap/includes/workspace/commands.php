@@ -591,6 +591,51 @@ function ws_lower($text)
 }
 
 /**
+ * Folds a text for a case-insensitive search: İ, I, ı and i all become i,
+ * the rest is lower cased. mb_strtolower() alone turns İ into i + U+0307 and
+ * I into i, so "YILDIZ" never met "Yıldız". Every character maps to exactly
+ * one, so a position in the folded text is the same in the original.
+ *
+ * @param string $text
+ * @return string
+ */
+function ws_fold($text)
+{
+    $text = str_replace(array('İ', 'I', 'ı'), 'i', (string) $text);
+
+    return mb_strtolower($text, 'UTF-8');
+}
+
+/**
+ * Where a needle first stands in a text, case and dotted or dotless i
+ * ignored (ws_fold()).
+ *
+ * @param string $haystack
+ * @param string $needle
+ * @return int|false character position in the original text
+ */
+function ws_text_position($haystack, $needle)
+{
+    if ((string) $needle === '') {
+        return 0;
+    }
+
+    return mb_strpos(ws_fold($haystack), ws_fold($needle), 0, 'UTF-8');
+}
+
+/**
+ * Whether a text holds a needle, case and dotted or dotless i ignored.
+ *
+ * @param string $haystack
+ * @param string $needle
+ * @return bool
+ */
+function ws_text_contains($haystack, $needle)
+{
+    return ws_text_position($haystack, $needle) !== false;
+}
+
+/**
  * Splits a command off a message.
  *
  * @param string $body
