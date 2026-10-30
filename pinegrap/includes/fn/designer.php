@@ -4965,7 +4965,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
                 if ($_sets && $_sets['srcset'] !== '') {
                     $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
                     $attrs .= ' srcset="' . h($_sets['srcset']) . '"';
-                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : ''))) . '"';
+                    if (!in_array('sizes', $_written, true)) $attrs .= ' sizes="' . h(pg_img_sizes(_user_attr_value($props, 'width'), $_sets['width'], $_lazy && pg_img_fills_width(isset($props['cssClass']) ? $props['cssClass'] : '') && pg_img_height_given('<img' . $attrs . '>'))) . '"';
                 }
             }
             $void_tags = array('area','base','br','col','embed','hr','img','input','link','meta','param','source','track','wbr');
@@ -5928,7 +5928,11 @@ function _render_content_html($props, $pad, $kids = '')
             if ($_sets) {
                 $_lazy  = (isset($_loading['loading']) ? $_loading['loading'] : strtolower(_user_attr_value($props, 'loading'))) === 'lazy';
                 $_fills = pg_img_fills_width($cls) || ($_in_ratio && $_sets['sources']);
-                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_lazy && $_fills);
+                // sizes=auto drops the file's ratio (pg_img_height_given()):
+                // only with a height from the markup or from its own ratio
+                // box, whose height the image takes.
+                $_auto  = $_lazy && $_fills && ($_in_ratio || pg_img_height_given('<img' . $h_attr . $obj_pos . $img_extra . '>'));
+                $_sizes = in_array('sizes', $_written, true) ? _user_attr_value($props, 'sizes') : pg_img_sizes($img_w_raw, $_sets['width'], $_auto);
                 if ($_sets['srcset'] !== '') {
                     $_resp .= ' srcset="' . h($_sets['srcset']) . '"';
                     if (!in_array('sizes', $_written, true)) $_resp .= ' sizes="' . h($_sizes) . '"';
