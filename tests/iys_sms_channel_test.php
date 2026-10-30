@@ -32,7 +32,7 @@ function iys_sms_test_function_source($file, $function)
 	pg_assert_true($start !== false, $function . ' exists');
 	$end = strpos($source, "\nfunction ", $start + 1);
 
-	return substr($source, $start, ($end === false) ? null : $end - $start);
+	return substr($source, $start, (($end === false) ? strlen($source) : $end) - $start);
 }
 
 // The column is added by the open version's step with the idempotent helpers,
