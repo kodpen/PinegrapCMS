@@ -219,6 +219,7 @@ $explorer_lang = array(
     'last_modified' => lang('Last Modified'),
     'folder' => lang('Folder'),
     'file_content' => lang('File Content'),
+    'tab_hint' => lang('Tab indents. {var} makes Tab move to the next field.'),
     'folders' => lang('Folders'),
     'pictures' => lang('Pictures'),
     'all_files' => lang('All files'),
@@ -14321,8 +14322,10 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                     theme: (document.documentElement.getAttribute('data-bs-theme') === 'dark') ? 'dark' : 'light',
                     labels: { syntaxError: L.syntax_error },
                     keys: [{ key: 'Mod-s', run: function () { saveFileEditor(); return true; } }],
-                    // The editor's content is what a screen reader lands on.
-                    extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content })
+                    // The editor's content is what a screen reader lands on;
+                    // the note under it says how Tab leaves the code, or that
+                    // the file is read-only.
+                    extensions: window.PgCM.view.EditorView.contentAttributes.of({ 'aria-label': L.file_content, 'aria-describedby': 'file_edit_editor_note' })
                 });
 
                 // The panel's colour scheme switch reaches the editors it
@@ -14330,7 +14333,14 @@ body.col-resizing { cursor: col-resize; user-select: none; }
                 window.pgCodeEditors = window.pgCodeEditors || {};
                 window.pgCodeEditors.file_edit_code = fileEdit.editor;
 
-                if (!file.editable) { note.textContent = L.file_read_only; }
+                if (!file.editable) {
+                    note.textContent = L.file_read_only;
+                } else {
+                    // Tab indents here and focus starts in the code, so the
+                    // way out (Ctrl+M, bound in the facade) is spelled out.
+                    var platform = (navigator.userAgentData && navigator.userAgentData.platform) || navigator.platform || navigator.userAgent || '';
+                    note.textContent = L.tab_hint.replace('{var}', /mac|iphone|ipad|ipod/i.test(platform) ? 'Shift+Alt+M' : 'Ctrl+M');
+                }
             }
         }
 

@@ -104,7 +104,16 @@ if ( !isset( $_GET['request'] ) && empty( $_GET['request'] ) && ($_GET['request'
                 $(document).scannerDetection({
                 	timeBeforeScanTest: 200, // wait for the next character for upto 200ms
                 	avgTimeByChar: 100, // its not a barcode if a character takes longer than 100ms
+                	// Keys typed into a field (the header search, the quick note,
+                	// a settings dialog) are not collected as a scan.
+                	ignoreIfFocusOn: \'input, textarea, select, [contenteditable="true"], [contenteditable=""]\',
                 	onComplete: function(barcode, qty){
+
+                        // A scan while a dialog is open, or one made only of
+                        // blanks (Space or Enter pressed twice on a button), is dropped.
+                        if ((window.pgUI && pgUI.anyOpen(\'dialog\')) || String(barcode).trim() === \'\') {
+                            return;
+                        }
 
                         if ($("input#scanner_input,input#scanner_quantity_input").is( ":focus" )) {
                             

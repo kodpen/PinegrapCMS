@@ -1,6 +1,6 @@
 ---
 name: status-chart-colour-words
-description: System Status chips and detail rows, the orders Payment methods doughnut and the Search Console day chart tell states and series apart by words, dashes and shapes, not colour alone
+description: Status chips, Payment methods doughnut and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
 ---
 
 ## What does a System Status chip show when the check has no value of its own?
@@ -14,6 +14,9 @@ description: System Status chips and detail rows, the orders Payment methods dou
 
 ## How are Clicks and Impressions told apart on Search Console?
 - Impressions is dashed (`borderDash: [6, 4]`) with `pointStyle: "rectRot"`, the legend uses point styles, and both y-axes carry the Clicks / Impressions titles. The current 7/28/90-day link has `aria-current="page"`.
+
+## Which colours do the ERP Profit and Search Console series use?
+- Lines and bar edges take the theme's `--pg-primary-ink` / `--pg-secondary-ink` / `--pg-success-ink`, resolved through the probe element like the axis ink (never `getPropertyValue('--pg-…')`). The pastel `--bs-primary` / `--bs-success` fills read about 2:1 on the light card; the Clicks and Net profit lines were that faint. ERP Net sales keeps its pastel fill with a 2px ink edge; Costs and expenses are outlined (transparent fill), so the bars differ by more than tint. The ERP canvas is `aria-hidden`: the month table under it carries the figures. Impressions keeps its purple fallback; `view_orders.php` still uses pastel series. Pinned in `tests/panel_chart_colours_test.php`.
 
 ## What pins it, and what was not checked?
 - `tests/status_colour_words_test.php` (source pins). Nothing was rendered in a browser; backend.src.css was not touched.

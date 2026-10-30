@@ -1051,6 +1051,20 @@ function submit_order($type) {
                     $liveform->mark_error('payment_method', lang('The selected payment method is not available.'));
                 }
             }
+
+            // A driver that runs subscriptions itself stores the card only
+            // with a payment: an order that charges nothing today and whose
+            // recurring lines all start later would leave them no card.
+            if ($liveform->check_field_error('payment_method') == FALSE) {
+                $later_start_driver = pg_payment_order_driver((string) $liveform->get_field_value('payment_method'), (string) ECOMMERCE_PAYMENT_GATEWAY);
+
+                if (
+                    ($later_start_driver !== '')
+                    && pg_subscription_checkout_starts_later_only($products, pg_payment_recurring_mode($later_start_driver), ($nonrecurring_transaction == TRUE), date('Y-m-d'))
+                ) {
+                    $liveform->mark_error('payment_method', lang('Nothing is charged today, so your card cannot be saved for the subscription. Please choose today as the start date.'));
+                }
+            }
             
             // if there is not already an error for the payment method field and the credit/debit card payment method was selected, then validate credit/debit card fields
             if (

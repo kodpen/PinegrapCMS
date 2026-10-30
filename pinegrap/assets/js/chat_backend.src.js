@@ -1138,7 +1138,15 @@
 
         panel.appendChild(header);
 
+        // The messages scroll in their own box: in the tab order so the
+        // arrow keys scroll it, named, and a log, so a new message is read
+        // out. Live only after the first fill (appendMessages()), so opening
+        // a long history is not read out as new.
         var body = el('div', 'pg-chat-body bg-1 px-3 py-3');
+        body.setAttribute('role', 'log');
+        body.setAttribute('tabindex', '0');
+        body.setAttribute('aria-label', STR.messages);
+        body.setAttribute('aria-live', 'off');
         panel.appendChild(body);
 
         // ── Composer ────────────────────────────────────────────────────
@@ -1766,6 +1774,16 @@
 
         if (messages.length && shouldScroll) {
             body.scrollTop = body.scrollHeight;
+        }
+
+        // The first fill is the history; what arrives after it is new. The
+        // switch waits a moment so the history's own insertions are not
+        // caught by the live part.
+        if ((body.getAttribute('aria-live') === 'off') && !body.getAttribute('data-pg-chat-filled')) {
+            body.setAttribute('data-pg-chat-filled', '1');
+            setTimeout(function () {
+                body.setAttribute('aria-live', 'polite');
+            }, 1000);
         }
     }
 

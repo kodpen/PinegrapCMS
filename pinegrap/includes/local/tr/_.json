@@ -1411,6 +1411,7 @@
     "{var:1} · Workspace ({var:2})": "{var:1} · Çalışma Alanı ({var:2})",
     "{var:1} · due in {var:2} d": "{var:1} · {var:2} gün içinde",
     "{var:1} · field #{var:2}": "{var:1} · alan #{var:2}",
+    "{var:1} · row {var:2}": "{var:1} · satır {var:2}",
     "{var:1} · timeout {var:2} h": "{var:1} · zaman aşımı {var:2} sa",
     "{var:1} · {var:2} lines": "{var:1} · {var:2} kalem",
     "{var:1} · {var:2} · last step {var:3}": "{var:1} · {var:2} · son adım {var:3}",

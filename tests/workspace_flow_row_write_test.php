@@ -313,3 +313,33 @@ function test_workspace_flow_row_write_runs_through_the_store()
 	pg_assert_contains("status = 'waiting' AND wait_key = '", $again, 'ready again from waiting only');
 	pg_assert_contains("(int) (\$step['attempt'] ?? 0) - 1", $again, 'a pause counts no try');
 }
+
+// A reader who may not change the flow reads a table box's table and the
+// columns it writes, never the row it names nor the values: on the screen,
+// in the API and in a run's graph, as a change box. Settings the server
+// could not read as an object keep no cell at all.
+function test_workspace_flow_row_write_graph_masked_for_readers()
+{
+	$graph = ws_flow_graph_normalize(array('nodes' => array(
+		array('id' => 'start', 'kind' => 'manual'),
+		array('id' => 'add', 'kind' => 'row_add', 'config' => array('table_id' => 7, 'cells' => array('3' => 'Ada', '5' => 1250))),
+		array('id' => 'set', 'kind' => 'row_set', 'config' => array('table_id' => 7, 'row' => '{{node.add.row_id}}', 'cells' => '{"3": "{{trigger.name}}", "8": true}')),
+		array('id' => 'bad', 'kind' => 'row_set', 'config' => array('table_id' => 7, 'row' => '12', 'cells' => '{"3": {{trigger.name}}}')),
+	)));
+	$config = function ($present, $index) {
+		return (array) $present['nodes'][$index]['config'];
+	};
+
+	$reader = ws_flow_graph_present($graph);
+	$editor = ws_flow_graph_present($graph, true);
+
+	pg_assert_same(7, $config($reader, 1)['table_id'], 'the table stays');
+	pg_assert_same('{"3":"","5":""}', $config($reader, 1)['cells'], 'the columns stay, their values go');
+	pg_assert_same('', $config($reader, 2)['row'], 'no row');
+	pg_assert_same('{"3":"","8":""}', $config($reader, 2)['cells']);
+	pg_assert_same('', $config($reader, 3)['row']);
+	pg_assert_same('', $config($reader, 3)['cells'], 'cells that are no object keep nothing');
+	pg_assert_same('{{node.add.row_id}}', $config($editor, 2)['row'], 'an editor reads it all');
+	pg_assert_same('{"3": "{{trigger.name}}", "8": true}', $config($editor, 2)['cells']);
+	pg_assert_true(is_object($reader['nodes'][1]['config']), 'settings stay an object');
+}
