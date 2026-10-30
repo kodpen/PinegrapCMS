@@ -1,10 +1,10 @@
 ---
 name: workspace-flows-for-each
-description: Flows For each loop (D9 server, #3312): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs and 16 KB list, 20 side effects a run
+description: Flows For each loop (D9, #3312; server #3323, canvas #3422): For each / End boxes, body per item at pass = item, graph check, 50-item cap, End outputs, 16 KB list, canvas frame
 ---
 
 ## Where is it?
-- `includes/workspace/flow_loops.php` (kinds in `ws_flow_kinds()`, wired in `ws_flow_run_refresh()`, `ws_flow_step_run()`, `ws_step_run_values()`); tests `tests/workspace_flow_loops_test.php`. The canvas half (workspace_flow.js KINDS, palette, form, body drawing) is not built yet.
+- `includes/workspace/flow_loops.php` (kinds in `ws_flow_kinds()`, wired in `ws_flow_run_refresh()`, `ws_flow_step_run()`, `ws_step_run_values()`); tests `tests/workspace_flow_loops_test.php`. Canvas half: `workspace-flows-for-each-canvas.md`.
 
 ## What are the two boxes?
 - `for_each`: config `list` (one `{{node.X.f}}` or `{{trigger.f}}`, a JSON array such as a webhook's `body`), `path` (dot path inside it, `data.items`), `fields` (up to 10 keys of an item given by name). Outcomes `each` (into the body) and `failed` (out of the loop); never `always` (`ws_flow_arrow_outcomes()` reads `loop` = start). Outputs `count`; inside the body also `index`, `item` (a list or object as JSON) and each field.
@@ -32,3 +32,4 @@ description: Flows For each loop (D9 server, #3312): For each / End boxes, body 
 ## API and retry?
 - A run's box carries `pass` (`ws_api_flow_run_step_present()`); `items` of the For each box and `list` of the End box are held from readers who may not change the flow (`ws_step_outputs_held()`).
 - Retry/skip takes the box's latest failed row; only rows skipped in that item are taken back.
+

@@ -245,6 +245,7 @@
     "A document or photo (optional)": "Bir belge ya da fotoğraf (isteğe bağlı)",
     "A document taken into the ERP is dealt with through its purchase invoice.": "ERP'ye alınmış bir belgenin işlemleri alış faturası üzerinden yapılır.",
     "A donation cannot be part of a bundle.": "Bağış bir paketin parçası olamaz.",
+    "A dot path inside the value, such as data.items; empty when the value is the list itself.": "Değerin içinde noktalı bir yol, örneğin data.items; değer listenin kendisiyse boş bırakın.",
     "A double shot of our house blend.": "Ev harmanımızdan duble shot.",
     "A download code for the unabridged audiobook, read by the author.": "Yazarın seslendirdiği kısaltılmamış sesli kitap için indirme kodu.",
     "A draft flow was made from the rows.": "Satırlardan taslak bir akış yapıldı.",
