@@ -281,6 +281,7 @@
     "value": "değer",
     "value is the amount added, a number that is not zero (minor units for money, as read_record gives it).": "value eklenecek miktardır, sıfır olmayan bir sayı (para için read_record'un verdiği gibi kuruş cinsinden).",
     "value is the percentage, such as 50 or -10 (more than -100, at most 1000).": "value yüzdedir; 50 ya da -10 gibi (-100'den büyük, en çok 1000).",
+    "value(s) skipped: longer than the field allows.": "değer atlandı: alanın izin verdiğinden uzun.",
     "values is an object of record id => new value, at most {var:1}.": "values, kayıt kimliği => yeni değer biçiminde bir nesnedir; en çok {var:1}.",
     "values, principles, quality, way of working": "değerler, ilkeler, kalite, çalışma biçimi",
     "vegan, vegetarian, gluten free, allergens, diet": "vegan, vejetaryen, glütensiz, alerjen, diyet",

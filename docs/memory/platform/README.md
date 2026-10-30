@@ -49,7 +49,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - erp-documents-in-file-manager.md: Why a file the ERP module keeps (erp_doc_type set, no folder) is read-only in the file manager, the four doors that refuse it by name, and the image editor's save that used to write over it
 - error-reporting.md: How PHP error_reporting is set in init.php and router.php via SET_ERROR_REPORTING, and why E_DEPRECATED is not overridable from config.
 - file-manager-where-used.md: The file manager's "Where used" (explorer_file_usage): the sources it scans by name, the Workspace messages and tasks it reads by id (PR #1322), the 40 per source cap, the answer, the JS
-- file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors
+- file-name-last-segment.md: pg_basename() and pg_file_name_stem(), not basename() or pathinfo(), for a name a person gave: before PHP 8.0 they drop the non-ASCII letters a name starts with; the doors, and pg_backup_folder_name()
 - find-and-replace-architecture.md: find_and_replace.php table definition shape ($all_table_defs fields), url_raw URL rules, and ECOMMERCE/ADS gating of tables.
 - gd-image-destroy.md: Freeing a GD image: pg_image_destroy() calls imagedestroy() only below PHP 8.0, since it does nothing from 8.0 on and PHP 8.5 deprecates it (#1669)
 - gd-webp-read.md: Reading WebP with GD: bundled GD before PHP 8.2 ends the request on an animated or cut-short WebP, imagecreatefromstring() reads WebP from 7.3; pg_image_webp_gd_readable(), pg_image_from_string()

@@ -629,3 +629,16 @@ function test_carrier_label_shippo_pickup_refusals_and_unclear()
 	pg_assert_false($unread['success']);
 	pg_assert_true($unread['unclear']);
 }
+
+// A long accented refusal is cut on a character, not a byte: a broken last
+// letter would make htmlspecialchars() print the whole notice empty.
+function test_carrier_label_shippo_long_refusal_is_cut_on_a_character()
+{
+	carrier_label_shippo_test_stub(array('POST /shipments/' => array(array(400, json_encode(array('detail' => 'A' . str_repeat('ş', 200)))))));
+	$answer = pg_label_call('shippo', 'create', array(carrier_label_shippo_test_shipment(), carrier_label_shippo_test_account()));
+	carrier_label_shippo_test_done();
+
+	pg_assert_false($answer['success']);
+	pg_assert_true(mb_check_encoding($answer['error'], 'UTF-8'), 'the error is valid UTF-8');
+	pg_assert_contains('A' . str_repeat('ş', 149), htmlspecialchars($answer['error'], ENT_QUOTES, 'UTF-8'));
+}

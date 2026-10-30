@@ -85,7 +85,7 @@ function pg_folder_form_markup($values)
     $name_field = $values['name_field'];
 
     if ($name_field === null) {
-        $name_field = '<input id="name" name="name" type="text" value="' . h($values['name']) . '" class="form-control " required>';
+        $name_field = '<input id="name" name="name" type="text" value="' . h($values['name']) . '" class="form-control " maxlength="100" required>';
     }
 
     $parent_row = '';

@@ -54,7 +54,9 @@ function pg_panel_software_backup($request, $action)
     // which keeps every step's mkdir, dump, copy and unlink inside the
     // backups directory. The result is stable under a second pass, so the
     // name a step hands back is the name the next step will compute.
-    $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', basename($backup_name));
+    // Turkish and other Latin letters are mapped to ASCII first
+    // (pg_backup_folder_name()), so they do not become underscores.
+    $backup_folder_name = pg_backup_folder_name($backup_name);
 
     // Only the first step may start without a name; it makes its own. Every
     // later step works on a folder that must already exist under a name.
@@ -73,7 +75,7 @@ function pg_panel_software_backup($request, $action)
             if ($backup_folder_name === '') {
                 $hostname_clean = defined('HOSTNAME') ? HOSTNAME : '';
                 $backup_name = ($hostname_clean ? $hostname_clean . '_' : '') . date('Y-m-d@H-i');
-                $backup_folder_name = preg_replace('/[^A-Za-z0-9_-]/', '_', $backup_name);
+                $backup_folder_name = pg_backup_folder_name($backup_name);
             }
 
             //check if directory is exists

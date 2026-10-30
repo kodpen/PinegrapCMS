@@ -178,7 +178,7 @@ if (!$_POST) {
                     $outputs .= '
                                     <div class="col-12">
                                         <label class="form-label" for="page_title_' . $row['page_id'] . '">' . lang('Web Browser Title') . '</label>
-                                        <input class="form-control" type="text" id="page_title_' . $row['page_id'] . '" name="page_title_' . $row['page_id'] . '" value="' . h($row['page_title']) . '" />
+                                        <input class="form-control" type="text" id="page_title_' . $row['page_id'] . '" name="page_title_' . $row['page_id'] . '" value="' . h($row['page_title']) . '" maxlength="255" />
                                     </div>';
                 }
                 if($output_page_meta_description != false){
@@ -406,6 +406,7 @@ if (!$_POST) {
                 );
                 $count_by_field  = array();
                 $fr_name_skipped = 0;
+                $fr_long_skipped = 0;
                 $q = mysqli_query(db::$con, "SELECT page_id, page_name, page_title, page_meta_description FROM page") or output_error(lang('Query failed.'));
                 while ($row = mysqli_fetch_assoc($q)) {
                     foreach ($fr_fields as $field) {
@@ -421,6 +422,17 @@ if (!$_POST) {
                             if (trim($new_val) === '') continue;
                             $new_val = str_replace(' ', '_', $new_val);
                             $new_val = str_replace('&', '_', $new_val);
+                        }
+
+                        // page_name is varchar(100), the other two
+                        // varchar(255): a longer value would be cut in
+                        // silence, so it is left as it was.
+                        if (pg_name_too_long($new_val, ($field === 'page_name') ? pg_name_max_length() : 255)) {
+                            $fr_long_skipped++;
+                            continue;
+                        }
+
+                        if ($field === 'page_name') {
                             if (!check_name_availability(array('name' => $new_val, 'ignore_item_id' => $row['page_id'], 'ignore_item_type' => 'page'))) {
                                 $fr_name_skipped++;
                                 continue;
@@ -442,6 +454,9 @@ if (!$_POST) {
                 }
                 if ($fr_name_skipped > 0) {
                     $liveform->add_notice($fr_name_skipped . ' ' . lang('page name(s) skipped: name already in use.'));
+                }
+                if ($fr_long_skipped > 0) {
+                    $liveform->add_notice($fr_long_skipped . ' ' . lang('value(s) skipped: longer than the field allows.'));
                 }
             }
         }

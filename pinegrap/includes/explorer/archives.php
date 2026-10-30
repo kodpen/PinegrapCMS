@@ -238,7 +238,7 @@ function pg_explorer_backup_upload_allowed_names()
 // rules on Apache) rather than restore it.
 function pg_explorer_backup_upload_blocked($name, $segments = array(), $root = '')
 {
-    $base = mb_strtolower(basename(trim(str_replace('\\', '/', (string) $name))));
+    $base = mb_strtolower(pg_basename(trim(str_replace('\\', '/', (string) $name))));
 
     if (in_array($base, pg_explorer_backup_upload_allowed_names(), true)) {
         return (count($segments) > 0) || ($root === '') || is_file($root . '/' . $base);
@@ -308,7 +308,7 @@ function pg_explorer_archive_size($zip)
 function pg_explorer_unsafe_archive_name($name)
 {
     $name = trim(str_replace('\\', '/', (string) $name));
-    $base = basename($name);
+    $base = pg_basename($name);
 
     if (($base == '') || (mb_substr($base, 0, 1) == '.')) {
         return true;

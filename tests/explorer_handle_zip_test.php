@@ -72,6 +72,11 @@ function test_explorer_zip_entry_file_name()
 	pg_assert_same('cat.jpg', pg_explorer_zip_entry_file_name('photos\\cat.jpg'), 'backslashes are separators');
 	pg_assert_same('', pg_explorer_zip_entry_file_name('photos/'), 'a folder entry');
 	pg_assert_same('', pg_explorer_zip_entry_file_name(''), 'no name');
+	pg_assert_same('Özet.pdf', pg_explorer_zip_entry_file_name('raporlar/Özet.pdf'), 'a Turkish first letter is kept');
+	pg_assert_same('Şubat.xlsx', pg_explorer_zip_entry_file_name('raporlar\\Şubat.xlsx'), 'kept after a backslash');
+	pg_assert_same('отчет.pdf', pg_explorer_zip_entry_file_name('отчет.pdf'), 'a Cyrillic name is kept whole');
+	pg_assert_false(pg_explorer_unsafe_archive_name('отчет.pdf'), 'a Cyrillic name is not taken for a dotfile');
+	pg_assert_false(pg_explorer_backup_upload_blocked('Şubat.zip'), 'a Turkish backup name is not blocked');
 }
 
 // Only the formats the image engine decodes and encodes can be turned; an SVG

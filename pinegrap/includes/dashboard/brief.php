@@ -1156,7 +1156,7 @@ function pg_dashboard_brief($user, $changelog_sections)
             . $greeting_ask('add_offer.php', lang('Feel like making one now?')),
 
         h(lang('You can cap how many devices one account stays signed in from, did you know?'))
-            . $greeting_ask('settings_security.php#pgset-session', lang('Want to turn it on?')),
+            . $greeting_ask('settings_security.php#pgset-device', lang('Want to turn it on?')),
 
         h(lang('Product groups have a management screen of their own these days.'))
             . $greeting_ask('view_product_groups.php', lang('Care to have a look?')),

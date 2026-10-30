@@ -594,16 +594,20 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
         $liveform->mark_error($field['id'], lang(array('string'=>'Please enter a valid time for {var:1}','vars'=>h($field['label']))) );
     }
 
-    // If this field is a title field and there is not already an error for this field,
-    // and a value was entered for this field, and pretty URLs are enabled,
-    // then check if address name is already in use.
+    $kinds = pg_coll_field_kinds((int) $page_id);
+
+    // When pretty URLs are enabled, a Title field is checked for an address
+    // name already in use only while it makes the record's address: a filled
+    // slug field comes first, and the Title is then not refused.
     if (
         ($field['rss_field'] == 'title')
         && ($liveform->check_field_error($field['id']) == false)
         && ($liveform->get_field_value($field['id']) != '')
         && ($pretty_urls == true)
+        && ($source = pg_coll_address_field(pg_submitted_form_address_rows($liveform, $page_id, $kinds)))
+        && ((string) $source['id'] === (string) $field['id'])
     ) {
-        $address_name = create_address_name($liveform->get_field_value($field['id']));
+        $address_name = create_address_name($source['data']);
 
         // A new submitted form has no id yet, so every other one counts.
         $sql_other_forms = '';
@@ -619,7 +623,46 @@ function pg_submitted_form_check_field($liveform, $field, $page_id, $pretty_urls
     }
 
     // A number, an image or a reference of a collection's field.
-    pg_coll_check_field($liveform, $field, pg_coll_field_kinds((int) $page_id));
+    pg_coll_check_field($liveform, $field, $kinds);
+}
+
+/**
+ * The posted values of a form's Title and slug fields in field order, the
+ * rows pg_coll_address_field() reads.
+ *
+ * @param object $liveform
+ * @param int|string $page_id  The custom form's page
+ * @param array $kinds  pg_coll_field_kinds() of that page
+ * @return array  Each row: id, data, kind, rss
+ */
+function pg_submitted_form_address_rows($liveform, $page_id, $kinds)
+{
+    $slug_ids = array();
+
+    foreach ($kinds as $id => $kind) {
+        if ($kind['kind'] === 'slug') {
+            $slug_ids[] = (int) $id;
+        }
+    }
+
+    $sql_slugs = $slug_ids ? ' OR (id IN (' . implode(',', $slug_ids) . '))' : '';
+
+    $rows = array();
+
+    foreach ((array) db_items(
+        "SELECT id, rss_field FROM form_fields
+        WHERE (page_id = '" . escape($page_id) . "') AND ((rss_field = 'title')" . $sql_slugs . ")
+        ORDER BY sort_order ASC") as $row
+    ) {
+        $id = (int) $row['id'];
+        $rows[] = array(
+            'id' => $id,
+            'data' => (string) $liveform->get_field_value($id),
+            'kind' => isset($kinds[$id]) ? $kinds[$id]['kind'] : '',
+            'rss' => $row['rss_field']);
+    }
+
+    return $rows;
 }
 
 /**

@@ -1768,8 +1768,9 @@ function install_heavy_tables() {
 		// the tables holding the page trees and the order lines are copied whole;
 		// on a table still on MyISAM every added index copies it too.
 		// contacts.iys_email_status (11.0.39) copies the contact list where
-		// it cannot be added in place.
-		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts'),
+		// it cannot be added in place. ship_tos.district (11.0.134) copies the
+		// recipients, one or more rows per order.
+		'2026.11.0' => array('products', 'page', 'style', 'comments', 'order_items', 'contacts', 'ship_tos'),
 	);
 
 }

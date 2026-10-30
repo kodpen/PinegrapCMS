@@ -20,4 +20,7 @@ description: The dashboard top card (welcome.php, .pg-clockbar): greeting on the
 - The ids and classes the page script reads: `#pg_brief`, `.pg-brief-mark .bi`, `.pg-brief-greet`, `.pg-brief-text`, `.pg-brief-line`, `.pg-brief-body`, `.pg-brief-ws`, `#pg_brief_again`, `#welcome_time_clock`, `.pg-clockbar-now`, `.pg-clockbar-next` (clock draw, brief refresh, next-meeting countdown).
 - There is no setting that hides the clock.
 
+## Where do the brief's settings links go?
+- Every `settings_<category>.php#pgset-…` link in `brief.php` must name a card id the registry lists for that category (`pg_settings_categories()`); `tests/dashboard_brief_test.php` reads the ids from `registry.php` and fails on a stale anchor. The device-limit hint opens `#pgset-device`; it opened `#pgset-session` before (#3558).
+
 Related: docs/memory/ui/dashboard-widget-files.md, docs/memory/ui/panel-css-tokens.md

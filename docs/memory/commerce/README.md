@@ -40,6 +40,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - carrier-label-sendcloud-returns.md: Sendcloud customer return labels (#3409): Returns API announce from the customer to the sender address, live mode and EU only, r-<return>-<parcel> reference, cancel request
 - carrier-label-sendcloud.md: Sendcloud label driver (2026.11.0, #3226), Europe: API v3 announce with the label inline, test mode as an unstamped letter, sender address id, customs once filled, cancel, tracking
 - carrier-label-shippo.md: Shippo label driver (2026.11.0, #3192), the first international one: rates then purchase, sender address in the account, PDF or ZPL II, refund as cancel, tracking status, European carriers
+- carrier-label-text-cuts.md: Carrier label drivers cut a carrier's message, error text and the Sendcloud name with mb_substr(), never byte substr(): a split letter empties the order screen notice or the request body
 - carrier-webhook-drivers.md: The carrier webhook's Shippo (#3407) and Sendcloud (#3431) sides: what each reader takes, Sendcloud's signature check, how each registers and removes its webhook
 - carrier-webhook.md: carrier_webhook.php (2026.11.0, #3245): a label service's parcel status messages written through the tracking write-back, key in the URL, optional signature check, registration, answers, firewall
 - cart-express-order-warnings.md: Why the cart and express order pages (built-in and custom layouts) and the plain-text receipt e-mail write no PHP warnings, and how a gift card deleted after it was applied is dropped at checkout.
@@ -208,6 +209,7 @@ Orders, cart, checkout, shipping, products and variants, express order.
 - subscriptions-stripe.md: Stripe store-run subscriptions (PR #3270, decided in #3183): Customer and setup_future_usage on the first payment, card_ref, off-session charge_renewal, Checkout setup page, detach on cancel
 - subscriptions.md: Store-run subscriptions (11.0.128, PR #3236): the two tables, recurring mode and store-mode driver operations, status moves, period dates, 1/3/7 ladder, sealed card_ref
 - tax-zone-commission-reward-boxes.md: Rate, commission and reward point boxes read as their columns store them: tax zone rate, contact commission, user points, Site Settings surcharge, default commission and reward goal
+- tr-district-plate-code.md: ship_tos.district and states.plate_code (step 11.0.134, decision #3569): the district as free text, the plate fill by province name, the readiness probe, what reads them so far
 - trendyol-api-facts.md: Trendyol seller API (V2) facts for the connector: hosts, Basic auth + mandatory User-Agent, stage IP whitelist (503), category tree, V2 attributes with separately paged values, limits, test call.
 - trendyol-common-label.md: Trendyol common label (#3123, PRs #3257, #3281, #3594): by cargo number, ZPL per box, card, order screen and bulk, kept as a label row, read again after the sweep; marketplace_carried
 - trendyol-invoice-link.md: Trendyol invoice link of an imported package: typed by the operator on the Imported orders card, the seller-invoice-links call, link checks, 409, invoice_sent, no removal

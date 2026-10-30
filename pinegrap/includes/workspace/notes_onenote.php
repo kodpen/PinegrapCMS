@@ -323,7 +323,7 @@ function ws_note_onenote_notebooks($sections)
     }
 
     $by_name = function ($a, $b) {
-        return strcasecmp($a['name'], $b['name']);
+        return pg_geo_label_compare($a['name'], $b['name']);
     };
 
     foreach ($notebooks as $book => $notebook) {
