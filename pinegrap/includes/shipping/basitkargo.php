@@ -23,6 +23,11 @@
  * (service: a Basit Kargo handler code such as SURAT or SELF_ARAS).
  * $reference is Basit Kargo's order id (888-6AR-OUP).
  *
+ * Status webhook (includes/fn/carrier_webhook.php): Basit Kargo posts a
+ * status change and a movement message, neither signed, to the address the
+ * merchant adds in its panel by hand; the key in the address is the
+ * credential.
+ *
  * @author      Erdal Güral (Kodpen)
  * @link        https://kodpen.com
  * @copyright   2017–2026 Kodpen
@@ -710,17 +715,63 @@ function pg_label_basitkargo_track($reference, $account)
         return pg_label_basitkargo_failure($read, false);
     }
 
-    $data = $read['data'];
+    return pg_label_basitkargo_track_answer($read['data'], $id, $read['raw']);
+}
+
+/**
+ * An order's latest trace by its time: the reference lists them newest
+ * first, but its answers are not promised in any order. A trace without a
+ * readable time never wins over one with a time; of equal times the one
+ * listed first does.
+ *
+ * @param array $data an order
+ * @return array the trace, empty when none
+ */
+function pg_label_basitkargo_latest_trace($data)
+{
+    $latest = array();
+    $latest_at = -1;
+
+    $traces = (is_array($data) && isset($data['traces']) && is_array($data['traces'])) ? $data['traces'] : array();
+
+    foreach ($traces as $trace) {
+        if (!is_array($trace)) {
+            continue;
+        }
+
+        $time = strtotime(pg_label_basitkargo_text($trace, 'time'));
+        $at = ($time === false) ? 0 : max(0, $time);
+
+        if (!$latest || ($at > $latest_at)) {
+            $latest = $trace;
+            $latest_at = $at;
+        }
+    }
+
+    return $latest;
+}
+
+/**
+ * A track() answer from an order in the GET /v2/order/{id} shape, shared by
+ * track() and the movement webhook. An order without traces has no time
+ * (status_at 0, so the tracking decision uses the moment it is read).
+ *
+ * @param array  $data an order
+ * @param string $id   its reference
+ * @param string $raw  the service's answer, kept with a failure
+ * @return array
+ */
+function pg_label_basitkargo_track_answer($data, $id, $raw = '')
+{
     $status = pg_label_basitkargo_status(pg_label_basitkargo_text($data, 'status'));
 
     if ($status === '') {
-        return array('success' => false, 'error' => lang('Basit Kargo gives no status for this shipment yet.'), 'raw' => $read['raw']);
+        return array('success' => false, 'error' => lang('Basit Kargo gives no status for this shipment yet.'), 'raw' => $raw);
     }
 
-    // The traces are oldest first; the last one dates the status.
-    $traces = (isset($data['traces']) && is_array($data['traces'])) ? array_values(array_filter($data['traces'], 'is_array')) : array();
-    $last = $traces ? $traces[count($traces) - 1] : array();
-    $time = strtotime(pg_label_basitkargo_text($last, 'time'));
+    $latest = pg_label_basitkargo_latest_trace($data);
+    $time = strtotime(pg_label_basitkargo_text($latest, 'time'));
+    $location = pg_label_basitkargo_text($latest, 'location');
 
     return array(
         'success'         => true,
@@ -729,6 +780,60 @@ function pg_label_basitkargo_track($reference, $account)
         'status_at'       => ($time === false) ? 0 : max(0, $time),
         'tracking_number' => pg_label_basitkargo_number_of($data),
         'carrier'         => pg_label_basitkargo_carrier($data),
-        'log'             => (pg_label_basitkargo_text($last, 'location') !== '') ? array('Basit Kargo: ' . pg_label_basitkargo_text($last, 'location') . '.') : array(),
+        'log'             => ($location !== '') ? array('Basit Kargo: ' . $location . '.') : array(),
     );
+}
+
+/**
+ * Basit Kargo has no webhook registration API: the merchant adds the
+ * address in its panel and ticks both events.
+ *
+ * @return array path (as its panel names it), events (as its panel names them)
+ */
+function pg_label_basitkargo_webhook_manual()
+{
+    return array(
+        'path'   => 'Yönetim Paneli → Ayarlar → Webhook',
+        'events' => array('Durum Değişikliği', 'Kargo Hareketi'),
+    );
+}
+
+/**
+ * The two messages of the reference, neither signed: a status change
+ * ({id, orderNumber, orderId, barcode, status, handler,
+ * handlerShipmentCode}, no time) and a movement (the GET /v2/order/{id}
+ * shape, traces included). The order id is the label reference; an
+ * INCOMING order is a return.
+ *
+ * @param string $body
+ * @return array|false list of reference, is_return, answer; false when unreadable
+ */
+function pg_label_basitkargo_webhook_read($body)
+{
+    $data = json_decode((string) $body, true);
+
+    if (!is_array($data) || !isset($data['id']) || !isset($data['status'])) {
+        return false;
+    }
+
+    $id = pg_label_basitkargo_id($data['id']);
+
+    if ($id === '') {
+        return array();
+    }
+
+    // A status change names its carrier at the top level; the order shape
+    // keeps it in shipmentInfo.
+    if (!isset($data['shipmentInfo']) || !is_array($data['shipmentInfo'])) {
+        $data['shipmentInfo'] = array(
+            'handler'             => (isset($data['handler']) && is_array($data['handler'])) ? $data['handler'] : array(),
+            'handlerShipmentCode' => pg_label_basitkargo_text($data, 'handlerShipmentCode'),
+        );
+    }
+
+    return array(array(
+        'reference' => $id,
+        'is_return' => strtoupper(pg_label_basitkargo_text($data, 'type')) === 'INCOMING',
+        'answer'    => pg_label_basitkargo_track_answer($data, $id),
+    ));
 }

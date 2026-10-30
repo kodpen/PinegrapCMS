@@ -20,6 +20,10 @@
  *                                                   by lower-case name)
  *   pg_label_<key>_webhook_register($url, $account) success, id, error
  *   pg_label_<key>_webhook_remove($id, $account)    success, error
+ *   pg_label_<key>_webhook_manual()                 true, or path and
+ *                                                   events: the address is
+ *                                                   added in the service's
+ *                                                   panel by hand
  *
  * The secret key in the address is the credential of every driver; a
  * service that signs its messages (Sendcloud) is checked by its verify
@@ -28,7 +32,11 @@
  * sealed secrets (connect_apps label_<key>, webhook_key and webhook_id).
  * Saving the driver switched on registers the address at the service;
  * switching it off removes it there and drops the key, so the old address
- * is refused. A driver without register shows no webhook on the card.
+ * is refused. A by-hand driver (a service without a registration API) gets
+ * its key when it is saved on and ready, and the card always shows the
+ * address with where to add it; switching it off drops the key the same
+ * way. A driver with neither register nor manual shows no webhook on the
+ * card.
  *
  * A message reaches the parcel only through the tracking write-back:
  * pg_shipment_tracking_decide() and pg_shipment_tracking_apply()
@@ -539,6 +547,53 @@ function pg_carrier_webhook_secrets_put($key, $changes)
 }
 
 /**
+ * Whether a driver's webhook is added in its service's panel by hand.
+ *
+ * @param string $key
+ * @return array|false path and events to name on the card (empty when the
+ *                     driver names none); false for a driver that is not
+ *                     by hand
+ */
+function pg_carrier_webhook_manual($key)
+{
+    $function = pg_carrier_webhook_function($key, 'manual');
+    $manual = ($function === '') ? false : call_user_func($function);
+
+    if ($manual === true) {
+        return array('path' => '', 'events' => array());
+    }
+
+    if (!is_array($manual)) {
+        return false;
+    }
+
+    return array(
+        'path'   => (isset($manual['path']) && is_string($manual['path'])) ? $manual['path'] : '',
+        'events' => (isset($manual['events']) && is_array($manual['events'])) ? array_values(array_filter($manual['events'], 'is_string')) : array(),
+    );
+}
+
+/**
+ * What a save does to a by-hand driver's key: make one when the driver is
+ * on and ready without one, drop it when the driver is off. A key that
+ * exists stays, so the address added in the service's panel keeps working.
+ * Pure.
+ *
+ * @param bool   $enabled
+ * @param bool   $ready
+ * @param string $token the stored key
+ * @return string make, drop or '' (nothing)
+ */
+function pg_carrier_webhook_manual_change($enabled, $ready, $token)
+{
+    if (!$enabled) {
+        return ((string) $token !== '') ? 'drop' : '';
+    }
+
+    return ($ready && ((string) $token === '')) ? 'make' : '';
+}
+
+/**
  * Registers the driver's webhook at its service after a save of the Shipping
  * card that leaves it on, or removes it when the save switched it off. A
  * webhook stays registered across saves; newly typed keys (another account,
@@ -553,8 +608,9 @@ function pg_carrier_webhook_sync($key, $decision, $liveform)
 {
     $register = pg_carrier_webhook_function($key, 'register');
     $remove = pg_carrier_webhook_function($key, 'remove');
+    $manual = pg_carrier_webhook_manual($key);
 
-    if (($register === '') || !pg_connect_can_seal()) {
+    if ((($register === '') && ($manual === false)) || !pg_connect_can_seal()) {
         return;
     }
 
@@ -565,6 +621,23 @@ function pg_carrier_webhook_sync($key, $decision, $liveform)
     }
 
     $definition = pg_label_driver($key);
+
+    if ($manual !== false) {
+        $token = isset($settings['secrets']['webhook_key']) ? $settings['secrets']['webhook_key'] : '';
+        $change = pg_carrier_webhook_manual_change(!empty($decision['enabled']), pg_label_ready($key), $token);
+
+        if ($change === 'drop') {
+            // The old address is refused from now on.
+            pg_carrier_webhook_secrets_put($key, array('webhook_id' => null, 'webhook_key' => null));
+        } elseif (($change === 'make') && pg_carrier_webhook_secrets_put($key, array('webhook_key' => pg_carrier_webhook_new_key()))) {
+            $liveform->add_notice(lang(array(
+                'string' => 'Add the status webhook address the card shows in the {var:1} panel, so parcel statuses arrive as they change.',
+                'vars'   => array(h($definition['label'])))));
+        }
+
+        return;
+    }
+
     $account = pg_label_account(pg_label_fields($key), $settings);
     $id = isset($settings['secrets']['webhook_id']) ? $settings['secrets']['webhook_id'] : '';
     $token = isset($settings['secrets']['webhook_key']) ? $settings['secrets']['webhook_key'] : '';
@@ -631,7 +704,8 @@ function pg_carrier_webhook_sync($key, $decision, $liveform)
 /**
  * The webhook's line on the driver's part of the Shipping card: nothing for
  * a driver without webhooks; registered; the address to add by hand after a
- * failed registration; or what a save does.
+ * failed registration, or always for a by-hand driver with its key; or what
+ * a save does.
  *
  * @param string $key
  * @param array  $settings pg_label_settings()
@@ -639,7 +713,9 @@ function pg_carrier_webhook_sync($key, $decision, $liveform)
  */
 function pg_carrier_webhook_card_row($key, $settings)
 {
-    if (pg_carrier_webhook_function($key, 'register') === '') {
+    $manual = pg_carrier_webhook_manual($key);
+
+    if (($manual === false) && (pg_carrier_webhook_function($key, 'register') === '')) {
         return '';
     }
 
@@ -647,19 +723,35 @@ function pg_carrier_webhook_card_row($key, $settings)
     $id = isset($settings['secrets']['webhook_id']) ? $settings['secrets']['webhook_id'] : '';
     $token = isset($settings['secrets']['webhook_key']) ? $settings['secrets']['webhook_key'] : '';
 
-    if ($settings['enabled'] && ($id !== '')) {
+    // The address with where to add it (help), or one line of text.
+    $help = '';
+    $text = '';
+
+    if ($manual !== false) {
+        if (!$settings['enabled'] || ($token === '')) {
+            $text = lang(array('string' => 'Saving with {var:1} switched on and ready gives a status webhook address to add in its panel, so parcel statuses arrive as they change.', 'vars' => array(h($definition['label']))));
+        } elseif (($manual['path'] !== '') && $manual['events']) {
+            $help = lang(array('string' => 'Add this address in the {var:1} panel under {var:2} and tick the events {var:3}. Keep it private.', 'vars' => array(h($definition['label']), h($manual['path']), h(implode(', ', $manual['events'])))));
+        } else {
+            $help = lang(array('string' => 'Add this address in the {var:1} panel as its parcel status webhook. Keep it private.', 'vars' => array(h($definition['label']))));
+        }
+    } elseif ($settings['enabled'] && ($id !== '')) {
         $text = lang(array('string' => '{var:1} sends parcel status changes to this site as they happen.', 'vars' => array(h($definition['label']))));
     } elseif ($settings['enabled'] && ($token !== '')) {
+        $help = lang(array('string' => 'The webhook could not be registered. Add this address in the {var:1} panel as its parcel status webhook, or save again to retry. Keep it private.', 'vars' => array(h($definition['label']))));
+    } else {
+        $text = lang(array('string' => 'Saving with {var:1} switched on registers a webhook there, so parcel statuses arrive as they change.', 'vars' => array(h($definition['label']))));
+    }
+
+    if ($help !== '') {
         $input = pg_label_input_name($key, 'webhook_url');
 
         return '
                                                                                         <div class="col-12">
                                                                                             <label class="form-label" for="' . h($input) . '">' . lang('Status Webhook Address') . '</label>
                                                                                             <input class="form-control" type="text" id="' . h($input) . '" value="' . h(pg_carrier_webhook_url($key, $token)) . '" readonly="readonly"/>
-                                                                                            <div class="form-text">' . lang(array('string' => 'The webhook could not be registered. Add this address in the {var:1} panel as its parcel status webhook, or save again to retry. Keep it private.', 'vars' => array(h($definition['label'])))) . '</div>
+                                                                                            <div class="form-text">' . $help . '</div>
                                                                                         </div>';
-    } else {
-        $text = lang(array('string' => 'Saving with {var:1} switched on registers a webhook there, so parcel statuses arrive as they change.', 'vars' => array(h($definition['label']))));
     }
 
     return '
