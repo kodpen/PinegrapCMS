@@ -2427,3 +2427,31 @@ function pg_send_custom_form_notifications($custom_form_page_id, $form_id, $cont
 
     return true;
 }
+
+// Why each of these single-address boxes (field name => what was typed)
+// cannot be saved: it holds something validate_email_address() refuses.
+// A blank box is allowed. A list is refused too: email() hands the string
+// to PHPMailer's addAddress() or addBCC() as one address.
+function pg_email_field_errors($values)
+{
+    $errors = array();
+
+    foreach ($values as $field => $value) {
+        if ($value === null) {
+            continue;
+        }
+
+        $address = is_scalar($value) ? trim((string) $value) : '';
+
+        if (is_scalar($value) && (($address === '') || validate_email_address($address))) {
+            continue;
+        }
+
+        $errors[$field] = lang(array(
+            'string' => 'Not an e-mail address: {var:1}',
+            'vars'   => array(h($address)),
+        ));
+    }
+
+    return $errors;
+}

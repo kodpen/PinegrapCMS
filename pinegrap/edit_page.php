@@ -1502,6 +1502,12 @@ if (!$_POST) {
         if ($_POST['type'] == 'custom form') {
             pg_page_form_refuse($liveform, pg_page_type_custom_form_errors((int) $_POST['id'], $may_save_page_type), $form_url);
         }
+
+        // The comments moderator is one address, checked while comments are
+        // on (the box is hidden otherwise).
+        if (($_POST['comments'] ?? '') == '1') {
+            pg_page_form_refuse($liveform, pg_email_field_errors(array('comments_administrator_email_to_email_address' => $_POST['comments_administrator_email_to_email_address'] ?? '')), $form_url);
+        }
         
         // if user is above a user role, then deal with home page checkbox
         if ($user['role'] < 3) {

@@ -151,6 +151,16 @@ function pg_parasut_credentials_for_save()
         }
     }
 
+    // The order e-mail (also printed on ERP documents), the reward BCC and
+    // the affiliate e-mail are one address each.
+    foreach (pg_email_field_errors(array(
+        'ecommerce_email_address' => post_value('ecommerce_email_address'),
+        'ecommerce_reward_program_email_bcc_email_address' => post_value('ecommerce_reward_program_email_bcc_email_address'),
+        'affiliate_email_address' => post_value('affiliate_email_address'),
+    )) as $email_field => $email_error) {
+        $liveform->mark_error($email_field, $email_error);
+    }
+
     if ($liveform->check_form_errors()) {
         return;
     }

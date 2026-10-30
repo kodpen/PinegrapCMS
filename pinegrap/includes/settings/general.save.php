@@ -25,6 +25,16 @@ if (!defined('PG_SETTINGS_ENTRY')) {
     // kept in url_scheme and a pasted URL must not end up in the column.
     $hostname = trim((string) post_value('hostname'));
     $hostname = preg_replace('#^https?://#i', '', $hostname);
+
+    // The Support E-mail Address is the From of system mail: a broken one
+    // refuses the whole save before anything is written. Blank is allowed.
+    foreach (pg_email_field_errors(array('email_address' => post_value('email_address'))) as $email_field => $email_error) {
+        $liveform->mark_error($email_field, $email_error);
+    }
+
+    if ($liveform->check_form_errors()) {
+        return;
+    }
     
     // Secure Mode - the url_scheme column - is saved by the Firewall screen,
     // next to HSTS and the trusted proxies it depends on. It must not be
