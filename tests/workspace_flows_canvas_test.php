@@ -1325,6 +1325,11 @@ JS
 		'post_1 | email_1 | body | fl_email_body | Post › Message | number-2 | skipped | ',
 		'web_check_1 | email_1 | body | fl_email_body | Check a web address › Status code | number-0 |  | ',
 	), $result, 'one thread per value and field, from the box that gives it');
+
+	// Drawn red and dashed (goneThread()).
+	$css = (string) file_get_contents(PG_FUNCTIONS_DIR . '/assets/css/backend.src.css');
+	pg_assert_true((bool) preg_match('/\n\.wsf-thread-gone \{[^}]*stroke: var\(--pg-danger\);[^}]*stroke-dasharray:/', $css), 'a gone thread is red and dashed');
+	pg_assert_true(strpos($source, "'wsf-thread wsf-thread-gone'") !== false, 'the gone thread is drawn with its class');
 }
 
 // A thread drawn from a value (Flows T2) may go into the fields of the boxes
