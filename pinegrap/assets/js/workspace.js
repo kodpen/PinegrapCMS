@@ -44,6 +44,38 @@
     var S = CFG.strings || {};
     var BOOT = null;
 
+    // ── Density ────────────────────────────────────────────────────────
+
+    // Comfortable (the default) or compact, kept per browser like the open
+    // groups of the main menu's list. Compact is one class on <html> that
+    // narrows the --ws-space-* tokens (backend.src.css); it is set here, at
+    // the top of the script, before any screen is drawn.
+    var DENSITY_KEY = 'ws-density';
+
+    function readDensity() {
+        try {
+            return (window.localStorage.getItem(DENSITY_KEY) === 'compact') ? 'compact' : 'comfortable';
+        } catch (error) {
+            return 'comfortable';
+        }
+    }
+
+    function applyDensity(value) {
+        document.documentElement.classList.toggle('ws-compact', value === 'compact');
+    }
+
+    function writeDensity(value) {
+        try {
+            window.localStorage.setItem(DENSITY_KEY, value);
+        } catch (error) {
+            // Private mode or a full store: the switch still holds for this page.
+        }
+
+        applyDensity(value);
+    }
+
+    applyDensity(readDensity());
+
     // ── Small helpers ──────────────────────────────────────────────────
 
     function t(key) {
@@ -1106,6 +1138,26 @@
         node.setAttribute('aria-expanded', 'false');
 
         return node;
+    }
+
+    // The density switch in the overview's header: comfortable or compact,
+    // changed at once on every Workspace part of this page.
+    function densityButton() {
+        var opener = menuButton(button('btn btn-sm btn-text theme-secondary', '', 'bi-arrows-collapse-vertical', t('density')));
+
+        opener.addEventListener('click', function (event) {
+            var box = opener.getBoundingClientRect();
+            var now = readDensity();
+
+            event.stopPropagation();
+            ctxMenu(Math.max(8, box.right - 200), box.bottom + 4, [
+                { header: t('density') },
+                { label: t('density_comfortable'), checked: now === 'comfortable', action: function () { writeDensity('comfortable'); } },
+                { label: t('density_compact'), checked: now === 'compact', action: function () { writeDensity('compact'); } }
+            ]);
+        });
+
+        return opener;
     }
 
     // An open dialog or drawer sits in the top layer over an inert page, so a
@@ -7197,6 +7249,10 @@
             var date = el('div', 'ws-topic');
             title.appendChild(date);
             head.appendChild(title);
+
+            var actions = el('div', 'ws-head-actions');
+            actions.appendChild(densityButton());
+            head.appendChild(actions);
             center.appendChild(head);
 
             var body = el('div', 'ws-home');

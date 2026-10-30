@@ -13,7 +13,7 @@ description: Step B9 of plans/bootstrap-6-panel.md: own panel widgets swapped fo
 - B9g Stepper: done (#2206); how it works is in `ui/step-rail.md`.
 - B9h `.hover-lift` with tokens at today's 1-2 px, done: `.mpp-pick`, explorer `.item-card`, `.esi-tile` (#2217), dashboard `.pg-brief-ws-item` and `.pg-next` (#2237).
 - B9i Strength on the installer meter (`.pg-strength`): with `STRONG_PASSWORD` on, the B5 port of `validate_password_strength()` scores; off (the column default, so always at install) the default scoring only advises. Messages from `lang()`.
-- B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Slice U2 of `workspace-friendly-ui.md`.
+- B9j Avatar (57 sites), text initials in theme colours: `ws_people()`, chat and widget sources return initials and a tone index (8 `theme-*`); presence dot; no `src=""`. `pg_initials_avatar_url()` stays for e-mail, PDF, print. `.avatar-stack` is row-reverse. Moved here from the finished friendly Workspace plan (its slice U2).
 
 ## What did research add (B9k, not owner decisions)?
 - Slice 1 done (#2273): `.ws-cb-progress-bar` to `.progress`, `.pg-chip` to `.chip`, the workspace toast to Toast (`ui/bootstrap-6-own-widget-swaps.md`).
