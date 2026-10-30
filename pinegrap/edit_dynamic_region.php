@@ -30,6 +30,9 @@ if (($id < 1) || ((int) db_value("SELECT COUNT(*) FROM dregion WHERE dregion_id 
     output_error(lang('Record not found.') . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.', 404);
 }
 
+include_once('liveform.class.php');
+$liveform = new liveform('edit_dynamic_region');
+
 if (!isset($_POST['name'])) {
     $query = "SELECT dregion_name, dregion_code "
             ."FROM dregion "
@@ -38,6 +41,15 @@ if (!isset($_POST['name'])) {
     $row = mysqli_fetch_array($result);
     $dregion_name = $row['dregion_name'];
     $dregion_code = $row['dregion_code'];
+
+    // The stored values, or the posted ones after a refused name.
+    $form_name = $dregion_name;
+    $form_code = $dregion_code;
+    $name_taken = $liveform->check_field_error('name');
+
+    if ($liveform->field_in_session('name')) {
+        list($form_name, $form_code) = pg_dynamic_region_form_values(array('name' => $liveform->get_field_value('name'), 'code' => $liveform->get_field_value('code')));
+    }
 
     print 
     pg_page_shell([
@@ -55,6 +67,7 @@ if (!isset($_POST['name'])) {
 <main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
+                ' . $liveform->output_errors() . '
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
                         
@@ -64,7 +77,7 @@ if (!isset($_POST['name'])) {
                 <form action="edit_dynamic_region.php" method="post">
                     ' . get_token_field() . '
                     <input type="hidden" name="id" value="' . h($_GET['id']) . '" />
-                    ' . pg_dynamic_region_form_card($dregion_name, $dregion_code) . '
+                    ' . pg_dynamic_region_form_card($form_name, $form_code, $name_taken) . '
                     <nav class="buttons navigation text-center position-sticky mb-7" style="bottom:.5rem;" aria-label="' . h(lang('data edit buttons')) . '">
                         <div class="container">
                             <div class=" btn-group flex-wrap justify-content-center">
@@ -79,10 +92,10 @@ if (!isset($_POST['name'])) {
     
 </main>' .
     output_footer();
+
+    $liveform->remove_form();
 } else {
     validate_token_field();
-    
-    include_once('liveform.class.php');
     
     // if region was selected for delete
     if (($_POST['submit_delete'] ?? '') == 'Delete') {
@@ -93,6 +106,16 @@ if (!isset($_POST['name'])) {
         $notice = lang(array('string'=>'{var:1} was deleted successfully','vars'=>lang('Dynamic Region') ));
     } else {
         list($name, $code) = pg_dynamic_region_form_values($_POST);
+
+        // A rename onto a name another region already has is refused: the
+        // site reads only one row per name. The screen comes back with the
+        // posted values.
+        if (pg_dregion_name_taken($name, $id)) {
+            $liveform->add_fields_to_session(array('trim' => false));
+            $liveform->mark_error('name', lang('The name that you entered is already in use, so please enter a different name.'));
+            header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/edit_dynamic_region.php?id=' . $id);
+            exit();
+        }
         // update region
         $query = "UPDATE dregion "
                 ."SET dregion_name = ?, "
