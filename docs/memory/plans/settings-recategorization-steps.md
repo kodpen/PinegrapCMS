@@ -15,7 +15,7 @@ description: Steps R1-R9 of plans/settings-recategorization.md: what each moves,
 
 - R3 (M) Renames and the security moves. The labels become Accounts and sign-in and Firewall and HTTPS; the keys `security` and `firewall` stay, so links keep working (new labels through `tools/tr_add.php`). The encryption key block moves from Payment Methods to its own card, and the MFA hint (`security.php` 200) points there. Trusted Proxies moves out from under Enable Firewall. Blocked Email Addresses moves from IP Lists to Spam Protection.
 
-- R4 (M) General › Organization. One card for the organization's name, address, logo, support e-mail and tax number and office; each field keeps its column, and each save file reads the posts it saved before. Settle the two "Support E-mail Address" fields first (open question). ERP Settings' pointer card goes.
+- R4 (M) General › Organization. One card for the organization's name, address, logo, support e-mail and tax number and office; each field keeps its column, and each save file reads the posts it saved before. The two "Support E-mail Address" fields: decided #3799, Organization takes the site's; the Affiliate Program card's field is relabelled "Affiliate Program E-mail Address" (`tr_add.php`), no column or reader change. ERP Settings' pointer card goes.
 
 - R5 (S) Visitors and privacy. Visitor Tracking and Cookie Consent come from SEO, Legal Documents from Ecommerce.
 
