@@ -211,3 +211,44 @@ function test_workspace_wtable_import_note_rows()
 	pg_assert_same(array('Cup', '6'), $rows[1], 'a formula as its value');
 	pg_assert_same(array('Can', ''), $rows[2], 'a formula error is empty');
 }
+
+function test_workspace_wtable_import_note_choices_from()
+{
+	// Rows as ws_notes_list() gives them: an excerpt, no body.
+	$notes = array(
+		array('id' => 7, 'title' => 'Fruit', 'name' => 'Fruit', 'excerpt' => 'Ürün Adet Fiyat', 'access' => 'owner'),
+		array('id' => 8, 'title' => 'Plain', 'name' => 'Plain', 'excerpt' => 'No table here', 'access' => 'owner'),
+		array('id' => 9, 'title' => 'Shared', 'name' => 'Shared', 'excerpt' => '…', 'access' => 'view'),
+	);
+	$bodies = array(
+		7 => "| Ürün | Adet | Fiyat |\n|---|---|---|\n| Elma | 3 | 12,50 |\n| Armut | 1 | 20 |",
+		8 => 'a | b without a row of dashes',
+	);
+
+	$choices = ws_wtable_import_note_choices_from($notes, $bodies);
+
+	pg_assert_same(array(array('note' => 7, 'block' => 0, 'label' => 'Fruit — Ürün, Adet, Fiyat')), $choices, 'a table from the body; a note without one or without a body is left out');
+	pg_assert_same(array(), ws_wtable_import_note_choices_from($notes, array()), 'the excerpt is never read');
+}
+
+function test_workspace_wtable_import_temp_name()
+{
+	pg_assert_true(ws_wtable_import_temp_name('/tmp/pg_wtimport_Ab12Cd'), 'the whole prefix');
+	pg_assert_true(ws_wtable_import_temp_name('C:\\Windows\\Temp\\pg_1A2B.tmp'), 'Windows: three prefix characters, backslashes');
+	pg_assert_true(ws_wtable_import_temp_name('C:\\Windows\\Temp\\pg_F.TMP'));
+	pg_assert_true(!ws_wtable_import_temp_name('C:\\Windows\\Temp\\other.tmp'), 'another file');
+	pg_assert_true(!ws_wtable_import_temp_name('C:\\pg_wtimport_x\\secret.txt'), 'the prefix in a folder name only');
+	pg_assert_true(!ws_wtable_import_temp_name('/tmp/pg_session.json'));
+	pg_assert_true(!ws_wtable_import_temp_name(''));
+}
+
+function test_workspace_wtable_import_kept_path()
+{
+	$path = tempnam(sys_get_temp_dir(), 'pg_wtimport_');
+	$real = realpath($path);
+
+	pg_assert_same($real, ws_wtable_import_kept_path($path), 'a file tempnam() wrote in the temp folder');
+	pg_assert_same('', ws_wtable_import_kept_path(__FILE__), 'a file elsewhere');
+	@unlink($path);
+	pg_assert_same('', ws_wtable_import_kept_path($path), 'a file no longer there');
+}

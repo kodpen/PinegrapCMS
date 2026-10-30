@@ -682,8 +682,9 @@ function ws_wtable_import_note_rows($table, $names = array(), $scope = array())
 /**
  * The notes a person may read whose text holds a table, each table one
  * choice: own notes and notes shared with them by name, as the notes list
- * reads them. A note longer than the list's cut is read whole (up to 50 of
- * them), so a table further down is offered too.
+ * reads them. The list carries only an excerpt, so the whole text of the
+ * listed notes holding a '|' is read in one query, the first 50 of them in
+ * the list's order.
  *
  * @param array $viewer
  * @return array list of note (id), block (index), label
@@ -696,26 +697,41 @@ function ws_wtable_import_note_choices($viewer)
 
     $list = ws_notes_list($viewer);
     $notes = array_merge((array) $list['mine'], (array) $list['shared']);
-    $long = array();
+    $ids = array();
 
     foreach ($notes as $note) {
-        if ((mb_strlen((string) $note['body']) >= WS_NOTE_LIST_BODY) && (strpos((string) $note['body'], '|') !== false) && (count($long) < 50)) {
-            $long[] = (int) $note['id'];
+        $ids[] = (int) $note['id'];
+    }
+
+    $bodies = array();
+
+    if (!empty($ids)) {
+        $in = implode(',', $ids);
+
+        foreach ((array) db_items("SELECT id, body FROM ws_notes WHERE id IN (" . $in . ") AND body LIKE '%|%'
+            ORDER BY FIELD(id, " . $in . ") LIMIT 50") as $row) {
+            $bodies[(int) $row['id']] = (string) $row['body'];
         }
     }
 
-    $whole = array();
+    return ws_wtable_import_note_choices_from($notes, $bodies);
+}
 
-    if (!empty($long)) {
-        foreach ((array) db_items("SELECT id, body FROM ws_notes WHERE id IN (" . implode(',', $long) . ")") as $row) {
-            $whole[(int) $row['id']] = (string) $row['body'];
-        }
-    }
-
+/**
+ * The choices of ws_wtable_import_note_choices() from the listed notes
+ * (rows of ws_notes_list(): id, title) and their whole texts by note id; a
+ * note without a text there is not offered.
+ *
+ * @param array $notes
+ * @param array $bodies note id => text
+ * @return array list of note (id), block (index), label
+ */
+function ws_wtable_import_note_choices_from($notes, $bodies)
+{
     $choices = array();
 
     foreach ($notes as $note) {
-        $body = $whole[(int) $note['id']] ?? (string) $note['body'];
+        $body = (string) ($bodies[(int) $note['id']] ?? '');
 
         if (strpos($body, '|') === false) {
             continue;
@@ -962,10 +978,11 @@ function ws_wtable_import_keep($read, $file_name, $table_id, $note = false)
 function ws_wtable_import_kept()
 {
     $kept = $_SESSION['software']['ws_wtable_import'] ?? null;
-    $path = is_array($kept) ? (string) ($kept['path'] ?? '') : '';
 
     // Only a file this code wrote is read back.
-    if (($path === '') || (strpos(pg_basename($path), 'pg_wtimport_') !== 0) || (realpath(dirname($path)) !== realpath(sys_get_temp_dir())) || !is_file($path)) {
+    $path = ws_wtable_import_kept_path(is_array($kept) ? (string) ($kept['path'] ?? '') : '');
+
+    if ($path === '') {
         return null;
     }
 
@@ -989,11 +1006,51 @@ function ws_wtable_import_kept()
 function ws_wtable_import_drop()
 {
     $kept = $_SESSION['software']['ws_wtable_import'] ?? null;
-    $path = is_array($kept) ? (string) ($kept['path'] ?? '') : '';
+    $path = ws_wtable_import_kept_path(is_array($kept) ? (string) ($kept['path'] ?? '') : '');
 
-    if (($path !== '') && (strpos(pg_basename($path), 'pg_wtimport_') === 0) && is_file($path)) {
+    if ($path !== '') {
         @unlink($path);
     }
 
     unset($_SESSION['software']['ws_wtable_import']);
+}
+
+/**
+ * The kept file's real path when it is a file ws_wtable_import_keep()
+ * wrote: a file right inside the system's temp folder with a name
+ * tempnam() gives our prefix. Else ''.
+ *
+ * @param string $path as kept in the session
+ * @return string
+ */
+function ws_wtable_import_kept_path($path)
+{
+    if (($path === '') || !ws_wtable_import_temp_name($path)) {
+        return '';
+    }
+
+    $real = realpath($path);
+    $temp = realpath(sys_get_temp_dir());
+
+    if (($real === false) || ($temp === false) || (dirname($real) !== $temp) || !is_file($real)) {
+        return '';
+    }
+
+    return $real;
+}
+
+/**
+ * Whether a path's file name is one tempnam() makes from the prefix
+ * 'pg_wtimport_': the whole prefix on most systems; on Windows only its
+ * first three characters, then up to four hex digits and .tmp
+ * (C:\Windows\Temp\pg_1A2B.tmp). Backslashes count as separators.
+ *
+ * @param string $path
+ * @return bool
+ */
+function ws_wtable_import_temp_name($path)
+{
+    $name = pg_basename(str_replace('\\', '/', (string) $path));
+
+    return (strpos($name, 'pg_wtimport_') === 0) || (preg_match('/^pg_[0-9a-f]{1,4}\.tmp$/i', $name) === 1);
 }
