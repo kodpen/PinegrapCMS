@@ -1,6 +1,6 @@
 ---
 name: order-filter-names
-description: Orders list Advanced Filters (view_orders.php): filter_ ids named by their labels, the Date Type select name, no address autofill, phone and e-mail keyboards
+description: Advanced Filters panel: printed after the toolbar on every list; on Orders, filter_ ids named by labels, Date Type name, no address autofill, phone and e-mail keyboards
 ---
 
 ## Why did the filter labels name nothing?
@@ -15,6 +15,9 @@ description: Orders list Advanced Filters (view_orders.php): filter_ ids named b
 
 ## Which keyboards?
 - Phone and fax: `inputmode="tel"`; e-mail: `inputmode="email"`. They stay `type="text"` so a partial value still filters.
+
+## Where is the panel printed?
+- After the toolbar (`#button_bar`) and before the stats and the list, on Orders, Contacts, Submitted Forms, Commissions and Site Log (Commissions and Site Log: after the row holding the toolbar and the toggle). It was first in `<main>` (Site Log: before it, via `pg_page_shell()` `pre_main_html`), so with the panel open, Tab reached its X and every filter box before the toggle that opened it, while at 1280 px and wider it is drawn as a sticky right column. Test: `tests/advanced_filters_order_test.php`.
 
 ## What was left?
 - The Start/End date selects (datetime picker plan), the `filter_list` header icon and the list rows.

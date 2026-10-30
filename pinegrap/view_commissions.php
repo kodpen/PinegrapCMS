@@ -193,7 +193,6 @@ pg_page_shell([
         'heading_description' => lang('View all order commissions.'),
     ]) . '
 <main id="content" class="container-fluid">
-    ' . $output_advanced_filters . '
     <div class="row">
         <div class="col-12">
             ' . $liveform->output_errors() . '
@@ -210,6 +209,7 @@ pg_page_shell([
                     </nav>
                 </div>
             </div>
+            ' . $output_advanced_filters . '
             <div class="card my-7">
                 <div class="card-body p-0 position-relative">
                     <table class="chart table-hover table " style="width:100%;display:none" data-pg-list-action="commission_list_rows">

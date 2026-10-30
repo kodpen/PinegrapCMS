@@ -586,7 +586,6 @@ if (!$_POST) {
             'icon'=>'setting',
             'heading'=> lang('Site Log'),
             'heading_description' => lang('Audit all website events and changes by any site visitor or user.'),
-            'pre_main_html' => $output_advanced_filters,
         )
     ) . '
 <main id="content" class="container-fluid">
@@ -621,6 +620,7 @@ if (!$_POST) {
                         </div>
                     </div>
                 </div>
+                ' . $output_advanced_filters . '
                 ' . $output_toolbar . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">

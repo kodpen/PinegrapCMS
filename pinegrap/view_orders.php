@@ -3199,8 +3199,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
             'cancel'=>false
         )
     ) . '
-<main id="content" class="container-fluid">     
-    ' . $output_advanced_filters . '
+<main id="content" class="container-fluid">
             <div class="row">
             <div class="col-12">
                 ' . $liveform->output_errors() . '
@@ -3227,6 +3226,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                     <a class="btn btn-sm btn-text theme-secondary' . $output_advanced_filters_class . '" title="' . $output_advanced_filters_label . '" aria-label="' . $output_advanced_filters_label . '" href="view_orders.php?advanced_filters=' . $output_advanced_filters_value . '"><i class="bi ' . $advanced_filters_icon . '" aria-hidden="true"></i></a>
                     ' . $output_period_navigator . '
                 </nav>
+                ' . $output_advanced_filters . '
                 ' . $output_order_stats . '
                 <div class="card my-7">
                     <div class="card-body p-0 position-relative">
