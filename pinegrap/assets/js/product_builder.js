@@ -696,10 +696,10 @@
 
         }, function (xhr) {
 
-            /* add_file.php answers a request it could not take with a JSON
-               body and a 413, so the reason survives. An expired token or a
-               folder the operator cannot write to still arrives as an HTML
-               error page, which is the fallback sentence. */
+            /* add_file.php answers a request it could not take (a body over
+               post_max_size, an expired token, a folder the operator cannot
+               write to) with a JSON body and a 4xx, so the reason survives.
+               Anything else is the fallback sentence. */
             var payload = xhr && xhr.responseJSON;
 
             if (!payload && xhr && xhr.responseText) {
