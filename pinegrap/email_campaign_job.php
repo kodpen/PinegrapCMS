@@ -21,7 +21,7 @@ require_once(PG_FUNCTIONS_DIR . '/includes/iys/client.php');
 
 // if the e-mail campaign job is not activated, then output error
 if (email_campaign_job_enabled() == false) {
-    $error_message = 'The e-mail campaign job did not run because it is not activated in the config.php file.';
+    $error_message = lang('The e-mail campaign job did not run because it is not activated in the config.php file.');
     log_activity($error_message, 'UNKNOWN');
     print 'Error: ' . $error_message;
     exit();

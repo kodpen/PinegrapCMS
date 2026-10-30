@@ -1,22 +1,22 @@
 ---
 name: site-log-language
-description: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, part 2) and the language loader get_file.php needs first
+description: Plan: the Site Log writers still passing bare English to log_activity() (issue #3332, part 3)
 ---
 
-## Where does part 1 leave it?
-- #3642: `pg_log_actor()` for rows without a user, `pg_log_lang()` for front-end writers, 78 calls in 39 files wrapped (`ui/site-log-paging.md`). `tests/site_log_language_test.php` lists those files; part 2 adds each file it moves over.
+## Where do parts 1 and 2 leave it?
+- #3642: `pg_log_actor()`, `pg_log_lang()`, 39 files. #3661: `get_file.php` (with the `lang()` loader, `core/lang-loader.md`), `includes/panel/software.php`, `includes/fn/update.php`, `add_field.php`, `view_order.php`, the job and shipping messages built in the same file, and `lang('UNKNOWN')` users in `index.php`, `captcha.php`, `passkeys.php`, `api/resources/account.php`. `tests/site_log_language_test.php` lists the files moved over; add each file this part moves.
 
-## Step 2a: get_file.php
-- `get_file.php` (318, 324, 823, 835, 1476, 1496; 835 is "User viewed private file." from the issue). The router dispatches it without `init.php`, so no config and no language constants are loaded: first move the language loading `lang()` depends on out of `includes/fn/core.php` into a shared loader (SOFTWARE_LANGUAGE from ENFORCEMENT / DEFAULT, as `init.php` and `router.php` both set it), call it on that path, then wrap the lines with `pg_log_lang()` (visitor requests).
-
-## Step 2b: files held by open PRs at the time of part 1
-- `includes/panel/software.php` (12 calls: 110, 236, 387, 395, 437, 450, 578, 591, 602, 614, 736, 760) and `includes/fn/update.php` (2724, 2747): held by #3632.
-- `add_field.php` (77): held by #3638.
-- `includes/fn/layouts.php` (136): held by #3141 (draft).
-- `view_order.php` (3216, 3324): another worker was on it.
+## Step 3a: files held by open PRs during part 2
+- `registration_entrance.php` (124, 126) and `includes/fn/auth.php` (3603, 3611, 4388): pass `lang('UNKNOWN')` as the user; pass `'UNKNOWN'` instead. Held by #3660 (SMS consent).
+- `includes/fn/layouts.php` (136): bare literal. Held by draft #3141.
 - Line numbers are from `development` at the time; re-scan before starting.
 
-## Step 2c: what part 1 did not scan
-- `assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php` and `.../advimage/add_file.php` (3 calls each): under a vendored library path, which `check_lang.php` may skip; check before wrapping.
-- About 115 calls pass a variable (`$message`, `$payment_gateway_error_message`, `$line` ...) built elsewhere; whether each is built with `lang()` was not checked.
-- `index.php` and other writers pass `lang('UNKNOWN')` as the user, which stores the translated word; `pg_log_actor()` only knows the literal `UNKNOWN`. Pass `''` or `'UNKNOWN'` instead.
+## Step 3b: messages built in bare English in the writer's own file
+- `submit_order.php`: `$payment_gateway_error_message` (the recurring profile messages, about 10 assignments near 4376-4747, logged at 2112-2950 and 4762) and `$paypal_express_checkout_error_message` (3191-3199, logged at 3203). Visitor requests: `pg_log_lang()`.
+- `includes/payments/callback.php`: `$line` is built in pieces (208-226, 313) on top of the provider's own log line, and 374 rewrites a finished line with `str_replace()` on its English text: change that to building the line from its parts before translating.
+
+## Step 3c: messages built elsewhere (not checked)
+- About 90 calls pass a variable whose text comes from another function or file (`$message`, `$what`, `$line`, `$created`, `$report` ...) in `mailchimp.php`, `edit_pages.php`, `edit_files.php`, `add_file.php`, `retrieve_order.php`, `optimize_image.php`, `includes/workspace/*`, `includes/fn/returns.php`, `includes/fn/mail.php`, `includes/fn/ecommerce.php` and others. Check where each is built; list the bare ones per file.
+
+## What was left as it is?
+- `assets/lib/tiny_mce_3_5_10/plugins/advlink/add_file.php` and `.../advimage/add_file.php`: `tools/check_lang.php` skips `assets/lib`, so a `lang()` key there would never be checked against the shards; they stay bare English.

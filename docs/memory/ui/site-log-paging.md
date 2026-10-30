@@ -21,6 +21,8 @@ module: site_log_list
 ## Which language is a log line written in?
 - The software language, at the time it is written: the description is stored as text, so it is wrapped in `lang()` before `log_activity()` gets it, never passed as bare English (`core/lang-function-syntax.md`: values go in as `{var:N}`).
 - A writer a visitor's request can reach (sign-in, password, cart, checkout, order cancel, photo gallery) uses `pg_log_lang()` with lang()'s array form: on a page drawn in another site language (`FRONTEND_LANGUAGE`) it holds `pg_tr_suspend()` so the line still takes the software language. Panel screens and jobs use `lang()`.
+- `get_file.php` (private file views, access denials, sign-in from the cookie) writes with `pg_log_lang()` since #3661; it loads `lang()` itself (`core/lang-loader.md`).
+- A writer with no user passes the literal `'UNKNOWN'` (or `''`), never `lang('UNKNOWN')`: the translated word is not what `pg_log_actor()` recognises (#3661). `view_waf_log.php` still matches both for older rows.
 - `tests/site_log_language_test.php` lists the writers moved over and fails on a bare literal in them; the rest is `plans/site-log-language.md`.
 
 ## What is left of #2054?

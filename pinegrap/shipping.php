@@ -514,7 +514,7 @@ function get_usps_delivery_date($properties) {
     // If USPS did not return a delivery date for the service, then log and return error.
     if ($delivery_date === '') {
 
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . '). Request: ' . $path . ' Response: ' . $response['body'];
+        $message = lang(array('string' => 'Could not get a delivery date for {var:1}, because USPS did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code ({var:2}). Request: {var:3} Response: {var:4}', 'vars' => array(get_shipping_service_name($service), $zip_code, $path, $response['body'])));
 
         log_activity($message);
 
@@ -560,7 +560,7 @@ function get_fedex_delivery_date($properties) {
     $weight = $properties['weight'];
 
     if (!FEDEX) {
-        $message = 'This website cannot communicate with FedEx to get delivery date, because FedEx is disabled in the site settings.';
+        $message = lang(array('string' => 'This website cannot communicate with FedEx to get delivery date, because FedEx is disabled in the site settings.'));
 
         log_activity($message);
 
@@ -731,7 +731,7 @@ function get_fedex_delivery_date($properties) {
     // made for, then log and return error.
     if (!$service_delivery_date) {
 
-        $message = 'Could not get a delivery date for ' . get_shipping_service_name($service) . ', because FedEx did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code (' . $zip_code . ').';
+        $message = lang(array('string' => 'Could not get a delivery date for {var:1}, because FedEx did not return info for that service, for an unknown reason. This likely means that the carrier does not offer that service for the zip code ({var:2}).', 'vars' => array(get_shipping_service_name($service), $zip_code)));
 
         log_activity($message);
 

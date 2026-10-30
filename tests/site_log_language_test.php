@@ -89,6 +89,7 @@ function site_log_language_bare_calls($path)
 function test_site_log_writers_pass_no_bare_english()
 {
 	$files = array(
+		'add_field.php',
 		'cancel_order.php',
 		'change_password.php',
 		'edit_contact.php',
@@ -98,6 +99,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'email_a_friend.php',
 		'email_campaign_job.php',
 		'forgot_password.php',
+		'get_file.php',
 		'get_photo_gallery.php',
 		'get_set_password.php',
 		'import_design.php',
@@ -106,8 +108,10 @@ function test_site_log_writers_pass_no_bare_english()
 		'includes/fn/ecommerce.php',
 		'includes/fn/google_reviews.php',
 		'includes/fn/order_completion.php',
+		'includes/fn/update.php',
 		'includes/iys/client.php',
 		'includes/panel/commerce.php',
+		'includes/panel/software.php',
 		'membership_entrance.php',
 		'membership_job.php',
 		'my_account_profile.php',
@@ -126,6 +130,7 @@ function test_site_log_writers_pass_no_bare_english()
 		'submit_order.php',
 		'update_order.php',
 		'update_product_group_status.php',
+		'view_order.php',
 		'view_visitor_report.php',
 		'welcome.php',
 	);
@@ -139,4 +144,20 @@ function test_site_log_writers_pass_no_bare_english()
 	file_put_contents($sample, "<?php\nlog_activity('page was saved');\nlog_activity(lang('page was saved'));\n");
 	pg_assert_same(array("2: 'page was saved'"), site_log_language_bare_calls($sample));
 	unlink($sample);
+}
+
+// A writer without a user stores the literal UNKNOWN pg_log_actor() knows,
+// not its translation.
+function test_site_log_writers_store_untranslated_unknown()
+{
+	$files = array(
+		'includes/api/resources/account.php',
+		'includes/fn/captcha.php',
+		'includes/fn/passkeys.php',
+		'index.php',
+	);
+
+	foreach ($files as $file) {
+		pg_assert_false(strpos((string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file), "lang('UNKNOWN')"), $file);
+	}
 }

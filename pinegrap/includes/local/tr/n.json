@@ -1212,6 +1212,7 @@
     "Not ready": "Hazır değil",
     "Not ready for e-documents": "e-Belgeye hazır olmayan",
     "Not registered for E-Invoice": "E-Fatura Mükellefi Değil",
+    "Not replaced: {var:1}": "Değiştirilmedi: {var:1}",
     "Not required (each person may turn it on for their own account)": "Zorunlu değil (herkes kendi hesabında açabilir)",
     "Not run yet": "Henüz çalışmadı",
     "Not said": "Belirtilmemiş",

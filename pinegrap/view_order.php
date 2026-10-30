@@ -3219,7 +3219,7 @@ if (!$_POST) {
 
         db_value("SELECT RELEASE_LOCK('" . e($refund_lock) . "')");
 
-        log_activity('Refunded ' . $refund_amount . ' ' . BASE_CURRENCY_CODE . ' for order #' . $order_id . '.');
+        log_activity(lang(array('string' => 'Refunded {var:1} {var:2} for order #{var:3}.', 'vars' => array($refund_amount, BASE_CURRENCY_CODE, $order_id))));
 
         // The full amount back cancels the order through the store's one
         // cancellation: the canceller, date and reason are recorded, a waiting
@@ -3327,9 +3327,9 @@ if (!$_POST) {
         // Says "marked", not "refunded": the log is an audit trail and must
         // not claim the software saw money move. log_activity() attaches the
         // signed-in username on its own.
-        log_activity(
-            'Refund marked as processed by operator for order #' . $order_id
-            . ($refund_reference !== '' ? '. Reference: ' . $refund_reference : ''));
+        log_activity(($refund_reference !== '')
+            ? lang(array('string' => 'Refund marked as processed by operator for order #{var:1}. Reference: {var:2}', 'vars' => array($order_id, $refund_reference)))
+            : lang(array('string' => 'Refund marked as processed by operator for order #{var:1}', 'vars' => array($order_id))));
 
         pg_audit_record('update', 'orders', $order_id, $audit_before);
 
