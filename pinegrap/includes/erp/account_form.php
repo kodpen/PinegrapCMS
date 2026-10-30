@@ -73,7 +73,7 @@ function erp_account_form_cards($liveform, $with_opening = false, $currency_lock
         $country_options['—'] = '';
     }
     foreach ((array) db_items("SELECT code, name FROM countries WHERE code <> '' ORDER BY name ASC") as $country_row) {
-        $country_options[(string) $country_row['name']] = strtoupper((string) $country_row['code']);
+        $country_options[h((string) $country_row['name'])] = strtoupper((string) $country_row['code']);
     }
 
     $output = '
