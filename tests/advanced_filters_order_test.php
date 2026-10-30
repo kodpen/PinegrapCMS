@@ -50,4 +50,9 @@ function test_advanced_filters_order_site_log_not_before_main()
 {
 	$source = file_get_contents(PG_FUNCTIONS_DIR . '/view_log.php');
 	pg_assert_same(false, strpos($source, '\'pre_main_html\' => $output_advanced_filters'), 'view_log.php does not pass the panel as pre_main_html');
+
+	// The toggle's form before the panel is also named "form", so document.form
+	// is a collection there and the panel's date selects were not set.
+	pg_assert_same(false, strpos($source, 'document.form.'), 'the panel script does not read document.form');
+	pg_assert_contains('document.getElementById("search_advanced")', $source, 'the panel script finds its form by id');
 }
