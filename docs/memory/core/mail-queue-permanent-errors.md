@@ -8,6 +8,7 @@ description: Mail queue gives a message up on its first attempt when the failure
 - Inside `email()` (`includes/fn/mail.php`) a local `$permanent` is true for that check and while `addAddress()`, `addBCC()`, `setFrom()` and `addReplyTo()` run: PHPMailer throws there only for an address it refuses, and the address is in the stored properties, so a retry fails the same way. A connected account's From rewrite in between is pure.
 - An internationalised address PHPMailer queues and validates later in `send()` is not marked permanent (retried as before).
 - `pg_mail_last_error_permanent()` carries the flag next to `pg_mail_last_error()`, reset by every `email()` call and set last in the `catch`.
+- PHP `mail()` failing with no SMTP server set is permanent too, without the sender notice (`mail-transport-failure.md`).
 - A whitespace-only body was sent before; it now fails with "The message has no content." (PHPMailer refused only a truly empty one, `empty_message`).
 
 ## What does the queue do with it?

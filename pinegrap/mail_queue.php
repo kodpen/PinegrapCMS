@@ -353,6 +353,24 @@ if ($mail_queue_tab === 'sms') {
         ? prepare_form_data_for_output(date('Y-m-d H:i:s', $mail_queue_job_run), 'date and time')
         : lang('Never');
 
+    // The newest message the queue tried: while it failed because PHP mail()
+    // cannot send, nothing goes out until an SMTP server is set up.
+    $mail_queue_transport_warning = '';
+
+    if (pg_mail_transport_warning_shown(db_item(
+        "SELECT status, last_error
+        FROM mail_outbox
+        WHERE (status = 'sent') OR (attempts > 0)
+        ORDER BY id DESC
+        LIMIT 1"))) {
+        $mail_queue_transport_warning = '
+            <div class="alert theme-warning d-flex flex-wrap align-items-center gap-3 mt-5" role="alert">
+                <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                <span>' . h(pg_mail_transport_failure_sentence()) . '</span>
+                <a class="btn btn-sm btn-solid theme-warning ms-auto" href="' . h(PATH . SOFTWARE_DIRECTORY . '/smtp_settings.php') . '">' . h(lang('Open SMTP Settings')) . '</a>
+            </div>';
+    }
+
     $mail_queue_rows = '';
 
     foreach (db_items(
@@ -417,7 +435,7 @@ if ($mail_queue_tab === 'sms') {
                 <div class="pg-toolbar-grow"></div>
                 <div class="small">' . $mail_queue_state . '</div>
             </nav>
-
+' . $mail_queue_transport_warning . '
             <div class="row g-5 my-3">' . $mail_queue_stats . '
             </div>
 

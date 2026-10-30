@@ -1845,6 +1845,9 @@ function email($properties)
     // there is in the stored properties, so sending again fails the same way.
     $permanent = false;
 
+    // Set when PHP mail() refused a fully built message (pg_mail_send_built()).
+    $transport_failed = false;
+
     $mail = new PHPMailer(true);
 
     // Language setting
@@ -1922,8 +1925,11 @@ function email($properties)
             }
             $mail->Port = (defined('CAMPAIGN_SMTP_PORT') && CAMPAIGN_SMTP_PORT !== '') ? CAMPAIGN_SMTP_PORT : 587;
         } elseif (!function_exists('mail')) {
+            // No way to send at all until an SMTP server is set up: the queue
+            // gives the message up instead of trying it again.
             log_activity(lang('Email could not be sent because the PHP mail() function is disabled.'));
             pg_mail_last_error(lang('Email could not be sent because the PHP mail() function is disabled.'));
+            pg_mail_last_error_permanent(true);
             return false;
         }
 
@@ -2099,7 +2105,11 @@ function email($properties)
             return true;
         }
 
-        $sent = $mail->send();
+        $sent = pg_mail_send_built($mail, $transport_failed);
+
+        if (!$sent && $transport_failed) {
+            throw new Exception(pg_mail_transport_failure_sentence());
+        }
 
         if ($sent && !empty($properties['keep_mime'])) {
             pg_mail_last_sent_mime($mail->getSentMIMEMessage());
@@ -2108,7 +2118,10 @@ function email($properties)
         return $sent;
 
     } catch (Exception $e) {
-        $error = ($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage();
+        $outcome = pg_mail_failure_outcome(($mail->ErrorInfo !== '') ? $mail->ErrorInfo : $e->getMessage(), $permanent, $transport_failed);
+
+        $error = $outcome['error'];
+        $permanent = $outcome['permanent'];
 
         $log = lang('The following email could not be delivered.') . "\n\n";
         $log .= lang('Error') . ': ' . $error . "\n\n";
@@ -2133,7 +2146,7 @@ function email($properties)
 
         // 'permanent' asks for the notice only when no later attempt can
         // succeed (the mail queue before its last attempt).
-        if (($notify_sender === 'permanent') ? $permanent : $notify_sender) {
+        if ($outcome['notify'] && (($notify_sender === 'permanent') ? $permanent : $notify_sender)) {
             email([
                 'to' => $from_email_address,
                 'to_name' => $from_name,
@@ -2152,6 +2165,36 @@ function email($properties)
 
         return false;
     }
+}
+
+// Hands a built PHPMailer message over, as PHPMailer's send() does, in its
+// two halves so a failure of the hand-over itself is told apart from one in
+// building the message. $transport_failed is set when the PHP mail()
+// transport (no SMTP server, no connected account) refused a message that
+// was built without fault: the server cannot send e-mail that way, and
+// trying the same message again changes nothing. A failure in building, or
+// of an SMTP server, leaves it false. Exceptions are passed on.
+function pg_mail_send_built($mail, &$transport_failed)
+{
+    $transport_failed = false;
+
+    if (!$mail->preSend()) {
+        return false;
+    }
+
+    try {
+        $sent = $mail->postSend();
+    } catch (\Exception $e) {
+        $transport_failed = ($mail->Mailer === 'mail');
+
+        throw $e;
+    }
+
+    if (!$sent) {
+        $transport_failed = ($mail->Mailer === 'mail');
+    }
+
+    return $sent;
 }
 
 // Whether email() writes a message's body into the failure entry of the
