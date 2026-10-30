@@ -585,6 +585,13 @@ $pg_settings_cards[] = '
                         <div class="form-text">' . ((pg_erp_store_country() === 'TR')
                             ? lang('Read from the account the invoice goes to, or from the contact while the order has no account. A VKN or a TCKN counts; the final consumer number 11111111111 does not. An order without one waits for Issue the Invoice on its screen.')
                             : lang('Read from the account the invoice goes to, or from the contact while the order has no account. An order without one waits for Issue the Invoice on its screen.')) . '</div>
+                    </div>' : '') . ($erp_auto_invoice_marketplace_ready ? '
+                    <div class="col-12">
+                        <div class="form-field">
+                            <div class="switch"><input value="1"' . $erp_auto_invoice_marketplace_checked . ' class="" type="checkbox" id="erp_auto_invoice_marketplace" name="erp_auto_invoice_marketplace" /></div>
+                            <label class="" for="erp_auto_invoice_marketplace">' . lang('Also invoice marketplace orders (Trendyol, n11)') . '</label>
+                        </div>
+                        <div class="form-text">' . lang('A marketplace order is paid when it is imported and shipped when its tracking number arrives; the same moment and filters apply. Leave it off if you invoice them elsewhere. The invoice link is still typed on the Imported orders card.') . '</div>
                     </div>' : '') . '
                     <div class="pg-f-md">
                         <label class="form-label" for="local_sale_prices">' . lang('Prices on the till') . '</label>

@@ -238,11 +238,11 @@ function test_erp_auto_invoice_filter_reasons_in_order()
 // What the two settings read before the step that adds them has run: off.
 function test_erp_auto_invoice_filters_before_the_step()
 {
-	if (defined('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY') || defined('ERP_AUTO_INVOICE_MIN_TOTAL')) {
+	if (defined('ERP_AUTO_INVOICE_TAX_NUMBER_ONLY') || defined('ERP_AUTO_INVOICE_MIN_TOTAL') || defined('ERP_AUTO_INVOICE_MARKETPLACE')) {
 		return;
 	}
 
-	pg_assert_same(array('tax_number_only' => false, 'min_total' => 0), erp_auto_invoice_filters());
+	pg_assert_same(array('tax_number_only' => false, 'min_total' => 0, 'marketplace' => false), erp_auto_invoice_filters());
 }
 
 // The contact card's tax number against the account's, as tax numbers are
@@ -355,4 +355,93 @@ function test_erp_auto_invoice_card_warns_of_a_tax_number_difference()
 	pg_assert_contains('bi-exclamation-triangle-fill', $html);
 	pg_assert_contains('value="invoice"', $html, 'still offered');
 	pg_assert_contains('edit_erp_account.php?id=9', $html);
+}
+
+// With the marketplace switch off (the default) a marketplace order is left
+// to its screen whatever the trigger and the filters say.
+function test_erp_auto_invoice_marketplace_switch_off()
+{
+	$order = erp_auto_invoice_test_order(array('type' => 'marketplace'));
+
+	foreach (array(array(), array('marketplace' => false), array('marketplace' => '0'), array('marketplace' => 0)) as $filters) {
+		pg_assert_same('marketplace', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $filters));
+		pg_assert_same('marketplace', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', $filters));
+	}
+
+	pg_assert_same('off', erp_auto_invoice_decision('off', 'order_paid', $order, '', array('marketplace' => true)), 'the trigger comes first');
+	pg_assert_same('trigger', erp_auto_invoice_decision('order_paid', 'order_shipped', $order, '', array('marketplace' => true)));
+}
+
+// With it on, a marketplace order is weighed like a web order: the trigger,
+// the status, an invoice it has, both filters and the payment.
+function test_erp_auto_invoice_marketplace_switch_on()
+{
+	$on = array('marketplace' => true);
+	$order = erp_auto_invoice_test_order(array('type' => 'marketplace'));
+
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $on), 'paid');
+	pg_assert_same('', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', $on), 'shipped');
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array('marketplace' => '1')), 'as stored');
+	pg_assert_same('status', erp_auto_invoice_decision('order_paid', 'order_paid', array_merge($order, array('status' => 'cancelled')), '', $on));
+	pg_assert_same('invoiced', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, 'issued', $on));
+	pg_assert_same('cancelled_before', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, 'cancelled', $on));
+	pg_assert_same('below_minimum', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array_merge($on, array('min_total' => 12001))));
+	pg_assert_same('', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', array_merge($on, array('min_total' => 12000))));
+	pg_assert_same('no_tax_number', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', array_merge($on, array('tax_number_only' => true)), '11111111111'));
+	pg_assert_same('', erp_auto_invoice_decision('order_shipped', 'order_shipped', $order, '', array_merge($on, array('tax_number_only' => true)), '1234567890'));
+	pg_assert_same('unpaid', erp_auto_invoice_decision('order_paid', 'order_paid', array_merge($order, array('paid_at' => '0')), '', $on));
+	pg_assert_same('tax_number_differs', erp_auto_invoice_decision('order_paid', 'order_paid', $order, '', $on, '', true));
+
+	// The switch is about marketplace orders only.
+	pg_assert_same('counter_sale', erp_auto_invoice_decision('order_paid', 'order_paid', erp_auto_invoice_test_order(array('type' => 'local')), '', $on));
+}
+
+function erp_auto_invoice_test_source($file)
+{
+	return (string) file_get_contents(PG_FUNCTIONS_DIR . '/' . $file);
+}
+
+// A marketplace tracking number that was just recorded is a shipment, as the
+// order screen's is; a paid package written by the import is a payment, run
+// after the response like the checkout's.
+function test_erp_auto_invoice_marketplace_hooks()
+{
+	$orders = erp_auto_invoice_test_source('includes/api/outbound/orders.php');
+
+	$start = strpos($orders, 'function mp_order_apply_tracking(');
+	pg_assert_true($start !== false);
+	$end = strpos($orders, "\nfunction ", $start + 10);
+	$body = substr($orders, $start, $end - $start);
+
+	$call = strpos($body, "pg_erp_auto_invoice((int)\$order_id, 'order_shipped', true);");
+	pg_assert_true($call !== false, 'the tracking invoices a shipped order');
+	pg_assert_true($call > strpos($body, 'pg_shipment_record('), 'after the tracking is written');
+	pg_assert_true($call > strpos($body, "if (!\$recorded['created']) {"), 'once per number');
+
+	$start = strpos($orders, 'function mp_import_claimed(');
+	$end = strpos($orders, "\nfunction ", $start + 10);
+	$body = substr($orders, $start, $end - $start);
+
+	$call = strpos($body, "pg_erp_auto_invoice(\$order_id, 'order_paid', true);");
+	pg_assert_true($call !== false, 'the import invoices a paid order');
+	pg_assert_true($call > strpos($body, 'mp_order_write('), 'after the order is written');
+	pg_assert_true($call > strpos($body, "status = 'imported'"), 'after its map row says imported');
+}
+
+// The switch is written with the trigger's select, 0 or 1, and never when
+// the card did not post the select.
+function test_erp_auto_invoice_marketplace_setting_save()
+{
+	$save = erp_auto_invoice_test_source('includes/settings/commerce.save.php');
+
+	$start = strpos($save, "is_string(post_value('erp_auto_invoice_on'))");
+	pg_assert_true($start !== false);
+	$line = strpos($save, "erp_auto_invoice_marketplace = '\" . ((post_value('erp_auto_invoice_marketplace') == 1) ? 1 : 0) . \"',");
+	pg_assert_true($line !== false, 'written as 0 or 1');
+	pg_assert_true($line > $start, 'only with the select');
+	pg_assert_true($line < strpos($save, '// The walk-in sales account'), 'inside its block');
+	pg_assert_true(strpos($save, "waf_table_has_column('config', 'erp_auto_invoice_marketplace')") !== false, 'not before the step has run');
+
+	$card = erp_auto_invoice_test_source('includes/settings/commerce.php');
+	pg_assert_contains('name="erp_auto_invoice_marketplace"', $card);
 }

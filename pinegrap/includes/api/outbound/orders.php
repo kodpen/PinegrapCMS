@@ -226,6 +226,11 @@ function mp_import_claimed($account, $package, $map_id) {
 	// order.shipped or order.delivered of the same pass.
 	mp_order_announce('marketplace.order.imported', $account, $map_id, (string)$package['remote_status']);
 
+	// The marketplace took the money, so the order is written paid: the
+	// invoice the ERP issues on its own once an order is paid, where the store
+	// invoices marketplace orders too. After the response, as at checkout.
+	pg_erp_auto_invoice($order_id, 'order_paid', true);
+
 	// A package can also arrive already shipped or delivered, with its tracking
 	// number. The feed is not guaranteed to hand it back, so what a known
 	// package would get on its next poll it gets now.
@@ -426,6 +431,12 @@ function mp_order_apply_tracking($order_id, $package, $account = null) {
 			WHERE (id = '" . e($ship_to_id) . "') AND (shipping_method_code = '')");
 
 	}
+
+	// A new number is the order shipped, as on the order screen: the invoice
+	// the ERP issues on its own once an order is shipped, where the store
+	// invoices marketplace orders too (erp_auto_invoice_decision()). After
+	// the response, so a webhook delivery or a long pull is not held up.
+	pg_erp_auto_invoice((int)$order_id, 'order_shipped', true);
 
 }
 

@@ -39,6 +39,7 @@ ERP (accounting) module: invoices, payments, waybills, cash, e-documents, report
 - erp-api-events-and-testing.md: The ERP event door erp_event() (webhook queue, audit trail, alerts), where writers announce, what a new event needs, and how to test the ERP API on dev without creating keys.
 - erp-api-seam.md: ERP's only door into the external API, includes/erp/api.php: five hooks, load chain, name clashes, schema pairs, paging, scope groups, owner ceiling, error codes, drafts, wire rules.
 - erp-audit-trail.md: ERP audit trail (erp_audit_log, 4.90): its two writers (events and ERP log lines), the calling-file rule, why it is never deleted, what a line carries, who may read it.
+- erp-auto-invoice-marketplace.md: Marketplace orders (Trendyol, n11) in the automatic invoice: config.erp_auto_invoice_marketplace (11.0.62, default off), where import and tracking fire it, what stays manual (#3670)
 - erp-auto-invoice.md: An order's invoice issued on its own once it is paid or shipped (config.erp_auto_invoice_on): setting, two filters, triggers, decision, writer, invoicing lock, after-response run, refusal notice
 - erp-awaiting-transfer-orders.md: Awaiting-payment (bank transfer) orders: derived state predicate, pg_order_mark_paid, ERP settlement hook, auto-cancel sweep in job.php, cancel-reason display.
 - erp-back-targets.md: ERP detail screens go back to the filtered list they were opened from through send_to (row link, drawer Open in full, reloads, forms); which screens, which are left

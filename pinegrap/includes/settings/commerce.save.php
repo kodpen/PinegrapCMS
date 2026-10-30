@@ -445,6 +445,12 @@ function pg_parasut_credentials_for_save()
             erp_auto_invoice_tax_number_only = '" . ((post_value('erp_auto_invoice_tax_number_only') == 1) ? 1 : 0) . "',
             erp_auto_invoice_min_total = '" . (min(10000000, max(0, (int) post_value('erp_auto_invoice_min_total'))) * 100) . "',";
         }
+
+        // Marketplace orders too (11.0.62), drawn with the select as well.
+        if (waf_table_has_column('config', 'erp_auto_invoice_marketplace')) {
+            $sql_erp_due .= "
+            erp_auto_invoice_marketplace = '" . ((post_value('erp_auto_invoice_marketplace') == 1) ? 1 : 0) . "',";
+        }
     }
 
     // The walk-in sales account (4.59): an account that exists, or none.
