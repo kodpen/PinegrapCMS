@@ -86,6 +86,7 @@ description: Generated from the module field of the memory files: each includes/
 - `subscriptions`: [[subscriptions]], [[subscriptions-iyzico]], [[subscriptions-later-start]], [[subscriptions-stripe]]
 - `subscriptions_account`: [[subscriptions-account]]
 - `subscriptions_operator`: [[subscriptions-operator-screen]]
+- `text_search`: [[capital-i-search-term]]
 - `translate`: [[error-screen-language-and-status]]
 - `user_list`: [[server-paged-lists]], [[user-screens-names-and-dates]]
 - `vendor_api`: [[vendor-api-client]]

@@ -176,7 +176,7 @@ $where = "";
 
 // If there is a search query and it is not blank, then prepare filter.
 if ((isset($_SESSION['software']['editor_select_image']['query']) == true) && (($_SESSION['software']['editor_select_image']['query'] ?? '') != '')) {
-    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(mb_strtolower(($_SESSION['software']['editor_select_image']['query'] ?? '')))) . "%')";
+    $where .= "AND (LOWER(CONCAT_WS(',', files.name, folder.folder_name, user.user_username)) LIKE '%" . escape(escape_like(pg_search_lower($_SESSION['software']['editor_select_image']['query'] ?? ''))) . "%')";
 }
 
 // Get all images.
