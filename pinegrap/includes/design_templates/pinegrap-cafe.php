@@ -819,6 +819,9 @@ $input = function ($id, $type, $name, $autocomplete = '', $required = true, $cf 
     if ($cf) $props['_cf'] = $cf;
     return $el('input', 'form-control', lang('Field'), array(), $props);
 };
+// The rule of a date a visitor picks for a booking or an event: not before
+// today on the site (form_fields.rules, checked by custom_form.php).
+$not_before_today = array('rules' => array('min_date' => 'today'));
 $textarea = function ($id, $name, $rows, $required = true, $placeholder = '') use ($el, $attr) {
     $attrs = array($attr('name', $name), $attr('rows', (string)$rows));
     if ($required) $attrs[] = $attr('required', '');
@@ -3199,7 +3202,7 @@ $widgets = array(
             $row(array(
                 $col(array($field('cf-res-cafe', lang('Café'), $select('cf-res-cafe', 'cafe', lang('Choose a café…'), $cafe_names))), '6'),
                 $col(array($field('cf-res-guests', lang('Guests'), $select('cf-res-guests', 'guests', '', $party_sizes, true, '2'))), '6'),
-                $col(array($field('cf-res-date', lang('Date'), $input('cf-res-date', 'date', 'reservation_date', 'off'))), '6'),
+                $col(array($field('cf-res-date', lang('Date'), $input('cf-res-date', 'date', 'reservation_date', 'off', true, $not_before_today))), '6'),
                 $col(array($field('cf-res-time', lang('Arrival time'), $select('cf-res-time', 'reservation_time', lang('Choose a time…'), $table_times))), '6'),
             ), '3'),
             $choices('cf-res-seating', 'seating', lang('Where would you like to sit?'), array(lang('No preference'), lang('Indoors'), lang('Terrace')), array(lang('No preference'))),
@@ -3337,11 +3340,12 @@ $widgets = array(
                 $col(array($field('cf-quote-guests', lang('Number of guests'), $input('cf-quote-guests', 'number', 'guests', 'off', true,
                     array('validation_message' => lang('Enter the number of guests as a whole number from 1.')),
                     array('min' => '1', 'step' => '1', 'pattern' => '[1-9][0-9]{0,3}')))), '6'),
-                $col(array($field('cf-quote-date', lang('Date'), $input('cf-quote-date', 'date', 'event_date', 'off'))), '6'),
+                $col(array($field('cf-quote-date', lang('Date'), $input('cf-quote-date', 'date', 'event_date', 'off', true, $not_before_today))), '6'),
                 $col(array($field('cf-quote-time', lang('Serving time'), $input('cf-quote-time', 'text', 'serving_time', 'off', false, array(), array('placeholder' => '09:00')))), '6'),
             ), '3'),
             $choices('cf-quote-delivery', 'delivery', lang('Delivery'), array(lang('Delivered to us'), lang('We collect it from a café')), array(lang('Delivered to us'))),
-            $field('cf-quote-address', lang('Delivery address'), $input('cf-quote-address', 'text', 'address', 'street-address', false)),
+            $field('cf-quote-address', lang('Delivery address'), $input('cf-quote-address', 'text', 'address', 'street-address', false,
+                array('rules' => array('required_when' => array('field' => 'delivery', 'answers' => array(lang('Delivered to us'))))))),
             $form_step(2, lang('Your company')),
             $field('cf-quote-company', lang('Company'), $input('cf-quote-company', 'text', 'company', 'organization', true, array('contact_field' => 'company'))),
             $person_fields('cf-quote'),
