@@ -37,6 +37,7 @@ function test_folder_tour_texts_no_position_or_shape_words()
 
 	foreach (array(
 		'panel of the menu on the left',
+		'the button beside it',
 		'The sliders beside it',
 		'The two buttons on the right',
 		'says along the top',
@@ -57,7 +58,7 @@ function test_folder_tour_texts_name_the_controls()
 		'File Manager panel of the main menu',
 		'Catalog Manager panel of the main menu',
 		'Search, this box,',
-		'Filters, the button beside it,',
+		'The Filters button narrows',
 		'Clear filters',
 		'Grid view and List view',
 		'the status bar under the listing',

@@ -844,7 +844,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('Search, this box, narrows what is on screen as you type, over the name and the short description both. Filters, the button beside it, narrows by what things are instead: out of stock, not published, no picture, no price. Grid view and List view switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type, over the name and the short description both. The Filters button narrows by what things are instead: out of stock, not published, no picture, no price. Grid view and List view switch between the grid and the list, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'all_row',
             'title' => lang('The whole store at once'),
@@ -881,7 +881,7 @@ $explorer_tour = ($explorer_area == 'catalog')
         array(
             'at' => 'search',
             'title' => lang('Search and view'),
-            'text' => lang('Search, this box, narrows what is on screen as you type. Filters, the button beside it, narrows by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and while one is on, a line above the listing says how many are on and what is shown, with Clear filters to bring everything back. Grid view and List view switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
+            'text' => lang('Search, this box, narrows what is on screen as you type. The Filters button narrows by what things are instead -- pictures nobody has optimised, files with no description, pages missing from the sitemap -- and while one is on, a line above the listing says how many are on and what is shown, with Clear filters to bring everything back. Grid view and List view switch between the grid and the list; the list sorts by name, size and date when you click a column heading, and the grid draws its tiles in four sizes (right-click, View, or hold Ctrl and turn the wheel).')),
         array(
             'at' => 'menu',
             'title' => lang('Right-click an item'),
