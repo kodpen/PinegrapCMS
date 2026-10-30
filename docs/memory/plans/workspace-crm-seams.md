@@ -12,7 +12,7 @@ description: Plan (2026-10-23; 1-9 done, PRs #1621 to #3135; answers 2-4 given):
 - `merge_contacts()` (includes/fn/contacts.php) moves only groups, `opt_in`; other links keep the old id. No pipeline, custom fields, activity; `lead_source` is text.
 
 ## Slices
-Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right, row rule.
+A PR each, no schema unless marked; [n] needs slice n. Reads: routes, MCP tools; rows need their record's scope, right, row rule.
 1. PR #1621: record-kind registry `ws_record_kinds()` (refs.php; workspace/workspace-record-kind-registry.md): per kind prefixes, right, scope, change kind, audit table, drawer, customer; drift test, lists stay.
 2. PR #1622 (workspace/workspace-customer-summary.md): `ws_customer_identity()`, `ws_customer_summary()`, `GET /workspace/channels/{id}/customer`; cart quotes a seam until plans/workspace-quotes.md slice 5; its MCP resource: MCP plan.
 3. PR #1666 (workspace/workspace-customer-card.md): a customer card on the channel's Summary tab, the summary through `ws_channel_customer`.
@@ -22,11 +22,11 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 7. PR #2591 (#2421; core/contact-holders.md): merge re-points by `pg_contact_holders()`, tested against erasure; ERP refused if more than one, `consent_log` kept.
 8. Contacts in the audit trail: panel, API, Workspace, erasure PR #2170; sync, import, İYS #2246; storefront, merge #2620; membership and recurring jobs, checkout tax fill #2643; designed forms (`custom_form.php`) #2768. Done.
 9. Done PR #3135 (decided #3138, `workflow/decisions-made-schema-4.md`; workspace/workspace-ref-sources.md): `ws_refs.source_type` to VARCHAR(20) (11.0.116), sources `note` and `wtable_row` with `channel_id` 0 behind `ws_ref_sources_ready()`; drawer, badge, `GET /workspace/refs` and the history check `ws_note_access()` / `ws_wtable_access()` per source; older notes and rows by the general job's budgeted backfill, cursor in `config_text`.
-10. Decided #3416: 3 done #3427 (`lead_source` from `referral_sources`, core/contact-lead-source.md; API param next); 1 visit link (`ws_events.contact_id`) and 2 no-order start follow. Custom fields, pipelines stay question 1 [9].
+10. Decided #3416 (`workflow/decisions-made-schema-5.md`, `-workspace-4.md`): 3 done #3427 (`lead_source` from `referral_sources`, core/contact-lead-source.md; API param next); 1 `ws_events.contact_id` (a visit tied to a customer) and 2 a Flows start "no order in N days" follow; custom fields and pipelines stay question 1 [9].
 
 ## Open questions (recommendation)
 1. CRM shape: (a) on the Workspace: pipelines as workflow tables with status, contact columns, (b) own module, (c) seams only now → c, leaning a; the customer stays the contact.
-2. Merge (7): answered (#2421), (a): re-point every `contact_id` holder by one list shared with erasure, the ERP account refused when both have one, `consent_log` kept (proof).
+2. Merge (7): answered (#2421), (a), as slice 7 says.
 3. History (4): (a) union read, (b) activity table → a.
 
 ## Which are answered?
@@ -34,4 +34,4 @@ Not approved; a PR each, no schema unless marked; [n] needs slice n. Reads: rout
 - 4. Summary route (2): per channel (a), as built.
 
 ## Where to start?
-- 7, 8, 9 done; 10 ask first.
+- 10: the `lead_source` API param (needs `includes/api/schema.php`), `ws_events.contact_id` (next free Workspace label), then the Flows start after the queued Flows work.
