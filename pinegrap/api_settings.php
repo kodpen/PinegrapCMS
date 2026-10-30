@@ -2344,12 +2344,14 @@ echo '
 	var filterStatus = document.getElementById("api_filter_status");
 	var filterEmpty = document.getElementById("api_filter_empty");
 	var filterTimer = null;
+	// The panel Turkish fold (pgFoldTR), so "iade" finds "İade".
+	var fold = window.pgFoldTR || function (s) { return String(s).toLowerCase(); };
 	filter.addEventListener("input", function () {
-		var needle = this.value.toLowerCase().trim();
+		var needle = fold(this.value).trim();
 		var rows = document.querySelectorAll(".api-row");
 		var shown = 0;
 		rows.forEach(function (row) {
-			var match = row.textContent.toLowerCase().indexOf(needle) > -1;
+			var match = fold(row.textContent).indexOf(needle) > -1;
 			row.style.display = match ? "" : "none";
 			if (match) { shown++; }
 		});
