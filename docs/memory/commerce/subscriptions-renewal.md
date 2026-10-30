@@ -14,7 +14,7 @@ module: subscription_renewal
 
 ## What does each answer do?
 - `pg_subscription_renewal_outcome()`: paid, pending, confirm (redirect with a link), unclear, failed; `pg_subscription_renewal_plan()` (pure) gives the columns and the event.
-- paid: `next_charge_at` = the first date of the series (first charge, then one period after another) still to come (`pg_subscription_renewal_next_at()`): late runs and paid retries keep it, a long hold skips missed periods. `retry_count` 0, past_due → active. Event `renewed` with `order_id` and amount. A `card_ref` the answer carries that differs from the stored one is sealed again with `card_last4`.
+- paid: `next_charge_at` = the first date of the series (first charge, then one period after another) still to come (`pg_subscription_renewal_next_at()`; a later line's series: `subscriptions-later-start.md`): late runs and paid retries keep it, a long hold skips missed periods. `retry_count` 0, past_due → active. Event `renewed` with `order_id` and amount. A `card_ref` the answer carries that differs from the stored one is sealed again with `card_last4`.
 - failed: `retry_count` + 1, retry 1/3/7 days later (`pg_subscription_retry_at()`), active → past_due; after the third retry fails: `ended`, `next_charge_at` 0. Event `renewal_failed` with the service's words. Unpaid memberships lapse through `membership_job.php`.
 - confirm (Stripe `authentication_required`): past_due, held (`next_charge_at` 0, no ladder charge while the customer may still confirm), event `confirm_needed` with the link (left empty when longer than 255).
 - pending / unclear: held, status unchanged, event `renewal_pending` / `renewal_unclear`.
