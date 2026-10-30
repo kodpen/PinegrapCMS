@@ -303,7 +303,7 @@ if ($open_tool) {
             <hr>
             <h3 class="h6 d-flex align-items-center gap-3">' . h(lang('Answer')) . ($state['result']['is_error'] ? ' <span class="badge theme-danger fw-normal">' . h(lang('Error')) . '</span>' : '') . '</h3>
             ' . (($text !== '')
-                ? '<pre class="small bg-1 border rounded-4 p-3 mb-0" style="max-height: 30rem; overflow: auto; white-space: pre-wrap; word-break: break-word;">' . h($text) . '</pre>'
+                ? '<pre class="small bg-1 border rounded-4 p-3 mb-0" tabindex="0" role="region" aria-label="' . h(lang('Answer')) . '" style="max-height: 30rem; overflow: auto; white-space: pre-wrap; word-break: break-word;">' . h($text) . '</pre>'
                 : '<p class="small fg-secondary mb-0">' . h(lang('(empty)')) . '</p>');
     }
 

@@ -473,6 +473,7 @@ window.pgApiConsole = (function () {
 		send:      ' . json_encode(lang('Send'), JSON_UNESCAPED_UNICODE) . ',
 		sending:   ' . json_encode(lang('Sending…'), JSON_UNESCAPED_UNICODE) . ',
 		empty:     ' . json_encode(lang('(empty)'), JSON_UNESCAPED_UNICODE) . ',
+		response:  ' . json_encode(lang('Response'), JSON_UNESCAPED_UNICODE) . ',
 		noContent: ' . json_encode(lang('(no content)'), JSON_UNESCAPED_UNICODE) . ',
 		ms:        ' . json_encode(lang('ms'), JSON_UNESCAPED_UNICODE) . ',
 		rateLimit: ' . json_encode(lang('Rate limit'), JSON_UNESCAPED_UNICODE) . ',
@@ -557,7 +558,7 @@ window.pgApiConsole = (function () {
 		panel.innerHTML = fieldsFor(endpoint) +
 			"<button type=\'button\' class=\'btn btn-sm btn-solid theme-primary doc-send\'>" + esc(T.send) + "</button>" +
 			"<div class=\'doc-problem fg-danger mt-3 d-none\'></div>" +
-			"<pre class=\'mt-3 d-none\'></pre>";
+			"<pre class=\'mt-3 d-none\' tabindex=\'0\' role=\'region\' aria-label=\'" + esc(T.response) + "\'></pre>";
 		panel.querySelector(".doc-send").addEventListener("click", function () {
 			send(endpoint, panel, this);
 		});
@@ -695,10 +696,43 @@ window.pgApiConsole = (function () {
 
 	}
 
+	// A parameter, event or code table scrolls sideways in its holder on a
+	// narrow screen. While it does, the holder is a named Tab stop so the
+	// arrow keys can scroll it (Safari never focuses a scroller by itself);
+	// when it fits, the stop goes, so Tab does not land on a box with
+	// nothing to scroll. The name is the endpoint and the table heading.
+	function markScrollers(root) {
+		(root || document).querySelectorAll(".doc-params").forEach(function (holder) {
+			if (holder.scrollWidth > holder.clientWidth) {
+				var endpoint = holder.closest(".doc-ep");
+				var path = endpoint ? endpoint.querySelector(".doc-path") : null;
+				var heading = holder.querySelector(".doc-params-h");
+				holder.setAttribute("tabindex", "0");
+				holder.setAttribute("role", "region");
+				holder.setAttribute("aria-label", (path ? path.textContent.trim() + " – " : "") + (heading ? heading.textContent.trim() : ""));
+			} else {
+				holder.removeAttribute("tabindex");
+				holder.removeAttribute("role");
+				holder.removeAttribute("aria-label");
+			}
+		});
+	}
+
+	var resizeBound = false;
+	var resizeTimer = null;
+
 	// Wires every Try button under root (the document when omitted). Safe to
 	// call again after new blocks were inserted: a button is bound once.
 	function init(options, root) {
 		settings = options;
+		markScrollers(root);
+		if (!resizeBound) {
+			resizeBound = true;
+			window.addEventListener("resize", function () {
+				clearTimeout(resizeTimer);
+				resizeTimer = setTimeout(function () { markScrollers(); }, 200);
+			});
+		}
 		(root || document).querySelectorAll(".doc-try-btn").forEach(function (button) {
 			if (button.dataset.bound) { return; }
 			button.dataset.bound = "1";
