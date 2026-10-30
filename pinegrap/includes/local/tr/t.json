@@ -2686,7 +2686,7 @@
     "The order is billed to this account, not to the contact's own, so a different number may be right.": "Sipariş kişinin kendi carisine değil bu cariye kesiliyor; numaranın farklı olması doğru olabilir.",
     "The order is cancelled": "Sipariş iptal edildi",
     "The order is complete. You may only delete incomplete orders.": "Sipariş tamamlanmış. Yalnızca tamamlanmamış siparişleri silebilirsiniz.",
-    "The order is complete. You may only retrieve incomplete orders.": "Sipariş tamamlanmış. Yalnızca tamamlanmamış siparişleri kurtarabilirsiniz.",
+    "The order is complete. You may only retrieve incomplete orders.": "Sipariş tamamlanmış. Yalnızca tamamlanmamış siparişleri geri çağırabilirsiniz.",
     "The order is discounted once the cart passes an amount.": "Sepet bir tutarı geçince siparişten indirim yapılır.",
     "The order is incomplete. You may only reorder complete orders.": "Sipariş tamamlanmamış. Yalnızca tamamlanmış siparişleri yineleyebilirsiniz.",
     "The order is shipped": "Sipariş kargoyla gönderiliyor",
