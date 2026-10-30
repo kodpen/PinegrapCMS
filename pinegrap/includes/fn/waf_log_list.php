@@ -163,7 +163,9 @@ function pg_waf_log_list_sort()
     $sort_keys = array(
         'time'   => 'last_seen',
         'hits'   => 'hit_count',
-        'action' => 'action',
+        'action' => pg_list_label_order('action', array_map(function ($badge) {
+            return $badge[1];
+        }, pg_waf_log_list_actions())),
         'ip'     => 'ip_address',
         'rule'   => 'rule_id',
         'score'  => 'score',

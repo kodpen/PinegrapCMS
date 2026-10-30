@@ -311,7 +311,7 @@ function pg_product_list_sort_sql()
         'compare_at_price'      => 'products.compare_at_price',
         'taxable'               => 'products.taxable',
         'product_form'          => 'products.form_name',
-        'selection_type'        => 'products.selection_type',
+        'selection_type'        => pg_list_label_order('products.selection_type', pg_product_list_selection_types()),
         'default_quantity'      => 'products.default_quantity',
         'shippable'             => 'products.shippable',
         'weight'                => 'products.weight',

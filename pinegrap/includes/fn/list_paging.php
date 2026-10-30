@@ -194,6 +194,96 @@ function pg_list_search_where($terms, $columns, $labels = array())
 }
 
 /**
+ * A sort expression that orders a column of stored codes by the labels the
+ * list shows for them (a page type code shown as "Shopping Cart"), in the
+ * order of the current language (pg_geo_label_compare()). The answer is
+ * FIELD($expr, 'code', ...) with the codes in label order, for a sort map
+ * that pg_list_order_by() adds asc or desc to; a code outside the list
+ * sorts before every listed one. Only codes made of letters, digits,
+ * spaces, '_' and '-' are written into the query; the others are left out.
+ *
+ * @param string $expr   SQL expression of the stored code; written into the
+ *                       query as it is, so never from a request
+ * @param array  $labels stored code => shown label
+ * @return string
+ */
+function pg_list_label_order($expr, array $labels)
+{
+    $codes = array();
+
+    foreach ($labels as $code => $label) {
+        $code = (string) $code;
+
+        if (preg_match('/^[A-Za-z0-9 _-]*$/', $code)) {
+            $codes[] = array('code' => $code, 'label' => (string) $label);
+        }
+    }
+
+    if (!$codes) {
+        return (string) $expr;
+    }
+
+    $quoted = array();
+
+    foreach (pg_geo_sort_by_label($codes) as $code) {
+        $quoted[] = "'" . $code['code'] . "'";
+    }
+
+    return 'FIELD(' . $expr . ', ' . implode(', ', $quoted) . ')';
+}
+
+/**
+ * A list read into PHP sorted by its levels the way a database list sorts:
+ * a number key as a number, a key that shows a label for a stored code by
+ * that label, any other text the way the panel language orders it
+ * (pg_geo_label_compare(): case does not matter, "Çanta" comes before "D").
+ * Items that tie on every level keep the order of their first key's text.
+ *
+ * @param array $items   list of arrays
+ * @param array $levels  pg_list_state()'s sorts: array('sort', 'order')
+ * @param array $keys    sort code => the item key it orders by
+ * @param array $numbers item keys compared as numbers (a size, a time)
+ * @param array $labels  item key => array(stored code => shown label)
+ * @return array the items, renumbered
+ */
+function pg_list_sort_items(array $items, array $levels, array $keys, array $numbers = array(), array $labels = array())
+{
+    $first_key = $keys ? reset($keys) : '';
+
+    usort($items, function ($a, $b) use ($levels, $keys, $numbers, $labels, $first_key) {
+        foreach ($levels as $level) {
+            $key = $keys[$level['sort'] ?? ''] ?? null;
+
+            if ($key === null) {
+                continue;
+            }
+
+            $x = $a[$key] ?? '';
+            $y = $b[$key] ?? '';
+
+            if (in_array($key, $numbers, true)) {
+                $result = ((float) $x <=> (float) $y);
+            } else {
+                if (isset($labels[$key])) {
+                    $x = $labels[$key][$x] ?? $x;
+                    $y = $labels[$key][$y] ?? $y;
+                }
+
+                $result = pg_geo_label_compare((string) $x, (string) $y);
+            }
+
+            if ($result !== 0) {
+                return (($level['order'] ?? '') === 'desc') ? -$result : $result;
+            }
+        }
+
+        return pg_geo_label_compare((string) ($a[$first_key] ?? ''), (string) ($b[$first_key] ?? ''));
+    });
+
+    return $items;
+}
+
+/**
  * One cell of a list row.
  *
  * @param string $html       the cell's content, already escaped

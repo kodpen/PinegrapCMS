@@ -718,10 +718,38 @@ function pg_geo_country_label($name, $code = '')
 }
 
 /**
+ * Two labels compared the way the current language orders them: the intl
+ * Collator of the panel language when PHP has it ("Çin" after "Brezilya",
+ * not after "Zimbabve"), else a case-insensitive byte order. Answers below,
+ * at or above 0, like strcmp().
+ *
+ * @param string $x
+ * @param string $y
+ * @return int
+ */
+function pg_geo_label_compare($x, $y)
+{
+    static $collators = array();
+
+    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
+
+    if (!array_key_exists($locale, $collators)) {
+        $collators[$locale] = (class_exists('Collator') && ($locale !== '')) ? new Collator($locale) : null;
+    }
+
+    if ($collators[$locale] !== null) {
+        $result = $collators[$locale]->compare((string) $x, (string) $y);
+
+        return ($result === false) ? 0 : (int) $result;
+    }
+
+    return strcasecmp((string) $x, (string) $y);
+}
+
+/**
  * The rows of a country list in the order of their labels in the current
- * language: the intl Collator of the panel language when PHP has it ("Çin"
- * after "Brezilya", not after "Zimbabve"), else a case-insensitive byte
- * order. $rows is a list of arrays that carry $label_key.
+ * language (pg_geo_label_compare()). $rows is a list of arrays that carry
+ * $label_key.
  *
  * @param array  $rows
  * @param string $label_key
@@ -729,20 +757,11 @@ function pg_geo_country_label($name, $code = '')
  */
 function pg_geo_sort_by_label(array $rows, $label_key = 'label')
 {
-    $locale = function_exists('lang') ? (string) lang(array('info' => '')) : 'en';
-    $collator = (class_exists('Collator') && ($locale !== '')) ? new Collator($locale) : null;
-
-    usort($rows, function ($a, $b) use ($collator, $label_key) {
+    usort($rows, function ($a, $b) use ($label_key) {
         $x = isset($a[$label_key]) ? (string) $a[$label_key] : '';
         $y = isset($b[$label_key]) ? (string) $b[$label_key] : '';
 
-        if ($collator !== null) {
-            $result = $collator->compare($x, $y);
-
-            return ($result === false) ? 0 : (int) $result;
-        }
-
-        return strcasecmp($x, $y);
+        return pg_geo_label_compare($x, $y);
     });
 
     return $rows;

@@ -2794,130 +2794,62 @@ function create_or_update_page_type_record($page_type, $properties)
         $result = mysqli_query(db::$con, $query) or output_error(lang('Query failed.'));
     }
 }
+/**
+ * Every page type, stored code => the name the panel shows for it.
+ *
+ * @return array
+ */
+function get_page_type_names()
+{
+    return array(
+        'standard' => lang('Standard'),
+        'change password' => lang('Change Password'),
+        'set password' => lang('Set Password'),
+        'email a friend' => lang('E-mail a Friend'),
+        'error' => lang('Error'),
+        'folder view' => lang('Folder View'),
+        'forgot password' => lang('Forgot Password'),
+        'login' => lang('Login'),
+        'logout' => lang('Logout'),
+        'photo gallery' => lang('Photo Gallery'),
+        'membership confirmation' => lang('Membership Confirmation'),
+        'membership entrance' => lang('Membership Entrance'),
+        'my account' => lang('My Account'),
+        'my account profile' => lang('My Account Profile'),
+        'email preferences' => lang('E-mail Preferences'),
+        'view order' => lang('View Order'),
+        'update address book' => lang('Update Address Book'),
+        'custom form' => lang('Custom Form'),
+        'custom form confirmation' => lang('Custom Form Confirmation'),
+        'form list view' => lang('Form List View'),
+        'form item view' => lang('Form Item View'),
+        'form view directory' => lang('Form View Directory'),
+        'calendar view' => lang('Calendar View'),
+        'calendar event view' => lang('Calendar Event View'),
+        'catalog' => lang('Catalog'),
+        'catalog detail' => lang('Catalog Detail'),
+        'express order' => lang('Express Order'),
+        'order form' => lang('Order Form'),
+        'shopping cart' => lang('Shopping Cart'),
+        'shipping address and arrival' => lang('Shipping Address & Arrival'),
+        'shipping method' => lang('Shipping Method'),
+        'billing information' => lang('Billing Information'),
+        'order preview' => lang('Order Preview'),
+        'order receipt' => lang('Order Receipt'),
+        'registration confirmation' => lang('Registration Confirmation'),
+        'registration entrance' => lang('Registration Entrance'),
+        'search results' => lang('Search Results'),
+        'affiliate sign up form' => lang('Affiliate Sign Up Form'),
+        'affiliate sign up confirmation' => lang('Affiliate Sign Up Confirmation'),
+        'affiliate welcome' => lang('Affiliate Welcome'),
+    );
+}
+
 function get_page_type_name($page_type)
 {
-    switch ($page_type) {
-        case 'standard':
-            return lang('Standard');
-            break;
-        case 'change password':
-            return lang('Change Password');
-            break;
-        case 'set password':
-            return lang('Set Password');
-            break;
-        case 'email a friend':
-            return lang('E-mail a Friend');
-            break;
-        case 'error':
-            return lang('Error');
-            break;
-        case 'folder view':
-            return lang('Folder View');
-            break;
-        case 'forgot password':
-            return lang('Forgot Password');
-            break;
-        case 'login':
-            return lang('Login');
-            break;
-        case 'logout':
-            return lang('Logout');
-            break;
-        case 'photo gallery':
-            return lang('Photo Gallery');
-            break;
-        case 'membership confirmation':
-            return lang('Membership Confirmation');
-            break;
-        case 'membership entrance':
-            return lang('Membership Entrance');
-            break;
-        case 'my account':
-            return lang('My Account');
-            break;
-        case 'my account profile':
-            return lang('My Account Profile');
-            break;
-        case 'email preferences':
-            return lang('E-mail Preferences');
-            break;
-        case 'view order':
-            return lang('View Order');
-            break;
-        case 'update address book':
-            return lang('Update Address Book');
-            break;
-        case 'custom form':
-            return lang('Custom Form');
-            break;
-        case 'custom form confirmation':
-            return lang('Custom Form Confirmation');
-            break;
-        case 'form list view':
-            return lang('Form List View');
-            break;
-        case 'form item view':
-            return lang('Form Item View');
-            break;
-        case 'form view directory':
-            return lang('Form View Directory');
-            break;
-        case 'calendar view':
-            return lang('Calendar View');
-            break;
-        case 'calendar event view':
-            return lang('Calendar Event View');
-            break;
-        case 'catalog':
-            return lang('Catalog');
-            break;
-        case 'catalog detail':
-            return lang('Catalog Detail');
-            break;
-        case 'express order':
-            return lang('Express Order');
-            break;
-        case 'order form':
-            return lang('Order Form');
-            break;
-        case 'shopping cart':
-            return lang('Shopping Cart');
-            break;
-        case 'shipping address and arrival':
-            return lang('Shipping Address & Arrival');
-            break;
-        case 'shipping method':
-            return lang('Shipping Method');
-            break;
-        case 'billing information':
-            return lang('Billing Information');
-            break;
-        case 'order preview':
-            return lang('Order Preview');
-            break;
-        case 'order receipt':
-            return lang('Order Receipt');
-            break;
-        case 'registration confirmation':
-            return lang('Registration Confirmation');
-            break;
-        case 'registration entrance':
-            return lang('Registration Entrance');
-            break;
-        case 'search results':
-            return lang('Search Results');
-            break;
-        case 'affiliate sign up form':
-            return lang('Affiliate Sign Up Form');
-            break;
-        case 'affiliate sign up confirmation':
-            return lang('Affiliate Sign Up Confirmation');
-            break;
-        case 'affiliate welcome':
-            return lang('Affiliate Welcome');
-            break;
-    }
+    $names = get_page_type_names();
+
+    return isset($names[$page_type]) ? $names[$page_type] : null;
 }
 function get_currency_name_from_code($currency_code)
 {
