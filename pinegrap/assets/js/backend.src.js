@@ -230,6 +230,43 @@ function getPreferredThemeColor() {
     }
 }
 
+// Lazy panel pictures start on the animated loading.gif, which loops forever.
+// jQuery Lazy leaves that src in place when the real address fails, so a
+// missing product, file or contact picture would spin as if still loading.
+// onError puts a still, text-free picture mark in its place (the grey of the
+// No Image boxes) and keeps the alt the screen drew.
+var pgLazyFailedSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    + "%3Crect width='64' height='64' fill='%23868e96'/%3E"
+    + "%3Cpath d='M18 20h28v24H18z' fill='none' stroke='%23dee2e6' stroke-width='3'/%3E"
+    + "%3Cpath d='M18 44l10-12 8 9 5-5 5 8' fill='none' stroke='%23dee2e6' stroke-width='3'/%3E"
+    + "%3Cpath d='M14 50L50 14' stroke='%23dee2e6' stroke-width='3'/%3E%3C/svg%3E";
+
+// A plain still square shown instead of the spinning GIF while a picture
+// loads, for people who asked their system for less motion: a GIF ignores
+// prefers-reduced-motion.
+var pgLazyPendingSrc = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E"
+    + "%3Crect width='64' height='64' fill='%23868e96' fill-opacity='.25'/%3E%3C/svg%3E";
+
+var pgLazyOptions = {
+    onError: function (element) {
+        $(element).attr('src', pgLazyFailedSrc).addClass('pg-lazy-failed');
+    }
+};
+
+// Swaps the loading.gif of pictures that have not loaded yet for the still
+// square when reduced motion is asked for.
+function pgLazyStill($images) {
+    if (!window.matchMedia || !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        return;
+    }
+
+    $images.each(function () {
+        if (/loading\.gif(\?|$)/.test(this.getAttribute('src') || '')) {
+            this.setAttribute('src', pgLazyPendingSrc);
+        }
+    });
+}
+
 $(document).ready(function () {
 
 
@@ -238,7 +275,8 @@ $(document).ready(function () {
 
     //init lazy if there is img with lazy class.
     if ($("img.lazy").length > 0) {
-        $("img.lazy:not(.delayed)").Lazy();
+        pgLazyStill($("img.lazy"));
+        $("img.lazy:not(.delayed)").Lazy(pgLazyOptions);
     }
 
     // Get the page designer button so that we can add a click event
@@ -2853,7 +2891,8 @@ function pgListServerOptions(options, $table) {
         pgInitInjected($table.find('tbody'));
 
         if ($.fn.Lazy) {
-            $table.find('img.lazy:not(.delayed)').Lazy();
+            pgLazyStill($table.find('img.lazy'));
+            $table.find('img.lazy:not(.delayed)').Lazy(pgLazyOptions);
         }
     });
 }
