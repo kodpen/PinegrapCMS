@@ -4,7 +4,7 @@ description: Turkish-aware case-insensitive search of the workspace (ws_fold(), 
 ---
 
 ## Why not mb_stripos() or mb_strtolower()?
-They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I` becomes `i`, never `ı`. So "YILDIZ" never found "Yıldız", "ismail" never found "İsmail", "ışık" never found "IŞIK" (bug #3400).
+They use the language-neutral Unicode mapping: `İ` becomes `i` + U+0307 and `I` becomes `i`, never `ı`. So "YILDIZ" never found "Yıldız", "ismail" never found "İsmail", "ışık" never found "IŞIK" (bug #3400, fixed for the searches in #3486).
 
 ## What is the helper?
 - `ws_fold($text)` in `includes/workspace/commands.php`, next to `ws_lower()`: `İ`, `I`, `ı` become `i`, then `mb_strtolower()`. All four i letters are one, so "ISTANBUL" written without dots finds "İstanbul" too.
