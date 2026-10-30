@@ -2689,11 +2689,13 @@ function select_offer($offer_id = '')
             // If there is a description, then add it to the label.
             if ($offer['description'] != '') {
                 $output_label .= ' - ';
-                // If the description is greater than 50 characters, then truncate it to 50 characters.
-                if (mb_strlen($offer['description']) > 50) {
-                    $offer['description'] = mb_substr($offer['description'], 0, 50) . '...';
+                // Truncate the raw description to 50 characters, then escape it,
+                // so the cut never splits an entity.
+                $description = $offer['description'];
+                if (mb_strlen($description) > 50) {
+                    $description = mb_substr($description, 0, 50) . '...';
                 }
-                $output_label .= $offer['description'];
+                $output_label .= h($description);
             }
             $output .= '<option value="' . $offer['id'] . '"' . $selected . '>' . $output_label . '</option>';
         }
