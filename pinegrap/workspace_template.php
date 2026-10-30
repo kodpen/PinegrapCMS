@@ -134,15 +134,46 @@ foreach (ws_palette() as $place => $color) {
 $department_options = '<option value="0">' . h(lang('No department')) . '</option>';
 $departments_js = array();
 
-foreach (ws_departments() as $department) {
-    $department_options .= '<option value="' . (int) $department['id'] . '"' . (((int) $template['department_id'] === (int) $department['id']) ? ' selected' : '') . '>' . h($department['name']) . '</option>';
-    $departments_js[] = array('id' => (int) $department['id'], 'name' => (string) $department['name']);
+// An archived department, or a person who left the team, is offered only
+// when the template or one of its tasks holds it, marked, so a plain Save
+// keeps the stored choice instead of "No department" or "creator".
+$all_departments = ws_departments(false, true);
+$team_members = ws_team_members();
+// After a refused Save the tasks are only in the posted JSON.
+$kept_body = json_decode($body_json, true);
+$kept = ws_template_kept_choices(array_merge($template, array('body' => is_array($kept_body) ? $kept_body : $template['body'])), $all_departments, array_map(function ($person) {
+    return (int) $person['id'];
+}, $team_members));
+
+foreach ($all_departments as $department) {
+    $department_name = (string) $department['name'];
+
+    if ($department['archived']) {
+        if (!in_array((int) $department['id'], $kept['department_ids'], true)) {
+            continue;
+        }
+
+        $department_name .= ' ' . lang('(archived)');
+    }
+
+    $department_options .= '<option value="' . (int) $department['id'] . '"' . (((int) $template['department_id'] === (int) $department['id']) ? ' selected' : '') . '>' . h($department_name) . '</option>';
+    $departments_js[] = array('id' => (int) $department['id'], 'name' => $department_name);
 }
 
 $people_js = array();
 
-foreach (ws_team_members() as $person) {
+foreach ($team_members as $person) {
     $people_js[] = array('id' => (int) $person['id'], 'name' => (string) $person['name']);
+}
+
+foreach ($kept['user_ids'] as $kept_user_id) {
+    $kept_name = ws_person_name($kept_user_id);
+
+    if ($kept_name === '') {
+        $kept_name = lang('User') . ' #' . $kept_user_id;
+    }
+
+    $people_js[] = array('id' => $kept_user_id, 'name' => $kept_name . ' ' . lang('(no longer in the team)'));
 }
 
 $kind_radio = function ($value, $label, $help) use ($template) {

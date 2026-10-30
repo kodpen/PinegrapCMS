@@ -2817,6 +2817,29 @@ function pg_pb_render_image_picker($images = array(), $extra_action = '')
 
 
 /**
+ * The options of a select with the stored choice kept: when the list left
+ * the stored id out (a private-access folder whose access changed, or one
+ * moved to the Recycle Bin), it is added selected with its name and a mark,
+ * so a plain Save posts it again instead of the first option.
+ *
+ * @param string     $options_html the <option> tags the list gave
+ * @param int|string $value        the stored id, 0 or '' for none
+ * @param string     $label        the stored item's name
+ * @param string     $mark         translated words after the name
+ * @return string
+ */
+function pg_pb_kept_option($options_html, $value, $label, $mark)
+{
+    $id = (int) $value;
+
+    if (($id <= 0) || (strpos($options_html, '<option value="' . $id . '"') !== FALSE)) {
+        return $options_html;
+    }
+
+    return $options_html . '<option value="' . $id . '" selected>' . h(trim($label . ' ' . $mark)) . '</option>';
+}
+
+/**
  * A full-width row holding one or more switches.
  *
  * Two rules, both learned the hard way:
@@ -4596,6 +4619,23 @@ function pg_pb_render_product_screen($values = array(), $context = array())
         $output_membership_effects .= '<li>' . $membership_effect . '</li>';
     }
 
+    // The private-access folder opens on the stored one. select_folder()
+    // leaves it out once its access is no longer Private or it is in the
+    // Recycle Bin, so it is added back marked: otherwise every Save wrote
+    // folder 0 and the buyers got access to nothing.
+    $private_folder_id = (int) $v('private_folder');
+    $private_folder_options = select_folder($private_folder_id, 0, 0, 0, array(), array(), 'private');
+
+    if ($private_folder_id > 0) {
+        $private_folder_name = (string) db_value("SELECT folder_name FROM folder WHERE folder_id = '" . $private_folder_id . "'");
+
+        if ($private_folder_name === '') {
+            $private_folder_name = lang('Folder') . ' #' . $private_folder_id;
+        }
+
+        $private_folder_options = pg_pb_kept_option($private_folder_options, $private_folder_id, $private_folder_name, lang('(no longer offered)'));
+    }
+
     // The category list is a file shipped with the software. Saying how many
     // entries were loaded is the difference between "the picker is broken" and
     // "the file for this language is missing".
@@ -5362,7 +5402,7 @@ function pg_pb_render_product_screen($values = array(), $context = array())
                                                     '<div class="col-12 md:col-6 lg:col-4">
                                                         <label class="form-label" for="private_folder">' . lang('Set "View" Access to Folder') . '</label>
                                                         <select class="form-control" id="private_folder" name="private_folder">
-                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . select_folder(0, 0, 0, 0, array(), array(), 'private') . '
+                                                            <option value="">-' . lang(array('string' => 'Select {var:1}', 'vars' => array(lang('Folder')))) . '-</option>' . $private_folder_options . '
                                                         </select>
                                                     </div>
                                                     <div class="col-12 md:col-6 lg:col-4">

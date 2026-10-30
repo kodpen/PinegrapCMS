@@ -286,6 +286,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - state-shared-form.md: add_state.php and edit_state.php draw the state/province options card and read its posted values through includes/forms/state_form.php; what each screen keeps
 - status-chart-colour-words.md: Status chips, Payment methods doughnut and Search Console chart tell states apart by words, dashes and shapes; ERP Profit and Search Console series lines and bar edges use the -ink tones
 - step-rail.md: Numbered steps on panel screens: Bootstrap 6 .stepper (edit_offer cards, installer, ERP import), why every edit_offer item is .active, theme-reset on the cards
+- stored-choice-kept.md: Selects whose list leaves out the stored choice add it back selected and marked (Edit Product private folder, Workspace template department and assignees)
 - submitted-form-shared-form.md: The submitted form create and edit screens share includes/forms/submitted_form_form.php
 - suggestion-lists.md: Search-as-you-type lists the screens build themselves (ERP account contact, product bundle, Create Order, ERP lines): keyboard, focus after a pick, how an empty or failed answer is said
 - tax-zone-shared-form.md: add_tax_zone.php and edit_tax_zone.php draw the tax zone form and write its country and state links through includes/forms/tax_zone_form.php; what each screen keeps
