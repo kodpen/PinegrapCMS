@@ -605,6 +605,7 @@
     "Where an endpoint says so, DELETE has a POST alias - either the same address answered to POST, or a /delete address - for servers that refuse the DELETE verb before it reaches the application.": "Bir uç nokta belirtiyorsa DELETE'in bir POST karşılığı vardır - aynı adresin POST'a yanıt vermesi ya da bir /delete adresi - DELETE fiilini uygulamaya ulaşmadan reddeden sunucular için.",
     "Where an event links to. Automatic: the first page with a calendar event widget, else the classic calendar event view page.": "Etkinliğin bağlandığı sayfa. Otomatik: takvim etkinliği widget'ı olan ilk sayfa, yoksa klasik takvim etkinliği sayfası.",
     "Where and when?": "Nerede ve ne zaman?",
+    "Where at the sender address the courier collects the parcels of a pickup request.": "Kuryenin, gönderici adresinde kurye talebindeki paketleri nereden teslim alacağı.",
     "Where do I find your answer to my message?": "Mesajıma verdiğiniz yanıtı nerede bulurum?",
     "Where else it came up": "Başka nerede geçti",
     "Where every cup begins": "Her fincanın başladığı yer",

@@ -10,7 +10,8 @@
  * package imported from it, includes/api/outbound/labels.php); back to the
  * order with the outcome. POST from the orders list: open the
  * missing labels of the selected orders, or print their labels as one PDF
- * merged now and never kept. GET id: hands out one label's document, the
+ * merged now and never kept, or book a carrier pickup for the active
+ * labels of the selected orders or of one address. GET id: hands out one label's document, the
  * kept file or the service's copy; an SVG on a print page that holds it as
  * an image, or with download the SVG file itself, sandboxed. The documents
  * live under data/, which is closed to the web: this is their only door,
@@ -43,8 +44,10 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
     // label_request: create-<ship_to_id>, return-<ship_to_id>,
     // cancel-<label id> and marketplace-<ship_to_id> (with
-    // label_boxes_<ship_to_id>) from the order screen; bulk_create,
-    // bulk_print and bulk_zpl with orders[] from the orders list.
+    // label_boxes_<ship_to_id>) and pickup-<ship_to_id> from the order
+    // screen; bulk_create, bulk_print, bulk_zpl and bulk_pickup with
+    // orders[] from the orders list; a pickup with pickup_date,
+    // pickup_from, pickup_to and pickup_again.
     $request = is_scalar($_POST['label_request'] ?? null) ? (string) $_POST['label_request'] : '';
     $orders = (isset($_POST['orders']) && is_array($_POST['orders'])) ? array_slice(array_map('intval', $_POST['orders']), 0, 500) : array();
 
@@ -97,6 +100,40 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         }
 
         go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_orders.php');
+    }
+
+    // A pickup for the active labels of the selected orders (bulk_pickup)
+    // or of one address (pickup-<ship_to_id>), back where it was asked.
+    if (($request === 'bulk_pickup') || (preg_match('/^pickup-([1-9][0-9]*)$/', $request, $pickup) === 1)) {
+        $ship_to_id = ($request === 'bulk_pickup') ? 0 : (int) $pickup[1];
+        $order_id = $ship_to_id ? (int) db_value("SELECT order_id FROM ship_tos WHERE id = '" . $ship_to_id . "'") : 0;
+
+        if ($ship_to_id && ($order_id <= 0)) {
+            output_error(lang('Record not found.'), 404);
+        }
+
+        $result = pg_shipment_label_pickup_request(
+            pg_shipment_label_pickup_rows($orders, $ship_to_id),
+            $_POST['pickup_date'] ?? '',
+            $_POST['pickup_from'] ?? '',
+            $_POST['pickup_to'] ?? '',
+            !empty($_POST['pickup_again']));
+
+        $liveform = new liveform($ship_to_id ? 'view_order' : 'view_orders');
+
+        if ($result['requests'] > 0) {
+            $liveform->add_notice(h(lang(array('string' => 'A pickup was booked for {var:1} label(s).', 'vars' => array(pg_format_number($result['booked'], 0))))));
+        }
+
+        if ($result['warning'] !== '') {
+            $liveform->mark_error('_error', h($result['warning']));
+        }
+
+        foreach (array_unique($result['failed']) as $error) {
+            $liveform->mark_error('_error', h($error));
+        }
+
+        go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . ($ship_to_id ? '/view_order.php?id=' . $order_id : '/view_orders.php'));
     }
 
     if (!preg_match('/^(create|return|cancel|marketplace)-([1-9][0-9]*)$/', $request, $match)) {

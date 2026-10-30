@@ -490,6 +490,16 @@ if (pg_shipment_labels_ready() && pg_shipment_label_drivers()) {
         <button type="submit" formaction="shipment_label.php" formtarget="_blank" name="label_request" value="bulk_print" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-printer me-3" aria-hidden="true"></i>' . lang('Print Labels') . '</button>
         <button type="submit" formaction="shipment_label.php" name="label_request" value="bulk_zpl" class="btn mb-1 mt-1 btn-solid theme-secondary disabled"><i class="bi bi-download me-3" aria-hidden="true"></i>' . lang('Download ZPL Labels') . '</button>';
 }
+
+// A carrier pickup for the active labels of the selected orders: a dialog
+// inside the list form asks the date and window (shipment_label.php).
+$output_shipment_pickup_dialog = '';
+
+if ($output_shipment_label_buttons !== '' && pg_shipment_label_pickup_drivers()) {
+    $output_shipment_label_buttons .= '
+        <button type="button" class="no-submit btn mb-1 mt-1 btn-solid theme-secondary disabled" data-bs-toggle="dialog" data-bs-target="#shipment_pickup_dialog"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>';
+    $output_shipment_pickup_dialog = pg_shipment_label_pickup_dialog('shipment_pickup_dialog', '', 'bulk_pickup');
+}
 $output_xlsl_setup_modal = '';
 if(defined('ENABLE_PARASUT') && ENABLE_PARASUT != 0){
     $output_xlsl_setup_modal = 
@@ -3273,6 +3283,7 @@ if (($_GET['submit_data'] ?? '') == 'Export Orders (multiple files)') {
                                 </div>
                             </nav>
                             ' . $output_xlsl_setup_modal . '
+                            ' . $output_shipment_pickup_dialog . '
                         </form>
 
                         <!-- Per-row cancel POST target. Deliberately a sibling of the

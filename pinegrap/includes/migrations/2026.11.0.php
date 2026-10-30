@@ -115,6 +115,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_workspace_personal_ical(); // 11.0.117
 	upgrade_2026_11_0_subscription_campaigns(); // 11.0.129
 	upgrade_2026_11_0_product_customs();       // 11.0.130
+	upgrade_2026_11_0_shipment_label_pickup(); // 11.0.131
 
 }
 
@@ -3696,5 +3697,20 @@ function upgrade_2026_11_0_product_customs() {
 	install_add_column('products', 'origin_country', "CHAR(2) NOT NULL DEFAULT ''");
 
 	install_note('Products: an HS code and a country of origin can be set in the shipping part of the product screen, for the customs declaration of parcels sent abroad.');
+
+}
+
+// Carrier pickup of a label (2026.11.0, 11.0.131; includes/fn/shipment_labels.php).
+//
+// pickup_ref is the carrier's confirmation of the pickup a label was booked
+// into, pickup_at the start of the window asked for (unix time). Every label
+// a request covered carries the same pair; '' and 0 mean no pickup, so the
+// two columns change nothing on existing rows.
+function upgrade_2026_11_0_shipment_label_pickup() {
+
+	install_add_column('shipment_labels', 'pickup_ref', "VARCHAR(64) NOT NULL DEFAULT ''");
+	install_add_column('shipment_labels', 'pickup_at', "INT UNSIGNED NOT NULL DEFAULT 0");
+
+	install_note('Shipping labels: a carrier pickup can be requested for active labels from the orders list and the order screen; its confirmation is kept on each label.');
 
 }

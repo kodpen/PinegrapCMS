@@ -1779,3 +1779,308 @@ function pg_shipment_label_bulk_zpl($order_ids)
 
     return $out;
 }
+
+
+/* ---------------------------------------------------------------------------
+   Pickup requests
+   --------------------------------------------------------------------------- */
+
+/**
+ * Whether a label can keep its pickup confirmation (pickup_ref, pickup_at).
+ *
+ * @return bool
+ */
+function pg_shipment_labels_pickup_ready()
+{
+    return pg_shipment_labels_ready()
+        && pg_schema_has('shipment_labels', 'pickup_ref')
+        && pg_schema_has('shipment_labels', 'pickup_at');
+}
+
+/**
+ * The label services that are on and can book a pickup.
+ *
+ * @return string[] driver keys
+ */
+function pg_shipment_label_pickup_drivers()
+{
+    $drivers = array();
+
+    if (!pg_shipment_labels_pickup_ready()) {
+        return $drivers;
+    }
+
+    foreach (array_keys(pg_label_drivers()) as $key) {
+        if (pg_label_can($key, 'pickup') && pg_label_ready($key)) {
+            $drivers[] = $key;
+        }
+    }
+
+    return $drivers;
+}
+
+/**
+ * The window a pickup is asked for, from the date and times the operator
+ * picked in the site's time zone. Pure but for the time zone.
+ *
+ * @param string $date Y-m-d
+ * @param string $from H:i
+ * @param string $to   H:i
+ * @param int    $now
+ * @return array start, end (unix time), error ('' when the window is usable)
+ */
+function pg_shipment_label_pickup_window($date, $from, $to, $now)
+{
+    $out = array('start' => 0, 'end' => 0, 'error' => '');
+    $date = is_scalar($date) ? trim((string) $date) : '';
+    $from = is_scalar($from) ? trim((string) $from) : '';
+    $to = is_scalar($to) ? trim((string) $to) : '';
+
+    if ((preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $date, $day) !== 1) || !checkdate((int) $day[2], (int) $day[3], (int) $day[1])
+        || (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $from, $start) !== 1)
+        || (preg_match('/^([01]\d|2[0-3]):([0-5]\d)$/', $to, $end) !== 1)) {
+        $out['error'] = lang('Choose the date and the time window of the pickup.');
+        return $out;
+    }
+
+    $out['start'] = mktime((int) $start[1], (int) $start[2], 0, (int) $day[2], (int) $day[3], (int) $day[1]);
+    $out['end'] = mktime((int) $end[1], (int) $end[2], 0, (int) $day[2], (int) $day[3], (int) $day[1]);
+
+    if ($out['end'] <= $out['start']) {
+        $out['error'] = lang('The end of the pickup window must come after its start.');
+    } elseif ($out['end'] <= (int) $now) {
+        $out['error'] = lang('The pickup window has already passed.');
+    }
+
+    return $out;
+}
+
+/**
+ * The labels a pickup can take, one request each per label service and
+ * carrier: active outbound labels of a service that books pickups. Pure.
+ *
+ * @param array    $rows    shipment_labels rows with carrier (the parcel's)
+ * @param string[] $drivers pg_shipment_label_pickup_drivers()
+ * @return array "driver carrier" => rows, in the order given
+ */
+function pg_shipment_label_pickup_groups($rows, $drivers)
+{
+    $groups = array();
+
+    foreach ((array) $rows as $row) {
+        if (($row['state'] !== 'active') || (int) $row['is_return'] || ((string) $row['reference'] === '')
+            || !in_array((string) $row['driver'], (array) $drivers, true)) {
+            continue;
+        }
+
+        $groups[$row['driver'] . ' ' . (isset($row['carrier']) ? (string) $row['carrier'] : '')][] = $row;
+    }
+
+    return $groups;
+}
+
+/**
+ * The labels of a request that have a pickup booked already. Pure.
+ *
+ * @param array $groups pg_shipment_label_pickup_groups()
+ * @return array rows
+ */
+function pg_shipment_label_pickup_booked($groups)
+{
+    $booked = array();
+
+    foreach ((array) $groups as $rows) {
+        foreach ($rows as $row) {
+            if (isset($row['pickup_ref']) && ((string) $row['pickup_ref'] !== '')) {
+                $booked[] = $row;
+            }
+        }
+    }
+
+    return $booked;
+}
+
+/**
+ * The warning a request on booked labels stops with: a second pickup may be
+ * charged again. Pure.
+ *
+ * @param array $booked pg_shipment_label_pickup_booked()
+ * @return string '' when none is booked
+ */
+function pg_shipment_label_pickup_warning($booked)
+{
+    if (!$booked) {
+        return '';
+    }
+
+    $references = array();
+
+    foreach ($booked as $row) {
+        $references[(string) $row['pickup_ref']] = true;
+    }
+
+    return lang(array(
+        'string' => '{var:1} label(s) already have a pickup booked ({var:2}). A second request may be charged again: tick "Book another pickup" to send it anyway.',
+        'vars'   => array(pg_format_number(count($booked), 0), implode(', ', array_slice(array_keys($references), 0, 5))),
+    ));
+}
+
+/**
+ * Active outbound labels of orders or of one address, with the parcel's
+ * carrier.
+ *
+ * @param array $order_ids
+ * @param int   $ship_to_id 0 for the orders' labels
+ * @return array rows
+ */
+function pg_shipment_label_pickup_rows($order_ids, $ship_to_id = 0)
+{
+    if (!pg_shipment_labels_pickup_ready()) {
+        return array();
+    }
+
+    if ($ship_to_id > 0) {
+        $where = "sl.ship_to_id = '" . (int) $ship_to_id . "'";
+    } else {
+        $order_ids = array_values(array_filter(array_map('intval', (array) $order_ids)));
+
+        if (!$order_ids) {
+            return array();
+        }
+
+        $where = 'sl.order_id IN (' . implode(',', $order_ids) . ')';
+    }
+
+    // A parcel is unique by (ship_to_id, number): one carrier a label.
+    $carrier = pg_shipment_rows_ready() ? 'stn.carrier' : "''";
+
+    return db_items(
+        "SELECT sl.*, " . $carrier . " AS carrier
+        FROM shipment_labels AS sl
+        LEFT JOIN shipping_tracking_numbers AS stn ON stn.ship_to_id = sl.ship_to_id AND stn.number = sl.number AND sl.number <> ''
+        WHERE " . $where . " AND sl.state = 'active' AND sl.is_return = 0
+        ORDER BY sl.order_id, sl.ship_to_id, sl.id");
+}
+
+/**
+ * Books a pickup for the labels: one request per label service and carrier
+ * for the chosen date and window; each confirmation is written on every
+ * label its request took. Labels with a pickup booked stop the whole
+ * request unless $again.
+ *
+ * @param array  $rows   pg_shipment_label_pickup_rows()
+ * @param string $date   Y-m-d
+ * @param string $from   H:i
+ * @param string $to     H:i
+ * @param bool   $again  book even where a pickup is booked
+ * @return array booked (labels), requests, failed (sentences), warning
+ */
+function pg_shipment_label_pickup_request($rows, $date, $from, $to, $again)
+{
+    $out = array('booked' => 0, 'requests' => 0, 'failed' => array(), 'warning' => '');
+    $groups = pg_shipment_label_pickup_groups($rows, pg_shipment_label_pickup_drivers());
+
+    if (!$groups) {
+        $out['failed'][] = lang('None of these orders has an active label of a carrier label service that books pickups.');
+        return $out;
+    }
+
+    $window = pg_shipment_label_pickup_window($date, $from, $to, time());
+
+    if ($window['error'] !== '') {
+        $out['failed'][] = $window['error'];
+        return $out;
+    }
+
+    if (!$again) {
+        $out['warning'] = pg_shipment_label_pickup_warning(pg_shipment_label_pickup_booked($groups));
+
+        if ($out['warning'] !== '') {
+            return $out;
+        }
+    }
+
+    foreach ($groups as $labels) {
+        $driver = (string) $labels[0]['driver'];
+        $references = array();
+        $ids = array();
+
+        foreach ($labels as $label) {
+            $references[] = (string) $label['reference'];
+            $ids[] = (int) $label['id'];
+        }
+
+        $account = pg_label_account(pg_label_fields($driver), pg_label_settings($driver));
+        $answer = pg_label_call($driver, 'pickup', array(array('references' => $references, 'start' => $window['start'], 'end' => $window['end']), $account));
+
+        if (!$answer['success'] || ($answer['reference'] === '') || (strlen($answer['reference']) > 64)) {
+            $out['failed'][] = (!$answer['success'] && !$answer['unclear'])
+                ? lang(array('string' => 'The service refused the pickup request: {var:1}', 'vars' => array($answer['error'])))
+                : lang('The service did not say whether the pickup was booked. Check it there before asking again.');
+            continue;
+        }
+
+        db("UPDATE shipment_labels SET pickup_ref = '" . e($answer['reference']) . "', pickup_at = '" . (int) $window['start'] . "' WHERE id IN (" . implode(',', $ids) . ")");
+
+        $out['booked'] += count($ids);
+        $out['requests']++;
+
+        log_activity(lang(array('string' => 'A carrier pickup was booked for {var:1} label(s): {var:2}', 'vars' => array(count($ids), $answer['reference']))));
+    }
+
+    return $out;
+}
+
+/**
+ * The pickup dialog: date, window, the "book another" box and the send
+ * button, its fields posted with the form named (the orders list's own, or
+ * the order screen's shipment-label-form).
+ *
+ * @param string $id      the dialog's id
+ * @param string $form    the form id the fields belong to, '' for the
+ *                        form the dialog sits in
+ * @param string $request the label_request value sent
+ * @param string $note    a warning shown above the fields, '' for none
+ * @return string HTML
+ */
+function pg_shipment_label_pickup_dialog($id, $form, $request, $note = '')
+{
+    $owner = ($form !== '') ? ' form="' . h($form) . '"' : '';
+    $tomorrow = date('Y-m-d', strtotime('+1 day'));
+
+    return '<dialog id="' . h($id) . '" class="dialog" aria-labelledby="' . h($id) . '_title">
+            <div class="dialog-header">
+                <h5 class="dialog-title" id="' . h($id) . '_title">' . lang('Request Pickup') . '</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="dialog" aria-label="' . h(lang('Close')) . '"></button>
+            </div>
+            <div class="dialog-body">
+                <p class="small fg-secondary">' . lang('The carrier collects the active labels at the sender address of the label service. One request is sent for each carrier.') . '</p>
+                ' . (($note !== '') ? '<div class="alert theme-warning small">' . h($note) . '</div>' : '') . '
+                <div class="row g-5">
+                    <div class="col-12 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_date">' . lang('Date') . '</label>
+                        <input type="date" data-pg-date class="form-control" id="' . h($id) . '_date" name="pickup_date" value="' . h($tomorrow) . '" min="' . h(date('Y-m-d')) . '"' . $owner . '>
+                    </div>
+                    <div class="col-6 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_from">' . lang('From') . '</label>
+                        <input type="time" class="form-control" id="' . h($id) . '_from" name="pickup_from" value="09:00"' . $owner . '>
+                    </div>
+                    <div class="col-6 sm:col-4">
+                        <label class="form-label" for="' . h($id) . '_to">' . lang('To') . '</label>
+                        <input type="time" class="form-control" id="' . h($id) . '_to" name="pickup_to" value="17:00"' . $owner . '>
+                    </div>
+                    <div class="col-12">
+                        <div class="form-field">
+                            <input class="check" type="checkbox" id="' . h($id) . '_again" name="pickup_again" value="1"' . $owner . '>
+                            <label for="' . h($id) . '_again">' . lang('Book another pickup') . '</label>
+                            <div class="form-text">' . lang('Needed only for labels that already have a pickup booked: a second pickup may be charged again.') . '</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="dialog-footer">
+                <button type="button" class="no-submit btn btn-solid theme-secondary" data-bs-dismiss="dialog">' . lang('Close') . '</button>
+                <button type="submit" formaction="shipment_label.php" name="label_request" value="' . h($request) . '"' . $owner . ' class="btn btn-solid theme-primary"><i class="bi bi-truck me-3" aria-hidden="true"></i>' . lang('Request Pickup') . '</button>
+            </div>
+        </dialog>';
+}
