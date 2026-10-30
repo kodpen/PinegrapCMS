@@ -27,6 +27,8 @@ require_once(PG_FUNCTIONS_DIR . '/includes/forms/design_file_form.php');
 // (no Dropzone) keeps the HTML error pages.
 $upload_wants_json = (strtolower($_SERVER['HTTP_X_REQUESTED_WITH'] ?? '') === 'xmlhttprequest');
 
+$upload_limits = pg_upload_limits();
+
 // Answers the Dropzone caller with a refusal and stops. "error" repeats the
 // sentence because Dropzone writes that key into each file's bubble.
 $upload_refusal_answer = function ($status, $message) {
@@ -44,7 +46,6 @@ $upload_refusal_answer = function ($status, $message) {
 // with 200, and Dropzone reports that the files were uploaded.
 if (pg_post_body_discarded()) {
 
-    $upload_limits = pg_upload_limits();
     $upload_sent = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
 
     $upload_message = lang(array(
@@ -79,6 +80,29 @@ if (!$_POST) {
     if ($max_number_of_files > 0) {
         //for dropzone
         $output_maxfiles = 'maxFiles: ' . $max_number_of_files . ',';
+    }
+
+    // The server's own ceilings, as on Upload File (add_file.php): a file
+    // over upload_max_filesize arrives with no content, and a queue over
+    // post_max_size arrives with no body at all.
+    $dropzone_file_max_mb = ($upload_limits['file_max'] > 0)
+        ? round($upload_limits['file_max'] / (1024 * 1024), 2)
+        : 9999;
+
+    // uploadMultiple sends the whole queue as one request.
+    $dropzone_request_max = (int) $upload_limits['request_max'];
+
+    $output_upload_limits = '';
+
+    if ($upload_limits['file_max'] > 0) {
+        $output_upload_limits =
+            '<p class="fg-secondary mb-0">'
+            . h(lang(array(
+                'string' => 'At most {var:1} per file, and {var:2} in one upload.',
+                'vars'   => array(
+                    convert_bytes_to_string($upload_limits['file_max'], 1),
+                    convert_bytes_to_string($upload_limits['post_max'], 1)))) )
+            . '</p>';
     }
 
     echo
@@ -117,14 +141,41 @@ if (!$_POST) {
             // Had to set high value for parallelUploads in order for
             // large number of uploads to work (overrides default which is 2).
             parallelUploads: 9999,
-            // Had to set high value for maxFilesize in order to override
-            // the default of 256 MB (value is in MB).
-            maxFilesize: 9999,
+            // What this server accepts for one file, in MB.
+            maxFilesize: ' . $dropzone_file_max_mb . ',
+            dictFileTooBig: "' . lang('This file is too big to upload ({{filesize}} MB). The limit is {{maxFilesize}} MB.') . '",
             previewsContainer: ".dropzone_previews",
             // The drop area is a plain div that takes no focus; the button
             // beside it opens the same file dialog from the keyboard.
             clickable: [".dropzone_previews", "#pg_upload_choose"],
             ' . $output_maxfiles . '
+
+            // Every accepted file goes up in one request, so the queue as a
+            // whole has to fit inside post_max_size.
+            accept: function (file, done) {
+
+                var request_max = ' . $dropzone_request_max . ';
+                var total       = file.size;
+                var i;
+
+                if (request_max > 0) {
+
+                    for (i = 0; i < this.files.length; i++) {
+                        if ((this.files[i] !== file) && this.files[i].accepted) {
+                            total += this.files[i].size;
+                        }
+                    }
+
+                    if (total > request_max) {
+                        done("' . lang(array(
+                            'string' => 'This would take the upload over {var:1}. Upload the rest separately.',
+                            'vars'   => array(convert_bytes_to_string($upload_limits['post_max'], 1)))) . '");
+                        return;
+                    }
+                }
+
+                done();
+            },
 
             init: function() {
                 var myDropzone = this;
@@ -186,7 +237,8 @@ if (!$_POST) {
                 <div class="row mb-3  flex-wrap">
                     <div class="col-12 sm:col-12 text-center md:text-start">
 
-                        <p>' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
+                        <p class="mb-0">' . lang(array('string'=>'Maximum File{suffix:1}','suffix'=>array($max_file_uploads_suffix) )) . ': ' . $max_file_uploads . '</p>
+                        ' . $output_upload_limits . '
                     </div>
                 </div>
                 <div id="pg_upload_error" class="alert theme-danger" role="alert" hidden></div>
@@ -273,8 +325,49 @@ if (!$_POST) {
         }
     }
 
-    foreach ($_FILES['file']['name'] as $index => $file_name) {
-        $file_name = prepare_file_name($file_name);
+    // Names of the files written, and the files that were not with the reason.
+    // A file over upload_max_filesize arrives with an error code and an empty
+    // temporary name; copying that name threw on PHP 8 half way through the
+    // batch, and on PHP 7 left a row for a file that was never written.
+    $uploaded_files = array();
+    $failed_files = array();
+
+    foreach ($_FILES['file']['name'] as $index => $original_name) {
+
+        $upload_error = isset($_FILES['file']['error'][$index])
+            ? (int) $_FILES['file']['error'][$index]
+            : UPLOAD_ERR_NO_FILE;
+
+        if ($upload_error !== UPLOAD_ERR_OK) {
+
+            // An empty slot of the fallback file input, not a failure.
+            if ($upload_error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+
+            // The same sentences Upload File (add_file.php) gives.
+            if (($upload_error === UPLOAD_ERR_INI_SIZE) || ($upload_error === UPLOAD_ERR_FORM_SIZE)) {
+                $failed_message = lang(array(
+                    'string' => '{var:1} is larger than {var:2}, the biggest single file this server accepts.',
+                    'vars'   => array($original_name, convert_bytes_to_string($upload_limits['file_max'], 1))));
+
+            } elseif ($upload_error === UPLOAD_ERR_PARTIAL) {
+                $failed_message = lang(array(
+                    'string' => '{var:1} only arrived in part, so it was not saved. Please try again.',
+                    'vars'   => array($original_name)));
+
+            } else {
+                $failed_message = lang(array(
+                    'string' => 'The server could not accept {var:1}. Please try again.',
+                    'vars'   => array($original_name)));
+            }
+
+            log_activity($failed_message);
+            $failed_files[] = array('name' => $original_name, 'message' => $failed_message);
+            continue;
+        }
+
+        $file_name = prepare_file_name($original_name);
 
         $file_name = get_unique_name(array(
             'name' => $file_name,
@@ -284,7 +377,16 @@ if (!$_POST) {
         $size_of_array = count($array_file_extension);
         $file_extension = $array_file_extension[$size_of_array - 1];
 
-        copy($_FILES['file']['tmp_name'][$index], FILE_DIRECTORY_PATH . '/' . $file_name);
+        // A failed copy writes no row.
+        if (!@copy($_FILES['file']['tmp_name'][$index], FILE_DIRECTORY_PATH . '/' . $file_name)) {
+            $failed_message = lang(array(
+                'string' => 'The server could not accept {var:1}. Please try again.',
+                'vars'   => array($original_name)));
+
+            log_activity($failed_message);
+            $failed_files[] = array('name' => $original_name, 'message' => $failed_message);
+            continue;
+        }
 
         db(
             "INSERT INTO files (
@@ -307,16 +409,37 @@ if (!$_POST) {
                 UNIX_TIMESTAMP())");
         log_activity(lang(array('string'=>'design file ({var:1}) was created','vars'=>$file_name )), $_SESSION['sessionusername']);
 
+        $uploaded_files[] = $file_name;
+    }
+
+    // Nothing was written: say why instead of landing on the list. The
+    // failures are not kept as warnings, because the operator stays here.
+    if (!$uploaded_files) {
+        $upload_failed_message = $failed_files
+            ? implode(' ', array_column($failed_files, 'message'))
+            : lang('Nothing was uploaded.');
+
+        if ($upload_wants_json) {
+            $upload_refusal_answer(400, $upload_failed_message);
+        }
+
+        output_error(h($upload_failed_message) . ' <a href="javascript:history.go(-1)">' . lang('Go back') . '</a>.');
     }
 
     include_once('liveform.class.php');
 
     $liveform_view_design_files = new liveform('view_design_files');
 
-    $number_of_uploaded_files = count($_FILES['file']['name']);
+    // Files that did not make it, said on the list the operator lands on.
+    foreach ($failed_files as $failed_file) {
+        $liveform_view_design_files->add_warning(h($failed_file['message']));
+    }
+
+    $number_of_uploaded_files = count($uploaded_files);
 
     // If one file was uploaded, then prepare notice for that.
     if ($number_of_uploaded_files == 1) {
+        $file_name = $uploaded_files[0];
         $liveform_view_design_files->add_notice( lang(array('string'=>'The design file, {var:1}, has been uploaded.','vars'=>array('<a href="' . OUTPUT_PATH . h($file_name) . '" target="_blank">' . h($file_name) . '</a>'))) );
 
 
@@ -329,7 +452,7 @@ if (!$_POST) {
     // If visitor has an old browser and did not use drag-and-drop,
     // then forward visitor to next scren.  Drag-and-drop uses AJAX post
     // to this script, so we don't need to forward visitor anywhere in that case.
-    if ($_POST['fallback'] == 'true') {
+    if (($_POST['fallback'] ?? '') == 'true') {
         header('Location: ' . URL_SCHEME . HOSTNAME . PATH . SOFTWARE_DIRECTORY . '/view_design_files.php');
     }
 }
