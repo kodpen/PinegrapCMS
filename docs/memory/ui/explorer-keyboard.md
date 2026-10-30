@@ -24,6 +24,6 @@ description: File manager (view_folders.php) from the keyboard: shortcuts leave 
 - A scroll closes the menu only after its first 300 ms: bringing the item into view would close it at once.
 
 ## What is left alone?
-- The menu panel's tree has its own note (`explorer-tree-keyboard.md`). The old markup in `includes/panel/explorer.php`. Listing items are still not focusable; the page (body) carries the cursor.
+- The menu panel's tree has its own note (`explorer-tree-keyboard.md`); the list view's headings and column edges too (`explorer-list-headings.md`). The old markup in `includes/panel/explorer.php`. Listing items are still not focusable; the page (body) carries the cursor.
 
 Test: `tests/explorer_keyboard_test.php` (source pins).

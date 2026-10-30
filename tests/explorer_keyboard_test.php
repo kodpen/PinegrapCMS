@@ -122,3 +122,43 @@ function test_explorer_context_menu_opens_from_the_keyboard()
 
 	pg_assert_contains('restoreFocus(menuReturnFocus)', explorer_keyboard_function('hideMenu'), 'closing the menu gives the focus back');
 }
+
+function test_explorer_list_headings_sort_from_a_button_and_say_their_order()
+{
+	$source = explorer_keyboard_source();
+
+	pg_assert_contains('<button type="button" class="th-sort"', $source, 'a sortable heading holds its label in a button');
+	pg_assert_contains("' aria-sort=\"' + ((state.sort.dir === 'desc') ? 'descending' : 'ascending') + '\"'", $source, 'the sorted heading says its order');
+	pg_assert_contains("querySelectorAll('button.th-sort')", $source, 'the sort listener sits on the button');
+	pg_assert_contains('sortByColumn(button.getAttribute(\'data-sort-key\'), event.detail === 0)', $source, 'a keyboard press asks for the focus back');
+
+	$sort = explorer_keyboard_function('sortByColumn');
+	pg_assert_contains('button.th-sort[data-sort-key="', $sort, 'the redrawn heading takes the focus again');
+
+	pg_assert_contains('#explorer_list_table th .th-sort:focus-visible', $source, 'the heading button shows its focus');
+}
+
+function test_explorer_column_edges_resize_without_a_mouse_drag()
+{
+	$source = explorer_keyboard_source();
+
+	pg_assert_contains('role="separator" aria-orientation="vertical" tabindex="0"', $source, 'the grip is a focusable separator');
+	pg_assert_contains("esc(fmt(L.column_resize, [column.label || '']))", $source, 'the grip is named after its column');
+	pg_assert_contains("'column_resize' => lang('Resize column {var:1}')", $source, 'the grip name is translated');
+	pg_assert_contains('#explorer_list_table th .col-grip:focus-visible', $source, 'the grip shows its focus');
+	pg_assert_contains('touch-action: none', $source, 'a touch drag is not taken by scrolling');
+
+	$resize = explorer_keyboard_function('attachColumnResize');
+	pg_assert_true($resize !== '', 'attachColumnResize() is found');
+	pg_assert_contains("addEventListener('pointerdown'", $resize, 'the drag starts from any pointer');
+	pg_assert_contains('setPointerCapture(', $resize, 'the drag keeps its pointer');
+	pg_assert_false(strpos($resize, "'mousedown'") !== false, 'no mouse-only drag is left');
+	foreach (array("'ArrowLeft'", "'ArrowRight'", "'Home'") as $key) {
+		pg_assert_contains($key, $resize, $key . ' changes the width');
+	}
+	pg_assert_contains('fitColumnWidth(', $resize, 'a double click fits the column to its content');
+	pg_assert_contains('saveListColumnWidth(', explorer_keyboard_function('setColumnWidth'), 'a key-made width is remembered');
+
+	pg_assert_contains("case 'columns_widths_reset': columnWidthsReset(); break;", $source, 'the Columns menu puts every width back');
+	pg_assert_contains("'columns_widths_reset' => lang('Reset column widths')", $source, 'the reset entry is translated');
+}
