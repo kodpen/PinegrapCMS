@@ -2248,9 +2248,10 @@ function ws_flows_scheduled_rows($viewer)
 }
 
 /**
- * Does the Workspace show Flows to this person? Staff, who build them,
- * anybody who may run the live flow of a channel they read, and anybody a
- * flow is shared with, themselves or in a channel they read.
+ * Does the Workspace show Flows to this person? Staff and role-3 members,
+ * who build them (a member their own, flow_member.php), anybody who may run
+ * the live flow of a channel they read, and anybody a flow is shared with,
+ * themselves or in a channel they read.
  *
  * @param array $viewer
  * @return bool
@@ -2268,7 +2269,7 @@ function ws_flows_nav_visible($viewer)
     $visible = false;
 
     if (ws_flows_ready() && !empty($viewer['member'])) {
-        $visible = ws_can_schedule($viewer);
+        $visible = ws_can_schedule($viewer) || ws_flow_member($viewer);
 
         // A live flow whose home is a public channel, or a private one the
         // person is in: what ws_flow_access() answers "run" for, in one read
@@ -2399,7 +2400,11 @@ function ws_flow_detail($viewer, $flow)
     return ws_flow_brief($viewer, $flow, is_array($version) ? (int) $version['n'] : 0, $start) + array(
         'draft'    => ($draft !== null) ? ws_flow_graph_present($draft, $edit) : null,
         'graph'    => ($live !== null) ? ws_flow_graph_present($live, $edit) : null,
-        'problems' => ($edit && ($draft !== null)) ? ws_flow_problems($draft) : array(),
+        // A box its role-3 owner's own flows may not hold (kept from their
+        // staff days) is marked with the save check's refusal.
+        'problems' => ($edit && ($draft !== null))
+            ? array_merge(ws_flow_problems($draft), ws_flow_member_problems(((int) $flow['owner_id'] === (int) $viewer['id']) ? ws_flow_builder_kind($viewer) : '', $draft))
+            : array(),
         'warnings' => ($edit && ($draft !== null)) ? ws_flow_warnings($draft) : array(),
         // The draft holds something its live version does not.
         'changed'  => $edit && ($draft !== null) && (($live === null) || ($draft !== $live)),
@@ -3031,7 +3036,59 @@ function ws_flow_js_strings()
         'fl_share_close'      => lang('Close'),
         'fl_home_owner_only'  => lang('Only the owner of a flow can move it to another home channel.'),
         'fl_home_none_other'  => lang('No channel'),
+        // A role-3 member's own flow (flow_member.php), in the save check's words.
+        'fl_member_no_home'   => lang('Your own flows have no home channel: only you run them.'),
+        'fl_member_report_to' => lang('In your own flows a summary of counts goes to a channel, not to e-mail addresses.'),
     );
+}
+
+/**
+ * What the canvas is told about the person as a builder: a role-3 member
+ * (flow_member.php) gets the kinds of box their own flows may hold, the
+ * only ones their palette offers, and builds without a home channel,
+ * shares, templates or Pinegrap AI's draft, which the save and share checks
+ * refuse them; staff are told nothing and keep the whole palette. Pure.
+ *
+ * @param string $builder ws_flow_builder_kind()
+ * @return array member (bool), member_kinds (string[] or null)
+ */
+function ws_flow_js_member($builder)
+{
+    if ($builder !== 'member') {
+        return array('member' => false, 'member_kinds' => null);
+    }
+
+    return array('member' => true, 'member_kinds' => ws_flow_member_kinds());
+}
+
+/**
+ * The boxes of a draft its role-3 owner's own flows may not hold, as
+ * problems on those boxes with ws_flow_member_node_refusal()'s words: a
+ * flow kept from the owner's staff days shows them marked rather than
+ * dropped (staff: none). Pure.
+ *
+ * @param string $builder ws_flow_builder_kind() of the owner reading it
+ * @param array  $graph
+ * @return array[] ws_flow_problem()
+ */
+function ws_flow_member_problems($builder, $graph)
+{
+    if ($builder !== 'member') {
+        return array();
+    }
+
+    $problems = array();
+
+    foreach ((array) (ws_flow_graph_normalize($graph)['nodes'] ?? array()) as $node) {
+        $refusal = ws_flow_member_node_refusal($node);
+
+        if ($refusal !== '') {
+            $problems[] = ws_flow_problem('member_kind', ($node['id'] !== '') ? $node['id'] : null, null,
+                lang(array('string' => 'The box {var:1}: {var:2}', 'vars' => array(ws_flow_box_name($node), $refusal))));
+        }
+    }
+
+    return $problems;
 }
 
 /**
@@ -3066,8 +3123,10 @@ function ws_flow_js_config($viewer, $mode)
 
     // What the step boxes offer to choose from, to whoever builds flows: the
     // counts the person may read, the task e-mail's filters, and the
-    // scheduled actions a box may start.
-    $build = ws_flows_ready() && ws_can_schedule($viewer);
+    // scheduled actions a box may start. A role-3 member builds their own
+    // flows from the kinds of box open to them (ws_flow_js_member()).
+    $member = ws_flow_js_member(ws_flow_builder_kind($viewer));
+    $build = ws_flows_ready() && (ws_can_schedule($viewer) || ($member['member'] && ws_flow_member($viewer)));
     $steps = array('metrics' => array(), 'digest_only' => array(), 'targets' => array(), 'changes' => (object) array(),
         'records' => (object) array(), 'operators' => (object) array(), 'counts' => array(), 'repeats' => (object) array(), 'events' => null, 'tables' => array(), 'mcp' => array());
 
@@ -3087,7 +3146,7 @@ function ws_flow_js_config($viewer, $mode)
 
         // The kinds of record the person may change, with their actions and
         // fields, as the scheduled form offers them.
-        $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer) : null;
+        $scheduled = function_exists('ws_scheduled_js_config') ? ws_scheduled_js_config($viewer, true) : null;
         $steps['changes'] = (object) (is_array($scheduled) ? $scheduled['changes'] : array());
 
         // What a condition box looks at: the kinds of record with their
@@ -3105,8 +3164,9 @@ function ws_flow_js_config($viewer, $mode)
         $steps['tables'] = function_exists('ws_flow_row_tables') ? ws_flow_row_tables($viewer) : array();
 
         // The MCP servers an MCP box may call with the person's account and
-        // the tools that read there; none, and the palette has no MCP box.
-        if (function_exists('ws_mcp_active_servers') && function_exists('ws_step_mcp_form_servers')) {
+        // the tools that read there; none, and the palette has no MCP box
+        // (nor has a role-3 member's).
+        if (!$member['member'] && function_exists('ws_mcp_active_servers') && function_exists('ws_step_mcp_form_servers')) {
             $steps['mcp'] = ws_step_mcp_form_servers(ws_mcp_active_servers(), function ($server) use ($viewer) {
                 return ($server['auth_kind'] !== 'oauth') || (bool) ws_mcp_oauth_account($server, (int) $viewer['id']);
             });
@@ -3131,25 +3191,28 @@ function ws_flow_js_config($viewer, $mode)
         }
     }
 
-    // The ready-made flows the gallery offers to whoever builds flows
+    // The ready-made flows the gallery offers to staff who build flows
     // (flow_templates.php), filled for the person: their texts go to them.
+    // A role-3 member starts from an empty canvas: a template, a saved one
+    // or a draft of Pinegrap AI may hold boxes their own flows refuse.
+    $staff_build = $build && !$member['member'];
     $templates = array();
 
-    if ($build && is_array($scheduled ?? null) && function_exists('ws_flow_templates_for')) {
+    if ($staff_build && is_array($scheduled ?? null) && function_exists('ws_flow_templates_for')) {
         $templates = ws_flow_templates_for($viewer, $scheduled);
     }
 
-    return $config + array(
+    return $config + $member + array(
         'ready'    => ws_flows_ready(),
         'build'    => $build,
         'templates' => $templates,
         'template_categories' => function_exists('ws_flow_template_categories') ? ws_flow_template_categories() : array(),
         // "Save as template" in the editor: builders, once the table of
         // saved templates is there (flow_templates_saved.php).
-        'template_save' => $build && function_exists('ws_flow_templates_saved_ready') && ws_flow_templates_saved_ready(),
+        'template_save' => $staff_build && function_exists('ws_flow_templates_saved_ready') && ws_flow_templates_saved_ready(),
         // "Describe it to AI" in New flow: builders, while Pinegrap AI can
         // be asked (its licence included, flow_draft.php).
-        'ai_sketch' => $build && function_exists('ws_flow_ai_sketch_ready') && ws_flow_ai_sketch_ready($viewer),
+        'ai_sketch' => $staff_build && function_exists('ws_flow_ai_sketch_ready') && ws_flow_ai_sketch_ready($viewer),
         'ai_sketch_max' => WS_FLOW_AI_SKETCH_MAX,
         'steps'    => $steps,
         'outputs'  => $outputs,

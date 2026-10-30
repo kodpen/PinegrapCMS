@@ -2658,15 +2658,19 @@
         var more = el('div', 'pg-menu-wrap');
         var moreButton = K.button('btn btn-sm btn-text theme-secondary', '', 'bi-three-dots', t('fl_more'));
         var menu = el('ul', 'menu pg-menu-end');
-        var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
 
         moreButton.setAttribute('data-bs-toggle', 'menu');
         moreButton.setAttribute('data-bs-placement', 'bottom-end');
         moreButton.setAttribute('aria-expanded', 'false');
         moreButton.setAttribute('data-refocus', 'more');
-        share.setAttribute('data-wsf-share', '');
-        share.addEventListener('click', openShares);
-        menu.appendChild(el('li')).appendChild(share);
+
+        if (shareOffered()) {
+            var share = K.button('menu-item pg-link-body-emphasis', flow.manage ? t('fl_share') : t('fl_shared_with'), flow.manage ? 'bi-share' : 'bi-people');
+
+            share.setAttribute('data-wsf-share', '');
+            share.addEventListener('click', openShares);
+            menu.appendChild(el('li')).appendChild(share);
+        }
 
         // Keeping the draft as a template of the site: for those who build
         // flows, on a flow they edit (ws_flow_template_save() refuses one
@@ -2685,9 +2689,20 @@
             menu.appendChild(el('li')).appendChild(bin);
         }
 
+        // Nothing in it (a member's own flow they only read): no menu.
+        if (!menu.firstChild) {
+            return;
+        }
+
         more.appendChild(moreButton);
         more.appendChild(menu);
         ui.bar.appendChild(more);
+    }
+
+    // The shares in "⋯": for everybody but a role-3 member on their own
+    // flow, which nobody else reaches.
+    function shareOffered() {
+        return !memberOwn();
     }
 
     // The save state, the problem count and whether Publish may be pressed.
@@ -3701,9 +3716,22 @@
         var writable = rowWriteTables().length > 0;
 
         return PALETTE.filter(function (item) {
-            return ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
+            return memberKind(item[0]) && ((item[0] !== 'mcp') || mcp) && ((item[0] !== 'row') || tables)
                 && (((item[0] !== 'row_add') && (item[0] !== 'row_set')) || writable);
         });
+    }
+
+    // May the person add a box of this kind? A role-3 member builds their
+    // own flows from the kinds the server lists (ws_flow_member_kinds());
+    // staff from every kind.
+    function memberKind(kind) {
+        return !FL.member_kinds || (FL.member_kinds.indexOf(kind) !== -1);
+    }
+
+    // A role-3 member's own flow: no home channel, no shares (the server
+    // refuses both, flow_member.php).
+    function memberOwn() {
+        return !!(FL.member && state.flow && state.flow.manage);
     }
 
     // The buttons that add a box; in the palette they may also be dragged
@@ -4936,6 +4964,30 @@
     function flowForm() {
         var box = el('div');
 
+        homeField(box);
+
+        var keys = el('details', 'small wsf-keys');
+        var list = el('ul', 'mb-0 ps-5 fg-secondary');
+
+        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
+        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
+            list.appendChild(el('li', '', t('fl_key_' + key)));
+        });
+        keys.appendChild(list);
+        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
+        box.appendChild(keys);
+
+        return box;
+    }
+
+    // The flow's home channel; a role-3 member's own flow has none, said in
+    // its place.
+    function homeField(box) {
+        if (memberOwn()) {
+            box.appendChild(field(t('fl_home'), el('p', 'small fg-secondary mb-0', t('fl_member_no_home'))));
+            return;
+        }
+
         // "Only you" is the owner's to read; somebody the flow is shared with
         // reads that it has no home.
         var channels = [[0, state.flow.manage ? t('fl_home_none') : t('fl_home_none_other')]];
@@ -4962,19 +5014,6 @@
             changed(false);
         });
         box.appendChild(field(t('fl_home'), home, (state.edit && !state.flow.manage) ? t('fl_home_owner_only') : t('fl_home_help')));
-
-        var keys = el('details', 'small wsf-keys');
-        var list = el('ul', 'mb-0 ps-5 fg-secondary');
-
-        keys.appendChild(el('summary', 'fw-semibold', t('fl_keys')));
-        ['tab', 'arrows', 'connect', 'thread', 'delete', 'undo', 'enter', 'zoom', 'pan', 'escape'].forEach(function (key) {
-            list.appendChild(el('li', '', t('fl_key_' + key)));
-        });
-        keys.appendChild(list);
-        box.appendChild(el('p', 'small fg-secondary', state.edit ? t('fl_flow_help') : t('fl_read_only')));
-        box.appendChild(keys);
-
-        return box;
     }
 
     function nodeForm(node) {
@@ -5608,10 +5647,23 @@
         }, false));
         box.appendChild(field(t('fl_report_counts'), list));
         channelField(box, node, t('fl_post_channel'), t('fl_task_no_channel'));
+        reportToField(box, node);
+    }
+
+    // A summary's e-mail addresses; a role-3 member's own flow sends it to
+    // a channel only, so they have none (addresses kept from their staff
+    // days are marked on the box by the server, to be cleared here).
+    function reportToField(box, node) {
+        var config = node.config;
+
+        if (memberOwn() && !String(config.to || '').trim()) {
+            return;
+        }
+
         box.appendChild(field(t('fl_email_to'), textInput(config.to, 2000, function (value) {
             config.to = value;
             refreshNode(node);
-        }), t('fl_report_where_help')));
+        }), memberOwn() ? t('fl_member_report_to') : t('fl_report_where_help')));
     }
 
     // A check-in: the channel asked and the question.
@@ -7596,7 +7648,7 @@
     }
 
     function addItem(kind, at) {
-        if (!state.edit || !state.flow) {
+        if (!state.edit || !state.flow || !memberKind(kind)) {
             return;
         }
 
@@ -7836,7 +7888,9 @@
 
     // The draft as saved, also while a run is shown over it.
     function payload() {
-        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: state.flow.channel_id || 0, graph: draftOf() };
+        // A role-3 member's own flow has no home: one kept from their staff
+        // days goes with the first save rather than refusing it.
+        var data = { flow_id: state.flow.id, draft_rev: state.flow.draft_rev, channel_id: memberOwn() ? 0 : (state.flow.channel_id || 0), graph: draftOf() };
 
         if (String(state.flow.name || '').trim() !== '') {
             data.name = state.flow.name;
