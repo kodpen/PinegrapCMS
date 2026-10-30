@@ -6621,6 +6621,15 @@ function pg_sw_item_missing($mark = null)
     return true;
 }
 
+// The order view's not-found message as HTML: $message escaped, then a
+// My Account link when $account_url is not ''.
+function pg_sw_order_not_found_message_html($message, $account_url)
+{
+    $account_url = (string)$account_url;
+    return h((string)$message)
+        . ($account_url !== '' ? ' <a href="' . h($account_url) . '" class="alert-link">' . h(lang('My Account')) . '</a>' : '');
+}
+
 /**
  * A one-line, plain-text summary of a product's rich description, for order
  * lines (cart, express order, order view). products.full_description is the
@@ -6763,8 +6772,10 @@ function pg_sw_item_summary($html, $max = 140)
 //   ^^__item_url^^              detail page link (products.address_name)
 //   ^^__item_ship_to^^          per-item shipping address summary (one-liner)
 //
-// Note: requires ECOMMERCE to be active. Returns empty if ECOMMERCE is off or
-// the order is not found / does not belong to the current user.
+// Note: requires ECOMMERCE to be active; returns empty if it is off. With no
+// order id, no such order, or an order that is not the visitor's, the widget
+// draws the not-found message with a My Account link and the page answers 404
+// with noindex (pg_sw_item_missing()).
 function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array())
 {
     $widget_id = (int)$widget_id;
@@ -6830,9 +6841,13 @@ function _render_system_widget_order_view($tree_json, $widget_id, $cfg = array()
     // that places ^^__not_found_message^^ draws its own empty state; any
     // other tree came out as a page of headings with nothing under them, or
     // as nothing at all, so it shows the message through its message area.
+    // Every way here answers 404 (nothing in an e-mail or an SEO pass).
     $render_not_found = function () use ($tree_decoded, $not_found_message) {
+        pg_sw_item_missing(true);
         if (strpos(pg_sw_cond_tree_json($tree_decoded), '__not_found_message') === false) {
-            return _pg_sw_render_message_only($tree_decoded, 'order_view', h($not_found_message), 'warning');
+            $acct_url = function_exists('_pg_acct_page_url') ? _pg_acct_page_url(0, 'my account') : '';
+            return _pg_sw_render_message_only($tree_decoded, 'order_view',
+                pg_sw_order_not_found_message_html($not_found_message, $acct_url), 'warning');
         }
         $split_empty = _split_widget_tree($tree_decoded);
         if ($split_empty['loop_children'] === null) {
