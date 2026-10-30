@@ -201,7 +201,8 @@ function test_list_search_where_turkish_labels()
 	pg_assert_same('(user.user_role IN (?))', $where['sql'], 'a label matches folded too');
 
 	$where = pg_list_search_where(array('kullanici'), array(), array(array('expr' => 'user.user_role', 'labels' => array(3 => 'Kullanıcı'))), '');
-	pg_assert_same('(1 = 0)', $where['sql'], 'not Turkish: no fold');
+	$plain = mb_stripos('Kullanıcı', 'kullanici', 0, 'UTF-8') !== false;
+	pg_assert_same($plain ? '(user.user_role IN (?))' : '(1 = 0)', $where['sql'], 'not Turkish: mb_stripos() alone, no fold');
 }
 
 function test_list_when_leaves_out_an_unknown_user()
