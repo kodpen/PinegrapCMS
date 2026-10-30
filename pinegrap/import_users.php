@@ -156,9 +156,9 @@ if (!$_POST) {
             'icon'=>'account', 
             'heading'=>lang('Import Users'),
             'heading_description' => lang('Import new Users and Contacts, assign privileges, and choose to email login info to Users.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_users.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')),
         
-            'breadcrumb' => array(array('label' => lang('All My Users'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php'), array('label' => lang('Import Users'))),
+            'breadcrumb' => array(array('label' => lang('Users'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_users.php')), array('label' => lang('Import Users'))),
         )
     ) . '
 <main id="content" class="container-fluid">

@@ -169,6 +169,8 @@
         change: ['M10.5 2.25l3.25 3.25L6 13.25H2.75V10z', 'M9 3.75l3.25 3.25'],
         lead: ['M1.5 3h13v10h-13z', 'M4 6.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0', 'M3.25 11c0-1.25 1-2.25 2.25-2.25s2.25 1 2.25 2.25', 'M9.75 6.5h3M9.75 9h3'],
         mcp: ['M5.5 1.5v3M10.5 1.5v3', 'M3.5 4.5h9v2.25a4.5 4.5 0 0 1-9 0z', 'M8 11.25v3.25'],
+        row_add: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 9.5v5M10.5 12h5'],
+        row_set: ['M1.5 2h9v8.5h-9z', 'M1.5 5.5h9M5 5.5v5', 'M13 8.5l1.75 1.75L10 15H8.25v-1.75z'],
         approval: ['M8 1.5l5.5 2v4c0 3.5-2.5 6-5.5 7c-3-1-5.5-3.5-5.5-7v-4z', 'M5.5 8l1.75 1.75l3.5-3.5'],
         condition: ['M8 14.5V9L3.5 4.5M8 9l4.5-4.5', 'M3 7.5V4h3.5M13 7.5V4H9.5'],
         delay: ['M4 1.75h8M4 14.25h8', 'M5 1.75c0 3 6 3.5 6 6.25s-6 3.25-6 6.25M11 1.75c0 3-6 3.5-6 6.25s6 3.25 6 6.25'],
@@ -16923,9 +16925,13 @@
         var bar = el('nav', 'pg-toolbar navigation mb-5');
         var list = el('div', 'card');
         var listBody = el('div', 'card-body p-0');
+        // Says how many tasks the list holds after a filter or a search.
+        var countLine = el('div', 'visually-hidden');
 
+        countLine.setAttribute('role', 'status');
         list.appendChild(listBody);
         root.appendChild(bar);
+        root.appendChild(countLine);
         root.appendChild(list);
 
         var add = button('btn btn-sm btn-solid theme-primary rounded-pill px-5', t('new_task'), 'bi-plus-circle');
@@ -16944,12 +16950,30 @@
             scopeList.push(['time', t('tt_my_time')]);
         }
 
+        // Fill and aria-pressed move together onto the chosen scope.
+        function setScope(name) {
+            state.scope = name;
+            Array.prototype.forEach.call(scopes.children, function (child) {
+                var on = child.getAttribute('data-scope') === name;
+
+                child.classList.toggle('active', on);
+                child.setAttribute('aria-pressed', on ? 'true' : 'false');
+            });
+        }
+
         scopeList.forEach(function (scope) {
             var item = button('btn btn-text theme-secondary' + (state.scope === scope[0] ? ' active' : ''), scope[1]);
+            item.setAttribute('data-scope', scope[0]);
+            item.setAttribute('aria-pressed', state.scope === scope[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
-                state.scope = scope[0];
-                Array.prototype.forEach.call(scopes.children, function (child) { child.classList.remove('active'); });
-                item.classList.add('active');
+                // ws_tasks reads department_id only in the department scope,
+                // so the select must not keep showing one the list ignores.
+                if (scope[0] !== 'department') {
+                    state.department_id = 0;
+                    dept.value = '0';
+                }
+
+                setScope(scope[0]);
                 load();
             });
             scopes.appendChild(item);
@@ -16968,11 +16992,12 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
 
             if (state.department_id) {
-                state.scope = 'department';
+                setScope('department');
             }
 
             load();
@@ -17031,6 +17056,7 @@
             var mine = ++serial;
 
             if (state.scope === 'time') {
+                countLine.textContent = '';
                 window.PGWsTaskTime.myTime(listBody, partHelpers());
                 return;
             }
@@ -17038,6 +17064,7 @@
             api('ws_tasks', state).then(function (data) {
                 if (mine === serial) {
                     taskRows(listBody, data.tasks, load);
+                    countLine.textContent = data.tasks.length ? t('task_count', data.tasks.length) : t('nothing_found');
                 }
             }).catch(fail);
         }
@@ -17120,10 +17147,15 @@
 
         [[7, t('one_week')], [14, t('two_weeks')]].forEach(function (option) {
             var item = button('btn btn-text theme-secondary' + (state.days === option[0] ? ' active' : ''), option[1]);
+            item.setAttribute('aria-pressed', state.days === option[0] ? 'true' : 'false');
             item.addEventListener('click', function () {
                 state.days = option[0];
-                Array.prototype.forEach.call(span.children, function (child) { child.classList.remove('active'); });
+                Array.prototype.forEach.call(span.children, function (child) {
+                    child.classList.remove('active');
+                    child.setAttribute('aria-pressed', 'false');
+                });
                 item.classList.add('active');
+                item.setAttribute('aria-pressed', 'true');
                 load();
             });
             span.appendChild(item);
@@ -17133,6 +17165,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();
@@ -17559,6 +17592,7 @@
 
         var dept = select(departmentOptions(t('all_departments')), 0);
         dept.classList.add('w-auto');
+        dept.setAttribute('aria-label', t('department'));
         dept.addEventListener('change', function () {
             state.department_id = parseInt(dept.value, 10) || 0;
             load();

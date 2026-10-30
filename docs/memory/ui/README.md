@@ -109,6 +109,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - explorer-drawer-names.md: File and Catalog Manager drawer rows drawn by script name themselves: access selects per user, commerce switch groups, shipping-zone lists, bulk description, backup upload path, file window code field
 - explorer-grid-tiles.md: Explorer grid tiles (view_folders.php, catalog and files): the tile size scale, picture vs glyph, the missing-picture plate sized from --pg-tile-icon, the narrow pill it fixed (PR #2200)
 - explorer-keyboard.md: File manager (view_folders.php) from the keyboard: shortcuts leave focused controls alone, crumbs with href, Quick Look focus and Tab trap, the context menu from ContextMenu/Shift+F10 (#2783)
+- explorer-list-headings.md: File manager list view (view_folders.php): headings sort from a button and carry aria-sort; column edges resize by keyboard, any pointer, double-click fit and a menu reset
 - explorer-menu-tree.md: The File Manager's and the Catalog Manager's tree in their main menu panels: moved in on the explorer's own screen, links elsewhere (explorer_side.js, the explorer_side action), gates, per-area keys
 - explorer-picker-state.md: File and Catalog Manager pickers and menu ticks expose their state (aria-pressed, aria-current); transfer and channel picks keep focus; empty lists announced
 - explorer-search-state.md: File manager (view_folders.php) search and filters: status bar count, the hidden status region and live notices, selection strip, preview pane; what is still open (#2053)
@@ -226,6 +227,7 @@ Panel screens, settings modal, dashboard, panel JavaScript pitfalls.
 - rich-text-editor-names.md: The rich text editor (CKEditor 4) named by its field's caption through pgCkeditorReplace(); label click focuses it; Source view names the code editor, says how Tab leaves, passes Alt+F10/Alt+0 on
 - rich-text-source-dialog.md: The rich text editor's Source dialog with the code editor: isolated in a shadow root (the dialog resets every element), sized like its textarea, Enter, Tab and used keys kept from the dialog
 - script-built-field-names.md: Dialogs and fields drawn by script after load name themselves: unique title ids, label for, aria-label from the screen's label map, Escape kept (#3029)
+- scroll-regions-keyboard.md: Text-only boxes that scroll on their own are named keyboard regions: Audit Trail JSON values, Workspace MCP answer, API documentation tables and Try it answer, Write with AI draft
 - select-commit-on-pick.md: Selects that save or ask the moment they change (Translations engine, "Write with AI" tone) wait for a keyboard pick; the AI panel gives focus back after a request
 - server-paged-lists.md: DataTables lists paged on the server (users, submitted forms, contacts, products): data-pg-list-action, the JSON page action, search, counts, row cells, what select all and bulk buttons act on
 - settings-card-chrome.md: Settings dialog visual details: acrylic glass mode (advanced-visuals, pg-settings-open) and the pg-alert-dismissible padding rule.

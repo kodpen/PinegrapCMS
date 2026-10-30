@@ -106,6 +106,7 @@
     "Last e-mail": "Son e-posta",
     "Last e-mail {var:1}": "Son e-posta {var:1}",
     "Last error": "Son hata",
+    "Last event:": "Son olay:",
     "Last failure": "Son hata",
     "Last first": "Sondan başa",
     "Last full check: {var:1}.": "Son tam denetim: {var:1}.",

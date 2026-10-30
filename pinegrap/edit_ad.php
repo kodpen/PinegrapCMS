@@ -103,8 +103,7 @@ if (!$_POST) {
             'icon'=>'ads',
             'heading'=>lang('Edit Ad'),
             'heading_description' => lang('Update this ad and assign it to any existing ad region.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_ads.php')
-        ,
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php')),
             'breadcrumb' => array(array('label' => lang('All My Ads'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_ads.php?filter=all_ad_regions'), array('label' => lang('Edit Ad'))),
         ]) . '
 <main id="content" class="container-fluid">

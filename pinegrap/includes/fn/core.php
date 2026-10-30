@@ -1687,6 +1687,26 @@ function pg_send_to_url($fallback = '')
     return $send_to;
 }
 /**
+ * The list breadcrumb of a screen opened from that list: send_to when its
+ * path is the same list (so the filter in its address stays), else the bare
+ * list, since send_to may also be another screen such as Edit User.
+ *
+ * @param string $list_url the list's own address, without a query string
+ * @return string
+ */
+function pg_send_to_list_url($list_url)
+{
+    $send_to = pg_send_to_url('');
+
+    if ($send_to === '') {
+        return $list_url;
+    }
+
+    $path = (string) parse_url($send_to, PHP_URL_PATH);
+
+    return (basename($path) === basename($list_url)) ? $send_to : $list_url;
+}
+/**
  * Whether get_relative_time() and get_absolute_time() show a time in the
  * signed-in person's own time zone rather than the site's: the caller did not
  * ask for the site's ("timezone_type" => "site"), somebody is signed in, and

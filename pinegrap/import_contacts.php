@@ -67,9 +67,9 @@ if (!$_POST) {
             'icon'=>'contact', 
             'heading'=>lang('Import Contacts'),
             'heading_description' => lang('Import contacts into any of my contact groups.'),
-            'cancel'=>array('enable'=>'true','url'=>'view_contacts.php'),
+            'cancel' => array('enable' => 'true', 'url' => pg_send_to_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')),
         
-            'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php'), array('label' => lang('Import Contacts'))),
+            'breadcrumb' => array(array('label' => lang('Contacts'), 'url' => pg_send_to_list_url(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_contacts.php')), array('label' => lang('Import Contacts'))),
         )
     ) . '
 <main id="content" class="container-fluid">

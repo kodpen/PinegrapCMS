@@ -230,6 +230,13 @@ body.pg-tour-open { overflow: hidden; }
     .pg-tour-arrow { display: none !important; }
 }
 
+/* Forced colours remove box-shadows, so the ring and the dim vanish; an
+   outline marks the control the step is about. */
+@media (forced-colors: active) {
+
+    .pg-tour-hole { outline: 3px solid Highlight; }
+}
+
 @media (prefers-reduced-motion: reduce) {
 
     .pg-tour-hole,
