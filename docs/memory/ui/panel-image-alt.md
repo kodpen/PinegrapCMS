@@ -21,4 +21,8 @@ module: ecommerce, contact_list
 ## What was not checked?
 - Nothing was rendered in a browser. Test: `tests/panel_image_alt_test.php`.
 
+## What keeps the picture picker's Unsplash Load More usable?
+- A failed request rolls `_unsplashPage` back, so Load More asks for the same page again; an empty later page keeps the count already shown instead of 'Sorry, we could not find any images.' over the photos.
+- When Load More hides while it holds focus, focus moves to the first new tile (the last tile when none came), not to `<body>` (`esiUnsplashShow()`, `tests/editor_select_image_unsplash_test.php`).
+
 Related: docs/memory/ui/list-row-names.md, docs/memory/ui/order-view-picker-links.md

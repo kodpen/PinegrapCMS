@@ -353,18 +353,24 @@ if ($number_of_results > 0) {
         }
 
         $output_screen_links .= '
-            <nav class="navigation" aria-label="data pagination">
+            <nav class="navigation" aria-label="' . h(lang('Pagination')) . '">
                 <ul class="pagination pagination-sm flex-wrap justify-content-center mb-0">';
+
+        // A disabled arrow is no link, so Tab skips it; a span carries no
+        // aria-label, so it says its name in visually-hidden text.
+        $arrow = function ($target, $enabled, $label, $glyph) use ($url_parameters) {
+            $inner = '<span class="bi ' . $glyph . '" aria-hidden="true"></span>';
+            if (!$enabled) {
+                return '<li class="page-item disabled"><span class="page-link">' . $inner . '<span class="visually-hidden">' . h($label) . '</span></span></li>';
+            }
+            return '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $target . '&' . $url_parameters . '" aria-label="' . h($label) . '">' . $inner . '</a></li>';
+        };
 
         // build Previous button if necessary
         $previous = $screen - 1;
 
         // if previous screen is greater than zero, output previous link
-        if ($previous > 0) {
-            $output_screen_links .= '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $previous . '&' . $url_parameters . '" aria-label="Previous"><span class="bi bi-chevron-left"></span></a></li>';
-        } else {
-            $output_screen_links .= '<li class="page-item disabled"><span class="page-link"><span class="bi bi-chevron-left"></span></span></li>';
-        }
+        $output_screen_links .= $arrow($previous, $previous > 0, lang('Previous page'), 'bi-chevron-left');
 
         // if the window does not start at the beginning, output the first screen and a gap
         if ($window_start > 1) {
@@ -400,11 +406,7 @@ if ($number_of_results > 0) {
         $next = $screen + 1;
 
         // if next screen is less than or equal to the total number of screens, output next link
-        if ($next <= $number_of_screens) {
-            $output_screen_links .= '<li class="page-item"><a class="page-link" href="editor_select_image.php?screen=' . $next . '&' . $url_parameters . '" aria-label="Next"><span class="bi bi-chevron-right"></span></a></li>';
-        } else {
-            $output_screen_links .= '<li class="page-item disabled"><span class="page-link"><span class="bi bi-chevron-right"></span></span></li>';
-        }
+        $output_screen_links .= $arrow($next, $next <= $number_of_screens, lang('Next page'), 'bi-chevron-right');
 
         $output_screen_links .= '</ul></nav>';
     }
@@ -946,6 +948,29 @@ var _unsplashPage     = 1;
 var _unsplashQuery    = \'\';
 var _unsplashPopularLoaded = false;
 
+// Shows the tiles of a page. A later page that comes back empty keeps the
+// count already shown; when Load More hides while it holds focus, focus
+// moves to the first new tile (the last tile when none came) instead of
+// falling to the page body.
+function esiUnsplashShow(photos, loadMore, countText, hasMore) {
+    var status = document.getElementById(\'unsplash_status\');
+    var more   = document.getElementById(\'unsplash_load_more\');
+    if (!photos || !photos.length) {
+        status.textContent = loadMore ? status.getAttribute(\'data-count\') || \'\' : \'' . lang('Sorry, we could not find any images.') . '\';
+        if (more.contains(document.activeElement)) {
+            var picks = document.querySelectorAll(\'#unsplash_results .esi-unsplash-pick\');
+            if (picks.length) picks[picks.length - 1].focus();
+        }
+        more.style.display = \'none\';
+        return;
+    }
+    status.textContent = countText;
+    status.setAttribute(\'data-count\', countText);
+    var first = esiRenderUnsplash(photos);
+    if (!hasMore && more.contains(document.activeElement) && first) first.focus();
+    more.style.display = hasMore ? \'\' : \'none\';
+}
+
 // The two source tabs keep aria-selected and a roving tabindex in step with
 // the fill, so only the open tab sits in the Tab order.
 function esiSwitchTab(tab, btn) {
@@ -1002,21 +1027,18 @@ function esiUnsplashPopular(loadMore) {
             return r.json().then(function(data){ return { data: data, total: total }; });
         })
         .then(function(res){
-            if (!res.data || !res.data.length) {
-                status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
-                document.getElementById(\'unsplash_load_more\').style.display = \'none\';
-                return;
-            }
-            status.textContent = res.total ? esiResultCount(res.total) : \'\';
-            esiRenderUnsplash(res.data);
             // Show "Load More" as long as a full page was returned
-            document.getElementById(\'unsplash_load_more\').style.display =
-                (res.data.length === 20) ? \'\' : \'none\';
+            esiUnsplashShow(res.data, loadMore, res.total ? esiResultCount(res.total) : \'\',
+                !!res.data && res.data.length === 20);
             // Wire "Load More" to popular loader instead of search
             document.getElementById(\'unsplash_load_more\').querySelector(\'button\')
                 .onclick = function(){ esiUnsplashPopular(true); };
         })
-        .catch(function(){ status.textContent = \'' . lang('Sorry, we could not find any images.') . '\'; });
+        .catch(function(){
+            // The page was not loaded, so Load More asks for it again
+            if (loadMore) _unsplashPage--;
+            status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
+        });
 }
 
 function esiUnsplashSearch(loadMore) {
@@ -1035,20 +1057,17 @@ function esiUnsplashSearch(loadMore) {
             + \'&per_page=20&page=\' + _unsplashPage + \'&client_id=\' + ESI_UNSPLASH_KEY)
         .then(function(r){ return r.json(); })
         .then(function(data){
-            if (!data.results || !data.results.length) {
-                status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
-                document.getElementById(\'unsplash_load_more\').style.display = \'none\';
-                return;
-            }
-            status.textContent = esiResultCount(data.total);
-            esiRenderUnsplash(data.results);
-            document.getElementById(\'unsplash_load_more\').style.display =
-                (_unsplashPage < data.total_pages) ? \'\' : \'none\';
+            esiUnsplashShow(data.results, _unsplashPage > 1, esiResultCount(data.total),
+                _unsplashPage < data.total_pages);
             // Wire "Load More" back to search loader
             document.getElementById(\'unsplash_load_more\').querySelector(\'button\')
                 .onclick = function(){ esiUnsplashSearch(true); };
         })
-        .catch(function(){ status.textContent = \'' . lang('Sorry, we could not find any images.') . '\'; });
+        .catch(function(){
+            // The page was not loaded, so Load More asks for it again
+            if (_unsplashPage > 1) _unsplashPage--;
+            status.textContent = \'' . lang('Sorry, we could not find any images.') . '\';
+        });
 }
 
 function esiRenderUnsplash(photos) {
@@ -1065,6 +1084,7 @@ function esiRenderUnsplash(photos) {
         a.textContent = text;
         return a;
     };
+    var first = null;
     photos.forEach(function(photo) {
         var photographerUrl = (photo.user.links && photo.user.links.html)
             ? photo.user.links.html + utm : \'#\';
@@ -1091,6 +1111,7 @@ function esiRenderUnsplash(photos) {
             pick.setAttribute(\'aria-label\', \'' . lang('Select') . ': \' + photo.user.name);
         }
         pick.appendChild(img);
+        if (!first) first = pick;
 
         /* Attribution - required by Unsplash API guidelines */
         var footer = document.createElement(\'div\');
@@ -1112,6 +1133,7 @@ function esiRenderUnsplash(photos) {
         col.appendChild(card);
         grid.appendChild(col);
     });
+    return first;
 }
 
 
