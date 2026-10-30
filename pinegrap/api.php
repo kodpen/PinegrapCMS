@@ -68,13 +68,21 @@ $raw_request = @file_get_contents('php://input');
 
 $request = json_decode($raw_request, true);
 
+// A file sent as a form part (the Workspace screen's attachments): the body
+// is not in php://input, the fields are the request.
+$request_multipart = (isset($_SERVER['CONTENT_TYPE']) && (stripos($_SERVER['CONTENT_TYPE'], 'multipart/form-data') !== false));
+
+if ($request_multipart && !empty($_POST)) {
+    $request = $_POST;
+}
+
 // PHP throws the whole body away when the request is larger than post_max_size, and the script then
 // runs with nothing in it.  Without this the answer would be "Invalid token", which sends everybody
 // looking in the wrong place; the real reason is the size of the request.  We cannot look at
 // CONTENT_LENGTH here, because PHP sets it to zero when it discards the body, so we go by the fact
-// that a json request without a body never happens on purpose.
+// that a json or form request without a body never happens on purpose.
 if (($request === null) && ($raw_request === '') && ($_SERVER['REQUEST_METHOD'] == 'POST') &&
-    (isset($_SERVER['CONTENT_TYPE'])) && (stripos($_SERVER['CONTENT_TYPE'], 'json') !== false)) {
+    (isset($_SERVER['CONTENT_TYPE'])) && ((stripos($_SERVER['CONTENT_TYPE'], 'json') !== false) || $request_multipart)) {
 
     header('Content-Type: application/json');
 

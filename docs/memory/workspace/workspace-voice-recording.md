@@ -5,7 +5,7 @@ description: Voice messages (workspace_voice.js): the mic in place of Send, a so
 
 ## What does a voice message do?
 - The box's microphone (`assets/js/workspace_voice.js`, in `workspace.min.js`) records with MediaRecorder: mono, 32 kbit/s, echo cancellation, noise suppression, gain control. A red dot and the time stand in for the box; Stop sends, Discard or Escape drops it, under 1 s is dropped. Cap 5 minutes (`LIMIT`), a toast 30 s before. Every track is stopped afterwards; opening another channel drops it.
-- It leaves as a file: `voiceSend()` → `uploadFiles()` → `ws_attach` → `ws_message_send_file()`, without words (the box keeps its text). Checked like any upload; the channel's read rules decide who hears it.
+- It leaves as a file: `voiceSend()` → `uploadFiles()` → `ws_attach` (a form part, `workspace-attachment-uploads.md`) → `ws_message_send_file_bytes()`, without words (the box keeps its text). Checked like any upload; the channel's read rules decide who hears it.
 - Texts: `ws_voice_js_strings()` (`includes/workspace/voice.php`).
 
 ## How is a sound answered with a voice?

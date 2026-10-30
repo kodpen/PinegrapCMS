@@ -1200,7 +1200,14 @@ function ws_handle_action($action, $request)
                 return ws_action_error(lang('That note could not be found.'));
             }
 
-            $result = ws_note_file_store($viewer, $note, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''));
+            // A form part as the screen sends it, or base64 (ws_upload_request_file()).
+            $file = ws_upload_request_file($request);
+
+            if (!$file['ok']) {
+                return ws_action_error($file['error']);
+            }
+
+            $result = ws_note_file_store_bytes($viewer, $note, $file['name'], (string) $file['binary']);
 
             if (!$result['ok']) {
                 return ws_action_error($result['error']);
@@ -1434,7 +1441,8 @@ function ws_handle_action($action, $request)
                 // The days, estimates and priorities the argument popup
                 // offers after a command.
                 'command_values' => ws_command_suggestions(),
-                'upload'      => array('max' => ws_upload_max_bytes(), 'accept' => ''),
+                // The screen sends files as form parts (apiUpload()).
+                'upload'      => array('max' => ws_upload_form_max_bytes(), 'accept' => ''),
                 'interact'    => ws_interact_ready(),
                 'reactions'   => ws_reaction_quick(),
                 'claude'      => function_exists('ws_claude_boot') ? ws_claude_boot() : null,
@@ -2141,6 +2149,14 @@ function ws_handle_action($action, $request)
 
             $body = (string) ($request['body'] ?? '');
 
+            // A form part as the screen sends it, or base64 as older screens
+            // and scripts do (ws_upload_request_file()).
+            $file = ws_upload_request_file($request);
+
+            if (!$file['ok']) {
+                return ws_action_error($file['error']);
+            }
+
             // "/create product" sent with a CSV or spreadsheet: the file is
             // posted on its own, then made into one bulk card of drafts
             // (ws_command_product_file()). Refused before the file is posted
@@ -2148,7 +2164,7 @@ function ws_handle_action($action, $request)
             $product_file = ws_command_is_product_file($body);
 
             if ($product_file) {
-                if (!ws_bulk_file_is_table((string) ($request['name'] ?? ''))) {
+                if (!ws_bulk_file_is_table($file['name'])) {
                     return ws_action_error(lang('Products are made from a CSV, Excel or OpenDocument file.'));
                 }
 
@@ -2167,7 +2183,7 @@ function ws_handle_action($action, $request)
             // long) keeps no file, as the external API does.
             // A recording also carries the length and waveform its recorder
             // measured, cleaned before they are kept (ws_voice_queue()).
-            $result = ws_message_send_file($viewer, $channel, $body, (string) ($request['name'] ?? ''), (string) ($request['data'] ?? ''), array(
+            $result = ws_message_send_file_bytes($viewer, $channel, $body, $file['name'], $file['binary'], array(
                 'parent_id' => $parent_id,
                 'voice'     => array('duration_ms' => $request['voice_duration_ms'] ?? 0, 'peaks' => $request['voice_peaks'] ?? ''),
             ));

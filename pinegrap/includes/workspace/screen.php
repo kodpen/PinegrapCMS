@@ -350,6 +350,13 @@ function ws_js_strings()
         'unmark'                 => lang('Make it a plain message'),
         'unmarked'               => lang('It is a plain message again.'),
         'uploading'              => lang('Uploading…'),
+        // An attachment on its way (uploadCard() in workspace.js).
+        'upload_cancel'          => lang('Cancel upload'),
+        'upload_cancelled'       => lang('Upload cancelled.'),
+        'upload_sent'            => ws_js_template('{var:1} of {var:2}', 2),
+        'upload_failed'          => lang('The request failed. Please try again.'),
+        'upload_too_large_server' => lang('The upload is larger than this server accepts in one request.'),
+        'upload_leave'           => lang('A job is still running on this screen. If you leave now it stops where it is.'),
         'who'                    => lang('Who'),
         'workspace'              => lang('Workspace'),
         'workspace_settings'     => lang('Workspace Settings'),
