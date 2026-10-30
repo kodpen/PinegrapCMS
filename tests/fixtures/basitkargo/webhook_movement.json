@@ -1,0 +1,23 @@
+{
+  "id": "888-6AR-OUP",
+  "barcode": "BK4815162342",
+  "type": "OUTGOING",
+  "status": "DELIVERED",
+  "content": {"name": "Sipariş 10042", "items": []},
+  "sender": {"name": "Örnek Mağaza", "city": "İzmir"},
+  "recipient": {"name": "Ayşe Yılmaz", "city": "Ankara", "town": "Çankaya"},
+  "shipmentInfo": {
+    "handler": {"name": "Aras Kargo", "code": "ARAS"},
+    "handlerShipmentCode": "ARS5566778899"
+  },
+  "priceInfo": {"totalCost": 64.9},
+  "orderTotal": 450,
+  "orderPaymentType": "OTHER",
+  "orderPaymentStatus": "PAID",
+  "codInfo": null,
+  "traces": [
+    {"status": "DELIVERED", "time": "2026-10-31T18:10:10", "location": "Teslim Edildi - Çankaya Şube"},
+    {"status": "OUT_FOR_DELIVERY", "time": "2026-10-31T12:37:35", "location": "Dağıtıma Çıktı - Çankaya Şube"},
+    {"status": "SHIPPED", "time": "2026-10-30T09:12:00", "location": "İzmir Aktarma"}
+  ]
+}

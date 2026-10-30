@@ -4802,7 +4802,7 @@ function _render_tree_node($node, $indent = 0, $depth = 0)
     // body, a shared component, a system widget - passes through this one
     // door, so one hook covers them all (includes/fn/translate.php).
     if (defined('FRONTEND_LANGUAGE')) {
-        $props = pg_tr_props($props, $type);
+        $props = pg_tr_lang_attr_props(pg_tr_props($props, $type));
     }
 
     // Outside a widget, a binding to a value of the page's record prints

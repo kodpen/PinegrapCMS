@@ -79,7 +79,8 @@
                 return;
             }
             title.textContent = data.title || '';
-            open.setAttribute('href', data.url);
+            // Open in full comes back to this list with its filters.
+            open.setAttribute('href', data.url + (data.url.indexOf('?') === -1 ? '?' : '&') + 'send_to=' + encodeURIComponent(window.location.pathname + window.location.search));
             open.classList.remove('d-none');
             body.innerHTML = data.html;
         }).catch(function () {

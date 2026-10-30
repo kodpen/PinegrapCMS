@@ -55,7 +55,7 @@
 [NEW] Added back-in-stock notices: on an out-of-stock product a visitor leaves an e-mail address and gets one e-mail when it is back.
 [NEW] Added value and row-position conditions to the elements of system widgets.
 [NEW] Added an accessibility report: a nightly WCAG 2.2 check of the published pages with a checklist screen and PDF export.
-[NEW] Added order SMS messages (order received, shipped, delivered) with editable templates.
+[NEW] Added order SMS messages (order received, shipped, delivered) with editable templates, sent through Netgsm or İleti Merkezi.
 [NEW] Added bulk matching of marketplace products with suggestions and pictures (n11).
 [NEW] Added interactions for visual editor elements: an entrance as the page loads or as the element comes into view, a hover or click effect, sticky positioning and parallax, set in the designer's Interactions section.
 [NEW] Added guest shipment tracking by order number and billing e-mail.

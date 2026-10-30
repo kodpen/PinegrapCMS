@@ -874,7 +874,7 @@
     "food": "yemek",
     "for <strong>{var:1}</strong>": "<strong>{var:1}</strong> için",
     "forgot password": "Parolamı unuttum",
-    "forgot-password": "sifremi-unuttum",
+    "forgot-password": "parolami-unuttum",
     "form field": "form alanı",
     "form field name…": "form alanı adı…",
     "form item view page": "form öğesi görünümü sayfası",

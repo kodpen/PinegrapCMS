@@ -45,7 +45,7 @@ function test_erp_invoice_cancel_screen_asks_before_the_provider()
 	pg_assert_contains('erp_invoice_receipt_count($invoice_id) > 0', $head, 'money allocated after the page was drawn');
 	pg_assert_contains('!empty(erp_invoice_returns($invoice_id))', $head, 'a return written after the page was drawn');
 	pg_assert_contains("\$liveform->mark_error('_error', \$cancel_refusal);", $head, 'the refusal is shown');
-	pg_assert_contains("go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . \$invoice_id);", $head, 'and the screen goes back without asking the provider');
+	pg_assert_contains("go(OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_invoice.php?id=' . \$invoice_id . \$send_to_query);", $head, 'and the screen goes back without asking the provider');
 }
 
 // The screen refuses in the words erp_invoice_cancel() uses.

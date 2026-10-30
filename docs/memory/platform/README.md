@@ -35,6 +35,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - clean-up-tool-file-list.md: clean_up.php $file_list and data/temp sweep: never list a live file name, how to verify before adding, and $temp_keep for non-regenerable temp files.
 - cloud-file-picker-onedrive.md: OneDrive in Upload File's cloud picker (#3261): the v8 picker with OneDrive/SharePoint tokens per resource, the Graph download through its pre-authenticated address, the Entra setup
 - cloud-file-picker.md: Upload File's cloud picker (#3238, #3261): Google, OneDrive and Dropbox pickers hand back only an id or link; the server downloads within the upload limit and stores through pg_file_store_upload()
+- cloudflare-dns-dialog.md: Cloudflare Tools Add/Edit DNS Record dialogs (#3628): hidden type groups are disabled so only the visible priority box is posted, MX priority is carried into Edit, Content is required where shown
 - cookie-consent-catalogue.md: Which cookies the cookie notice lists (pg_consent_catalogue()), the conditional rows, and what a new cookie needs
 - cookie-consent-new-cookies.md: Adding a front-end cookie or third-party tag under the cookie notice: necessary or not, pg_consent_setcookie() plus a session copy, pg_consent_catalogue(), revoke names, pg_consent_hold_scripts().
 - cookie-consent-notice.md: Cookie notice: Settings, Reject all and Accept all drawn alike, nothing pre-ticked; Consent Mode v2 default at the top of <head>, update before held scripts start; focus
@@ -104,6 +105,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - site-icon.md: The site icon (favicon sizes, apple-touch-icon, site.webmanifest): setting in config_text, sizes drawn by the image engine, router addresses, head links.
 - sms-codes.md: One-time codes by SMS (includes/fn/sms_codes.php): session hash bound to purpose, subject and number, ten minutes, five guesses, queue reference and expires_at per send
 - sms-erp-overdue.md: ERP overdue receivable SMS (PR #3626): event erp_overdue (kind reminder, off by default), one text per account per notice, which number, the reference, digest count, invoice screen line
+- sms-iletimerkezi-driver.md: İleti Merkezi SMS driver (includes/sms/iletimerkezi.php, PR #3623): REST v1 send-sms and get-sender, panel-issued key and hash, answer codes, retry and uncertain rules
 - sms-netgsm-driver.md: Netgsm SMS driver (includes/sms/netgsm.php, PR #600): REST v2 send and msgheader calls, answer codes, when a send may be retried or is uncertain, refused vs could-not-ask, own cURL call
 - sms-order-messages.md: Order SMS (received, shipped, delivered) and back in stock: templates in connect_apps sms_templates, events off by default, where each is queued, references, what is not texted
 - sms-outbox-queue.md: SMS queue (sms_outbox, step 11.0.10, PR #610): pg_sms_enqueue() options, the general job's pass, retry only when nothing reached the provider, uncertain sends, expiry, dedupe, SMS tab
@@ -121,6 +123,7 @@ Server config, router, redirects, updates and TLS, system status, images and upl
 - upload-limits-and-empty-post.md: Why an empty $_POST is an error (post_max_size), pg_post_body_discarded(), pg_upload_limits() three ceilings, batching uploads, checking $_FILES error codes.
 - upload-refusal-answers.md: Upload Design Files (add_design_file.php) answers a Dropzone refusal in JSON with a 4xx status and shows it in a role=alert line; why an HTML 200 refusal looked like success
 - vendor-api-client.md: Kodpen API client base (includes/fn/vendor_api.php, PR #3255): the PG_VENDOR_API_V1 switch line, base and PG_VENDOR_API_URL, headers, timeouts, problem reader, canonical site name, vector sums
+- vendor-api-update-download.md: Download, backup and replace of a signed update behind PG_VENDOR_API_V1 (PR #3632): pg_vendor_update_steps(), fetch order, package file, refusals, security log, manifest shape
 - vendor-api-update.md: The Kodpen API's release check (GET /releases/latest, PR #3282) behind PG_VENDOR_API_V1: how an answer is read, what it offers, the pin the later steps read, flag and notification, screen texts
 - windows-folder-is-writable.md: Ask pg_dir_writable(), never is_writable(), about a folder: PHP on Windows reads its read-only attribute (OneDrive, Explorer), which stops nothing; where it bit, how each check asks now
 - zip-entry-declared-size.md: A zip entry is read no further than its archive declares: streams via pg_zip_entry_uri(), whole entries via pg_zip_entry_contents(), ZIP imports via pg_zip_import_open(), .ods checked

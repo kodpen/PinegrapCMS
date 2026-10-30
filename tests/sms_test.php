@@ -837,3 +837,77 @@ function test_sms_dial_reads_back_the_stored_number()
 	pg_assert_same('905351234567', pg_sms_number('5351234567'), 'the same digits without the plus are a Turkish mobile');
 	pg_assert_same('', pg_sms_dial(''), 'no number');
 }
+
+// Both drivers are offered, Netgsm first.
+function test_sms_providers_list_both()
+{
+	pg_assert_same(array('netgsm', 'iletimerkezi'), array_keys(pg_sms_providers()));
+}
+
+// A refused account check marks the field the provider's code names.
+function test_sms_refused_field_per_provider()
+{
+	pg_assert_same('password', pg_sms_refused_field('netgsm', '30'));
+	pg_assert_same('user', pg_sms_refused_field('netgsm', '70'));
+	pg_assert_same('user', pg_sms_refused_field('netgsm', '401'));
+	pg_assert_same('password', pg_sms_refused_field('iletimerkezi', '401'));
+	pg_assert_same('user', pg_sms_refused_field('iletimerkezi', '30'));
+	pg_assert_same('user', pg_sms_refused_field('nonexistent', '30'));
+}
+
+// Netgsm's user code is the account's number and sends as itself; İleti
+// Merkezi's API key is no sender name.
+function test_sms_sender_approved_per_provider()
+{
+	pg_assert_same('8501234567', pg_sms_sender_approved('netgsm', '8501234567', array('KODPEN'), '8501234567'));
+	pg_assert_same('', pg_sms_sender_approved('iletimerkezi', 'a1b2c3d4e5', array('KODPEN'), 'a1b2c3d4e5'));
+	pg_assert_same('KODPEN', pg_sms_sender_approved('iletimerkezi', 'kodpen', array('KODPEN'), 'a1b2c3d4e5'));
+}
+
+// The account fields carry each provider's own labels and help.
+function test_sms_settings_account_field_labels()
+{
+	$providers = pg_sms_providers();
+
+	$netgsm = pg_sms_settings_account_fields('netgsm', $providers['netgsm'], sms_test_none());
+	pg_assert_contains('>User Code</label>', $netgsm);
+	pg_assert_contains('>Password</label>', $netgsm);
+	pg_assert_contains('name="sms_netgsm_user"', $netgsm);
+	pg_assert_contains('https://www.netgsm.com.tr/', $netgsm);
+
+	$iletimerkezi = pg_sms_settings_account_fields('iletimerkezi', $providers['iletimerkezi'], sms_test_none());
+	pg_assert_contains('>API Key</label>', $iletimerkezi);
+	pg_assert_contains('>API Hash</label>', $iletimerkezi);
+	pg_assert_contains('name="sms_iletimerkezi_password"', $iletimerkezi);
+	pg_assert_contains('https://www.iletimerkezi.com/', $iletimerkezi);
+	pg_assert_false(strpos($iletimerkezi, 'User Code') !== false);
+}
+
+// A required field is named as the provider names it.
+function test_sms_settings_decide_marks_with_provider_labels()
+{
+	$decision = pg_sms_settings_decide(array(
+		'sms_provider'               => 'iletimerkezi',
+		'sms_enabled'                => '1',
+		'sms_iletimerkezi_user'      => '',
+		'sms_iletimerkezi_password'  => '',
+		'sms_iletimerkezi_sender'    => 'PINEGRAP',
+	), 'iletimerkezi', sms_test_app(), '');
+
+	pg_assert_contains('API Key', $decision['marks']['sms_iletimerkezi_user']);
+	pg_assert_false($decision['ask']);
+
+	$netgsm = pg_sms_settings_decide(sms_test_post(array('sms_enabled' => '1', 'sms_netgsm_user' => '')), 'netgsm', sms_test_none(), '');
+	pg_assert_contains('User Code', $netgsm['marks']['sms_netgsm_user']);
+	pg_assert_contains('Password', $netgsm['marks']['sms_netgsm_password']);
+}
+
+// The card's script names no provider: it shows the pane the select names.
+function test_sms_settings_script_is_generic()
+{
+	$script = pg_sms_settings_script();
+
+	pg_assert_contains('data-sms-provider', $script);
+	pg_assert_contains('sms_provider', $script);
+	pg_assert_false(stripos($script, 'netgsm') !== false);
+}

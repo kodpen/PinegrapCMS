@@ -26,6 +26,12 @@ include_once('liveform.class.php');
 $liveform = new liveform('edit_erp_purchase_order');
 
 $list_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/erp_purchase_orders.php';
+
+// The filtered list the order was opened from: the back arrow, the
+// breadcrumb and every reload and form of this screen keep it.
+$send_to = pg_send_to_url('');
+$send_to_query = ($send_to !== '') ? '&send_to=' . urlencode($send_to) : '';
+$self_action = h('edit_erp_purchase_order.php' . (($send_to !== '') ? '?send_to=' . urlencode($send_to) : ''));
 $order_id = is_scalar($_REQUEST['id'] ?? null) ? (int) $_REQUEST['id'] : 0;
 $order = erp_purchase_order($order_id);
 
@@ -34,7 +40,7 @@ if ($order === null) {
     exit();
 }
 
-$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_purchase_order.php?id=' . $order_id;
+$self_url = OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/edit_erp_purchase_order.php?id=' . $order_id . $send_to_query;
 $readonly = defined('USER_ERP_READONLY') && USER_ERP_READONLY;
 
 if ($_POST) {
@@ -146,8 +152,8 @@ $money = function ($kurus) use ($order) {
 };
 
 // The actions: each is a small form, so a readonly account never sees one.
-$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id) {
-    return '<form method="post" action="edit_erp_purchase_order.php" class="d-inline">' . get_token_field()
+$action_button = function ($action, $label, $icon, $class, $confirm = '') use ($order_id, $self_action) {
+    return '<form method="post" action="' . $self_action . '" class="d-inline">' . get_token_field()
         . '<input type="hidden" name="id" value="' . $order_id . '" /><input type="hidden" name="erp_action" value="' . h($action) . '" />'
         . '<button type="submit" class="btn btn-sm ' . $class . '"' . (($confirm !== '') ? ' data-confirm-content="' . h($confirm) . '"' : '') . '><i class="bi ' . $icon . ' me-1" aria-hidden="true"></i>' . $label . '</button></form>';
 };
@@ -195,7 +201,7 @@ if ($editable) {
     }
 
     $output_body = '
-            <form name="form" action="edit_erp_purchase_order.php" method="post" autocomplete="off">
+            <form name="form" action="' . $self_action . '" method="post" autocomplete="off">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="save" />
@@ -342,7 +348,7 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
     if ($can_mail) {
         $output_mail_button = '<a class="btn btn-sm btn-outline theme-secondary" href="#erp-mail"><i class="bi bi-envelope me-1" aria-hidden="true"></i>' . lang('E-mail') . '</a>';
         $output_mail_form = '
-            <form name="mail_form" action="edit_erp_purchase_order.php" method="post" class="row g-3">
+            <form name="mail_form" action="' . $self_action . '" method="post" class="row g-3">
                 ' . get_token_field() . '
                 <input type="hidden" name="id" value="' . $order_id . '" />
                 <input type="hidden" name="erp_action" value="mail" />
@@ -409,9 +415,9 @@ pg_page_shell([
     'icon' => 'erp',
     'heading' => h(lang(array('string' => 'Purchase order {var:1}', 'vars' => (string) $order['full_number']))) . ' <span class="badge theme-' . h($status[1]) . ' ms-1 align-middle fs-md">' . h($status[0]) . '</span>',
     'heading_description' => implode(' · ', array_filter($heading_parts, 'strlen')),
-    'cancel' => array('enable' => 'true', 'url' => 'erp_purchase_orders.php'),
+    'cancel' => array('enable' => 'true', 'url' => pg_send_to_url('erp_purchase_orders.php')),
     'breadcrumb' => array(
-        array('label' => lang('Purchase orders'), 'url' => $list_url),
+        array('label' => lang('Purchase orders'), 'url' => pg_send_to_list_url($list_url)),
         array('label' => (string) $order['full_number']),
     ),
 ]) . '

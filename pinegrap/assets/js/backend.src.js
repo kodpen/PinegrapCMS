@@ -97,6 +97,21 @@ window.pgFoldTR = function (s) {
 
                 return mask;
             }
+        },
+        // The stock alias is a fixed mask (at most four local-part dots and
+        // four domain labels, "_" placeholders), so it dropped the dot of a
+        // fifth label (ali@mail.cs.hacettepe.edu.tr became ...edutr) and
+        // padded a partial value with "@_._". Any run of non-space
+        // characters is accepted here; validate_email_address() checks the
+        // address on the server.
+        email: {
+            mask: function (opts) {
+                opts.regex = '[^\\s]*';
+
+                return null;
+            },
+            placeholder: '',
+            greedy: false
         }
     });
 })();

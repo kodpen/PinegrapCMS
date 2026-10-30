@@ -182,6 +182,20 @@ if ($_POST) {
 
 		$existing = db_item("SELECT id, name FROM api_apps WHERE id = '" . $app_id . "' LIMIT 1");
 
+		// The drawer's Name box sits on a tab that may be hidden at Save, so
+		// a blank name is refused here rather than by the browser.
+		$name = isset($_POST['name']) ? (is_string($_POST['name']) ? trim($_POST['name']) : '') : ($existing ? $existing['name'] : '');
+
+		if ($existing && $name === '') {
+
+			$liveform->add_error(lang('Application Name is a required field!'));
+
+			header('Location: ' . $screen_url);
+
+			exit();
+
+		}
+
 		if ($existing) {
 
 			$audit_before = pg_audit_fetch('api_apps', $app_id);
@@ -207,7 +221,7 @@ if ($_POST) {
 			}
 
 			db("UPDATE api_apps SET
-					name = '" . escape(isset($_POST['name']) ? $_POST['name'] : $existing['name']) . "',
+					name = '" . escape($name) . "',
 					description = '" . escape(isset($_POST['description']) ? $_POST['description'] : '') . "',
 					scopes = '" . escape(json_encode($posted_scopes)) . "',
 					ip_allowlist = '" . escape(isset($_POST['ip_allowlist']) ? $_POST['ip_allowlist'] : '') . "',

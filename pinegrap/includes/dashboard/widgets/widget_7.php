@@ -777,10 +777,10 @@ function pg_dashboard_activity_contacts($user, $limit)
             $name = (string) $row['username'];
         }
 
-        $initials = mb_strtoupper(mb_substr((string) $row['first_name'], 0, 1) . mb_substr((string) $row['last_name'], 0, 1));
+        $initials = pg_initials_upper(mb_substr((string) $row['first_name'], 0, 1) . mb_substr((string) $row['last_name'], 0, 1));
 
         if ($initials === '') {
-            $initials = mb_strtoupper(mb_substr((string) $row['username'], 0, 1));
+            $initials = pg_initials_upper(mb_substr((string) $row['username'], 0, 1));
         }
 
         $items[] = array(
@@ -855,7 +855,7 @@ function pg_dashboard_activity_users($user, $limit)
         ORDER BY user.user_timestamp DESC
         LIMIT " . (int) $limit) as $row) {
 
-        $initial = mb_strtoupper(mb_substr((string) $row['username'], 0, 1));
+        $initial = pg_initials_upper(mb_substr((string) $row['username'], 0, 1));
 
         $items[] = array(
             'ts'    => (int) $row['timestamp'],

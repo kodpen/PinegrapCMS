@@ -8,7 +8,7 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 
 ## What is decided?
 - SMS drivers under `includes/sms/<provider>.php`: Netgsm first, then İleti Merkezi and Twilio; credentials in `connect_apps`, no schema per provider (`platform/sms-provider-layer.md`).
-- Message kinds and templates (Settings › Communication): order received, order shipped (carrier + tracking URL), order delivered, cash-on-delivery confirmation code, password/OTP for members, ERP overdue reminder (built: PR #3626, platform/sms-erp-overdue.md). Transactional messages are exempt from İYS and never carry promotion text; the template editor says so.
+- Message kinds and templates (Settings › Communication): order received, order shipped (carrier + tracking URL), order delivered, cash-on-delivery confirmation code, password/OTP for members, ERP overdue reminder (PR #3626, `platform/sms-erp-overdue.md`). Transactional messages are exempt from İYS and never carry promotion text; the template editor says so.
 - İYS: direct İYS API (not a provider's module) so the consent log stays provider-independent. Consent rows (`consent_log`, kept 3 years) are pushed to İYS within 3 business days by a job; refusals pulled from İYS stop sending in the same window.
 - E-mail campaigns check the İYS status for Turkish sites before sending; the existing `opt_in` stays as the local flag and is kept in sync.
 - Sender identity (MERSİS/trade name) and the type label ("tanıtım, kampanya ve bilgilendirme") come from settings and are appended to every marketing SMS.
@@ -18,8 +18,9 @@ description: Plan (approved 2026-10-19): SMS layer, order messages, consent writ
 - Done: provider interface + Netgsm (PR #600), `sms_outbox` queue (PR #610), order and shipping messages (PR #1839, `platform/sms-order-messages.md`), e-mail consent writers (PR #1581, `core/consent-log-writers.md`). Commercial SMS kinds stay refused by `pg_sms_send()` until SMS consent exists.
 3b. ~~COD code and member sign-in code by the normal SMS route~~ (done, PR #2669 and #2720; #2670, #2672; `platform/sms-codes.md`).
 5. ~~İYS client, daily push/pull job, contact status column, campaign filter~~ (done, PR #1895; `platform/iys-client.md`; dry run by default, inert until 5b).
-5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox once the owner gives İYS test credentials.
+5b. ~~İYS settings card~~ (done, PR #1940; `platform/iys-settings-card.md`). Left: the first live run against the sandbox with the owner's İYS test credentials.
 6. ~~API: consents read, webhook `customer.consent_changed`~~ (done, PR #1940; `api/api-customer-consents.md`).
+- Drivers: İleti Merkezi done (PR #3623, `platform/sms-iletimerkezi-driver.md`); Twilio next.
 7-10. Marketing SMS, decided #3570 (`workflow/decisions-made-schema-6.md`, `-product-8.md`), one PR each in order: 7 the SMS consent box beside the e-mail box (as #2431) and `consent_log` channel `sms`; 8 `contacts.iys_sms_status` and the İYS `MESAJ` channel; 9 the sender name and type label settings, the `marketing` kind opened; 10 an SMS campaign beside the e-mail campaigns.
 
 ## Open questions?

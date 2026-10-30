@@ -16,7 +16,7 @@ description: Steps P1-P8 of plans/kodpen-vendor-api-client.md: changes, files, t
 
 - P5a done (#3282): `platform/vendor-api-update.md` (read, offer, pin in `software.update` with `package_file`, flag, texts; the installed build is still '').
 
-- P5b (M) Download checks. `download`, `backup`, `replace` (`software.php` 486-713); pure `pg_vendor_update_steps()` (`update.php`); empty `pg_vendor_release_keys()`. Tests: `vendor_update_steps_test.php` (`update_steps.json`, a test-time pair from `pg_openssl_key_new()`, a built ZIP, a file swapped before replace). Memory: `vendor-api-update.md`, `update-package-extraction.md`. After P5a.
+- P5b done (#3632): `platform/vendor-api-update-download.md`.
 
 - P5c (S, the owner's public keys) Keys in `pg_vendor_release_keys()`. Test: two P-256 keys, two lower-case ids. Memory: their fingerprints in `vendor-api-update.md`. After P5b.
 

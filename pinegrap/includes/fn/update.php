@@ -1842,6 +1842,583 @@ function pg_vendor_release_check($mode)
     );
 }
 
+// ----------------------------------------------------------------------------
+// The checks a signed update passes before pg_extract_archive()
+// ----------------------------------------------------------------------------
+// The download, backup and replace steps read only the release the check step
+// pinned in $_SESSION['software']['update']; the cases come from
+// tests/fixtures/vendor_api/update_steps.json.
+
+/**
+ * The public keys a release manifest may be signed with: key id => PEM. They
+ * ship in the code and change only with a release; never read from config.
+ *
+ * @return array
+ */
+function pg_vendor_release_keys()
+{
+    return array();
+}
+
+/**
+ * Whether an address the release named may be fetched: https on the API
+ * base's host (any case) and effective port (443 when none is written),
+ * without user info, and with no backslash, blank or control byte that two
+ * URL parsers could read two ways.
+ *
+ * @param mixed  $url
+ * @param string $base pg_vendor_api_base()
+ * @return bool
+ */
+function pg_vendor_update_url_ok($url, $base)
+{
+    if (!is_string($url) || ($url === '') || (preg_match('/[\x00-\x20\x7f\\\\]/', $url) === 1)) {
+        return false;
+    }
+
+    $parts = @parse_url($url);
+    $home = @parse_url((string) $base);
+
+    if (!is_array($parts) || !is_array($home) || !isset($parts['scheme'], $parts['host'], $home['scheme'], $home['host'])) {
+        return false;
+    }
+
+    if ((strtolower($parts['scheme']) !== 'https') || (strtolower($home['scheme']) !== 'https') || isset($parts['user']) || isset($parts['pass'])) {
+        return false;
+    }
+
+    $port = isset($parts['port']) ? (int) $parts['port'] : 443;
+    $home_port = isset($home['port']) ? (int) $home['port'] : 443;
+
+    return (strtolower($parts['host']) === strtolower($home['host'])) && ($port === $home_port);
+}
+
+/**
+ * A release manifest (schema 1) in the vectors' flat shape: version, channel,
+ * build ('' when absent) and its one artifact of kind update as update (size,
+ * sha256 lower-cased).
+ *
+ * @param string $bytes the manifest as fetched
+ * @return array|null null when it is not such a manifest, or holds no update
+ *                    artifact or more than one
+ */
+function pg_vendor_manifest_read($bytes)
+{
+    $data = json_decode((string) $bytes, true);
+
+    if (!is_array($data) || !isset($data['schema']) || ($data['schema'] !== 1) || !isset($data['artifacts']) || !is_array($data['artifacts'])) {
+        return null;
+    }
+
+    $version = pg_vendor_api_version_value(isset($data['version']) ? $data['version'] : null);
+    $channel = isset($data['channel']) ? $data['channel'] : null;
+    $build = isset($data['build']) ? $data['build'] : '';
+
+    if (($version === '') || !in_array($channel, array('stable', 'beta'), true) || !is_string($build) || (preg_match('/\A[0-9A-Za-z._-]{0,64}\z/', $build) !== 1)) {
+        return null;
+    }
+
+    $updates = array();
+
+    foreach ($data['artifacts'] as $artifact) {
+        if (is_array($artifact) && isset($artifact['kind']) && ($artifact['kind'] === 'update')) {
+            $updates[] = $artifact;
+        }
+    }
+
+    if (count($updates) !== 1) {
+        return null;
+    }
+
+    $update = $updates[0];
+
+    if (!isset($update['size'], $update['sha256']) || !is_int($update['size']) || ($update['size'] <= 0)
+        || !is_string($update['sha256']) || (preg_match('/\A[0-9a-fA-F]{64}\z/', $update['sha256']) !== 1)) {
+        return null;
+    }
+
+    return array(
+        'version' => $version,
+        'channel' => $channel,
+        'build'   => $build,
+        'update'  => array('size' => $update['size'], 'sha256' => strtolower($update['sha256'])),
+    );
+}
+
+/**
+ * openssl_verify() of the manifest bytes against a signature file: its
+ * blanks and line breaks stripped, then strict base64.
+ *
+ * @param string $manifest  the manifest bytes as fetched
+ * @param string $signature the signature file as fetched
+ * @param string $key       the public key, PEM
+ * @return int|false|null openssl_verify()'s answer; null when it is not
+ *                        called (no OpenSSL, no signature, not base64)
+ */
+function pg_vendor_update_verify($manifest, $signature, $key)
+{
+    if (!function_exists('openssl_verify')) {
+        return null;
+    }
+
+    $text = preg_replace('/\s+/', '', (string) $signature);
+    $raw = ($text === '') ? false : base64_decode($text, true);
+
+    if (($raw === false) || ($raw === '')) {
+        return null;
+    }
+
+    return @openssl_verify((string) $manifest, $raw, (string) $key, OPENSSL_ALGO_SHA256);
+}
+
+/**
+ * Where the package of a pin is written: data/temp/<package_file>, only for
+ * a name the check step gives (vendor_update_<16 hex>.zip).
+ *
+ * @param mixed $file
+ * @return string '' for any other name
+ */
+function pg_vendor_update_package_path($file)
+{
+    if (!is_string($file) || (preg_match('/\Avendor_update_[0-9a-f]{16}\.zip\z/', $file) !== 1)) {
+        return '';
+    }
+
+    return PG_FUNCTIONS_DIR . '/data/temp/' . $file;
+}
+
+/**
+ * What the package and zip_version steps read of a package on disk: size,
+ * sha256, the first four bytes in hex and the last version of the
+ * versions.php it carries (null when it has none or is no ZIP).
+ *
+ * @param string $path
+ * @return array|null null when the file cannot be read
+ */
+function pg_vendor_update_package_facts($path)
+{
+    clearstatcache(true, $path);
+
+    if (!is_file($path) || !is_readable($path)) {
+        return null;
+    }
+
+    $handle = @fopen($path, 'rb');
+    $first = ($handle === false) ? '' : (string) fread($handle, 4);
+
+    if ($handle !== false) {
+        fclose($handle);
+    }
+
+    $last = null;
+
+    if (pg_looks_like_zip($first) && class_exists('ZipArchive')) {
+        $zip = new ZipArchive();
+
+        if ($zip->open($path) === true) {
+            $error = '';
+            $source = pg_zip_entry_contents($zip, 'pinegrap/includes/migrations/versions.php', 1048576, $error);
+            $zip->close();
+
+            $versions = ($source === null) ? array() : pg_upgrade_versions_from_source($source);
+            $last = $versions ? (string) end($versions) : null;
+        }
+    }
+
+    return array(
+        'size'              => (int) filesize($path),
+        'sha256'            => (string) hash_file('sha256', $path),
+        'first_bytes_hex'   => bin2hex($first),
+        'zip_versions_last' => $last,
+    );
+}
+
+/**
+ * The checks of update_steps.json after the check step, in order: signature,
+ * manifest, download, package, zip_magic, zip_version. A check runs on what
+ * $observed holds; one whose observation is missing stops the run as
+ * pending, so the caller fetches the next thing only once every check before
+ * it has passed. "Newer" is judged only at zip_version, against the
+ * installed version and build.
+ *
+ * @param array  $pin      the check step's pin
+ * @param array  $site     installed_version, installed_build, update_channel
+ *                         (pg_update_channel() now), api_base and
+ *                         openssl_verify_exists
+ * @param array  $keys     key id => public PEM (pg_vendor_release_keys())
+ * @param array  $observed openssl_verify_result, manifest_sha256, manifest
+ *                         (pg_vendor_manifest_read(), null when it read
+ *                         none), download (url_host, http_status,
+ *                         redirected), size, sha256, first_bytes_hex,
+ *                         zip_versions_last
+ * @param string $from     the first step to run; the replace step checks
+ *                         the package again from 'package'
+ * @return array outcome (extract, refuse or pending), stopped_at (the step,
+ *               null for extract) and reason (null unless refused)
+ */
+function pg_vendor_update_steps($pin, $site, $keys, $observed, $from = 'signature')
+{
+    $order = array('signature', 'manifest', 'download', 'package', 'zip_magic', 'zip_version');
+    $start = array_search($from, $order, true);
+    $base = isset($site['api_base']) ? (string) $site['api_base'] : '';
+
+    $stop = function ($outcome, $step, $reason) {
+        return array('outcome' => $outcome, 'stopped_at' => $step, 'reason' => $reason);
+    };
+
+    foreach (array_slice($order, ($start === false) ? 0 : $start) as $step) {
+        switch ($step) {
+            case 'signature':
+                if (!pg_vendor_update_url_ok($pin['manifest_url'], $base) || !pg_vendor_update_url_ok($pin['signature_url'], $base)) {
+                    return $stop('refuse', $step, 'download_refused');
+                }
+
+                if (empty($site['openssl_verify_exists'])) {
+                    return $stop('refuse', $step, 'signature_unverifiable');
+                }
+
+                if (!is_string($pin['sig_key_id']) || !isset($keys[$pin['sig_key_id']])) {
+                    return $stop('refuse', $step, 'unknown_key_id');
+                }
+
+                if (!array_key_exists('openssl_verify_result', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                if ($observed['openssl_verify_result'] !== 1) {
+                    return $stop('refuse', $step, 'signature_invalid');
+                }
+                break;
+
+            case 'manifest':
+                if (!array_key_exists('manifest_sha256', $observed) || !array_key_exists('manifest', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                $manifest = $observed['manifest'];
+                $same = is_string($observed['manifest_sha256']) && hash_equals((string) $pin['manifest_sha256'], strtolower($observed['manifest_sha256']))
+                    && is_array($manifest)
+                    && ($manifest['version'] === $pin['version'])
+                    && ($manifest['channel'] === $pin['channel'])
+                    && ((isset($manifest['build']) ? (string) $manifest['build'] : '') === (string) $pin['build'])
+                    && ($pin['channel'] === $site['update_channel'])
+                    && ((int) $manifest['update']['size'] === (int) $pin['size'])
+                    && hash_equals((string) $pin['sha256'], strtolower((string) $manifest['update']['sha256']));
+
+                if (!$same) {
+                    return $stop('refuse', $step, 'manifest_mismatch');
+                }
+                break;
+
+            case 'download':
+                if (!pg_vendor_update_url_ok($pin['package_url'], $base)) {
+                    return $stop('refuse', $step, 'download_refused');
+                }
+
+                if (!array_key_exists('download', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                $download = $observed['download'];
+                $home = @parse_url($base);
+
+                if (!is_array($download) || (strtolower((string) $download['url_host']) !== (is_array($home) && isset($home['host']) ? strtolower($home['host']) : ''))
+                    || ($download['http_status'] !== 200) || ($download['redirected'] !== false)) {
+                    return $stop('refuse', $step, 'download_refused');
+                }
+                break;
+
+            case 'package':
+                if (!array_key_exists('size', $observed) || !array_key_exists('sha256', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                if (((int) $observed['size'] !== (int) $pin['size']) || !is_string($observed['sha256'])
+                    || !hash_equals((string) $pin['sha256'], strtolower($observed['sha256']))) {
+                    return $stop('refuse', $step, 'package_mismatch');
+                }
+                break;
+
+            case 'zip_magic':
+                if (!array_key_exists('first_bytes_hex', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                $hex = (string) $observed['first_bytes_hex'];
+
+                if ((preg_match('/\A(?:[0-9a-fA-F]{2})+\z/', $hex) !== 1) || !pg_looks_like_zip(hex2bin($hex))) {
+                    return $stop('refuse', $step, 'not_a_zip');
+                }
+                break;
+
+            case 'zip_version':
+                if (!array_key_exists('zip_versions_last', $observed)) {
+                    return $stop('pending', $step, null);
+                }
+
+                $inside = $observed['zip_versions_last'];
+
+                if (!is_string($inside) || ($inside !== $pin['version'])) {
+                    return $stop('refuse', $step, 'zip_version_mismatch');
+                }
+
+                $compare = version_compare($inside, (string) $site['installed_version']);
+                $other_build = ($pin['channel'] === 'beta') && ((string) $pin['build'] !== (string) $site['installed_build']);
+
+                // Repair Software installs the same version again.
+                if (($compare < 0) || (($compare === 0) && ($pin['mode'] !== 'repair') && !$other_build)) {
+                    return $stop('refuse', $step, 'not_newer');
+                }
+                break;
+        }
+    }
+
+    return $stop('extract', null, null);
+}
+
+/**
+ * Whether a refusal is a security event, logged as one: a complete answer
+ * that is not the release the check step pinned. A server that cannot verify
+ * and a site already at the version are not.
+ *
+ * @param string $reason
+ * @return bool
+ */
+function pg_vendor_update_security_event($reason)
+{
+    return in_array($reason, array('signature_invalid', 'unknown_key_id', 'manifest_mismatch', 'download_refused', 'package_mismatch', 'not_a_zip', 'zip_version_mismatch'), true);
+}
+
+/**
+ * What the update and repair screens say of a refusal of
+ * pg_vendor_update_steps().
+ *
+ * @param string $reason
+ * @return string
+ */
+function pg_vendor_update_refusal_message($reason)
+{
+    switch ($reason) {
+        case 'signature_unverifiable':
+            return lang('This server cannot verify the signature of the update (the OpenSSL extension of PHP is missing), so nothing was installed.');
+        case 'unknown_key_id':
+            return lang('The update is signed with a key this version does not know, so nothing was installed.');
+        case 'signature_invalid':
+            return lang('The signature of the update could not be verified, so nothing was installed.');
+        case 'manifest_mismatch':
+            return lang('The signed manifest does not match the release the update server offered, so nothing was installed.');
+        case 'download_refused':
+            return lang('The update package was not served from the update server\'s own address, so nothing was installed.');
+        case 'package_mismatch':
+            return lang('The downloaded package is not the one the signed manifest names, so nothing was installed.');
+        case 'not_a_zip':
+            return lang('What was downloaded is not a zip archive. A proxy or firewall may have replaced the response.');
+        case 'zip_version_mismatch':
+            return lang('The downloaded package holds another version than the one offered, so nothing was installed.');
+        case 'not_newer':
+            return lang('This site already runs the version offered, so nothing was installed.');
+    }
+
+    return lang('An error occurred.');
+}
+
+/**
+ * What pg_vendor_update_steps() reads of this installation.
+ *
+ * @return array
+ */
+function pg_vendor_update_site()
+{
+    // No beta build is recorded yet.
+    return array(
+        'installed_version'     => defined('VERSION') ? (string) VERSION : '',
+        'installed_build'       => '',
+        'update_channel'        => pg_update_channel(),
+        'api_base'              => pg_vendor_api_base(),
+        'openssl_verify_exists' => function_exists('openssl_verify'),
+    );
+}
+
+/**
+ * The download step of a pinned release: manifest and signature, then the
+ * package into data/temp/<package_file> (mode x, capped at the pinned
+ * size), each fetched only once every check before it has passed.
+ *
+ * @param array $pin the check step's pin
+ * @return array ok, reason (a refusal of pg_vendor_update_steps(), or
+ *               download_failed: cURL failed, the body came short or the
+ *               disk took less), message, log (the activity log line, ''
+ *               for none) and security (the log line is a security event)
+ */
+function pg_vendor_update_download($pin)
+{
+    $site = pg_vendor_update_site();
+    $keys = pg_vendor_release_keys();
+    $observed = array();
+    $path = pg_vendor_update_package_path(isset($pin['package_file']) ? $pin['package_file'] : null);
+
+    $failed = function ($message, $log) {
+        return array('ok' => false, 'reason' => 'download_failed', 'message' => $message, 'log' => $log, 'security' => false);
+    };
+
+    $refused = function ($result) use ($pin) {
+        $security = pg_vendor_update_security_event($result['reason']);
+
+        return array(
+            'ok'       => false,
+            'reason'   => $result['reason'],
+            'message'  => pg_vendor_update_refusal_message($result['reason']),
+            'log'      => 'software update ' . $pin['version'] . ($security ? ' refused as a security event' : ' refused') . ' at the ' . $result['stopped_at'] . ' check: ' . $result['reason'] . '.',
+            'security' => $security,
+        );
+    };
+
+    $fetch_failed = function ($answer) use ($failed) {
+        return $failed(
+            lang(array('string' => 'Error while get files from the update server.{var:1}', 'vars' => array(pg_curl_tls_hint($answer['errno'], true)))),
+            'software update download could not communicate with the update server. cURL Error Number: ' . $answer['errno'] . '. cURL Error Message: ' . $answer['error'] . '.'
+        );
+    };
+
+    if ($path === '') {
+        return $failed(lang('Could not create the update file. Check write permission for the software directory.'), '');
+    }
+
+    $result = pg_vendor_update_steps($pin, $site, $keys, $observed);
+
+    if ($result['outcome'] === 'refuse') {
+        return $refused($result);
+    }
+
+    $manifest = pg_vendor_api_request('GET', $pin['manifest_url'], array('cap' => 65536));
+
+    if ($manifest['status'] === 0) {
+        return $fetch_failed($manifest);
+    }
+
+    $signature = pg_vendor_api_request('GET', $pin['signature_url'], array('json' => false, 'cap' => 4096));
+
+    if ($signature['status'] === 0) {
+        return $fetch_failed($signature);
+    }
+
+    // A manifest or signature the server did not give is no signature:
+    // openssl_verify() is not called.
+    $observed['openssl_verify_result'] = (($manifest['status'] === 200) && ($signature['status'] === 200))
+        ? pg_vendor_update_verify($manifest['body'], $signature['body'], $keys[$pin['sig_key_id']])
+        : null;
+    $observed['manifest_sha256'] = hash('sha256', $manifest['body']);
+    $observed['manifest'] = pg_vendor_manifest_read($manifest['body']);
+
+    $result = pg_vendor_update_steps($pin, $site, $keys, $observed);
+
+    if ($result['outcome'] === 'refuse') {
+        return $refused($result);
+    }
+
+    if (is_file($path)) {
+        @unlink($path);
+    }
+
+    $sink = @fopen($path, 'xb');
+
+    if ($sink === false) {
+        return $failed(lang('Could not create the update file. Check write permission for the software directory.'), '');
+    }
+
+    // The cap stops a body longer than the pinned size, whatever
+    // Content-Length says.
+    $answer = pg_vendor_api_request('GET', $pin['package_url'], array('json' => false, 'timeout' => 120, 'sink' => $sink, 'cap' => (int) $pin['size']));
+    fclose($sink);
+
+    if ($answer['status'] === 0) {
+        if (!empty($answer['write_failed'])) {
+            return $failed(lang('The update file could not be written completely. The disk may be full.'), '');
+        }
+
+        if (empty($answer['capped'])) {
+            return $fetch_failed($answer);
+        }
+    }
+
+    $observed['download'] = array(
+        'url_host'    => strtolower((string) @parse_url($pin['package_url'], PHP_URL_HOST)),
+        'http_status' => empty($answer['capped']) ? $answer['status'] : 200,
+        // No redirect is followed: a 3xx is the answer itself.
+        'redirected'  => ($answer['status'] >= 300) && ($answer['status'] < 400),
+    );
+
+    $result = pg_vendor_update_steps($pin, $site, $keys, $observed);
+
+    if ($result['outcome'] === 'refuse') {
+        return $refused($result);
+    }
+
+    $received = isset($answer['received']) ? (int) $answer['received'] : 0;
+
+    // A body that ended early is a download cut short, not another package.
+    if (empty($answer['capped']) && ($received < (int) $pin['size'])) {
+        return $failed(
+            lang(array('string' => 'The download was cut short ({var:1} of {var:2} bytes). Please try again.', 'vars' => array($received, (int) $pin['size']))),
+            'software update download was truncated: ' . $received . ' of ' . (int) $pin['size'] . ' bytes.'
+        );
+    }
+
+    $facts = pg_vendor_update_package_facts($path);
+
+    if ($facts === null) {
+        return $failed(lang('The update file could not be written completely. The disk may be full.'), '');
+    }
+
+    // The cap ended a body longer than the pinned size.
+    if (!empty($answer['capped'])) {
+        $facts['size'] = (int) $pin['size'] + 1;
+    }
+
+    $result = pg_vendor_update_steps($pin, $site, $keys, $observed + $facts);
+
+    if ($result['outcome'] !== 'extract') {
+        return $refused($result);
+    }
+
+    return array('ok' => true, 'reason' => '', 'message' => '', 'log' => '', 'security' => false);
+}
+
+/**
+ * The replace step's check of the package on disk, right before extraction:
+ * size, sha256 and in-ZIP version again, so a file changed after the
+ * download step is not installed.
+ *
+ * @param array $pin
+ * @return array outcome, stopped_at and reason of pg_vendor_update_steps()
+ */
+function pg_vendor_update_recheck($pin)
+{
+    $facts = pg_vendor_update_package_facts(pg_vendor_update_package_path(isset($pin['package_file']) ? $pin['package_file'] : null));
+
+    if ($facts === null) {
+        return array('outcome' => 'refuse', 'stopped_at' => 'package', 'reason' => 'package_mismatch');
+    }
+
+    return pg_vendor_update_steps($pin, pg_vendor_update_site(), pg_vendor_release_keys(), $facts, 'package');
+}
+
+/**
+ * Ends the run of a pin: deletes its own package and forgets the pin. Each
+ * check starts a new one.
+ */
+function pg_vendor_update_forget()
+{
+    $pin = isset($_SESSION['software']['update']) ? $_SESSION['software']['update'] : null;
+    $path = is_array($pin) ? pg_vendor_update_package_path(isset($pin['package_file']) ? $pin['package_file'] : null) : '';
+
+    if (($path !== '') && is_file($path)) {
+        @unlink($path);
+    }
+
+    unset($_SESSION['software']['update']);
+}
+
 /**
  * The version numbers of includes/migrations/versions.php, oldest first, read
  * from the file's source: the single-quoted numbers of the array it returns.
