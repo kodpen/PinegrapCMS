@@ -16,6 +16,13 @@ description: The back arrow of a panel screen (pg_page_shell 'cancel') goes wher
 - All Referral Sources (Site Settings › Store Lists) went to the Dashboard; it now prints no arrow.
 - Pinned by `tests/back_arrow_targets_test.php`.
 
+## Where does the back arrow go when the screen got send_to?
+- To `send_to` (`pg_send_to_url(<list>)`), like Edit User and Edit Page: Edit/Create/Import Contact, Create/Import User and Edit Ad.
+- Symptom fixed: a contact opened from All Subscribers went back to All My Contacts (`view_contacts.php` and `view_users.php` read their view only from the address); a contact opened from Edit User, or an ad from a site page's Edit chip, went back to the panel list.
+- The Contacts/Users breadcrumb uses `pg_send_to_list_url(<list>)` (`includes/fn/core.php`): `send_to` only when its path is that same list, else the bare list (Edit Contact is also opened from Edit User and Edit Gift Card). Labelled `Contacts` / `Users`.
+- The Edit Ad breadcrumb stays on All My Ads, so no list link opens a site page.
+- Pinned by `tests/back_arrow_send_to_test.php`.
+
 ## Which arrows keep their target on purpose?
 - `edit_menu.php`: its arrow matches its breadcrumb parent All Menus.
 - The common-region screens: bare `view_regions.php` is All Common Regions.

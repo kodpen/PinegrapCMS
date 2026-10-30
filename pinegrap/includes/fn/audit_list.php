@@ -139,10 +139,11 @@ function pg_audit_list_search(array $terms)
 /**
  * A stored value as it is shown in the changes table.
  *
- * @param array $value pg_audit_view_value()'s answer
+ * @param array  $value pg_audit_view_value()'s answer
+ * @param string $name  the box's accessible name when the value scrolls
  * @return string
  */
-function pg_audit_list_value_html(array $value)
+function pg_audit_list_value_html(array $value, $name = '')
 {
     switch ($value['kind']) {
         case 'none':
@@ -152,7 +153,9 @@ function pg_audit_list_value_html(array $value)
         case 'cut':
             return '<span class="text-break">' . h($value['text']) . '…</span> <span class="small fg-secondary" title="SHA-1 ' . h($value['sha1']) . '">(' . h(lang(array('string' => '{var:1} bytes', 'vars' => array(pg_format_number($value['length'], 0))))) . ')</span>';
         case 'json':
-            return '<pre class="small mb-0" style="max-height:16rem;overflow:auto;white-space:pre-wrap;word-break:break-word">' . h($value['text']) . '</pre>';
+            // Capped and scrolling, so Tab must reach it (Safari skips a
+            // scroller) and a screen reader must hear what it holds.
+            return '<pre class="small mb-0" tabindex="0" role="region" aria-label="' . h($name) . '" style="max-height:16rem;overflow:auto;white-space:pre-wrap;word-break:break-word">' . h($value['text']) . '</pre>';
     }
 
     return ($value['text'] === '') ? '<span class="fg-secondary fst-italic">' . h(lang('empty')) . '</span>' : '<span class="text-break" style="white-space:pre-wrap">' . h($value['text']) . '</span>';
@@ -173,8 +176,8 @@ function pg_audit_list_changes_html(array $changes)
 
         $rows .= '<tr>'
             . '<td class="text-nowrap"><code>' . h($change['field']) . '</code></td>'
-            . '<td>' . ($change['names_only'] ? $too_large : pg_audit_list_value_html($change['before'])) . '</td>'
-            . '<td>' . ($change['names_only'] ? $too_large : pg_audit_list_value_html($change['after'])) . '</td>'
+            . '<td>' . ($change['names_only'] ? $too_large : pg_audit_list_value_html($change['before'], lang(array('string' => '{var:1}, before', 'vars' => $change['field'])))) . '</td>'
+            . '<td>' . ($change['names_only'] ? $too_large : pg_audit_list_value_html($change['after'], lang(array('string' => '{var:1}, after', 'vars' => $change['field'])))) . '</td>'
             . '</tr>';
     }
 
