@@ -51,7 +51,7 @@ if (!$_POST) {
         "SELECT id, name, enabled, short_description, image_name, price
          FROM products
          WHERE 1 = 1" . $live_products_sql . "
-         ORDER BY timestamp DESC
+         " . pg_product_group_form_unselected_order_sql() . "
          LIMIT 50"
     );
 
