@@ -202,7 +202,13 @@ if ((isset($_GET['page_id'])) && ($_GET['page_id'] != '')) {
         array('label' => lang('All My Pages'), 'url' => OUTPUT_PATH . OUTPUT_SOFTWARE_DIRECTORY . '/view_pages.php'),
     );
     $output_form_designer_content_heading = ucwords($form_type_name);
-    $output_form_designer_content_subheading = lang(array('string'=>'Add fields to this {var:1}','vars'=>$form_type_name));
+    if ($form_type == 'shipping') {
+        $output_form_designer_content_subheading = lang('Add fields to this custom shipping form.');
+    } elseif ($form_type == 'billing') {
+        $output_form_designer_content_subheading = lang('Add fields to this custom billing form.');
+    } else {
+        $output_form_designer_content_subheading = lang('Add fields to this custom form.');
+    }
     $delete_data_warning = '';
     
     // If this is a custom form, then output certain content.

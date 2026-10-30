@@ -906,6 +906,8 @@
     "design file ({var:1}) was modified": "tasarım dosyası ({var:1}) düzenlendi",
     "design template ({var:1}) was created": "tasarım şablonu ({var:1}) oluşturuldu",
     "design template ({var:1}) was deleted": "tasarım şablonu ({var:1}) silindi",
+    "design turned off": "tasarım özelliği kapatıldı",
+    "design turned on": "tasarım özelliği açıldı",
     "design-and-home": "tasarim-ve-ev",
     "designer": "tasarımcı",
     "designer region": "tasarımcı bölgesi",
