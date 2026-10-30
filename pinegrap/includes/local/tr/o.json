@@ -451,6 +451,7 @@
     "Only an open or sent purchase order can be changed.": "Yalnız açık ya da gönderilmiş satın alma siparişi değiştirilebilir.",
     "Only an open quote can be changed. Open it again first, or write a new one.": "Yalnız açık teklif değiştirilebilir. Önce yeniden açın ya da yeni bir teklif yazın.",
     "Only an open quote can be changed; \"Open again\" makes it editable.": "Yalnız açık teklif değiştirilebilir; \"Yeniden aç\" ile düzenlenebilir hâle gelir.",
+    "Only an open quote can be sent as a guest link.": "Yalnızca açık bir teklif misafir bağlantısıyla gönderilebilir.",
     "Only an open sales invoice can have its reminders put off.": "Yalnız açık bir satış faturasının hatırlatmaları ertelenebilir.",
     "Only an open task can be handed to an assistant.": "Yalnız açık bir görev asistana verilebilir.",
     "Only an owner who holds the team board can list every task.": "Tüm görevleri yalnızca ekip panosu yetkisi olan bir sahip listeleyebilir.",

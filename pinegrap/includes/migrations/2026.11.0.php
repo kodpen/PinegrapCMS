@@ -122,6 +122,7 @@ function upgrade_to_2026_11_0() {
 	upgrade_2026_11_0_tr_district_plate();      // 11.0.134
 	upgrade_2026_11_0_erp_auto_invoice_marketplace(); // 11.0.62
 	upgrade_2026_11_0_erp_quote_templates();    // 11.0.63
+	upgrade_2026_11_0_erp_quote_links();        // 11.0.64
 	upgrade_2026_11_0_form_field_rules();       // 11.0.135
 
 }
@@ -1081,6 +1082,36 @@ function upgrade_2026_11_0_erp_quote_templates() {
 	install_add_column('config', 'erp_quote_expiry_followup', "TINYINT(1) NOT NULL DEFAULT 0");
 
 	install_note('ERP: the lines of a sales quote can be kept as a personal or a site-wide template and filled into a new quote. A sales quote about to run out can open a Workspace follow-up, switched on under Site Settings, Ecommerce, ERP.');
+
+}
+
+// Guest links of sales quotes (includes/erp/quote_links.php, erp_quote.php).
+//
+// A customer without an account opens a quote by link and accepts it with a
+// drawn signature. Only the SHA-256 of the link's token is kept (token_hash,
+// unique: one row per token) with its first characters as a hint for the
+// screen. expires_at is the end of the quote's valid_until day at issue;
+// used_at marks the link that accepted, revoked_at a link a newer one
+// replaced or staff took back. Rows are never deleted, so who issued which
+// link, and when, stays. Times are unix seconds, 0 for not yet.
+function upgrade_2026_11_0_erp_quote_links() {
+
+	install_create_table('erp_quote_links', "CREATE TABLE erp_quote_links (
+		id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+		quote_id INT UNSIGNED NOT NULL,
+		token_hash CHAR(64) NOT NULL DEFAULT '',
+		token_hint VARCHAR(8) NOT NULL DEFAULT '',
+		expires_at INT UNSIGNED NOT NULL DEFAULT 0,
+		used_at INT UNSIGNED NOT NULL DEFAULT 0,
+		revoked_at INT UNSIGNED NOT NULL DEFAULT 0,
+		created_at INT UNSIGNED NOT NULL DEFAULT 0,
+		created_by INT UNSIGNED NOT NULL DEFAULT 0,
+		PRIMARY KEY (id),
+		UNIQUE KEY idx_token_hash (token_hash),
+		KEY idx_quote (quote_id)
+	) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+	install_note('ERP: a sales quote can be sent as a link the customer opens without an account, to read the quote and accept it with a signature. Nothing changes until a link is made on the quote screen.');
 
 }
 

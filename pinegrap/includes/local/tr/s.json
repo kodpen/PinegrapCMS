@@ -2467,6 +2467,7 @@
     "Stop sharing with {var:1}": "{var:1} ile paylaşmayı bırak",
     "Stop showing the figures of this Google Analytics property?": "Bu Google Analytics mülkünün rakamları artık gösterilmesin mi?",
     "Stop the assistant's work on this task?": "Asistanın bu görev üzerindeki çalışması durdurulsun mu?",
+    "Stop the guest link? The customer can no longer open the quote with it.": "Misafir bağlantısı durdurulsun mu? Müşteri teklifi bu bağlantıyla artık açamaz.",
     "Stop the running update?": "Çalışan güncelleme durdurulsun mu?",
     "Stop the timer": "Sayacı durdur",
     "Stop this request? Work the agent does in the background is cancelled on the service too, and an answer still on its way is not posted.": "Bu istek durdurulsun mu? Ajanın arka planda yaptığı iş hizmette de iptal edilir, yolda olan bir yanıt da yazılmaz.",

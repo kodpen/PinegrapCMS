@@ -1,6 +1,6 @@
 ---
 name: workspace-quotes
-description: Plan (2026-10-23; 1-3, 4 panel and 6 built, 7 approved): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
+description: Plan (2026-10-23; 1-3, 4 panel, 6 and 7 built): Sales quote (ERP) and new Cart quote (site), never mixed: tags, proposals, templates, expiry, guest links
 ---
 
 ## What is asked? (owner, 2026-10-23)
@@ -22,7 +22,7 @@ description: Plan (2026-10-23; 1-3, 4 panel and 6 built, 7 approved): Sales quot
 4. Panel part done (#3717; erp/erp-quote-templates.md): `erp_quote_templates`, "From template" on add_erp_quote.php. Left: ERP API template routes (`dry_run`) after #3298.
 5. Schema approved (#3072, `workflow/decisions-made-schema-3.md`): `cart_quotes`, `cart_quote_items`. Built in 5a-5d (below; commerce/cart-quotes.md): tables, link page, panel, customer card, tag. Left: routes (`dry_run`, shared `*_check()`, `cart_quote.*` events); later the cart of plans/storefront-api-agentic-commerce.md.
 6. PR #1826 (no schema): the bell's quote opens a follow-up when `ERP_QUOTE_EXPIRY_FOLLOWUP` is on (erp/erp-alerts.md). PR #1907: the `erp_quote` change action `invoice` (erp_quote_to_invoice(), workspace/workspace-sales-quote-change.md). Settings checkbox done (#3717).
-7. Approved (#3671, schema-6, `decisions-made-product-9.md`): a guest accepts a sales quote by link (`erp_quote_links`, `erp_quote.php`) with the signature evidence (`erp_signatures`, `erp_quote_status_refusal()`; erp/erp-quotes.md), never a bare status flip; the link expires with `valid_until`, a new link revokes the old.
+7. Done (#3761; erp/erp-quote-guest-link.md), approved in #3671 (schema-6, `decisions-made-product-9.md`): a guest accepts a sales quote by link (`erp_quote_links`, `erp_quote.php`) with the signature evidence (`erp_signatures`, `erp_quote_status_refusal()`; erp/erp-quotes.md), never a bare status flip; the link expires with `valid_until`, a new link revokes the old.
 
 ## Which are answered? (owner, 2026-10-24: 1 a, 3 b)
 1. Names: "Satış teklifi" / "Sepet teklifi"; Offer stays "Teklif" (not "Kampanya", no shared tag).
@@ -30,6 +30,6 @@ description: Plan (2026-10-23; 1-3, 4 panel and 6 built, 7 approved): Sales quot
 3. Cart quote: own tables at catalogue prices, valid until expired or ordered; a single-use offer code later; never a per-line price (not the saved-cart link).
 
 ## Where to start?
-- Slices 1-3, 4 (panel) and 6 are built; 7 is being built (`feature/erp-quote-guest-link`); 4's API part after 5e.
+- Slices 1-3, 4 (panel) and 6 are built; 7 is built (#3761); 4's API part after 5e.
 - 5a PR #3091: tables 11.0.124, model, link page `cart_quote.php`, order completion, contact holder, export, erasure (commerce/cart-quotes.md). 5b PR #3148: panel screens, cancel, new link, Workspace card section. 5c PR #3197: "New cart quote" on the customer card (not the channel menu). 5d PR #3256: the tag `cart_quote` (`#sepet`, `#cartquote`), read under `orders:read`; `view_cart_quotes.php?id=` (workspace/workspace-cart-quote-tag.md).
 - Next: 5e, the `cart_quote.*` routes (api/README.md). Their reads ask `orders:read`, as the tag's two scope maps do; another scope changes those maps and `test_ws_api_search_record_scopes_name_known_kinds` with it.

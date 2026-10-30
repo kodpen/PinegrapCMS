@@ -1,6 +1,6 @@
 ---
 name: erp-quotes
-description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, expiry notice, Workspace tag.
+description: ERP sales quotes (4.92) and their signature (8.58): own table, numbering, state, printing, invoicing, signature, guest link, expiry, Workspace tag.
 ---
 
 ## Why do quotes have a table of their own? (`includes/erp/quotes.php`, `erp_quotes`, 2026.4.4 step 4.92)
@@ -18,9 +18,9 @@ description: ERP sales quotes (4.92) and their signature (8.58): own table, numb
 - The invoice names its quote in `erp_invoices.quote_id` (8.58), written only when the key is given (`array_key_exists`). `erp_quotes.invoice_id`, the other way, is cleared when the quote is opened again.
 
 ## How does the signature work? (`includes/erp/signatures.php`, 2026.4.8 step 8.58)
-- The customer draws it on the screen or a tablet; it marks the quote accepted (`erp.quote.signed`). One per document in `erp_signatures` (`UNIQUE (doc_type, doc_id)`); the drawing is a `files` row with `erp_doc_type = 'quote_signature'`, served to the ERP right only and embedded in the PDF as a data URI.
+- Drawn on the screen or a tablet; it marks the quote accepted (`erp.quote.signed`). One per document in `erp_signatures` (`UNIQUE (doc_type, doc_id)`); the drawing is a `files` row with `erp_doc_type = 'quote_signature'`, served to the ERP right only and embedded in the PDF as a data URI.
 - Never deleted, never drawn again. `document_hash` (lines and totals), `image_hash` and an HMAC `seal` show tampering: a quote changed after signing no longer matches, the screen says so and the PDF prints no signature.
-- An ordinary electronic signature, not a qualified one.
+- An ordinary electronic signature, not a qualified one. Guest link: erp-quote-guest-link.md.
 
 ## When is a quote about to run out announced?
 - Hourly, once per quote (`erp_quotes.expiry_notified_at`), with an optional follow-up: erp-alerts.md.

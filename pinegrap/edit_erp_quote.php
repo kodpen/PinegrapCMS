@@ -50,7 +50,7 @@ if ($_POST) {
     // (string) the others as "Array" with a notice, into the signer's name
     // and the e-mail too.
     pg_request_single_values(array_merge(erp_invoice_form_single_fields(), array('erp_action', 'signer_name', 'signature', 'mail_to', 'mail_subject',
-        'mail_message')));
+        'mail_message', 'mail_guest_link')));
 
     $action = (string) ($_POST['erp_action'] ?? 'save');
 
@@ -154,8 +154,43 @@ if ($_POST) {
         go($self_url . '#erp-signature');
     }
 
+    // A guest link the customer opens without an account to read and accept
+    // the quote (includes/erp/quote_links.php). The token is shown once.
+    if ($action === 'guest_link') {
+        $issued = erp_quote_link_issue($quote_id, (int) $user['id']);
+
+        if (!$issued['success']) {
+            $liveform->mark_error('_error', h($issued['error']));
+            go($self_url . '#erp-guest-link');
+        }
+
+        $_SESSION['software']['erp_quote_guest_link'][$quote_id] = erp_quote_link_url($issued['token']);
+        go($self_url . '#erp-guest-link');
+    }
+
+    if ($action === 'guest_link_revoke') {
+        erp_quote_link_revoke($quote_id);
+        log_activity(lang(array('string' => 'erp quote ({var:1}) guest link was revoked', 'vars' => $quote['full_number'])), $_SESSION['sessionusername']);
+        $liveform->add_notice(h(lang('The guest link no longer works.')));
+        go($self_url . '#erp-guest-link');
+    }
+
     if ($action === 'mail') {
-        $sent = erp_quote_mail_send($quote_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id']);
+        // The e-mail may carry a new guest link; it replaces the live one.
+        $link_url = '';
+
+        if (!empty($_POST['mail_guest_link'])) {
+            $issued = erp_quote_link_issue($quote_id, (int) $user['id']);
+
+            if (!$issued['success']) {
+                $liveform->mark_error('_error', h($issued['error']));
+                go($self_url . '#erp-mail');
+            }
+
+            $link_url = erp_quote_link_url($issued['token']);
+        }
+
+        $sent = erp_quote_mail_send($quote_id, (string) ($_POST['mail_to'] ?? ''), (string) ($_POST['mail_subject'] ?? ''), (string) ($_POST['mail_message'] ?? ''), (int) $user['id'], $link_url);
 
         if (!$sent['success']) {
             $_SESSION['software']['erp_quote_mail_draft'][$quote_id] = array(
@@ -341,6 +376,14 @@ if (function_exists('erp_mail_ready') && erp_mail_ready()) {
                     <textarea class="form-control" id="mail_message" name="mail_message" rows="3" maxlength="5000">' . h((string) $defaults['message']) . '</textarea>
                     <div class="form-text"><i class="bi bi-paperclip" aria-hidden="true"></i> ' . lang('The quote PDF is attached.') . '</div>
                 </div>
+                ' . (($state === 'open') && erp_quote_links_ready() ? '
+                <div class="col-12">
+                    <div class="form-field">
+                        <div class="switch"><input type="checkbox" id="mail_guest_link" name="mail_guest_link" value="1" /></div>
+                        <label for="mail_guest_link">' . lang('Add a guest link to accept and sign the quote online') . '</label>
+                    </div>
+                    <div class="form-text">' . lang('A new guest link is made for this e-mail; an earlier one stops working.') . '</div>
+                </div>' : '') . '
                 <div class="col-12">
                     <button type="submit" class="btn btn-sm btn-solid theme-primary"><i class="bi bi-envelope me-3" aria-hidden="true"></i>' . lang('Send the e-mail') . '</button>
                 </div>
@@ -392,7 +435,7 @@ if ($signature !== null) {
                         <div class="col-12 md:col-7">
                             <div><span class="fg-secondary">' . lang('Signed by') . '</span> <b>' . h((string) $signature['signer_name']) . '</b></div>
                             <div class="small fg-secondary mb-3">' . h(prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $signature['signed_at']), 'date and time'))
-                                . (((string) ($signature['username'] ?? '') !== '') ? ' · ' . h(lang(array('string' => 'on the screen of {var:1}', 'vars' => (string) $signature['username']))) : '')
+                                . (((string) ($signature['username'] ?? '') !== '') ? ' · ' . h(lang(array('string' => 'on the screen of {var:1}', 'vars' => (string) $signature['username']))) : (((int) $signature['user_id'] === 0) ? ' · ' . h(lang('through the guest link')) : ''))
                                 . (((string) $signature['ip_address'] !== '') ? ' · ' . h((string) $signature['ip_address']) : '') . '</div>
                             ' . $check($record_intact, lang('The signature record is intact.'), lang('The signature record or its drawing was changed after it was written.')) . '
                             ' . $check($document_matches !== false, lang('The quote is unchanged since it was signed.'), lang('The quote was changed after it was signed; the signature is no longer printed on it.')) . '
@@ -429,6 +472,67 @@ if ($signature !== null) {
                     </form>
                 </div>
             </div>' . pg_signature_includes();
+}
+
+// The guest link: made, shown once, revoked. An open quote only.
+$output_guest_link = '';
+
+if (!$readonly && erp_quote_links_ready()) {
+    $shown_url = (string) ($_SESSION['software']['erp_quote_guest_link'][$quote_id] ?? '');
+    unset($_SESSION['software']['erp_quote_guest_link'][$quote_id]);
+    $live_link = erp_quote_link_live($quote_id);
+    $guest_body = '';
+
+    if ($shown_url !== '') {
+        $guest_body .= '
+                    <div class="alert theme-success" role="status">
+                        <div class="mb-5">' . lang('Copy the link now: it is not shown again. A new link stops the earlier one.') . '</div>
+                        <div class="d-flex gap-5">
+                            <input type="text" class="form-control" id="erp_guest_link_url" readonly value="' . h($shown_url) . '" aria-label="' . h(lang('Guest link')) . '" />
+                            <button type="button" class="btn btn-sm btn-outline theme-secondary text-nowrap" id="erp_guest_link_copy"><i class="bi bi-clipboard me-1" aria-hidden="true"></i>' . lang('Copy') . '</button>
+                        </div>
+                    </div>
+                    <script>
+                    (function () {
+                        var input = document.getElementById("erp_guest_link_url");
+                        document.getElementById("erp_guest_link_copy").addEventListener("click", function () {
+                            input.select();
+                            if (navigator.clipboard && window.isSecureContext) {
+                                navigator.clipboard.writeText(input.value);
+                                return;
+                            }
+                            try { document.execCommand("copy"); } catch (e) {}
+                        });
+                    })();
+                    </script>';
+    }
+
+    if ($live_link !== null) {
+        $guest_body .= '<p class="mb-5">' . h(lang(array('string' => 'A guest link starting with {var:1} works until {var:2}.', 'vars' => array(
+            (string) $live_link['token_hint'] . '…',
+            ((int) $live_link['expires_at'] > 0) ? prepare_form_data_for_output(date('Y-m-d H:i:s', (int) $live_link['expires_at']), 'date and time', false) : '—',
+        )))) . (((string) ($live_link['created_by_name'] ?? '') !== '') ? ' <span class="fg-secondary small">' . h(lang(array('string' => 'Made by {var:1}', 'vars' => (string) $live_link['created_by_name']))) . '</span>' : '') . '</p>';
+    }
+
+    $guest_buttons = '';
+    if ($state === 'open') {
+        $guest_buttons .= $action_button('guest_link', lang('Create guest link'), 'bi-link-45deg', 'btn-outline theme-primary', ($live_link !== null) ? lang('Make a new guest link? The earlier one stops working.') : '');
+    }
+    if ($live_link !== null) {
+        $guest_buttons .= ' ' . $action_button('guest_link_revoke', lang('Revoke'), 'bi-x-circle', 'btn-outline theme-danger', lang('Stop the guest link? The customer can no longer open the quote with it.'));
+    }
+
+    if (($guest_body !== '') || ($guest_buttons !== '')) {
+        $output_guest_link = '
+            <div class="card my-7" id="erp-guest-link">
+                <div class="card-header bg-reset border-0 text-uppercase h5 fg-primary fw-bold">' . lang('Guest link') . '</div>
+                <div class="card-body">
+                    <div class="form-text mt-0 mb-5">' . lang('The customer opens the quote with this link without an account, reads it and accepts it with a signature. It runs until the quote\'s valid until date.') . '</div>
+                    ' . $guest_body . '
+                    <div class="d-flex flex-wrap gap-1">' . $guest_buttons . '</div>
+                </div>
+            </div>';
+    }
 }
 
 // A copy is always a new open quote, whatever became of this one.
@@ -483,6 +587,7 @@ pg_page_shell([
             ' . ((!$editable && ((string) $quote['status'] !== 'open') && !$readonly) ? '<div class="form-text mb-3">' . lang('Only an open quote can be changed; "Open again" makes it editable.') . '</div>' : '') . '
             ' . $output_body . '
             ' . $output_signature . '
+            ' . $output_guest_link . '
             ' . $output_mail . '
         </div>
     </div>
