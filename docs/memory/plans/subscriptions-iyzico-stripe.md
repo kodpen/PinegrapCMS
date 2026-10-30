@@ -23,7 +23,7 @@ description: Plan (approved 2026-10-19, watch list, after payment-driver-layer):
 - 5a done #3347: My Account subscriptions (`commerce/subscriptions-account.md`). Operator screen done #3405 (#3343; `commerce/subscriptions-operator-screen.md`). Next: 5b API `/customers/{id}/subscriptions` + `subscription.*` webhooks.
 
 ## Open questions?
-- Price changes: next period only, 14-day notice mail (#3311). Later lines: done (#3310, #3378).
+- Price changes: next period only, 14-day notice mail (#3311): in progress (feature/subscriptions-price-notice). Later lines: done (#3310, #3378).
 
 ## Where to start?
 - Slice 5b: read `commerce/subscriptions.md`, `subscriptions-account.md` (`pg_subscription_store_move()` is the shared move) and the external API memory (`api/`).
