@@ -6,6 +6,7 @@ description: Trendyol order packages: v2/orders pull, 14-day window and page cap
 ## Which calls are used?
 - Pull: `GET /integration/order/sellers/{sellerId}/v2/orders?startDate&endDate&orderByField=PackageLastModifiedDate&orderByDirection=ASC&page&size=200` (V2 mandatory since 15 Oct 2026). No `status` filter: a multi-status answer once came back without the status field (Aug 2025).
 - Accept: `PUT …/shipment-packages/{packageId}` body `{"lines":[{"lineId","quantity"}],"params":{},"status":"Picking"}`; `params` is `new stdClass` (`{}`). Any 2xx is success, empty or not JSON (`mp_trendyol_call(…, 'PUT', true)`); other calls still read a non-JSON 2xx as an error. Package id and quantities come from the `$package` `mp_sync_approve()` passes third.
+- Invoiced: same PUT, `params.invoiceNumber` (`trendyol-invoiced-push.md`).
 - Docs read 2026-10-24 (orders page modified 2026-10-07).
 
 ## How far does one pull read?
@@ -27,7 +28,7 @@ description: Trendyol order packages: v2/orders pull, 14-day window and page cap
 - `code` = barcode, `sku` = `stockCode`: mapping, barcode, then sku as the product name (`marketplace-order-import.md`).
 
 ## What is not done yet?
-- `Invoiced` push (invoice link: `trendyol-invoice-link.md`). Tax number/office are not stored (company only, on `commercial`). Packages also arrive by webhook: `marketplace-webhook-receiver.md`; own-carrier shipping: `trendyol-own-carrier-shipping.md`.
+- Tax number/office are not stored (company only, on `commercial`). Packages also arrive by webhook: `marketplace-webhook-receiver.md`; own-carrier shipping: `trendyol-own-carrier-shipping.md`.
 
 ## What is unverified?
 - No live call yet; fixtures follow the docs (`tests/marketplace_trendyol_orders_test.php`).

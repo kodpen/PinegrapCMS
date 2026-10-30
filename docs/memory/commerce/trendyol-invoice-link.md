@@ -19,7 +19,7 @@ description: Trendyol invoice link of an imported package: typed by the operator
 
 ## What is written?
 - Success: `invoice_sent = UNIX_TIMESTAMP()` where it is still 0, an activity-log line with the link, a notice. A refusal is a screen warning only, never `last_error` (that would drop the package from the own-carrier shipping pass).
-- No `Invoiced` status push and no webhook event for it.
+- No webhook event for it. The `Invoiced` status push with the invoice number is a separate form: `trendyol-invoiced-push.md`.
 
 ## What is not built?
 - Changing or removing a link: their delete call needs the buyer's customerId, which the import does not keep. A wrong link is fixed in the seller panel.
@@ -27,4 +27,4 @@ description: Trendyol invoice link of an imported package: typed by the operator
 ## What is unverified?
 - No live call. The 201 body; the exact 400/409 bodies; whether a package must be Picking/Invoiced first; whether Trendyol fetches the link (a PDF reachable only from some networks).
 
-Related: docs/memory/commerce/trendyol-orders.md, docs/memory/commerce/marketplace-commission-and-invoice-columns.md
+Related: docs/memory/commerce/trendyol-invoiced-push.md, docs/memory/commerce/trendyol-orders.md, docs/memory/commerce/marketplace-commission-and-invoice-columns.md

@@ -520,6 +520,109 @@ if ($_POST) {
 
 	}
 
+	// Mark an imported package Invoiced with the number of the invoice the
+	// operator cut. The marketplace wants Picking first, so a package nobody
+	// accepted yet is accepted in the same step, as the label request does.
+	// Success is kept as the package's status, which the next order read
+	// overwrites with theirs; a refusal is shown here and not kept in
+	// last_error, as with the invoice link.
+	if ($action === 'mark_invoiced' && $account) {
+
+		$map_id = isset($_POST['map_id']) ? (int)$_POST['map_id'] : 0;
+
+		$invoice_number = isset($_POST['invoice_number']) ? trim((string)$_POST['invoice_number']) : '';
+
+		$map = $map_id ? db_item("SELECT * FROM marketplace_order_map
+			WHERE (id = '" . e($map_id) . "') AND (account_id = '" . e($account_id) . "')") : null;
+
+		if (!mp_can($account['provider'], 'mark_invoiced')) {
+
+			$liveform->add_warning(lang(array(
+				'string' => '{var:1} cannot do this.',
+				'vars'   => array(h(mp_provider_name($account['provider'])))
+			)));
+
+		} elseif (!$map || !mp_invoiced_offer($map, mp_order_stage($account, $map))) {
+
+			$liveform->add_warning(lang('That order can no longer be marked invoiced.'));
+
+		} else {
+
+			$package = mp_sync_package_from_row($map);
+
+			$order_number = (string)$map['remote_order_id'];
+
+			$name = mp_provider_name($account['provider']);
+
+			$problem = '';
+
+			if (($package['remote_status'] === 'Created') && empty($map['approved']) && mp_can($account['provider'], 'approve_lines')) {
+
+				$line_ids = array();
+
+				foreach ($package['lines'] as $line) {
+
+					if (isset($line['remote_line_id']) && ((string)$line['remote_line_id'] !== '')) {
+
+						$line_ids[] = (string)$line['remote_line_id'];
+
+					}
+
+				}
+
+				$accepted = mp_call($account['provider'], 'approve_lines', array($account, $line_ids, $package));
+
+				if ($accepted['ok']) {
+
+					db("UPDATE marketplace_order_map
+						SET remote_status = 'Picking', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+						WHERE id = '" . e($map_id) . "'");
+
+				} else {
+
+					$problem = $accepted['error'];
+
+				}
+
+			}
+
+			$invoiced = ($problem === '')
+				? mp_call($account['provider'], 'mark_invoiced', array($account, $package, $invoice_number))
+				: mp_error($problem);
+
+			if ($invoiced['ok']) {
+
+				db("UPDATE marketplace_order_map
+					SET remote_status = 'Invoiced', approved = 1, updated_timestamp = UNIX_TIMESTAMP()
+					WHERE id = '" . e($map_id) . "'");
+
+				log_activity(lang(array(
+					'string' => 'Order {var:1} was marked invoiced on {var:2} with invoice number {var:3}',
+					'vars'   => array($order_number, $name, $invoice_number)
+				)), 'system');
+
+				$liveform->add_notice(lang(array(
+					'string' => 'Order {var:1} was marked invoiced on {var:2}.',
+					'vars'   => array(h($order_number), h($name))
+				)));
+
+			} else {
+
+				$liveform->add_warning(lang(array(
+					'string' => 'Order {var:1} was not marked invoiced: {var:2}',
+					'vars'   => array(h($order_number), h($invoiced['error']))
+				)));
+
+			}
+
+		}
+
+		header('Location: ' . $screen_url . '?account=' . $account_id . '#mp-orders');
+
+		exit();
+
+	}
+
 	// The shipping label the marketplace makes for its own carrier's parcel
 	// (Trendyol's common label), asked for by the operator for one imported
 	// package and kept with the order's labels (includes/api/outbound/labels.php).
@@ -1361,6 +1464,33 @@ function mp_settings_invoice_form($account_id, $row) {
 
 }
 
+// The "Mark invoiced" form under one imported order, folded until opened: the
+// number of the invoice cut for it (see the mark_invoiced action).
+function mp_settings_invoiced_form($account_id, $row) {
+
+	$map_id = (int)$row['id'];
+
+	return '
+				<details class="small" style="grid-column:1/-1">
+					<summary class="pg-link-secondary">' . lang('Mark invoiced') . '</summary>
+					<form method="post" action="marketplace_settings.php" class="d-flex gap-3 flex-wrap mt-3"
+						onsubmit="this.querySelector(\'button[type=submit]\').disabled = true;">
+						' . get_token_field() . '
+						<input type="hidden" name="mp_action" value="mark_invoiced">
+						<input type="hidden" name="account_id" value="' . (int)$account_id . '">
+						<input type="hidden" name="map_id" value="' . $map_id . '">
+						<label class="visually-hidden" for="invoice_number_' . $map_id . '">' . lang('Invoice number') . '</label>
+						<input type="text" class="form-control form-control-sm" id="invoice_number_' . $map_id . '"
+							name="invoice_number" maxlength="50" required pattern="[A-Za-z0-9][A-Za-z0-9\-]*" style="max-width:260px"
+							autocomplete="off">
+						<button type="submit" class="btn btn-sm btn-outline theme-secondary">' . lang('Send') . '</button>
+					</form>
+					<div class="form-text">'
+						. lang('The number of the invoice you cut for this order. The marketplace sets the package to Invoiced; an order not accepted yet is accepted first.') . '</div>
+				</details>';
+
+}
+
 // The marketplace's shipping label under one imported order
 // (mp_label_offer()): the link to the label kept, a ZPL file saved for the
 // thermal printer through shipment_label.php, or the folded form that asks for
@@ -1786,6 +1916,10 @@ if ($selected) {
 	// whose files are newer than its database draws no form.
 	$can_invoice = $can_orders && mp_can($selected['provider'], 'send_invoice_link') && mp_invoice_sent_ready();
 
+	// The "Mark invoiced" form, for a connector that can set a package's status
+	// to Invoiced (mp_invoiced_offer() picks the rows).
+	$can_mark_invoiced = $can_orders && mp_can($selected['provider'], 'mark_invoiced');
+
 	// The returns card, for a connector that reads returns; its approve
 	// button only where the connector can approve them.
 	$can_claims = mp_can($selected['provider'], 'claims');
@@ -2067,6 +2201,8 @@ if ($selected) {
 				. (($can_invoice && ($row['status'] === 'imported') && $row['order_id'] && empty($row['invoice_sent'])
 					&& (mp_order_stage($selected, $row) !== 'cancelled'))
 					? mp_settings_invoice_form($selected_id, $row) : '')
+				. (($can_mark_invoiced && mp_invoiced_offer($row, mp_order_stage($selected, $row)))
+					? mp_settings_invoiced_form($selected_id, $row) : '')
 				. (isset($order_labels[(int)$row['order_id']])
 					? mp_settings_label_line($selected_id, $row, $order_labels[(int)$row['order_id']], mp_provider_name($selected['provider'])) : '') . '
 			</div>';

@@ -23,7 +23,8 @@
 // packages (pulled, or delivered by their webhook), accept one (Picking),
 // report one shipped with the seller's own carrier, ask for and read the
 // shipping label Trendyol makes for its own carrier's parcel, send the link of
-// a package's invoice, read the buyers' returns and approve or reject the ones
+// a package's invoice or mark it Invoiced with the invoice number, read the
+// buyers' returns and approve or reject the ones
 // that came back, read the buyers' questions and answer them, register or remove
 // that webhook, and read the seller's catalogue a page at a time for matching
 // it to the shop's products. What it does not
@@ -86,6 +87,7 @@ function mp_trendyol_connector() {
 		'read_label'          => 'mp_trendyol_common_label',
 		'label_carrier'       => 'mp_trendyol_common_label_carrier',
 		'send_invoice_link'   => 'mp_trendyol_send_invoice_link',
+		'mark_invoiced'       => 'mp_trendyol_mark_invoiced',
 		'claims'              => 'mp_trendyol_claims',
 		'approve_claim'       => 'mp_trendyol_approve_claim',
 		'claim_issue_reasons' => 'mp_trendyol_claim_issue_reasons',
@@ -2781,6 +2783,139 @@ function mp_trendyol_send_invoice_link($account, $package, $url, $transport = nu
 		? trim((string)$result['data']['message']) : '';
 
 	if ($message !== '' && $status >= 400 && $status < 500) {
+
+		return mp_error(mb_substr($message, 0, 500), false, $result['data']);
+
+	}
+
+	return $result;
+
+}
+
+// What is wrong with an invoice number before the package is marked
+// Invoiced, or ''.
+//
+// Their status service names no format for it (its example is the sixteen
+// characters of an e-Archive number), so only what cannot be an invoice
+// number is refused: an empty field, a link, spaces or punctuation. Letters,
+// digits and a hyphen, at most 50; the cap is ours.
+function mp_trendyol_invoice_number_problem($number) {
+
+	$number = is_scalar($number) ? trim((string)$number) : '';
+
+	if ($number === '') {
+
+		return lang('Type the invoice number first.');
+
+	}
+
+	if (preg_match('/^[A-Za-z0-9][A-Za-z0-9-]{0,49}$/D', $number) !== 1) {
+
+		return lang('The invoice number can hold only letters, digits and hyphens, at most 50, without spaces.');
+
+	}
+
+	return '';
+
+}
+
+// The body of their package status call for Invoiced: every line of the
+// package with its quantity, the invoice number under params, and the status.
+// Line ids are JSON numbers, so only ids that pass mp_trendyol_id_fits() are
+// taken; the caller refuses a body without lines.
+function mp_trendyol_invoiced_body($package, $invoice_number) {
+
+	$lines = array();
+
+	foreach ((array)(isset($package['lines']) ? $package['lines'] : array()) as $line) {
+
+		$line_id = isset($line['remote_line_id']) ? trim((string)$line['remote_line_id']) : '';
+
+		if (!mp_trendyol_id_fits($line_id)) {
+
+			continue;
+
+		}
+
+		$lines[] = array(
+			'lineId'   => (int)$line_id,
+			'quantity' => isset($line['quantity']) ? max(1, (int)$line['quantity']) : 1
+		);
+
+	}
+
+	return array(
+		'lines'  => $lines,
+		'params' => array('invoiceNumber' => trim((string)$invoice_number)),
+		'status' => 'Invoiced'
+	);
+
+}
+
+// Mark a package Invoiced with the number of the invoice the seller cut.
+//
+// The same PUT …/shipment-packages/{packageId} as accepting, with status
+// Invoiced and params.invoiceNumber. They want Picking sent first, so the
+// caller accepts a package still Created before this. Their answer to a
+// successful update has no documented body, and no error status is
+// documented for this call, so any 2xx is success and a 4xx shows the message
+// of their error body when it has one.
+function mp_trendyol_mark_invoiced($account, $package, $invoice_number, $transport = null) {
+
+	$package_id = isset($package['remote_package_id']) ? trim((string)$package['remote_package_id']) : '';
+
+	if (!mp_trendyol_id_fits($package_id)) {
+
+		return mp_error(lang('That order has no package number to mark invoiced.'));
+
+	}
+
+	$problem = mp_trendyol_invoice_number_problem($invoice_number);
+
+	if ($problem !== '') {
+
+		return mp_error($problem);
+
+	}
+
+	$body = mp_trendyol_invoiced_body($package, $invoice_number);
+
+	if (!$body['lines']) {
+
+		return mp_error(lang('That order has no lines to mark invoiced.'));
+
+	}
+
+	$send = ($transport === null) ? 'api_http_request' : $transport;
+
+	$status = 0;
+
+	$watched = function ($method, $address, $options) use ($send, &$status) {
+
+		$outcome = call_user_func($send, $method, $address, $options);
+
+		$status = isset($outcome['status']) ? (int)$outcome['status'] : 0;
+
+		return $outcome;
+
+	};
+
+	$result = mp_trendyol_call($account,
+		'/integration/order/sellers/' . mp_trendyol_seller_id($account) . '/shipment-packages/' . $package_id,
+		65536, $watched, $body, 'PUT', true);
+
+	if ($result['ok']) {
+
+		return mp_ok(array('invoiced' => true));
+
+	}
+
+	// Their error body may carry its reason as a bare message, which the
+	// shared reader does not take (see mp_trendyol_send_invoice_link()).
+	$message = (isset($result['data']['message']) && is_scalar($result['data']['message']))
+		? trim((string)$result['data']['message']) : '';
+
+	if ($message !== '' && $status >= 400 && $status < 500 && empty($result['retry'])) {
 
 		return mp_error(mb_substr($message, 0, 500), false, $result['data']);
 
