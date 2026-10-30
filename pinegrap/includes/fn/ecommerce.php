@@ -9185,6 +9185,48 @@ function pg_assign_product_barcode($product_id, $barcode = '', $type = '')
 
     return $barcode;
 }
+/**
+ * The columns a product copy (duplicate_product()) writes beside its fixed
+ * list for the columns later versions added, each only where the source row,
+ * read with SELECT *, has it: the AI write marks the copy keeps
+ * (pg_ai_fields_copy()), the VAT exemption code a zero-rated ERP line reads,
+ * and a bundle's switch, pricing and discount, without which a copied bundle
+ * would sell its cached stock as its own.
+ *
+ * @param array $row the source product row
+ * @param mixed $ai_fields pg_ai_fields_copy(): false names no ai_fields column
+ * @return array columns and values, each list ending with a comma or empty
+ */
+function pg_product_copy_extra_sql($row, $ai_fields)
+{
+    $columns = '';
+    $values = '';
+
+    if (!is_array($row)) {
+        return array('columns' => '', 'values' => '');
+    }
+
+    if ($ai_fields !== false) {
+        $columns .= 'ai_fields,';
+        $values .= (($ai_fields === null) ? 'NULL' : "'" . e($ai_fields) . "'") . ',';
+    }
+
+    if (array_key_exists('vat_exemption_code', $row)) {
+        $columns .= 'vat_exemption_code,';
+        $values .= "'" . e(substr(trim((string) $row['vat_exemption_code']), 0, 10)) . "',";
+    }
+
+    if (array_key_exists('bundle', $row) && array_key_exists('bundle_pricing', $row) && array_key_exists('bundle_discount_bp', $row)) {
+        $bp = (int) $row['bundle_discount_bp'];
+
+        $columns .= 'bundle, bundle_pricing, bundle_discount_bp,';
+        $values .= "'" . (empty($row['bundle']) ? 0 : 1) . "', "
+            . "'" . (($row['bundle_pricing'] === 'sum') ? 'sum' : 'fixed') . "', "
+            . "'" . ((($bp < 0) || ($bp > 10000)) ? 0 : $bp) . "',";
+    }
+
+    return array('columns' => $columns, 'values' => $values);
+}
 function duplicate_product($id)
 {
     // get original product's info
@@ -9217,6 +9259,16 @@ function duplicate_product($id)
     $compare_at_value = array_key_exists('compare_at_price', $row) ? pg_compare_at_price_sql($row['compare_at_price']) . ',' : '';
     // products.hs_code and origin_country (2026.11.0) the same way.
     $customs = pg_product_customs_copy_sql($row);
+    // products.ai_fields, vat_exemption_code and the bundle columns the same
+    // way. The texts are copied unchanged, so every mark whose text still
+    // matches is kept.
+    $extra = pg_product_copy_extra_sql($row, pg_ai_fields_copy('product', $row, array(
+        'short_description' => $row['short_description'],
+        'full_description'  => $row['full_description'],
+        'title'             => $row['title'],
+        'meta_description'  => $row['meta_description'],
+    )));
+    $is_bundle = !empty($row['bundle']);
     // insert row into product table
     $query = "INSERT INTO products (
 
@@ -9403,6 +9455,8 @@ function duplicate_product($id)
             " . $compare_at_column . "
 
             " . $customs['columns'] . "
+
+            " . $extra['columns'] . "
 
             user,
 
@@ -9593,6 +9647,8 @@ function duplicate_product($id)
             " . $compare_at_value . "
 
             " . $customs['values'] . "
+
+            " . $extra['values'] . "
 
             '" . USER_ID . "',
 
@@ -9851,8 +9907,23 @@ function duplicate_product($id)
                 '" . $products_group['product_group'] . "')");
     }
 
+    // The gallery pictures beside the cover, in the order they were written:
+    // the table has no order column and is read back in that order.
+    $images = db_values("SELECT file_name FROM products_images_xref WHERE product = '" . (int) $id . "' AND file_name != ''");
+
+    foreach ($images as $image) {
+        db_q("INSERT INTO products_images_xref (product, file_name) VALUES (?, ?)", array((int) $new_product_id, (string) $image));
+    }
+
     // The copy starts a price history of its own at the original's price.
     pg_price_history_record($new_product_id, 'panel');
+
+    // A bundle copy takes the same contents, then its stock and price are
+    // derived from them like any bundle's instead of kept from the copied row.
+    if ($is_bundle && pg_bundles_ready()) {
+        pg_bundle_items_save($new_product_id, pg_bundle_items($id));
+        pg_bundle_refresh($new_product_id);
+    }
 
     pg_audit_record('create', 'products', (int) $new_product_id);
 
